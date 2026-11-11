@@ -3617,19 +3617,28 @@ function renderAcademicCvPublicationsSection(prof, pubList = []) {
 
   const totalCount = papers.length;
   const highImpactCount = Math.max(5, papers.filter(p => /nature|science|nano|chem.*mater|phys.*rev|adv/i.test(p.journal || "")).length);
-  const years = papers.map(p => parseInt(p.year) || 2026).filter(y => !isNaN(y) && y > 1990);
+  const years = papers.map(p => {
+    let y = p.year;
+    if (typeof y === "string" && y.startsWith("20.")) y = parseInt(y.replace("20.", "20"), 10);
+    return parseInt(y, 10) || 2026;
+  }).filter(y => !isNaN(y) && y > 1990);
   const minYear = years.length > 0 ? Math.min(...years) : 2018;
   const maxYear = years.length > 0 ? Math.max(...years) : 2026;
   const spanStr = `${minYear}–${String(maxYear).slice(2)}`;
 
-  // Group papers by year
+  // Group papers by year (Strict 4-digit Integer: 2026, 2025, etc.)
   const grouped = {};
   papers.forEach(p => {
-    const yr = p.year || 2026;
+    let yr = p.year || 2026;
+    if (typeof yr === "string" && yr.startsWith("20.")) {
+      yr = parseInt(yr.replace("20.", "20"), 10) || 2026;
+    }
+    yr = parseInt(yr, 10) || 2026;
+    p.year = yr;
     if (!grouped[yr]) grouped[yr] = [];
     grouped[yr].push(p);
   });
-  const sortedYears = Object.keys(grouped).sort((a, b) => b - a);
+  const sortedYears = Object.keys(grouped).sort((a, b) => Number(b) - Number(a));
 
   const orcidId = prof.orcid_id || "0009-0004-9407-3475";
   const researcherName = prof.full_name || "Vu Tien Lam";
