@@ -69,7 +69,7 @@ const TAB_TITLES = {
     "118-Element Crystallography Reference, Stoichiometry Weigher, eV/nm Converter & XRD Bragg/Scherrer"
   ],
   "cv": [
-    "Academic Curriculum Vitae (Lý Lịch Khoa Học)",
+    "Academic Curriculum Vitae",
     "Complete Materials Science PhD Academic CV — Education, Publications, Skills, Conferences & Awards"
   ],
   "profile": [
@@ -82,7 +82,30 @@ const TAB_TITLES = {
 // Initialization & Tab Navigation
 // ============================================================================
 
+function startLiveClock() {
+  function tick() {
+    const timeEl = document.getElementById("live-clock-time");
+    const dateEl = document.getElementById("live-clock-date");
+    if (!timeEl && !dateEl) return;
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    const ss = String(now.getSeconds()).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const year = now.getFullYear();
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const dayName = days[now.getDay()];
+
+    if (timeEl) timeEl.textContent = `${hh}:${mm}:${ss}`;
+    if (dateEl) dateEl.textContent = `${dayName}, ${day}/${month}/${year}`;
+  }
+  tick();
+  setInterval(tick, 1000);
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
+  startLiveClock();
   initAuthSession();
   initCifDropZone();
   if (typeof initPlagDropZone === "function") initPlagDropZone();
@@ -3367,7 +3390,7 @@ function renderDashboard(dash) {
 }
 
 // ============================================================================
-// Academic CV (Lý Lịch Khoa Học) Rendering & Management
+// Academic CV Rendering & Management
 // ============================================================================
 
 function renderAcademicCvSheet(prof) {
@@ -3390,11 +3413,14 @@ function renderAcademicCvSheet(prof) {
 
   container.innerHTML = `
     <div class="cv-header-block">
-      <div>
+      <div class="cv-avatar-wrap">
+        <img src="profile_photo.jpg" alt="${escapeHtml(prof.full_name || "Vu Tien Lam")}" class="cv-avatar-img" onerror="if(this.src.indexOf('/static/')===-1){this.src='/static/profile_photo.jpg';}else{this.parentElement.style.display='none';}" />
+      </div>
+      <div style="flex:1; min-width:260px;">
         <div class="cv-name">${escapeHtml(prof.full_name || "Vu Tien Lam")}</div>
         <div class="cv-role">${escapeHtml(prof.title_role || "Ph.D. Candidate in Computational Materials Science")}</div>
         <div class="cv-affil">${escapeHtml(prof.affiliation || "Sungkyunkwan University (SKKU)")} • Advisor: <strong>${escapeHtml(prof.advisor || "")}</strong></div>
-        <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+        <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
           <span class="badge badge-blue">📊 Citations: ${prof.total_citations || 0}</span>
           <span class="badge badge-purple">📈 h-index: ${prof.h_index || 0}</span>
           <span class="badge badge-green">🏅 i10-index: ${prof.i10_index || 0}</span>
@@ -3527,16 +3553,17 @@ function renderAcademicCvSheet(prof) {
   `;
 }
 
-let CURRENT_PUB_VIEW_MODE = "orcid"; // 'curated' or 'orcid' (default matching screenshot)
+let CURRENT_PUB_VIEW_MODE = "curated"; // 'curated' (default with enriched 24 publications) or 'orcid'
 
 function renderAcademicCvPublicationsSection(prof, pubList = []) {
   const isAdmin = !!(STATE.auth && STATE.auth.isAdmin);
-  let papers = (pubList || []).filter(p => isAdmin || p.visibility !== "Private");
+  let papers = (pubList && pubList.length > 0) ? pubList : (prof.publications || []);
   if (CURRENT_PUB_VIEW_MODE === "orcid" && STATE.orcidLiveWorks && STATE.orcidLiveWorks.length > 0) {
-    papers = STATE.orcidLiveWorks.filter(p => isAdmin || p.visibility !== "Private");
+    papers = STATE.orcidLiveWorks;
   } else if (CURRENT_PUB_VIEW_MODE === "curated") {
-    papers = (pubList || []).filter(p => (isAdmin || p.visibility !== "Private") && (p.visibility === "Curated" || p.visibility === "Public" || !p.visibility));
+    papers = (pubList && pubList.length > 0) ? pubList : (prof.publications || []);
   }
+  papers = (papers || []).filter(p => isAdmin || p.visibility !== "Private");
 
   // If list is small or empty, provide realistic verified sample works from the user's screenshot
   if (papers.length === 0) {
@@ -3668,38 +3695,70 @@ function renderAcademicCvPublicationsSection(prof, pubList = []) {
         </div>
       </div>
 
+      <!-- Quick Scroll to Year Selector -->
+      <div class="pub-year-jump-bar no-print" id="pub-year-jump-anchor">
+        <span class="pub-year-jump-label">📅 Year:</span>
+        <button class="pub-year-jump-btn active" onclick="jumpToPubYear('all', this)">All (${totalCount})</button>
+        ${sortedYears.map(yr => `
+          <button class="pub-year-jump-btn" onclick="jumpToPubYear('${yr}', this)">${yr} (${grouped[yr].length})</button>
+        `).join("")}
+      </div>
+
       <!-- Chronological Year Groups -->
       <div class="pub-years-container">
         ${sortedYears.map(year => `
-          <div class="pub-year-section">
-            <div class="pub-year-heading">${escapeHtml(year)}</div>
+          <div class="pub-year-section" id="pub-year-${escapeHtml(year)}">
+            <div class="pub-year-heading" style="scroll-margin-top: 110px;">
+              <span>${escapeHtml(year)}</span>
+              <span style="font-size:13px; font-weight:normal; color:#64748b; margin-left:8px;">(${grouped[year].length} publications)</span>
+            </div>
             ${grouped[year].map((p, pIdx) => {
               const currentNum = paperSeq++;
               const doiUrl = p.doi ? (p.doi.startsWith("http") ? p.doi : `https://doi.org/${p.doi}`) : "";
               const formattedAuthors = formatAuthorsWithHighlight(p.authors, researcherName);
               const realPubIndex = (STATE.profile.publications || []).findIndex(x => (x.id && p.id && x.id === p.id) || (x.doi && p.doi && x.doi === p.doi) || (x.title === p.title));
               const editIndex = realPubIndex >= 0 ? realPubIndex : pIdx;
+
+              let journalMeta = "";
+              if (p.volume && p.pages) {
+                journalMeta = ` · ${p.volume}${p.issue ? `(${p.issue})` : ""}, ${p.pages}`;
+              } else if (p.pages) {
+                journalMeta = ` · ${p.pages}`;
+              } else if (p.volume) {
+                journalMeta = ` · Vol. ${p.volume}${p.issue ? `(${p.issue})` : ""}`;
+              } else if (p.year) {
+                journalMeta = ` · (${p.year})`;
+              }
+
               return `
                 <div class="pub-item">
                   <div class="pub-num">${currentNum}</div>
                   <div class="pub-body">
+                    <!-- Line 1: Journal in uppercase maroon + Article meta (as in screenshot) -->
+                    <div class="pub-journal-line">
+                      <span class="pub-journal-name">${escapeHtml((p.journal || "JOURNAL").toUpperCase())}</span>
+                      <span class="pub-journal-meta">${escapeHtml(journalMeta)}</span>
+                    </div>
+
+                    <!-- Line 2: Paper title -->
                     <div class="pub-title">
-                      ${doiUrl ? `<a href="${escapeHtml(doiUrl)}" target="_blank">${renderScientificTitle(p.title)}</a>` : renderScientificTitle(p.title)}
+                      ${doiUrl ? `<a href="${escapeHtml(doiUrl)}" target="_blank" rel="noopener noreferrer">${renderScientificTitle(p.title)}</a>` : renderScientificTitle(p.title)}
                       ${p.visibility === "Private" ? `<span class="badge badge-rose" style="margin-left:6px; font-size:11px;">🔒 Private</span>` : ""}
                       ${p.visibility === "Curated" ? `<span class="badge badge-blue" style="margin-left:6px; font-size:11px;">📜 Curated</span>` : ""}
                     </div>
+
+                    <!-- Line 3: Full Authors List (no truncation) -->
                     <div class="pub-authors">
                       ${formattedAuthors}
                     </div>
-                    <div class="pub-journal">
-                      ${escapeHtml(p.journal)} (${escapeHtml(p.year)})
-                    </div>
-                    <div class="pub-doi">
+
+                    <!-- Line 4: Meta & Action buttons -->
+                    <div class="pub-doi" style="margin-top:6px;">
                       ${doiUrl ? `<span>DOI: <a href="${escapeHtml(doiUrl)}" target="_blank">${escapeHtml(p.doi.replace(/^https?:\/\/doi\.org\//i, ''))}</a></span>` : ""}
                       ${p.citations ? `<span class="badge badge-purple" style="font-size:11px;">Cited: ${p.citations}</span>` : ""}
                       <div class="no-print" style="margin-left:auto; display:flex; gap:6px;">
                         <button class="btn btn-outline btn-sm owner-only-btn admin-only" title="Edit publication details & visibility" onclick="openOwnPublicationModal(${editIndex})">✏️ Edit</button>
-                        ${p.doi ? `<button class="btn btn-outline btn-sm owner-only-btn admin-only" title="Import this DOI into Literature Library" onclick="importPaperByDoiCommon('${escapeHtml(p.doi)}')">📥 +Library</button>` : ""}
+                        ${p.doi ? `<button class="btn btn-outline btn-sm owner-only-btn admin-only" title="Import this DOI into References Library" onclick="importPaperByDoiCommon('${escapeHtml(p.doi)}')">📥 +References</button>` : ""}
                         <button class="btn btn-danger btn-sm owner-only-btn admin-only" title="Delete entry" onclick="removeOwnPubById(${p.id !== undefined ? p.id : editIndex})">✕</button>
                       </div>
                     </div>
@@ -3714,6 +3773,18 @@ function renderAcademicCvPublicationsSection(prof, pubList = []) {
   `;
 }
 
+function jumpToPubYear(year, btn) {
+  document.querySelectorAll(".pub-year-jump-btn").forEach(b => b.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+  if (year === "all") {
+    const el = document.getElementById("pub-year-jump-anchor");
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  } else {
+    const el = document.getElementById("pub-year-" + year);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
 function formatAuthorsWithHighlight(authorsStr, researcherName = "Vu Tien Lam") {
   if (!authorsStr) return `<strong class="author-highlight">${escapeHtml(researcherName)}</strong>`;
   const sep = authorsStr.includes(";") ? ";" : ",";
@@ -3725,14 +3796,14 @@ function formatAuthorsWithHighlight(authorsStr, researcherName = "Vu Tien Lam") 
     const aLower = author.toLowerCase();
     const isTarget = tokens.every(tok => aLower.includes(tok)) ||
                      (aLower.includes("lam") && (aLower.includes("vu") || aLower.includes("tien"))) ||
-                     aLower.includes("wonchan lee") || aLower.includes("nasir ali");
+                     aLower.includes("tien lam vu") || aLower.includes("vu, tien lam");
     if (isTarget) {
       return `<strong class="author-highlight">${escapeHtml(author)}</strong>`;
     }
     return escapeHtml(author);
   });
 
-  return formatted.join("; ");
+  return formatted.join(", ");
 }
 
 function switchPubViewMode(mode) {
@@ -4623,7 +4694,7 @@ function renderProfile(prof) {
   if (!prof) return;
   const subEl = document.getElementById("header-researcher-sub");
   if (subEl) {
-    subEl.textContent = `${prof.full_name || "Vu Tien Lam"} • Computational Materials Science • ${prof.affiliation || "SKKU"}`;
+    subEl.textContent = "Vu Tien Lam | Sungkyunkwan University";
   }
 
   document.getElementById("prof-name").value = prof.full_name || "Vu Tien Lam";
