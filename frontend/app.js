@@ -2798,10 +2798,10 @@ async function loadStaticFallbackData() {
         const saved = localStorage.getItem("matsci_static_db_v4");
         if (saved) {
           try {
-            const parsed = JSON.parse(saved);
             const localTime = parsed.updated_at ? new Date(parsed.updated_at).getTime() : 0;
-            const remoteTime = remoteData.exported_at ? new Date(remoteData.exported_at).getTime() : 0;
-            if (localTime > remoteTime) {
+            const remoteExportedStr = (remoteData.exported_at || "").replace("20.", "20");
+            const remoteTime = remoteExportedStr ? new Date(remoteExportedStr).getTime() : 0;
+            if (!isNaN(localTime) && !isNaN(remoteTime) && localTime > remoteTime) {
               STATE.papers = parsed.papers || [];
               STATE.structures = parsed.structures || [];
               STATE.schedule = parsed.schedule || [];
@@ -4819,7 +4819,8 @@ async function persistProfileState() {
   } else {
     STATE.profile = { ...STATE.profile, ...payload };
     saveStaticDb();
-    loadStaticFallbackData();
+    renderProfile(STATE.profile);
+    renderAcademicCvSheet(STATE.profile);
   }
 }
 
