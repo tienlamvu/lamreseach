@@ -596,27 +596,37 @@ def add_or_resolve_doi(req: DOILookupRequest):
     if not cleaned:
         raise HTTPException(status_code=400, detail="Please provide a valid DOI string or URL.")
 
-    # 1. Check for duplicate DOI BEFORE inserting
-    existing = find_existing_paper_by_doi(cleaned)
-    if existing:
-        return JSONResponse(
-            status_code=409,
-            content={
-                "detail": f"Duplicate DOI detected! The paper \"{existing['title']}\" (DOI: {existing['doi']}) is already in your library and cannot be added again.",
-                "duplicate": True,
-                "existing_paper": existing,
-            },
-        )
+    # 1. Check for duplicate DOI BEFORE inserting (only when auto_save is True)
+    if req.auto_save:
+        existing = find_existing_paper_by_doi(cleaned)
+        if existing:
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "detail": f"Duplicate DOI detected! The paper \"{existing['title']}\" (DOI: {existing['doi']}) is already in your library and cannot be added again.",
+                    "duplicate": True,
+                    "existing_paper": existing,
+                },
+            )
 
     # 2. Fetch metadata from Crossref / OpenAlex / Semantic Scholar
     try:
         meta = fetch_doi_metadata(cleaned)
     except ValueError as e:
+        existing = find_existing_paper_by_doi(cleaned)
+        if existing and not req.auto_save:
+            return existing
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        existing = find_existing_paper_by_doi(cleaned)
+        if existing and not req.auto_save:
+            return existing
         raise HTTPException(status_code=500, detail=f"DOI lookup error: {str(e)}")
 
-    # Double-check resolved DOI against database
+    if not req.auto_save:
+        return meta
+
+    # Double-check resolved DOI against database when auto_save is True
     existing_resolved = find_existing_paper_by_doi(meta["doi"])
     if existing_resolved:
         return JSONResponse(
@@ -627,9 +637,6 @@ def add_or_resolve_doi(req: DOILookupRequest):
                 "existing_paper": existing_resolved,
             },
         )
-
-    if not req.auto_save:
-        return meta
 
     conn = get_connection()
     cur = conn.cursor()
