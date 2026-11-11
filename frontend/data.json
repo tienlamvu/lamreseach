@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-11T13:48:49.684Z",
+  "exported_at": "2026-11-11T14:21:46.687Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -335,18 +335,25 @@
     },
     "awards": [
       {
-        "title": "Graduate Research Fellowship in Advanced Energy Materials",
-        "issuer": "Materials Research Institute",
-        "year": 2025,
+        "title": "Domestic Master/Ph.D. Scholarship Programme of Vingroup Innovation Foundation (VINIF)",
+        "issuer": "Vingroup Big Data Institute (VinBigdata)",
+        "year": "2023",
         "visibility": "Public",
-        "details": "Full doctoral tuition and stipend award for top 5% PhD candidates."
+        "details": ""
       },
       {
-        "title": "Outstanding Symposium Poster Award",
-        "issuer": "Symposium EN04 — Solid-State Batteries",
-        "year": 2024,
+        "title": "Scholarships for master program",
+        "issuer": "Hanoi University of Science and Technology",
+        "year": "2022",
         "visibility": "Public",
-        "details": "Recognized for excellence in interfacial XPS characterization."
+        "details": ""
+      },
+      {
+        "title": "Heasung Vina Scholarship",
+        "issuer": "Heasung Vina",
+        "year": "2019",
+        "visibility": "Public",
+        "details": ""
       }
     ]
   },
