@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-11T12:27:29.812Z",
+  "exported_at": "2026-11-11T12:29:42.968Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -325,20 +325,7 @@
         "pages": "129"
       }
     ],
-    "conferences": [
-      {
-        "title": "Suppressing Li Dendrite Propagation at Garnet Solid Electrolyte Interfaces via Atomic Layer Deposition",
-        "event": "MRS Fall Meeting & Exhibit (Boston, MA)",
-        "type": "Oral Presentation",
-        "year": 2025
-      },
-      {
-        "title": "In-Situ Raman and XRD Investigation of Interlayer Expanded MoS2/Ti3C2Tx Heterostructures",
-        "event": "Electrochemical Society (ECS) International Meeting",
-        "type": "Poster Presentation (Best Poster Finalist)",
-        "year": 2024
-      }
-    ],
+    "conferences": [],
     "skills": {
       "synthesis": "Solid-State Reaction & High-Temp Sintering (up to 1600 °C), Atomic Layer Deposition (ALD), Hydrothermal/Solvothermal, Sol-Gel, Ball Milling, Cold Isostatic Pressing (CIP), Ar-Glovebox Coin/Swagelok Cell Assembly",
       "characterization": "Powder & Thin-Film XRD (Bruker D8, Rietveld Refinement via GSAS-II / FullProf), FE-SEM & EDS Mapping, HR-TEM & SAED, XPS Depth Profiling (CasaXPS), Raman & FTIR Spectroscopy, EIS / Cyclic Voltammetry (BioLogic EC-Lab), BET, TGA/DSC",
