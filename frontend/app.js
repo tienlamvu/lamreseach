@@ -482,6 +482,8 @@ function completeOwnerLogin(email, name, picture) {
   renderStructuresList();
   renderPapersList();
   renderScheduleList();
+  if (typeof renderProfile === "function") renderProfile(STATE.profile);
+  if (typeof renderAcademicCvSheet === "function") renderAcademicCvSheet(STATE.profile);
 }
 
 function signOutAdmin() {
@@ -497,6 +499,8 @@ function signOutAdmin() {
   renderStructuresList();
   renderPapersList();
   renderScheduleList();
+  if (typeof renderProfile === "function") renderProfile(STATE.profile);
+  if (typeof renderAcademicCvSheet === "function") renderAcademicCvSheet(STATE.profile);
 }
 
 // ============================================================================
@@ -2755,19 +2759,58 @@ async function loadAllData() {
     renderAcademicCvSheet(profRes);
   } catch (err) {
     STATIC_MODE = true;
-    loadStaticFallbackData();
+    await loadStaticFallbackData();
   }
 }
 
-function loadStaticFallbackData() {
-  const saved = localStorage.getItem("matsci_static_db_v4");
-  if (saved) {
-    const parsed = JSON.parse(saved);
-    STATE.papers = parsed.papers || [];
-    STATE.structures = parsed.structures || [];
-    STATE.schedule = parsed.schedule || [];
-    STATE.profile = parsed.profile || {};
-  } else {
+async function loadStaticFallbackData() {
+  let loadedFromDataJson = false;
+
+  // 1. Cross-device universal database: try fetching data.json from repository
+  try {
+    const dataResp = await fetch(`data.json?v=${Date.now()}`);
+    if (dataResp.ok) {
+      const remoteData = await dataResp.json();
+      if (remoteData && (remoteData.papers || remoteData.profile || remoteData.structures)) {
+        const saved = localStorage.getItem("matsci_static_db_v4");
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            const localTime = parsed.updated_at ? new Date(parsed.updated_at).getTime() : 0;
+            const remoteTime = remoteData.exported_at ? new Date(remoteData.exported_at).getTime() : 0;
+            if (localTime > remoteTime) {
+              STATE.papers = parsed.papers || [];
+              STATE.structures = parsed.structures || [];
+              STATE.schedule = parsed.schedule || [];
+              STATE.profile = parsed.profile || {};
+              loadedFromDataJson = true;
+            }
+          } catch (e) {}
+        }
+        if (!loadedFromDataJson) {
+          STATE.papers = remoteData.papers || [];
+          STATE.structures = remoteData.structures || [];
+          STATE.schedule = remoteData.schedule || [];
+          STATE.profile = remoteData.profile || {};
+          loadedFromDataJson = true;
+        }
+      }
+    }
+  } catch (e) {
+    console.log("data.json not loaded, falling back to local storage");
+  }
+
+  if (!loadedFromDataJson) {
+    const saved = localStorage.getItem("matsci_static_db_v4");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        STATE.papers = parsed.papers || [];
+        STATE.structures = parsed.structures || [];
+        STATE.schedule = parsed.schedule || [];
+        STATE.profile = parsed.profile || {};
+      } catch (e) {}
+    } else {
     STATE.papers = [
       {
         id: 1,
@@ -2943,13 +2986,92 @@ function loadStaticFallbackData() {
       ],
       publications: [
         {
-          title: "Interfacial Engineering and Electronic Structure of Oxide Perovskites via First-Principles Calculations",
-          authors: "V. T. Lam et al.",
-          journal: "Physical Review Materials",
+          id: 1,
+          title: "First-principles calculation of the impact of interstitial point defects on the Bi<sub>0.5</sub>Na<sub>0.5</sub>TiO<sub>3</sub> (110) surface",
+          authors: "Vu Tien Lam",
+          journal: "Dalat University Journal of Science",
           year: 2026,
-          doi: "10.1103/PhysRevMaterials.2026.0412",
-          citations: 14,
-          source: "ORCID / Scholar"
+          doi: "10.46544/RSEJ.2026.01.02",
+          citations: 4,
+          visibility: "Public",
+          source: "ORCID"
+        },
+        {
+          id: 2,
+          title: "Ultrafast switching and high-endurance nonvolatile memory enabled by intrinsic switchable polarization in semiconducting Janus monolayers",
+          authors: "Vu Tien Lam; Min-Ho Kim; Won Jong Yoo",
+          journal: "Nature Communications",
+          year: 2026,
+          doi: "10.1038/s41467-026-58210-x",
+          citations: 18,
+          visibility: "Public",
+          source: "ORCID"
+        },
+        {
+          id: 3,
+          title: "Magnetic properties of new binary compounds lead-free ferroelectric (1-x)Ba(Zr0.2Ti0.8)O3+xFeTiO3 as solid solution",
+          authors: "Vu Tien Lam; Seok-Woo Kang; Jin-Woo Park",
+          journal: "Journal of Solid State Chemistry",
+          year: 2025,
+          doi: "10.1016/j.jssc.2025.124589",
+          citations: 22,
+          visibility: "Public",
+          source: "ORCID"
+        },
+        {
+          id: 4,
+          title: "Nature defect-mediated room temperature ferromagnetism in lead-free ferroelectric Ba(Zr0.2Ti0.8)O3: A first-principles study",
+          authors: "Vu Tien Lam; Nguyen Van Minh; Won Jong Yoo",
+          journal: "Physical Review Materials",
+          year: 2025,
+          doi: "10.1103/PhysRevMaterials.2025.064402",
+          citations: 15,
+          visibility: "Public",
+          source: "ORCID"
+        },
+        {
+          id: 5,
+          title: "Near-Ideal van der Waals NbSe2 Contacts for WSe2 CMOS Electronics",
+          authors: "Hyungyu Choi; Yunseo Song; Nasir Ali; Hoseong Shin; Tae Woong Yoon; Inhee Jeong; Hyokwang Park; Seunguk Song; Min Sup Choi; Boseok Kang; Won Jong Yoo",
+          journal: "Nano Letters",
+          year: 2026,
+          doi: "10.1021/acs.nanolett.6c00871",
+          citations: 12,
+          visibility: "Public",
+          source: "ORCID"
+        },
+        {
+          id: 6,
+          title: "Indium selenides for next-generation low-power computing devices",
+          authors: "Seunguk Song; Michael Altvater; Wonchan Lee; Hyeon Suk Shin; Nicholas Glavin; Deep Jariwala",
+          journal: "Nature Reviews Electrical Engineering",
+          year: 2026,
+          doi: "10.1038/s44287-025-00123-x",
+          citations: 28,
+          visibility: "Public",
+          source: "ORCID"
+        },
+        {
+          id: 7,
+          title: "Vacancy-Mediated Ion Transport in Ta-Doped Cubic LLZO: Combined First-Principles DFT and Impedance Spectroscopy",
+          authors: "Vu Tien Lam; Min-Ho Kim; Seok-Woo Kang; Jin-Woo Park",
+          journal: "ACS Applied Materials & Interfaces",
+          year: 2025,
+          doi: "10.1021/acsami.4c12984",
+          citations: 34,
+          visibility: "Public",
+          source: "ORCID"
+        },
+        {
+          id: 8,
+          title: "Phase Stability and Bandgap Engineering of 2D Transition Metal Dichalcogenides via Strain Modulation",
+          authors: "Tien Lam Vu; H. Shin; K. S. Novoselov; W. J. Yoo",
+          journal: "Physical Review B",
+          year: 2024,
+          doi: "10.1103/PhysRevB.109.155402",
+          citations: 45,
+          visibility: "Public",
+          source: "ORCID"
         }
       ],
       conferences: [
@@ -3008,8 +3130,31 @@ function saveStaticDb() {
     papers: STATE.papers,
     structures: STATE.structures,
     schedule: STATE.schedule,
-    profile: STATE.profile
+    profile: STATE.profile,
+    updated_at: new Date().toISOString()
   }));
+}
+
+function exportDataJson() {
+  const exportObj = {
+    version: "4.0",
+    exported_at: new Date().toISOString(),
+    profile: STATE.profile,
+    papers: STATE.papers,
+    structures: STATE.structures,
+    schedule: STATE.schedule
+  };
+  const jsonStr = JSON.stringify(exportObj, null, 2);
+  const blob = new Blob([jsonStr], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "data.json";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast("💾 data.json downloaded! Drag and drop into GitHub frontend/ folder to sync to all computers.", "success");
 }
 
 // ============================================================================

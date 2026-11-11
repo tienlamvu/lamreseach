@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MatSci Nexus — PhD Research &amp; Lab Management Suite</title>
-  <link rel="stylesheet" href="styles.css?v=20261111_v7" onerror="this.href='/static/styles.css?v=20261111_v7'" />
+  <link rel="stylesheet" href="styles.css?v=20261111_v9" onerror="this.href='/static/styles.css?v=20261111_v9'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -948,6 +948,9 @@
               </button>
               <button class="btn btn-outline owner-only-btn" style="background:rgba(255,255,255,0.12); color:#fff; border-color:#475569;" onclick="openCvSkillsModal()">
                 ✏️ Edit Technical Skills
+              </button>
+              <button class="btn btn-outline owner-only-btn admin-only" style="background:rgba(255,255,255,0.12); color:#38bdf8; border-color:#38bdf8;" onclick="exportDataJson()" title="Download updated database file data.json to upload to GitHub frontend/ directory">
+                💾 Sync/Export data.json
               </button>
               <button class="btn btn-teal" onclick="window.print()">
                 🖨️ Print / Export PDF CV
@@ -1915,7 +1918,7 @@
 
   <div id="toast-container"></div>
 
-  <script src="matsci_tools.js?v=20261111_v7" onerror="this.src='/static/matsci_tools.js?v=20261111_v7'"></script>
-  <script src="app.js?v=20261111_v7" onerror="this.src='/static/app.js?v=20261111_v7'"></script>
+  <script src="matsci_tools.js?v=20261111_v9" onerror="this.src='/static/matsci_tools.js?v=20261111_v9'"></script>
+  <script src="app.js?v=20261111_v9" onerror="this.src='/static/app.js?v=20261111_v9'"></script>
 </body>
 </html>
