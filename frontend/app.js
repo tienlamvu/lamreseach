@@ -155,6 +155,36 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;");
 }
 
+function renderScientificTitle(rawTitle) {
+  if (rawTitle === null || rawTitle === undefined) return "";
+  let s = String(rawTitle);
+  // Decode common encoded chemical/scientific tags if already escaped
+  s = s.replace(/&lt;(\/?)sub&gt;/gi, '<$1sub>')
+       .replace(/&lt;(\/?)sup&gt;/gi, '<$1sup>')
+       .replace(/&lt;(\/?)i&gt;/gi, '<$1i>')
+       .replace(/&lt;(\/?)b&gt;/gi, '<$1b>')
+       .replace(/&lt;(\/?)em&gt;/gi, '<$1em>')
+       .replace(/&lt;(\/?)strong&gt;/gi, '<$1strong>');
+
+  // Whitelist safe chemical formatting tags: sub, sup, i, b, em, strong
+  const allowedTagRegex = /<\/?(sub|sup|i|b|em|strong)>/gi;
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+  while ((match = allowedTagRegex.exec(s)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(escapeHtml(s.slice(lastIndex, match.index)));
+    }
+    parts.push(match[0].toLowerCase());
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < s.length) {
+    parts.push(escapeHtml(s.slice(lastIndex)));
+  }
+  return parts.join("");
+}
+
+
 // ============================================================================
 // Authentication & Exclusive Administrator Access (lamvt.skku@gmail.com)
 // ============================================================================
@@ -3106,12 +3136,18 @@ function renderAcademicCvSheet(prof) {
   const container = document.getElementById("cv-sheet-container");
   if (!container || !prof) return;
 
-  const eduList = prof.education || [];
-  const expList = prof.experiences || [];
-  const pubList = prof.publications || [];
-  const confList = prof.conferences || [];
+  const isAdmin = !!(STATE.auth && STATE.auth.isAdmin);
+  const rawEdu = prof.education || [];
+  const rawExp = prof.experiences || [];
+  const rawPub = prof.publications || [];
+  const rawConf = prof.conferences || [];
   const skills = prof.skills || {};
-  const awardsList = prof.awards || [];
+  const rawAwards = prof.awards || [];
+
+  const eduList = rawEdu.filter(e => isAdmin || e.visibility !== "Private");
+  const expList = rawExp.filter(ex => isAdmin || ex.visibility !== "Private");
+  const confList = rawConf.filter(c => isAdmin || c.visibility !== "Private");
+  const awardsList = rawAwards.filter(a => isAdmin || a.visibility !== "Private");
 
   container.innerHTML = `
     <div class="cv-header-block">
@@ -3148,15 +3184,16 @@ function renderAcademicCvSheet(prof) {
     <div class="cv-section">
       <div class="cv-section-title">
         <span>2. Education &amp; Academic Training</span>
-        <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" onclick="addCvEducation()">+ Add Degree</button>
+        <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" onclick="openEducationModal()">+ Add Degree</button>
       </div>
-      ${eduList.map((e, i) => `
+      ${eduList.length === 0 ? `<div style="font-size:13px; color:var(--text-muted); font-style:italic;">No education records listed yet.</div>` : eduList.map((e, i) => `
         <div class="cv-entry">
           <div class="cv-entry-head">
-            <span>🎓 ${escapeHtml(e.degree)}</span>
+            <span>🎓 ${escapeHtml(e.degree)} ${e.visibility === "Private" ? `<span class="badge badge-rose" style="font-size:11px; margin-left:6px;">🔒 Private</span>` : ""}</span>
             <div style="display:flex; align-items:center; gap:8px;">
               <span style="font-size:12.5px; color:var(--text-muted);">${escapeHtml(e.period)}</span>
-              <button class="btn btn-danger btn-sm no-print owner-only-btn admin-only" onclick="removeCvItem('education', ${i})">✕</button>
+              <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" title="Edit Degree" onclick="openEducationModal(${i})">✏️</button>
+              <button class="btn btn-danger btn-sm no-print owner-only-btn admin-only" title="Delete Degree" onclick="removeCvItem('education', ${i})">✕</button>
             </div>
           </div>
           <div class="cv-entry-sub">${escapeHtml(e.institution)}</div>
@@ -3168,15 +3205,16 @@ function renderAcademicCvSheet(prof) {
     <div class="cv-section">
       <div class="cv-section-title">
         <span>3. Research &amp; Academic Appointments</span>
-        <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" onclick="addCvExperience()">+ Add Position</button>
+        <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" onclick="openExperienceModal()">+ Add Position</button>
       </div>
-      ${expList.map((ex, i) => `
+      ${expList.length === 0 ? `<div style="font-size:13px; color:var(--text-muted); font-style:italic;">No appointment records listed yet.</div>` : expList.map((ex, i) => `
         <div class="cv-entry">
           <div class="cv-entry-head">
-            <span>🔬 ${escapeHtml(ex.role)}</span>
+            <span>🔬 ${escapeHtml(ex.role)} ${ex.visibility === "Private" ? `<span class="badge badge-rose" style="font-size:11px; margin-left:6px;">🔒 Private</span>` : ""}</span>
             <div style="display:flex; align-items:center; gap:8px;">
               <span style="font-size:12.5px; color:var(--text-muted);">${escapeHtml(ex.period)}</span>
-              <button class="btn btn-danger btn-sm no-print owner-only-btn admin-only" onclick="removeCvItem('experiences', ${i})">✕</button>
+              <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" title="Edit Position" onclick="openExperienceModal(${i})">✏️</button>
+              <button class="btn btn-danger btn-sm no-print owner-only-btn admin-only" title="Delete Position" onclick="removeCvItem('experiences', ${i})">✕</button>
             </div>
           </div>
           <div class="cv-entry-sub">${escapeHtml(ex.organization)}</div>
@@ -3208,18 +3246,22 @@ function renderAcademicCvSheet(prof) {
     <div class="cv-section">
       <div class="cv-section-title">
         <span>6. Conference Presentations &amp; Seminars</span>
-        <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" onclick="addCvConference()">+ Add Presentation</button>
+        <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" onclick="openConferenceModal()">+ Add Presentation</button>
       </div>
-      ${confList.map((c, i) => `
+      ${confList.length === 0 ? `<div style="font-size:13px; color:var(--text-muted); font-style:italic;">No conference presentations listed yet.</div>` : confList.map((c, i) => `
         <div class="cv-entry">
           <div class="cv-entry-head">
-            <span>🎤 ${escapeHtml(c.title)}</span>
+            <span>🎤 ${escapeHtml(c.title)} ${c.visibility === "Private" ? `<span class="badge badge-rose" style="font-size:11px; margin-left:6px;">🔒 Private</span>` : ""}</span>
             <div style="display:flex; align-items:center; gap:8px;">
-              <span class="badge badge-blue">${escapeHtml(c.type || "Oral")} (${c.year || 2025})</span>
-              <button class="btn btn-danger btn-sm no-print owner-only-btn admin-only" onclick="removeCvItem('conferences', ${i})">✕</button>
+              <span class="badge badge-blue">${escapeHtml(c.type || "Oral")} (${c.year || 2026})</span>
+              <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" title="Edit Presentation" onclick="openConferenceModal(${i})">✏️</button>
+              <button class="btn btn-danger btn-sm no-print owner-only-btn admin-only" title="Delete Presentation" onclick="removeCvItem('conferences', ${i})">✕</button>
             </div>
           </div>
-          <div class="cv-entry-sub">${escapeHtml(c.event)}</div>
+          <div class="cv-entry-sub">
+            ${escapeHtml(c.event)}
+            ${c.url ? ` • <a href="${escapeHtml(c.url)}" target="_blank" style="color:var(--primary); font-size:12px; text-decoration:none;">Program / Slides ↗</a>` : ""}
+          </div>
         </div>
       `).join("")}
     </div>
@@ -3227,15 +3269,16 @@ function renderAcademicCvSheet(prof) {
     <div class="cv-section" style="margin-bottom:0;">
       <div class="cv-section-title">
         <span>7. Honors, Fellowships &amp; Academic Awards</span>
-        <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" onclick="addCvAward()">+ Add Honor/Award</button>
+        <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" onclick="openAwardModal()">+ Add Honor/Award</button>
       </div>
-      ${awardsList.map((a, i) => `
+      ${awardsList.length === 0 ? `<div style="font-size:13px; color:var(--text-muted); font-style:italic;">No honors or awards listed yet.</div>` : awardsList.map((a, i) => `
         <div class="cv-entry">
           <div class="cv-entry-head">
-            <span>🏆 ${escapeHtml(a.title)}</span>
+            <span>🏆 ${escapeHtml(a.title)} ${a.visibility === "Private" ? `<span class="badge badge-rose" style="font-size:11px; margin-left:6px;">🔒 Private</span>` : ""}</span>
             <div style="display:flex; align-items:center; gap:8px;">
-              <span style="font-size:12.5px; color:var(--text-muted);">${escapeHtml(a.issuer)} (${a.year || 2025})</span>
-              <button class="btn btn-danger btn-sm no-print owner-only-btn admin-only" onclick="removeCvItem('awards', ${i})">✕</button>
+              <span style="font-size:12.5px; color:var(--text-muted);">${escapeHtml(a.issuer)} (${a.year || 2026})</span>
+              <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" title="Edit Honor/Award" onclick="openAwardModal(${i})">✏️</button>
+              <button class="btn btn-danger btn-sm no-print owner-only-btn admin-only" title="Delete Honor/Award" onclick="removeCvItem('awards', ${i})">✕</button>
             </div>
           </div>
           ${a.details ? `<div class="cv-entry-desc">${escapeHtml(a.details)}</div>` : ""}
@@ -3248,10 +3291,12 @@ function renderAcademicCvSheet(prof) {
 let CURRENT_PUB_VIEW_MODE = "orcid"; // 'curated' or 'orcid' (default matching screenshot)
 
 function renderAcademicCvPublicationsSection(prof, pubList = []) {
-  // Use either curated or ORCID live list
-  let papers = pubList || [];
+  const isAdmin = !!(STATE.auth && STATE.auth.isAdmin);
+  let papers = (pubList || []).filter(p => isAdmin || p.visibility !== "Private");
   if (CURRENT_PUB_VIEW_MODE === "orcid" && STATE.orcidLiveWorks && STATE.orcidLiveWorks.length > 0) {
-    papers = STATE.orcidLiveWorks;
+    papers = STATE.orcidLiveWorks.filter(p => isAdmin || p.visibility !== "Private");
+  } else if (CURRENT_PUB_VIEW_MODE === "curated") {
+    papers = (pubList || []).filter(p => (isAdmin || p.visibility !== "Private") && (p.visibility === "Curated" || p.visibility === "Public" || !p.visibility));
   }
 
   // If list is small or empty, provide realistic verified sample works from the user's screenshot
@@ -3265,6 +3310,7 @@ function renderAcademicCvPublicationsSection(prof, pubList = []) {
         year: 2026,
         doi: "10.1021/acs.nanolett.6c00871",
         citations: 12,
+        visibility: "Public",
         source: "ORCID"
       },
       {
@@ -3275,6 +3321,7 @@ function renderAcademicCvPublicationsSection(prof, pubList = []) {
         year: 2026,
         doi: "10.1038/s44287-025-00123-x",
         citations: 28,
+        visibility: "Public",
         source: "ORCID"
       },
       {
@@ -3285,6 +3332,7 @@ function renderAcademicCvPublicationsSection(prof, pubList = []) {
         year: 2025,
         doi: "10.1021/acsami.4c12984",
         citations: 34,
+        visibility: "Public",
         source: "ORCID"
       },
       {
@@ -3295,6 +3343,7 @@ function renderAcademicCvPublicationsSection(prof, pubList = []) {
         year: 2024,
         doi: "10.1103/PhysRevB.109.155402",
         citations: 45,
+        visibility: "Public",
         source: "ORCID"
       }
     ];
@@ -3362,7 +3411,7 @@ function renderAcademicCvPublicationsSection(prof, pubList = []) {
         <button class="orcid-subtab-btn ${CURRENT_PUB_VIEW_MODE === 'orcid' ? 'active' : ''}" onclick="switchPubViewMode('orcid')">
           <span class="orcid-id-icon">iD</span> LIVE FROM ORCID
         </button>
-        <button class="btn btn-outline btn-sm owner-only-btn admin-only" style="margin-left:auto;" onclick="addOwnPublicationModal()">
+        <button class="btn btn-outline btn-sm owner-only-btn admin-only" style="margin-left:auto;" onclick="openOwnPublicationModal()">
           + Add Publication
         </button>
       </div>
@@ -3389,12 +3438,16 @@ function renderAcademicCvPublicationsSection(prof, pubList = []) {
               const currentNum = paperSeq++;
               const doiUrl = p.doi ? (p.doi.startsWith("http") ? p.doi : `https://doi.org/${p.doi}`) : "";
               const formattedAuthors = formatAuthorsWithHighlight(p.authors, researcherName);
+              const realPubIndex = (STATE.profile.publications || []).findIndex(x => (x.id && p.id && x.id === p.id) || (x.doi && p.doi && x.doi === p.doi) || (x.title === p.title));
+              const editIndex = realPubIndex >= 0 ? realPubIndex : pIdx;
               return `
                 <div class="pub-item">
                   <div class="pub-num">${currentNum}</div>
                   <div class="pub-body">
                     <div class="pub-title">
-                      ${doiUrl ? `<a href="${escapeHtml(doiUrl)}" target="_blank">${escapeHtml(p.title)}</a>` : escapeHtml(p.title)}
+                      ${doiUrl ? `<a href="${escapeHtml(doiUrl)}" target="_blank">${renderScientificTitle(p.title)}</a>` : renderScientificTitle(p.title)}
+                      ${p.visibility === "Private" ? `<span class="badge badge-rose" style="margin-left:6px; font-size:11px;">🔒 Private</span>` : ""}
+                      ${p.visibility === "Curated" ? `<span class="badge badge-blue" style="margin-left:6px; font-size:11px;">📜 Curated</span>` : ""}
                     </div>
                     <div class="pub-authors">
                       ${formattedAuthors}
@@ -3406,8 +3459,9 @@ function renderAcademicCvPublicationsSection(prof, pubList = []) {
                       ${doiUrl ? `<span>DOI: <a href="${escapeHtml(doiUrl)}" target="_blank">${escapeHtml(p.doi.replace(/^https?:\/\/doi\.org\//i, ''))}</a></span>` : ""}
                       ${p.citations ? `<span class="badge badge-purple" style="font-size:11px;">Cited: ${p.citations}</span>` : ""}
                       <div class="no-print" style="margin-left:auto; display:flex; gap:6px;">
+                        <button class="btn btn-outline btn-sm owner-only-btn admin-only" title="Edit publication details & visibility" onclick="openOwnPublicationModal(${editIndex})">✏️ Edit</button>
                         ${p.doi ? `<button class="btn btn-outline btn-sm owner-only-btn admin-only" title="Import this DOI into Literature Library" onclick="importPaperByDoiCommon('${escapeHtml(p.doi)}')">📥 +Library</button>` : ""}
-                        <button class="btn btn-danger btn-sm owner-only-btn admin-only" title="Delete entry" onclick="removeOwnPubById(${p.id || pIdx})">✕</button>
+                        <button class="btn btn-danger btn-sm owner-only-btn admin-only" title="Delete entry" onclick="removeOwnPubById(${p.id !== undefined ? p.id : editIndex})">✕</button>
                       </div>
                     </div>
                   </div>
@@ -3459,57 +3513,529 @@ function removeOwnPubById(idOrIdx) {
   showToast("Removed publication.");
 }
 
-async function addCvEducation() {
-  if (!requireAdminAuth()) return;
-  const degree = prompt("Degree Title (e.g., Ph.D. Candidate in Materials Science & Engineering):");
-  if (!degree) return;
-  const institution = prompt("University / Institution:", "Sungkyunkwan University (SKKU)") || "";
-  const period = prompt("Period (e.g., 2024 – Present):", "2024 – Present") || "";
-  const details = prompt("Computational Lab / Advisor details:", "") || "";
+// ============================================================================
+// Modal Handlers: Publications, Conferences, Honors/Awards, Education, Experience
+// ============================================================================
 
-  STATE.profile.education = STATE.profile.education || [];
-  STATE.profile.education.unshift({ degree, institution, period, details });
-  await persistProfileState();
+function openOwnPublicationModal(idx = null) {
+  if (!requireAdminAuth()) return;
+  const modal = document.getElementById("own-pub-modal");
+  if (!modal) return;
+
+  const titleEl = document.getElementById("opm-modal-title");
+  const idEl = document.getElementById("opm-id");
+  const doiFetchEl = document.getElementById("opm-doi-fetch-input");
+  const titleInput = document.getElementById("opm-title");
+  const authorsInput = document.getElementById("opm-authors");
+  const journalInput = document.getElementById("opm-journal");
+  const yearInput = document.getElementById("opm-year");
+  const doiInput = document.getElementById("opm-doi");
+  const citationsInput = document.getElementById("opm-citations");
+  const visibilitySelect = document.getElementById("opm-visibility");
+  const sourceSelect = document.getElementById("opm-source");
+  const alsoAddLib = document.getElementById("opm-also-add-library");
+
+  if (idx !== null && idx !== undefined && STATE.profile.publications && STATE.profile.publications[idx]) {
+    const pub = STATE.profile.publications[idx];
+    if (titleEl) titleEl.textContent = "✏️ Edit Publication / Work";
+    if (idEl) idEl.value = String(idx);
+    if (doiFetchEl) doiFetchEl.value = pub.doi || "";
+    if (titleInput) titleInput.value = pub.title || "";
+    if (authorsInput) authorsInput.value = pub.authors || "";
+    if (journalInput) journalInput.value = pub.journal || "";
+    if (yearInput) yearInput.value = pub.year || 2026;
+    if (doiInput) doiInput.value = pub.doi || "";
+    if (citationsInput) citationsInput.value = pub.citations || 0;
+    if (visibilitySelect) visibilitySelect.value = pub.visibility || "Public";
+    if (sourceSelect) sourceSelect.value = pub.source || "Academic CV";
+    if (alsoAddLib) alsoAddLib.checked = false;
+  } else {
+    if (titleEl) titleEl.textContent = "📄 Add Publication to Academic CV";
+    if (idEl) idEl.value = "";
+    if (doiFetchEl) doiFetchEl.value = "";
+    if (titleInput) titleInput.value = "";
+    if (authorsInput) authorsInput.value = STATE.profile.full_name || "Vu Tien Lam";
+    if (journalInput) journalInput.value = "";
+    if (yearInput) yearInput.value = 2026;
+    if (doiInput) doiInput.value = "";
+    if (citationsInput) citationsInput.value = 0;
+    if (visibilitySelect) visibilitySelect.value = "Public";
+    if (sourceSelect) sourceSelect.value = "Academic CV";
+    if (alsoAddLib) alsoAddLib.checked = true;
+  }
+
+  modal.classList.add("open");
+  if (doiFetchEl) doiFetchEl.focus();
 }
 
-async function addCvExperience() {
-  if (!requireAdminAuth()) return;
-  const role = prompt("Position / Role Title (e.g., Graduate Research Assistant):");
-  if (!role) return;
-  const organization = prompt("Laboratory / Organization:", STATE.profile.affiliation || "Sungkyunkwan University (SKKU)") || "";
-  const period = prompt("Period (e.g., 2024 – Present):", "2024 – Present") || "";
-  const description = prompt("Key Responsibilities & Achievements:", "") || "";
-
-  STATE.profile.experiences = STATE.profile.experiences || [];
-  STATE.profile.experiences.unshift({ role, organization, period, description });
-  await persistProfileState();
+function addOwnPublicationModal() {
+  openOwnPublicationModal();
 }
 
-async function addCvConference() {
+async function handleOwnPubDoiFetch() {
+  const fetchInput = document.getElementById("opm-doi-fetch-input");
+  const doiInput = document.getElementById("opm-doi");
+  const rawDoi = (fetchInput?.value || doiInput?.value || "").trim();
+
+  if (!rawDoi) {
+    showToast("Please enter a DOI string or URL to auto-fill.", "error");
+    if (fetchInput) fetchInput.focus();
+    return;
+  }
+
+  const cleanDoi = normalizeDoiClient(rawDoi);
+  const btn = document.getElementById("btn-opm-fetch-doi");
+  const originalText = btn ? btn.innerHTML : "";
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-small" style="display:inline-block; margin-right:4px;"></span> Fetching...`;
+  }
+
+  try {
+    let meta = null;
+    // 1. Try local backend first
+    try {
+      const resp = await fetch("/api/papers/doi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ doi: cleanDoi, auto_save: false })
+      });
+      if (resp.ok) {
+        meta = await resp.json();
+      }
+    } catch (e) {
+      console.warn("Backend DOI fetch failed, falling back to direct Crossref API", e);
+    }
+
+    // 2. Direct Crossref API fallback if backend unavailable
+    if (!meta || !meta.title) {
+      const crossrefResp = await fetch(`https://api.crossref.org/works/${encodeURIComponent(cleanDoi)}`);
+      if (crossrefResp.ok) {
+        const cData = await crossrefResp.json();
+        const msg = cData.message || {};
+        const title = Array.isArray(msg.title) ? msg.title[0] : (msg.title || "");
+        const authorsList = (msg.author || []).map(a => `${a.given || ""} ${a.family || ""}`.trim()).filter(Boolean);
+        const authors = authorsList.length > 0 ? authorsList.join("; ") : (STATE.profile.full_name || "Vu Tien Lam");
+        const journal = Array.isArray(msg["container-title"]) ? msg["container-title"][0] : (msg["container-title"] || "Academic Journal");
+        const year = msg.issued?.["date-parts"]?.[0]?.[0] || 2026;
+        meta = {
+          title,
+          authors,
+          journal,
+          year,
+          doi: msg.DOI || cleanDoi,
+          citations: msg["is-referenced-by-count"] || 0
+        };
+      }
+    }
+
+    if (!meta || !meta.title) {
+      throw new Error(`Could not locate paper metadata for DOI: ${cleanDoi}`);
+    }
+
+    // Populate form fields
+    const titleEl = document.getElementById("opm-title");
+    const authorsEl = document.getElementById("opm-authors");
+    const journalEl = document.getElementById("opm-journal");
+    const yearEl = document.getElementById("opm-year");
+    const doiEl = document.getElementById("opm-doi");
+    const citationsEl = document.getElementById("opm-citations");
+
+    if (titleEl) titleEl.value = meta.title || "";
+    if (authorsEl) authorsEl.value = meta.authors || "";
+    if (journalEl) journalEl.value = meta.journal || "";
+    if (yearEl) yearEl.value = meta.year || 2026;
+    if (doiEl) doiEl.value = meta.doi || cleanDoi;
+    if (citationsEl) citationsEl.value = meta.citation_count || meta.citations || 0;
+
+    showToast(`✅ Metadata loaded for "${(meta.title || '').slice(0, 35)}..."`);
+  } catch (err) {
+    showToast(`DOI Lookup Failed: ${err.message}`, "error");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalText || "⚡ Fetch DOI Info";
+    }
+  }
+}
+
+async function saveOwnPublicationFromModal() {
   if (!requireAdminAuth()) return;
-  const title = prompt("Presentation Title:");
-  if (!title) return;
-  const event = prompt("Conference Name & Location:", "MRS Fall Meeting") || "";
-  const type = prompt("Presentation Type (Oral / Poster):", "Oral Presentation") || "Oral Presentation";
-  const year = parseInt(prompt("Year:", "2026")) || 2026;
+
+  const idVal = document.getElementById("opm-id")?.value;
+  const title = document.getElementById("opm-title")?.value.trim();
+  const authors = document.getElementById("opm-authors")?.value.trim() || STATE.profile.full_name || "Vu Tien Lam";
+  const journal = document.getElementById("opm-journal")?.value.trim() || "Journal / Venue";
+  const year = parseInt(document.getElementById("opm-year")?.value) || 2026;
+  const rawDoi = document.getElementById("opm-doi")?.value.trim() || "";
+  const doi = rawDoi ? normalizeDoiClient(rawDoi) : "";
+  const citations = parseInt(document.getElementById("opm-citations")?.value) || 0;
+  const visibility = document.getElementById("opm-visibility")?.value || "Public";
+  const source = document.getElementById("opm-source")?.value || "Academic CV";
+  const alsoAddLib = document.getElementById("opm-also-add-library")?.checked;
+
+  if (!title) {
+    showToast("Please provide a publication title.", "error");
+    document.getElementById("opm-title")?.focus();
+    return;
+  }
+
+  STATE.profile.publications = STATE.profile.publications || [];
+
+  const pubObj = {
+    id: idVal !== "" && idVal !== undefined ? (STATE.profile.publications[parseInt(idVal)]?.id || Date.now()) : Date.now(),
+    title,
+    authors,
+    journal,
+    year,
+    doi,
+    citations,
+    visibility,
+    source
+  };
+
+  if (idVal !== "" && idVal !== undefined) {
+    const idx = parseInt(idVal);
+    if (!isNaN(idx) && idx >= 0 && idx < STATE.profile.publications.length) {
+      STATE.profile.publications[idx] = { ...STATE.profile.publications[idx], ...pubObj };
+    } else {
+      STATE.profile.publications.unshift(pubObj);
+    }
+  } else {
+    STATE.profile.publications.unshift(pubObj);
+  }
+
+  // Also import to literature library if requested
+  if (alsoAddLib && doi) {
+    try {
+      const existingPaper = (STATE.papers || []).find(p => (p.doi || "").toLowerCase().trim() === doi.toLowerCase().trim());
+      if (!existingPaper) {
+        if (!STATIC_MODE) {
+          await fetch("/api/papers/doi", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ doi, auto_save: true })
+          });
+          await loadPapers();
+        } else {
+          STATE.papers.unshift({
+            id: Date.now(),
+            title,
+            authors,
+            journal,
+            year,
+            doi,
+            url: `https://doi.org/${doi}`,
+            status: "Key Reference",
+            citation_count: citations
+          });
+          saveStaticDb();
+          renderPapers();
+        }
+      }
+    } catch (e) {
+      console.warn("Could not auto-add to literature library:", e);
+    }
+  }
+
+  await persistProfileState();
+  closeModal("own-pub-modal");
+  renderAcademicCvSheet(STATE.profile);
+  showToast(`Publication "${title.slice(0, 30)}..." saved (${visibility})!`);
+}
+
+function openConferenceModal(idx = null) {
+  if (!requireAdminAuth()) return;
+  const modal = document.getElementById("conference-modal");
+  if (!modal) return;
+
+  const titleEl = document.getElementById("cm-modal-title");
+  const idEl = document.getElementById("cm-id");
+  const titleInput = document.getElementById("cm-title");
+  const eventInput = document.getElementById("cm-event");
+  const typeSelect = document.getElementById("cm-type");
+  const yearInput = document.getElementById("cm-year");
+  const visibilitySelect = document.getElementById("cm-visibility");
+  const urlInput = document.getElementById("cm-url");
+
+  if (idx !== null && idx !== undefined && STATE.profile.conferences && STATE.profile.conferences[idx]) {
+    const c = STATE.profile.conferences[idx];
+    if (titleEl) titleEl.textContent = "✏️ Edit Conference Presentation";
+    if (idEl) idEl.value = String(idx);
+    if (titleInput) titleInput.value = c.title || "";
+    if (eventInput) eventInput.value = c.event || "";
+    if (typeSelect) typeSelect.value = c.type || "Oral Presentation";
+    if (yearInput) yearInput.value = c.year || 2026;
+    if (visibilitySelect) visibilitySelect.value = c.visibility || "Public";
+    if (urlInput) urlInput.value = c.url || "";
+  } else {
+    if (titleEl) titleEl.textContent = "🎤 Add Conference Presentation / Seminar";
+    if (idEl) idEl.value = "";
+    if (titleInput) titleInput.value = "";
+    if (eventInput) eventInput.value = "MRS Fall Meeting 2026, Boston, MA, USA";
+    if (typeSelect) typeSelect.value = "Oral Presentation";
+    if (yearInput) yearInput.value = 2026;
+    if (visibilitySelect) visibilitySelect.value = "Public";
+    if (urlInput) urlInput.value = "";
+  }
+
+  modal.classList.add("open");
+  if (titleInput) titleInput.focus();
+}
+
+async function saveConferenceFromModal() {
+  if (!requireAdminAuth()) return;
+  const idVal = document.getElementById("cm-id")?.value;
+  const title = document.getElementById("cm-title")?.value.trim();
+  const event = document.getElementById("cm-event")?.value.trim() || "Conference";
+  const type = document.getElementById("cm-type")?.value || "Oral Presentation";
+  const year = parseInt(document.getElementById("cm-year")?.value) || 2026;
+  const visibility = document.getElementById("cm-visibility")?.value || "Public";
+  const url = document.getElementById("cm-url")?.value.trim() || "";
+
+  if (!title) {
+    showToast("Please enter presentation title.", "error");
+    document.getElementById("cm-title")?.focus();
+    return;
+  }
 
   STATE.profile.conferences = STATE.profile.conferences || [];
-  STATE.profile.conferences.unshift({ title, event, type, year });
+  const confObj = { title, event, type, year, visibility, url };
+
+  if (idVal !== "" && idVal !== undefined) {
+    const idx = parseInt(idVal);
+    if (!isNaN(idx) && idx >= 0 && idx < STATE.profile.conferences.length) {
+      STATE.profile.conferences[idx] = { ...STATE.profile.conferences[idx], ...confObj };
+    } else {
+      STATE.profile.conferences.unshift(confObj);
+    }
+  } else {
+    STATE.profile.conferences.unshift(confObj);
+  }
+
   await persistProfileState();
+  closeModal("conference-modal");
+  renderAcademicCvSheet(STATE.profile);
+  showToast(`Conference presentation saved (${visibility})!`);
 }
 
-async function addCvAward() {
+function openAwardModal(idx = null) {
   if (!requireAdminAuth()) return;
-  const title = prompt("Award / Fellowship Name:");
-  if (!title) return;
-  const issuer = prompt("Granting Institution / Society:", "Sungkyunkwan University (SKKU)") || "";
-  const year = parseInt(prompt("Year:", "2026")) || 2026;
-  const details = prompt("Brief Description:", "") || "";
+  const modal = document.getElementById("award-modal");
+  if (!modal) return;
+
+  const titleEl = document.getElementById("awm-modal-title");
+  const idEl = document.getElementById("awm-id");
+  const titleInput = document.getElementById("awm-title");
+  const issuerInput = document.getElementById("awm-issuer");
+  const yearInput = document.getElementById("awm-year");
+  const visibilitySelect = document.getElementById("awm-visibility");
+  const detailsInput = document.getElementById("awm-details");
+
+  if (idx !== null && idx !== undefined && STATE.profile.awards && STATE.profile.awards[idx]) {
+    const a = STATE.profile.awards[idx];
+    if (titleEl) titleEl.textContent = "✏️ Edit Honor / Academic Award";
+    if (idEl) idEl.value = String(idx);
+    if (titleInput) titleInput.value = a.title || "";
+    if (issuerInput) issuerInput.value = a.issuer || "";
+    if (yearInput) yearInput.value = a.year || "2026";
+    if (visibilitySelect) visibilitySelect.value = a.visibility || "Public";
+    if (detailsInput) detailsInput.value = a.details || "";
+  } else {
+    if (titleEl) titleEl.textContent = "🏆 Add Honor, Fellowship or Academic Award";
+    if (idEl) idEl.value = "";
+    if (titleInput) titleInput.value = "";
+    if (issuerInput) issuerInput.value = "Sungkyunkwan University (SKKU)";
+    if (yearInput) yearInput.value = "2026";
+    if (visibilitySelect) visibilitySelect.value = "Public";
+    if (detailsInput) detailsInput.value = "";
+  }
+
+  modal.classList.add("open");
+  if (titleInput) titleInput.focus();
+}
+
+async function saveAwardFromModal() {
+  if (!requireAdminAuth()) return;
+  const idVal = document.getElementById("awm-id")?.value;
+  const title = document.getElementById("awm-title")?.value.trim();
+  const issuer = document.getElementById("awm-issuer")?.value.trim() || "Granting Organization";
+  const year = document.getElementById("awm-year")?.value.trim() || "2026";
+  const visibility = document.getElementById("awm-visibility")?.value || "Public";
+  const details = document.getElementById("awm-details")?.value.trim() || "";
+
+  if (!title) {
+    showToast("Please enter award title.", "error");
+    document.getElementById("awm-title")?.focus();
+    return;
+  }
 
   STATE.profile.awards = STATE.profile.awards || [];
-  STATE.profile.awards.unshift({ title, issuer, year, details });
+  const awardObj = { title, issuer, year, visibility, details };
+
+  if (idVal !== "" && idVal !== undefined) {
+    const idx = parseInt(idVal);
+    if (!isNaN(idx) && idx >= 0 && idx < STATE.profile.awards.length) {
+      STATE.profile.awards[idx] = { ...STATE.profile.awards[idx], ...awardObj };
+    } else {
+      STATE.profile.awards.unshift(awardObj);
+    }
+  } else {
+    STATE.profile.awards.unshift(awardObj);
+  }
+
   await persistProfileState();
+  closeModal("award-modal");
+  renderAcademicCvSheet(STATE.profile);
+  showToast(`Award saved (${visibility})!`);
 }
+
+function openEducationModal(idx = null) {
+  if (!requireAdminAuth()) return;
+  const modal = document.getElementById("education-modal");
+  if (!modal) return;
+
+  const titleEl = document.getElementById("edu-modal-title");
+  const idEl = document.getElementById("edu-id");
+  const degreeInput = document.getElementById("edu-degree");
+  const instInput = document.getElementById("edu-inst");
+  const periodInput = document.getElementById("edu-period");
+  const visibilitySelect = document.getElementById("edu-visibility");
+  const detailsInput = document.getElementById("edu-details");
+
+  if (idx !== null && idx !== undefined && STATE.profile.education && STATE.profile.education[idx]) {
+    const e = STATE.profile.education[idx];
+    if (titleEl) titleEl.textContent = "✏️ Edit Degree / Academic Training";
+    if (idEl) idEl.value = String(idx);
+    if (degreeInput) degreeInput.value = e.degree || "";
+    if (instInput) instInput.value = e.institution || "";
+    if (periodInput) periodInput.value = e.period || "2024 – Present";
+    if (visibilitySelect) visibilitySelect.value = e.visibility || "Public";
+    if (detailsInput) detailsInput.value = e.details || "";
+  } else {
+    if (titleEl) titleEl.textContent = "🎓 Add Degree / Academic Training";
+    if (idEl) idEl.value = "";
+    if (degreeInput) degreeInput.value = "";
+    if (instInput) instInput.value = "Sungkyunkwan University (SKKU)";
+    if (periodInput) periodInput.value = "2024 – Present";
+    if (visibilitySelect) visibilitySelect.value = "Public";
+    if (detailsInput) detailsInput.value = "";
+  }
+
+  modal.classList.add("open");
+  if (degreeInput) degreeInput.focus();
+}
+
+async function saveEducationFromModal() {
+  if (!requireAdminAuth()) return;
+  const idVal = document.getElementById("edu-id")?.value;
+  const degree = document.getElementById("edu-degree")?.value.trim();
+  const institution = document.getElementById("edu-inst")?.value.trim() || "University";
+  const period = document.getElementById("edu-period")?.value.trim() || "2024 – Present";
+  const visibility = document.getElementById("edu-visibility")?.value || "Public";
+  const details = document.getElementById("edu-details")?.value.trim() || "";
+
+  if (!degree) {
+    showToast("Please enter degree title.", "error");
+    document.getElementById("edu-degree")?.focus();
+    return;
+  }
+
+  STATE.profile.education = STATE.profile.education || [];
+  const eduObj = { degree, institution, period, visibility, details };
+
+  if (idVal !== "" && idVal !== undefined) {
+    const idx = parseInt(idVal);
+    if (!isNaN(idx) && idx >= 0 && idx < STATE.profile.education.length) {
+      STATE.profile.education[idx] = { ...STATE.profile.education[idx], ...eduObj };
+    } else {
+      STATE.profile.education.unshift(eduObj);
+    }
+  } else {
+    STATE.profile.education.unshift(eduObj);
+  }
+
+  await persistProfileState();
+  closeModal("education-modal");
+  renderAcademicCvSheet(STATE.profile);
+  showToast(`Degree saved (${visibility})!`);
+}
+
+function openExperienceModal(idx = null) {
+  if (!requireAdminAuth()) return;
+  const modal = document.getElementById("experience-modal");
+  if (!modal) return;
+
+  const titleEl = document.getElementById("exp-modal-title");
+  const idEl = document.getElementById("exp-id");
+  const roleInput = document.getElementById("exp-role");
+  const orgInput = document.getElementById("exp-org");
+  const periodInput = document.getElementById("exp-period");
+  const visibilitySelect = document.getElementById("exp-visibility");
+  const descInput = document.getElementById("exp-desc");
+
+  if (idx !== null && idx !== undefined && STATE.profile.experiences && STATE.profile.experiences[idx]) {
+    const ex = STATE.profile.experiences[idx];
+    if (titleEl) titleEl.textContent = "✏️ Edit Appointment / Experience";
+    if (idEl) idEl.value = String(idx);
+    if (roleInput) roleInput.value = ex.role || "";
+    if (orgInput) orgInput.value = ex.organization || "";
+    if (periodInput) periodInput.value = ex.period || "2024 – Present";
+    if (visibilitySelect) visibilitySelect.value = ex.visibility || "Public";
+    if (descInput) descInput.value = ex.description || "";
+  } else {
+    if (titleEl) titleEl.textContent = "🔬 Add Appointment / Experience";
+    if (idEl) idEl.value = "";
+    if (roleInput) roleInput.value = "";
+    if (orgInput) orgInput.value = STATE.profile.affiliation || "Sungkyunkwan University (SKKU)";
+    if (periodInput) periodInput.value = "2024 – Present";
+    if (visibilitySelect) visibilitySelect.value = "Public";
+    if (descInput) descInput.value = "";
+  }
+
+  modal.classList.add("open");
+  if (roleInput) roleInput.focus();
+}
+
+async function saveExperienceFromModal() {
+  if (!requireAdminAuth()) return;
+  const idVal = document.getElementById("exp-id")?.value;
+  const role = document.getElementById("exp-role")?.value.trim();
+  const organization = document.getElementById("exp-org")?.value.trim() || "Organization";
+  const period = document.getElementById("exp-period")?.value.trim() || "2024 – Present";
+  const visibility = document.getElementById("exp-visibility")?.value || "Public";
+  const description = document.getElementById("exp-desc")?.value.trim() || "";
+
+  if (!role) {
+    showToast("Please enter role title.", "error");
+    document.getElementById("exp-role")?.focus();
+    return;
+  }
+
+  STATE.profile.experiences = STATE.profile.experiences || [];
+  const expObj = { role, organization, period, visibility, description };
+
+  if (idVal !== "" && idVal !== undefined) {
+    const idx = parseInt(idVal);
+    if (!isNaN(idx) && idx >= 0 && idx < STATE.profile.experiences.length) {
+      STATE.profile.experiences[idx] = { ...STATE.profile.experiences[idx], ...expObj };
+    } else {
+      STATE.profile.experiences.unshift(expObj);
+    }
+  } else {
+    STATE.profile.experiences.unshift(expObj);
+  }
+
+  await persistProfileState();
+  closeModal("experience-modal");
+  renderAcademicCvSheet(STATE.profile);
+  showToast(`Experience saved (${visibility})!`);
+}
+
+function addCvEducation() { openEducationModal(); }
+function addCvExperience() { openExperienceModal(); }
+function addCvConference() { openConferenceModal(); }
+function addCvAward() { openAwardModal(); }
 
 async function removeCvItem(listKey, idx) {
   if (!requireAdminAuth()) return;
@@ -3893,7 +4419,11 @@ function renderProfile(prof) {
       pubContainer.innerHTML = pubs.map((p, idx) => `
         <div class="item-card" style="padding:12px 14px;">
           <div style="display:flex; justify-content:space-between; gap:8px;">
-            <div class="item-title" style="font-size:14px;">${escapeHtml(p.title)}</div>
+            <div class="item-title" style="font-size:14px;">
+              ${renderScientificTitle(p.title)}
+              ${p.visibility === "Private" ? `<span class="badge badge-rose" style="font-size:11px; margin-left:6px;">🔒 Private</span>` : ""}
+              ${p.visibility === "Curated" ? `<span class="badge badge-blue" style="font-size:11px; margin-left:6px;">📜 Curated</span>` : ""}
+            </div>
             <span class="badge badge-purple">Citations: ${p.citations || 0}</span>
           </div>
           <div class="item-meta" style="margin-top:4px;">
@@ -3903,7 +4433,8 @@ function renderProfile(prof) {
             <span class="badge badge-slate">${escapeHtml(p.source || "Academic CV")}</span>
             <div style="display:flex; gap:8px; align-items:center;">
               ${p.doi ? `<a href="https://doi.org/${encodeURIComponent(p.doi)}" target="_blank" style="font-size:12px; color:var(--primary); font-weight:600; text-decoration:none;">DOI: ${escapeHtml(p.doi)} ↗</a>` : ""}
-              <button class="btn btn-danger btn-sm owner-only-btn admin-only" onclick="removeOwnPub(${idx})">✕</button>
+              <button class="btn btn-outline btn-sm owner-only-btn admin-only" title="Edit publication" onclick="openOwnPublicationModal(${idx})">✏️</button>
+              <button class="btn btn-danger btn-sm owner-only-btn admin-only" title="Delete publication" onclick="removeOwnPub(${idx})">✕</button>
             </div>
           </div>
         </div>
@@ -4070,26 +4601,7 @@ async function handleSyncScholar() {
   }
 }
 
-async function addOwnPublicationModal() {
-  if (!requireAdminAuth()) return;
-  const title = prompt("Enter Publication Title:");
-  if (!title) return;
-  const journal = prompt("Enter Journal / Conference Name:", "Physical Review Materials");
-  const year = parseInt(prompt("Enter Publication Year:", "2026")) || 2026;
-  const doi = prompt("Enter DOI (optional):", "");
-
-  STATE.profile.publications = STATE.profile.publications || [];
-  STATE.profile.publications.unshift({
-    title,
-    authors: STATE.profile.full_name || "Vu Tien Lam",
-    journal: journal || "Journal",
-    year,
-    doi: doi ? normalizeDoiClient(doi) : "",
-    citations: 0,
-    source: "Academic CV"
-  });
-  await persistProfileState();
-}
+// Handled by openOwnPublicationModal() defined above
 
 async function removeOwnPub(idx) {
   if (!requireAdminAuth()) return;

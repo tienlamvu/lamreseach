@@ -61,7 +61,7 @@
         <button class="nav-btn" data-tab="structures" onclick="switchTab('structures', this)">
           <span class="nav-icon">💎</span> Crystal Structures (*.cif)
         </button>
-        <button class="nav-btn" data-tab="weekly-report" onclick="switchTab('weekly-report', this)">
+        <button class="nav-btn admin-only" data-tab="weekly-report" onclick="switchTab('weekly-report', this)">
           <span class="nav-icon">📽️</span> Weekly Report (.pptx)
         </button>
         <button class="nav-btn" data-tab="manuscript" onclick="switchTab('manuscript', this)">
@@ -72,9 +72,6 @@
         </button>
         <button class="nav-btn" data-tab="cv" onclick="switchTab('cv', this)">
           <span class="nav-icon">📜</span> Academic CV
-        </button>
-        <button class="nav-btn" data-tab="profile" onclick="switchTab('profile', this)">
-          <span class="nav-icon">🎓</span> ORCID &amp; Scholar
         </button>
       </nav>
     </div>
@@ -429,7 +426,15 @@
       <!-- TAB 5: WEEKLY REPORT & POWERPOINT (.PPTX) EXPORT                 -->
       <!-- ================================================================ -->
       <section id="tab-weekly-report" class="tab-pane">
-        <div class="card" style="background: linear-gradient(135deg, #1e1b4b, #0f172a); color:#fff; border:none;">
+        <!-- Visitor Read-Only Notice -->
+        <div class="public-mode-banner visitor-only">
+          <div>
+            🔒 <strong>Private Research Workspace:</strong> Weekly group meeting reports and presentation decks are restricted to the administrator. Sign in with your Google account (<code>lamvt.skku@gmail.com</code>) to access, customize, or export PowerPoint (.pptx) reports.
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openLoginModal()">👤 Sign In as Administrator</button>
+        </div>
+
+        <div class="card admin-only" style="background: linear-gradient(135deg, #1e1b4b, #0f172a); color:#fff; border:none;">
           <div class="card-header" style="margin-bottom:0;">
             <div>
               <div class="card-title" style="color:#fff; font-size:18px;">📽️ Group Meeting Weekly Report Builder &amp; PowerPoint (.pptx) Exporter</div>
@@ -448,7 +453,7 @@
           </div>
         </div>
 
-        <div class="grid-2">
+        <div class="grid-2 admin-only">
           <!-- Report Editor Form -->
           <div class="card">
             <div class="card-header">
@@ -1212,6 +1217,271 @@
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:12px;">
         <button class="btn btn-outline" onclick="closeModal('cv-skills-modal')">Cancel</button>
         <button class="btn btn-primary" onclick="saveCvSkillsModal()">Save Skills to CV</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- MODAL: ADD / EDIT OWN PUBLICATION (WITH AUTO DOI LOOKUP & VISIBILITY) -->
+  <!-- ==================================================================== -->
+  <div id="own-pub-modal" class="modal-backdrop">
+    <div class="modal-box" style="max-width: 680px;">
+      <div class="card-header">
+        <div class="card-title" id="opm-modal-title">📄 Add Publication to Academic CV</div>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('own-pub-modal')">✕ Close</button>
+      </div>
+      <input type="hidden" id="opm-id" />
+      
+      <!-- Auto DOI Fetch Row -->
+      <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+        <label style="font-size: 12.5px; font-weight: 700; color: #1e293b; display: block; margin-bottom: 5px;">
+          ⚡ Auto-Fill Publication Metadata via DOI
+        </label>
+        <div style="display:flex; gap:8px;">
+          <input
+            type="text"
+            id="opm-doi-fetch-input"
+            placeholder="Paste DOI, e.g. 10.1103/PhysRevMaterials.2026.0412 or 10.1038/s41467-023-xxxx"
+            style="flex:1; padding:8px 12px; border:1px solid #94a3b8; border-radius:6px; font-size:13px;"
+            onkeydown="if(event.key==='Enter'){event.preventDefault(); handleOwnPubDoiFetch();}"
+          />
+          <button type="button" class="btn btn-teal" id="btn-opm-fetch-doi" onclick="handleOwnPubDoiFetch()">
+            ⚡ Fetch DOI Info
+          </button>
+        </div>
+        <div style="font-size: 11px; color: #64748b; margin-top: 4px;">
+          Queries Crossref &amp; OpenAlex APIs to auto-populate Title, Authors, Journal, Year, and Citation count.
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Publication Title *</label>
+          <input type="text" id="opm-title" placeholder="e.g. Interfacial Engineering and Electronic Structure of Oxide Perovskites..." />
+        </div>
+        <div class="form-group full">
+          <label>Authors (semicolon-separated) *</label>
+          <input type="text" id="opm-authors" placeholder="e.g. Vu Tien Lam; Min-Ho Kim; Won Jong Yoo" />
+        </div>
+        <div class="form-group">
+          <label>Journal / Venue Name *</label>
+          <input type="text" id="opm-journal" placeholder="e.g. Physical Review Materials, Nano Letters" />
+        </div>
+        <div class="form-group">
+          <label>Publication Year *</label>
+          <input type="number" id="opm-year" value="2026" />
+        </div>
+        <div class="form-group">
+          <label>DOI String or URL</label>
+          <input type="text" id="opm-doi" placeholder="e.g. 10.1103/PhysRevMaterials.2026.0412" />
+        </div>
+        <div class="form-group">
+          <label>Citations Count</label>
+          <input type="number" id="opm-citations" value="0" />
+        </div>
+        <div class="form-group">
+          <label>Visibility / Display Mode *</label>
+          <select id="opm-visibility">
+            <option value="Public">🌐 Public (Visible to Everyone)</option>
+            <option value="Private">🔒 Private (Admin Only)</option>
+            <option value="Curated">📜 Curated CV Only</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Data Source</label>
+          <select id="opm-source">
+            <option value="Academic CV">Academic CV</option>
+            <option value="ORCID">ORCID Sync</option>
+            <option value="Google Scholar">Google Scholar</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" id="opm-also-add-library" checked />
+            Also import this paper into Literature Library (for PDF storage &amp; BibTeX export)
+          </label>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('own-pub-modal')">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveOwnPublicationFromModal()">Save Publication</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- MODAL: ADD / EDIT CONFERENCE PRESENTATION (WITH VISIBILITY)          -->
+  <!-- ==================================================================== -->
+  <div id="conference-modal" class="modal-backdrop">
+    <div class="modal-box" style="max-width: 600px;">
+      <div class="card-header">
+        <div class="card-title" id="cm-modal-title">🎤 Add Conference Presentation / Seminar</div>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('conference-modal')">✕ Close</button>
+      </div>
+      <input type="hidden" id="cm-id" />
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Presentation Title *</label>
+          <input type="text" id="cm-title" placeholder="e.g. Strain Modulation of 2D Transition Metal Dichalcogenides" />
+        </div>
+        <div class="form-group full">
+          <label>Conference Event Name &amp; Location *</label>
+          <input type="text" id="cm-event" placeholder="e.g. MRS Fall Meeting 2026, Boston, MA, USA" />
+        </div>
+        <div class="form-group">
+          <label>Presentation Type</label>
+          <select id="cm-type">
+            <option value="Oral Presentation">Oral Presentation</option>
+            <option value="Invited Talk">Invited / Keynote Talk</option>
+            <option value="Poster Presentation">Poster Presentation</option>
+            <option value="Seminar / Workshop">Seminar / Workshop</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Year</label>
+          <input type="number" id="cm-year" value="2026" />
+        </div>
+        <div class="form-group">
+          <label>Visibility / Display Mode *</label>
+          <select id="cm-visibility">
+            <option value="Public">🌐 Public (Visible to Everyone)</option>
+            <option value="Private">🔒 Private (Admin Only)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Abstract / Program Link (Optional)</label>
+          <input type="text" id="cm-url" placeholder="https://..." />
+        </div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('conference-modal')">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveConferenceFromModal()">Save Presentation</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- MODAL: ADD / EDIT ACADEMIC AWARD / FELLOWSHIP (WITH VISIBILITY)      -->
+  <!-- ==================================================================== -->
+  <div id="award-modal" class="modal-backdrop">
+    <div class="modal-box" style="max-width: 600px;">
+      <div class="card-header">
+        <div class="card-title" id="awm-modal-title">🏆 Add Honor, Fellowship or Academic Award</div>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('award-modal')">✕ Close</button>
+      </div>
+      <input type="hidden" id="awm-id" />
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Award / Fellowship Title *</label>
+          <input type="text" id="awm-title" placeholder="e.g. Global Ph.D. Fellowship (GPF)" />
+        </div>
+        <div class="form-group full">
+          <label>Granting Organization / Agency *</label>
+          <input type="text" id="awm-issuer" placeholder="e.g. National Research Foundation (NRF) of Korea" />
+        </div>
+        <div class="form-group">
+          <label>Year / Duration Period *</label>
+          <input type="text" id="awm-year" placeholder="e.g. 2024 – 2027 or 2026" value="2026" />
+        </div>
+        <div class="form-group">
+          <label>Visibility / Display Mode *</label>
+          <select id="awm-visibility">
+            <option value="Public">🌐 Public (Visible to Everyone)</option>
+            <option value="Private">🔒 Private (Admin Only)</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Award Details / Description</label>
+          <textarea id="awm-details" rows="2" placeholder="e.g. Competitive doctoral fellowship awarded for excellence in first-principles calculations."></textarea>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('award-modal')">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveAwardFromModal()">Save Honor / Award</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- MODAL: ADD / EDIT EDUCATION (WITH VISIBILITY)                        -->
+  <!-- ==================================================================== -->
+  <div id="education-modal" class="modal-backdrop">
+    <div class="modal-box" style="max-width: 580px;">
+      <div class="card-header">
+        <div class="card-title" id="edu-modal-title">🎓 Add Degree / Academic Training</div>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('education-modal')">✕ Close</button>
+      </div>
+      <input type="hidden" id="edu-id" />
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Degree Title *</label>
+          <input type="text" id="edu-degree" placeholder="e.g. Ph.D. Candidate in Materials Science & Engineering" />
+        </div>
+        <div class="form-group full">
+          <label>University / Institution *</label>
+          <input type="text" id="edu-inst" placeholder="e.g. Sungkyunkwan University (SKKU)" />
+        </div>
+        <div class="form-group">
+          <label>Period *</label>
+          <input type="text" id="edu-period" placeholder="e.g. 2024 – Present" value="2024 – Present" />
+        </div>
+        <div class="form-group">
+          <label>Visibility *</label>
+          <select id="edu-visibility">
+            <option value="Public">🌐 Public (Visible to Everyone)</option>
+            <option value="Private">🔒 Private (Admin Only)</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Details / Advisor Info</label>
+          <input type="text" id="edu-details" placeholder="Advisor, lab, dissertation topic..." />
+        </div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('education-modal')">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveEducationFromModal()">Save Degree</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- MODAL: ADD / EDIT EXPERIENCE (WITH VISIBILITY)                       -->
+  <!-- ==================================================================== -->
+  <div id="experience-modal" class="modal-backdrop">
+    <div class="modal-box" style="max-width: 580px;">
+      <div class="card-header">
+        <div class="card-title" id="exp-modal-title">🔬 Add Appointment / Experience</div>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('experience-modal')">✕ Close</button>
+      </div>
+      <input type="hidden" id="exp-id" />
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Role / Position Title *</label>
+          <input type="text" id="exp-role" placeholder="e.g. Graduate Research Assistant" />
+        </div>
+        <div class="form-group full">
+          <label>Organization / Laboratory *</label>
+          <input type="text" id="exp-org" placeholder="e.g. Quantum &amp; Energy Materials Lab, SKKU" />
+        </div>
+        <div class="form-group">
+          <label>Period *</label>
+          <input type="text" id="exp-period" placeholder="e.g. 2024 – Present" value="2024 – Present" />
+        </div>
+        <div class="form-group">
+          <label>Visibility *</label>
+          <select id="exp-visibility">
+            <option value="Public">🌐 Public (Visible to Everyone)</option>
+            <option value="Private">🔒 Private (Admin Only)</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Description &amp; Key Responsibilities</label>
+          <textarea id="exp-desc" rows="2" placeholder="Key responsibilities, DFT simulation projects..."></textarea>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('experience-modal')">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveExperienceFromModal()">Save Experience</button>
       </div>
     </div>
   </div>
