@@ -3146,6 +3146,7 @@ function renderAcademicCvSheet(prof) {
 
   const eduList = rawEdu.filter(e => isAdmin || e.visibility !== "Private");
   const expList = rawExp.filter(ex => isAdmin || ex.visibility !== "Private");
+  const pubList = rawPub.filter(p => isAdmin || p.visibility !== "Private");
   const confList = rawConf.filter(c => isAdmin || c.visibility !== "Private");
   const awardsList = rawAwards.filter(a => isAdmin || a.visibility !== "Private");
 
