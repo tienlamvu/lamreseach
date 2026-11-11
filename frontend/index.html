@@ -5,66 +5,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MatSci Nexus — PhD Research &amp; Lab Management Suite</title>
   <link rel="stylesheet" href="styles.css" onerror="this.href='/static/styles.css'" />
-  <!-- Google Identity Services for OAuth 2.0 Sign-In -->
+  <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
   <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js" async></script>
 </head>
 <body>
 
-  <!-- Sidebar Navigation -->
-  <aside class="sidebar">
-    <div class="brand-header">
-      <div class="brand-icon">MS</div>
-      <div>
-        <div class="brand-title">MatSci Nexus</div>
-        <div class="brand-subtitle">PhD Research &amp; Lab Suite</div>
-      </div>
-    </div>
-
-    <nav class="nav-menu">
-      <div class="nav-section-label">Core Workspace</div>
-      <button class="nav-btn active" onclick="switchTab('dashboard', this)">
-        <span class="nav-icon">📊</span> Dashboard Overview
-      </button>
-      <button class="nav-btn" onclick="switchTab('literature', this)">
-        <span class="nav-icon">📚</span> Literature &amp; DOI Import
-      </button>
-      <button class="nav-btn" onclick="switchTab('notes-schedule', this)">
-        <span class="nav-icon">🧪</span> Lab Notes &amp; Schedule
-      </button>
-      <button class="nav-btn" onclick="switchTab('weekly-report', this)">
-        <span class="nav-icon">📽️</span> Weekly Report (.pptx)
-      </button>
-
-      <div class="nav-section-label">Materials Science &amp; CV</div>
-      <button class="nav-btn" onclick="switchTab('toolkit', this)">
-        <span class="nav-icon">⚛️</span> Periodic Table &amp; Calculators
-      </button>
-      <button class="nav-btn" onclick="switchTab('cv', this)">
-        <span class="nav-icon">📜</span> Academic CV
-      </button>
-      <button class="nav-btn" onclick="switchTab('profile', this)">
-        <span class="nav-icon">🎓</span> ORCID &amp; Scholar Sync
-      </button>
-    </nav>
-
-    <div class="sidebar-footer">
-      <div style="font-weight:600; color:#e2e8f0;" id="sidebar-researcher-name">Alex Chen</div>
-      <div id="sidebar-researcher-role" style="margin-top:2px;">Ph.D. Candidate — Materials Science</div>
-      <div id="sidebar-auth-indicator" style="margin-top:8px; font-size:11px; color:#38bdf8;">● Owner Workspace Ready</div>
-    </div>
-  </aside>
-
-  <!-- Main Workspace -->
-  <div class="main-workspace">
-    <!-- Top Bar with Quick DOI Add & Google Account Owner Login -->
-    <header class="topbar">
-      <div class="topbar-title">
-        <h1 id="page-heading">Research Command Center</h1>
-        <p id="page-subheading">Materials Science &amp; Engineering PhD Workflow, Synthesis Log &amp; Literature Hub</p>
+  <!-- ==================================================================== -->
+  <!-- TOP HORIZONTAL HEADER & NAVIGATION TABS (ALL-DEVICE RESPONSIVE)      -->
+  <!-- ==================================================================== -->
+  <header class="top-app-header">
+    <div class="header-upper">
+      <div class="brand-header">
+        <div class="brand-icon">MS</div>
+        <div>
+          <div class="brand-title">MatSci Nexus</div>
+          <div class="brand-subtitle" id="header-researcher-sub">PhD Research &amp; Lab Suite • SKKU (lamvt.skku@gmail.com)</div>
+        </div>
       </div>
 
+      <!-- Quick DOI Lookup Bar -->
       <div class="quick-doi-bar">
         <input
           type="text"
@@ -77,12 +38,54 @@
         </button>
       </div>
 
-      <!-- Google Account Owner Auth Bar -->
-      <div class="google-auth-bar" id="google-auth-bar">
-        <!-- Populated dynamically by renderAuthHeader() -->
-      </div>
-    </header>
+      <!-- Google Account Owner Auth Bar (lamvt.skku@gmail.com) -->
+      <div class="google-auth-bar" id="google-auth-bar"></div>
+    </div>
 
+    <!-- Horizontal Navigation Tabs Row -->
+    <div class="header-nav-wrapper">
+      <nav class="horizontal-tabs" id="main-horizontal-nav">
+        <button class="nav-btn active" data-tab="dashboard" onclick="switchTab('dashboard', this)">
+          <span class="nav-icon">📊</span> Dashboard
+        </button>
+        <button class="nav-btn" data-tab="literature" onclick="switchTab('literature', this)">
+          <span class="nav-icon">📚</span> Literature &amp; DOI
+        </button>
+        <button class="nav-btn" data-tab="calendar" onclick="switchTab('calendar', this)">
+          <span class="nav-icon">📅</span> Calendar &amp; Google Sync
+        </button>
+        <button class="nav-btn" data-tab="notes-schedule" onclick="switchTab('notes-schedule', this)">
+          <span class="nav-icon">🧪</span> Lab Notes &amp; Synthesis
+        </button>
+        <button class="nav-btn" data-tab="weekly-report" onclick="switchTab('weekly-report', this)">
+          <span class="nav-icon">📽️</span> Weekly Report (.pptx)
+        </button>
+        <button class="nav-btn" data-tab="toolkit" onclick="switchTab('toolkit', this)">
+          <span class="nav-icon">⚛️</span> Periodic Table &amp; Calc
+        </button>
+        <button class="nav-btn" data-tab="cv" onclick="switchTab('cv', this)">
+          <span class="nav-icon">📜</span> Academic CV
+        </button>
+        <button class="nav-btn" data-tab="profile" onclick="switchTab('profile', this)">
+          <span class="nav-icon">🎓</span> ORCID &amp; Scholar
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Page Context Subheader -->
+  <div class="page-subheader">
+    <div class="page-subheader-inner">
+      <div>
+        <h1 id="page-heading">Research Command Center</h1>
+        <p id="page-subheading">Materials Science &amp; Engineering PhD Workflow, Synthesis Log &amp; Literature Hub</p>
+      </div>
+      <div id="header-auth-status-badge" style="font-size:12px; color:var(--text-secondary);"></div>
+    </div>
+  </div>
+
+  <!-- Main Workspace -->
+  <div class="main-workspace">
     <main class="content-container">
 
       <!-- Global Duplicate DOI Alert Banner -->
@@ -108,10 +111,10 @@
           <div class="card">
             <div class="card-header">
               <div>
-                <div class="card-title">📅 Upcoming Lab Schedule &amp; Instrument Slots</div>
+                <div class="card-title">📅 Upcoming Events &amp; Google Calendar Slots</div>
                 <div style="font-size:12px; color:var(--text-muted);">Furnace runs, XRD/SEM/XPS sessions, and PI meetings</div>
               </div>
-              <button class="btn btn-outline btn-sm" onclick="switchTabByName('notes-schedule')">Manage Schedule →</button>
+              <button class="btn btn-outline btn-sm" onclick="switchTabByName('calendar')">Open Full Calendar →</button>
             </div>
             <div id="dashboard-schedule-list"></div>
           </div>
@@ -136,7 +139,7 @@
               <div class="card-title">📚 Recent Literature in Library</div>
               <div style="font-size:12px; color:var(--text-muted);">Automatically enriched with Crossref, OpenAlex &amp; Materials Science tags (Duplicate DOI Protected)</div>
             </div>
-            <div style="display:flex; gap:8px;">
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
               <button class="btn btn-teal btn-sm" onclick="switchTabByName('cv')">📜 View Academic CV</button>
               <button class="btn btn-outline btn-sm" onclick="switchTabByName('literature')">Open Full Library →</button>
             </div>
@@ -163,7 +166,7 @@
               type="text"
               id="lit-doi-input"
               placeholder="Paste DOI or URL, e.g. https://doi.org/10.1038/s41560-020-00748-8 or 10.1038/s41563-019-0431-3"
-              style="flex:1; min-width:280px; padding:11px 14px; border-radius:8px; border:1px solid #334155; font-size:13.5px;"
+              style="flex:1; min-width:240px; padding:11px 14px; border-radius:8px; border:1px solid #334155; font-size:13.5px;"
               onkeydown="if(event.key==='Enter') handleLitDoiFetch()"
             />
             <button class="btn btn-primary owner-only-btn" id="lit-doi-btn" onclick="handleLitDoiFetch()">
@@ -173,16 +176,14 @@
               + Manual Entry
             </button>
           </div>
-          <div style="margin-top:10px; font-size:12px; color:#94a3b8; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <div style="margin-top:10px; font-size:12px; color:#94a3b8; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
             <span>Test DOIs:</span>
-            <button class="btn btn-sm" style="background:#7f1d1d; color:#fecdd3;" onclick="fillSampleDoi('10.1038/s41563-019-0431-3')" title="Test duplicate alert with an existing DOI">⚠️ Test Existing DOI (10.1038/s41563-019-0431-3)</button>
+            <button class="btn btn-sm" style="background:#7f1d1d; color:#fecdd3;" onclick="fillSampleDoi('10.1038/s41563-019-0431-3')">⚠️ Test Duplicate DOI (10.1038/s41563-019-0431-3)</button>
             <button class="btn btn-sm" style="background:#334155; color:#e2e8f0;" onclick="fillSampleDoi('10.1038/s41560-020-00748-8')">Nature Energy (Solid-State Battery)</button>
             <button class="btn btn-sm" style="background:#334155; color:#e2e8f0;" onclick="fillSampleDoi('10.1126/science.1249625')">Science (Perovskite Solar Cells)</button>
-            <button class="btn btn-sm" style="background:#334155; color:#e2e8f0;" onclick="fillSampleDoi('10.1002/adma.201102306')">Adv. Mater. (2D MXenes)</button>
           </div>
         </div>
 
-        <!-- Filter & Search Bar -->
         <div class="card">
           <div class="card-header">
             <div style="display:flex; gap:10px; flex:1; flex-wrap:wrap;">
@@ -190,7 +191,7 @@
                 type="text"
                 id="paper-search"
                 placeholder="Search by title, author, DOI, material formula (e.g. LLZO, MXene), or tag (XRD, XPS)..."
-                style="flex:1; min-width:260px; padding:8px 12px; border:1px solid var(--border-color); border-radius:8px; font-size:13px;"
+                style="flex:1; min-width:220px; padding:8px 12px; border:1px solid var(--border-color); border-radius:8px; font-size:13px;"
                 oninput="renderPapersList()"
               />
               <select id="paper-status-filter" onchange="renderPapersList()" style="padding:8px 12px; border:1px solid var(--border-color); border-radius:8px; font-size:13px;">
@@ -210,69 +211,142 @@
       </section>
 
       <!-- ================================================================ -->
-      <!-- TAB 3: LAB NOTES, SYNTHESIS LOG & WORK SCHEDULE                  -->
+      <!-- TAB 3: DEDICATED CALENDAR & GOOGLE CALENDAR SYNC                 -->
       <!-- ================================================================ -->
-      <section id="tab-notes-schedule" class="tab-pane">
-        <div class="grid-2">
-
-          <!-- LEFT COLUMN: Lab & Synthesis Notes -->
-          <div class="card">
-            <div class="card-header">
-              <div>
-                <div class="card-title">🧪 Research &amp; Synthesis Notebook</div>
-                <div style="font-size:12px; color:var(--text-muted);">Track Sample IDs, precursors, sintering profiles, XRD/SEM/XPS results &amp; hypotheses</div>
+      <section id="tab-calendar" class="tab-pane">
+        <!-- Google Calendar Sync Control Bar -->
+        <div class="card" style="background: linear-gradient(135deg, #0f172a, #1e3a8a); color:#fff; border:none;">
+          <div class="card-header" style="margin-bottom:0;">
+            <div>
+              <div class="card-title" style="color:#fff; font-size:17px;">📅 Research &amp; Experiment Calendar — Linked to Google Calendar (<code>lamvt.skku@gmail.com</code>)</div>
+              <div style="font-size:12.5px; color:#cbd5e1; margin-top:3px;">
+                Click any date on the monthly calendar to schedule an experiment, push events directly to <strong>lamvt.skku@gmail.com</strong> Google Calendar, export <code>.ics</code>, or sync via Google Calendar API.
               </div>
-              <button class="btn btn-primary btn-sm owner-only-btn" onclick="openNoteModal()">+ New Lab Note</button>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="btn btn-primary owner-only-btn" onclick="openScheduleModal()">
+                + Add Calendar Event
+              </button>
+              <button class="btn btn-teal owner-only-btn" onclick="syncWithGoogleCalendarApi()">
+                🔄 Sync Google Calendar API
+              </button>
+              <button class="btn btn-outline" style="background:rgba(255,255,255,0.12); color:#fff; border-color:#475569;" onclick="exportScheduleToIcs()">
+                📥 Export .ics to Google Calendar
+              </button>
+              <button class="btn btn-outline" style="background:rgba(255,255,255,0.12); color:#fff; border-color:#475569;" onclick="toggleGoogleCalendarEmbed()">
+                🌐 Toggle Live GCal View
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Optional Embedded Live Google Calendar View for lamvt.skku@gmail.com -->
+        <div id="gcal-embed-card" class="card" style="display:none;">
+          <div class="card-header">
+            <div>
+              <div class="card-title">🌐 Embedded Google Calendar — <code>lamvt.skku@gmail.com</code> (Asia/Seoul Timezone)</div>
+              <div style="font-size:12px; color:var(--text-muted);">Make sure you are signed into <code>lamvt.skku@gmail.com</code> in your browser to view private calendar events</div>
+            </div>
+            <a href="https://calendar.google.com/calendar/u/0/r" target="_blank" class="btn btn-outline btn-sm">Open Google Calendar in New Tab ↗</a>
+          </div>
+          <iframe
+            src="https://calendar.google.com/calendar/embed?src=lamvt.skku%40gmail.com&ctz=Asia%2FSeoul&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=1&showCalendars=0"
+            style="border: 1px solid var(--border-color); width: 100%; height: 480px; border-radius: 10px;"
+            frameborder="0"
+            scrolling="no"
+          ></iframe>
+        </div>
+
+        <!-- Interactive Monthly Calendar Grid -->
+        <div class="card">
+          <div class="card-header">
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+              <button class="btn btn-outline btn-sm" onclick="changeCalendarMonth(-1)">◀ Prev</button>
+              <div class="card-title" id="cal-month-title" style="min-width:180px; text-align:center; font-size:18px;">November 2026</div>
+              <button class="btn btn-outline btn-sm" onclick="changeCalendarMonth(1)">Next ▶</button>
+              <button class="btn btn-outline btn-sm" onclick="resetCalendarToday()">Today</button>
             </div>
 
-            <div style="display:flex; gap:8px; margin-bottom:14px;">
-              <input
-                type="text"
-                id="note-search"
-                placeholder="Filter by Sample ID, formula, method (XRD, XPS, ALD)..."
-                style="flex:1; padding:8px 12px; border:1px solid var(--border-color); border-radius:8px; font-size:13px;"
-                oninput="renderNotesList()"
-              />
-              <select id="note-cat-filter" onchange="renderNotesList()" style="padding:8px 10px; border:1px solid var(--border-color); border-radius:8px; font-size:12.5px;">
-                <option value="ALL">All Categories</option>
-                <option value="Experiment / Synthesis">Experiment / Synthesis</option>
-                <option value="Characterization Result">Characterization Result</option>
-                <option value="Simulation / DFT">Simulation / DFT</option>
-                <option value="Meeting Note">Meeting Note</option>
-                <option value="Idea / Hypothesis">Idea / Hypothesis</option>
-              </select>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; font-size:11.5px;">
+              <span class="badge badge-amber">🔥 Synthesis / Furnace</span>
+              <span class="badge badge-green">🔬 Characterization (XRD/SEM/XPS)</span>
+              <span class="badge badge-purple">👥 Group / PI Meeting</span>
+              <span class="badge badge-blue">⚡ Electrochemistry / Writing</span>
             </div>
-
-            <div id="notes-list-container"></div>
           </div>
 
-          <!-- RIGHT COLUMN: Work Schedule & Instrument Booking Calendar -->
-          <div class="card">
-            <div class="card-header">
-              <div>
-                <div class="card-title">📅 Lab Schedule &amp; Instrument Bookings</div>
-                <div style="font-size:12px; color:var(--text-muted);">Schedule furnace runs, XRD/SEM/TEM/XPS characterization slots &amp; meetings</div>
-              </div>
-              <button class="btn btn-teal btn-sm owner-only-btn" onclick="openScheduleModal()">+ Add Schedule Slot</button>
+          <div class="calendar-grid-wrapper">
+            <div class="calendar-weekdays">
+              <div class="calendar-weekday">Sun</div>
+              <div class="calendar-weekday">Mon</div>
+              <div class="calendar-weekday">Tue</div>
+              <div class="calendar-weekday">Wed</div>
+              <div class="calendar-weekday">Thu</div>
+              <div class="calendar-weekday">Fri</div>
+              <div class="calendar-weekday">Sat</div>
             </div>
-
-            <div style="display:flex; gap:8px; margin-bottom:14px;">
-              <select id="schedule-status-filter" onchange="renderScheduleList()" style="padding:8px 12px; border:1px solid var(--border-color); border-radius:8px; font-size:13px; flex:1;">
-                <option value="ALL">All Tasks &amp; Bookings</option>
-                <option value="Scheduled">Scheduled</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Completed">Completed</option>
-              </select>
-            </div>
-
-            <div id="schedule-list-container"></div>
+            <div id="monthly-calendar-grid" class="calendar-days-grid"></div>
           </div>
+        </div>
 
+        <!-- Event List with 1-Click Add to Google Calendar -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">📋 All Scheduled Events &amp; 1-Click Google Calendar Push</div>
+              <div style="font-size:12px; color:var(--text-muted);">Click <strong>"📅 +Google Cal"</strong> on any event to add it directly to <code>lamvt.skku@gmail.com</code></div>
+            </div>
+            <select id="schedule-status-filter" onchange="renderScheduleList()" style="padding:7px 12px; border:1px solid var(--border-color); border-radius:8px; font-size:13px;">
+              <option value="ALL">All Statuses</option>
+              <option value="Scheduled">Scheduled</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
+          <div id="schedule-list-container"></div>
         </div>
       </section>
 
       <!-- ================================================================ -->
-      <!-- TAB 4: WEEKLY REPORT & POWERPOINT (.PPTX) EXPORT                 -->
+      <!-- TAB 4: LAB NOTES & SYNTHESIS LOG                                 -->
+      <!-- ================================================================ -->
+      <section id="tab-notes-schedule" class="tab-pane">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">🧪 Research &amp; Synthesis Notebook</div>
+              <div style="font-size:12px; color:var(--text-muted);">Track Sample IDs, precursors, sintering profiles, XRD/SEM/XPS results &amp; hypotheses</div>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-outline btn-sm" onclick="switchTabByName('calendar')">📅 Open Calendar</button>
+              <button class="btn btn-primary btn-sm owner-only-btn" onclick="openNoteModal()">+ New Lab Note</button>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
+            <input
+              type="text"
+              id="note-search"
+              placeholder="Filter by Sample ID, formula, method (XRD, XPS, ALD)..."
+              style="flex:1; min-width:220px; padding:8px 12px; border:1px solid var(--border-color); border-radius:8px; font-size:13px;"
+              oninput="renderNotesList()"
+            />
+            <select id="note-cat-filter" onchange="renderNotesList()" style="padding:8px 10px; border:1px solid var(--border-color); border-radius:8px; font-size:12.5px;">
+              <option value="ALL">All Categories</option>
+              <option value="Experiment / Synthesis">Experiment / Synthesis</option>
+              <option value="Characterization Result">Characterization Result</option>
+              <option value="Simulation / DFT">Simulation / DFT</option>
+              <option value="Meeting Note">Meeting Note</option>
+              <option value="Idea / Hypothesis">Idea / Hypothesis</option>
+            </select>
+          </div>
+
+          <div id="notes-list-container"></div>
+        </div>
+      </section>
+
+      <!-- ================================================================ -->
+      <!-- TAB 5: WEEKLY REPORT & POWERPOINT (.PPTX) EXPORT                 -->
       <!-- ================================================================ -->
       <section id="tab-weekly-report" class="tab-pane">
         <div class="card" style="background: linear-gradient(135deg, #1e1b4b, #0f172a); color:#fff; border:none;">
@@ -325,19 +399,19 @@
               </div>
               <div class="form-group">
                 <label>Presenter Name (PhD Candidate)</label>
-                <input type="text" id="rep-presenter" value="Alex Chen" oninput="updateSlidePreview()" />
+                <input type="text" id="rep-presenter" value="Vu Tien Lam" oninput="updateSlidePreview()" />
               </div>
               <div class="form-group">
                 <label>Principal Investigator (PI / Advisor)</label>
-                <input type="text" id="rep-advisor" value="Prof. Sarah Jenkins" oninput="updateSlidePreview()" />
+                <input type="text" id="rep-advisor" value="Prof. Advisor" oninput="updateSlidePreview()" />
               </div>
               <div class="form-group">
                 <label>Research Group / Laboratory</label>
-                <input type="text" id="rep-lab" value="Nanomaterials & Energy Storage Laboratory" oninput="updateSlidePreview()" />
+                <input type="text" id="rep-lab" value="Advanced Materials & Energy Laboratory (SKKU)" oninput="updateSlidePreview()" />
               </div>
               <div class="form-group">
                 <label>Department / University</label>
-                <input type="text" id="rep-uni" value="Department of Materials Science & Engineering" oninput="updateSlidePreview()" />
+                <input type="text" id="rep-uni" value="Sungkyunkwan University (SKKU)" oninput="updateSlidePreview()" />
               </div>
 
               <div class="form-group full">
@@ -388,7 +462,7 @@
       </section>
 
       <!-- ================================================================ -->
-      <!-- TAB 5: MATERIALS SCIENCE TOOLKIT (PERIODIC TABLE & CALCULATORS)  -->
+      <!-- TAB 6: MATERIALS SCIENCE TOOLKIT (PERIODIC TABLE & CALCULATORS)  -->
       <!-- ================================================================ -->
       <section id="tab-toolkit" class="tab-pane">
 
@@ -447,11 +521,11 @@
               <button class="btn btn-outline btn-sm" onclick="setQuickFormula('Ti3C2O2', 1.5)">Ti3C2O2 MXene</button>
             </div>
 
-            <div id="stoich-results-box"></div>
+            <div id="stoich-results-box" style="overflow-x:auto;"></div>
 
             <hr style="border:none; border-top:1px solid var(--border-color); margin:16px 0;" />
 
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
               <div>
                 <div style="font-weight:700; font-size:14px;">🧪 Solid-State / Wet-Chemical Precursor Weigher</div>
                 <div style="font-size:12px; color:var(--text-muted);">Calculate exact grams (g) &amp; milligrams (mg) of precursors for the target batch</div>
@@ -459,7 +533,7 @@
               <button class="btn btn-outline btn-sm" onclick="addPrecursorRow()">+ Add Precursor</button>
             </div>
             <div id="precursor-rows-container"></div>
-            <div id="precursor-summary-table" style="margin-top:12px;"></div>
+            <div id="precursor-summary-table" style="margin-top:12px; overflow-x:auto;"></div>
           </div>
 
           <!-- Calculator 2: Photon Energy & XRD Bragg/Scherrer -->
@@ -550,10 +624,9 @@
       </section>
 
       <!-- ================================================================ -->
-      <!-- TAB 6: ACADEMIC CV (LÝ LỊCH KHOA HỌC)                            -->
+      <!-- TAB 7: ACADEMIC CV (LÝ LỊCH KHOA HỌC)                            -->
       <!-- ================================================================ -->
       <section id="tab-cv" class="tab-pane">
-        <!-- Action Toolbar -->
         <div class="card no-print" style="background: linear-gradient(135deg, #0f172a, #1e3a8a); color:#fff; border:none; max-width:1080px; margin:0 auto 20px;">
           <div class="card-header" style="margin-bottom:0;">
             <div>
@@ -576,14 +649,11 @@
           </div>
         </div>
 
-        <!-- Formal Printable CV Sheet -->
-        <div class="cv-paper-sheet" id="cv-sheet-container">
-          <!-- Populated dynamically by renderAcademicCvSheet() -->
-        </div>
+        <div class="cv-paper-sheet" id="cv-sheet-container"></div>
       </section>
 
       <!-- ================================================================ -->
-      <!-- TAB 7: ORCID & GOOGLE SCHOLAR SYNC + PROFILE SETTINGS            -->
+      <!-- TAB 8: ORCID & GOOGLE SCHOLAR SYNC + PROFILE SETTINGS            -->
       <!-- ================================================================ -->
       <section id="tab-profile" class="tab-pane">
         <div class="grid-2">
@@ -595,12 +665,12 @@
                 <div style="font-size:12px; color:var(--text-muted);">Fetches verified biography, education history &amp; DOI-linked publications directly from <code>pub.orcid.org</code></div>
               </div>
             </div>
-            <div style="display:flex; gap:10px;">
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
               <input
                 type="text"
                 id="sync-orcid-input"
                 placeholder="Enter ORCID iD (e.g., 0000-0002-1825-0097)"
-                style="flex:1; padding:9px 12px; border:1px solid var(--border-color); border-radius:8px; font-size:13.5px;"
+                style="flex:1; min-width:200px; padding:9px 12px; border:1px solid var(--border-color); border-radius:8px; font-size:13.5px;"
               />
               <button class="btn btn-primary owner-only-btn" id="btn-sync-orcid" onclick="handleSyncOrcid()">
                 🔄 Sync ORCID
@@ -616,12 +686,12 @@
                 <div style="font-size:12px; color:var(--text-muted);">Syncs Total Citations, h-index, i10-index &amp; top cited papers via Google Scholar ID, URL, or Researcher Name</div>
               </div>
             </div>
-            <div style="display:flex; gap:10px;">
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
               <input
                 type="text"
                 id="sync-scholar-input"
-                placeholder="Google Scholar User ID, URL, or Researcher Name (e.g., Yury Gogotsi)"
-                style="flex:1; padding:9px 12px; border:1px solid var(--border-color); border-radius:8px; font-size:13.5px;"
+                placeholder="Google Scholar User ID, URL, or Researcher Name"
+                style="flex:1; min-width:200px; padding:9px 12px; border:1px solid var(--border-color); border-radius:8px; font-size:13.5px;"
               />
               <button class="btn btn-teal owner-only-btn" id="btn-sync-scholar" onclick="handleSyncScholar()">
                 🔄 Sync Scholar Metrics
@@ -655,7 +725,7 @@
                 <input type="text" id="prof-advisor" />
               </div>
               <div class="form-group">
-                <label>Academic Email</label>
+                <label>Owner Academic Email</label>
                 <input type="email" id="prof-email" />
               </div>
               <div class="form-group">
@@ -709,58 +779,62 @@
   </div>
 
   <!-- ==================================================================== -->
-  <!-- MODAL: GOOGLE ACCOUNT OWNER SIGN-IN & MANAGEMENT                     -->
+  <!-- MODAL: GOOGLE ACCOUNT OWNER SIGN-IN (EXCLUSIVE: lamvt.skku@gmail.com)-->
   <!-- ==================================================================== -->
   <div id="google-auth-modal" class="modal-backdrop">
     <div class="modal-box" style="max-width:540px;">
       <div class="card-header">
-        <div class="card-title">🔐 Owner Authentication with Google Account</div>
+        <div class="card-title">🔐 Owner Google Account Authentication</div>
         <button class="btn btn-outline btn-sm" onclick="closeModal('google-auth-modal')">✕ Close</button>
       </div>
 
-      <div style="font-size:13px; color:var(--text-secondary); line-height:1.5; margin-bottom:16px;">
-        Sign in with the <strong>Owner Google Account</strong> to unlock full management permissions (Add/Edit/Delete DOI papers, Lab Notes, Schedule, and Academic CV). Visitors without Owner login remain in <strong>Read-Only View</strong>.
+      <div style="background:#eff6ff; border:1px solid #bfdbfe; color:#1e3a8a; padding:12px 14px; border-radius:8px; font-size:13px; margin-bottom:16px;">
+        🔒 This research portal is exclusively linked to the Owner Google Account:<br/>
+        <strong style="font-size:14px;">lamvt.skku@gmail.com</strong>
       </div>
 
       <!-- Official Google Identity Services Button Container (if Client ID configured) -->
-      <div id="g-id-button-wrapper" style="margin-bottom:16px; display:none; justify-content:center; padding:12px; background:#f8fafc; border-radius:10px; border:1px solid var(--border-color);">
+      <div id="g-id-button-wrapper" style="margin-bottom:16px; display:none; flex-direction:column; align-items:center; gap:8px; padding:12px; background:#f8fafc; border-radius:10px; border:1px solid var(--border-color);">
         <div id="g-id-signin-btn"></div>
+        <button class="btn btn-teal btn-sm" onclick="launchGoogleOAuthPopup()">
+          🔗 Sign In &amp; Authorize Google Calendar (OAuth 2.0 Popup)
+        </button>
       </div>
 
       <!-- Direct Google Owner Account Sign-In -->
       <div style="background:#f8fafc; border:1px solid var(--border-color); border-radius:10px; padding:16px; margin-bottom:16px;">
         <div style="font-weight:700; font-size:13.5px; margin-bottom:10px; display:flex; align-items:center; gap:8px;">
           <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-          Sign In with Google Owner Email
+          Verify Owner Google Account (<code>lamvt.skku@gmail.com</code>)
         </div>
         <div class="form-group">
           <label>Google Account Email *</label>
-          <input type="email" id="auth-google-email" placeholder="your.email@gmail.com" />
+          <input type="email" id="auth-google-email" placeholder="lamvt.skku@gmail.com" value="lamvt.skku@gmail.com" />
         </div>
         <div class="form-group">
-          <label>Display Name</label>
-          <input type="text" id="auth-google-name" placeholder="e.g. Vu Tien Lam" />
+          <label>Owner Display Name</label>
+          <input type="text" id="auth-google-name" placeholder="Vu Tien Lam" value="Vu Tien Lam" />
         </div>
         <button class="btn btn-primary" style="width:100%;" onclick="handleDirectGoogleSignIn()">
-          🔓 Sign In &amp; Verify Owner Access
+          🔓 Sign In with Google (lamvt.skku@gmail.com)
         </button>
       </div>
 
-      <!-- Owner Configuration Section -->
+      <!-- Optional Google Cloud OAuth Client ID for Live Google Calendar API Sync -->
       <details style="font-size:12.5px; color:var(--text-secondary);">
         <summary style="cursor:pointer; font-weight:700; color:var(--text-main); padding:6px 0;">
-          ⚙️ Configure Registered Owner Email &amp; Google OAuth Client ID
+          ⚙️ Optional: Google Cloud OAuth 2.0 Client ID (For 2-Way Google Calendar API)
         </summary>
         <div style="margin-top:10px; padding:12px; background:#fff; border:1px solid var(--border-color); border-radius:8px;">
           <div class="form-group">
-            <label>Registered Owner Google Email (Only this email can edit workspace)</label>
-            <input type="email" id="cfg-owner-email" placeholder="owner@gmail.com" />
+            <label>Locked Owner Email</label>
+            <input type="email" id="cfg-owner-email" value="lamvt.skku@gmail.com" readonly style="background:#f1f5f9; font-weight:700;" />
           </div>
           <div class="form-group">
-            <label>Google Cloud OAuth 2.0 Client ID (Optional — for 1-click Google popup on GitHub Pages)</label>
+            <label>Google Cloud OAuth 2.0 Client ID (Optional — enables 1-click Google OAuth popup &amp; Calendar API)</label>
             <input type="text" id="cfg-google-client-id" placeholder="xxxx-xxxx.apps.googleusercontent.com" />
           </div>
-          <button class="btn btn-outline btn-sm" onclick="saveOwnerAuthConfig()">💾 Save Owner Auth Settings</button>
+          <button class="btn btn-outline btn-sm" onclick="saveOwnerAuthConfig()">💾 Save Google OAuth Client ID</button>
         </div>
       </details>
     </div>
@@ -941,22 +1015,22 @@
   </div>
 
   <!-- ==================================================================== -->
-  <!-- MODAL: ADD / EDIT SCHEDULE SLOT                                      -->
+  <!-- MODAL: ADD / EDIT SCHEDULE / CALENDAR EVENT                          -->
   <!-- ==================================================================== -->
   <div id="schedule-modal" class="modal-backdrop">
     <div class="modal-box">
       <div class="card-header">
-        <div class="card-title" id="schedule-modal-title">Schedule Experiment / Instrument Slot</div>
+        <div class="card-title" id="schedule-modal-title">Schedule Experiment / Calendar Event</div>
         <button class="btn btn-outline btn-sm" onclick="closeModal('schedule-modal')">✕ Close</button>
       </div>
       <input type="hidden" id="sm-id" />
       <div class="form-grid">
         <div class="form-group full">
-          <label>Task / Experiment Title *</label>
+          <label>Event / Experiment Title *</label>
           <input type="text" id="sm-title" placeholder="e.g., High-Resolution XPS Depth Profile" />
         </div>
         <div class="form-group">
-          <label>Event Type</label>
+          <label>Event Category</label>
           <select id="sm-type">
             <option value="Synthesis / Furnace">Synthesis / Furnace</option>
             <option value="Characterization (XRD/SEM/TEM/XPS)">Characterization (XRD/SEM/TEM/XPS)</option>
@@ -996,10 +1070,16 @@
           <label>Experimental Protocol / Notes</label>
           <textarea id="sm-desc" rows="2"></textarea>
         </div>
+        <div class="form-group full">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" id="sm-open-gcal" />
+            Also open in Google Calendar (<code>lamvt.skku@gmail.com</code>) immediately after saving
+          </label>
+        </div>
       </div>
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px;">
         <button class="btn btn-outline" onclick="closeModal('schedule-modal')">Cancel</button>
-        <button class="btn btn-primary" onclick="saveScheduleFromModal()">Save Schedule Item</button>
+        <button class="btn btn-primary" onclick="saveScheduleFromModal()">Save Calendar Event</button>
       </div>
     </div>
   </div>

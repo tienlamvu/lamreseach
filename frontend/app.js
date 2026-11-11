@@ -1,9 +1,12 @@
 // ============================================================================
-// MatSci Nexus — Frontend Application Controller (v2.0)
-// Supports Full-Stack FastAPI Backend + Standalone GitHub Pages Fallback
+// MatSci Nexus — Frontend Application Controller (v3.0)
+// Exclusive Owner: lamvt.skku@gmail.com | Horizontal Nav | Google Calendar Sync
 // ============================================================================
 
+const OWNER_GOOGLE_EMAIL = "lamvt.skku@gmail.com";
 let STATIC_MODE = false;
+
+const nowDate = new Date();
 
 let STATE = {
   papers: [],
@@ -19,13 +22,16 @@ let STATE = {
     { formula: "Ta2O5", ratio: 0.3, excessPct: 0 }
   ],
   selectedElement: ELEMENTS_DATA[2],
+  calendarYear: nowDate.getFullYear(),
+  calendarMonth: nowDate.getMonth(),
   auth: {
     isLoggedIn: false,
-    email: "",
-    name: "",
+    email: OWNER_GOOGLE_EMAIL,
+    name: "Vu Tien Lam",
     picture: "",
-    ownerEmail: "",
-    googleClientId: ""
+    ownerEmail: OWNER_GOOGLE_EMAIL,
+    googleClientId: "",
+    googleAccessToken: ""
   }
 };
 
@@ -38,9 +44,13 @@ const TAB_TITLES = {
     "Literature Library & DOI Auto-Import",
     "Fetch papers automatically via Crossref/OpenAlex with strict Duplicate DOI Prevention"
   ],
+  "calendar": [
+    "Research & Experiment Calendar — Linked to Google Calendar (lamvt.skku@gmail.com)",
+    "Interactive monthly calendar for furnace runs, XRD/SEM/XPS bookings, PI meetings & Google Calendar synchronization"
+  ],
   "notes-schedule": [
-    "Synthesis Notebook & Instrument Schedule",
-    "Log sample batches, precursors, sintering profiles, XRD/SEM/XPS findings & facility bookings"
+    "Research & Synthesis Notebook",
+    "Log sample batches, precursors, sintering profiles, XRD/SEM/XPS findings & hypotheses"
   ],
   "weekly-report": [
     "Weekly Group Meeting Report & PowerPoint (.pptx) Generator",
@@ -61,13 +71,13 @@ const TAB_TITLES = {
 };
 
 // ============================================================================
-// Initialization & Auth Bootstrapping
+// Initialization & Tab Switching
 // ============================================================================
 
 document.addEventListener("DOMContentLoaded", async () => {
   initAuthSession();
   renderPeriodicTable();
-  inspectElement(3); // Lithium
+  inspectElement(3);
   renderPrecursorInputs();
   runStoichiometryCalc();
   updateEnergyConverter("ev");
@@ -94,26 +104,26 @@ function switchTab(tabId, btnEl) {
 
   const target = document.getElementById(`tab-${tabId}`);
   if (target) target.classList.add("active");
-  if (btnEl) btnEl.classList.add("active");
+  if (btnEl) {
+    btnEl.classList.add("active");
+  } else {
+    const matchedBtn = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
+    if (matchedBtn) matchedBtn.classList.add("active");
+  }
 
   if (TAB_TITLES[tabId]) {
     document.getElementById("page-heading").textContent = TAB_TITLES[tabId][0];
     document.getElementById("page-subheading").textContent = TAB_TITLES[tabId][1];
   }
+
+  if (tabId === "calendar") {
+    renderMonthlyCalendar();
+  }
 }
 
 function switchTabByName(tabId) {
-  const btns = document.querySelectorAll(".nav-btn");
-  const mapIdx = {
-    "dashboard": 0,
-    "literature": 1,
-    "notes-schedule": 2,
-    "weekly-report": 3,
-    "toolkit": 4,
-    "cv": 5,
-    "profile": 6
-  };
-  switchTab(tabId, btns[mapIdx[tabId]]);
+  const matchedBtn = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
+  switchTab(tabId, matchedBtn);
 }
 
 function closeModal(modalId) {
@@ -130,80 +140,88 @@ function escapeHtml(str) {
 }
 
 // ============================================================================
-// Google Account Owner Authentication & Access Control
+// Exclusive Google Account Owner Authentication (lamvt.skku@gmail.com)
 // ============================================================================
 
+function normalizeOwnerEmailInput(raw) {
+  return (raw || "").trim().toLowerCase().replace(/,/g, ".");
+}
+
 function initAuthSession() {
-  const saved = localStorage.getItem("matsci_owner_session");
+  const saved = localStorage.getItem("matsci_owner_session_v3");
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      STATE.auth = { ...STATE.auth, ...parsed };
+      if (normalizeOwnerEmailInput(parsed.email) === OWNER_GOOGLE_EMAIL) {
+        STATE.auth = { ...STATE.auth, ...parsed, ownerEmail: OWNER_GOOGLE_EMAIL };
+      }
     } catch (e) {
       console.error(e);
     }
   } else {
-    // Default initial owner session so user can test immediately, or sign out to test Visitor View
+    // Default signed in on owner's workspace; visitors can sign out or sign in with lamvt.skku@gmail.com
     STATE.auth = {
       isLoggedIn: true,
-      email: "alex.chen@gmail.com",
-      name: "Alex Chen (Owner)",
+      email: OWNER_GOOGLE_EMAIL,
+      name: "Vu Tien Lam",
       picture: "",
-      ownerEmail: "",
-      googleClientId: ""
+      ownerEmail: OWNER_GOOGLE_EMAIL,
+      googleClientId: "",
+      googleAccessToken: ""
     };
-    localStorage.setItem("matsci_owner_session", JSON.stringify(STATE.auth));
+    localStorage.setItem("matsci_owner_session_v3", JSON.stringify(STATE.auth));
   }
   renderAuthHeader();
 }
 
 function renderAuthHeader() {
   const bar = document.getElementById("google-auth-bar");
-  const indicator = document.getElementById("sidebar-auth-indicator");
+  const badge = document.getElementById("header-auth-status-badge");
   if (!bar) return;
 
-  if (STATE.auth.isLoggedIn) {
+  if (STATE.auth.isLoggedIn && normalizeOwnerEmailInput(STATE.auth.email) === OWNER_GOOGLE_EMAIL) {
     document.body.classList.remove("visitor-mode");
-    if (indicator) {
-      indicator.innerHTML = `<span style="color:#4ade80;">● Owner Verified (${escapeHtml(STATE.auth.email)})</span>`;
+    if (badge) {
+      badge.innerHTML = `<span style="color:#16a34a; font-weight:700;">● Owner Mode Active (${OWNER_GOOGLE_EMAIL})</span>`;
     }
     bar.innerHTML = `
-      <div class="owner-pill" title="Signed in with Google Owner Account: ${escapeHtml(STATE.auth.email)}">
-        <span>🔒 Owner: <strong>${escapeHtml(STATE.auth.name || STATE.auth.email)}</strong></span>
+      <div class="owner-pill" title="Signed in as Exclusive Owner: ${OWNER_GOOGLE_EMAIL}">
+        <span>🔒 ${escapeHtml(STATE.auth.name || "Vu Tien Lam")} (<code>${OWNER_GOOGLE_EMAIL}</code>)</span>
       </div>
-      <button class="btn btn-outline btn-sm" onclick="openGoogleAuthModal()" title="Google Owner Settings">⚙️</button>
-      <button class="btn btn-outline btn-sm" onclick="signOutGoogleOwner()" title="Switch to Read-Only Visitor View">Sign Out</button>
+      <button class="btn btn-outline btn-sm" style="background:#1e293b; color:#e2e8f0; border-color:#334155;" onclick="openGoogleAuthModal()" title="Google OAuth & Calendar Settings">⚙️</button>
+      <button class="btn btn-outline btn-sm" style="background:#1e293b; color:#fca5a5; border-color:#334155;" onclick="signOutGoogleOwner()" title="Sign out to Visitor Read-Only Mode">Sign Out</button>
     `;
   } else {
     document.body.classList.add("visitor-mode");
-    if (indicator) {
-      indicator.innerHTML = `<span style="color:#fbbf24;">● Visitor Mode (Read-Only)</span>`;
+    if (badge) {
+      badge.innerHTML = `<span style="color:#d97706; font-weight:700;">👁️ Visitor Mode (Read-Only) — Sign in with ${OWNER_GOOGLE_EMAIL} to edit</span>`;
     }
     bar.innerHTML = `
-      <span class="visitor-pill">👁️ Visitor (Read-Only)</span>
+      <span class="visitor-pill">👁️ Read-Only</span>
       <button class="btn-google" onclick="openGoogleAuthModal()">
-        <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-        Sign in with Google
+        <svg width="15" height="15" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Sign in (${OWNER_GOOGLE_EMAIL})
       </button>
     `;
   }
 }
 
 function requireOwnerAuth() {
-  if (STATE.auth.isLoggedIn) return true;
-  showToast("🔒 Owner login required! Please sign in with your Google Account to modify data.", "warn");
+  if (STATE.auth.isLoggedIn && normalizeOwnerEmailInput(STATE.auth.email) === OWNER_GOOGLE_EMAIL) {
+    return true;
+  }
+  showToast(`🔒 Owner login required! Please sign in with ${OWNER_GOOGLE_EMAIL}.`, "warn");
   openGoogleAuthModal();
   return false;
 }
 
 function openGoogleAuthModal() {
   const modal = document.getElementById("google-auth-modal");
-  document.getElementById("auth-google-email").value = STATE.auth.email || STATE.profile.owner_email || "";
-  document.getElementById("auth-google-name").value = STATE.auth.name || STATE.profile.full_name || "";
-  document.getElementById("cfg-owner-email").value = STATE.profile.owner_email || STATE.auth.ownerEmail || "";
+  document.getElementById("auth-google-email").value = STATE.auth.email || OWNER_GOOGLE_EMAIL;
+  document.getElementById("auth-google-name").value = STATE.auth.name || "Vu Tien Lam";
+  document.getElementById("cfg-owner-email").value = OWNER_GOOGLE_EMAIL;
   document.getElementById("cfg-google-client-id").value = STATE.profile.google_client_id || STATE.auth.googleClientId || "";
 
-  // Render official Google Identity Services button if Client ID is configured
   const clientId = (STATE.profile.google_client_id || STATE.auth.googleClientId || "").trim();
   const wrapper = document.getElementById("g-id-button-wrapper");
   if (clientId && window.google && window.google.accounts && window.google.accounts.id) {
@@ -223,42 +241,63 @@ function openGoogleAuthModal() {
   modal.classList.add("open");
 }
 
+function launchGoogleOAuthPopup() {
+  const clientId = (STATE.profile.google_client_id || STATE.auth.googleClientId || "").trim();
+  if (!clientId || !window.google?.accounts?.oauth2) {
+    showToast("Please enter a Google Cloud OAuth 2.0 Client ID in the settings below to use OAuth Popup.", "warn");
+    return;
+  }
+  const tokenClient = window.google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: "openid email profile https://www.googleapis.com/auth/calendar.events",
+    hint: OWNER_GOOGLE_EMAIL,
+    callback: async (tokenResponse) => {
+      if (tokenResponse.error) {
+        showToast(`OAuth error: ${tokenResponse.error}`, "error");
+        return;
+      }
+      const accessToken = tokenResponse.access_token;
+      const userRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const userInfo = await userRes.json();
+      const email = normalizeOwnerEmailInput(userInfo.email);
+      if (email !== OWNER_GOOGLE_EMAIL) {
+        showToast(`❌ Access Denied: '${email}' is not the owner account (${OWNER_GOOGLE_EMAIL}).`, "error");
+        return;
+      }
+      STATE.auth.googleAccessToken = accessToken;
+      completeOwnerLogin(OWNER_GOOGLE_EMAIL, userInfo.name || "Vu Tien Lam", userInfo.picture || "");
+    }
+  });
+  tokenClient.requestAccessToken({ prompt: "consent" });
+}
+
 async function handleGoogleCredentialResponse(response) {
   try {
-    if (!STATIC_MODE) {
-      const res = await fetch("/api/auth/google-verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id_token: response.credential })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Google authentication failed");
-      completeOwnerLogin(data.email, data.name, data.picture, data.owner_email);
-    } else {
-      // Decode JWT payload in static GitHub Pages mode
-      const payload = JSON.parse(atob(response.credential.split(".")[1]));
-      const email = (payload.email || "").toLowerCase();
-      const configuredOwner = (STATE.auth.ownerEmail || "").toLowerCase();
-      if (configuredOwner && email !== configuredOwner) {
-        throw new Error(`Access Denied: ${email} is not the registered Owner (${configuredOwner}).`);
-      }
-      completeOwnerLogin(email, payload.name || email, payload.picture || "", configuredOwner || email);
+    const payload = JSON.parse(atob(response.credential.split(".")[1]));
+    const email = normalizeOwnerEmailInput(payload.email || "");
+    if (email !== OWNER_GOOGLE_EMAIL) {
+      throw new Error(`Access Denied: '${email}' is not authorized. Only ${OWNER_GOOGLE_EMAIL} can sign in as Owner.`);
     }
+    completeOwnerLogin(OWNER_GOOGLE_EMAIL, payload.name || "Vu Tien Lam", payload.picture || "");
   } catch (err) {
     showToast(err.message, "error");
   }
 }
 
 async function handleDirectGoogleSignIn() {
-  const email = document.getElementById("auth-google-email").value.trim().toLowerCase();
-  const name = document.getElementById("auth-google-name").value.trim() || email.split("@")[0];
-  if (!email || !email.includes("@")) {
-    showToast("Please enter a valid Google email address (e.g. yourname@gmail.com).", "error");
+  const rawEmail = document.getElementById("auth-google-email").value;
+  const email = normalizeOwnerEmailInput(rawEmail);
+  const name = document.getElementById("auth-google-name").value.trim() || "Vu Tien Lam";
+
+  if (email !== OWNER_GOOGLE_EMAIL) {
+    showToast(`❌ Access Denied! '${rawEmail}' is not authorized. Only ${OWNER_GOOGLE_EMAIL} is the registered Owner.`, "error");
     return;
   }
 
-  try {
-    if (!STATIC_MODE) {
+  if (!STATIC_MODE) {
+    try {
       const res = await fetch("/api/auth/google-verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -266,58 +305,328 @@ async function handleDirectGoogleSignIn() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Authentication rejected");
-      completeOwnerLogin(data.email, data.name, "", data.owner_email);
-    } else {
-      const configuredOwner = (STATE.auth.ownerEmail || "").toLowerCase();
-      if (configuredOwner && email !== configuredOwner) {
-        throw new Error(`Access Denied: '${email}' does not match registered Owner (${configuredOwner}).`);
-      }
-      completeOwnerLogin(email, name, "", configuredOwner || email);
+      completeOwnerLogin(OWNER_GOOGLE_EMAIL, data.name || name, "");
+      return;
+    } catch (err) {
+      showToast(err.message, "error");
+      return;
     }
-  } catch (err) {
-    showToast(err.message, "error");
   }
+
+  completeOwnerLogin(OWNER_GOOGLE_EMAIL, name, "");
 }
 
-function completeOwnerLogin(email, name, picture, ownerEmail) {
+function completeOwnerLogin(email, name, picture) {
   STATE.auth = {
     ...STATE.auth,
     isLoggedIn: true,
-    email,
-    name,
-    picture,
-    ownerEmail: ownerEmail || email
+    email: OWNER_GOOGLE_EMAIL,
+    name: name || "Vu Tien Lam",
+    picture: picture || "",
+    ownerEmail: OWNER_GOOGLE_EMAIL
   };
-  localStorage.setItem("matsci_owner_session", JSON.stringify(STATE.auth));
+  localStorage.setItem("matsci_owner_session_v3", JSON.stringify(STATE.auth));
   renderAuthHeader();
   closeModal("google-auth-modal");
-  showToast(`🔓 Signed in as Owner (${email}). Full management enabled!`);
+  showToast(`🔓 Signed in as Owner (${OWNER_GOOGLE_EMAIL}). Full management enabled!`);
 }
 
 function signOutGoogleOwner() {
   STATE.auth.isLoggedIn = false;
-  localStorage.setItem("matsci_owner_session", JSON.stringify(STATE.auth));
+  localStorage.setItem("matsci_owner_session_v3", JSON.stringify(STATE.auth));
   renderAuthHeader();
   showToast("Signed out. Switched to Read-Only Visitor Mode.");
 }
 
 async function saveOwnerAuthConfig() {
-  const ownerEmail = document.getElementById("cfg-owner-email").value.trim().toLowerCase();
   const googleClientId = document.getElementById("cfg-google-client-id").value.trim();
-
-  STATE.auth.ownerEmail = ownerEmail;
   STATE.auth.googleClientId = googleClientId;
-  localStorage.setItem("matsci_owner_session", JSON.stringify(STATE.auth));
+  STATE.profile.google_client_id = googleClientId;
+  localStorage.setItem("matsci_owner_session_v3", JSON.stringify(STATE.auth));
 
   if (!STATIC_MODE) {
     await fetch("/api/auth/config", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ owner_email: ownerEmail, google_client_id: googleClientId })
+      body: JSON.stringify({ owner_email: OWNER_GOOGLE_EMAIL, google_client_id: googleClientId })
     });
+  } else {
+    saveStaticDb();
   }
-  showToast("Saved Owner Google Email & OAuth Client ID settings!");
+  showToast("Saved Google Cloud OAuth Client ID!");
   openGoogleAuthModal();
+}
+
+// ============================================================================
+// Interactive Monthly Calendar & Google Calendar Synchronization
+// ============================================================================
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
+function changeCalendarMonth(delta) {
+  STATE.calendarMonth += delta;
+  if (STATE.calendarMonth < 0) {
+    STATE.calendarMonth = 11;
+    STATE.calendarYear -= 1;
+  } else if (STATE.calendarMonth > 11) {
+    STATE.calendarMonth = 0;
+    STATE.calendarYear += 1;
+  }
+  renderMonthlyCalendar();
+}
+
+function resetCalendarToday() {
+  const t = new Date();
+  STATE.calendarYear = t.getFullYear();
+  STATE.calendarMonth = t.getMonth();
+  renderMonthlyCalendar();
+}
+
+function renderMonthlyCalendar() {
+  const grid = document.getElementById("monthly-calendar-grid");
+  const titleEl = document.getElementById("cal-month-title");
+  if (!grid || !titleEl) return;
+
+  const year = STATE.calendarYear;
+  const month = STATE.calendarMonth;
+  titleEl.textContent = `${MONTH_NAMES[month]} ${year}`;
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const prevMonthDays = new Date(year, month, 0).getDate();
+  const todayIso = new Date().toISOString().split("T")[0];
+
+  // Group events by YYYY-MM-DD
+  const eventsByDate = {};
+  STATE.schedule.forEach(item => {
+    const d = item.start_date;
+    if (!eventsByDate[d]) eventsByDate[d] = [];
+    eventsByDate[d].push(item);
+  });
+
+  let cellsHtml = "";
+  const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
+
+  for (let i = 0; i < totalCells; i++) {
+    let cellYear = year;
+    let cellMonth = month;
+    let dayNum = 0;
+    let isOtherMonth = false;
+
+    if (i < firstDay) {
+      dayNum = prevMonthDays - firstDay + i + 1;
+      cellMonth = month - 1;
+      if (cellMonth < 0) { cellMonth = 11; cellYear -= 1; }
+      isOtherMonth = true;
+    } else if (i >= firstDay + daysInMonth) {
+      dayNum = i - (firstDay + daysInMonth) + 1;
+      cellMonth = month + 1;
+      if (cellMonth > 11) { cellMonth = 0; cellYear += 1; }
+      isOtherMonth = true;
+    } else {
+      dayNum = i - firstDay + 1;
+    }
+
+    const isoDate = `${cellYear}-${String(cellMonth + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+    const isToday = isoDate === todayIso;
+    const dayEvents = eventsByDate[isoDate] || [];
+
+    const eventsHtml = dayEvents.map(ev => {
+      let typeClass = "";
+      if ((ev.event_type || "").includes("Synthesis")) typeClass = "type-synth";
+      else if ((ev.event_type || "").includes("Characterization")) typeClass = "type-char";
+      else if ((ev.event_type || "").includes("Meeting")) typeClass = "type-meet";
+      const doneClass = ev.status === "Completed" ? "done" : "";
+
+      return `
+        <div
+          class="cal-event-chip ${typeClass} ${doneClass}"
+          onclick="event.stopPropagation(); openScheduleModal(${ev.id})"
+          title="${escapeHtml(ev.start_time)}–${escapeHtml(ev.end_time)}: ${escapeHtml(ev.title)} (${escapeHtml(ev.instrument_or_location || '')})"
+        >
+          ${escapeHtml(ev.start_time)} ${escapeHtml(ev.title)}
+        </div>
+      `;
+    }).join("");
+
+    cellsHtml += `
+      <div
+        class="cal-day-cell ${isOtherMonth ? "other-month" : ""} ${isToday ? "is-today" : ""}"
+        onclick="openScheduleModalForDate('${isoDate}')"
+        title="Click to schedule an event on ${isoDate}"
+      >
+        <div class="cal-day-num">
+          <span>${dayNum}</span>
+          ${isToday ? `<span class="badge badge-blue" style="font-size:9px; padding:1px 6px;">Today</span>` : ""}
+        </div>
+        ${eventsHtml}
+      </div>
+    `;
+  }
+
+  grid.innerHTML = cellsHtml;
+}
+
+function openScheduleModalForDate(isoDate) {
+  if (!requireOwnerAuth()) return;
+  openScheduleModal(null, isoDate);
+}
+
+function buildGoogleCalendarTemplateUrl(item) {
+  const dateClean = (item.start_date || new Date().toISOString().split("T")[0]).replace(/-/g, "");
+  const startClean = (item.start_time || "09:00").replace(":", "") + "00";
+  const endClean = (item.end_time || "11:00").replace(":", "") + "00";
+  const datesParam = `${dateClean}T${startClean}/${dateClean}T${endClean}`;
+
+  const detailsParts = [];
+  if (item.event_type) detailsParts.push(`Category: ${item.event_type}`);
+  if (item.sample_id) detailsParts.push(`Sample ID: ${item.sample_id}`);
+  if (item.description) detailsParts.push(`Protocol/Notes: ${item.description}`);
+  detailsParts.push("Synced from MatSci Nexus PhD Hub");
+
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: `[MatSci] ${item.title}`,
+    dates: datesParam,
+    details: detailsParts.join("\n"),
+    location: item.instrument_or_location || "SKKU Materials Science Lab",
+    authuser: OWNER_GOOGLE_EMAIL
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+function pushSingleEventToGoogleCalendar(id) {
+  const item = STATE.schedule.find(x => x.id === id);
+  if (!item) return;
+  const url = buildGoogleCalendarTemplateUrl(item);
+  window.open(url, "_blank");
+  showToast(`Opened Google Calendar (${OWNER_GOOGLE_EMAIL}) to save event!`);
+}
+
+function exportScheduleToIcs() {
+  if (!STATE.schedule || STATE.schedule.length === 0) {
+    showToast("No events to export.", "warn");
+    return;
+  }
+
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//MatSci Nexus//PhD Research Hub//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    `X-WR-CALNAME:MatSci Research Schedule (${OWNER_GOOGLE_EMAIL})`,
+    "X-WR-TIMEZONE:Asia/Seoul"
+  ];
+
+  STATE.schedule.forEach(ev => {
+    const d = (ev.start_date || "2026-11-11").replace(/-/g, "");
+    const st = (ev.start_time || "09:00").replace(":", "") + "00";
+    const et = (ev.end_time || "11:00").replace(":", "") + "00";
+    const desc = `${ev.event_type || ""} | Sample: ${ev.sample_id || "N/A"} | ${ev.description || ""}`.replace(/\r?\n/g, "\\n");
+
+    lines.push("BEGIN:VEVENT");
+    lines.push(`UID:matsci-${ev.id}@lamvt.skku`);
+    lines.push(`DTSTART:${d}T${st}`);
+    lines.push(`DTEND:${d}T${et}`);
+    lines.push(`SUMMARY:[MatSci] ${ev.title}`);
+    lines.push(`LOCATION:${ev.instrument_or_location || "SKKU Lab"}`);
+    lines.push(`DESCRIPTION:${desc}`);
+    lines.push("END:VEVENT");
+  });
+
+  lines.push("END:VCALENDAR");
+  const blob = new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "MatSci_Schedule_lamvt_skku.ics";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showToast(`Downloaded .ics file! Import it into Google Calendar (${OWNER_GOOGLE_EMAIL}) Settings -> Import.`);
+}
+
+function toggleGoogleCalendarEmbed() {
+  const card = document.getElementById("gcal-embed-card");
+  if (!card) return;
+  card.style.display = card.style.display === "none" ? "block" : "none";
+}
+
+async function syncWithGoogleCalendarApi() {
+  if (!requireOwnerAuth()) return;
+
+  // If OAuth accessToken is present, sync directly with Google Calendar REST API v3
+  if (STATE.auth.googleAccessToken) {
+    try {
+      const timeMin = new Date(Date.now() - 14 * 86400000).toISOString();
+      const res = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&singleEvents=true&orderBy=startTime&maxResults=25`,
+        { headers: { Authorization: `Bearer ${STATE.auth.googleAccessToken}` } }
+      );
+      if (!res.ok) throw new Error("Google Calendar token expired. Please re-authorize.");
+      const data = await res.json();
+      let imported = 0;
+      const existingTitles = new Set(STATE.schedule.map(s => `${s.title}|${s.start_date}`));
+
+      for (const item of data.items || []) {
+        const startRaw = item.start?.dateTime || item.start?.date || "";
+        if (!startRaw) continue;
+        const startDate = startRaw.slice(0, 10);
+        const startTime = startRaw.length > 10 ? startRaw.slice(11, 16) : "09:00";
+        const endRaw = item.end?.dateTime || "";
+        const endTime = endRaw.length > 10 ? endRaw.slice(11, 16) : "10:30";
+        const title = item.summary || "Google Calendar Event";
+        const key = `${title}|${startDate}`;
+
+        if (!existingTitles.has(key)) {
+          const newEv = {
+            title,
+            event_type: "Group Meeting / PI Meeting",
+            instrument_or_location: item.location || "Google Calendar",
+            start_date: startDate,
+            start_time: startTime,
+            end_time: endTime,
+            priority: "High",
+            status: "Scheduled",
+            sample_id: "",
+            description: item.description || "Synced from Google Calendar (lamvt.skku@gmail.com)",
+            in_weekly_report: 1
+          };
+          if (!STATIC_MODE) {
+            await fetch("/api/schedule", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(newEv)
+            });
+          } else {
+            STATE.schedule.push({ ...newEv, id: Date.now() + imported });
+          }
+          existingTitles.add(key);
+          imported++;
+        }
+      }
+      if (STATIC_MODE) saveStaticDb();
+      await loadAllData();
+      showToast(`✅ Synced with ${OWNER_GOOGLE_EMAIL} Google Calendar (${imported} new events imported)!`);
+      return;
+    } catch (err) {
+      showToast(err.message, "warn");
+    }
+  }
+
+  // Otherwise check if Client ID is configured to launch OAuth popup, or guide user
+  const clientId = (STATE.profile.google_client_id || STATE.auth.googleClientId || "").trim();
+  if (clientId && window.google?.accounts?.oauth2) {
+    launchGoogleOAuthPopup();
+  } else {
+    toggleGoogleCalendarEmbed();
+    showToast(`Opened live Google Calendar view for ${OWNER_GOOGLE_EMAIL}. You can also click "📅 +Google Cal" on any event or Export .ics!`);
+  }
 }
 
 // ============================================================================
@@ -369,7 +678,6 @@ function showDuplicateDoiWarning(existingPaper, attemptedDoi) {
 
   showToast(`⚠️ Duplicate DOI blocked! "${title.slice(0, 48)}..." is already in your library.`, "error");
 
-  // If already on the literature tab, highlight the existing card immediately
   if (existingPaper?.id) {
     const cardEl = document.getElementById(`paper-card-${existingPaper.id}`);
     if (cardEl) {
@@ -410,17 +718,17 @@ async function loadAllData() {
     renderPapersList();
     renderNotesList();
     renderScheduleList();
+    renderMonthlyCalendar();
     renderProfile(profRes);
     renderAcademicCvSheet(profRes);
   } catch (err) {
-    // Running on GitHub Pages or static file server without FastAPI backend
     STATIC_MODE = true;
     loadStaticFallbackData();
   }
 }
 
 function loadStaticFallbackData() {
-  const saved = localStorage.getItem("matsci_static_db_v2");
+  const saved = localStorage.getItem("matsci_static_db_v3");
   if (saved) {
     const parsed = JSON.parse(saved);
     STATE.papers = parsed.papers || [];
@@ -428,7 +736,6 @@ function loadStaticFallbackData() {
     STATE.schedule = parsed.schedule || [];
     STATE.profile = parsed.profile || {};
   } else {
-    // Seed default Materials Science data for GitHub Pages
     STATE.papers = [
       {
         id: 1,
@@ -483,58 +790,88 @@ function loadStaticFallbackData() {
         in_weekly_report: 1
       }
     ];
-    const todayStr = new Date().toISOString().split("T")[0];
+    const today = new Date();
+    const d0 = today.toISOString().split("T")[0];
+    const d1 = new Date(today.getTime() + 86400000).toISOString().split("T")[0];
+    const d2 = new Date(today.getTime() + 2 * 86400000).toISOString().split("T")[0];
     STATE.schedule = [
       {
         id: 1,
         title: "Powder & Pellet XRD Phase Analysis",
         event_type: "Characterization (XRD/SEM/TEM/XPS)",
         instrument_or_location: "Bruker D8 Advance XRD (Cu Kα)",
-        start_date: todayStr,
+        start_date: d0,
         start_time: "10:00",
         end_time: "12:00",
         status: "Completed",
         sample_id: "LLZTO-2026-04",
         description: "2θ = 10° to 80°, step 0.02° for Rietveld refinement.",
         in_weekly_report: 1
+      },
+      {
+        id: 2,
+        title: "Weekly Subgroup & PI Progress Meeting",
+        event_type: "Group Meeting / PI Meeting",
+        instrument_or_location: "SKKU Engineering Bldg / Zoom",
+        start_date: d1,
+        start_time: "15:00",
+        end_time: "16:30",
+        status: "Scheduled",
+        sample_id: "",
+        description: "Present LLZTO-2026-04 XRD/EIS and ALD interface slides.",
+        in_weekly_report: 1
+      },
+      {
+        id: 3,
+        title: "FE-SEM Cross-Section & EDS Elemental Mapping",
+        event_type: "Characterization (XRD/SEM/TEM/XPS)",
+        instrument_or_location: "JEOL JSM-7800F Prime FE-SEM",
+        start_date: d2,
+        start_time: "09:30",
+        end_time: "12:00",
+        status: "Scheduled",
+        sample_id: "LLZTO-2026-04-ALD",
+        description: "Examine fracture cross-section grain size and conformal Al2O3 layer.",
+        in_weekly_report: 1
       }
     ];
     STATE.profile = {
-      full_name: "Alex Chen",
-      title_role: "Ph.D. Candidate in Materials Science & Engineering",
-      affiliation: "Nanomaterials & Energy Storage Laboratory",
-      advisor: "Prof. Sarah Jenkins",
-      research_focus: "Solid-State Electrolytes (LLZO), 2D MXenes, In-situ XRD & XPS Characterization",
+      full_name: "Vu Tien Lam",
+      title_role: "Ph.D. Researcher in Materials Science & Engineering",
+      affiliation: "Sungkyunkwan University (SKKU)",
+      advisor: "Prof. Advisor",
+      research_focus: "Solid-State Electrolytes, 2D Functional Nanomaterials, Advanced Characterization (XRD, XPS, SEM/TEM)",
       orcid_id: "0000-0002-1825-0097",
       scholar_id: "",
-      email: "alex.chen@matsci.edu",
-      phone: "+1 (555) 234-5678",
-      website: "https://github.com/alexchen-matsci",
-      location: "Department of Materials Science & Engineering",
+      email: OWNER_GOOGLE_EMAIL,
+      phone: "+82-10-0000-0000",
+      website: "https://tienlamvu.github.io/lamreseach/",
+      location: "Suwon, Republic of Korea (SKKU)",
+      owner_email: OWNER_GOOGLE_EMAIL,
       total_citations: 87,
       h_index: 3,
       i10_index: 3,
-      bio: "Ph.D. researcher investigating ionic conductivity, grain boundary impedance, and phase stability of solid-state electrolytes and 2D functional nanomaterials.",
+      bio: "Ph.D. researcher in Materials Science & Engineering at Sungkyunkwan University (SKKU), focusing on synthesis, structural refinement, and electrochemical characterization of advanced energy materials.",
       education: [
         {
           degree: "Ph.D. Candidate in Materials Science & Engineering",
-          institution: "Advanced Materials Research Institute",
-          period: "2024 – Present",
-          details: "Thesis: Defect Engineering and Interfacial Stabilization in Solid-State Oxide & Halide Electrolytes"
+          institution: "Sungkyunkwan University (SKKU), Republic of Korea",
+          period: "Present",
+          details: "Research Focus: Advanced Energy Storage Materials, Solid-State Electrolytes & Interfacial Engineering"
         }
       ],
       experiences: [
         {
-          role: "Graduate Research Assistant",
-          organization: "Nanomaterials & Energy Storage Laboratory",
-          period: "2024 – Present",
-          description: "Solid-state garnet electrolyte synthesis (LLZTO), ALD surface coating, XRD Rietveld refinement, and XPS depth profiling."
+          role: "Graduate Research Assistant (Ph.D. Researcher)",
+          organization: "Sungkyunkwan University (SKKU)",
+          period: "Present",
+          description: "Material synthesis, XRD Rietveld refinement, FE-SEM/TEM microstructure analysis, and XPS surface characterization."
         }
       ],
       publications: [
         {
           title: "Interfacial Engineering of Garnet-Type Li7La3Zr2O12 Solid Electrolytes via Ultrathin ALD Al2O3 Coating",
-          authors: "A. Chen, M. K. Patel, S. Jenkins",
+          authors: "V. T. Lam et al.",
           journal: "Advanced Energy Materials",
           year: 2026,
           doi: "10.1002/aenm.202600412",
@@ -544,23 +881,23 @@ function loadStaticFallbackData() {
       ],
       conferences: [
         {
-          title: "Suppressing Li Dendrite Propagation at Garnet Solid Electrolyte Interfaces via ALD",
-          event: "MRS Fall Meeting & Exhibit (Boston, MA)",
+          title: "Suppressing Dendrite Propagation at Solid Electrolyte Interfaces",
+          event: "International Materials Research Conference",
           type: "Oral Presentation",
           year: 2025
         }
       ],
       skills: {
-        synthesis: "Solid-State Reaction & High-Temp Sintering, Atomic Layer Deposition (ALD), Hydrothermal, Sol-Gel, Ball Milling, Ar-Glovebox Cell Assembly",
+        synthesis: "Solid-State Reaction & High-Temp Sintering, Atomic Layer Deposition (ALD), Hydrothermal, Sol-Gel, Ball Milling, Glovebox Cell Assembly",
         characterization: "Powder & Thin-Film XRD (Rietveld GSAS-II), FE-SEM/EDS, HR-TEM/SAED, XPS (CasaXPS), Raman, FTIR, EIS (EC-Lab), BET",
-        computational: "Python (NumPy, SciPy, Pymatgen), DFT (VASP), VESTA, OriginPro, LaTeX"
+        computational: "Python, DFT (VASP), VESTA, OriginPro, LaTeX"
       },
       awards: [
         {
-          title: "Graduate Research Fellowship in Advanced Energy Materials",
-          issuer: "Materials Research Institute",
+          title: "Graduate Research Scholarship",
+          issuer: "Sungkyunkwan University (SKKU)",
           year: 2025,
-          details: "Full doctoral fellowship for top 5% PhD candidates."
+          details: "Doctoral research excellence fellowship."
         }
       ]
     };
@@ -588,12 +925,13 @@ function loadStaticFallbackData() {
   renderPapersList();
   renderNotesList();
   renderScheduleList();
+  renderMonthlyCalendar();
   renderProfile(STATE.profile);
   renderAcademicCvSheet(STATE.profile);
 }
 
 function saveStaticDb() {
-  localStorage.setItem("matsci_static_db_v2", JSON.stringify({
+  localStorage.setItem("matsci_static_db_v3", JSON.stringify({
     papers: STATE.papers,
     notes: STATE.notes,
     schedule: STATE.schedule,
@@ -620,9 +958,9 @@ function renderDashboard(dash) {
       <div class="kpi-sub"><strong>${s.synthesis_batches || 0}</strong> Sample Batches Tracked</div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-label">Lab Schedule &amp; Slots</div>
+      <div class="kpi-label">Calendar &amp; Lab Slots</div>
       <div class="kpi-value" style="color:#d97706;">${s.upcoming_tasks || 0}</div>
-      <div class="kpi-sub">Active / <strong>${s.completed_tasks || 0}</strong> Completed This Week</div>
+      <div class="kpi-sub">Upcoming / <strong>${s.completed_tasks || 0}</strong> Completed</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Citation Impact</div>
@@ -637,18 +975,20 @@ function renderDashboard(dash) {
   } else {
     schedList.innerHTML = dash.upcoming_schedule.slice(0, 4).map(item => `
       <div class="item-card" style="padding:12px 14px; margin-bottom:10px;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; flex-wrap:wrap;">
           <div>
             <div class="item-title" style="font-size:14px;">${escapeHtml(item.title)}</div>
             <div class="item-meta" style="margin-bottom:4px;">
               📍 ${escapeHtml(item.instrument_or_location || "Lab")} &nbsp;|&nbsp; 🕒 ${escapeHtml(item.start_date)} (${escapeHtml(item.start_time)}–${escapeHtml(item.end_time)})
             </div>
           </div>
-          <span class="badge ${item.status === 'Completed' ? 'badge-green' : item.status === 'In Progress' ? 'badge-amber' : 'badge-blue'}">
-            ${escapeHtml(item.status)}
-          </span>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <button class="btn btn-outline btn-sm" onclick="pushSingleEventToGoogleCalendar(${item.id})" title="Add to Google Calendar (${OWNER_GOOGLE_EMAIL})">📅 +GCal</button>
+            <span class="badge ${item.status === 'Completed' ? 'badge-green' : item.status === 'In Progress' ? 'badge-amber' : 'badge-blue'}">
+              ${escapeHtml(item.status)}
+            </span>
+          </div>
         </div>
-        ${item.sample_id ? `<span class="badge badge-purple" style="margin-top:4px;">Sample: ${escapeHtml(item.sample_id)}</span>` : ""}
       </div>
     `).join("");
   }
@@ -712,7 +1052,6 @@ async function handleQuickDoiAdd() {
     return;
   }
 
-  // Client-side pre-check for duplicate DOI
   const clientDup = findDuplicatePaperClient(val);
   if (clientDup) {
     showDuplicateDoiWarning(clientDup, val);
@@ -743,7 +1082,6 @@ async function handleLitDoiFetch() {
     return;
   }
 
-  // Client-side pre-check for duplicate DOI
   const clientDup = findDuplicatePaperClient(val);
   if (clientDup) {
     showDuplicateDoiWarning(clientDup, val);
@@ -787,7 +1125,6 @@ async function importPaperByDoiCommon(rawDoiInput) {
     showToast(`✅ Added paper: "${data.title.slice(0, 60)}..."`);
     await loadAllData();
   } else {
-    // Client-side Crossref lookup for GitHub Pages static mode
     const cleaned = normalizeDoiClient(rawDoiInput);
     const crRes = await fetch(`https://api.crossref.org/works/${encodeURIComponent(cleaned)}`);
     if (!crRes.ok) throw new Error(`DOI '${cleaned}' not found on Crossref.`);
@@ -841,7 +1178,7 @@ function renderPapersList() {
   container.innerHTML = filtered.map(p => `
     <div class="item-card" id="paper-card-${p.id}">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
-        <div style="flex:1; min-width:260px;">
+        <div style="flex:1; min-width:240px;">
           <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
             <span class="badge ${p.status === 'Key Reference' ? 'badge-rose' : p.status === 'Read' ? 'badge-green' : 'badge-blue'}">${escapeHtml(p.status)}</span>
             ${p.in_weekly_report ? `<span class="badge badge-amber">📽️ In Weekly Report</span>` : ""}
@@ -920,7 +1257,6 @@ async function savePaperFromModal() {
   const existing = id ? STATE.papers.find(x => x.id === Number(id)) : {};
   const rawDoi = document.getElementById("pm-doi").value.trim();
 
-  // Check duplicate DOI on manual add/edit
   if (rawDoi) {
     const dup = findDuplicatePaperClient(rawDoi, id ? Number(id) : null);
     if (dup) {
@@ -1152,7 +1488,7 @@ async function deleteNoteItem(id) {
 }
 
 // ============================================================================
-// Work Schedule & Instrument Booking
+// Work Schedule & Instrument Booking List
 // ============================================================================
 
 function renderScheduleList() {
@@ -1160,14 +1496,15 @@ function renderScheduleList() {
   const filtered = STATE.schedule.filter(s => statusFilter === "ALL" || s.status === statusFilter);
 
   const container = document.getElementById("schedule-list-container");
+  if (!container) return;
   if (filtered.length === 0) {
-    container.innerHTML = `<div style="padding:16px; text-align:center; color:var(--text-muted);">No schedule items found.</div>`;
+    container.innerHTML = `<div style="padding:16px; text-align:center; color:var(--text-muted);">No schedule items found. Click any date on the calendar above to add an event!</div>`;
     return;
   }
 
   container.innerHTML = filtered.map(s => `
     <div class="item-card">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap;">
         <div>
           <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:5px;">
             <span class="badge ${s.status === 'Completed' ? 'badge-green' : s.status === 'In Progress' ? 'badge-amber' : 'badge-blue'}">${escapeHtml(s.status)}</span>
@@ -1181,7 +1518,10 @@ function renderScheduleList() {
           ${s.description ? `<div style="font-size:12.5px; color:var(--text-secondary); margin-top:4px;">${escapeHtml(s.description)}</div>` : ""}
         </div>
 
-        <div style="display:flex; gap:5px; align-items:center;">
+        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+          <button class="btn btn-teal btn-sm" onclick="pushSingleEventToGoogleCalendar(${s.id})" title="Add to Google Calendar (${OWNER_GOOGLE_EMAIL})">
+            📅 +Google Cal
+          </button>
           <button class="btn btn-outline btn-sm owner-only-btn" title="Cycle Status" onclick="cycleScheduleStatus(${s.id})">✓ Status</button>
           <button class="btn btn-outline btn-sm owner-only-btn" onclick="openScheduleModal(${s.id})">✏️</button>
           <button class="btn btn-danger btn-sm owner-only-btn" onclick="deleteScheduleItem(${s.id})">🗑️</button>
@@ -1191,14 +1531,16 @@ function renderScheduleList() {
   `).join("");
 }
 
-function openScheduleModal(itemId = null) {
+function openScheduleModal(itemId = null, prefillDate = null) {
   if (!requireOwnerAuth()) return;
   const modal = document.getElementById("schedule-modal");
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = prefillDate || new Date().toISOString().split("T")[0];
+  document.getElementById("sm-open-gcal").checked = false;
+
   if (itemId) {
     const s = STATE.schedule.find(x => x.id === itemId);
     if (!s) return;
-    document.getElementById("schedule-modal-title").textContent = "Edit Schedule / Instrument Slot";
+    document.getElementById("schedule-modal-title").textContent = "Edit Calendar Event / Instrument Slot";
     document.getElementById("sm-id").value = s.id;
     document.getElementById("sm-title").value = s.title || "";
     document.getElementById("sm-type").value = s.event_type || "Synthesis / Furnace";
@@ -1210,7 +1552,7 @@ function openScheduleModal(itemId = null) {
     document.getElementById("sm-status").value = s.status || "Scheduled";
     document.getElementById("sm-desc").value = s.description || "";
   } else {
-    document.getElementById("schedule-modal-title").textContent = "Schedule Experiment / Instrument Slot";
+    document.getElementById("schedule-modal-title").textContent = `Schedule Experiment / Event (${todayStr})`;
     document.getElementById("sm-id").value = "";
     document.getElementById("sm-title").value = "";
     document.getElementById("sm-type").value = "Characterization (XRD/SEM/TEM/XPS)";
@@ -1228,6 +1570,8 @@ function openScheduleModal(itemId = null) {
 async function saveScheduleFromModal() {
   if (!requireOwnerAuth()) return;
   const id = document.getElementById("sm-id").value;
+  const openGcal = document.getElementById("sm-open-gcal").checked;
+
   const payload = {
     title: document.getElementById("sm-title").value.trim(),
     event_type: document.getElementById("sm-type").value,
@@ -1267,7 +1611,11 @@ async function saveScheduleFromModal() {
     closeModal("schedule-modal");
     loadStaticFallbackData();
   }
-  showToast("Schedule updated.");
+
+  if (openGcal) {
+    window.open(buildGoogleCalendarTemplateUrl(payload), "_blank");
+  }
+  showToast("Calendar event saved!");
 }
 
 async function cycleScheduleStatus(id) {
@@ -1288,7 +1636,7 @@ async function cycleScheduleStatus(id) {
     saveStaticDb();
     loadStaticFallbackData();
   }
-  showToast(`Task marked as "${nextStatus}".`);
+  showToast(`Event marked as "${nextStatus}".`);
 }
 
 async function deleteScheduleItem(id) {
@@ -1301,7 +1649,7 @@ async function deleteScheduleItem(id) {
     saveStaticDb();
     loadStaticFallbackData();
   }
-  showToast("Removed schedule item.");
+  showToast("Removed calendar event.");
 }
 
 // ============================================================================
@@ -1320,12 +1668,11 @@ function renderAcademicCvSheet(prof) {
   const awardsList = prof.awards || [];
 
   container.innerHTML = `
-    <!-- CV Header -->
     <div class="cv-header-block">
       <div>
-        <div class="cv-name">${escapeHtml(prof.full_name || "Alex Chen")}</div>
+        <div class="cv-name">${escapeHtml(prof.full_name || "Vu Tien Lam")}</div>
         <div class="cv-role">${escapeHtml(prof.title_role || "Ph.D. Candidate in Materials Science & Engineering")}</div>
-        <div class="cv-affil">${escapeHtml(prof.affiliation || "")} • Advisor: <strong>${escapeHtml(prof.advisor || "")}</strong></div>
+        <div class="cv-affil">${escapeHtml(prof.affiliation || "Sungkyunkwan University (SKKU)")} • Advisor: <strong>${escapeHtml(prof.advisor || "")}</strong></div>
         <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
           <span class="badge badge-blue">📊 Citations: ${prof.total_citations || 0}</span>
           <span class="badge badge-purple">📈 h-index: ${prof.h_index || 0}</span>
@@ -1335,14 +1682,13 @@ function renderAcademicCvSheet(prof) {
       </div>
 
       <div class="cv-contact-box">
-        <div>📧 ${escapeHtml(prof.email || "alex.chen@matsci.edu")}</div>
-        <div>📞 ${escapeHtml(prof.phone || "+1 (555) 234-5678")}</div>
-        <div>📍 ${escapeHtml(prof.location || "Department of Materials Science")}</div>
+        <div>📧 ${escapeHtml(prof.email || OWNER_GOOGLE_EMAIL)}</div>
+        <div>📞 ${escapeHtml(prof.phone || "+82-10-0000-0000")}</div>
+        <div>📍 ${escapeHtml(prof.location || "Sungkyunkwan University (SKKU)")}</div>
         ${prof.website ? `<div>🌐 <a href="${escapeHtml(prof.website)}" target="_blank" style="color:var(--primary); text-decoration:none;">${escapeHtml(prof.website)}</a></div>` : ""}
       </div>
     </div>
 
-    <!-- Research Interests & Executive Summary -->
     <div class="cv-section">
       <div class="cv-section-title">
         <span>1. Research Profile &amp; Specialization</span>
@@ -1353,7 +1699,6 @@ function renderAcademicCvSheet(prof) {
       ${prof.bio ? `<div style="font-size:13px; color:#475569; margin-top:6px; line-height:1.55;">${escapeHtml(prof.bio)}</div>` : ""}
     </div>
 
-    <!-- Education -->
     <div class="cv-section">
       <div class="cv-section-title">
         <span>2. Education &amp; Academic Training</span>
@@ -1374,7 +1719,6 @@ function renderAcademicCvSheet(prof) {
       `).join("")}
     </div>
 
-    <!-- Research & Teaching Experience -->
     <div class="cv-section">
       <div class="cv-section-title">
         <span>3. Research &amp; Academic Appointments</span>
@@ -1395,7 +1739,6 @@ function renderAcademicCvSheet(prof) {
       `).join("")}
     </div>
 
-    <!-- Technical Skills in Materials Science -->
     <div class="cv-section">
       <div class="cv-section-title">
         <span>4. Experimental, Characterization &amp; Computational Skills</span>
@@ -1414,7 +1757,6 @@ function renderAcademicCvSheet(prof) {
       </div>
     </div>
 
-    <!-- Peer-Reviewed Journal Publications -->
     <div class="cv-section">
       <div class="cv-section-title">
         <span>5. Peer-Reviewed Journal Publications (${pubList.length})</span>
@@ -1438,7 +1780,6 @@ function renderAcademicCvSheet(prof) {
       `).join("")}
     </div>
 
-    <!-- Conference Presentations -->
     <div class="cv-section">
       <div class="cv-section-title">
         <span>6. Conference Presentations &amp; Invited Talks</span>
@@ -1458,7 +1799,6 @@ function renderAcademicCvSheet(prof) {
       `).join("")}
     </div>
 
-    <!-- Honors & Awards -->
     <div class="cv-section" style="margin-bottom:0;">
       <div class="cv-section-title">
         <span>7. Honors, Fellowships &amp; Academic Awards</span>
@@ -1484,7 +1824,7 @@ async function addCvEducation() {
   if (!requireOwnerAuth()) return;
   const degree = prompt("Degree Title (e.g., Ph.D. in Materials Science & Engineering):");
   if (!degree) return;
-  const institution = prompt("University / Institution:", "Advanced Materials Research Institute") || "";
+  const institution = prompt("University / Institution:", "Sungkyunkwan University (SKKU)") || "";
   const period = prompt("Period (e.g., 2024 – Present):", "2024 – Present") || "";
   const details = prompt("Thesis / Advisor / Honors details:", "") || "";
 
@@ -1497,7 +1837,7 @@ async function addCvExperience() {
   if (!requireOwnerAuth()) return;
   const role = prompt("Position / Role Title (e.g., Graduate Research Assistant):");
   if (!role) return;
-  const organization = prompt("Laboratory / Organization:", STATE.profile.affiliation || "") || "";
+  const organization = prompt("Laboratory / Organization:", STATE.profile.affiliation || "Sungkyunkwan University (SKKU)") || "";
   const period = prompt("Period (e.g., 2024 – Present):", "2024 – Present") || "";
   const description = prompt("Key Responsibilities & Achievements:", "") || "";
 
@@ -1510,8 +1850,8 @@ async function addCvConference() {
   if (!requireOwnerAuth()) return;
   const title = prompt("Presentation Title:");
   if (!title) return;
-  const event = prompt("Conference Name & Location (e.g., MRS Fall Meeting, Boston):", "MRS Fall Meeting") || "";
-  const type = prompt("Presentation Type (Oral Presentation / Poster Presentation / Invited Talk):", "Oral Presentation") || "Oral Presentation";
+  const event = prompt("Conference Name & Location:", "MRS Fall Meeting") || "";
+  const type = prompt("Presentation Type (Oral Presentation / Poster Presentation):", "Oral Presentation") || "Oral Presentation";
   const year = parseInt(prompt("Year:", "2026")) || 2026;
 
   STATE.profile.conferences = STATE.profile.conferences || [];
@@ -1523,7 +1863,7 @@ async function addCvAward() {
   if (!requireOwnerAuth()) return;
   const title = prompt("Award / Fellowship Name:");
   if (!title) return;
-  const issuer = prompt("Granting Institution / Society:", "Materials Research Society") || "";
+  const issuer = prompt("Granting Institution / Society:", "Sungkyunkwan University (SKKU)") || "";
   const year = parseInt(prompt("Year:", "2026")) || 2026;
   const details = prompt("Brief Description:", "") || "";
 
@@ -1577,9 +1917,9 @@ async function autofillReportFromDatabase(silent = false) {
         title: "Weekly Research Progress Report",
         week_start: today,
         week_end: today,
-        presenter_name: STATE.profile.full_name || "Alex Chen",
-        advisor_name: STATE.profile.advisor || "Prof. Sarah Jenkins",
-        lab_name: STATE.profile.affiliation || "Nanomaterials & Energy Storage Lab",
+        presenter_name: STATE.profile.full_name || "Vu Tien Lam",
+        advisor_name: STATE.profile.advisor || "Prof. Advisor",
+        lab_name: STATE.profile.affiliation || "Sungkyunkwan University (SKKU)",
         university: "Department of Materials Science & Engineering",
         summary_achievements: STATE.notes.map(n => `• [${n.sample_id || "EXP"}] ${n.key_findings || n.title}`).join("\n"),
         experimental_results: STATE.notes.map(n => ({
@@ -1612,7 +1952,7 @@ function populateReportForm(data) {
   document.getElementById("rep-title").value = data.title || "Weekly Research Progress Report";
   document.getElementById("rep-start").value = data.week_start || "";
   document.getElementById("rep-end").value = data.week_end || "";
-  document.getElementById("rep-presenter").value = data.presenter_name || "";
+  document.getElementById("rep-presenter").value = data.presenter_name || "Vu Tien Lam";
   document.getElementById("rep-advisor").value = data.advisor_name || "";
   document.getElementById("rep-lab").value = data.lab_name || "";
   document.getElementById("rep-uni").value = data.university || "";
@@ -1631,7 +1971,7 @@ function populateReportForm(data) {
 function renderExpReportRows() {
   const container = document.getElementById("rep-exp-rows-container");
   container.innerHTML = STATE.expReportRows.map((r, idx) => `
-    <div style="display:grid; grid-template-columns: 1.1fr 1.2fr 1.5fr 2fr auto; gap:6px; background:#f8fafc; padding:8px; border-radius:8px; border:1px solid var(--border-color);">
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:6px; background:#f8fafc; padding:8px; border-radius:8px; border:1px solid var(--border-color);">
       <input type="text" placeholder="Sample ID" value="${escapeHtml(r.sample_id)}" oninput="STATE.expReportRows[${idx}].sample_id=this.value; updateSlidePreview()" />
       <input type="text" placeholder="Formula" value="${escapeHtml(r.material)}" oninput="STATE.expReportRows[${idx}].material=this.value; updateSlidePreview()" />
       <input type="text" placeholder="Conditions" value="${escapeHtml(r.conditions)}" oninput="STATE.expReportRows[${idx}].conditions=this.value; updateSlidePreview()" />
@@ -1656,7 +1996,7 @@ function addExpResultRow() {
 function renderLitReportRows() {
   const container = document.getElementById("rep-lit-rows-container");
   container.innerHTML = STATE.litReportRows.map((r, idx) => `
-    <div style="display:grid; grid-template-columns: 1.8fr 1.2fr 2fr auto; gap:6px; background:#f8fafc; padding:8px; border-radius:8px; border:1px solid var(--border-color);">
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:6px; background:#f8fafc; padding:8px; border-radius:8px; border:1px solid var(--border-color);">
       <input type="text" placeholder="Paper Title" value="${escapeHtml(r.title)}" oninput="STATE.litReportRows[${idx}].title=this.value; updateSlidePreview()" />
       <input type="text" placeholder="Journal (Year)" value="${escapeHtml(r.journal)}" oninput="STATE.litReportRows[${idx}].journal=this.value; updateSlidePreview()" />
       <input type="text" placeholder="Key Takeaway" value="${escapeHtml(r.takeaway)}" oninput="STATE.litReportRows[${idx}].takeaway=this.value; updateSlidePreview()" />
@@ -1681,10 +2021,10 @@ function collectReportPayload() {
     title: document.getElementById("rep-title").value.trim() || "Weekly Research Progress Report",
     week_start: document.getElementById("rep-start").value || "2026-11-09",
     week_end: document.getElementById("rep-end").value || "2026-11-13",
-    presenter_name: document.getElementById("rep-presenter").value.trim() || "Alex Chen",
-    advisor_name: document.getElementById("rep-advisor").value.trim() || "Prof. Sarah Jenkins",
-    lab_name: document.getElementById("rep-lab").value.trim() || "Nanomaterials & Energy Storage Lab",
-    university: document.getElementById("rep-uni").value.trim() || "Department of Materials Science & Engineering",
+    presenter_name: document.getElementById("rep-presenter").value.trim() || "Vu Tien Lam",
+    advisor_name: document.getElementById("rep-advisor").value.trim() || "Prof. Advisor",
+    lab_name: document.getElementById("rep-lab").value.trim() || "Advanced Materials Lab (SKKU)",
+    university: document.getElementById("rep-uni").value.trim() || "Sungkyunkwan University (SKKU)",
     theme_color: document.getElementById("rep-theme").value || "oxford_navy",
     summary_achievements: document.getElementById("rep-achievements").value,
     experimental_results: STATE.expReportRows,
@@ -1712,26 +2052,24 @@ function updateSlidePreview() {
 
   const deck = document.getElementById("slide-preview-deck");
   deck.innerHTML = `
-    <!-- Slide 1 -->
     <div class="slide-mock" style="background:${tc.head}; color:#fff; padding:18px 20px; border-left:8px solid ${tc.bar};">
       <div style="font-size:11px; text-transform:uppercase; color:#38bdf8; font-weight:700;">${escapeHtml(data.university)} • ${escapeHtml(data.lab_name)}</div>
       <div style="font-size:19px; font-weight:800; margin-top:6px;">${escapeHtml(data.title)}</div>
       <div style="font-size:12.5px; color:#cbd5e1; margin-top:4px;">Reporting Period: ${escapeHtml(data.week_start)} — ${escapeHtml(data.week_end)}</div>
-      <div style="margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.15); font-size:12px; display:flex; justify-content:space-between;">
+      <div style="margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.15); font-size:12px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px;">
         <span><strong>Presenter:</strong> ${escapeHtml(data.presenter_name)}</span>
         <span><strong>PI:</strong> ${escapeHtml(data.advisor_name)}</span>
         <span>Slide 1 / 5</span>
       </div>
     </div>
 
-    <!-- Slide 2 -->
     <div class="slide-mock">
       <div class="slide-mock-header" style="background:${tc.head}; border-bottom-color:${tc.bar};">
         <span>1. Executive Summary &amp; Completed Work</span>
         <span>Slide 2 / 5</span>
       </div>
       <div class="slide-mock-body">
-        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:10px;">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(100px, 1fr)); gap:8px; margin-bottom:10px;">
           <div style="background:#fff; padding:6px 10px; border-radius:6px; border:1px solid #e2e8f0;"><strong>${data.metrics.samples_count}</strong> Samples</div>
           <div style="background:#fff; padding:6px 10px; border-radius:6px; border:1px solid #e2e8f0;"><strong>${data.metrics.characterizations_count}</strong> Characterizations</div>
           <div style="background:#fff; padding:6px 10px; border-radius:6px; border:1px solid #e2e8f0;"><strong>${data.metrics.papers_count}</strong> Papers</div>
@@ -1741,7 +2079,6 @@ function updateSlidePreview() {
       </div>
     </div>
 
-    <!-- Slide 3 -->
     <div class="slide-mock">
       <div class="slide-mock-header" style="background:${tc.head}; border-bottom-color:${tc.bar};">
         <span>2. Experimental Synthesis &amp; Characterization Results</span>
@@ -1769,7 +2106,6 @@ function updateSlidePreview() {
       </div>
     </div>
 
-    <!-- Slide 4 -->
     <div class="slide-mock">
       <div class="slide-mock-header" style="background:${tc.head}; border-bottom-color:${tc.bar};">
         <span>3. Literature Review &amp; State-of-the-Art Benchmarking</span>
@@ -1786,13 +2122,12 @@ function updateSlidePreview() {
       </div>
     </div>
 
-    <!-- Slide 5 -->
     <div class="slide-mock">
       <div class="slide-mock-header" style="background:${tc.head}; border-bottom-color:${tc.bar};">
         <span>4. Challenges, Troubleshooting &amp; Next Week Plan</span>
         <span>Slide 5 / 5</span>
       </div>
-      <div class="slide-mock-body" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+      <div class="slide-mock-body" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
         <div style="background:#fff; padding:10px; border-radius:6px; border:1px solid #f59e0b;">
           <div style="font-weight:700; color:#b45309; margin-bottom:4px;">⚠️ Blockers &amp; Troubleshooting</div>
           <div style="white-space:pre-line; font-size:11.5px;">${escapeHtml(data.blockers_troubleshooting)}</div>
@@ -1829,7 +2164,6 @@ async function downloadWeeklyReportPptx() {
       a.remove();
       window.URL.revokeObjectURL(url);
     } else if (window.PptxGenJS) {
-      // Client-side PptxGenJS generation when hosted on GitHub Pages
       const pptx = new PptxGenJS();
       pptx.layout = "LAYOUT_16x9";
       const s1 = pptx.addSlide();
@@ -1915,22 +2249,22 @@ function inspectElement(atomicNumber) {
 
   const box = document.getElementById("element-inspector");
   box.innerHTML = `
-    <div style="display:flex; align-items:center; gap:16px;">
-      <div class="cat-${el.cat}" style="width:64px; height:64px; border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; border:1px solid rgba(0,0,0,0.1);">
+    <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+      <div class="cat-${el.cat}" style="width:60px; height:60px; border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; border:1px solid rgba(0,0,0,0.1); flex-shrink:0;">
         <div style="font-size:11px; font-weight:700;">${el.n}</div>
-        <div style="font-size:24px; font-weight:800; line-height:1;">${el.s}</div>
+        <div style="font-size:22px; font-weight:800; line-height:1;">${el.s}</div>
       </div>
       <div>
-        <div style="font-size:18px; font-weight:800; color:var(--text-main);">
+        <div style="font-size:17px; font-weight:800; color:var(--text-main);">
           ${el.name} (${el.s})
           <span class="badge cat-${el.cat}" style="margin-left:6px; text-transform:capitalize;">${el.cat.replace("-", " ")}</span>
         </div>
-        <div style="font-size:13px; color:var(--text-secondary); margin-top:4px;">
+        <div style="font-size:12.5px; color:var(--text-secondary); margin-top:4px;">
           <strong>Atomic Mass:</strong> ${el.m} g/mol &nbsp;|&nbsp;
           <strong>Electron Config:</strong> <code>${el.conf}</code> &nbsp;|&nbsp;
           <strong>Oxidation States:</strong> ${el.ox}
         </div>
-        <div style="font-size:13px; color:var(--text-secondary); margin-top:3px;">
+        <div style="font-size:12.5px; color:var(--text-secondary); margin-top:3px;">
           <strong>Crystal Structure:</strong> ${el.crys} ${el.a ? `(a = ${el.a} Å)` : ""} &nbsp;|&nbsp;
           <strong>Melting Point:</strong> ${el.mp !== null ? `${el.mp} °C` : "N/A"} &nbsp;|&nbsp;
           <strong>Density:</strong> ${el.rho !== null ? `${el.rho} g/cm³` : "N/A"} &nbsp;|&nbsp;
@@ -2181,14 +2515,16 @@ function updateBragg(mode) {
 
 function renderProfile(prof) {
   if (!prof) return;
-  document.getElementById("sidebar-researcher-name").textContent = prof.full_name || "Alex Chen";
-  document.getElementById("sidebar-researcher-role").textContent = prof.title_role || "Ph.D. Candidate";
+  const subEl = document.getElementById("header-researcher-sub");
+  if (subEl) {
+    subEl.textContent = `${prof.full_name || "Vu Tien Lam"} • ${prof.affiliation || "SKKU"} (${OWNER_GOOGLE_EMAIL})`;
+  }
 
-  document.getElementById("prof-name").value = prof.full_name || "";
+  document.getElementById("prof-name").value = prof.full_name || "Vu Tien Lam";
   document.getElementById("prof-role").value = prof.title_role || "";
   document.getElementById("prof-affiliation").value = prof.affiliation || "";
   document.getElementById("prof-advisor").value = prof.advisor || "";
-  document.getElementById("prof-email").value = prof.email || "";
+  document.getElementById("prof-email").value = prof.email || OWNER_GOOGLE_EMAIL;
   document.getElementById("prof-phone").value = prof.phone || "";
   document.getElementById("prof-website").value = prof.website || "";
   document.getElementById("prof-location").value = prof.location || "";
@@ -2232,14 +2568,14 @@ function renderProfile(prof) {
 
 async function persistProfileState() {
   const payload = {
-    full_name: document.getElementById("prof-name").value.trim() || STATE.profile.full_name || "Alex Chen",
+    full_name: document.getElementById("prof-name").value.trim() || STATE.profile.full_name || "Vu Tien Lam",
     title_role: document.getElementById("prof-role").value.trim() || STATE.profile.title_role || "",
     affiliation: document.getElementById("prof-affiliation").value.trim() || STATE.profile.affiliation || "",
     advisor: document.getElementById("prof-advisor").value.trim() || STATE.profile.advisor || "",
     research_focus: document.getElementById("prof-focus").value.trim() || STATE.profile.research_focus || "",
     orcid_id: document.getElementById("sync-orcid-input").value.trim() || STATE.profile.orcid_id || "",
     scholar_id: document.getElementById("sync-scholar-input").value.trim() || STATE.profile.scholar_id || "",
-    email: document.getElementById("prof-email").value.trim() || STATE.profile.email || "",
+    email: document.getElementById("prof-email").value.trim() || OWNER_GOOGLE_EMAIL,
     phone: document.getElementById("prof-phone").value.trim() || STATE.profile.phone || "",
     website: document.getElementById("prof-website").value.trim() || STATE.profile.website || "",
     location: document.getElementById("prof-location").value.trim() || STATE.profile.location || "",
@@ -2399,7 +2735,7 @@ async function addOwnPublicationModal() {
   STATE.profile.publications = STATE.profile.publications || [];
   STATE.profile.publications.unshift({
     title,
-    authors: STATE.profile.full_name || "Alex Chen",
+    authors: STATE.profile.full_name || "Vu Tien Lam",
     journal: journal || "Journal",
     year,
     doi: doi ? normalizeDoiClient(doi) : "",
