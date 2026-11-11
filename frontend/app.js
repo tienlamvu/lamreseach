@@ -3099,6 +3099,7 @@ async function loadStaticFallbackData() {
 
     saveStaticDb();
   }
+}
 
   const dashData = {
     stats: {
