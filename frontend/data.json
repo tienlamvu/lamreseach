@@ -31,13 +31,13 @@
       {
         "degree": "Doctor",
         "institution": "Sungkyunkwan University",
-        "period": "20.25 – Present",
+        "period": "2025 – Present",
         "details": ""
       },
       {
         "degree": "Master of Science",
         "institution": "Hanoi University of Science and Technology",
-        "period": "20.22 – 20.24",
+        "period": "2022 – 2024",
         "details": "Faculty of Engineering Physics"
       }
     ],
@@ -45,13 +45,13 @@
       {
         "role": "Graduate Research Assistant (Ph.D. Researcher)",
         "organization": "Nanomaterials & Energy Storage Laboratory (PI: Prof. Sarah Jenkins)",
-        "period": "20.24 – Present",
+        "period": "2024 – Present",
         "description": "Leading solid-state garnet electrolyte synthesis (LLZTO), thermal ALD surface modification, synchrotron XRD Rietveld refinement, and in-situ XPS interfacial analysis."
       },
       {
-        "role": "Graduate Teaching Assistant — Crystallography & Diffraction (MATSCI 30.2)",
+        "role": "Graduate Teaching Assistant — Crystallography & Diffraction (MATSCI 302)",
         "organization": "Department of Materials Science & Engineering",
-        "period": "Fall 20.25 – Spring 20.26",
+        "period": "Fall 2025 – Spring 2026",
         "description": "Instructed weekly powder XRD laboratory sessions, Bragg/Scherrer phase indexing, and GSAS-II refinement tutorials for 45 undergraduate students."
       }
     ],
@@ -329,13 +329,13 @@
         "title": "Suppressing Li Dendrite Propagation at Garnet Solid Electrolyte Interfaces via Atomic Layer Deposition",
         "event": "MRS Fall Meeting & Exhibit (Boston, MA)",
         "type": "Oral Presentation",
-        "year": 20.25
+        "year": 2025
       },
       {
         "title": "In-Situ Raman and XRD Investigation of Interlayer Expanded MoS2/Ti3C2Tx Heterostructures",
         "event": "Electrochemical Society (ECS) International Meeting",
         "type": "Poster Presentation (Best Poster Finalist)",
-        "year": 20.24
+        "year": 2024
       }
     ],
     "skills": {
@@ -345,22 +345,17 @@
     },
     "awards": [
       {
-        "title": "http://127.0.0.1:8000/",
-        "issuer": "Sungkyunkwan University (SKKU)",
-        "year": "20.26",
-        "visibility": "Public",
-        "details": ""
-      },
-      {
         "title": "Graduate Research Fellowship in Advanced Energy Materials",
         "issuer": "Materials Research Institute",
-        "year": 20.25,
+        "year": 2025,
+        "visibility": "Public",
         "details": "Full doctoral tuition and stipend award for top 5% PhD candidates."
       },
       {
         "title": "Outstanding Symposium Poster Award",
         "issuer": "Symposium EN04 — Solid-State Batteries",
-        "year": 20.24,
+        "year": 2024,
+        "visibility": "Public",
         "details": "Recognized for excellence in interfacial XPS characterization."
       }
     ]

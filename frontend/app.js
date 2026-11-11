@@ -3451,20 +3451,22 @@ function renderAcademicCvSheet(prof) {
         <span>2. Education &amp; Academic Training</span>
         <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" onclick="openEducationModal()">+ Add Degree</button>
       </div>
-      ${eduList.length === 0 ? `<div style="font-size:13px; color:var(--text-muted); font-style:italic;">No education records listed yet.</div>` : eduList.map((e, i) => `
+      ${eduList.length === 0 ? `<div style="font-size:13px; color:var(--text-muted); font-style:italic;">No education records listed yet.</div>` : eduList.map((e, i) => {
+        const targetIdx = rawEdu.indexOf(e) >= 0 ? rawEdu.indexOf(e) : i;
+        return `
         <div class="cv-entry">
           <div class="cv-entry-head">
             <span>🎓 ${escapeHtml(e.degree)} ${e.visibility === "Private" ? `<span class="badge badge-rose" style="font-size:11px; margin-left:6px;">🔒 Private</span>` : ""}</span>
             <div style="display:flex; align-items:center; gap:8px;">
               <span style="font-size:12.5px; color:var(--text-muted);">${escapeHtml(e.period)}</span>
-              <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" title="Edit Degree" onclick="openEducationModal(${i})">✏️</button>
-              <button class="btn btn-danger btn-sm no-print owner-only-btn admin-only" title="Delete Degree" onclick="removeCvItem('education', ${i})">✕</button>
+              <button class="btn btn-outline btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Edit Degree" onclick="openEducationModal(${targetIdx})">✏️</button>
+              <button class="btn btn-danger btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Delete Degree" onclick="removeCvItem('education', ${targetIdx}, event)">✕</button>
             </div>
           </div>
           <div class="cv-entry-sub">${escapeHtml(e.institution)}</div>
           ${e.details ? `<div class="cv-entry-desc">${escapeHtml(e.details)}</div>` : ""}
         </div>
-      `).join("")}
+      `;}).join("")}
     </div>
 
     <div class="cv-section">
@@ -3472,20 +3474,22 @@ function renderAcademicCvSheet(prof) {
         <span>3. Research &amp; Academic Appointments</span>
         <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" onclick="openExperienceModal()">+ Add Position</button>
       </div>
-      ${expList.length === 0 ? `<div style="font-size:13px; color:var(--text-muted); font-style:italic;">No appointment records listed yet.</div>` : expList.map((ex, i) => `
+      ${expList.length === 0 ? `<div style="font-size:13px; color:var(--text-muted); font-style:italic;">No appointment records listed yet.</div>` : expList.map((ex, i) => {
+        const targetIdx = rawExp.indexOf(ex) >= 0 ? rawExp.indexOf(ex) : i;
+        return `
         <div class="cv-entry">
           <div class="cv-entry-head">
             <span>🔬 ${escapeHtml(ex.role)} ${ex.visibility === "Private" ? `<span class="badge badge-rose" style="font-size:11px; margin-left:6px;">🔒 Private</span>` : ""}</span>
             <div style="display:flex; align-items:center; gap:8px;">
               <span style="font-size:12.5px; color:var(--text-muted);">${escapeHtml(ex.period)}</span>
-              <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" title="Edit Position" onclick="openExperienceModal(${i})">✏️</button>
-              <button class="btn btn-danger btn-sm no-print owner-only-btn admin-only" title="Delete Position" onclick="removeCvItem('experiences', ${i})">✕</button>
+              <button class="btn btn-outline btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Edit Position" onclick="openExperienceModal(${targetIdx})">✏️</button>
+              <button class="btn btn-danger btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Delete Position" onclick="removeCvItem('experiences', ${targetIdx}, event)">✕</button>
             </div>
           </div>
           <div class="cv-entry-sub">${escapeHtml(ex.organization)}</div>
           ${ex.description ? `<div class="cv-entry-desc">${escapeHtml(ex.description)}</div>` : ""}
         </div>
-      `).join("")}
+      `;}).join("")}
     </div>
 
     <div class="cv-section">
@@ -3513,14 +3517,16 @@ function renderAcademicCvSheet(prof) {
         <span>6. Conference Presentations &amp; Seminars</span>
         <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" onclick="openConferenceModal()">+ Add Presentation</button>
       </div>
-      ${confList.length === 0 ? `<div style="font-size:13px; color:var(--text-muted); font-style:italic;">No conference presentations listed yet.</div>` : confList.map((c, i) => `
+      ${confList.length === 0 ? `<div style="font-size:13px; color:var(--text-muted); font-style:italic;">No conference presentations listed yet.</div>` : confList.map((c, i) => {
+        const targetIdx = rawConf.indexOf(c) >= 0 ? rawConf.indexOf(c) : i;
+        return `
         <div class="cv-entry">
           <div class="cv-entry-head">
             <span>🎤 ${escapeHtml(c.title)} ${c.visibility === "Private" ? `<span class="badge badge-rose" style="font-size:11px; margin-left:6px;">🔒 Private</span>` : ""}</span>
             <div style="display:flex; align-items:center; gap:8px;">
               <span class="badge badge-blue">${escapeHtml(c.type || "Oral")} (${c.year || 2026})</span>
-              <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" title="Edit Presentation" onclick="openConferenceModal(${i})">✏️</button>
-              <button class="btn btn-danger btn-sm no-print owner-only-btn admin-only" title="Delete Presentation" onclick="removeCvItem('conferences', ${i})">✕</button>
+              <button class="btn btn-outline btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Edit Presentation" onclick="openConferenceModal(${targetIdx})">✏️</button>
+              <button class="btn btn-danger btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Delete Presentation" onclick="removeCvItem('conferences', ${targetIdx}, event)">✕</button>
             </div>
           </div>
           <div class="cv-entry-sub">
@@ -3528,7 +3534,7 @@ function renderAcademicCvSheet(prof) {
             ${c.url ? ` • <a href="${escapeHtml(c.url)}" target="_blank" style="color:var(--primary); font-size:12px; text-decoration:none;">Program / Slides ↗</a>` : ""}
           </div>
         </div>
-      `).join("")}
+      `;}).join("")}
     </div>
 
     <div class="cv-section" style="margin-bottom:0;">
@@ -3536,19 +3542,21 @@ function renderAcademicCvSheet(prof) {
         <span>7. Honors, Fellowships &amp; Academic Awards</span>
         <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" onclick="openAwardModal()">+ Add Honor/Award</button>
       </div>
-      ${awardsList.length === 0 ? `<div style="font-size:13px; color:var(--text-muted); font-style:italic;">No honors or awards listed yet.</div>` : awardsList.map((a, i) => `
+      ${awardsList.length === 0 ? `<div style="font-size:13px; color:var(--text-muted); font-style:italic;">No honors or awards listed yet.</div>` : awardsList.map((a, i) => {
+        const targetIdx = rawAwards.indexOf(a) >= 0 ? rawAwards.indexOf(a) : i;
+        return `
         <div class="cv-entry">
           <div class="cv-entry-head">
             <span>🏆 ${escapeHtml(a.title)} ${a.visibility === "Private" ? `<span class="badge badge-rose" style="font-size:11px; margin-left:6px;">🔒 Private</span>` : ""}</span>
             <div style="display:flex; align-items:center; gap:8px;">
               <span style="font-size:12.5px; color:var(--text-muted);">${escapeHtml(a.issuer)} (${a.year || 2026})</span>
-              <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" title="Edit Honor/Award" onclick="openAwardModal(${i})">✏️</button>
-              <button class="btn btn-danger btn-sm no-print owner-only-btn admin-only" title="Delete Honor/Award" onclick="removeCvItem('awards', ${i})">✕</button>
+              <button class="btn btn-outline btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Edit Honor/Award" onclick="openAwardModal(${targetIdx})">✏️</button>
+              <button class="btn btn-danger btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Delete Honor/Award" onclick="removeCvItem('awards', ${targetIdx}, event)">✕</button>
             </div>
           </div>
           ${a.details ? `<div class="cv-entry-desc">${escapeHtml(a.details)}</div>` : ""}
         </div>
-      `).join("")}
+      `;}).join("")}
     </div>
   `;
 }
@@ -4132,10 +4140,10 @@ async function saveConferenceFromModal() {
     STATE.profile.conferences.unshift(confObj);
   }
 
-  await persistProfileState();
   closeModal("conference-modal");
   renderAcademicCvSheet(STATE.profile);
-  showToast(`Conference presentation saved (${visibility})!`);
+  showToast(`Conference presentation saved (${visibility})!`, "success");
+  await persistProfileState();
 }
 
 function openAwardModal(idx = null) {
@@ -4203,10 +4211,10 @@ async function saveAwardFromModal() {
     STATE.profile.awards.unshift(awardObj);
   }
 
-  await persistProfileState();
   closeModal("award-modal");
   renderAcademicCvSheet(STATE.profile);
-  showToast(`Award saved (${visibility})!`);
+  showToast(`Award saved (${visibility})!`, "success");
+  await persistProfileState();
 }
 
 function openEducationModal(idx = null) {
@@ -4274,10 +4282,10 @@ async function saveEducationFromModal() {
     STATE.profile.education.unshift(eduObj);
   }
 
-  await persistProfileState();
   closeModal("education-modal");
   renderAcademicCvSheet(STATE.profile);
-  showToast(`Degree saved (${visibility})!`);
+  showToast(`Degree saved (${visibility})!`, "success");
+  await persistProfileState();
 }
 
 function openExperienceModal(idx = null) {
@@ -4345,10 +4353,10 @@ async function saveExperienceFromModal() {
     STATE.profile.experiences.unshift(expObj);
   }
 
-  await persistProfileState();
   closeModal("experience-modal");
   renderAcademicCvSheet(STATE.profile);
-  showToast(`Experience saved (${visibility})!`);
+  showToast(`Experience saved (${visibility})!`, "success");
+  await persistProfileState();
 }
 
 function addCvEducation() { openEducationModal(); }
@@ -4356,11 +4364,23 @@ function addCvExperience() { openExperienceModal(); }
 function addCvConference() { openConferenceModal(); }
 function addCvAward() { openAwardModal(); }
 
-async function removeCvItem(listKey, idx) {
+async function removeCvItem(listKey, idx, e) {
+  if (e) {
+    if (e.stopPropagation) e.stopPropagation();
+    if (e.preventDefault) e.preventDefault();
+  }
   if (!requireAdminAuth()) return;
-  if (Array.isArray(STATE.profile[listKey])) {
-    STATE.profile[listKey].splice(idx, 1);
+  if (!Array.isArray(STATE.profile[listKey])) return;
+  if (idx < 0 || idx >= STATE.profile[listKey].length) return;
+
+  STATE.profile[listKey].splice(idx, 1);
+  renderAcademicCvSheet(STATE.profile);
+  showToast("Item deleted from Academic CV!", "info");
+
+  try {
     await persistProfileState();
+  } catch (err) {
+    console.error("Failed to persist CV item removal:", err);
   }
 }
 
@@ -4922,10 +4942,25 @@ async function handleSyncScholar() {
 
 // Handled by openOwnPublicationModal() defined above
 
-async function removeOwnPub(idx) {
+async function removeOwnPub(idx, e) {
+  if (e) {
+    if (e.stopPropagation) e.stopPropagation();
+    if (e.preventDefault) e.preventDefault();
+  }
   if (!requireAdminAuth()) return;
+  if (!Array.isArray(STATE.profile.publications)) return;
+  if (idx < 0 || idx >= STATE.profile.publications.length) return;
+
   STATE.profile.publications.splice(idx, 1);
-  await persistProfileState();
+  renderProfile(STATE.profile);
+  renderAcademicCvSheet(STATE.profile);
+  showToast("Publication removed!", "info");
+
+  try {
+    await persistProfileState();
+  } catch (err) {
+    console.error("Failed to persist publication deletion:", err);
+  }
 }
 
 // ============================================================================
