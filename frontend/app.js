@@ -2798,7 +2798,8 @@ async function loadStaticFallbackData() {
         const saved = localStorage.getItem("matsci_static_db_v4");
         if (saved) {
           try {
-            const localTime = parsed.updated_at ? new Date(parsed.updated_at).getTime() : 0;
+            const parsed = JSON.parse(saved);
+            const localTime = parsed && parsed.updated_at ? new Date(parsed.updated_at).getTime() : 0;
             const remoteExportedStr = (remoteData.exported_at || "").replace("20.", "20");
             const remoteTime = remoteExportedStr ? new Date(remoteExportedStr).getTime() : 0;
             if (!isNaN(localTime) && !isNaN(remoteTime) && localTime > remoteTime) {
@@ -2808,7 +2809,9 @@ async function loadStaticFallbackData() {
               STATE.profile = parsed.profile || {};
               loadedFromDataJson = true;
             }
-          } catch (e) {}
+          } catch (e) {
+            console.warn("Could not load from localStorage:", e);
+          }
         }
         if (!loadedFromDataJson) {
           STATE.papers = remoteData.papers || [];
@@ -3255,6 +3258,36 @@ async function commitDataJsonToGitHub() {
         throw new Error("GitHub Token không hợp lệ hoặc đã hết hạn. Hãy thử nhập lại.");
       }
       throw new Error(errData.message || `Lỗi GitHub HTTP ${putRes.status}`);
+    }
+
+    // Also sync root data.json
+    try {
+      let rootSha = "";
+      const rootGet = await fetch(`https://api.github.com/repos/${repo}/contents/data.json?v=${Date.now()}`, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/vnd.github.v3+json"
+        }
+      });
+      if (rootGet.ok) {
+        const rootData = await rootGet.json();
+        rootSha = rootData.sha;
+      }
+      await fetch(`https://api.github.com/repos/${repo}/contents/data.json`, {
+        method: "PUT",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/vnd.github.v3+json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          message: `Direct Cloud Sync: Updated root data.json [${new Date().toLocaleString()}]`,
+          content: base64Content,
+          sha: rootSha || undefined
+        })
+      });
+    } catch (e) {
+      console.warn("Could not sync root data.json:", e);
     }
 
     showToast("🎉 Đã đồng bộ trực tiếp lên GitHub thành công! Mọi thiết bị khác sẽ thấy thay đổi sau khoảng 1 phút.", "success");
