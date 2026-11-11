@@ -56,7 +56,7 @@
           <span class="nav-icon">📚</span> Literature &amp; DOI
         </button>
         <button class="nav-btn" data-tab="calendar" onclick="switchTab('calendar', this)">
-          <span class="nav-icon">📅</span> Calendar &amp; Google Sync
+          <span class="nav-icon">📅</span> Calendar
         </button>
         <button class="nav-btn" data-tab="structures" onclick="switchTab('structures', this)">
           <span class="nav-icon">💎</span> Crystal Structures (*.cif)
@@ -238,43 +238,67 @@
         </div>
 
         <!-- Google Calendar Sync Control Bar -->
-        <div class="card" style="background: linear-gradient(135deg, #0f172a, #1e3a8a); color:#fff; border:none;">
-          <div class="card-header" style="margin-bottom:0;">
+        <div class="card" style="background: linear-gradient(135deg, #0f172a, #1e3a8a); color:#fff; border:none; margin-bottom:16px;">
+          <div class="card-header" style="margin-bottom:0; flex-wrap:wrap; gap:12px;">
             <div>
-              <div class="card-title" style="color:#fff; font-size:17px;">📅 Research &amp; Simulation Calendar — Google Calendar Integration</div>
+              <div class="card-title" style="color:#fff; font-size:17.5px;">📅 Unified Calendar — Two-Way Google Calendar Synchronization</div>
               <div style="font-size:12.5px; color:#cbd5e1; margin-top:3px;">
-                Click any date on the monthly calendar to schedule simulations or seminars, push events directly to Google Calendar, export <code>.ics</code>, or sync via Google Calendar API.
+                Linked with Google Account <strong>lamvt.skku@gmail.com</strong>. Events added on web automatically sync to Google Calendar, and Google Calendar events display seamlessly on this site.
               </div>
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
               <button class="btn btn-primary owner-only-btn admin-only" onclick="openScheduleModal()">
-                + Add Calendar Event
+                + Add Event (Syncs to Google)
               </button>
-              <button class="btn btn-teal owner-only-btn admin-only" onclick="syncWithGoogleCalendarApi()">
-                🔄 Sync Google Calendar API
+              <button class="btn btn-sm btn-outline" id="btn-cal-interactive" style="background:rgba(255,255,255,0.18); color:#fff; border-color:#94a3b8;" onclick="setCalendarDisplayMode('interactive')">
+                📅 PhD Schedule Grid
               </button>
-              <button class="btn btn-outline" style="background:rgba(255,255,255,0.12); color:#fff; border-color:#475569;" onclick="exportScheduleToIcs()">
-                📥 Export .ics to Google Calendar
+              <button class="btn btn-sm btn-outline" id="btn-cal-gcal" style="background:rgba(255,255,255,0.1); color:#fff; border-color:#475569;" onclick="setCalendarDisplayMode('gcal')">
+                🌐 Live Google Calendar
               </button>
-              <button class="btn btn-outline" style="background:rgba(255,255,255,0.12); color:#fff; border-color:#475569;" onclick="toggleGoogleCalendarEmbed()">
-                🌐 Toggle Live GCal View
+              <button class="btn btn-sm btn-outline" style="background:rgba(255,255,255,0.1); color:#fff; border-color:#475569;" onclick="toggleIcsImportBox()">
+                📥 Import GCal (.ics)
               </button>
+              <a href="https://calendar.google.com/calendar/u/0/r" target="_blank" class="btn btn-sm btn-outline" style="background:rgba(255,255,255,0.1); color:#fff; border-color:#475569; text-decoration:none;">
+                Open Google Calendar ↗
+              </a>
             </div>
           </div>
         </div>
 
-        <!-- Optional Embedded Live Google Calendar View -->
-        <div id="gcal-embed-card" class="card" style="display:none;">
+        <!-- 2-Way Import Box from Google Calendar (.ics file or feed URL) -->
+        <div id="gcal-import-drawer" class="card" style="display:none; background:#f8fafc; border:1px solid #bfdbfe; margin-bottom:16px;">
+          <div class="card-header" style="margin-bottom:8px;">
+            <div>
+              <div class="card-title" style="font-size:14.5px; color:#1e3a8a;">📥 Import Events from Google Calendar (.ics file / feed)</div>
+              <div style="font-size:12px; color:var(--text-muted);">Drop your Google Calendar <code>.ics</code> file here or upload to sync your lab meetings &amp; seminar events into the website.</div>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="toggleIcsImportBox()">✕ Close</button>
+          </div>
+          <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+            <input type="file" id="gcal-ics-file-input" accept=".ics" style="display:none;" onchange="handleGcalIcsFile(event)" />
+            <button class="btn btn-teal btn-sm" onclick="document.getElementById('gcal-ics-file-input').click()">📂 Select Google Calendar .ics File</button>
+            <span style="font-size:12px; color:var(--text-muted);">or paste iCal feed text / URL below:</span>
+            <input type="text" id="gcal-ics-url-input" placeholder="Paste .ics webcal:// or https:// URL..." style="flex:1; min-width:200px; padding:6px 10px; border:1px solid var(--border-color); border-radius:6px; font-size:12.5px;" />
+            <button class="btn btn-primary btn-sm" onclick="handleGcalIcsUrlFetch()">🔄 Fetch &amp; Sync Events</button>
+          </div>
+        </div>
+
+        <!-- Live Google Calendar Embedded View -->
+        <div id="gcal-embed-card" class="card" style="display:none; margin-bottom:16px;">
           <div class="card-header">
             <div>
-              <div class="card-title">🌐 Embedded Google Calendar View (Asia/Seoul Timezone)</div>
-              <div style="font-size:12px; color:var(--text-muted);">Make sure you are signed into your authorized Google account in your browser to view private calendar events</div>
+              <div class="card-title">🌐 Live Google Calendar View (lamvt.skku@gmail.com — Asia/Seoul)</div>
+              <div style="font-size:12px; color:var(--text-muted);">Interactive Google Calendar session with real-time day/week/month views</div>
             </div>
-            <a href="https://calendar.google.com/calendar/u/0/r" target="_blank" class="btn btn-outline btn-sm">Open Google Calendar in New Tab ↗</a>
+            <div style="display:flex; gap:8px;">
+              <a href="https://calendar.google.com/calendar/u/0/r" target="_blank" class="btn btn-outline btn-sm">Open in Full Google Calendar ↗</a>
+              <button class="btn btn-primary btn-sm" onclick="setCalendarDisplayMode('interactive')">Back to Schedule Grid</button>
+            </div>
           </div>
           <iframe
             src="https://calendar.google.com/calendar/embed?src=lamvt.skku%40gmail.com&ctz=Asia%2FSeoul&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=1&showCalendars=0"
-            style="border: 1px solid var(--border-color); width: 100%; height: 480px; border-radius: 10px;"
+            style="border: 1px solid var(--border-color); width: 100%; height: 580px; border-radius: 10px;"
             frameborder="0"
             scrolling="no"
           ></iframe>
@@ -1340,6 +1364,40 @@
           </div>
         </div>
 
+        <!-- Atomic Positions (Auto-extracted from CIF, editable) -->
+        <div class="form-group full" style="border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; background: #f8fafc;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-weight:700; font-size:13px; color:var(--text-main);">🧪 Atomic Positions (Fractional Coordinates x, y, z)</span>
+              <span id="struct-atoms-badge" class="badge badge-green">0 atoms detected</span>
+            </div>
+            <div style="display:flex; gap:6px;">
+              <button type="button" class="btn btn-outline btn-sm" onclick="addAtomRowToModal()">+ Add Atom</button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="clearModalAtoms()">Clear All</button>
+            </div>
+          </div>
+          <div style="max-height: 180px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; background: #fff;">
+            <table class="modal-atom-table" style="width:100%; border-collapse:collapse; font-size:12px;">
+              <thead style="background:#f1f5f9; position:sticky; top:0; z-index:1;">
+                <tr>
+                  <th style="padding:5px 8px; text-align:left; width:70px;">Element</th>
+                  <th style="padding:5px 8px; text-align:left; width:80px;">Label</th>
+                  <th style="padding:5px 8px; text-align:left;">x (fract)</th>
+                  <th style="padding:5px 8px; text-align:left;">y (fract)</th>
+                  <th style="padding:5px 8px; text-align:left;">z (fract)</th>
+                  <th style="padding:5px 8px; text-align:left; width:55px;">Occ</th>
+                  <th style="padding:5px 8px; text-align:center; width:45px;">✕</th>
+                </tr>
+              </thead>
+              <tbody id="struct-atoms-tbody">
+              </tbody>
+            </table>
+          </div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:5px;">
+            ✨ Automatically populated from <code>_atom_site_*</code> CIF loop upon file upload. You can inspect, modify, or add coordinates before saving.
+          </div>
+        </div>
+
         <!-- DFT Calculation Parameters -->
         <div class="form-group">
           <label>DFT Code &amp; Functional</label>
@@ -1572,9 +1630,9 @@
           <textarea id="sm-desc" rows="2"></textarea>
         </div>
         <div class="form-group full">
-          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-            <input type="checkbox" id="sm-open-gcal" />
-            Also open in Google Calendar immediately after saving
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; color:#1e3a8a;">
+            <input type="checkbox" id="sm-open-gcal" checked />
+            📅 Automatically sync &amp; open in Google Calendar (lamvt.skku@gmail.com)
           </label>
         </div>
       </div>

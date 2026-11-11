@@ -1611,5 +1611,267 @@ body.is-admin .visitor-only {
   margin-right: 4px;
 }
 
+/* =========================================================================
+   ORCID Verified Publications View (Screenshot-Exact Clean Academic Layout)
+   ========================================================================= */
+.orcid-pub-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.orcid-pub-breadcrumb {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #2563eb;
+  margin-bottom: 4px;
+}
+
+.orcid-pub-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.orcid-pub-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.4px;
+  margin: 0;
+}
+
+.orcid-pub-sep {
+  color: #cbd5e1;
+  font-size: 20px;
+  font-weight: 300;
+}
+
+.orcid-pub-sub {
+  font-size: 13.5px;
+  color: #475569;
+  line-height: 1.4;
+}
+
+.orcid-metrics-row {
+  display: flex;
+  gap: 28px;
+  align-items: flex-start;
+}
+
+.orcid-metric-chip {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+}
+
+.orcid-metric-chip .val {
+  font-size: 26px;
+  font-weight: 800;
+  color: #2563eb;
+  line-height: 1;
+}
+
+.orcid-metric-chip .lbl {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-top: 5px;
+}
+
+.orcid-subtabs-bar {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1.5px solid #e2e8f0;
+  margin-bottom: 16px;
+}
+
+.orcid-subtab-btn {
+  background: none;
+  border: none;
+  padding: 8px 0 10px 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #64748b;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.orcid-subtab-btn:hover {
+  color: #0f172a;
+}
+
+.orcid-subtab-btn.active {
+  color: #2563eb;
+  font-weight: 800;
+}
+
+.orcid-subtab-btn.active::after {
+  content: "";
+  position: absolute;
+  bottom: -1.5px;
+  left: 0;
+  right: 0;
+  height: 2.5px;
+  background: #2563eb;
+  border-radius: 2px 2px 0 0;
+}
+
+.orcid-id-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  background: #a6ce39;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.orcid-notice-banner {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12.5px;
+  color: #334155;
+  margin-bottom: 24px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.orcid-notice-banner a {
+  color: #2563eb;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.orcid-notice-banner a:hover {
+  text-decoration: underline;
+}
+
+.pub-year-section {
+  margin-bottom: 28px;
+}
+
+.pub-year-heading {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 14px;
+}
+
+.pub-item {
+  display: flex;
+  gap: 18px;
+  padding: 14px 0;
+  border-bottom: 1px solid #f1f5f9;
+  align-items: flex-start;
+}
+
+.pub-item:last-child {
+  border-bottom: none;
+}
+
+.pub-num {
+  font-size: 16px;
+  font-weight: 700;
+  color: #2563eb;
+  min-width: 22px;
+  line-height: 1.4;
+}
+
+.pub-body {
+  flex: 1;
+}
+
+.pub-title {
+  font-size: 15.5px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.42;
+  margin-bottom: 4px;
+}
+
+.pub-title a {
+  color: #0f172a;
+  text-decoration: none;
+}
+
+.pub-title a:hover {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.pub-authors {
+  font-size: 13.5px;
+  color: #475569;
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+
+.author-highlight {
+  color: #059669;
+  font-weight: 700;
+}
+
+.pub-journal {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.pub-doi {
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pub-doi a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.pub-doi a:hover {
+  text-decoration: underline;
+}
+
+/* Modal Atom Positions Table */
+.modal-atom-table input {
+  padding: 4px 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 12px;
+  width: 100%;
+}
+.modal-atom-table input:focus {
+  border-color: #2563eb;
+  outline: none;
+}
+
+
 
 
