@@ -929,3 +929,382 @@ body.visitor-mode .owner-only-btn {
     padding: 10px !important;
   }
 }
+
+/* =========================================================================
+   Role-Based UI Control: Admin Mode vs Public Read-Only Visitor
+   ========================================================================= */
+body:not(.is-admin) .admin-only,
+body:not(.is-admin) .owner-only-btn {
+  display: none !important;
+}
+
+body.is-admin .visitor-only {
+  display: none !important;
+}
+
+.public-mode-banner {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+/* =========================================================================
+   Modern Authentication Modal (Matching User's Uploaded Mockup)
+   ========================================================================= */
+.auth-card-modal {
+  max-width: 400px;
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 32px 26px 26px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.22);
+  position: relative;
+  width: 100%;
+}
+
+.auth-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  color: #6b7280;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.auth-modal-close:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.auth-modal-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.auth-modal-subtitle {
+  font-size: 13px;
+  color: #4b5563;
+  text-align: center;
+  line-height: 1.45;
+  margin-bottom: 22px;
+}
+
+.auth-sso-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.auth-sso-btn {
+  height: 48px;
+  border-radius: 9999px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #111827;
+  font-size: 14.5px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: 100%;
+}
+
+.auth-sso-btn:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 16px 0;
+  color: #9ca3af;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.auth-divider span {
+  padding: 0 12px;
+}
+
+.auth-email-input {
+  height: 48px;
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 0 16px;
+  font-size: 14.5px;
+  color: #111827;
+  background: #ffffff;
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+  margin-bottom: 12px;
+}
+
+.auth-email-input:focus {
+  border-color: #111827;
+  box-shadow: 0 0 0 1px #111827;
+}
+
+.auth-continue-btn {
+  height: 48px;
+  width: 100%;
+  border-radius: 9999px;
+  background: #000000;
+  color: #ffffff;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.auth-continue-btn:hover {
+  background: #27272a;
+}
+
+/* =========================================================================
+   Crystal Structures & CIF Database Tab Styling
+   ========================================================================= */
+.struct-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.struct-card {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.struct-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+}
+
+.struct-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.struct-formula {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: -0.01em;
+}
+
+.struct-sym {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.struct-lattice-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+  background: #f8fafc;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.struct-lattice-table td, .struct-lattice-table th {
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  text-align: center;
+}
+
+.struct-lattice-table th {
+  background: #f1f5f9;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.struct-dft-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 11px;
+}
+
+.cif-drop-zone {
+  border: 2px dashed #94a3b8;
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 14px;
+}
+
+.cif-drop-zone:hover, .cif-drop-zone.dragover {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.cif-code-preview {
+  background: #0f172a;
+  color: #e2e8f0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11.5px;
+  padding: 12px;
+  border-radius: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  white-space: pre;
+}
+
+/* =========================================================================
+   Manuscript Verification & Word Document Diff Styling
+   ========================================================================= */
+
+.diff-del {
+  background-color: #fee2e2;
+  color: #991b1b;
+  text-decoration: line-through;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+.diff-ins {
+  background-color: #dcfce7;
+  color: #166534;
+  text-decoration: none;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: 600;
+  border-bottom: 1.5px solid #16a34a;
+}
+
+.plag-highlight {
+  background-color: #fef08a;
+  color: #854d0e;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-weight: 600;
+  border: 1px dashed #ca8a04;
+}
+
+.badge-risk-high {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+  font-weight: 700;
+}
+
+.badge-risk-mod {
+  background-color: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  font-weight: 700;
+}
+
+.badge-risk-low {
+  background-color: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+  font-weight: 700;
+}
+
+.diff-side-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.diff-side-table th {
+  background: #f1f5f9;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  font-weight: 700;
+  text-align: left;
+}
+
+.diff-side-table td {
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  vertical-align: top;
+  width: 50%;
+}
+
+.diff-side-row.row-modified {
+  background-color: #fffbeb;
+}
+
+.diff-side-row.row-deleted td:first-child {
+  background-color: #fff1f2;
+}
+
+.diff-side-row.row-added td:last-child {
+  background-color: #f0fdf4;
+}
+
+.plag-para-card {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: #fff;
+  transition: all 0.2s ease;
+}
+
+.plag-para-card.card-risk-high {
+  border-left: 4px solid #e11d48;
+  background: #fff5f5;
+}
+
+.plag-para-card.card-risk-mod {
+  border-left: 4px solid #d97706;
+  background: #fffbeb;
+}
+
+.plag-para-card.card-risk-low {
+  border-left: 4px solid #16a34a;
+}
+
+

@@ -1,6 +1,7 @@
 // ============================================================================
-// MatSci Nexus — Frontend Application Controller (v3.0)
-// Exclusive Owner: lamvt.skku@gmail.com | Horizontal Nav | Google Calendar Sync
+// MatSci Nexus — Frontend Application Controller (v4.0)
+// Computational Materials Science (DFT / VASP / CIF) & PhD Management Suite
+// Exclusive Administrator: lamvt.skku@gmail.com | Horizontal Navigation
 // ============================================================================
 
 const OWNER_GOOGLE_EMAIL = "lamvt.skku@gmail.com";
@@ -10,24 +11,27 @@ const nowDate = new Date();
 
 let STATE = {
   papers: [],
-  notes: [],
+  structures: [],
   schedule: [],
   profile: {},
   expReportRows: [],
   litReportRows: [],
+  currentViewingStructure: null,
+  cifViewMode: "cif", // "cif" or "poscar"
   precursors: [
     { formula: "Li2CO3", ratio: 3.2, excessPct: 10 },
     { formula: "La2O3", ratio: 1.5, excessPct: 0 },
     { formula: "ZrO2", ratio: 1.4, excessPct: 0 },
     { formula: "Ta2O5", ratio: 0.3, excessPct: 0 }
   ],
-  selectedElement: ELEMENTS_DATA[2],
+  selectedElement: typeof ELEMENTS_DATA !== "undefined" ? ELEMENTS_DATA[2] : null,
   calendarYear: nowDate.getFullYear(),
   calendarMonth: nowDate.getMonth(),
   auth: {
     isLoggedIn: false,
-    email: OWNER_GOOGLE_EMAIL,
-    name: "Vu Tien Lam",
+    isAdmin: false,
+    email: "",
+    name: "",
     picture: "",
     ownerEmail: OWNER_GOOGLE_EMAIL,
     googleClientId: "",
@@ -37,51 +41,59 @@ let STATE = {
 
 const TAB_TITLES = {
   "dashboard": [
-    "Research Command Center",
-    "Materials Science & Engineering PhD Workflow, Synthesis Log & Literature Hub"
+    "Computational Materials Research Command Center",
+    "Ph.D. Workflow, Crystal Structures (*.cif), DFT Simulations, Literature & Academic CV"
   ],
   "literature": [
-    "Literature Library & DOI Auto-Import",
-    "Fetch papers automatically via Crossref/OpenAlex with strict Duplicate DOI Prevention"
+    "Literature Library & Automatic DOI Import",
+    "Auto-enrich papers with Crossref/OpenAlex and strict Duplicate DOI Prevention"
   ],
   "calendar": [
-    "Research & Experiment Calendar — Linked to Google Calendar (lamvt.skku@gmail.com)",
-    "Interactive monthly calendar for furnace runs, XRD/SEM/XPS bookings, PI meetings & Google Calendar synchronization"
+    "Research & Simulation Calendar — Linked to Google Calendar (lamvt.skku@gmail.com)",
+    "Interactive monthly calendar for DFT cluster runs, seminars, PI meetings & Google Calendar sync"
   ],
-  "notes-schedule": [
-    "Research & Synthesis Notebook",
-    "Log sample batches, precursors, sintering profiles, XRD/SEM/XPS findings & hypotheses"
+  "structures": [
+    "Crystal Structures & Computational Database (*.cif / POSCAR)",
+    "Manage *.cif crystallographic files, lattice parameters, DFT functionals & auto-generate VASP POSCAR"
   ],
   "weekly-report": [
     "Weekly Group Meeting Report & PowerPoint (.pptx) Generator",
-    "Compile weekly achievements, synthesis results, literature benchmarks & next week plan into a 16:9 slide deck"
+    "Compile weekly simulation achievements, DFT calculations & literature review into a 16:9 slide deck"
+  ],
+  "manuscript": [
+    "Manuscript Verification & Document Comparison Suite",
+    "Duplicate Paragraph Plagiarism Checker & Word (.docx)/PDF Side-by-Side Track Changes Diff"
   ],
   "toolkit": [
     "Materials Science Toolkit: Periodic Table & Calculators",
-    "118-Element Crystallography Reference, Stoichiometry & Precursor Weigher, eV/nm Converter & XRD Bragg/Scherrer"
+    "118-Element Crystallography Reference, Stoichiometry Weigher, eV/nm Converter & XRD Bragg/Scherrer"
   ],
   "cv": [
-    "Academic Curriculum Vitae (Scientific CV)",
-    "Complete Materials Science PhD Academic CV — Education, Experience, Publications, Conferences, Skills & Awards"
+    "Academic Curriculum Vitae (Lý Lịch Khoa Học)",
+    "Complete Materials Science PhD Academic CV — Education, Publications, Skills, Conferences & Awards"
   ],
   "profile": [
     "ORCID & Google Scholar Sync + Profile Settings",
-    "Synchronize publications, citation metrics (h-index, i10-index) and academic contact details"
+    "Synchronize publications, citation metrics (h-index, i10-index) and researcher contact details"
   ]
 };
 
 // ============================================================================
-// Initialization & Tab Switching
+// Initialization & Tab Navigation
 // ============================================================================
 
 document.addEventListener("DOMContentLoaded", async () => {
   initAuthSession();
-  renderPeriodicTable();
-  inspectElement(3);
-  renderPrecursorInputs();
-  runStoichiometryCalc();
-  updateEnergyConverter("ev");
-  updateBragg("twotheta");
+  initCifDropZone();
+  if (typeof initPlagDropZone === "function") initPlagDropZone();
+  if (typeof initDiffDropZones === "function") initDiffDropZones();
+
+  if (typeof renderPeriodicTable === "function") renderPeriodicTable();
+  if (typeof inspectElement === "function") inspectElement(3);
+  if (typeof renderPrecursorInputs === "function") renderPrecursorInputs();
+  if (typeof runStoichiometryCalc === "function") runStoichiometryCalc();
+  if (typeof updateEnergyConverter === "function") updateEnergyConverter("ev");
+  if (typeof updateBragg === "function") updateBragg("twotheta");
 
   await loadAllData();
   await autofillReportFromDatabase(true);
@@ -89,6 +101,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 function showToast(msg, type = "info") {
   const container = document.getElementById("toast-container");
+  if (!container) return;
   const el = document.createElement("div");
   el.className = `toast ${type === "error" ? "toast-error" : type === "warn" ? "toast-warn" : ""}`;
   el.textContent = msg;
@@ -118,6 +131,8 @@ function switchTab(tabId, btnEl) {
 
   if (tabId === "calendar") {
     renderMonthlyCalendar();
+  } else if (tabId === "structures") {
+    renderStructuresList();
   }
 }
 
@@ -127,7 +142,8 @@ function switchTabByName(tabId) {
 }
 
 function closeModal(modalId) {
-  document.getElementById(modalId).classList.remove("open");
+  const m = document.getElementById(modalId);
+  if (m) m.classList.remove("open");
 }
 
 function escapeHtml(str) {
@@ -140,37 +156,41 @@ function escapeHtml(str) {
 }
 
 // ============================================================================
-// Exclusive Google Account Owner Authentication (lamvt.skku@gmail.com)
+// Authentication & Exclusive Administrator Access (lamvt.skku@gmail.com)
 // ============================================================================
 
-function normalizeOwnerEmailInput(raw) {
+function normalizeEmail(raw) {
   return (raw || "").trim().toLowerCase().replace(/,/g, ".");
 }
 
 function initAuthSession() {
-  const saved = localStorage.getItem("matsci_owner_session_v3");
+  const saved = localStorage.getItem("matsci_admin_session_v4");
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (normalizeOwnerEmailInput(parsed.email) === OWNER_GOOGLE_EMAIL) {
-        STATE.auth = { ...STATE.auth, ...parsed, ownerEmail: OWNER_GOOGLE_EMAIL };
+      if (normalizeEmail(parsed.email) === OWNER_GOOGLE_EMAIL && parsed.isLoggedIn) {
+        STATE.auth = {
+          ...STATE.auth,
+          ...parsed,
+          isLoggedIn: true,
+          isAdmin: true,
+          ownerEmail: OWNER_GOOGLE_EMAIL
+        };
+        document.body.classList.add("is-admin");
+        document.body.classList.remove("visitor-mode");
+        renderAuthHeader();
+        return;
       }
     } catch (e) {
-      console.error(e);
+      console.error("Auth session parse error:", e);
     }
-  } else {
-    // Default signed in on owner's workspace; visitors can sign out or sign in with lamvt.skku@gmail.com
-    STATE.auth = {
-      isLoggedIn: true,
-      email: OWNER_GOOGLE_EMAIL,
-      name: "Vu Tien Lam",
-      picture: "",
-      ownerEmail: OWNER_GOOGLE_EMAIL,
-      googleClientId: "",
-      googleAccessToken: ""
-    };
-    localStorage.setItem("matsci_owner_session_v3", JSON.stringify(STATE.auth));
   }
+
+  // Default initial state: Public Read-Only Visitor Mode
+  STATE.auth.isLoggedIn = false;
+  STATE.auth.isAdmin = false;
+  document.body.classList.remove("is-admin");
+  document.body.classList.add("visitor-mode");
   renderAuthHeader();
 }
 
@@ -179,182 +199,214 @@ function renderAuthHeader() {
   const badge = document.getElementById("header-auth-status-badge");
   if (!bar) return;
 
-  if (STATE.auth.isLoggedIn && normalizeOwnerEmailInput(STATE.auth.email) === OWNER_GOOGLE_EMAIL) {
+  if (STATE.auth.isAdmin && normalizeEmail(STATE.auth.email) === OWNER_GOOGLE_EMAIL) {
+    document.body.classList.add("is-admin");
     document.body.classList.remove("visitor-mode");
     if (badge) {
-      badge.innerHTML = `<span style="color:#16a34a; font-weight:700;">● Owner Mode Active (${OWNER_GOOGLE_EMAIL})</span>`;
+      badge.innerHTML = `<span style="color:#16a34a; font-weight:700;">● Admin Mode Active (${OWNER_GOOGLE_EMAIL})</span>`;
     }
     bar.innerHTML = `
-      <div class="owner-pill" title="Signed in as Exclusive Owner: ${OWNER_GOOGLE_EMAIL}">
-        <span>🔒 ${escapeHtml(STATE.auth.name || "Vu Tien Lam")} (<code>${OWNER_GOOGLE_EMAIL}</code>)</span>
+      <div class="owner-pill" title="Signed in as Administrator: ${OWNER_GOOGLE_EMAIL}">
+        <span>🔒 Admin: <strong>${escapeHtml(STATE.auth.name || "Vu Tien Lam")}</strong> (<code>${OWNER_GOOGLE_EMAIL}</code>)</span>
       </div>
-      <button class="btn btn-outline btn-sm" style="background:#1e293b; color:#e2e8f0; border-color:#334155;" onclick="openGoogleAuthModal()" title="Google OAuth & Calendar Settings">⚙️</button>
-      <button class="btn btn-outline btn-sm" style="background:#1e293b; color:#fca5a5; border-color:#334155;" onclick="signOutGoogleOwner()" title="Sign out to Visitor Read-Only Mode">Sign Out</button>
+      <button class="btn btn-outline btn-sm" style="background:#1e293b; color:#fca5a5; border-color:#334155;" onclick="signOutAdmin()" title="Log out to Public Viewer Mode">Log out</button>
     `;
   } else {
+    document.body.classList.remove("is-admin");
     document.body.classList.add("visitor-mode");
     if (badge) {
-      badge.innerHTML = `<span style="color:#d97706; font-weight:700;">👁️ Visitor Mode (Read-Only) — Sign in with ${OWNER_GOOGLE_EMAIL} to edit</span>`;
+      badge.innerHTML = `<span style="color:#d97706; font-weight:700;">👁️ Public Viewer Mode — Sign in as ${OWNER_GOOGLE_EMAIL} to manage</span>`;
     }
     bar.innerHTML = `
-      <span class="visitor-pill">👁️ Read-Only</span>
-      <button class="btn-google" onclick="openGoogleAuthModal()">
-        <svg width="15" height="15" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-        Sign in (${OWNER_GOOGLE_EMAIL})
+      <span class="visitor-pill">👁️ Public View</span>
+      <button class="btn btn-primary btn-sm" onclick="openLoginModal()" style="font-weight:600; padding:6px 14px;">
+        👤 Log in
       </button>
     `;
   }
 }
 
-function requireOwnerAuth() {
-  if (STATE.auth.isLoggedIn && normalizeOwnerEmailInput(STATE.auth.email) === OWNER_GOOGLE_EMAIL) {
+function requireAdminAuth() {
+  if (STATE.auth.isAdmin && normalizeEmail(STATE.auth.email) === OWNER_GOOGLE_EMAIL) {
     return true;
   }
-  showToast(`🔒 Owner login required! Please sign in with ${OWNER_GOOGLE_EMAIL}.`, "warn");
-  openGoogleAuthModal();
+  showToast(`🔒 Administrator login required! Please sign in with ${OWNER_GOOGLE_EMAIL}.`, "warn");
+  openLoginModal();
   return false;
 }
 
-function openGoogleAuthModal() {
-  const modal = document.getElementById("google-auth-modal");
-  document.getElementById("auth-google-email").value = STATE.auth.email || OWNER_GOOGLE_EMAIL;
-  document.getElementById("auth-google-name").value = STATE.auth.name || "Vu Tien Lam";
-  document.getElementById("cfg-owner-email").value = OWNER_GOOGLE_EMAIL;
-  document.getElementById("cfg-google-client-id").value = STATE.profile.google_client_id || STATE.auth.googleClientId || "";
+// Backward compatibility alias
+function requireOwnerAuth() {
+  return requireAdminAuth();
+}
 
-  const clientId = (STATE.profile.google_client_id || STATE.auth.googleClientId || "").trim();
-  const wrapper = document.getElementById("g-id-button-wrapper");
-  if (clientId && window.google && window.google.accounts && window.google.accounts.id) {
-    wrapper.style.display = "flex";
-    window.google.accounts.id.initialize({
-      client_id: clientId,
-      callback: handleGoogleCredentialResponse
-    });
-    window.google.accounts.id.renderButton(
-      document.getElementById("g-id-signin-btn"),
-      { theme: "outline", size: "large", text: "signin_with", shape: "pill" }
-    );
-  } else {
-    wrapper.style.display = "none";
+function openLoginModal() {
+  const modal = document.getElementById("login-modal");
+  if (!modal) return;
+  const emailInput = document.getElementById("login-email-input");
+  if (emailInput) {
+    emailInput.value = OWNER_GOOGLE_EMAIL;
   }
-
   modal.classList.add("open");
 }
 
-function launchGoogleOAuthPopup() {
-  const clientId = (STATE.profile.google_client_id || STATE.auth.googleClientId || "").trim();
-  if (!clientId || !window.google?.accounts?.oauth2) {
-    showToast("Please enter a Google Cloud OAuth 2.0 Client ID in the settings below to use OAuth Popup.", "warn");
-    return;
-  }
-  const tokenClient = window.google.accounts.oauth2.initTokenClient({
-    client_id: clientId,
-    scope: "openid email profile https://www.googleapis.com/auth/calendar.events",
-    hint: OWNER_GOOGLE_EMAIL,
-    callback: async (tokenResponse) => {
-      if (tokenResponse.error) {
-        showToast(`OAuth error: ${tokenResponse.error}`, "error");
-        return;
-      }
-      const accessToken = tokenResponse.access_token;
-      const userRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      const userInfo = await userRes.json();
-      const email = normalizeOwnerEmailInput(userInfo.email);
-      if (email !== OWNER_GOOGLE_EMAIL) {
-        showToast(`❌ Access Denied: '${email}' is not the owner account (${OWNER_GOOGLE_EMAIL}).`, "error");
-        return;
-      }
-      STATE.auth.googleAccessToken = accessToken;
-      completeOwnerLogin(OWNER_GOOGLE_EMAIL, userInfo.name || "Vu Tien Lam", userInfo.picture || "");
+function openGoogleClientIdConfigPrompt() {
+  const currentId = (STATE.profile?.google_client_id || STATE.auth?.googleClientId || localStorage.getItem("matsci_google_client_id") || "").trim();
+  const input = prompt(
+    "🔑 Google Cloud OAuth 2.0 Client ID Configuration:\n\n" +
+    "To enable genuine Google authentication with accounts.google.com:\n" +
+    "1. Go to Google Cloud Console (https://console.cloud.google.com)\n" +
+    "2. Navigate to 'APIs & Services' > 'Credentials'\n" +
+    "3. Create an 'OAuth 2.0 Client ID' (Application type: Web Application)\n" +
+    "4. Add Authorized JavaScript Origins:\n" +
+    "   - https://tienlamvu.github.io\n" +
+    "   - http://localhost:8000 (for local testing)\n" +
+    "5. Paste your Client ID below:\n\n" +
+    "(Note: If you do not have a Client ID, you can sign in directly using the Administrator Security Passcode: 'skku2026').",
+    currentId
+  );
+  if (input !== null) {
+    const cleanId = input.trim();
+    if (cleanId) {
+      STATE.auth.googleClientId = cleanId;
+      if (STATE.profile) STATE.profile.google_client_id = cleanId;
+      localStorage.setItem("matsci_google_client_id", cleanId);
+      showToast("✅ Google OAuth Client ID saved! Click 'Continue with Google' to sign in.", "success");
+    } else {
+      localStorage.removeItem("matsci_google_client_id");
+      STATE.auth.googleClientId = "";
+      if (STATE.profile) STATE.profile.google_client_id = "";
+      showToast("Google Client ID cleared. You can use the Administrator Passcode (skku2026) to log in.", "info");
     }
-  });
-  tokenClient.requestAccessToken({ prompt: "consent" });
-}
-
-async function handleGoogleCredentialResponse(response) {
-  try {
-    const payload = JSON.parse(atob(response.credential.split(".")[1]));
-    const email = normalizeOwnerEmailInput(payload.email || "");
-    if (email !== OWNER_GOOGLE_EMAIL) {
-      throw new Error(`Access Denied: '${email}' is not authorized. Only ${OWNER_GOOGLE_EMAIL} can sign in as Owner.`);
-    }
-    completeOwnerLogin(OWNER_GOOGLE_EMAIL, payload.name || "Vu Tien Lam", payload.picture || "");
-  } catch (err) {
-    showToast(err.message, "error");
   }
 }
 
-async function handleDirectGoogleSignIn() {
-  const rawEmail = document.getElementById("auth-google-email").value;
-  const email = normalizeOwnerEmailInput(rawEmail);
-  const name = document.getElementById("auth-google-name").value.trim() || "Vu Tien Lam";
+function handleContinueWithGoogle() {
+  const clientId = (STATE.profile?.google_client_id || STATE.auth?.googleClientId || localStorage.getItem("matsci_google_client_id") || "").trim();
+  if (clientId && window.google?.accounts?.oauth2) {
+    const tokenClient = window.google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: "openid email profile https://www.googleapis.com/auth/calendar.events",
+      hint: OWNER_GOOGLE_EMAIL,
+      callback: async (tokenResponse) => {
+        if (tokenResponse.error) {
+          showToast(`Google OAuth error: ${tokenResponse.error}`, "error");
+          return;
+        }
+        try {
+          const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+            headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+          });
+          const user = await res.json();
+          const email = normalizeEmail(user.email);
+          if (email !== OWNER_GOOGLE_EMAIL) {
+            showToast(`❌ Access Denied: '${email}' is not the authorized admin (${OWNER_GOOGLE_EMAIL}).`, "error");
+            return;
+          }
+          STATE.auth.googleAccessToken = tokenResponse.access_token;
+          completeOwnerLogin(OWNER_GOOGLE_EMAIL, user.name || "Vu Tien Lam", user.picture || "");
+        } catch (e) {
+          showToast(`Userinfo fetch failed: ${e.message}`, "error");
+        }
+      }
+    });
+    tokenClient.requestAccessToken({ prompt: "consent" });
+  } else {
+    // DO NOT allow automatic login without authentication!
+    showToast("⚠️ Real Google Sign-In requires an OAuth Client ID. Setup Client ID or enter Administrator Passcode below.", "warn");
+    openGoogleClientIdConfigPrompt();
+  }
+}
+
+function handleContinueWithApple() {
+  showToast("Apple Sign-In is reserved for visitors. Please authenticate via Google Account (lamvt.skku@gmail.com) or enter Passcode.", "warn");
+}
+
+function handleContinueWithPhone() {
+  showToast("Phone sign-in is not configured. Please authenticate via Google Account (lamvt.skku@gmail.com) or enter Passcode.", "warn");
+}
+
+async function submitEmailLogin() {
+  const emailInput = document.getElementById("login-email-input");
+  const passcodeInput = document.getElementById("login-passcode-input");
+  const rawEmail = emailInput ? emailInput.value : "";
+  const passcode = passcodeInput ? passcodeInput.value.trim() : "";
+  const email = normalizeEmail(rawEmail);
 
   if (email !== OWNER_GOOGLE_EMAIL) {
-    showToast(`❌ Access Denied! '${rawEmail}' is not authorized. Only ${OWNER_GOOGLE_EMAIL} is the registered Owner.`, "error");
+    showToast(`❌ Access Denied: '${rawEmail}' is not authorized. Only ${OWNER_GOOGLE_EMAIL} has administrator access.`, "error");
     return;
   }
 
-  if (!STATIC_MODE) {
-    try {
-      const res = await fetch("/api/auth/google-verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Authentication rejected");
-      completeOwnerLogin(OWNER_GOOGLE_EMAIL, data.name || name, "");
-      return;
-    } catch (err) {
-      showToast(err.message, "error");
-      return;
-    }
+  if (!passcode) {
+    showToast("⚠️ Security Passcode required! Please enter the Administrator passcode (default: skku2026).", "error");
+    if (passcodeInput) passcodeInput.focus();
+    return;
   }
 
-  completeOwnerLogin(OWNER_GOOGLE_EMAIL, name, "");
+  // Attempt backend verification first
+  try {
+    const res = await fetch("/api/auth/google-verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: OWNER_GOOGLE_EMAIL, passcode: passcode })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      completeOwnerLogin(OWNER_GOOGLE_EMAIL, data.name || "Vu Tien Lam", "");
+      return;
+    } else if (res.status === 401) {
+      showToast("❌ Access Denied: Incorrect Administrator Security Passcode.", "error");
+      return;
+    }
+  } catch (apiErr) {
+    // If backend server is unreachable (e.g. running on static GitHub Pages)
+  }
+
+  // Static GitHub Pages fallback verification: verify passcode
+  if (passcode === "skku2026") {
+    completeOwnerLogin(OWNER_GOOGLE_EMAIL, "Vu Tien Lam", "");
+  } else {
+    showToast("❌ Security Verification Failed: Invalid Administrator Passcode. Access denied.", "error");
+  }
 }
 
 function completeOwnerLogin(email, name, picture) {
   STATE.auth = {
     ...STATE.auth,
     isLoggedIn: true,
+    isAdmin: true,
     email: OWNER_GOOGLE_EMAIL,
     name: name || "Vu Tien Lam",
     picture: picture || "",
     ownerEmail: OWNER_GOOGLE_EMAIL
   };
-  localStorage.setItem("matsci_owner_session_v3", JSON.stringify(STATE.auth));
+  localStorage.setItem("matsci_admin_session_v4", JSON.stringify(STATE.auth));
+  document.body.classList.add("is-admin");
+  document.body.classList.remove("visitor-mode");
   renderAuthHeader();
-  closeModal("google-auth-modal");
-  showToast(`🔓 Signed in as Owner (${OWNER_GOOGLE_EMAIL}). Full management enabled!`);
+  closeModal("login-modal");
+  showToast(`🔓 Logged in as Administrator (${OWNER_GOOGLE_EMAIL}). Full research management unlocked!`);
+
+  // Refresh lists to display admin action buttons
+  renderStructuresList();
+  renderPapersList();
+  renderScheduleList();
 }
 
-function signOutGoogleOwner() {
+function signOutAdmin() {
+  localStorage.removeItem("matsci_admin_session_v4");
   STATE.auth.isLoggedIn = false;
-  localStorage.setItem("matsci_owner_session_v3", JSON.stringify(STATE.auth));
+  STATE.auth.isAdmin = false;
+  document.body.classList.remove("is-admin");
+  document.body.classList.add("visitor-mode");
   renderAuthHeader();
-  showToast("Signed out. Switched to Read-Only Visitor Mode.");
-}
+  showToast("Logged out. Switched to Public Read-Only Mode.");
 
-async function saveOwnerAuthConfig() {
-  const googleClientId = document.getElementById("cfg-google-client-id").value.trim();
-  STATE.auth.googleClientId = googleClientId;
-  STATE.profile.google_client_id = googleClientId;
-  localStorage.setItem("matsci_owner_session_v3", JSON.stringify(STATE.auth));
-
-  if (!STATIC_MODE) {
-    await fetch("/api/auth/config", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ owner_email: OWNER_GOOGLE_EMAIL, google_client_id: googleClientId })
-    });
-  } else {
-    saveStaticDb();
-  }
-  showToast("Saved Google Cloud OAuth Client ID!");
-  openGoogleAuthModal();
+  // Refresh lists to hide admin buttons
+  renderStructuresList();
+  renderPapersList();
+  renderScheduleList();
 }
 
 // ============================================================================
@@ -399,7 +451,6 @@ function renderMonthlyCalendar() {
   const prevMonthDays = new Date(year, month, 0).getDate();
   const todayIso = new Date().toISOString().split("T")[0];
 
-  // Group events by YYYY-MM-DD
   const eventsByDate = {};
   STATE.schedule.forEach(item => {
     const d = item.start_date;
@@ -445,7 +496,7 @@ function renderMonthlyCalendar() {
         <div
           class="cal-event-chip ${typeClass} ${doneClass}"
           onclick="event.stopPropagation(); openScheduleModal(${ev.id})"
-          title="${escapeHtml(ev.start_time)}–${escapeHtml(ev.end_time)}: ${escapeHtml(ev.title)} (${escapeHtml(ev.instrument_or_location || '')})"
+          title="${escapeHtml(ev.start_time)}–${escapeHtml(ev.end_time)}: ${escapeHtml(ev.title)}"
         >
           ${escapeHtml(ev.start_time)} ${escapeHtml(ev.title)}
         </div>
@@ -456,7 +507,7 @@ function renderMonthlyCalendar() {
       <div
         class="cal-day-cell ${isOtherMonth ? "other-month" : ""} ${isToday ? "is-today" : ""}"
         onclick="openScheduleModalForDate('${isoDate}')"
-        title="Click to schedule an event on ${isoDate}"
+        title="Click to schedule on ${isoDate}"
       >
         <div class="cal-day-num">
           <span>${dayNum}</span>
@@ -471,7 +522,7 @@ function renderMonthlyCalendar() {
 }
 
 function openScheduleModalForDate(isoDate) {
-  if (!requireOwnerAuth()) return;
+  if (!requireAdminAuth()) return;
   openScheduleModal(null, isoDate);
 }
 
@@ -483,8 +534,8 @@ function buildGoogleCalendarTemplateUrl(item) {
 
   const detailsParts = [];
   if (item.event_type) detailsParts.push(`Category: ${item.event_type}`);
-  if (item.sample_id) detailsParts.push(`Sample ID: ${item.sample_id}`);
-  if (item.description) detailsParts.push(`Protocol/Notes: ${item.description}`);
+  if (item.sample_id) detailsParts.push(`Sample/Batch: ${item.sample_id}`);
+  if (item.description) detailsParts.push(`Details: ${item.description}`);
   detailsParts.push("Synced from MatSci Nexus PhD Hub");
 
   const params = new URLSearchParams({
@@ -558,9 +609,8 @@ function toggleGoogleCalendarEmbed() {
 }
 
 async function syncWithGoogleCalendarApi() {
-  if (!requireOwnerAuth()) return;
+  if (!requireAdminAuth()) return;
 
-  // If OAuth accessToken is present, sync directly with Google Calendar REST API v3
   if (STATE.auth.googleAccessToken) {
     try {
       const timeMin = new Date(Date.now() - 14 * 86400000).toISOString();
@@ -619,18 +669,12 @@ async function syncWithGoogleCalendarApi() {
     }
   }
 
-  // Otherwise check if Client ID is configured to launch OAuth popup, or guide user
-  const clientId = (STATE.profile.google_client_id || STATE.auth.googleClientId || "").trim();
-  if (clientId && window.google?.accounts?.oauth2) {
-    launchGoogleOAuthPopup();
-  } else {
-    toggleGoogleCalendarEmbed();
-    showToast(`Opened live Google Calendar view for ${OWNER_GOOGLE_EMAIL}. You can also click "📅 +Google Cal" on any event or Export .ics!`);
-  }
+  toggleGoogleCalendarEmbed();
+  showToast(`Live Google Calendar view toggled for ${OWNER_GOOGLE_EMAIL}. You can click "📅 +Google Cal" on any event or Export .ics!`);
 }
 
 // ============================================================================
-// Duplicate DOI Normalization & Warning Alert System
+// Duplicate DOI Protection & Literature Management
 // ============================================================================
 
 function normalizeDoiClient(rawInput) {
@@ -658,23 +702,26 @@ function showDuplicateDoiWarning(existingPaper, attemptedDoi) {
   const banner = document.getElementById("duplicate-doi-banner");
   const textEl = document.getElementById("duplicate-doi-text");
   const viewBtn = document.getElementById("duplicate-view-btn");
+  if (!banner || !textEl) return;
 
   const title = existingPaper?.title || "Existing Paper";
   const doi = existingPaper?.doi || attemptedDoi;
   textEl.innerHTML = `DOI <code>${escapeHtml(doi)}</code> has already been added previously: <strong>"${escapeHtml(title)}"</strong> (${escapeHtml(existingPaper?.journal || "")}, ${existingPaper?.year || ""}). Duplicate addition was blocked.`;
   banner.classList.add("show");
 
-  viewBtn.onclick = () => {
-    switchTabByName("literature");
-    setTimeout(() => {
-      const cardEl = document.getElementById(`paper-card-${existingPaper?.id}`);
-      if (cardEl) {
-        cardEl.scrollIntoView({ behavior: "smooth", block: "center" });
-        cardEl.classList.add("duplicate-highlight");
-        setTimeout(() => cardEl.classList.remove("duplicate-highlight"), 5000);
-      }
-    }, 100);
-  };
+  if (viewBtn) {
+    viewBtn.onclick = () => {
+      switchTabByName("literature");
+      setTimeout(() => {
+        const cardEl = document.getElementById(`paper-card-${existingPaper?.id}`);
+        if (cardEl) {
+          cardEl.scrollIntoView({ behavior: "smooth", block: "center" });
+          cardEl.classList.add("duplicate-highlight");
+          setTimeout(() => cardEl.classList.remove("duplicate-highlight"), 5000);
+        }
+      }, 100);
+    };
+  }
 
   showToast(`⚠️ Duplicate DOI blocked! "${title.slice(0, 48)}..." is already in your library.`, "error");
 
@@ -692,359 +739,13 @@ function hideDuplicateBanner() {
   document.getElementById("duplicate-doi-banner")?.classList.remove("show");
 }
 
-// ============================================================================
-// Data Loading (Full-Stack API + Static GitHub Pages Fallback)
-// ============================================================================
-
-async function loadAllData() {
-  try {
-    const dashProbe = await fetch("/api/dashboard");
-    if (!dashProbe.ok) throw new Error("Static mode fallback");
-    const dashRes = await dashProbe.json();
-    const [papersRes, notesRes, schedRes, profRes] = await Promise.all([
-      fetch("/api/papers").then(r => r.json()),
-      fetch("/api/notes").then(r => r.json()),
-      fetch("/api/schedule").then(r => r.json()),
-      fetch("/api/profile").then(r => r.json())
-    ]);
-
-    STATIC_MODE = false;
-    STATE.papers = papersRes;
-    STATE.notes = notesRes;
-    STATE.schedule = schedRes;
-    STATE.profile = profRes;
-
-    renderDashboard(dashRes);
-    renderPapersList();
-    renderNotesList();
-    renderScheduleList();
-    renderMonthlyCalendar();
-    renderProfile(profRes);
-    renderAcademicCvSheet(profRes);
-  } catch (err) {
-    STATIC_MODE = true;
-    loadStaticFallbackData();
-  }
-}
-
-function loadStaticFallbackData() {
-  const saved = localStorage.getItem("matsci_static_db_v3");
-  if (saved) {
-    const parsed = JSON.parse(saved);
-    STATE.papers = parsed.papers || [];
-    STATE.notes = parsed.notes || [];
-    STATE.schedule = parsed.schedule || [];
-    STATE.profile = parsed.profile || {};
-  } else {
-    STATE.papers = [
-      {
-        id: 1,
-        doi: "10.1038/s41563-019-0431-3",
-        title: "Fundamentals of inorganic solid-state electrolytes for batteries",
-        authors: "Jun Soo Kim, Yoon Seok Jung, Gerbrand Ceder et al.",
-        journal: "Nature Materials",
-        year: 2019,
-        volume: "18",
-        pages: "1278-1291",
-        abstract: "Solid-state electrolytes are key components for next-generation all-solid-state batteries with high energy density and safety.",
-        citation_count: 1420,
-        material_system: "Li7La3Zr2O12 (LLZO), Li10GeP2S12",
-        synthesis_method: "Solid-State Reaction",
-        characterization_tags: "XRD, EIS, Neutron Diffraction, DFT",
-        status: "Key Reference",
-        notes: "Essential benchmark for activation energy (Ea ~ 0.30 eV) of garnet vs argyrodite phases.",
-        in_weekly_report: 1
-      },
-      {
-        id: 2,
-        doi: "10.1021/acs.chemmater.0c04125",
-        title: "Ta-Doped Li7La3Zr2O12 Garnet Solid Electrolytes: Role of Excess Li and Sintering Atmosphere",
-        authors: "M. Balaish, J. L. M. Rupp et al.",
-        journal: "Chemistry of Materials",
-        year: 2021,
-        volume: "33",
-        pages: "2104-2118",
-        abstract: "Systematic investigation of Li6.4La3Zr1.4Ta0.6O12 sintered under flowing O2 vs Ar with 10 wt% excess Li2CO3.",
-        citation_count: 215,
-        material_system: "Li6.4La3Zr1.4Ta0.6O12 (LLZTO)",
-        synthesis_method: "Solid-State Sintering",
-        characterization_tags: "XRD, SEM, Raman, EIS",
-        status: "Read",
-        notes: "Explains why 10% excess Li2CO3 suppresses La2Zr2O7 pyrochlore impurity at 1140 °C.",
-        in_weekly_report: 1
-      }
-    ];
-    STATE.notes = [
-      {
-        id: 1,
-        title: "LLZTO-2026-04: Solid-State Sintering with 10 wt% Excess Li2CO3",
-        category: "Experiment / Synthesis",
-        sample_id: "LLZTO-2026-04",
-        material_formula: "Li6.4La3Zr1.4Ta0.6O12",
-        precursors: "Li2CO3 (1.425 g, +10% excess), La2O3 (2.681 g), ZrO2 (0.946 g), Ta2O5 (0.728 g)",
-        conditions: "Calcined 900 °C 6h → CIP 250 MPa → Sintered 1140 °C 12h in O2",
-        characterization_methods: "XRD, SEM, EIS, Archimedes Density",
-        key_findings: "Pure cubic garnet Ia-3d phase achieved; relative density 95.8%; σ = 0.84 mS/cm.",
-        content: "Zero pyrochlore reflection at 28.6° in Cu Kα XRD scan.",
-        pinned: 1,
-        in_weekly_report: 1
-      }
-    ];
-    const today = new Date();
-    const d0 = today.toISOString().split("T")[0];
-    const d1 = new Date(today.getTime() + 86400000).toISOString().split("T")[0];
-    const d2 = new Date(today.getTime() + 2 * 86400000).toISOString().split("T")[0];
-    STATE.schedule = [
-      {
-        id: 1,
-        title: "Powder & Pellet XRD Phase Analysis",
-        event_type: "Characterization (XRD/SEM/TEM/XPS)",
-        instrument_or_location: "Bruker D8 Advance XRD (Cu Kα)",
-        start_date: d0,
-        start_time: "10:00",
-        end_time: "12:00",
-        status: "Completed",
-        sample_id: "LLZTO-2026-04",
-        description: "2θ = 10° to 80°, step 0.02° for Rietveld refinement.",
-        in_weekly_report: 1
-      },
-      {
-        id: 2,
-        title: "Weekly Subgroup & PI Progress Meeting",
-        event_type: "Group Meeting / PI Meeting",
-        instrument_or_location: "SKKU Engineering Bldg / Zoom",
-        start_date: d1,
-        start_time: "15:00",
-        end_time: "16:30",
-        status: "Scheduled",
-        sample_id: "",
-        description: "Present LLZTO-2026-04 XRD/EIS and ALD interface slides.",
-        in_weekly_report: 1
-      },
-      {
-        id: 3,
-        title: "FE-SEM Cross-Section & EDS Elemental Mapping",
-        event_type: "Characterization (XRD/SEM/TEM/XPS)",
-        instrument_or_location: "JEOL JSM-7800F Prime FE-SEM",
-        start_date: d2,
-        start_time: "09:30",
-        end_time: "12:00",
-        status: "Scheduled",
-        sample_id: "LLZTO-2026-04-ALD",
-        description: "Examine fracture cross-section grain size and conformal Al2O3 layer.",
-        in_weekly_report: 1
-      }
-    ];
-    STATE.profile = {
-      full_name: "Vu Tien Lam",
-      title_role: "Ph.D. Researcher in Materials Science & Engineering",
-      affiliation: "Sungkyunkwan University (SKKU)",
-      advisor: "Prof. Advisor",
-      research_focus: "Solid-State Electrolytes, 2D Functional Nanomaterials, Advanced Characterization (XRD, XPS, SEM/TEM)",
-      orcid_id: "0000-0002-1825-0097",
-      scholar_id: "",
-      email: OWNER_GOOGLE_EMAIL,
-      phone: "+82-10-0000-0000",
-      website: "https://tienlamvu.github.io/lamreseach/",
-      location: "Suwon, Republic of Korea (SKKU)",
-      owner_email: OWNER_GOOGLE_EMAIL,
-      total_citations: 87,
-      h_index: 3,
-      i10_index: 3,
-      bio: "Ph.D. researcher in Materials Science & Engineering at Sungkyunkwan University (SKKU), focusing on synthesis, structural refinement, and electrochemical characterization of advanced energy materials.",
-      education: [
-        {
-          degree: "Ph.D. Candidate in Materials Science & Engineering",
-          institution: "Sungkyunkwan University (SKKU), Republic of Korea",
-          period: "Present",
-          details: "Research Focus: Advanced Energy Storage Materials, Solid-State Electrolytes & Interfacial Engineering"
-        }
-      ],
-      experiences: [
-        {
-          role: "Graduate Research Assistant (Ph.D. Researcher)",
-          organization: "Sungkyunkwan University (SKKU)",
-          period: "Present",
-          description: "Material synthesis, XRD Rietveld refinement, FE-SEM/TEM microstructure analysis, and XPS surface characterization."
-        }
-      ],
-      publications: [
-        {
-          title: "Interfacial Engineering of Garnet-Type Li7La3Zr2O12 Solid Electrolytes via Ultrathin ALD Al2O3 Coating",
-          authors: "V. T. Lam et al.",
-          journal: "Advanced Energy Materials",
-          year: 2026,
-          doi: "10.1002/aenm.202600412",
-          citations: 14,
-          source: "ORCID / Scholar"
-        }
-      ],
-      conferences: [
-        {
-          title: "Suppressing Dendrite Propagation at Solid Electrolyte Interfaces",
-          event: "International Materials Research Conference",
-          type: "Oral Presentation",
-          year: 2025
-        }
-      ],
-      skills: {
-        synthesis: "Solid-State Reaction & High-Temp Sintering, Atomic Layer Deposition (ALD), Hydrothermal, Sol-Gel, Ball Milling, Glovebox Cell Assembly",
-        characterization: "Powder & Thin-Film XRD (Rietveld GSAS-II), FE-SEM/EDS, HR-TEM/SAED, XPS (CasaXPS), Raman, FTIR, EIS (EC-Lab), BET",
-        computational: "Python, DFT (VASP), VESTA, OriginPro, LaTeX"
-      },
-      awards: [
-        {
-          title: "Graduate Research Scholarship",
-          issuer: "Sungkyunkwan University (SKKU)",
-          year: 2025,
-          details: "Doctoral research excellence fellowship."
-        }
-      ]
-    };
-    saveStaticDb();
-  }
-
-  const dashData = {
-    stats: {
-      total_papers: STATE.papers.length,
-      papers_read: STATE.papers.filter(p => ["Read", "Key Reference", "Cited in Thesis"].includes(p.status)).length,
-      total_notes: STATE.notes.length,
-      synthesis_batches: STATE.notes.filter(n => n.sample_id).length,
-      upcoming_tasks: STATE.schedule.filter(s => s.status !== "Completed").length,
-      completed_tasks: STATE.schedule.filter(s => s.status === "Completed").length,
-      total_citations: STATE.profile.total_citations || 0,
-      h_index: STATE.profile.h_index || 0
-    },
-    recent_papers: STATE.papers.slice(0, 4),
-    recent_notes: STATE.notes.slice(0, 4),
-    upcoming_schedule: STATE.schedule.slice(0, 6),
-    profile: STATE.profile
-  };
-
-  renderDashboard(dashData);
-  renderPapersList();
-  renderNotesList();
-  renderScheduleList();
-  renderMonthlyCalendar();
-  renderProfile(STATE.profile);
-  renderAcademicCvSheet(STATE.profile);
-}
-
-function saveStaticDb() {
-  localStorage.setItem("matsci_static_db_v3", JSON.stringify({
-    papers: STATE.papers,
-    notes: STATE.notes,
-    schedule: STATE.schedule,
-    profile: STATE.profile
-  }));
-}
-
-// ============================================================================
-// Dashboard Rendering
-// ============================================================================
-
-function renderDashboard(dash) {
-  const s = dash.stats || {};
-  const kpiEl = document.getElementById("dashboard-kpis");
-  kpiEl.innerHTML = `
-    <div class="kpi-card">
-      <div class="kpi-label">Literature Library</div>
-      <div class="kpi-value" style="color:#2563eb;">${s.total_papers || 0}</div>
-      <div class="kpi-sub"><strong>${s.papers_read || 0}</strong> Read / Key References</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Synthesis &amp; Lab Notes</div>
-      <div class="kpi-value" style="color:#0d9488;">${s.total_notes || 0}</div>
-      <div class="kpi-sub"><strong>${s.synthesis_batches || 0}</strong> Sample Batches Tracked</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Calendar &amp; Lab Slots</div>
-      <div class="kpi-value" style="color:#d97706;">${s.upcoming_tasks || 0}</div>
-      <div class="kpi-sub">Upcoming / <strong>${s.completed_tasks || 0}</strong> Completed</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Citation Impact</div>
-      <div class="kpi-value" style="color:#7c3aed;">${s.total_citations || 0}</div>
-      <div class="kpi-sub">h-index: <strong>${s.h_index || 0}</strong> (ORCID / Scholar)</div>
-    </div>
-  `;
-
-  const schedList = document.getElementById("dashboard-schedule-list");
-  if (!dash.upcoming_schedule || dash.upcoming_schedule.length === 0) {
-    schedList.innerHTML = `<div style="color:var(--text-muted); font-size:13px;">No scheduled sessions yet.</div>`;
-  } else {
-    schedList.innerHTML = dash.upcoming_schedule.slice(0, 4).map(item => `
-      <div class="item-card" style="padding:12px 14px; margin-bottom:10px;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; flex-wrap:wrap;">
-          <div>
-            <div class="item-title" style="font-size:14px;">${escapeHtml(item.title)}</div>
-            <div class="item-meta" style="margin-bottom:4px;">
-              📍 ${escapeHtml(item.instrument_or_location || "Lab")} &nbsp;|&nbsp; 🕒 ${escapeHtml(item.start_date)} (${escapeHtml(item.start_time)}–${escapeHtml(item.end_time)})
-            </div>
-          </div>
-          <div style="display:flex; gap:6px; align-items:center;">
-            <button class="btn btn-outline btn-sm" onclick="pushSingleEventToGoogleCalendar(${item.id})" title="Add to Google Calendar (${OWNER_GOOGLE_EMAIL})">📅 +GCal</button>
-            <span class="badge ${item.status === 'Completed' ? 'badge-green' : item.status === 'In Progress' ? 'badge-amber' : 'badge-blue'}">
-              ${escapeHtml(item.status)}
-            </span>
-          </div>
-        </div>
-      </div>
-    `).join("");
-  }
-
-  const notesList = document.getElementById("dashboard-notes-list");
-  if (!dash.recent_notes || dash.recent_notes.length === 0) {
-    notesList.innerHTML = `<div style="color:var(--text-muted); font-size:13px;">No lab notes recorded yet.</div>`;
-  } else {
-    notesList.innerHTML = dash.recent_notes.slice(0, 3).map(n => `
-      <div class="item-card" style="padding:12px 14px; margin-bottom:10px;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span class="badge badge-blue">${escapeHtml(n.category)}</span>
-          ${n.sample_id ? `<span class="badge badge-purple">ID: ${escapeHtml(n.sample_id)}</span>` : ""}
-        </div>
-        <div class="item-title" style="font-size:14px; margin-top:6px;">${escapeHtml(n.title)}</div>
-        <div style="font-size:12.5px; color:var(--text-secondary); margin-top:4px;">
-          <strong>Finding:</strong> ${escapeHtml(n.key_findings || n.conditions || "")}
-        </div>
-      </div>
-    `).join("");
-  }
-
-  const papersList = document.getElementById("dashboard-papers-list");
-  if (!dash.recent_papers || dash.recent_papers.length === 0) {
-    papersList.innerHTML = `<div style="color:var(--text-muted); font-size:13px;">No papers in library yet. Paste a DOI above!</div>`;
-  } else {
-    papersList.innerHTML = `<div class="grid-3">` + dash.recent_papers.slice(0, 3).map(p => `
-      <div class="item-card" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
-        <div>
-          <div style="display:flex; justify-content:space-between; gap:6px; margin-bottom:6px;">
-            <span class="badge badge-green">${escapeHtml(p.status)}</span>
-            <span style="font-size:11.5px; color:var(--text-muted);">Cited: ${p.citation_count || 0}</span>
-          </div>
-          <div class="item-title" style="font-size:14px;">${escapeHtml(p.title)}</div>
-          <div class="item-meta">${escapeHtml(p.authors)} — <em>${escapeHtml(p.journal)}</em> (${p.year || ""})</div>
-        </div>
-        <div class="item-tags">
-          ${p.material_system ? `<span class="badge badge-purple">⚛️ ${escapeHtml(p.material_system)}</span>` : ""}
-          ${p.characterization_tags ? `<span class="badge badge-slate">🔬 ${escapeHtml(p.characterization_tags)}</span>` : ""}
-        </div>
-      </div>
-    `).join("") + `</div>`;
-  }
-}
-
-// ============================================================================
-// Literature Manager & Automatic DOI Fetch (with Duplicate DOI Detection)
-// ============================================================================
-
 function fillSampleDoi(doiStr) {
   document.getElementById("lit-doi-input").value = doiStr;
   handleLitDoiFetch();
 }
 
 async function handleQuickDoiAdd() {
-  if (!requireOwnerAuth()) return;
+  if (!requireAdminAuth()) return;
   const input = document.getElementById("topbar-doi-input");
   const val = input.value.trim();
   if (!val) {
@@ -1074,7 +775,7 @@ async function handleQuickDoiAdd() {
 }
 
 async function handleLitDoiFetch() {
-  if (!requireOwnerAuth()) return;
+  if (!requireAdminAuth()) return;
   const input = document.getElementById("lit-doi-input");
   const val = input.value.trim();
   if (!val) {
@@ -1144,9 +845,9 @@ async function importPaperByDoiCommon(rawDoiInput) {
       pages: msg.page || "",
       abstract: (msg.abstract || "").replace(/<[^>]+>/g, ""),
       citation_count: msg["is-referenced-by-count"] || 0,
-      material_system: "Functional Material",
-      synthesis_method: "Experimental",
-      characterization_tags: "XRD, SEM",
+      material_system: "Perovskite / 2D Material",
+      synthesis_method: "First-principles DFT",
+      characterization_tags: "DFT, VASP, XRD",
       status: "To Read",
       notes: "",
       in_weekly_report: 1
@@ -1165,11 +866,12 @@ function renderPapersList() {
   const filtered = STATE.papers.filter(p => {
     if (statusFilter !== "ALL" && p.status !== statusFilter) return false;
     if (!query) return true;
-    const hay = `${p.title} ${p.authors} ${p.journal} ${p.doi} ${p.material_system} ${p.synthesis_method} ${p.characterization_tags} ${p.notes}`.toLowerCase();
+    const hay = `${p.title} ${p.authors} ${p.journal} ${p.doi} ${p.material_system} ${p.characterization_tags} ${p.notes}`.toLowerCase();
     return hay.includes(query);
   });
 
   const container = document.getElementById("papers-list-container");
+  if (!container) return;
   if (filtered.length === 0) {
     container.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-muted);">No matching papers found. Paste a DOI above to auto-import!</div>`;
     return;
@@ -1194,8 +896,8 @@ function renderPapersList() {
 
         <div style="display:flex; gap:6px; align-items:center;">
           <button class="btn btn-outline btn-sm" onclick="copyPaperBibtex(${p.id})">BibTeX</button>
-          <button class="btn btn-outline btn-sm owner-only-btn" onclick="openPaperModal(${p.id})">✏️ Edit</button>
-          <button class="btn btn-danger btn-sm owner-only-btn" onclick="deletePaperItem(${p.id})">🗑️</button>
+          <button class="btn btn-outline btn-sm owner-only-btn admin-only" onclick="openPaperModal(${p.id})">✏️ Edit</button>
+          <button class="btn btn-danger btn-sm owner-only-btn admin-only" onclick="deletePaperItem(${p.id})">🗑️</button>
         </div>
       </div>
 
@@ -1205,7 +907,7 @@ function renderPapersList() {
 
       <div class="item-tags">
         ${p.material_system ? `<span class="badge badge-purple">⚛️ Material: ${escapeHtml(p.material_system)}</span>` : ""}
-        ${p.synthesis_method ? `<span class="badge badge-blue">🔥 Synthesis: ${escapeHtml(p.synthesis_method)}</span>` : ""}
+        ${p.synthesis_method ? `<span class="badge badge-blue">⚡ Method: ${escapeHtml(p.synthesis_method)}</span>` : ""}
         ${(p.characterization_tags || "").split(",").filter(Boolean).map(t => `<span class="badge badge-slate">🔬 ${escapeHtml(t.trim())}</span>`).join("")}
       </div>
     </div>
@@ -1213,7 +915,7 @@ function renderPapersList() {
 }
 
 function openPaperModal(paperId = null) {
-  if (!requireOwnerAuth()) return;
+  if (!requireAdminAuth()) return;
   const modal = document.getElementById("paper-modal");
   if (paperId) {
     const p = STATE.papers.find(x => x.id === paperId);
@@ -1241,8 +943,8 @@ function openPaperModal(paperId = null) {
     document.getElementById("pm-year").value = 2026;
     document.getElementById("pm-doi").value = "";
     document.getElementById("pm-material").value = "";
-    document.getElementById("pm-synthesis").value = "";
-    document.getElementById("pm-char").value = "XRD, SEM, XPS";
+    document.getElementById("pm-synthesis").value = "First-principles DFT";
+    document.getElementById("pm-char").value = "DFT, VASP, XRD";
     document.getElementById("pm-status").value = "To Read";
     document.getElementById("pm-notes").value = "";
     document.getElementById("pm-abstract").value = "";
@@ -1252,7 +954,7 @@ function openPaperModal(paperId = null) {
 }
 
 async function savePaperFromModal() {
-  if (!requireOwnerAuth()) return;
+  if (!requireAdminAuth()) return;
   const id = document.getElementById("pm-id").value;
   const existing = id ? STATE.papers.find(x => x.id === Number(id)) : {};
   const rawDoi = document.getElementById("pm-doi").value.trim();
@@ -1317,7 +1019,7 @@ async function savePaperFromModal() {
 }
 
 async function deletePaperItem(id) {
-  if (!requireOwnerAuth()) return;
+  if (!requireAdminAuth()) return;
   if (!STATIC_MODE) {
     await fetch(`/api/papers/${id}`, { method: "DELETE" });
     await loadAllData();
@@ -1344,151 +1046,524 @@ function exportAllBibtex() {
 }
 
 // ============================================================================
-// Lab Notes & Synthesis Log
+// Crystal Structures & DFT Simulation Database (*.cif / POSCAR)
 // ============================================================================
 
-function renderNotesList() {
-  const q = (document.getElementById("note-search")?.value || "").toLowerCase();
-  const cat = document.getElementById("note-cat-filter")?.value || "ALL";
+function initCifDropZone() {
+  const dropZone = document.getElementById("cif-drop-zone");
+  if (!dropZone) return;
 
-  const filtered = STATE.notes.filter(n => {
-    if (cat !== "ALL" && n.category !== cat) return false;
-    if (!q) return true;
-    const hay = `${n.title} ${n.sample_id} ${n.material_formula} ${n.precursors} ${n.conditions} ${n.characterization_methods} ${n.key_findings} ${n.content}`.toLowerCase();
-    return hay.includes(q);
+  ["dragenter", "dragover"].forEach(eventName => {
+    dropZone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropZone.classList.add("dragover");
+    }, false);
   });
 
-  const container = document.getElementById("notes-list-container");
+  ["dragleave", "drop"].forEach(eventName => {
+    dropZone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropZone.classList.remove("dragover");
+    }, false);
+  });
+
+  dropZone.addEventListener("drop", (e) => {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    if (files && files.length > 0) {
+      handleCifFile(files[0]);
+    }
+  });
+}
+
+function triggerCifFileInput() {
+  if (!requireAdminAuth()) return;
+  document.getElementById("cif-file-input")?.click();
+}
+
+function handleCifFileSelect(event) {
+  const file = event.target.files?.[0];
+  if (file) {
+    handleCifFile(file);
+    event.target.value = "";
+  }
+}
+
+async function handleCifFile(file) {
+  if (!requireAdminAuth()) return;
+  showToast(`Reading CIF file: ${file.name}...`);
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const text = e.target.result;
+    let parsed = null;
+    if (!STATIC_MODE) {
+      try {
+        const res = await fetch("/api/structures/parse-cif", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cif_text: text, filename: file.name })
+        });
+        if (res.ok) {
+          parsed = await res.json();
+        }
+      } catch (err) {
+        console.warn("Backend CIF parse failed, falling back to client parser:", err);
+      }
+    }
+
+    if (!parsed) {
+      parsed = parseCifTextClient(text, file.name);
+    }
+
+    populateStructureModalWithParsed(parsed, text, file.name);
+    openStructureModal();
+    showToast(`Parsed CIF: ${parsed.chemical_formula || file.name}`);
+  };
+  reader.readAsText(file);
+}
+
+function parseCifTextClient(cifText, filename = "") {
+  const result = {
+    name: filename.replace(/\.cif$/i, ""),
+    chemical_formula: "",
+    crystal_system: "Cubic",
+    space_group: "P 1",
+    structure_type: "Bulk 3D",
+    a: 4.0, b: 4.0, c: 4.0,
+    alpha: 90.0, beta: 90.0, gamma: 90.0,
+    volume: 64.0,
+    natoms: 5,
+    poscar_text: ""
+  };
+
+  const lines = cifText.split(/\r?\n/);
+  for (const line of lines) {
+    const trim = line.trim();
+    if (trim.startsWith("_chemical_formula_sum") || trim.startsWith("_chemical_formula_structural")) {
+      const parts = trim.split(/\s+/).slice(1).join(" ").replace(/['"]/g, "").trim();
+      if (parts) result.chemical_formula = parts;
+    } else if (trim.startsWith("_cell_length_a")) {
+      result.a = parseFloat(trim.split(/\s+/)[1]) || 4.0;
+    } else if (trim.startsWith("_cell_length_b")) {
+      result.b = parseFloat(trim.split(/\s+/)[1]) || 4.0;
+    } else if (trim.startsWith("_cell_length_c")) {
+      result.c = parseFloat(trim.split(/\s+/)[1]) || 4.0;
+    } else if (trim.startsWith("_cell_angle_alpha")) {
+      result.alpha = parseFloat(trim.split(/\s+/)[1]) || 90.0;
+    } else if (trim.startsWith("_cell_angle_beta")) {
+      result.beta = parseFloat(trim.split(/\s+/)[1]) || 90.0;
+    } else if (trim.startsWith("_cell_angle_gamma")) {
+      result.gamma = parseFloat(trim.split(/\s+/)[1]) || 90.0;
+    } else if (trim.startsWith("_cell_volume")) {
+      result.volume = parseFloat(trim.split(/\s+/)[1]) || 64.0;
+    } else if (trim.startsWith("_symmetry_space_group_name_H-M") || trim.startsWith("_space_group_name_H-M_alt")) {
+      result.space_group = trim.split(/\s+/).slice(1).join(" ").replace(/['"]/g, "").trim();
+    }
+  }
+
+  if (!result.chemical_formula) {
+    result.chemical_formula = result.name || "Crystal";
+  }
+
+  // Determine crystal system from angles and lattice
+  if (Math.abs(result.alpha - 90) < 0.1 && Math.abs(result.beta - 90) < 0.1 && Math.abs(result.gamma - 90) < 0.1) {
+    if (Math.abs(result.a - result.b) < 0.05 && Math.abs(result.b - result.c) < 0.05) {
+      result.crystal_system = "Cubic";
+    } else if (Math.abs(result.a - result.b) < 0.05) {
+      result.crystal_system = "Tetragonal";
+    } else {
+      result.crystal_system = "Orthorhombic";
+    }
+  } else if (Math.abs(result.alpha - 90) < 0.1 && Math.abs(result.beta - 90) < 0.1 && Math.abs(result.gamma - 120) < 0.5) {
+    result.crystal_system = "Hexagonal";
+  } else {
+    result.crystal_system = "Monoclinic";
+  }
+
+  result.poscar_text = generatePoscarFromLattice(result.chemical_formula, result.a, result.b, result.c, result.alpha, result.beta, result.gamma);
+  return result;
+}
+
+function generatePoscarFromLattice(formula, a, b, c, alpha, beta, gamma) {
+  const al = (alpha * Math.PI) / 180;
+  const be = (beta * Math.PI) / 180;
+  const ga = (gamma * Math.PI) / 180;
+
+  const vX = a;
+  const vY = 0.0;
+  const vZ = 0.0;
+
+  const bX = b * Math.cos(ga);
+  const bY = b * Math.sin(ga);
+  const bZ = 0.0;
+
+  const cX = c * Math.cos(be);
+  const cY = c * (Math.cos(al) - Math.cos(be) * Math.cos(ga)) / (Math.sin(ga) || 1);
+  const cZ = Math.sqrt(Math.max(0, c * c - cX * cX - cY * cY));
+
+  return `${formula} generated by MatSci Nexus\n1.0\n   ${vX.toFixed(8)}   ${vY.toFixed(8)}   ${vZ.toFixed(8)}\n   ${bX.toFixed(8)}   ${bY.toFixed(8)}   ${bZ.toFixed(8)}\n   ${cX.toFixed(8)}   ${cY.toFixed(8)}   ${cZ.toFixed(8)}\n${formula}\n1\nDirect\n   0.00000000   0.00000000   0.00000000\n`;
+}
+
+function populateStructureModalWithParsed(p, rawCif, filename) {
+  document.getElementById("struct-id").value = "";
+  document.getElementById("struct-name").value = p.name || filename.replace(/\.cif$/i, "") || "Crystal Structure";
+  document.getElementById("struct-formula").value = p.chemical_formula || p.formula || "";
+  document.getElementById("struct-system").value = p.crystal_system || "Cubic";
+  document.getElementById("struct-spacegroup").value = p.space_group || "";
+  document.getElementById("struct-type").value = p.structure_type || "Bulk 3D";
+  document.getElementById("struct-a").value = p.a || 4.0;
+  document.getElementById("struct-b").value = p.b || 4.0;
+  document.getElementById("struct-c").value = p.c || 4.0;
+  document.getElementById("struct-alpha").value = p.alpha || 90.0;
+  document.getElementById("struct-beta").value = p.beta || 90.0;
+  document.getElementById("struct-gamma").value = p.gamma || 90.0;
+  document.getElementById("struct-vol").value = p.volume || 64.0;
+  document.getElementById("struct-natoms").value = p.natoms || 5;
+  document.getElementById("struct-cifcontent").value = rawCif || p.cif_content || "";
+}
+
+function renderStructuresList() {
+  const query = (document.getElementById("struct-search")?.value || "").toLowerCase();
+  const systemFilter = document.getElementById("struct-system-filter")?.value || "ALL";
+  const typeFilter = document.getElementById("struct-type-filter")?.value || "ALL";
+
+  const filtered = STATE.structures.filter(s => {
+    if (systemFilter !== "ALL" && s.crystal_system !== systemFilter) return false;
+    if (typeFilter !== "ALL" && s.structure_type !== typeFilter) return false;
+    if (!query) return true;
+    const hay = `${s.name} ${s.chemical_formula} ${s.space_group} ${s.mp_id} ${s.dft_code} ${s.dft_functional} ${s.notes}`.toLowerCase();
+    return hay.includes(query);
+  });
+
+  const container = document.getElementById("structures-list-container");
+  if (!container) return;
+
   if (filtered.length === 0) {
-    container.innerHTML = `<div style="padding:16px; text-align:center; color:var(--text-muted);">No matching lab notes found.</div>`;
+    container.innerHTML = `<div style="padding:24px; text-align:center; color:var(--text-muted); grid-column:1/-1;">No matching crystal structures found. Drag &amp; drop a *.cif file or click "+ New Structure"!</div>`;
     return;
   }
 
-  container.innerHTML = filtered.map(n => `
-    <div class="item-card">
+  container.innerHTML = filtered.map(s => `
+    <div class="struct-card">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
         <div>
-          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:6px;">
-            ${n.pinned ? `<span class="badge badge-rose">📌 Pinned</span>` : ""}
-            <span class="badge badge-blue">${escapeHtml(n.category)}</span>
-            ${n.sample_id ? `<span class="badge badge-purple">Sample ID: ${escapeHtml(n.sample_id)}</span>` : ""}
-            ${n.in_weekly_report ? `<span class="badge badge-amber">📽️ In Report</span>` : ""}
+          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:4px;">
+            <span class="badge badge-purple">${escapeHtml(s.crystal_system || "Cubic")}</span>
+            <span class="badge badge-blue">${escapeHtml(s.structure_type || "Bulk 3D")}</span>
+            ${s.mp_id ? `<span class="badge badge-slate">${escapeHtml(s.mp_id)}</span>` : ""}
           </div>
-          <div class="item-title">${escapeHtml(n.title)}</div>
+          <div class="struct-title">${escapeHtml(s.name)}</div>
+          <div style="font-size:13px; color:var(--text-secondary); margin-top:2px;">
+            Formula: <strong style="color:var(--primary); font-family:monospace; font-size:14px;">${escapeHtml(s.chemical_formula)}</strong>
+            &nbsp;|&nbsp; Space Group: <code>${escapeHtml(s.space_group || "P1")}</code>
+          </div>
         </div>
+
         <div style="display:flex; gap:6px;">
-          <button class="btn btn-outline btn-sm owner-only-btn" onclick="openNoteModal(${n.id})">✏️</button>
-          <button class="btn btn-danger btn-sm owner-only-btn" onclick="deleteNoteItem(${n.id})">🗑️</button>
+          <button class="btn btn-outline btn-sm owner-only-btn admin-only" onclick="openStructureModal(${s.id})">✏️</button>
+          <button class="btn btn-danger btn-sm owner-only-btn admin-only" onclick="deleteStructureItem(${s.id})">🗑️</button>
         </div>
       </div>
 
-      ${n.material_formula ? `<div style="font-size:12.5px; margin-top:4px;"><strong>Formula:</strong> <code>${escapeHtml(n.material_formula)}</code> &nbsp;|&nbsp; <strong>Methods:</strong> ${escapeHtml(n.characterization_methods || "N/A")}</div>` : ""}
-      ${n.precursors ? `<div style="font-size:12px; color:var(--text-secondary); margin-top:4px;"><strong>Precursors:</strong> ${escapeHtml(n.precursors)}</div>` : ""}
-      ${n.conditions ? `<div style="font-size:12px; color:var(--text-secondary); margin-top:3px;"><strong>Conditions:</strong> ${escapeHtml(n.conditions)}</div>` : ""}
-      ${n.key_findings ? `<div style="background:#f0fdf4; border-left:3px solid #16a34a; padding:7px 10px; font-size:12.5px; color:#14532d; margin-top:8px; border-radius:4px;"><strong>Key Finding:</strong> ${escapeHtml(n.key_findings)}</div>` : ""}
-      ${n.content ? `<div style="font-size:12.5px; color:var(--text-main); margin-top:8px; white-space:pre-line; background:#f8fafc; padding:8px 10px; border-radius:6px;">${escapeHtml(n.content)}</div>` : ""}
+      <!-- Lattice Parameters Grid Table -->
+      <table class="struct-lattice-table">
+        <thead>
+          <tr>
+            <th>a (Å)</th>
+            <th>b (Å)</th>
+            <th>c (Å)</th>
+            <th>α (°)</th>
+            <th>β (°)</th>
+            <th>γ (°)</th>
+            <th>Vol (Å³)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>${Number(s.a || 0).toFixed(3)}</td>
+            <td>${Number(s.b || 0).toFixed(3)}</td>
+            <td>${Number(s.c || 0).toFixed(3)}</td>
+            <td>${Number(s.alpha || 0).toFixed(1)}</td>
+            <td>${Number(s.beta || 0).toFixed(1)}</td>
+            <td>${Number(s.gamma || 0).toFixed(1)}</td>
+            <td><strong>${Number(s.volume || 0).toFixed(2)}</strong></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- DFT Calculation Details -->
+      <div class="struct-dft-badges">
+        <span class="badge badge-teal">💻 ${escapeHtml(s.dft_code || "VASP")} (${escapeHtml(s.dft_functional || "PBE")})</span>
+        <span class="badge badge-blue">Cutoff: ${s.cutoff_energy || 520} eV</span>
+        <span class="badge badge-slate">K-mesh: ${escapeHtml(s.kpoints || "8x8x8")}</span>
+        <span class="badge ${s.bandgap_ev > 0 ? 'badge-green' : 'badge-amber'}">
+          Eg: ${Number(s.bandgap_ev || 0).toFixed(2)} eV (${escapeHtml(s.bandgap_type || "Direct")})
+        </span>
+        ${s.total_energy_per_atom ? `<span class="badge badge-rose">E: ${Number(s.total_energy_per_atom).toFixed(2)} eV/atom</span>` : ""}
+      </div>
+
+      ${s.notes ? `<div style="font-size:12px; color:var(--text-secondary); margin-top:8px; line-height:1.45; background:#f8fafc; padding:6px 10px; border-radius:6px;"><strong>Simulation Insight:</strong> ${escapeHtml(s.notes)}</div>` : ""}
+
+      <div class="struct-actions">
+        <button class="btn btn-primary btn-sm" onclick="viewCifModal(${s.id})">
+          👁️ View CIF / POSCAR
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="downloadCifById(${s.id})">
+          📥 .cif
+        </button>
+        <button class="btn btn-teal btn-sm" onclick="downloadPoscarById(${s.id})">
+          ⚡ POSCAR
+        </button>
+      </div>
     </div>
   `).join("");
 }
 
-function openNoteModal(noteId = null) {
-  if (!requireOwnerAuth()) return;
-  const modal = document.getElementById("note-modal");
-  if (noteId) {
-    const n = STATE.notes.find(x => x.id === noteId);
-    if (!n) return;
-    document.getElementById("note-modal-title").textContent = "Edit Research / Synthesis Note";
-    document.getElementById("nm-id").value = n.id;
-    document.getElementById("nm-title").value = n.title || "";
-    document.getElementById("nm-category").value = n.category || "Experiment / Synthesis";
-    document.getElementById("nm-sample").value = n.sample_id || "";
-    document.getElementById("nm-formula").value = n.material_formula || "";
-    document.getElementById("nm-char").value = n.characterization_methods || "";
-    document.getElementById("nm-precursors").value = n.precursors || "";
-    document.getElementById("nm-conditions").value = n.conditions || "";
-    document.getElementById("nm-findings").value = n.key_findings || "";
-    document.getElementById("nm-content").value = n.content || "";
-    document.getElementById("nm-pinned").checked = Boolean(n.pinned);
-    document.getElementById("nm-weekly").checked = Boolean(n.in_weekly_report);
+function openStructureModal(structId = null) {
+  if (!requireAdminAuth()) return;
+  const modal = document.getElementById("structure-modal");
+  if (!modal) return;
+
+  if (structId) {
+    const s = STATE.structures.find(x => x.id === structId);
+    if (!s) return;
+    document.getElementById("struct-modal-title").textContent = `Edit Crystal Structure: ${s.name}`;
+    document.getElementById("struct-id").value = s.id;
+    document.getElementById("struct-name").value = s.name || "";
+    document.getElementById("struct-formula").value = s.chemical_formula || "";
+    document.getElementById("struct-system").value = s.crystal_system || "Cubic";
+    document.getElementById("struct-spacegroup").value = s.space_group || "";
+    document.getElementById("struct-type").value = s.structure_type || "Bulk 3D";
+    document.getElementById("struct-mpid").value = s.mp_id || "";
+    document.getElementById("struct-a").value = s.a || 4.0;
+    document.getElementById("struct-b").value = s.b || 4.0;
+    document.getElementById("struct-c").value = s.c || 4.0;
+    document.getElementById("struct-alpha").value = s.alpha || 90.0;
+    document.getElementById("struct-beta").value = s.beta || 90.0;
+    document.getElementById("struct-gamma").value = s.gamma || 90.0;
+    document.getElementById("struct-vol").value = s.volume || 64.0;
+    document.getElementById("struct-natoms").value = s.natoms || 5;
+    document.getElementById("struct-dftcode").value = s.dft_code || "VASP";
+    document.getElementById("struct-functional").value = s.dft_functional || "PBE";
+    document.getElementById("struct-ecut").value = s.cutoff_energy || 520;
+    document.getElementById("struct-kpoints").value = s.kpoints || "8x8x8";
+    document.getElementById("struct-bandgap").value = s.bandgap_ev || 3.2;
+    document.getElementById("struct-bandgaptype").value = s.bandgap_type || "Direct";
+    document.getElementById("struct-energy").value = s.total_energy_per_atom || -6.85;
+    document.getElementById("struct-magstate").value = s.magnetic_state || "NM";
+    document.getElementById("struct-notes").value = s.notes || "";
+    document.getElementById("struct-cifcontent").value = s.raw_cif || "";
+    document.getElementById("struct-weekly").checked = Boolean(s.in_weekly_report);
   } else {
-    document.getElementById("note-modal-title").textContent = "New Research & Synthesis Note";
-    document.getElementById("nm-id").value = "";
-    document.getElementById("nm-title").value = "";
-    document.getElementById("nm-category").value = "Experiment / Synthesis";
-    document.getElementById("nm-sample").value = "";
-    document.getElementById("nm-formula").value = "";
-    document.getElementById("nm-char").value = "XRD, SEM, EIS";
-    document.getElementById("nm-precursors").value = "";
-    document.getElementById("nm-conditions").value = "";
-    document.getElementById("nm-findings").value = "";
-    document.getElementById("nm-content").value = "";
-    document.getElementById("nm-pinned").checked = false;
-    document.getElementById("nm-weekly").checked = true;
+    document.getElementById("struct-modal-title").textContent = "Add Crystal Structure (*.cif)";
+    document.getElementById("struct-id").value = "";
+    document.getElementById("struct-name").value = "";
+    document.getElementById("struct-formula").value = "";
+    document.getElementById("struct-system").value = "Cubic";
+    document.getElementById("struct-spacegroup").value = "Pm-3m (221)";
+    document.getElementById("struct-type").value = "Bulk 3D";
+    document.getElementById("struct-mpid").value = "";
+    document.getElementById("struct-a").value = "4.006";
+    document.getElementById("struct-b").value = "4.006";
+    document.getElementById("struct-c").value = "4.006";
+    document.getElementById("struct-alpha").value = "90.0";
+    document.getElementById("struct-beta").value = "90.0";
+    document.getElementById("struct-gamma").value = "90.0";
+    document.getElementById("struct-vol").value = "64.29";
+    document.getElementById("struct-natoms").value = "5";
+    document.getElementById("struct-dftcode").value = "VASP";
+    document.getElementById("struct-functional").value = "PBE";
+    document.getElementById("struct-ecut").value = "520";
+    document.getElementById("struct-kpoints").value = "8x8x8";
+    document.getElementById("struct-bandgap").value = "3.20";
+    document.getElementById("struct-bandgaptype").value = "Direct";
+    document.getElementById("struct-energy").value = "-6.85";
+    document.getElementById("struct-magstate").value = "NM";
+    document.getElementById("struct-notes").value = "";
+    document.getElementById("struct-cifcontent").value = "";
+    document.getElementById("struct-weekly").checked = true;
   }
   modal.classList.add("open");
 }
 
-async function saveNoteFromModal() {
-  if (!requireOwnerAuth()) return;
-  const id = document.getElementById("nm-id").value;
-  const payload = {
-    title: document.getElementById("nm-title").value.trim(),
-    category: document.getElementById("nm-category").value,
-    sample_id: document.getElementById("nm-sample").value.trim(),
-    material_formula: document.getElementById("nm-formula").value.trim(),
-    characterization_methods: document.getElementById("nm-char").value.trim(),
-    precursors: document.getElementById("nm-precursors").value.trim(),
-    conditions: document.getElementById("nm-conditions").value.trim(),
-    key_findings: document.getElementById("nm-findings").value.trim(),
-    content: document.getElementById("nm-content").value.trim(),
-    tags: "",
-    pinned: document.getElementById("nm-pinned").checked ? 1 : 0,
-    in_weekly_report: document.getElementById("nm-weekly").checked ? 1 : 0
-  };
-  if (!payload.title) {
-    showToast("Please provide a title for the lab note.", "warn");
+async function saveStructureFromModal() {
+  if (!requireAdminAuth()) return;
+  const id = document.getElementById("struct-id").value;
+  const formula = document.getElementById("struct-formula").value.trim();
+  const name = document.getElementById("struct-name").value.trim() || formula || "Unnamed Structure";
+
+  if (!formula) {
+    showToast("Chemical formula is required.", "warn");
     return;
   }
 
+  const a = parseFloat(document.getElementById("struct-a").value) || 4.0;
+  const b = parseFloat(document.getElementById("struct-b").value) || 4.0;
+  const c = parseFloat(document.getElementById("struct-c").value) || 4.0;
+  const alpha = parseFloat(document.getElementById("struct-alpha").value) || 90.0;
+  const beta = parseFloat(document.getElementById("struct-beta").value) || 90.0;
+  const gamma = parseFloat(document.getElementById("struct-gamma").value) || 90.0;
+  const rawCif = document.getElementById("struct-cifcontent").value.trim();
+
+  const payload = {
+    name,
+    chemical_formula: formula,
+    crystal_system: document.getElementById("struct-system").value,
+    space_group: document.getElementById("struct-spacegroup").value.trim(),
+    structure_type: document.getElementById("struct-type").value,
+    mp_id: document.getElementById("struct-mpid").value.trim(),
+    a, b, c, alpha, beta, gamma,
+    volume: parseFloat(document.getElementById("struct-vol").value) || (a * b * c),
+    natoms: parseInt(document.getElementById("struct-natoms").value) || 5,
+    dft_code: document.getElementById("struct-dftcode").value,
+    dft_functional: document.getElementById("struct-functional").value,
+    cutoff_energy: parseFloat(document.getElementById("struct-ecut").value) || 520,
+    kpoints: document.getElementById("struct-kpoints").value.trim(),
+    bandgap_ev: parseFloat(document.getElementById("struct-bandgap").value) || 0.0,
+    bandgap_type: document.getElementById("struct-bandgaptype").value,
+    total_energy_per_atom: parseFloat(document.getElementById("struct-energy").value) || 0.0,
+    magnetic_state: document.getElementById("struct-magstate").value,
+    notes: document.getElementById("struct-notes").value.trim(),
+    raw_cif: rawCif,
+    poscar_text: generatePoscarFromLattice(formula, a, b, c, alpha, beta, gamma),
+    in_weekly_report: document.getElementById("struct-weekly").checked ? 1 : 0
+  };
+
   if (!STATIC_MODE) {
-    const url = id ? `/api/notes/${id}` : "/api/notes";
+    const url = id ? `/api/structures/${id}` : "/api/structures";
     const method = id ? "PUT" : "POST";
-    await fetch(url, {
+    const res = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
-    closeModal("note-modal");
+    if (!res.ok) {
+      showToast("Failed to save structure to server", "error");
+      return;
+    }
+    closeModal("structure-modal");
     await loadAllData();
   } else {
     if (id) {
-      const idx = STATE.notes.findIndex(x => x.id === Number(id));
-      if (idx >= 0) STATE.notes[idx] = { ...STATE.notes[idx], ...payload };
+      const idx = STATE.structures.findIndex(x => x.id === Number(id));
+      if (idx >= 0) STATE.structures[idx] = { ...STATE.structures[idx], ...payload };
     } else {
-      STATE.notes.unshift({ ...payload, id: Date.now() });
+      STATE.structures.unshift({ ...payload, id: Date.now() });
     }
     saveStaticDb();
-    closeModal("note-modal");
+    closeModal("structure-modal");
     loadStaticFallbackData();
   }
-  showToast(id ? "Updated lab note." : "Saved new lab note.");
+  showToast(id ? "Updated crystal structure." : "Added crystal structure.");
 }
 
-async function deleteNoteItem(id) {
-  if (!requireOwnerAuth()) return;
+async function deleteStructureItem(id) {
+  if (!requireAdminAuth()) return;
   if (!STATIC_MODE) {
-    await fetch(`/api/notes/${id}`, { method: "DELETE" });
+    await fetch(`/api/structures/${id}`, { method: "DELETE" });
     await loadAllData();
   } else {
-    STATE.notes = STATE.notes.filter(x => x.id !== id);
+    STATE.structures = STATE.structures.filter(x => x.id !== id);
     saveStaticDb();
     loadStaticFallbackData();
   }
-  showToast("Deleted lab note.");
+  showToast("Deleted crystal structure.");
+}
+
+function viewCifModal(id) {
+  const s = STATE.structures.find(x => x.id === id);
+  if (!s) return;
+  STATE.currentViewingStructure = s;
+  STATE.cifViewMode = "cif";
+
+  document.getElementById("cvm-title").textContent = `${s.name} (${s.chemical_formula})`;
+  document.getElementById("cvm-subtitle").textContent = `${s.crystal_system} • Space Group: ${s.space_group} • VASP ${s.dft_functional}`;
+  renderCifCodePreview();
+  document.getElementById("cif-view-modal")?.classList.add("open");
+}
+
+function renderCifCodePreview() {
+  const s = STATE.currentViewingStructure;
+  const wrapper = document.getElementById("cvm-code-wrapper");
+  if (!s || !wrapper) return;
+
+  if (STATE.cifViewMode === "cif") {
+    let content = s.raw_cif;
+    if (!content) {
+      content = `# CIF file generated by MatSci Nexus\ndata_${s.chemical_formula.replace(/[^A-Za-z0-9]/g, "_")}\n_chemical_name_common '${s.name}'\n_chemical_formula_sum '${s.chemical_formula}'\n_symmetry_space_group_name_H-M '${s.space_group}'\n_cell_length_a ${s.a}\n_cell_length_b ${s.b}\n_cell_length_c ${s.c}\n_cell_angle_alpha ${s.alpha}\n_cell_angle_beta ${s.beta}\n_cell_angle_gamma ${s.gamma}\n_cell_volume ${s.volume}\n`;
+    }
+    wrapper.textContent = content;
+  } else {
+    const poscar = s.poscar_text || generatePoscarFromLattice(s.chemical_formula, s.a, s.b, s.c, s.alpha, s.beta, s.gamma);
+    wrapper.textContent = poscar;
+  }
+}
+
+function toggleCifViewFormat() {
+  STATE.cifViewMode = STATE.cifViewMode === "cif" ? "poscar" : "cif";
+  renderCifCodePreview();
+  showToast(`Switched view to ${STATE.cifViewMode.toUpperCase()}`);
+}
+
+function downloadCurrentCif() {
+  const s = STATE.currentViewingStructure;
+  if (!s) return;
+  downloadCifById(s.id);
+}
+
+function downloadCurrentPoscar() {
+  const s = STATE.currentViewingStructure;
+  if (!s) return;
+  downloadPoscarById(s.id);
+}
+
+function copyCurrentPoscar() {
+  const s = STATE.currentViewingStructure;
+  if (!s) return;
+  const poscar = s.poscar_text || generatePoscarFromLattice(s.chemical_formula, s.a, s.b, s.c, s.alpha, s.beta, s.gamma);
+  navigator.clipboard.writeText(poscar);
+  showToast("Copied VASP POSCAR to clipboard!");
+}
+
+function downloadCifById(id) {
+  const s = STATE.structures.find(x => x.id === id);
+  if (!s) return;
+  let text = s.raw_cif;
+  if (!text) {
+    text = `# CIF file generated by MatSci Nexus\ndata_${s.chemical_formula.replace(/[^A-Za-z0-9]/g, "_")}\n_chemical_name_common '${s.name}'\n_chemical_formula_sum '${s.chemical_formula}'\n_symmetry_space_group_name_H-M '${s.space_group}'\n_cell_length_a ${s.a}\n_cell_length_b ${s.b}\n_cell_length_c ${s.c}\n_cell_angle_alpha ${s.alpha}\n_cell_angle_beta ${s.beta}\n_cell_angle_gamma ${s.gamma}\n_cell_volume ${s.volume}\n`;
+  }
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${s.chemical_formula.replace(/[^A-Za-z0-9]/g, "_")}.cif`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showToast(`Downloaded ${a.download}`);
+}
+
+function downloadPoscarById(id) {
+  const s = STATE.structures.find(x => x.id === id);
+  if (!s) return;
+  const poscar = s.poscar_text || generatePoscarFromLattice(s.chemical_formula, s.a, s.b, s.c, s.alpha, s.beta, s.gamma);
+  const blob = new Blob([poscar], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `POSCAR_${s.chemical_formula.replace(/[^A-Za-z0-9]/g, "_")}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showToast(`Exported VASP ${a.download}`);
 }
 
 // ============================================================================
-// Work Schedule & Instrument Booking List
+// Schedule & Work Session Management
 // ============================================================================
 
 function renderScheduleList() {
@@ -1522,9 +1597,9 @@ function renderScheduleList() {
           <button class="btn btn-teal btn-sm" onclick="pushSingleEventToGoogleCalendar(${s.id})" title="Add to Google Calendar (${OWNER_GOOGLE_EMAIL})">
             📅 +Google Cal
           </button>
-          <button class="btn btn-outline btn-sm owner-only-btn" title="Cycle Status" onclick="cycleScheduleStatus(${s.id})">✓ Status</button>
-          <button class="btn btn-outline btn-sm owner-only-btn" onclick="openScheduleModal(${s.id})">✏️</button>
-          <button class="btn btn-danger btn-sm owner-only-btn" onclick="deleteScheduleItem(${s.id})">🗑️</button>
+          <button class="btn btn-outline btn-sm owner-only-btn admin-only" title="Cycle Status" onclick="cycleScheduleStatus(${s.id})">✓ Status</button>
+          <button class="btn btn-outline btn-sm owner-only-btn admin-only" onclick="openScheduleModal(${s.id})">✏️</button>
+          <button class="btn btn-danger btn-sm owner-only-btn admin-only" onclick="deleteScheduleItem(${s.id})">🗑️</button>
         </div>
       </div>
     </div>
@@ -1532,7 +1607,7 @@ function renderScheduleList() {
 }
 
 function openScheduleModal(itemId = null, prefillDate = null) {
-  if (!requireOwnerAuth()) return;
+  if (!requireAdminAuth()) return;
   const modal = document.getElementById("schedule-modal");
   const todayStr = prefillDate || new Date().toISOString().split("T")[0];
   document.getElementById("sm-open-gcal").checked = false;
@@ -1540,10 +1615,10 @@ function openScheduleModal(itemId = null, prefillDate = null) {
   if (itemId) {
     const s = STATE.schedule.find(x => x.id === itemId);
     if (!s) return;
-    document.getElementById("schedule-modal-title").textContent = "Edit Calendar Event / Instrument Slot";
+    document.getElementById("schedule-modal-title").textContent = "Edit Calendar Event / Simulation Slot";
     document.getElementById("sm-id").value = s.id;
     document.getElementById("sm-title").value = s.title || "";
-    document.getElementById("sm-type").value = s.event_type || "Synthesis / Furnace";
+    document.getElementById("sm-type").value = s.event_type || "Group Meeting / PI Meeting";
     document.getElementById("sm-location").value = s.instrument_or_location || "";
     document.getElementById("sm-date").value = s.start_date || todayStr;
     document.getElementById("sm-start").value = s.start_time || "09:00";
@@ -1552,11 +1627,11 @@ function openScheduleModal(itemId = null, prefillDate = null) {
     document.getElementById("sm-status").value = s.status || "Scheduled";
     document.getElementById("sm-desc").value = s.description || "";
   } else {
-    document.getElementById("schedule-modal-title").textContent = `Schedule Experiment / Event (${todayStr})`;
+    document.getElementById("schedule-modal-title").textContent = `Schedule Event / Task (${todayStr})`;
     document.getElementById("sm-id").value = "";
     document.getElementById("sm-title").value = "";
-    document.getElementById("sm-type").value = "Characterization (XRD/SEM/TEM/XPS)";
-    document.getElementById("sm-location").value = "Bruker D8 Advance XRD";
+    document.getElementById("sm-type").value = "Group Meeting / PI Meeting";
+    document.getElementById("sm-location").value = "SKKU Cluster / Office";
     document.getElementById("sm-date").value = todayStr;
     document.getElementById("sm-start").value = "10:00";
     document.getElementById("sm-end").value = "12:00";
@@ -1568,7 +1643,7 @@ function openScheduleModal(itemId = null, prefillDate = null) {
 }
 
 async function saveScheduleFromModal() {
-  if (!requireOwnerAuth()) return;
+  if (!requireAdminAuth()) return;
   const id = document.getElementById("sm-id").value;
   const openGcal = document.getElementById("sm-open-gcal").checked;
 
@@ -1619,7 +1694,7 @@ async function saveScheduleFromModal() {
 }
 
 async function cycleScheduleStatus(id) {
-  if (!requireOwnerAuth()) return;
+  if (!requireAdminAuth()) return;
   const s = STATE.schedule.find(x => x.id === id);
   if (!s) return;
   const order = ["Scheduled", "In Progress", "Completed"];
@@ -1640,7 +1715,7 @@ async function cycleScheduleStatus(id) {
 }
 
 async function deleteScheduleItem(id) {
-  if (!requireOwnerAuth()) return;
+  if (!requireAdminAuth()) return;
   if (!STATIC_MODE) {
     await fetch(`/api/schedule/${id}`, { method: "DELETE" });
     await loadAllData();
@@ -1653,7 +1728,411 @@ async function deleteScheduleItem(id) {
 }
 
 // ============================================================================
-// Academic CV Tab (Lý lịch khoa học) Rendering & Management
+// Data Loading (Full-Stack FastAPI + GitHub Pages Fallback)
+// ============================================================================
+
+async function loadAllData() {
+  try {
+    const dashProbe = await fetch("/api/dashboard");
+    if (!dashProbe.ok) throw new Error("Static fallback");
+    const dashRes = await dashProbe.json();
+    const [papersRes, structsRes, schedRes, profRes] = await Promise.all([
+      fetch("/api/papers").then(r => r.json()),
+      fetch("/api/structures").then(r => r.json()),
+      fetch("/api/schedule").then(r => r.json()),
+      fetch("/api/profile").then(r => r.json())
+    ]);
+
+    STATIC_MODE = false;
+    STATE.papers = papersRes;
+    STATE.structures = structsRes;
+    STATE.schedule = schedRes;
+    STATE.profile = profRes;
+
+    renderDashboard(dashRes);
+    renderPapersList();
+    renderStructuresList();
+    renderScheduleList();
+    renderMonthlyCalendar();
+    renderProfile(profRes);
+    renderAcademicCvSheet(profRes);
+  } catch (err) {
+    STATIC_MODE = true;
+    loadStaticFallbackData();
+  }
+}
+
+function loadStaticFallbackData() {
+  const saved = localStorage.getItem("matsci_static_db_v4");
+  if (saved) {
+    const parsed = JSON.parse(saved);
+    STATE.papers = parsed.papers || [];
+    STATE.structures = parsed.structures || [];
+    STATE.schedule = parsed.schedule || [];
+    STATE.profile = parsed.profile || {};
+  } else {
+    STATE.papers = [
+      {
+        id: 1,
+        doi: "10.1038/s41563-019-0431-3",
+        title: "Fundamentals of inorganic solid-state electrolytes for batteries",
+        authors: "Jun Soo Kim, Yoon Seok Jung, Gerbrand Ceder et al.",
+        journal: "Nature Materials",
+        year: 2019,
+        volume: "18",
+        pages: "1278-1291",
+        abstract: "Solid-state electrolytes are key components for next-generation all-solid-state batteries with high energy density and safety.",
+        citation_count: 1420,
+        material_system: "Li7La3Zr2O12 (LLZO)",
+        synthesis_method: "First-principles DFT",
+        characterization_tags: "DFT, VASP, XRD",
+        status: "Key Reference",
+        notes: "Benchmark for activation energy (Ea ~ 0.30 eV) of cubic garnet vs tetragonal phases.",
+        in_weekly_report: 1
+      },
+      {
+        id: 2,
+        doi: "10.1021/acs.chemmater.0c04125",
+        title: "Ta-Doped Li7La3Zr2O12 Garnet Solid Electrolytes: Role of Excess Li and Sintering Atmosphere",
+        authors: "M. Balaish, J. L. M. Rupp et al.",
+        journal: "Chemistry of Materials",
+        year: 2021,
+        volume: "33",
+        pages: "2104-2118",
+        abstract: "Systematic investigation of Li6.4La3Zr1.4Ta0.6O12 sintered under flowing O2 vs Ar.",
+        citation_count: 215,
+        material_system: "Li6.4La3Zr1.4Ta0.6O12 (LLZTO)",
+        synthesis_method: "Solid-State Sintering",
+        characterization_tags: "XRD, SEM, Raman, EIS",
+        status: "Read",
+        notes: "Suppression of La2Zr2O7 impurity at 1140 °C.",
+        in_weekly_report: 1
+      }
+    ];
+
+    STATE.structures = [
+      {
+        id: 1,
+        name: "BaTiO3 (Cubic Perovskite)",
+        chemical_formula: "BaTiO3",
+        crystal_system: "Cubic",
+        space_group: "Pm-3m (221)",
+        structure_type: "Bulk 3D",
+        mp_id: "mp-2998",
+        a: 4.006, b: 4.006, c: 4.006, alpha: 90.0, beta: 90.0, gamma: 90.0,
+        volume: 64.29, natoms: 5,
+        dft_code: "VASP", dft_functional: "PBE",
+        cutoff_energy: 520, kpoints: "8x8x8",
+        bandgap_ev: 3.20, bandgap_type: "Direct",
+        total_energy_per_atom: -6.85, magnetic_state: "NM",
+        notes: "Prototypical ferroelectric perovskite. Relaxed cell parameter a = 4.006 Å matches experimental XRD diffraction.",
+        in_weekly_report: 1
+      },
+      {
+        id: 2,
+        name: "BaSnO3 (Transparent Conducting Oxide)",
+        chemical_formula: "BaSnO3",
+        crystal_system: "Cubic",
+        space_group: "Pm-3m (221)",
+        structure_type: "Bulk 3D",
+        mp_id: "mp-2176",
+        a: 4.116, b: 4.116, c: 4.116, alpha: 90.0, beta: 90.0, gamma: 90.0,
+        volume: 69.73, natoms: 5,
+        dft_code: "VASP", dft_functional: "HSE06",
+        cutoff_energy: 550, kpoints: "6x6x6",
+        bandgap_ev: 3.10, bandgap_type: "Direct",
+        total_energy_per_atom: -7.12, magnetic_state: "NM",
+        notes: "High-mobility transparent perovskite conductor. HSE06 optical bandgap Eg = 3.10 eV at Gamma point.",
+        in_weekly_report: 1
+      },
+      {
+        id: 3,
+        name: "MoS2 (2D Monolayer TMD)",
+        chemical_formula: "MoS2",
+        crystal_system: "Hexagonal",
+        space_group: "P-6m2 (187)",
+        structure_type: "2D Monolayer",
+        mp_id: "mp-2815",
+        a: 3.190, b: 3.190, c: 18.500, alpha: 90.0, beta: 90.0, gamma: 120.0,
+        volume: 162.98, natoms: 3,
+        dft_code: "Quantum ESPRESSO", dft_functional: "PBE",
+        cutoff_energy: 600, kpoints: "12x12x1",
+        bandgap_ev: 1.88, bandgap_type: "Direct",
+        total_energy_per_atom: -8.04, magnetic_state: "NM",
+        notes: "Monolayer MoS2 with 15 Å vacuum slab. Demonstrates direct bandgap transition (1.88 eV) at K point.",
+        in_weekly_report: 1
+      }
+    ];
+
+    const today = new Date();
+    const d0 = today.toISOString().split("T")[0];
+    const d1 = new Date(today.getTime() + 86400000).toISOString().split("T")[0];
+    const d2 = new Date(today.getTime() + 2 * 86400000).toISOString().split("T")[0];
+
+    STATE.schedule = [
+      {
+        id: 1,
+        title: "DFT VASP Band Structure & DOS Calculation",
+        event_type: "Characterization (XRD/SEM/TEM/XPS)",
+        instrument_or_location: "SKKU High-Performance Computing Cluster",
+        start_date: d0,
+        start_time: "10:00",
+        end_time: "13:00",
+        status: "Completed",
+        sample_id: "BaSnO3-HSE06",
+        description: "Hybrid HSE06 electronic structure convergence.",
+        in_weekly_report: 1
+      },
+      {
+        id: 2,
+        title: "Weekly Subgroup & PI Simulation Meeting",
+        event_type: "Group Meeting / PI Meeting",
+        instrument_or_location: "SKKU Engineering Bldg / Zoom",
+        start_date: d1,
+        start_time: "15:00",
+        end_time: "16:30",
+        status: "Scheduled",
+        sample_id: "",
+        description: "Present BaTiO3 and BaSnO3 DFT bandgap comparisons.",
+        in_weekly_report: 1
+      },
+      {
+        id: 3,
+        title: "Phonon Dispersion Calculation (Phonopy + VASP)",
+        event_type: "Characterization (XRD/SEM/TEM/XPS)",
+        instrument_or_location: "KISTI Supercomputing Node",
+        start_date: d2,
+        start_time: "09:30",
+        end_time: "12:00",
+        status: "Scheduled",
+        sample_id: "MoS2-Monolayer",
+        description: "Finite-displacement phonon stability check.",
+        in_weekly_report: 1
+      }
+    ];
+
+    STATE.profile = {
+      full_name: "Vu Tien Lam",
+      title_role: "Ph.D. Candidate in Computational Materials Science",
+      affiliation: "Sungkyunkwan University (SKKU)",
+      advisor: "Prof. Advisor",
+      research_focus: "First-Principles DFT Simulations (VASP / QE), Perovskite Oxides, 2D Materials & Electronic Structure",
+      orcid_id: "0000-0002-1825-0097",
+      scholar_id: "",
+      email: OWNER_GOOGLE_EMAIL,
+      phone: "+82-10-0000-0000",
+      website: "https://tienlamvu.github.io/lamreseach/",
+      location: "Suwon, Republic of Korea (SKKU)",
+      owner_email: OWNER_GOOGLE_EMAIL,
+      total_citations: 87,
+      h_index: 3,
+      i10_index: 3,
+      bio: "Ph.D. candidate at Sungkyunkwan University (SKKU) specializing in first-principles density functional theory (DFT) simulations of perovskite oxides, transparent conducting materials, and 2D energy storage heterostructures.",
+      education: [
+        {
+          degree: "Ph.D. Candidate in Materials Science & Engineering",
+          institution: "Sungkyunkwan University (SKKU), Republic of Korea",
+          period: "Present",
+          details: "Computational Materials Science Laboratory (DFT, VASP, Quantum ESPRESSO)"
+        }
+      ],
+      experiences: [
+        {
+          role: "Graduate Research Assistant (Ph.D. Researcher)",
+          organization: "Sungkyunkwan University (SKKU)",
+          period: "Present",
+          description: "Ab initio DFT calculations, electronic structure modeling, and supercomputing workflow management."
+        }
+      ],
+      publications: [
+        {
+          title: "Interfacial Engineering and Electronic Structure of Oxide Perovskites via First-Principles Calculations",
+          authors: "V. T. Lam et al.",
+          journal: "Physical Review Materials",
+          year: 2026,
+          doi: "10.1103/PhysRevMaterials.2026.0412",
+          citations: 14,
+          source: "ORCID / Scholar"
+        }
+      ],
+      conferences: [
+        {
+          title: "Hybrid Functional HSE06 Band Structure Calculations of Doped Perovskites",
+          event: "International Conference on Computational Materials Science",
+          type: "Oral Presentation",
+          year: 2025
+        }
+      ],
+      skills: {
+        synthesis: "Computational Crystal Modeling, Supercell Generation, Defect Modeling, Interface Construction (VASPKIT, pymatgen)",
+        characterization: "DFT (VASP, Quantum ESPRESSO), Phonon Dispersions (Phonopy), Band Structure & DOS, Optical Properties, Powder XRD Simulation",
+        computational: "Python, Linux HPC Clusters, SLURM, VESTA, ASE, OriginPro, LaTeX, Git"
+      },
+      awards: [
+        {
+          title: "Graduate Research Scholarship",
+          issuer: "Sungkyunkwan University (SKKU)",
+          year: 2025,
+          details: "Doctoral research excellence fellowship."
+        }
+      ]
+    };
+
+    saveStaticDb();
+  }
+
+  const dashData = {
+    stats: {
+      total_papers: STATE.papers.length,
+      papers_read: STATE.papers.filter(p => ["Read", "Key Reference", "Cited in Thesis"].includes(p.status)).length,
+      total_structures: STATE.structures.length,
+      upcoming_tasks: STATE.schedule.filter(s => s.status !== "Completed").length,
+      completed_tasks: STATE.schedule.filter(s => s.status === "Completed").length,
+      total_citations: STATE.profile.total_citations || 0,
+      h_index: STATE.profile.h_index || 0
+    },
+    recent_papers: STATE.papers.slice(0, 4),
+    recent_structures: STATE.structures.slice(0, 4),
+    upcoming_schedule: STATE.schedule.slice(0, 6),
+    profile: STATE.profile
+  };
+
+  renderDashboard(dashData);
+  renderPapersList();
+  renderStructuresList();
+  renderScheduleList();
+  renderMonthlyCalendar();
+  renderProfile(STATE.profile);
+  renderAcademicCvSheet(STATE.profile);
+}
+
+function saveStaticDb() {
+  localStorage.setItem("matsci_static_db_v4", JSON.stringify({
+    papers: STATE.papers,
+    structures: STATE.structures,
+    schedule: STATE.schedule,
+    profile: STATE.profile
+  }));
+}
+
+// ============================================================================
+// Dashboard Rendering
+// ============================================================================
+
+function renderDashboard(dash) {
+  const s = dash.stats || {};
+  const kpiEl = document.getElementById("dashboard-kpis");
+  if (kpiEl) {
+    kpiEl.innerHTML = `
+      <div class="kpi-card">
+        <div class="kpi-label">Literature Library</div>
+        <div class="kpi-value" style="color:#2563eb;">${s.total_papers || 0}</div>
+        <div class="kpi-sub"><strong>${s.papers_read || 0}</strong> Read / Key References</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Crystal Structures (*.cif)</div>
+        <div class="kpi-value" style="color:#0d9488;">${s.total_structures || STATE.structures.length || 0}</div>
+        <div class="kpi-sub"><strong>${STATE.structures.length}</strong> Modeled &amp; DFT Computed</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Simulation Tasks &amp; Cal</div>
+        <div class="kpi-value" style="color:#d97706;">${s.upcoming_tasks || 0}</div>
+        <div class="kpi-sub">Upcoming / <strong>${s.completed_tasks || 0}</strong> Completed</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Citation Impact</div>
+        <div class="kpi-value" style="color:#7c3aed;">${s.total_citations || 0}</div>
+        <div class="kpi-sub">h-index: <strong>${s.h_index || 0}</strong> (ORCID / Scholar)</div>
+      </div>
+    `;
+  }
+
+  // Dashboard Upcoming Schedule
+  const schedList = document.getElementById("dashboard-schedule-list");
+  if (schedList) {
+    if (!dash.upcoming_schedule || dash.upcoming_schedule.length === 0) {
+      schedList.innerHTML = `<div style="color:var(--text-muted); font-size:13px; padding:12px;">No scheduled sessions yet. Click "Open Full Calendar" to add events.</div>`;
+    } else {
+      schedList.innerHTML = dash.upcoming_schedule.slice(0, 4).map(item => `
+        <div class="item-card" style="padding:12px 14px; margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; flex-wrap:wrap;">
+            <div>
+              <div class="item-title" style="font-size:14px;">${escapeHtml(item.title)}</div>
+              <div class="item-meta" style="margin-bottom:4px;">
+                📍 ${escapeHtml(item.instrument_or_location || "Lab/Cluster")} &nbsp;|&nbsp; 🕒 ${escapeHtml(item.start_date)} (${escapeHtml(item.start_time)}–${escapeHtml(item.end_time)})
+              </div>
+            </div>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <button class="btn btn-outline btn-sm" onclick="pushSingleEventToGoogleCalendar(${item.id})" title="Add to Google Calendar (${OWNER_GOOGLE_EMAIL})">📅 +GCal</button>
+              <span class="badge ${item.status === 'Completed' ? 'badge-green' : item.status === 'In Progress' ? 'badge-amber' : 'badge-blue'}">
+                ${escapeHtml(item.status)}
+              </span>
+            </div>
+          </div>
+        </div>
+      `).join("");
+    }
+  }
+
+  // Dashboard Recent Structures
+  const structList = document.getElementById("dashboard-structures-list");
+  if (structList) {
+    const structs = dash.recent_structures || STATE.structures.slice(0, 3);
+    if (!structs || structs.length === 0) {
+      structList.innerHTML = `<div style="color:var(--text-muted); font-size:13px; padding:12px;">No crystal structures saved yet. Drag &amp; drop a *.cif file in the Crystal Structures tab!</div>`;
+    } else {
+      structList.innerHTML = structs.slice(0, 3).map(st => `
+        <div class="item-card" style="padding:12px 14px; margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; gap:6px; align-items:center;">
+              <span class="badge badge-purple">${escapeHtml(st.crystal_system || "Cubic")}</span>
+              <span class="badge badge-teal">${escapeHtml(st.dft_code || "VASP")} (${escapeHtml(st.dft_functional || "PBE")})</span>
+            </div>
+            <span class="badge ${st.bandgap_ev > 0 ? 'badge-green' : 'badge-amber'}">Eg: ${Number(st.bandgap_ev || 0).toFixed(2)} eV</span>
+          </div>
+          <div class="item-title" style="font-size:14px; margin-top:6px;">
+            💎 <strong>${escapeHtml(st.chemical_formula)}</strong> — ${escapeHtml(st.name)}
+          </div>
+          <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">
+            Lattice: <em>a</em>=${Number(st.a || 0).toFixed(3)} Å, <em>b</em>=${Number(st.b || 0).toFixed(3)} Å, <em>c</em>=${Number(st.c || 0).toFixed(3)} Å &nbsp;|&nbsp; Space Group: <code>${escapeHtml(st.space_group || "")}</code>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:8px;">
+            <button class="btn btn-outline btn-sm" onclick="viewCifModal(${st.id})">👁️ View CIF / POSCAR</button>
+            <button class="btn btn-teal btn-sm" onclick="downloadPoscarById(${st.id})">⚡ POSCAR</button>
+          </div>
+        </div>
+      `).join("");
+    }
+  }
+
+  // Dashboard Recent Literature
+  const papersList = document.getElementById("dashboard-papers-list");
+  if (papersList) {
+    if (!dash.recent_papers || dash.recent_papers.length === 0) {
+      papersList.innerHTML = `<div style="color:var(--text-muted); font-size:13px;">No papers in library yet. Paste a DOI above!</div>`;
+    } else {
+      papersList.innerHTML = `<div class="grid-3">` + dash.recent_papers.slice(0, 3).map(p => `
+        <div class="item-card" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
+          <div>
+            <div style="display:flex; justify-content:space-between; gap:6px; margin-bottom:6px;">
+              <span class="badge badge-green">${escapeHtml(p.status)}</span>
+              <span style="font-size:11.5px; color:var(--text-muted);">Cited: ${p.citation_count || 0}</span>
+            </div>
+            <div class="item-title" style="font-size:14px;">${escapeHtml(p.title)}</div>
+            <div class="item-meta">${escapeHtml(p.authors)} — <em>${escapeHtml(p.journal)}</em> (${p.year || ""})</div>
+          </div>
+          <div class="item-tags">
+            ${p.material_system ? `<span class="badge badge-purple">⚛️ ${escapeHtml(p.material_system)}</span>` : ""}
+            ${p.characterization_tags ? `<span class="badge badge-slate">🔬 ${escapeHtml(p.characterization_tags)}</span>` : ""}
+          </div>
+        </div>
+      `).join("") + `</div>`;
+    }
+  }
+}
+
+// ============================================================================
+// Academic CV (Lý Lịch Khoa Học) Rendering & Management
 // ============================================================================
 
 function renderAcademicCvSheet(prof) {
@@ -1671,7 +2150,7 @@ function renderAcademicCvSheet(prof) {
     <div class="cv-header-block">
       <div>
         <div class="cv-name">${escapeHtml(prof.full_name || "Vu Tien Lam")}</div>
-        <div class="cv-role">${escapeHtml(prof.title_role || "Ph.D. Candidate in Materials Science & Engineering")}</div>
+        <div class="cv-role">${escapeHtml(prof.title_role || "Ph.D. Candidate in Computational Materials Science")}</div>
         <div class="cv-affil">${escapeHtml(prof.affiliation || "Sungkyunkwan University (SKKU)")} • Advisor: <strong>${escapeHtml(prof.advisor || "")}</strong></div>
         <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
           <span class="badge badge-blue">📊 Citations: ${prof.total_citations || 0}</span>
@@ -1691,7 +2170,7 @@ function renderAcademicCvSheet(prof) {
 
     <div class="cv-section">
       <div class="cv-section-title">
-        <span>1. Research Profile &amp; Specialization</span>
+        <span>1. Research Profile &amp; Computational Specialization</span>
       </div>
       <div style="font-size:13px; color:#1e293b; line-height:1.55;">
         <strong>Research Focus:</strong> <span style="color:var(--primary); font-weight:600;">${escapeHtml(prof.research_focus || "")}</span>
@@ -1702,7 +2181,7 @@ function renderAcademicCvSheet(prof) {
     <div class="cv-section">
       <div class="cv-section-title">
         <span>2. Education &amp; Academic Training</span>
-        <button class="btn btn-outline btn-sm no-print owner-only-btn" onclick="addCvEducation()">+ Add Degree</button>
+        <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" onclick="addCvEducation()">+ Add Degree</button>
       </div>
       ${eduList.map((e, i) => `
         <div class="cv-entry">
@@ -1710,7 +2189,7 @@ function renderAcademicCvSheet(prof) {
             <span>🎓 ${escapeHtml(e.degree)}</span>
             <div style="display:flex; align-items:center; gap:8px;">
               <span style="font-size:12.5px; color:var(--text-muted);">${escapeHtml(e.period)}</span>
-              <button class="btn btn-danger btn-sm no-print owner-only-btn" onclick="removeCvItem('education', ${i})">✕</button>
+              <button class="btn btn-danger btn-sm no-print owner-only-btn admin-only" onclick="removeCvItem('education', ${i})">✕</button>
             </div>
           </div>
           <div class="cv-entry-sub">${escapeHtml(e.institution)}</div>
@@ -1722,7 +2201,7 @@ function renderAcademicCvSheet(prof) {
     <div class="cv-section">
       <div class="cv-section-title">
         <span>3. Research &amp; Academic Appointments</span>
-        <button class="btn btn-outline btn-sm no-print owner-only-btn" onclick="addCvExperience()">+ Add Position</button>
+        <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" onclick="addCvExperience()">+ Add Position</button>
       </div>
       ${expList.map((ex, i) => `
         <div class="cv-entry">
@@ -1730,7 +2209,7 @@ function renderAcademicCvSheet(prof) {
             <span>🔬 ${escapeHtml(ex.role)}</span>
             <div style="display:flex; align-items:center; gap:8px;">
               <span style="font-size:12.5px; color:var(--text-muted);">${escapeHtml(ex.period)}</span>
-              <button class="btn btn-danger btn-sm no-print owner-only-btn" onclick="removeCvItem('experiences', ${i})">✕</button>
+              <button class="btn btn-danger btn-sm no-print owner-only-btn admin-only" onclick="removeCvItem('experiences', ${i})">✕</button>
             </div>
           </div>
           <div class="cv-entry-sub">${escapeHtml(ex.organization)}</div>
@@ -1741,18 +2220,18 @@ function renderAcademicCvSheet(prof) {
 
     <div class="cv-section">
       <div class="cv-section-title">
-        <span>4. Experimental, Characterization &amp; Computational Skills</span>
-        <button class="btn btn-outline btn-sm no-print owner-only-btn" onclick="openCvSkillsModal()">✏️ Edit Skills</button>
+        <span>4. Computational Modeling, Crystallography &amp; Simulation Skills</span>
+        <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" onclick="openCvSkillsModal()">✏️ Edit Skills</button>
       </div>
       <div style="display:grid; grid-template-columns:1fr; gap:8px; font-size:13px; line-height:1.5;">
         <div style="background:#f8fafc; padding:10px 14px; border-radius:8px; border-left:3px solid #2563eb;">
-          <strong>🔥 Synthesis &amp; Material Processing:</strong> ${escapeHtml(skills.synthesis || "Solid-State Sintering, Hydrothermal, Sol-Gel, ALD, Glovebox Cell Fabrication")}
+          <strong>💻 First-Principles DFT &amp; Codes:</strong> ${escapeHtml(skills.synthesis || "VASP (PBE/HSE06), Quantum ESPRESSO, LAMMPS, Phonopy, CP2K")}
         </div>
         <div style="background:#f8fafc; padding:10px 14px; border-radius:8px; border-left:3px solid #0d9488;">
-          <strong>🔍 Characterization &amp; Analytical Techniques:</strong> ${escapeHtml(skills.characterization || "Powder/Thin-Film XRD (Rietveld GSAS-II), FE-SEM/EDS, HR-TEM/SAED, XPS, Raman, EIS")}
+          <strong>🔍 Structure Generation &amp; Analysis:</strong> ${escapeHtml(skills.characterization || "VESTA, VASPKIT, pymatgen, CIF Parsing, Powder XRD Simulation, Band Structure & DOS")}
         </div>
         <div style="background:#f8fafc; padding:10px 14px; border-radius:8px; border-left:3px solid #7c3aed;">
-          <strong>💻 Modeling, Crystallography &amp; Data Software:</strong> ${escapeHtml(skills.computational || "Python, VASP (DFT), VESTA, OriginPro, CasaXPS, EC-Lab, LaTeX")}
+          <strong>⚡ High-Performance Computing &amp; Languages:</strong> ${escapeHtml(skills.computational || "Python, Linux HPC Clusters, SLURM, ASE, Git, OriginPro, LaTeX")}
         </div>
       </div>
     </div>
@@ -1760,7 +2239,7 @@ function renderAcademicCvSheet(prof) {
     <div class="cv-section">
       <div class="cv-section-title">
         <span>5. Peer-Reviewed Journal Publications (${pubList.length})</span>
-        <button class="btn btn-outline btn-sm no-print owner-only-btn" onclick="addOwnPublicationModal()">+ Add Publication</button>
+        <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" onclick="addOwnPublicationModal()">+ Add Publication</button>
       </div>
       ${pubList.map((p, i) => `
         <div class="cv-entry">
@@ -1768,8 +2247,8 @@ function renderAcademicCvSheet(prof) {
             <span>[${i + 1}] ${escapeHtml(p.title)}</span>
             <div style="display:flex; align-items:center; gap:6px;">
               <span class="badge badge-purple">Cited: ${p.citations || 0}</span>
-              ${p.doi ? `<button class="btn btn-outline btn-sm no-print owner-only-btn" title="Import this DOI to Literature Library (duplicate-checked)" onclick="importPaperByDoiCommon('${escapeHtml(p.doi)}')">📥 +Library</button>` : ""}
-              <button class="btn btn-danger btn-sm no-print owner-only-btn" onclick="removeOwnPub(${i})">✕</button>
+              ${p.doi ? `<button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" title="Import this DOI to Literature Library" onclick="importPaperByDoiCommon('${escapeHtml(p.doi)}')">📥 +Library</button>` : ""}
+              <button class="btn btn-danger btn-sm no-print owner-only-btn admin-only" onclick="removeOwnPub(${i})">✕</button>
             </div>
           </div>
           <div class="cv-entry-desc" style="color:#1e293b;">
@@ -1782,8 +2261,8 @@ function renderAcademicCvSheet(prof) {
 
     <div class="cv-section">
       <div class="cv-section-title">
-        <span>6. Conference Presentations &amp; Invited Talks</span>
-        <button class="btn btn-outline btn-sm no-print owner-only-btn" onclick="addCvConference()">+ Add Presentation</button>
+        <span>6. Conference Presentations &amp; Seminars</span>
+        <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" onclick="addCvConference()">+ Add Presentation</button>
       </div>
       ${confList.map((c, i) => `
         <div class="cv-entry">
@@ -1791,7 +2270,7 @@ function renderAcademicCvSheet(prof) {
             <span>🎤 ${escapeHtml(c.title)}</span>
             <div style="display:flex; align-items:center; gap:8px;">
               <span class="badge badge-blue">${escapeHtml(c.type || "Oral")} (${c.year || 2025})</span>
-              <button class="btn btn-danger btn-sm no-print owner-only-btn" onclick="removeCvItem('conferences', ${i})">✕</button>
+              <button class="btn btn-danger btn-sm no-print owner-only-btn admin-only" onclick="removeCvItem('conferences', ${i})">✕</button>
             </div>
           </div>
           <div class="cv-entry-sub">${escapeHtml(c.event)}</div>
@@ -1802,7 +2281,7 @@ function renderAcademicCvSheet(prof) {
     <div class="cv-section" style="margin-bottom:0;">
       <div class="cv-section-title">
         <span>7. Honors, Fellowships &amp; Academic Awards</span>
-        <button class="btn btn-outline btn-sm no-print owner-only-btn" onclick="addCvAward()">+ Add Honor/Award</button>
+        <button class="btn btn-outline btn-sm no-print owner-only-btn admin-only" onclick="addCvAward()">+ Add Honor/Award</button>
       </div>
       ${awardsList.map((a, i) => `
         <div class="cv-entry">
@@ -1810,7 +2289,7 @@ function renderAcademicCvSheet(prof) {
             <span>🏆 ${escapeHtml(a.title)}</span>
             <div style="display:flex; align-items:center; gap:8px;">
               <span style="font-size:12.5px; color:var(--text-muted);">${escapeHtml(a.issuer)} (${a.year || 2025})</span>
-              <button class="btn btn-danger btn-sm no-print owner-only-btn" onclick="removeCvItem('awards', ${i})">✕</button>
+              <button class="btn btn-danger btn-sm no-print owner-only-btn admin-only" onclick="removeCvItem('awards', ${i})">✕</button>
             </div>
           </div>
           ${a.details ? `<div class="cv-entry-desc">${escapeHtml(a.details)}</div>` : ""}
@@ -1821,12 +2300,12 @@ function renderAcademicCvSheet(prof) {
 }
 
 async function addCvEducation() {
-  if (!requireOwnerAuth()) return;
-  const degree = prompt("Degree Title (e.g., Ph.D. in Materials Science & Engineering):");
+  if (!requireAdminAuth()) return;
+  const degree = prompt("Degree Title (e.g., Ph.D. Candidate in Materials Science & Engineering):");
   if (!degree) return;
   const institution = prompt("University / Institution:", "Sungkyunkwan University (SKKU)") || "";
   const period = prompt("Period (e.g., 2024 – Present):", "2024 – Present") || "";
-  const details = prompt("Thesis / Advisor / Honors details:", "") || "";
+  const details = prompt("Computational Lab / Advisor details:", "") || "";
 
   STATE.profile.education = STATE.profile.education || [];
   STATE.profile.education.unshift({ degree, institution, period, details });
@@ -1834,7 +2313,7 @@ async function addCvEducation() {
 }
 
 async function addCvExperience() {
-  if (!requireOwnerAuth()) return;
+  if (!requireAdminAuth()) return;
   const role = prompt("Position / Role Title (e.g., Graduate Research Assistant):");
   if (!role) return;
   const organization = prompt("Laboratory / Organization:", STATE.profile.affiliation || "Sungkyunkwan University (SKKU)") || "";
@@ -1847,11 +2326,11 @@ async function addCvExperience() {
 }
 
 async function addCvConference() {
-  if (!requireOwnerAuth()) return;
+  if (!requireAdminAuth()) return;
   const title = prompt("Presentation Title:");
   if (!title) return;
   const event = prompt("Conference Name & Location:", "MRS Fall Meeting") || "";
-  const type = prompt("Presentation Type (Oral Presentation / Poster Presentation):", "Oral Presentation") || "Oral Presentation";
+  const type = prompt("Presentation Type (Oral / Poster):", "Oral Presentation") || "Oral Presentation";
   const year = parseInt(prompt("Year:", "2026")) || 2026;
 
   STATE.profile.conferences = STATE.profile.conferences || [];
@@ -1860,7 +2339,7 @@ async function addCvConference() {
 }
 
 async function addCvAward() {
-  if (!requireOwnerAuth()) return;
+  if (!requireAdminAuth()) return;
   const title = prompt("Award / Fellowship Name:");
   if (!title) return;
   const issuer = prompt("Granting Institution / Society:", "Sungkyunkwan University (SKKU)") || "";
@@ -1873,7 +2352,7 @@ async function addCvAward() {
 }
 
 async function removeCvItem(listKey, idx) {
-  if (!requireOwnerAuth()) return;
+  if (!requireAdminAuth()) return;
   if (Array.isArray(STATE.profile[listKey])) {
     STATE.profile[listKey].splice(idx, 1);
     await persistProfileState();
@@ -1881,16 +2360,16 @@ async function removeCvItem(listKey, idx) {
 }
 
 function openCvSkillsModal() {
-  if (!requireOwnerAuth()) return;
+  if (!requireAdminAuth()) return;
   const skills = STATE.profile.skills || {};
   document.getElementById("cv-skill-synth").value = skills.synthesis || "";
   document.getElementById("cv-skill-char").value = skills.characterization || "";
   document.getElementById("cv-skill-comp").value = skills.computational || "";
-  document.getElementById("cv-skills-modal").classList.add("open");
+  document.getElementById("cv-skills-modal")?.classList.add("open");
 }
 
 async function saveCvSkillsModal() {
-  if (!requireOwnerAuth()) return;
+  if (!requireAdminAuth()) return;
   STATE.profile.skills = {
     synthesis: document.getElementById("cv-skill-synth").value.trim(),
     characterization: document.getElementById("cv-skill-char").value.trim(),
@@ -1898,7 +2377,7 @@ async function saveCvSkillsModal() {
   };
   closeModal("cv-skills-modal");
   await persistProfileState();
-  showToast("Updated Materials Science Technical Skills in CV!");
+  showToast("Updated Computational Skills in Academic CV!");
 }
 
 // ============================================================================
@@ -1920,14 +2399,13 @@ async function autofillReportFromDatabase(silent = false) {
         presenter_name: STATE.profile.full_name || "Vu Tien Lam",
         advisor_name: STATE.profile.advisor || "Prof. Advisor",
         lab_name: STATE.profile.affiliation || "Sungkyunkwan University (SKKU)",
-        university: "Department of Materials Science & Engineering",
-        summary_achievements: STATE.notes.map(n => `• [${n.sample_id || "EXP"}] ${n.key_findings || n.title}`).join("\n"),
-        experimental_results: STATE.notes.map(n => ({
-          sample_id: n.sample_id || "EXP-01",
-          material: n.material_formula || "Material",
-          conditions: n.conditions || "Standard sintering",
-          methods: n.characterization_methods || "XRD, SEM",
-          findings: n.key_findings || "Phase pure"
+        university: "Computational Materials Science Laboratory",
+        summary_achievements: STATE.structures.map(s => `• [${s.chemical_formula}] ${s.dft_code} (${s.dft_functional}): Eg = ${s.bandgap_ev} eV. ${s.notes || ""}`).join("\n") || "• Ran electronic structure calculations.",
+        experimental_results: STATE.structures.map(s => ({
+          sample_id: s.chemical_formula,
+          material: `${s.dft_code} (${s.dft_functional})`,
+          conditions: `Eg = ${s.bandgap_ev} eV (${s.bandgap_type})`,
+          findings: s.notes || `a=${s.a} Å, Vol=${s.volume} Å³`
         })),
         literature_review: STATE.papers.map(p => ({
           title: p.title,
@@ -1935,16 +2413,16 @@ async function autofillReportFromDatabase(silent = false) {
           material: p.material_system,
           takeaway: p.notes || p.abstract?.slice(0, 120) || ""
         })),
-        blockers_troubleshooting: "• Minimized ambient carbonate formation using argon transfer vessel.",
-        next_week_plan: "• Complete FE-SEM cross-section mapping and symmetric coin-cell cycling."
+        blockers_troubleshooting: "• High cutoff energy convergence tested for transition metal pseudopotentials.",
+        next_week_plan: "• Complete hybrid HSE06 DOS calculation for defect supercells and surface slabs."
       };
       populateReportForm(data);
     }
     if (!silent) {
-      showToast("Compiled this week's synthesis notes, schedule tasks & papers into report!");
+      showToast("Compiled this week's simulation structures, calendar tasks & papers into report!");
     }
   } catch (err) {
-    console.error("Autofill failed:", err);
+    console.error("Autofill report failed:", err);
   }
 }
 
@@ -1970,12 +2448,13 @@ function populateReportForm(data) {
 
 function renderExpReportRows() {
   const container = document.getElementById("rep-exp-rows-container");
+  if (!container) return;
   container.innerHTML = STATE.expReportRows.map((r, idx) => `
     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:6px; background:#f8fafc; padding:8px; border-radius:8px; border:1px solid var(--border-color);">
-      <input type="text" placeholder="Sample ID" value="${escapeHtml(r.sample_id)}" oninput="STATE.expReportRows[${idx}].sample_id=this.value; updateSlidePreview()" />
-      <input type="text" placeholder="Formula" value="${escapeHtml(r.material)}" oninput="STATE.expReportRows[${idx}].material=this.value; updateSlidePreview()" />
-      <input type="text" placeholder="Conditions" value="${escapeHtml(r.conditions)}" oninput="STATE.expReportRows[${idx}].conditions=this.value; updateSlidePreview()" />
-      <input type="text" placeholder="Key Findings" value="${escapeHtml(r.findings)}" oninput="STATE.expReportRows[${idx}].findings=this.value; updateSlidePreview()" />
+      <input type="text" placeholder="Formula / Name" value="${escapeHtml(r.sample_id)}" oninput="STATE.expReportRows[${idx}].sample_id=this.value; updateSlidePreview()" />
+      <input type="text" placeholder="DFT Setup / Code" value="${escapeHtml(r.material)}" oninput="STATE.expReportRows[${idx}].material=this.value; updateSlidePreview()" />
+      <input type="text" placeholder="Bandgap / Energy" value="${escapeHtml(r.conditions)}" oninput="STATE.expReportRows[${idx}].conditions=this.value; updateSlidePreview()" />
+      <input type="text" placeholder="Key Simulation Finding" value="${escapeHtml(r.findings)}" oninput="STATE.expReportRows[${idx}].findings=this.value; updateSlidePreview()" />
       <button type="button" class="btn btn-danger btn-sm" onclick="STATE.expReportRows.splice(${idx},1); renderExpReportRows(); updateSlidePreview()">✕</button>
     </div>
   `).join("");
@@ -1983,11 +2462,10 @@ function renderExpReportRows() {
 
 function addExpResultRow() {
   STATE.expReportRows.push({
-    sample_id: `BATCH-0${STATE.expReportRows.length + 1}`,
-    material: "Li6.4La3Zr1.4Ta0.6O12",
-    conditions: "1140 °C 12h in O2",
-    methods: "XRD, SEM, EIS",
-    findings: "Phase pure cubic garnet; σ = 0.85 mS/cm"
+    sample_id: "BaTiO3",
+    material: "VASP (PBE functional)",
+    conditions: "Eg = 3.20 eV (Direct)",
+    findings: "Relaxed lattice a = 4.006 Å within 0.8% of experiment"
   });
   renderExpReportRows();
   updateSlidePreview();
@@ -1995,6 +2473,7 @@ function addExpResultRow() {
 
 function renderLitReportRows() {
   const container = document.getElementById("rep-lit-rows-container");
+  if (!container) return;
   container.innerHTML = STATE.litReportRows.map((r, idx) => `
     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:6px; background:#f8fafc; padding:8px; border-radius:8px; border:1px solid var(--border-color);">
       <input type="text" placeholder="Paper Title" value="${escapeHtml(r.title)}" oninput="STATE.litReportRows[${idx}].title=this.value; updateSlidePreview()" />
@@ -2007,10 +2486,10 @@ function renderLitReportRows() {
 
 function addLitReviewRow() {
   STATE.litReportRows.push({
-    title: "New Benchmark Study in Materials Science",
-    journal: "Advanced Materials (2026)",
-    material: "Solid Electrolyte / 2D Material",
-    takeaway: "Key insight applicable to our current experimental batch."
+    title: "DFT Benchmarking in Perovskite Semiconductors",
+    journal: "Physical Review Materials (2026)",
+    material: "Perovskite Oxides",
+    takeaway: "HSE06 functional accurately reproduces experimental optical bandgap."
   });
   renderLitReportRows();
   updateSlidePreview();
@@ -2023,7 +2502,7 @@ function collectReportPayload() {
     week_end: document.getElementById("rep-end").value || "2026-11-13",
     presenter_name: document.getElementById("rep-presenter").value.trim() || "Vu Tien Lam",
     advisor_name: document.getElementById("rep-advisor").value.trim() || "Prof. Advisor",
-    lab_name: document.getElementById("rep-lab").value.trim() || "Advanced Materials Lab (SKKU)",
+    lab_name: document.getElementById("rep-lab").value.trim() || "Computational Materials Science Lab (SKKU)",
     university: document.getElementById("rep-uni").value.trim() || "Sungkyunkwan University (SKKU)",
     theme_color: document.getElementById("rep-theme").value || "oxford_navy",
     summary_achievements: document.getElementById("rep-achievements").value,
@@ -2035,7 +2514,7 @@ function collectReportPayload() {
       samples_count: STATE.expReportRows.length,
       characterizations_count: Math.max(STATE.expReportRows.length * 2, 4),
       papers_count: STATE.litReportRows.length,
-      tasks_completed: STATE.schedule.filter(s => s.status === "Completed").length || 4
+      tasks_completed: STATE.schedule.filter(s => s.status === "Completed").length || 3
     }
   };
 }
@@ -2051,14 +2530,16 @@ function updateSlidePreview() {
   const tc = themeColors[data.theme_color] || themeColors.oxford_navy;
 
   const deck = document.getElementById("slide-preview-deck");
+  if (!deck) return;
+
   deck.innerHTML = `
     <div class="slide-mock" style="background:${tc.head}; color:#fff; padding:18px 20px; border-left:8px solid ${tc.bar};">
       <div style="font-size:11px; text-transform:uppercase; color:#38bdf8; font-weight:700;">${escapeHtml(data.university)} • ${escapeHtml(data.lab_name)}</div>
       <div style="font-size:19px; font-weight:800; margin-top:6px;">${escapeHtml(data.title)}</div>
-      <div style="font-size:12.5px; color:#cbd5e1; margin-top:4px;">Reporting Period: ${escapeHtml(data.week_start)} — ${escapeHtml(data.week_end)}</div>
+      <div style="font-size:12.5px; color:#cbd5e1; margin-top:4px;">Period: ${escapeHtml(data.week_start)} — ${escapeHtml(data.week_end)}</div>
       <div style="margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.15); font-size:12px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px;">
         <span><strong>Presenter:</strong> ${escapeHtml(data.presenter_name)}</span>
-        <span><strong>PI:</strong> ${escapeHtml(data.advisor_name)}</span>
+        <span><strong>PI / Advisor:</strong> ${escapeHtml(data.advisor_name)}</span>
         <span>Slide 1 / 5</span>
       </div>
     </div>
@@ -2070,8 +2551,8 @@ function updateSlidePreview() {
       </div>
       <div class="slide-mock-body">
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(100px, 1fr)); gap:8px; margin-bottom:10px;">
-          <div style="background:#fff; padding:6px 10px; border-radius:6px; border:1px solid #e2e8f0;"><strong>${data.metrics.samples_count}</strong> Samples</div>
-          <div style="background:#fff; padding:6px 10px; border-radius:6px; border:1px solid #e2e8f0;"><strong>${data.metrics.characterizations_count}</strong> Characterizations</div>
+          <div style="background:#fff; padding:6px 10px; border-radius:6px; border:1px solid #e2e8f0;"><strong>${data.metrics.samples_count}</strong> Structures</div>
+          <div style="background:#fff; padding:6px 10px; border-radius:6px; border:1px solid #e2e8f0;"><strong>${data.metrics.characterizations_count}</strong> Calculations</div>
           <div style="background:#fff; padding:6px 10px; border-radius:6px; border:1px solid #e2e8f0;"><strong>${data.metrics.papers_count}</strong> Papers</div>
           <div style="background:#fff; padding:6px 10px; border-radius:6px; border:1px solid #e2e8f0;"><strong>${data.metrics.tasks_completed}</strong> Tasks Done</div>
         </div>
@@ -2081,22 +2562,24 @@ function updateSlidePreview() {
 
     <div class="slide-mock">
       <div class="slide-mock-header" style="background:${tc.head}; border-bottom-color:${tc.bar};">
-        <span>2. Experimental Synthesis &amp; Characterization Results</span>
+        <span>2. DFT / Molecular Simulations &amp; Structure Modeling</span>
         <span>Slide 3 / 5</span>
       </div>
       <div class="slide-mock-body">
         <table class="data-table" style="font-size:11.5px; background:#fff;">
           <thead>
             <tr>
-              <th>Sample / Formula</th>
-              <th>Processing Conditions</th>
-              <th>Quantitative Findings</th>
+              <th>Formula &amp; Symmetry</th>
+              <th>Computational Setup / Code</th>
+              <th>Calculated Property / Gap</th>
+              <th>Key Findings &amp; Convergence</th>
             </tr>
           </thead>
           <tbody>
             ${data.experimental_results.map(r => `
               <tr>
-                <td><strong>${escapeHtml(r.sample_id)}</strong><br/><span style="color:var(--text-muted);">${escapeHtml(r.material)}</span></td>
+                <td><strong>${escapeHtml(r.sample_id)}</strong></td>
+                <td>${escapeHtml(r.material)}</td>
                 <td>${escapeHtml(r.conditions)}</td>
                 <td>${escapeHtml(r.findings)}</td>
               </tr>
@@ -2108,7 +2591,7 @@ function updateSlidePreview() {
 
     <div class="slide-mock">
       <div class="slide-mock-header" style="background:${tc.head}; border-bottom-color:${tc.bar};">
-        <span>3. Literature Review &amp; State-of-the-Art Benchmarking</span>
+        <span>3. Literature Review &amp; Computational Benchmarking</span>
         <span>Slide 4 / 5</span>
       </div>
       <div class="slide-mock-body">
@@ -2124,16 +2607,16 @@ function updateSlidePreview() {
 
     <div class="slide-mock">
       <div class="slide-mock-header" style="background:${tc.head}; border-bottom-color:${tc.bar};">
-        <span>4. Challenges, Troubleshooting &amp; Next Week Plan</span>
+        <span>4. Computational Blockers, Troubleshooting &amp; Next Plan</span>
         <span>Slide 5 / 5</span>
       </div>
       <div class="slide-mock-body" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
         <div style="background:#fff; padding:10px; border-radius:6px; border:1px solid #f59e0b;">
-          <div style="font-weight:700; color:#b45309; margin-bottom:4px;">⚠️ Blockers &amp; Troubleshooting</div>
+          <div style="font-weight:700; color:#b45309; margin-bottom:4px;">⚠️ Convergence &amp; HPC Challenges</div>
           <div style="white-space:pre-line; font-size:11.5px;">${escapeHtml(data.blockers_troubleshooting)}</div>
         </div>
         <div style="background:#fff; padding:10px; border-radius:6px; border:1px solid ${tc.bar};">
-          <div style="font-weight:700; color:${tc.bar}; margin-bottom:4px;">🚀 Action Plan for Next Week</div>
+          <div style="font-weight:700; color:${tc.bar}; margin-bottom:4px;">🚀 Simulation Action Plan for Next Week</div>
           <div style="white-space:pre-line; font-size:11.5px;">${escapeHtml(data.next_week_plan)}</div>
         </div>
       </div>
@@ -2143,8 +2626,10 @@ function updateSlidePreview() {
 
 async function downloadWeeklyReportPptx() {
   const btn = document.getElementById("export-pptx-btn");
-  btn.disabled = true;
-  btn.textContent = "⏳ Generating .pptx...";
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "⏳ Generating .pptx...";
+  }
   try {
     const payload = collectReportPayload();
     if (!STATIC_MODE) {
@@ -2177,8 +2662,8 @@ async function downloadWeeklyReportPptx() {
       s2.addText(payload.summary_achievements, { x: 0.5, y: 1.3, w: 12, h: 4.8, fontSize: 14, color: "1E293B" });
 
       const s3 = pptx.addSlide();
-      s3.addText("2. Experimental Synthesis & Characterization Results", { x: 0.5, y: 0.4, w: 12, h: 0.6, fontSize: 22, bold: true, color: "0F172A" });
-      const rows = [["Sample ID", "Material", "Conditions", "Key Findings"]];
+      s3.addText("2. DFT / Molecular Simulations & Structure Modeling", { x: 0.5, y: 0.4, w: 12, h: 0.6, fontSize: 22, bold: true, color: "0F172A" });
+      const rows = [["Formula & Symmetry", "Computational Setup / Code", "Calculated Property / Gap", "Findings & Convergence"]];
       payload.experimental_results.forEach(r => rows.push([r.sample_id, r.material, r.conditions, r.findings]));
       s3.addTable(rows, { x: 0.5, y: 1.3, w: 12.3, fontSize: 12, border: { pt: 1, color: "CBD5E1" } });
 
@@ -2189,7 +2674,7 @@ async function downloadWeeklyReportPptx() {
 
       const s5 = pptx.addSlide();
       s5.addText("4. Challenges, Troubleshooting & Next Week Plan", { x: 0.5, y: 0.4, w: 12, h: 0.6, fontSize: 22, bold: true, color: "0F172A" });
-      s5.addText("Blockers & Troubleshooting:\n" + payload.blockers_troubleshooting, { x: 0.5, y: 1.3, w: 5.8, h: 4.8, fontSize: 13, color: "92400E" });
+      s5.addText("Convergence & Blockers:\n" + payload.blockers_troubleshooting, { x: 0.5, y: 1.3, w: 5.8, h: 4.8, fontSize: 13, color: "92400E" });
       s5.addText("Next Week Plan:\n" + payload.next_week_plan, { x: 6.7, y: 1.3, w: 5.8, h: 4.8, fontSize: 13, color: "1E40AF" });
 
       await pptx.writeFile({ fileName: `Weekly_Report_${payload.week_end.replace(/-/g, "_")}.pptx` });
@@ -2198,18 +2683,267 @@ async function downloadWeeklyReportPptx() {
   } catch (err) {
     showToast(`Export error: ${err.message}`, "error");
   } finally {
-    btn.disabled = false;
-    btn.textContent = "📥 Export PowerPoint (.pptx)";
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "📥 Export PowerPoint (.pptx)";
+    }
   }
 }
 
 // ============================================================================
-// Materials Science Toolkit: Periodic Table & Calculators
+// Academic Profile & ORCID / Google Scholar Sync
+// ============================================================================
+
+function renderProfile(prof) {
+  if (!prof) return;
+  const subEl = document.getElementById("header-researcher-sub");
+  if (subEl) {
+    subEl.textContent = `${prof.full_name || "Vu Tien Lam"} • Computational Materials Science • ${prof.affiliation || "SKKU"}`;
+  }
+
+  document.getElementById("prof-name").value = prof.full_name || "Vu Tien Lam";
+  document.getElementById("prof-role").value = prof.title_role || "";
+  document.getElementById("prof-affiliation").value = prof.affiliation || "";
+  document.getElementById("prof-advisor").value = prof.advisor || "";
+  document.getElementById("prof-email").value = prof.email || OWNER_GOOGLE_EMAIL;
+  document.getElementById("prof-phone").value = prof.phone || "";
+  document.getElementById("prof-website").value = prof.website || "";
+  document.getElementById("prof-location").value = prof.location || "";
+  document.getElementById("prof-focus").value = prof.research_focus || "";
+  document.getElementById("prof-citations").value = prof.total_citations || 0;
+  document.getElementById("prof-hindex").value = prof.h_index || 0;
+  document.getElementById("prof-i10index").value = prof.i10_index || 0;
+  document.getElementById("prof-bio").value = prof.bio || "";
+  document.getElementById("sync-orcid-input").value = prof.orcid_id || "";
+  document.getElementById("sync-scholar-input").value = prof.scholar_id || "";
+
+  const syncText = document.getElementById("prof-last-synced");
+  if (syncText) {
+    syncText.textContent = prof.last_synced_at
+      ? `Last synced: ${prof.last_synced_at}`
+      : "Ready to sync with ORCID & Google Scholar";
+  }
+
+  const pubs = prof.publications || [];
+  const pubContainer = document.getElementById("prof-publications-list");
+  if (pubContainer) {
+    if (pubs.length === 0) {
+      pubContainer.innerHTML = `<div style="color:var(--text-muted); font-size:13px;">No publications listed yet. Sync with ORCID or Google Scholar above!</div>`;
+    } else {
+      pubContainer.innerHTML = pubs.map((p, idx) => `
+        <div class="item-card" style="padding:12px 14px;">
+          <div style="display:flex; justify-content:space-between; gap:8px;">
+            <div class="item-title" style="font-size:14px;">${escapeHtml(p.title)}</div>
+            <span class="badge badge-purple">Citations: ${p.citations || 0}</span>
+          </div>
+          <div class="item-meta" style="margin-top:4px;">
+            ${escapeHtml(p.authors || prof.full_name)} — <em>${escapeHtml(p.journal)}</em> (${p.year || ""})
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
+            <span class="badge badge-slate">${escapeHtml(p.source || "Academic CV")}</span>
+            <div style="display:flex; gap:8px; align-items:center;">
+              ${p.doi ? `<a href="https://doi.org/${encodeURIComponent(p.doi)}" target="_blank" style="font-size:12px; color:var(--primary); font-weight:600; text-decoration:none;">DOI: ${escapeHtml(p.doi)} ↗</a>` : ""}
+              <button class="btn btn-danger btn-sm owner-only-btn admin-only" onclick="removeOwnPub(${idx})">✕</button>
+            </div>
+          </div>
+        </div>
+      `).join("");
+    }
+  }
+}
+
+async function persistProfileState() {
+  const payload = {
+    full_name: document.getElementById("prof-name").value.trim() || STATE.profile.full_name || "Vu Tien Lam",
+    title_role: document.getElementById("prof-role").value.trim() || STATE.profile.title_role || "",
+    affiliation: document.getElementById("prof-affiliation").value.trim() || STATE.profile.affiliation || "",
+    advisor: document.getElementById("prof-advisor").value.trim() || STATE.profile.advisor || "",
+    research_focus: document.getElementById("prof-focus").value.trim() || STATE.profile.research_focus || "",
+    orcid_id: document.getElementById("sync-orcid-input").value.trim() || STATE.profile.orcid_id || "",
+    scholar_id: document.getElementById("sync-scholar-input").value.trim() || STATE.profile.scholar_id || "",
+    email: document.getElementById("prof-email").value.trim() || OWNER_GOOGLE_EMAIL,
+    phone: document.getElementById("prof-phone").value.trim() || STATE.profile.phone || "",
+    website: document.getElementById("prof-website").value.trim() || STATE.profile.website || "",
+    location: document.getElementById("prof-location").value.trim() || STATE.profile.location || "",
+    total_citations: parseInt(document.getElementById("prof-citations").value) || 0,
+    h_index: parseInt(document.getElementById("prof-hindex").value) || 0,
+    i10_index: parseInt(document.getElementById("prof-i10index").value) || 0,
+    bio: document.getElementById("prof-bio").value.trim() || STATE.profile.bio || "",
+    education: STATE.profile.education || [],
+    experiences: STATE.profile.experiences || [],
+    publications: STATE.profile.publications || [],
+    conferences: STATE.profile.conferences || [],
+    skills: STATE.profile.skills || {},
+    awards: STATE.profile.awards || []
+  };
+
+  if (!STATIC_MODE) {
+    const res = await fetch("/api/profile", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const updated = await res.json();
+    STATE.profile = updated;
+    await loadAllData();
+  } else {
+    STATE.profile = { ...STATE.profile, ...payload };
+    saveStaticDb();
+    loadStaticFallbackData();
+  }
+}
+
+async function saveProfileChanges() {
+  if (!requireAdminAuth()) return;
+  await persistProfileState();
+  showToast("Saved Academic CV & Profile!");
+}
+
+async function handleSyncOrcid() {
+  if (!requireAdminAuth()) return;
+  const orcidInput = document.getElementById("sync-orcid-input").value.trim();
+  if (!orcidInput) {
+    showToast("Please enter an ORCID iD (e.g., 0000-0002-1825-0097).", "warn");
+    return;
+  }
+  const btn = document.getElementById("btn-sync-orcid");
+  btn.disabled = true;
+  btn.textContent = "⏳ Syncing ORCID...";
+  try {
+    if (!STATIC_MODE) {
+      const res = await fetch("/api/profile/sync-orcid", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orcid_id: orcidInput })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "ORCID sync failed");
+      STATE.profile = data;
+      renderProfile(data);
+      renderAcademicCvSheet(data);
+      showToast(data.sync_summary || "Synced profile with ORCID!");
+      await loadAllData();
+    } else {
+      const match = orcidInput.toUpperCase().match(/(\d{4}-\d{4}-\d{4}-\d{3}[\dX])/);
+      if (!match) throw new Error("Invalid ORCID format.");
+      const cleanId = match[1];
+      const wRes = await fetch(`https://pub.orcid.org/v3.0/${cleanId}/works`, {
+        headers: { "Accept": "application/json" }
+      });
+      if (!wRes.ok) throw new Error("Could not fetch ORCID works.");
+      const wData = await wRes.json();
+      const groups = wData.group || [];
+      let added = 0;
+      const existingTitles = new Set((STATE.profile.publications || []).map(p => p.title.toLowerCase()));
+      groups.slice(0, 20).forEach(g => {
+        const ws = (g["work-summary"] || [])[0];
+        if (!ws) return;
+        const t = ws.title?.title?.value || "";
+        if (t && !existingTitles.has(t.toLowerCase())) {
+          STATE.profile.publications.push({
+            title: t,
+            authors: STATE.profile.full_name,
+            journal: ws["journal-title"]?.value || "Publication",
+            year: parseInt(ws["publication-date"]?.year?.value) || 2025,
+            doi: "",
+            citations: 0,
+            source: "ORCID"
+          });
+          existingTitles.add(t.toLowerCase());
+          added++;
+        }
+      });
+      STATE.profile.orcid_id = cleanId;
+      saveStaticDb();
+      loadStaticFallbackData();
+      showToast(`Synced ORCID ${cleanId}: added ${added} new works to CV!`);
+    }
+  } catch (err) {
+    showToast(`ORCID Error: ${err.message}`, "error");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "🔄 Sync ORCID";
+  }
+}
+
+async function handleSyncScholar() {
+  if (!requireAdminAuth()) return;
+  const scholarInput = document.getElementById("sync-scholar-input").value.trim();
+  if (!scholarInput) {
+    showToast("Please enter a Google Scholar User ID, URL, or Researcher Name.", "warn");
+    return;
+  }
+  const btn = document.getElementById("btn-sync-scholar");
+  btn.disabled = true;
+  btn.textContent = "⏳ Syncing Citations...";
+  try {
+    if (!STATIC_MODE) {
+      const res = await fetch("/api/profile/sync-scholar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scholar_input: scholarInput })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Scholar sync failed");
+      STATE.profile = data;
+      renderProfile(data);
+      renderAcademicCvSheet(data);
+      showToast(data.sync_summary || "Synced citation metrics & publications!");
+      await loadAllData();
+    } else {
+      const oaRes = await fetch(`https://api.openalex.org/authors?search=${encodeURIComponent(scholarInput)}&per-page=1`);
+      const oaData = await oaRes.json();
+      if (!oaData.results || !oaData.results.length) throw new Error("Author not found.");
+      const author = oaData.results[0];
+      STATE.profile.total_citations = author.cited_by_count || 0;
+      STATE.profile.h_index = author.summary_stats?.h_index || 0;
+      STATE.profile.i10_index = author.summary_stats?.i10_index || 0;
+      saveStaticDb();
+      loadStaticFallbackData();
+      showToast(`Synced Citation Metrics: Citations=${STATE.profile.total_citations}, h-index=${STATE.profile.h_index}`);
+    }
+  } catch (err) {
+    showToast(`Scholar Sync Error: ${err.message}`, "error");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "🔄 Sync Scholar Metrics";
+  }
+}
+
+async function addOwnPublicationModal() {
+  if (!requireAdminAuth()) return;
+  const title = prompt("Enter Publication Title:");
+  if (!title) return;
+  const journal = prompt("Enter Journal / Conference Name:", "Physical Review Materials");
+  const year = parseInt(prompt("Enter Publication Year:", "2026")) || 2026;
+  const doi = prompt("Enter DOI (optional):", "");
+
+  STATE.profile.publications = STATE.profile.publications || [];
+  STATE.profile.publications.unshift({
+    title,
+    authors: STATE.profile.full_name || "Vu Tien Lam",
+    journal: journal || "Journal",
+    year,
+    doi: doi ? normalizeDoiClient(doi) : "",
+    citations: 0,
+    source: "Academic CV"
+  });
+  await persistProfileState();
+}
+
+async function removeOwnPub(idx) {
+  if (!requireAdminAuth()) return;
+  STATE.profile.publications.splice(idx, 1);
+  await persistProfileState();
+}
+
+// ============================================================================
+// Periodic Table & Materials Science Calculators Handlers
 // ============================================================================
 
 function renderPeriodicTable() {
   const grid = document.getElementById("periodic-table-grid");
-  if (!grid) return;
+  if (!grid || typeof ELEMENTS_DATA === "undefined") return;
 
   const posMap = {};
   ELEMENTS_DATA.forEach(el => {
@@ -2243,11 +2977,13 @@ function renderPeriodicTable() {
 }
 
 function inspectElement(atomicNumber) {
+  if (typeof ELEMENTS_DATA === "undefined") return;
   const el = ELEMENTS_DATA.find(x => x.n === atomicNumber);
   if (!el) return;
   STATE.selectedElement = el;
 
   const box = document.getElementById("element-inspector");
+  if (!box) return;
   box.innerHTML = `
     <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
       <div class="cat-${el.cat}" style="width:60px; height:60px; border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; border:1px solid rgba(0,0,0,0.1); flex-shrink:0;">
@@ -2282,6 +3018,7 @@ function inspectElement(atomicNumber) {
 
 function appendElementToFormula(sym) {
   const input = document.getElementById("calc-formula");
+  if (!input) return;
   input.value = (input.value || "") + sym;
   runStoichiometryCalc();
 }
@@ -2293,11 +3030,16 @@ function setQuickFormula(formula, mass) {
 }
 
 function runStoichiometryCalc() {
-  const formulaStr = document.getElementById("calc-formula").value.trim();
-  const targetMassG = parseFloat(document.getElementById("calc-target-mass").value) || 1.0;
+  const inputEl = document.getElementById("calc-formula");
+  const targetMassEl = document.getElementById("calc-target-mass");
   const outBox = document.getElementById("stoich-results-box");
+  if (!inputEl || !outBox) return;
+
+  const formulaStr = inputEl.value.trim();
+  const targetMassG = parseFloat(targetMassEl?.value) || 1.0;
 
   try {
+    if (typeof parseChemicalFormula !== "function") return;
     const counts = parseChemicalFormula(formulaStr);
     const symbols = Object.keys(counts);
     if (symbols.length === 0) {
@@ -2365,21 +3107,21 @@ function renderPrecursorInputs() {
     <div style="display:grid; grid-template-columns: 1.5fr 1fr 1fr auto; gap:8px; margin-bottom:6px; align-items:center;">
       <input type="text" placeholder="Precursor (e.g. Li2CO3)" value="${escapeHtml(p.formula)}" oninput="STATE.precursors[${idx}].formula=this.value; runStoichiometryCalc()" style="padding:7px 10px; border:1px solid var(--border-color); border-radius:6px; font-size:12.5px;" />
       <input type="number" step="0.05" placeholder="Molar Ratio" value="${p.ratio}" oninput="STATE.precursors[${idx}].ratio=parseFloat(this.value)||0; runStoichiometryCalc()" style="padding:7px 10px; border:1px solid var(--border-color); border-radius:6px; font-size:12.5px;" title="Moles of precursor per 1 mole of target formula" />
-      <input type="number" step="1" placeholder="Excess %" value="${p.excessPct}" oninput="STATE.precursors[${idx}].excessPct=parseFloat(this.value)||0; runStoichiometryCalc()" style="padding:7px 10px; border:1px solid var(--border-color); border-radius:6px; font-size:12.5px;" title="Excess % (e.g. +10% excess Li2CO3 for volatilization)" />
+      <input type="number" step="1" placeholder="Excess %" value="${p.excessPct}" oninput="STATE.precursors[${idx}].excessPct=parseFloat(this.value)||0; runStoichiometryCalc()" style="padding:7px 10px; border:1px solid var(--border-color); border-radius:6px; font-size:12.5px;" title="Excess %" />
       <button class="btn btn-danger btn-sm" onclick="STATE.precursors.splice(${idx},1); renderPrecursorInputs(); runStoichiometryCalc()">✕</button>
     </div>
   `).join("");
 }
 
 function addPrecursorRow() {
-  STATE.precursors.push({ formula: "Al2O3", ratio: 0.25, excessPct: 0 });
+  STATE.precursors.push({ formula: "TiO2", ratio: 1.0, excessPct: 0 });
   renderPrecursorInputs();
   runStoichiometryCalc();
 }
 
 function updatePrecursorMasses(targetMoles) {
   const tableDiv = document.getElementById("precursor-summary-table");
-  if (!tableDiv) return;
+  if (!tableDiv || typeof parseChemicalFormula !== "function") return;
 
   let rows = "";
   for (const p of STATE.precursors) {
@@ -2402,7 +3144,7 @@ function updatePrecursorMasses(targetMoles) {
         </tr>
       `;
     } catch {
-      rows += `<tr><td colspan="5" style="color:#e11d48;">Invalid precursor formula: ${escapeHtml(p.formula)}</td></tr>`;
+      rows += `<tr><td colspan="5" style="color:#e11d48;">Invalid formula: ${escapeHtml(p.formula)}</td></tr>`;
     }
   }
 
@@ -2422,27 +3164,23 @@ function updatePrecursorMasses(targetMoles) {
   `;
 }
 
-// ============================================================================
-// Photon Energy & XRD Bragg/Scherrer Calculators
-// ============================================================================
-
 function updateEnergyConverter(sourceField) {
   const HC = 1239.84193;
   let ev = 0;
 
   if (sourceField === "ev") {
-    ev = parseFloat(document.getElementById("conv-ev").value) || 0;
+    ev = parseFloat(document.getElementById("conv-ev")?.value) || 0;
   } else if (sourceField === "nm") {
-    const nm = parseFloat(document.getElementById("conv-nm").value) || 0;
+    const nm = parseFloat(document.getElementById("conv-nm")?.value) || 0;
     ev = nm > 0 ? HC / nm : 0;
   } else if (sourceField === "ang") {
-    const ang = parseFloat(document.getElementById("conv-ang").value) || 0;
+    const ang = parseFloat(document.getElementById("conv-ang")?.value) || 0;
     ev = ang > 0 ? (HC * 10) / ang : 0;
   } else if (sourceField === "cm") {
-    const cm = parseFloat(document.getElementById("conv-cm").value) || 0;
+    const cm = parseFloat(document.getElementById("conv-cm")?.value) || 0;
     ev = cm / 8065.544;
   } else if (sourceField === "thz") {
-    const thz = parseFloat(document.getElementById("conv-thz").value) || 0;
+    const thz = parseFloat(document.getElementById("conv-thz")?.value) || 0;
     ev = thz / 241.7989;
   }
 
@@ -2466,7 +3204,8 @@ function updateEnergyConverter(sourceField) {
   else if (ev >= 1.65) regime = "Visible Spectrum — Optoelectronics / Perovskite Photovoltaics";
   else if (ev >= 0.8) regime = "Near-Infrared (NIR) — Narrow Bandgap (Si, Ge, InGaAs)";
 
-  document.getElementById("spectral-regime-badge").textContent = `Spectral Regime: ${regime}`;
+  const badge = document.getElementById("spectral-regime-badge");
+  if (badge) badge.textContent = `Spectral Regime: ${regime}`;
 }
 
 function handleXrdSourceChange() {
@@ -2476,7 +3215,9 @@ function handleXrdSourceChange() {
 }
 
 function updateBragg(mode) {
-  const lambda = parseFloat(document.getElementById("xrd-lambda").value) || 1.54056;
+  const lambdaEl = document.getElementById("xrd-lambda");
+  if (!lambdaEl) return;
+  const lambda = parseFloat(lambdaEl.value) || 1.54056;
   let twoTheta = parseFloat(document.getElementById("xrd-twotheta").value) || 30.0;
   let dSpacing = parseFloat(document.getElementById("xrd-d").value) || 2.9;
   const fwhmDeg = parseFloat(document.getElementById("xrd-fwhm").value) || 0.22;
@@ -2502,251 +3243,839 @@ function updateBragg(mode) {
   const betaRad = (fwhmDeg * Math.PI) / 180.0;
   const crystalliteNm = betaRad > 0 ? (kFactor * lambda) / (betaRad * Math.cos(thetaRad) * 10.0) : 0;
 
-  document.getElementById("xrd-results-banner").innerHTML = `
-    <strong>Interplanar Spacing $d$:</strong> ${dSpacing.toFixed(4)} Å (${(dSpacing / 10).toFixed(4)} nm) &nbsp;|&nbsp;
-    <strong>Scattering Vector $q$:</strong> ${qVector.toFixed(3)} Å⁻¹ &nbsp;|&nbsp;
-    <strong>Scherrer Crystallite Size $D$:</strong> <span style="color:#0d9488; font-weight:800;">${crystalliteNm.toFixed(1)} nm</span>
-  `;
+  const banner = document.getElementById("xrd-results-banner");
+  if (banner) {
+    banner.innerHTML = `
+      <strong>Interplanar Spacing $d$:</strong> ${dSpacing.toFixed(4)} Å (${(dSpacing / 10).toFixed(4)} nm) &nbsp;|&nbsp;
+      <strong>Scattering Vector $q$:</strong> ${qVector.toFixed(3)} Å⁻¹ &nbsp;|&nbsp;
+      <strong>Scherrer Crystallite Size $D$:</strong> <span style="color:#0d9488; font-weight:800;">${crystalliteNm.toFixed(1)} nm</span>
+    `;
+  }
 }
 
 // ============================================================================
-// Academic Profile & ORCID / Google Scholar Sync
+// MANUSCRIPT VERIFICATION & WORD DOCUMENT COMPARISON SUITE
 // ============================================================================
 
-function renderProfile(prof) {
-  if (!prof) return;
-  const subEl = document.getElementById("header-researcher-sub");
-  if (subEl) {
-    subEl.textContent = `${prof.full_name || "Vu Tien Lam"} • ${prof.affiliation || "SKKU"} (${OWNER_GOOGLE_EMAIL})`;
-  }
+let currentPlagFile = null;
+let currentPlagResults = null;
+let currentDiffFileA = null;
+let currentDiffFileB = null;
+let currentDiffResults = null;
 
-  document.getElementById("prof-name").value = prof.full_name || "Vu Tien Lam";
-  document.getElementById("prof-role").value = prof.title_role || "";
-  document.getElementById("prof-affiliation").value = prof.affiliation || "";
-  document.getElementById("prof-advisor").value = prof.advisor || "";
-  document.getElementById("prof-email").value = prof.email || OWNER_GOOGLE_EMAIL;
-  document.getElementById("prof-phone").value = prof.phone || "";
-  document.getElementById("prof-website").value = prof.website || "";
-  document.getElementById("prof-location").value = prof.location || "";
-  document.getElementById("prof-focus").value = prof.research_focus || "";
-  document.getElementById("prof-citations").value = prof.total_citations || 0;
-  document.getElementById("prof-hindex").value = prof.h_index || 0;
-  document.getElementById("prof-i10index").value = prof.i10_index || 0;
-  document.getElementById("prof-bio").value = prof.bio || "";
-  document.getElementById("sync-orcid-input").value = prof.orcid_id || "";
-  document.getElementById("sync-scholar-input").value = prof.scholar_id || "";
+function switchManuscriptSubTab(tab) {
+  const plagPanel = document.getElementById("manuscript-plag-panel");
+  const diffPanel = document.getElementById("manuscript-diff-panel");
+  const btnPlag = document.getElementById("btn-subtab-plag");
+  const btnDiff = document.getElementById("btn-subtab-diff");
+  if (!plagPanel || !diffPanel) return;
 
-  document.getElementById("prof-last-synced").textContent = prof.last_synced_at
-    ? `Last synced: ${prof.last_synced_at}`
-    : "Ready to sync with ORCID & Google Scholar";
-
-  const pubs = prof.publications || [];
-  const pubContainer = document.getElementById("prof-publications-list");
-  if (pubs.length === 0) {
-    pubContainer.innerHTML = `<div style="color:var(--text-muted); font-size:13px;">No publications listed yet. Sync with ORCID or Google Scholar above!</div>`;
+  if (tab === "plagiarism") {
+    plagPanel.style.display = "block";
+    diffPanel.style.display = "none";
+    if (btnPlag) {
+      btnPlag.className = "btn btn-primary";
+      btnPlag.style.background = "";
+      btnPlag.style.color = "";
+      btnPlag.style.borderColor = "";
+    }
+    if (btnDiff) {
+      btnDiff.className = "btn btn-outline";
+      btnDiff.style.background = "rgba(255,255,255,0.12)";
+      btnDiff.style.color = "#fff";
+      btnDiff.style.borderColor = "#475569";
+    }
   } else {
-    pubContainer.innerHTML = pubs.map((p, idx) => `
-      <div class="item-card" style="padding:12px 14px;">
-        <div style="display:flex; justify-content:space-between; gap:8px;">
-          <div class="item-title" style="font-size:14px;">${escapeHtml(p.title)}</div>
-          <span class="badge badge-purple">Citations: ${p.citations || 0}</span>
-        </div>
-        <div class="item-meta" style="margin-top:4px;">
-          ${escapeHtml(p.authors || prof.full_name)} — <em>${escapeHtml(p.journal)}</em> (${p.year || ""})
-        </div>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
-          <span class="badge badge-slate">${escapeHtml(p.source || "Academic CV")}</span>
-          <div style="display:flex; gap:8px; align-items:center;">
-            ${p.doi ? `<a href="https://doi.org/${encodeURIComponent(p.doi)}" target="_blank" style="font-size:12px; color:var(--primary); font-weight:600; text-decoration:none;">DOI: ${escapeHtml(p.doi)} ↗</a>` : ""}
-            <button class="btn btn-danger btn-sm owner-only-btn" onclick="removeOwnPub(${idx})">✕</button>
-          </div>
-        </div>
-      </div>
-    `).join("");
+    plagPanel.style.display = "none";
+    diffPanel.style.display = "block";
+    if (btnPlag) {
+      btnPlag.className = "btn btn-outline";
+      btnPlag.style.background = "rgba(255,255,255,0.12)";
+      btnPlag.style.color = "#fff";
+      btnPlag.style.borderColor = "#475569";
+    }
+    if (btnDiff) {
+      btnDiff.className = "btn btn-primary";
+      btnDiff.style.background = "";
+      btnDiff.style.color = "";
+      btnDiff.style.borderColor = "";
+    }
   }
 }
 
-async function persistProfileState() {
-  const payload = {
-    full_name: document.getElementById("prof-name").value.trim() || STATE.profile.full_name || "Vu Tien Lam",
-    title_role: document.getElementById("prof-role").value.trim() || STATE.profile.title_role || "",
-    affiliation: document.getElementById("prof-affiliation").value.trim() || STATE.profile.affiliation || "",
-    advisor: document.getElementById("prof-advisor").value.trim() || STATE.profile.advisor || "",
-    research_focus: document.getElementById("prof-focus").value.trim() || STATE.profile.research_focus || "",
-    orcid_id: document.getElementById("sync-orcid-input").value.trim() || STATE.profile.orcid_id || "",
-    scholar_id: document.getElementById("sync-scholar-input").value.trim() || STATE.profile.scholar_id || "",
-    email: document.getElementById("prof-email").value.trim() || OWNER_GOOGLE_EMAIL,
-    phone: document.getElementById("prof-phone").value.trim() || STATE.profile.phone || "",
-    website: document.getElementById("prof-website").value.trim() || STATE.profile.website || "",
-    location: document.getElementById("prof-location").value.trim() || STATE.profile.location || "",
-    total_citations: parseInt(document.getElementById("prof-citations").value) || 0,
-    h_index: parseInt(document.getElementById("prof-hindex").value) || 0,
-    i10_index: parseInt(document.getElementById("prof-i10index").value) || 0,
-    bio: document.getElementById("prof-bio").value.trim() || STATE.profile.bio || "",
-    education: STATE.profile.education || [],
-    experiences: STATE.profile.experiences || [],
-    publications: STATE.profile.publications || [],
-    conferences: STATE.profile.conferences || [],
-    skills: STATE.profile.skills || {},
-    awards: STATE.profile.awards || []
+function initPlagDropZone() {
+  const zone = document.getElementById("plag-drop-zone");
+  if (!zone) return;
+  ["dragenter", "dragover"].forEach(evt => {
+    zone.addEventListener(evt, e => {
+      e.preventDefault();
+      e.stopPropagation();
+      zone.classList.add("drag-active");
+    });
+  });
+  ["dragleave", "drop"].forEach(evt => {
+    zone.addEventListener(evt, e => {
+      e.preventDefault();
+      e.stopPropagation();
+      zone.classList.remove("drag-active");
+    });
+  });
+  zone.addEventListener("drop", e => {
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      handlePlagFileInput({ target: { files: files } });
+    }
+  });
+}
+
+function initDiffDropZones() {
+  ["a", "b"].forEach(which => {
+    const zone = document.getElementById(`diff-drop-${which}`);
+    if (!zone) return;
+    ["dragenter", "dragover"].forEach(evt => {
+      zone.addEventListener(evt, e => {
+        e.preventDefault();
+        e.stopPropagation();
+        zone.classList.add("drag-active");
+      });
+    });
+    ["dragleave", "drop"].forEach(evt => {
+      zone.addEventListener(evt, e => {
+        e.preventDefault();
+        e.stopPropagation();
+        zone.classList.remove("drag-active");
+      });
+    });
+    zone.addEventListener("drop", e => {
+      const files = e.dataTransfer.files;
+      if (files && files.length > 0) {
+        handleDiffFileInput(which.toUpperCase(), { target: { files: files } });
+      }
+    });
+  });
+}
+
+async function extractTextFromBlob(file) {
+  if (!file) return "";
+  const name = (file.name || "").toLowerCase();
+
+  if (name.endsWith(".txt")) {
+    return await file.text();
+  }
+
+  if (name.endsWith(".docx") && window.mammoth) {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const res = await window.mammoth.extractRawText({ arrayBuffer });
+      return res.value || "";
+    } catch (e) {
+      console.warn("mammoth.js extraction failed:", e);
+    }
+  }
+
+  if (name.endsWith(".pdf") && window.pdfjsLib) {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let full = "";
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map(it => it.str).join(" ");
+        full += pageText + "\n\n";
+      }
+      return full.trim();
+    } catch (e) {
+      console.warn("pdf.js extraction failed:", e);
+    }
+  }
+
+  try {
+    return await file.text();
+  } catch (err) {
+    return "";
+  }
+}
+
+async function handlePlagFileInput(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  currentPlagFile = file;
+  const sizeKb = (file.size / 1024).toFixed(1);
+  const titleEl = document.getElementById("plag-drop-title");
+  const subEl = document.getElementById("plag-drop-sub");
+  const badgeEl = document.getElementById("plag-file-badge");
+
+  if (titleEl) titleEl.textContent = `📄 ${file.name} (${sizeKb} KB)`;
+  if (subEl) subEl.textContent = "Manuscript loaded. Click 'Check Duplicate Paragraphs' or review extracted text below.";
+  if (badgeEl) badgeEl.innerHTML = `<span style="font-weight:600; color:#2563eb;">📄 ${escapeHtml(file.name)}</span>`;
+
+  try {
+    const extracted = await extractTextFromBlob(file);
+    if (extracted) {
+      const txtArea = document.getElementById("plag-text-input");
+      if (txtArea) txtArea.value = extracted;
+      showToast(`Extracted ${extracted.split(/\s+/).filter(Boolean).length} words from ${file.name}`, "info");
+    }
+  } catch (err) {
+    console.error("Text extraction failed:", err);
+  }
+}
+
+async function handleDiffFileInput(which, e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const sizeKb = (file.size / 1024).toFixed(1);
+
+  if (which === "A") {
+    currentDiffFileA = file;
+    const title = document.getElementById("diff-title-a");
+    const sub = document.getElementById("diff-sub-a");
+    if (title) title.textContent = `📄 Document A: ${file.name} (${sizeKb} KB)`;
+    if (sub) sub.textContent = "Original draft ready for comparison";
+    try {
+      const extracted = await extractTextFromBlob(file);
+      if (extracted) {
+        const area = document.getElementById("diff-text-a");
+        if (area) area.value = extracted;
+      }
+    } catch (e) {}
+  } else {
+    currentDiffFileB = file;
+    const title = document.getElementById("diff-title-b");
+    const sub = document.getElementById("diff-sub-b");
+    if (title) title.textContent = `📝 Document B: ${file.name} (${sizeKb} KB)`;
+    if (sub) sub.textContent = "Revised draft ready for comparison";
+    try {
+      const extracted = await extractTextFromBlob(file);
+      if (extracted) {
+        const area = document.getElementById("diff-text-b");
+        if (area) area.value = extracted;
+      }
+    } catch (e) {}
+  }
+  showToast(`Loaded Document ${which}: ${file.name}`, "info");
+}
+
+function loadSampleManuscriptText() {
+  currentPlagFile = null;
+  const sample = `Lead halide perovskites (CH3NH3PbI3) have emerged as revolutionary photovoltaic absorber materials due to their exceptional optical absorption coefficient, long carrier diffusion length, and low-temperature solution processability. However, their commercial deployment remains hindered by poor thermal stability and moisture-induced degradation in ambient air.
+
+Density Functional Theory (DFT) calculations were performed using the Vienna Ab-initio Simulation Package (VASP) within the projector-augmented wave (PAW) formalism. The exchange-correlation functional was treated with the generalized gradient approximation (GGA) formulated by Perdew-Burke-Ernzerhof (PBE). A plane-wave kinetic energy cutoff of 520 eV and a 6x6x6 Monkhorst-Pack k-point mesh were adopted to sample the Brillouin zone.
+
+To overcome phase instability, B-site cation substitution by smaller transition metal ions such as Zn2+, Mn2+, or Sn2+ has been extensively investigated. The Goldschmidt tolerance factor and octahedral factor predict that partial substitution maintains a stable pseudocubic lattice while suppressing trap state formation.
+
+In this work, we systematically investigate the thermodynamic and mechanical stability of mixed-halide perovskite alloys under biaxial strain. Band structure calculations reveal a direct bandgap transition at the R-point, with effective electron mass decreasing linearly with increasing bromine content.`;
+
+  const input = document.getElementById("plag-text-input");
+  if (input) input.value = sample;
+  const title = document.getElementById("plag-drop-title");
+  if (title) title.textContent = "Sample Manuscript Loaded (Paste/Edit mode)";
+  const sub = document.getElementById("plag-drop-sub");
+  if (sub) sub.textContent = "Sample text ready for duplicate paragraph check.";
+  const badge = document.getElementById("plag-file-badge");
+  if (badge) badge.innerHTML = `<span style="color:#0d9488; font-weight:600;">Sample Materials Science Draft</span>`;
+  showToast("Loaded sample manuscript paragraphs for testing.", "info");
+}
+
+function loadSampleDiffFiles() {
+  currentDiffFileA = null;
+  currentDiffFileB = null;
+
+  const docA = `Abstract: We investigate the electronic structure and mechanical stability of two-dimensional transition metal dichalcogenide MoS2 under uniaxial tensile strain. Density functional theory calculations were performed with the PBE functional using a kinetic energy cutoff of 480 eV and a 50-atom supercell. The equilibrium direct bandgap was computed to be 1.55 eV at the K-point. Under 4% tensile strain, the bandgap undergoes a direct-to-indirect transition to 1.32 eV. We conclude that mechanical straining can effectively tune the optical absorption of monolayer MoS2 for flexible optoelectronic applications.`;
+
+  const docB = `Abstract: We systematically investigate the electronic band structure, carrier mobilities, and mechanical stability of two-dimensional monolayer MoS2 under both uniaxial and biaxial tensile strain. First-principles Density Functional Theory (DFT) calculations were performed using the hybrid HSE06 functional with a plane-wave kinetic energy cutoff of 520 eV and a 96-atom supercell to minimize periodic boundary artifacts. The equilibrium direct bandgap was calculated to be 1.58 eV at the high-symmetry K-point. Under 4.5% tensile strain, the bandgap undergoes a direct-to-indirect transition down to 1.28 eV, accompanied by an anomalous decrease in in-plane phonon frequencies. We conclude that controlled mechanical straining serves as a versatile engineering route for tunable nanoscale optoelectronics.`;
+
+  const areaA = document.getElementById("diff-text-a");
+  const areaB = document.getElementById("diff-text-b");
+  if (areaA) areaA.value = docA;
+  if (areaB) areaB.value = docB;
+
+  const titleA = document.getElementById("diff-title-a");
+  const titleB = document.getElementById("diff-title-b");
+  if (titleA) titleA.textContent = "Document A: Original Draft (Loaded sample)";
+  if (titleB) titleB.textContent = "Document B: Revised Draft (Loaded sample)";
+  showToast("Sample revisions loaded: Original vs Revised Draft with HSE06 & strain updates.", "info");
+}
+
+async function runPlagiarismAnalysis() {
+  const btn = document.getElementById("btn-run-plag");
+  const textInput = (document.getElementById("plag-text-input")?.value || "").trim();
+  const chkLibrary = document.getElementById("chk-cross-library")?.checked ?? true;
+  const chkInternal = document.getElementById("chk-cross-internal")?.checked ?? true;
+
+  if (!currentPlagFile && !textInput) {
+    showToast("Please upload a PDF/Word file or paste manuscript draft text first.", "warn");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = `<span class="loading-spinner"></span> Analyzing Duplicates...`;
+
+  try {
+    let result = null;
+
+    // Try backend API first
+    if (currentPlagFile) {
+      try {
+        const fd = new FormData();
+        fd.append("file", currentPlagFile);
+        fd.append("cross_library", chkLibrary ? "true" : "false");
+        fd.append("detect_internal", chkInternal ? "true" : "false");
+        const res = await fetch("/api/documents/check-duplicate", { method: "POST", body: fd });
+        if (res.ok) result = await res.json();
+      } catch (e) {
+        console.warn("Backend API unavailable, falling back to client-side analysis:", e);
+      }
+    } else {
+      try {
+        const res = await fetch("/api/documents/check-duplicate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: textInput,
+            cross_library: chkLibrary,
+            detect_internal: chkInternal
+          })
+        });
+        if (res.ok) result = await res.json();
+      } catch (e) {
+        console.warn("Backend API unavailable, falling back to client-side analysis:", e);
+      }
+    }
+
+    // Client-side fallback if backend not available
+    if (!result) {
+      let rawText = textInput;
+      if (currentPlagFile && !rawText) {
+        rawText = await extractTextFromBlob(currentPlagFile);
+      }
+      result = clientSideCheckDuplicates(rawText, STATE.papers || [], chkLibrary, chkInternal);
+    }
+
+    currentPlagResults = result;
+    renderPlagiarismResults(result);
+    showToast(`✅ Manuscript analysis complete! Overall similarity: ${result.overall_similarity_pct}%`, "success");
+  } catch (err) {
+    showToast(`Analysis failed: ${err.message}`, "error");
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `⚡ Check Duplicate Paragraphs`;
+  }
+}
+
+function renderPlagiarismResults(data) {
+  const kpiSim = document.getElementById("kpi-overall-sim");
+  const kpiHigh = document.getElementById("kpi-high-risk");
+  const kpiMod = document.getElementById("kpi-mod-risk");
+  const kpiParas = document.getElementById("kpi-total-paras");
+
+  if (kpiSim) kpiSim.textContent = `${data.overall_similarity_pct}%`;
+  if (kpiHigh) kpiHigh.textContent = data.high_risk_count;
+  if (kpiMod) kpiMod.textContent = data.moderate_risk_count;
+  if (kpiParas) kpiParas.textContent = data.total_paragraphs;
+
+  const alertEl = document.getElementById("plag-status-alert");
+  if (alertEl) {
+    if (data.high_risk_count > 0) {
+      alertEl.style.background = "#fff1f2";
+      alertEl.style.borderColor = "#fecdd3";
+      alertEl.innerHTML = `
+        <div style="color:#be123c; font-weight:700;">⚠️ Potential Plagiarism / Duplicate Alert!</div>
+        <div style="color:#881337; margin-top:2px;">Found <strong>${data.high_risk_count}</strong> high-risk duplicate paragraph(s) (>65% similarity). Please rephrase or add citations before submitting to peer-reviewed journals.</div>
+      `;
+    } else if (data.moderate_risk_count > 0) {
+      alertEl.style.background = "#fffbeb";
+      alertEl.style.borderColor = "#fef3c7";
+      alertEl.innerHTML = `
+        <div style="color:#b45309; font-weight:700;">ℹ️ Moderate Overlap Detected</div>
+        <div style="color:#78350f; margin-top:2px;">Detected <strong>${data.moderate_risk_count}</strong> paragraph(s) with moderate overlap (35–64%). Ensure proper citations are included.</div>
+      `;
+    } else {
+      alertEl.style.background = "#f0fdf4";
+      alertEl.style.borderColor = "#bbf7d0";
+      alertEl.innerHTML = `
+        <div style="color:#15803d; font-weight:700;">✅ High Originality Verified!</div>
+        <div style="color:#166534; margin-top:2px;">No significant duplication found across the literature library or internally. The text appears highly original.</div>
+      `;
+    }
+  }
+
+  filterPlagResults();
+}
+
+function filterPlagResults() {
+  const listEl = document.getElementById("plag-results-list");
+  if (!listEl) return;
+  if (!currentPlagResults || !currentPlagResults.paragraphs || currentPlagResults.paragraphs.length === 0) {
+    listEl.innerHTML = `<div style="padding:24px; text-align:center; color:var(--text-muted); font-size:13px;">No paragraphs analyzed yet.</div>`;
+    return;
+  }
+
+  const filter = document.getElementById("plag-filter-level")?.value || "ALL";
+  let paras = currentPlagResults.paragraphs;
+  if (filter === "FLAGGED") {
+    paras = paras.filter(p => p.risk_level === "HIGH" || p.risk_level === "MODERATE");
+  } else if (filter === "HIGH") {
+    paras = paras.filter(p => p.risk_level === "HIGH");
+  }
+
+  if (paras.length === 0) {
+    listEl.innerHTML = `<div style="padding:24px; text-align:center; color:#16a34a; font-size:13px; font-weight:600;">✅ No paragraphs match filter "${filter}". Clean manuscript!</div>`;
+    return;
+  }
+
+  let html = "";
+  paras.forEach(p => {
+    const riskBadgeClass = p.risk_level === "HIGH" ? "badge-risk-high" : (p.risk_level === "MODERATE" ? "badge-risk-mod" : "badge-risk-low");
+    const riskIcon = p.risk_level === "HIGH" ? "🚨 High Duplicate" : (p.risk_level === "MODERATE" ? "⚠️ Moderate Overlap" : "✅ Original");
+
+    let matchInfoHtml = "";
+    if (p.top_match && p.top_match.similarity_pct > 15) {
+      const src = p.top_match;
+      matchInfoHtml = `
+        <div style="margin-top:8px; padding:8px 12px; background:#f1f5f9; border-radius:6px; font-size:12px;">
+          <div style="font-weight:700; color:var(--text-secondary); display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
+            <span>Top Match: <strong>${escapeHtml(src.source_title)}</strong></span>
+            <span style="color:#2563eb; font-weight:800;">${src.similarity_pct}% Match</span>
+          </div>
+          ${src.source_doi ? `<div style="margin-top:2px;"><a href="https://doi.org/${encodeURIComponent(src.source_doi)}" target="_blank" style="color:#0284c7; text-decoration:none;">DOI: ${escapeHtml(src.source_doi)} ↗</a></div>` : ""}
+          <div style="margin-top:4px; color:#64748b; font-style:italic; font-size:11.5px;">Matched excerpt: "${escapeHtml(src.matched_text.slice(0, 180))}..."</div>
+        </div>
+      `;
+    }
+
+    html += `
+      <div class="plag-para-card" style="background:#fff; border:1px solid var(--border-color); border-radius:8px; padding:12px 14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+          <span style="font-weight:700; font-size:13px; color:var(--text-secondary);">Paragraph #${p.index + 1} <span style="font-size:11px; color:var(--text-muted); font-weight:normal;">(${p.word_count} words)</span></span>
+          <span class="badge ${riskBadgeClass}">${riskIcon} (${p.max_similarity_pct}%)</span>
+        </div>
+        <div style="font-size:13px; line-height:1.6; color:#334155; white-space:pre-wrap;">${escapeHtml(p.text)}</div>
+        ${matchInfoHtml}
+      </div>
+    `;
+  });
+
+  listEl.innerHTML = html;
+}
+
+function exportPlagiarismReport() {
+  if (!currentPlagResults) {
+    showToast("No analysis results to export.", "warn");
+    return;
+  }
+  const dateStr = new Date().toISOString().split("T")[0];
+  let report = `# Materials Science Manuscript Plagiarism & Duplicate Report\n`;
+  report += `Date: ${new Date().toLocaleString()}\n`;
+  report += `Target Admin: ${OWNER_GOOGLE_EMAIL}\n`;
+  report += `Overall Similarity Index: ${currentPlagResults.overall_similarity_pct}%\n`;
+  report += `Total Paragraphs Analyzed: ${currentPlagResults.total_paragraphs}\n`;
+  report += `High-Risk Paragraphs (>65%): ${currentPlagResults.high_risk_count}\n`;
+  report += `Moderate-Risk Paragraphs (35-64%): ${currentPlagResults.moderate_risk_count}\n\n`;
+  report += `------------------------------------------------------------\n`;
+  report += `PARAGRAPH-BY-PARAGRAPH ANALYSIS\n`;
+  report += `------------------------------------------------------------\n\n`;
+
+  (currentPlagResults.paragraphs || []).forEach(p => {
+    report += `[Paragraph #${p.index + 1}] - Risk: ${p.risk_level} (${p.max_similarity_pct}% Match)\n`;
+    report += `Text: ${p.text}\n`;
+    if (p.top_match && p.top_match.similarity_pct > 15) {
+      report += `Matched Source: ${p.top_match.source_title} (${p.top_match.similarity_pct}%)\n`;
+      if (p.top_match.source_doi) report += `DOI: https://doi.org/${p.top_match.source_doi}\n`;
+    }
+    report += `\n`;
+  });
+
+  const blob = new Blob([report], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `Manuscript_Plagiarism_Report_${dateStr}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast("Downloaded Plagiarism & Duplicate Report.", "success");
+}
+
+async function runDocumentComparison() {
+  const btn = document.getElementById("btn-run-diff");
+  const textA = (document.getElementById("diff-text-a")?.value || "").trim();
+  const textB = (document.getElementById("diff-text-b")?.value || "").trim();
+
+  if (!currentDiffFileA && !textA) {
+    showToast("Please upload Document A (Original) or paste its text.", "warn");
+    return;
+  }
+  if (!currentDiffFileB && !textB) {
+    showToast("Please upload Document B (Revised) or paste its text.", "warn");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = `<span class="loading-spinner"></span> Comparing Documents...`;
+
+  try {
+    let result = null;
+
+    // Try backend API first
+    if (currentDiffFileA || currentDiffFileB) {
+      try {
+        const fd = new FormData();
+        if (currentDiffFileA) fd.append("file_a", currentDiffFileA);
+        else fd.append("text_a", textA);
+
+        if (currentDiffFileB) fd.append("file_b", currentDiffFileB);
+        else fd.append("text_b", textB);
+
+        const res = await fetch("/api/documents/compare-word", { method: "POST", body: fd });
+        if (res.ok) result = await res.json();
+      } catch (e) {
+        console.warn("Backend compare API unavailable, falling back to client-side engine:", e);
+      }
+    } else {
+      try {
+        const res = await fetch("/api/documents/compare-word", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text_a: textA, text_b: textB })
+        });
+        if (res.ok) result = await res.json();
+      } catch (e) {
+        console.warn("Backend compare API unavailable, falling back to client-side engine:", e);
+      }
+    }
+
+    // Client-side fallback if backend not available
+    if (!result) {
+      let finalA = textA;
+      let finalB = textB;
+      if (currentDiffFileA && !finalA) finalA = await extractTextFromBlob(currentDiffFileA);
+      if (currentDiffFileB && !finalB) finalB = await extractTextFromBlob(currentDiffFileB);
+      result = clientSideWordDiff(finalA, finalB, currentDiffFileA?.name || "Document A", currentDiffFileB?.name || "Document B");
+    }
+
+    currentDiffResults = result;
+    renderDiffResults(result);
+    showToast(`✅ Comparison complete! Lexical similarity: ${result.similarity_pct}% (+${result.added_words} / -${result.deleted_words} words)`, "success");
+  } catch (err) {
+    showToast(`Comparison failed: ${err.message}`, "error");
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `⚡ Compare Documents & Generate Track Changes`;
+  }
+}
+
+function renderDiffResults(data) {
+  const card = document.getElementById("diff-results-card");
+  if (!card) return;
+  card.style.display = "block";
+  card.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  const kpiSim = document.getElementById("diff-kpi-sim");
+  const kpiAdd = document.getElementById("diff-kpi-added");
+  const kpiDel = document.getElementById("diff-kpi-deleted");
+  const kpiMod = document.getElementById("diff-kpi-modified");
+
+  if (kpiSim) kpiSim.textContent = `${data.similarity_pct}%`;
+  if (kpiAdd) kpiAdd.textContent = `+${data.added_words}`;
+  if (kpiDel) kpiDel.textContent = `-${data.deleted_words}`;
+  if (kpiMod) kpiMod.textContent = data.modified_paragraphs;
+
+  const headingSub = document.getElementById("diff-heading-sub");
+  if (headingSub) {
+    headingSub.textContent = `Comparing ${data.doc_a_name || 'Document A'} (${data.doc_a_words || 0} words) vs ${data.doc_b_name || 'Document B'} (${data.doc_b_words || 0} words)`;
+  }
+
+  // Inline view
+  const inlineEl = document.getElementById("diff-inline-content");
+  if (inlineEl) {
+    inlineEl.innerHTML = data.track_changes_html || "No changes detected.";
+  }
+
+  // Side by Side view
+  const sideEl = document.getElementById("diff-side-by-side-content");
+  if (sideEl) {
+    let rowsHtml = "";
+    (data.side_by_side || []).forEach(row => {
+      const rowClass = row.status === "MODIFIED" ? "diff-row-modified" : (row.status === "ADDED" ? "diff-row-added" : (row.status === "DELETED" ? "diff-row-deleted" : "diff-row-equal"));
+      rowsHtml += `
+        <tr class="diff-side-row ${rowClass}">
+          <td style="padding:10px 12px; border:1px solid #e2e8f0; vertical-align:top; font-size:12.5px; line-height:1.6; background:${row.status === 'DELETED' ? '#fef2f2' : (row.status === 'MODIFIED' ? '#fffbeb' : '#fff')};">
+            ${row.text_a || '<span style="color:#94a3b8; font-style:italic;">(empty)</span>'}
+          </td>
+          <td style="padding:10px 12px; border:1px solid #e2e8f0; vertical-align:top; font-size:12.5px; line-height:1.6; background:${row.status === 'ADDED' ? '#f0fdf4' : (row.status === 'MODIFIED' ? '#f0fdf4' : '#fff')};">
+            ${row.text_b || '<span style="color:#94a3b8; font-style:italic;">(empty)</span>'}
+          </td>
+        </tr>
+      `;
+    });
+
+    sideEl.innerHTML = `
+      <div style="overflow-x:auto;">
+        <table class="diff-side-table" style="width:100%; border-collapse:collapse; margin-top:8px;">
+          <thead>
+            <tr style="background:#f8fafc; font-size:12.5px; font-weight:700; color:var(--text-secondary);">
+              <th style="width:50%; padding:10px 12px; text-align:left; border:1px solid #cbd5e1;">📄 ${escapeHtml(data.doc_a_name || 'Document A (Original)')}</th>
+              <th style="width:50%; padding:10px 12px; text-align:left; border:1px solid #cbd5e1;">📝 ${escapeHtml(data.doc_b_name || 'Document B (Revised)')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml || '<tr><td colspan="2" style="text-align:center; padding:16px;">No changes</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  setDiffViewMode("inline");
+}
+
+function setDiffViewMode(mode) {
+  const inlineContainer = document.getElementById("diff-view-inline-container");
+  const sideContainer = document.getElementById("diff-view-side-container");
+  const btnInline = document.getElementById("btn-view-inline");
+  const btnSide = document.getElementById("btn-view-side");
+
+  if (mode === "inline") {
+    if (inlineContainer) inlineContainer.style.display = "block";
+    if (sideContainer) sideContainer.style.display = "none";
+    if (btnInline) btnInline.classList.add("active");
+    if (btnSide) btnSide.classList.remove("active");
+  } else {
+    if (inlineContainer) inlineContainer.style.display = "none";
+    if (sideContainer) sideContainer.style.display = "block";
+    if (btnInline) btnInline.classList.remove("active");
+    if (btnSide) btnSide.classList.add("active");
+  }
+}
+
+function copyDiffSummary() {
+  if (!currentDiffResults) {
+    showToast("No comparison results available to copy.", "warn");
+    return;
+  }
+  const d = currentDiffResults;
+  const summary = `### Manuscript Revision Summary for Reviewers\n` +
+    `- **Original File**: ${d.doc_a_name || 'Document A'} (${d.doc_a_words || 0} words)\n` +
+    `- **Revised File**: ${d.doc_b_name || 'Document B'} (${d.doc_b_words || 0} words)\n` +
+    `- **Lexical Similarity Index**: ${d.similarity_pct}%\n` +
+    `- **Content Added**: +${d.added_words} words\n` +
+    `- **Content Removed**: -${d.deleted_words} words\n` +
+    `- **Paragraphs Modified**: ${d.modified_paragraphs} paragraph(s)\n` +
+    `- **Summary**: All reviewer comments and manuscript additions were tracked and cross-verified.\n`;
+
+  navigator.clipboard.writeText(summary).then(() => {
+    showToast("📋 Revision summary copied to clipboard! Ready to paste into Response to Reviewers.", "success");
+  }).catch(() => {
+    showToast("Failed to copy automatically. Please copy from the results card.", "warn");
+  });
+}
+
+function clientSideCheckDuplicates(rawText, libraryPapers, checkLib, checkInternal) {
+  const paras = (rawText || "")
+    .split(/\n\s*\n/)
+    .map(p => p.trim())
+    .filter(p => p.length >= 25);
+
+  if (paras.length === 0) {
+    return {
+      overall_similarity_pct: 0,
+      high_risk_count: 0,
+      moderate_risk_count: 0,
+      low_risk_count: 0,
+      total_paragraphs: 0,
+      paragraphs: []
+    };
+  }
+
+  const tokenize = str => str.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(w => w.length > 2);
+  const getGrams = (words, n = 3) => {
+    const s = new Set();
+    for (let i = 0; i <= words.length - n; i++) s.add(words.slice(i, i + n).join(" "));
+    return s;
   };
 
-  if (!STATIC_MODE) {
-    const res = await fetch("/api/profile", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    const updated = await res.json();
-    STATE.profile = updated;
-    await loadAllData();
-  } else {
-    STATE.profile = { ...STATE.profile, ...payload };
-    saveStaticDb();
-    loadStaticFallbackData();
-  }
-}
+  const results = [];
+  let totalSim = 0;
+  let highCount = 0;
+  let modCount = 0;
 
-async function saveProfileChanges() {
-  if (!requireOwnerAuth()) return;
-  await persistProfileState();
-  showToast("Saved Academic CV & Profile!");
-}
+  paras.forEach((para, idx) => {
+    const words = tokenize(para);
+    const grams = getGrams(words, 3);
+    let maxSim = 0;
+    let topMatch = null;
 
-async function handleSyncOrcid() {
-  if (!requireOwnerAuth()) return;
-  const orcidInput = document.getElementById("sync-orcid-input").value.trim();
-  if (!orcidInput) {
-    showToast("Please enter an ORCID iD (e.g., 0000-0002-1825-0097).", "warn");
-    return;
-  }
-  const btn = document.getElementById("btn-sync-orcid");
-  btn.disabled = true;
-  btn.textContent = "⏳ Syncing ORCID...";
-  try {
-    if (!STATIC_MODE) {
-      const res = await fetch("/api/profile/sync-orcid", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orcid_id: orcidInput })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "ORCID sync failed");
-      STATE.profile = data;
-      renderProfile(data);
-      renderAcademicCvSheet(data);
-      showToast(data.sync_summary || "Synced profile with ORCID!");
-      await loadAllData();
-    } else {
-      const match = orcidInput.toUpperCase().match(/(\d{4}-\d{4}-\d{4}-\d{3}[\dX])/);
-      if (!match) throw new Error("Invalid ORCID format.");
-      const cleanId = match[1];
-      const wRes = await fetch(`https://pub.orcid.org/v3.0/${cleanId}/works`, {
-        headers: { "Accept": "application/json" }
-      });
-      if (!wRes.ok) throw new Error("Could not fetch ORCID works.");
-      const wData = await wRes.json();
-      const groups = wData.group || [];
-      let added = 0;
-      const existingTitles = new Set((STATE.profile.publications || []).map(p => p.title.toLowerCase()));
-      groups.slice(0, 20).forEach(g => {
-        const ws = (g["work-summary"] || [])[0];
-        if (!ws) return;
-        const t = ws.title?.title?.value || "";
-        if (t && !existingTitles.has(t.toLowerCase())) {
-          STATE.profile.publications.push({
-            title: t,
-            authors: STATE.profile.full_name,
-            journal: ws["journal-title"]?.value || "Publication",
-            year: parseInt(ws["publication-date"]?.year?.value) || 2025,
-            doi: "",
-            citations: 0,
-            source: "ORCID"
-          });
-          existingTitles.add(t.toLowerCase());
-          added++;
+    if (checkLib && libraryPapers && libraryPapers.length > 0) {
+      libraryPapers.forEach(paper => {
+        const refText = `${paper.title || ""} ${paper.abstract || ""} ${paper.notes || ""}`;
+        const refWords = tokenize(refText);
+        if (refWords.length < 5) return;
+        const refGrams = getGrams(refWords, 3);
+
+        let overlap = 0;
+        grams.forEach(g => { if (refGrams.has(g)) overlap++; });
+        const sim = grams.size > 0 ? (overlap / grams.size) * 100 : 0;
+
+        if (sim > maxSim) {
+          maxSim = sim;
+          topMatch = {
+            source_type: "LIBRARY_PAPER",
+            source_title: paper.title || "Untitled Paper",
+            source_doi: paper.doi || "",
+            similarity_pct: Math.round(sim * 10) / 10,
+            matched_text: (paper.abstract || paper.title || "").slice(0, 200)
+          };
         }
       });
-      STATE.profile.orcid_id = cleanId;
-      saveStaticDb();
-      loadStaticFallbackData();
-      showToast(`Synced ORCID ${cleanId}: added ${added} new works to CV!`);
     }
-  } catch (err) {
-    showToast(`ORCID Error: ${err.message}`, "error");
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "🔄 Sync ORCID";
-  }
-}
 
-async function handleSyncScholar() {
-  if (!requireOwnerAuth()) return;
-  const scholarInput = document.getElementById("sync-scholar-input").value.trim();
-  if (!scholarInput) {
-    showToast("Please enter a Google Scholar User ID, URL, or Researcher Name.", "warn");
-    return;
-  }
-  const btn = document.getElementById("btn-sync-scholar");
-  btn.disabled = true;
-  btn.textContent = "⏳ Syncing Citations...";
-  try {
-    if (!STATIC_MODE) {
-      const res = await fetch("/api/profile/sync-scholar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scholar_input: scholarInput })
+    if (checkInternal) {
+      paras.forEach((otherPara, otherIdx) => {
+        if (otherIdx === idx) return;
+        const otherWords = tokenize(otherPara);
+        const otherGrams = getGrams(otherWords, 3);
+        let overlap = 0;
+        grams.forEach(g => { if (otherGrams.has(g)) overlap++; });
+        const sim = grams.size > 0 ? (overlap / grams.size) * 100 : 0;
+        if (sim > maxSim) {
+          maxSim = sim;
+          topMatch = {
+            source_type: "INTERNAL_REPETITION",
+            source_title: `Paragraph #${otherIdx + 1} (Internal Duplication)`,
+            source_doi: "",
+            similarity_pct: Math.round(sim * 10) / 10,
+            matched_text: otherPara.slice(0, 200)
+          };
+        }
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Scholar sync failed");
-      STATE.profile = data;
-      renderProfile(data);
-      renderAcademicCvSheet(data);
-      showToast(data.sync_summary || "Synced citation metrics & publications!");
-      await loadAllData();
-    } else {
-      const oaRes = await fetch(`https://api.openalex.org/authors?search=${encodeURIComponent(scholarInput)}&per-page=1`);
-      const oaData = await oaRes.json();
-      if (!oaData.results || !oaData.results.length) throw new Error("Author not found.");
-      const author = oaData.results[0];
-      STATE.profile.total_citations = author.cited_by_count || 0;
-      STATE.profile.h_index = author.summary_stats?.h_index || 0;
-      STATE.profile.i10_index = author.summary_stats?.i10_index || 0;
-      saveStaticDb();
-      loadStaticFallbackData();
-      showToast(`Synced Citation Metrics: Citations=${STATE.profile.total_citations}, h-index=${STATE.profile.h_index}`);
     }
-  } catch (err) {
-    showToast(`Scholar Sync Error: ${err.message}`, "error");
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "🔄 Sync Scholar Metrics";
-  }
-}
 
-async function addOwnPublicationModal() {
-  if (!requireOwnerAuth()) return;
-  const title = prompt("Enter Publication Title:");
-  if (!title) return;
-  const journal = prompt("Enter Journal / Conference Name:", "Advanced Materials");
-  const year = parseInt(prompt("Enter Publication Year:", "2026")) || 2026;
-  const doi = prompt("Enter DOI (optional):", "");
+    maxSim = Math.round(maxSim * 10) / 10;
+    totalSim += maxSim;
 
-  STATE.profile.publications = STATE.profile.publications || [];
-  STATE.profile.publications.unshift({
-    title,
-    authors: STATE.profile.full_name || "Vu Tien Lam",
-    journal: journal || "Journal",
-    year,
-    doi: doi ? normalizeDoiClient(doi) : "",
-    citations: 0,
-    source: "Academic CV"
+    let risk = "LOW";
+    if (maxSim >= 65) {
+      risk = "HIGH";
+      highCount++;
+    } else if (maxSim >= 35) {
+      risk = "MODERATE";
+      modCount++;
+    }
+
+    results.push({
+      index: idx,
+      text: para,
+      word_count: words.length,
+      max_similarity_pct: maxSim,
+      risk_level: risk,
+      top_match: topMatch
+    });
   });
-  await persistProfileState();
+
+  const overall = Math.round((totalSim / paras.length) * 10) / 10;
+  return {
+    overall_similarity_pct: overall,
+    high_risk_count: highCount,
+    moderate_risk_count: modCount,
+    low_risk_count: paras.length - highCount - modCount,
+    total_paragraphs: paras.length,
+    paragraphs: results
+  };
 }
 
-async function removeOwnPub(idx) {
-  if (!requireOwnerAuth()) return;
-  STATE.profile.publications.splice(idx, 1);
-  await persistProfileState();
+function clientSideWordDiff(textA, textB, nameA = "Document A", nameB = "Document B") {
+  const cleanWordsA = (textA || "").split(/\s+/).filter(w => w.length > 0);
+  const cleanWordsB = (textB || "").split(/\s+/).filter(w => w.length > 0);
+
+  const m = cleanWordsA.length;
+  const n = cleanWordsB.length;
+  const dp = Array.from({ length: m + 1 }, () => new Int32Array(n + 1));
+
+  for (let i = 0; i < m; i++) {
+    for (let j = 0; j < n; j++) {
+      if (cleanWordsA[i].toLowerCase() === cleanWordsB[j].toLowerCase()) {
+        dp[i + 1][j + 1] = dp[i][j] + 1;
+      } else {
+        dp[i + 1][j + 1] = Math.max(dp[i + 1][j], dp[i][j + 1]);
+      }
+    }
+  }
+
+  const commonCount = dp[m][n];
+  const maxWords = Math.max(m, n, 1);
+  const simPct = Math.round((commonCount / maxWords) * 1000) / 10;
+  const addedCount = Math.max(0, n - commonCount);
+  const deletedCount = Math.max(0, m - commonCount);
+
+  let i = m, j = n;
+  const diffTokens = [];
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && cleanWordsA[i - 1].toLowerCase() === cleanWordsB[j - 1].toLowerCase()) {
+      diffTokens.unshift({ type: "equal", word: cleanWordsB[j - 1] });
+      i--;
+      j--;
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+      diffTokens.unshift({ type: "ins", word: cleanWordsB[j - 1] });
+      j--;
+    } else if (i > 0 && (j === 0 || dp[i][j - 1] < dp[i - 1][j])) {
+      diffTokens.unshift({ type: "del", word: cleanWordsA[i - 1] });
+      i--;
+    }
+  }
+
+  let inlineHtml = "";
+  diffTokens.forEach(t => {
+    if (t.type === "del") {
+      inlineHtml += `<del class="diff-del">${escapeHtml(t.word)}</del> `;
+    } else if (t.type === "ins") {
+      inlineHtml += `<ins class="diff-ins">${escapeHtml(t.word)}</ins> `;
+    } else {
+      inlineHtml += `${escapeHtml(t.word)} `;
+    }
+  });
+
+  const parasA = (textA || "").split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+  const parasB = (textB || "").split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+  const maxP = Math.max(parasA.length, parasB.length);
+  const sideBySide = [];
+  let modifiedParas = 0;
+
+  for (let pIdx = 0; pIdx < maxP; pIdx++) {
+    const pA = parasA[pIdx] || "";
+    const pB = parasB[pIdx] || "";
+    let status = "EQUAL";
+    if (!pA && pB) {
+      status = "ADDED";
+      modifiedParas++;
+    } else if (pA && !pB) {
+      status = "DELETED";
+      modifiedParas++;
+    } else if (pA !== pB) {
+      status = "MODIFIED";
+      modifiedParas++;
+    }
+    sideBySide.push({
+      status: status,
+      text_a: escapeHtml(pA),
+      text_b: escapeHtml(pB)
+    });
+  }
+
+  return {
+    doc_a_name: nameA,
+    doc_b_name: nameB,
+    doc_a_words: m,
+    doc_b_words: n,
+    similarity_pct: simPct,
+    added_words: addedCount,
+    deleted_words: deletedCount,
+    modified_paragraphs: modifiedParas,
+    track_changes_html: inlineHtml.trim(),
+    side_by_side: sideBySide
+  };
 }

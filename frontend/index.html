@@ -9,6 +9,10 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
   <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js" async></script>
+  <!-- Client-side Mammoth.js for Word (.docx) extraction on GitHub Pages -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <!-- Client-side PDF.js for PDF text extraction on GitHub Pages -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
 
@@ -21,12 +25,12 @@
         <div class="brand-icon">MS</div>
         <div>
           <div class="brand-title">MatSci Nexus</div>
-          <div class="brand-subtitle" id="header-researcher-sub">PhD Research &amp; Lab Suite • SKKU (lamvt.skku@gmail.com)</div>
+          <div class="brand-subtitle" id="header-researcher-sub">Computational Materials Science &amp; DFT Suite • SKKU</div>
         </div>
       </div>
 
-      <!-- Quick DOI Lookup Bar -->
-      <div class="quick-doi-bar">
+      <!-- Quick DOI Lookup Bar (Admin Only) -->
+      <div class="quick-doi-bar admin-only">
         <input
           type="text"
           id="topbar-doi-input"
@@ -54,11 +58,14 @@
         <button class="nav-btn" data-tab="calendar" onclick="switchTab('calendar', this)">
           <span class="nav-icon">📅</span> Calendar &amp; Google Sync
         </button>
-        <button class="nav-btn" data-tab="notes-schedule" onclick="switchTab('notes-schedule', this)">
-          <span class="nav-icon">🧪</span> Lab Notes &amp; Synthesis
+        <button class="nav-btn" data-tab="structures" onclick="switchTab('structures', this)">
+          <span class="nav-icon">💎</span> Crystal Structures (*.cif)
         </button>
         <button class="nav-btn" data-tab="weekly-report" onclick="switchTab('weekly-report', this)">
           <span class="nav-icon">📽️</span> Weekly Report (.pptx)
+        </button>
+        <button class="nav-btn" data-tab="manuscript" onclick="switchTab('manuscript', this)">
+          <span class="nav-icon">🔍</span> Plagiarism &amp; Word Diff
         </button>
         <button class="nav-btn" data-tab="toolkit" onclick="switchTab('toolkit', this)">
           <span class="nav-icon">⚛️</span> Periodic Table &amp; Calc
@@ -77,8 +84,8 @@
   <div class="page-subheader">
     <div class="page-subheader-inner">
       <div>
-        <h1 id="page-heading">Research Command Center</h1>
-        <p id="page-subheading">Materials Science &amp; Engineering PhD Workflow, Synthesis Log &amp; Literature Hub</p>
+        <h1 id="page-heading">Computational Materials Research Hub</h1>
+        <p id="page-subheading">First-Principles DFT Calculations, Crystal Structures (*.cif), Literature &amp; Academic Management</p>
       </div>
       <div id="header-auth-status-badge" style="font-size:12px; color:var(--text-secondary);"></div>
     </div>
@@ -107,28 +114,28 @@
         <div class="kpi-grid" id="dashboard-kpis"></div>
 
         <div class="grid-2">
-          <!-- Upcoming Instrument Bookings & Schedule -->
+          <!-- Upcoming Events & Google Calendar Slots -->
           <div class="card">
             <div class="card-header">
               <div>
                 <div class="card-title">📅 Upcoming Events &amp; Google Calendar Slots</div>
-                <div style="font-size:12px; color:var(--text-muted);">Furnace runs, XRD/SEM/XPS sessions, and PI meetings</div>
+                <div style="font-size:12px; color:var(--text-muted);">DFT simulation queues, cluster runs, seminars, and PI meetings</div>
               </div>
               <button class="btn btn-outline btn-sm" onclick="switchTabByName('calendar')">Open Full Calendar →</button>
             </div>
             <div id="dashboard-schedule-list"></div>
           </div>
 
-          <!-- Pinned Synthesis & Characterization Notes -->
+          <!-- Recent Crystal Structures & Simulations (*.cif) -->
           <div class="card">
             <div class="card-header">
               <div>
-                <div class="card-title">🧪 Recent Synthesis &amp; Characterization Notes</div>
-                <div style="font-size:12px; color:var(--text-muted);">Active sample batches, processing conditions &amp; key findings</div>
+                <div class="card-title">💎 Recent Crystal Structures &amp; Simulations (*.cif)</div>
+                <div style="font-size:12px; color:var(--text-muted);">Lattice parameters, bandgaps, DFT functionals &amp; VASP inputs</div>
               </div>
-              <button class="btn btn-outline btn-sm" onclick="switchTabByName('notes-schedule')">All Lab Notes →</button>
+              <button class="btn btn-outline btn-sm" onclick="switchTabByName('structures')">All Structures →</button>
             </div>
-            <div id="dashboard-notes-list"></div>
+            <div id="dashboard-structures-list"></div>
           </div>
         </div>
 
@@ -152,7 +159,15 @@
       <!-- TAB 2: LITERATURE & AUTOMATIC DOI IMPORT                         -->
       <!-- ================================================================ -->
       <section id="tab-literature" class="tab-pane">
-        <div class="card" style="background: linear-gradient(135deg, #0f172a, #1e293b); color: #fff; border: none;">
+        <!-- Visitor Read-Only Notice -->
+        <div class="public-mode-banner visitor-only">
+          <div>
+            👁️ <strong>Public Viewer Mode:</strong> You are viewing the verified computational materials literature library. Sign in as Administrator (<code>lamvt.skku@gmail.com</code>) to import new papers by DOI.
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openLoginModal()">👤 Log in</button>
+        </div>
+
+        <div class="card admin-only" style="background: linear-gradient(135deg, #0f172a, #1e293b); color: #fff; border: none;">
           <div class="card-header" style="margin-bottom:10px;">
             <div>
               <div class="card-title" style="color:#fff; font-size:17px;">🔗 Automatic Paper Import via DOI Link (with Duplicate Protection)</div>
@@ -214,20 +229,28 @@
       <!-- TAB 3: DEDICATED CALENDAR & GOOGLE CALENDAR SYNC                 -->
       <!-- ================================================================ -->
       <section id="tab-calendar" class="tab-pane">
+        <!-- Visitor Read-Only Notice -->
+        <div class="public-mode-banner visitor-only">
+          <div>
+            👁️ <strong>Public Viewer Mode:</strong> You are viewing research milestones and seminar schedules. Sign in as Administrator (<code>lamvt.skku@gmail.com</code>) to schedule events or sync with Google Calendar.
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openLoginModal()">👤 Log in</button>
+        </div>
+
         <!-- Google Calendar Sync Control Bar -->
         <div class="card" style="background: linear-gradient(135deg, #0f172a, #1e3a8a); color:#fff; border:none;">
           <div class="card-header" style="margin-bottom:0;">
             <div>
-              <div class="card-title" style="color:#fff; font-size:17px;">📅 Research &amp; Experiment Calendar — Linked to Google Calendar (<code>lamvt.skku@gmail.com</code>)</div>
+              <div class="card-title" style="color:#fff; font-size:17px;">📅 Research &amp; Simulation Calendar — Linked to Google Calendar (<code>lamvt.skku@gmail.com</code>)</div>
               <div style="font-size:12.5px; color:#cbd5e1; margin-top:3px;">
-                Click any date on the monthly calendar to schedule an experiment, push events directly to <strong>lamvt.skku@gmail.com</strong> Google Calendar, export <code>.ics</code>, or sync via Google Calendar API.
+                Click any date on the monthly calendar to schedule simulations or seminars, push events directly to <strong>lamvt.skku@gmail.com</strong> Google Calendar, export <code>.ics</code>, or sync via Google Calendar API.
               </div>
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
-              <button class="btn btn-primary owner-only-btn" onclick="openScheduleModal()">
+              <button class="btn btn-primary owner-only-btn admin-only" onclick="openScheduleModal()">
                 + Add Calendar Event
               </button>
-              <button class="btn btn-teal owner-only-btn" onclick="syncWithGoogleCalendarApi()">
+              <button class="btn btn-teal owner-only-btn admin-only" onclick="syncWithGoogleCalendarApi()">
                 🔄 Sync Google Calendar API
               </button>
               <button class="btn btn-outline" style="background:rgba(255,255,255,0.12); color:#fff; border-color:#475569;" onclick="exportScheduleToIcs()">
@@ -308,40 +331,73 @@
       </section>
 
       <!-- ================================================================ -->
-      <!-- TAB 4: LAB NOTES & SYNTHESIS LOG                                 -->
+      <!-- TAB 4: CRYSTAL STRUCTURES & SIMULATION DATABASE (*.CIF / POSCAR) -->
       <!-- ================================================================ -->
-      <section id="tab-notes-schedule" class="tab-pane">
+      <section id="tab-structures" class="tab-pane">
+        <!-- Visitor Read-Only Notice -->
+        <div class="public-mode-banner visitor-only">
+          <div>
+            👁️ <strong>Public Viewer Mode:</strong> You are browsing the crystal structure &amp; DFT database. Sign in as Administrator (<code>lamvt.skku@gmail.com</code>) to upload *.cif files, edit lattice parameters, or calculate POSCAR.
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openLoginModal()">👤 Log in</button>
+        </div>
+
+        <!-- Structure Upload & Import Bar (Admin Only) -->
+        <div class="card admin-only" style="background: linear-gradient(135deg, #0f172a, #1e293b); color: #fff; border: none;">
+          <div class="card-header" style="margin-bottom:12px;">
+            <div>
+              <div class="card-title" style="color:#fff; font-size:17px;">💎 Upload *.cif File or Add Computational Structure</div>
+              <div style="font-size:12.5px; color:#cbd5e1; margin-top:3px;">
+                Drag &amp; drop any Crystallographic Information File (*.cif). The built-in parser extracts lattice vectors, cell angles, space group, and atoms to auto-generate VASP POSCAR.
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="btn btn-primary" onclick="openStructureModal()">+ Manual Structure Entry</button>
+              <button class="btn btn-teal" onclick="triggerCifFileInput()">📂 Browse *.cif File</button>
+            </div>
+          </div>
+
+          <!-- Drag and Drop Zone -->
+          <div class="cif-drop-zone" id="cif-drop-zone" onclick="triggerCifFileInput()">
+            <input type="file" id="cif-file-input" accept=".cif,.txt" style="display:none;" onchange="handleCifFileSelect(event)" />
+            <div style="font-size:32px; margin-bottom:6px;">📤</div>
+            <div style="font-weight:700; font-size:14px; color:#f1f5f9;">Drop your *.cif structure file here, or click to browse</div>
+            <div style="font-size:12px; color:#94a3b8; margin-top:4px;">Supported: Full CIF format (Materials Project, ICSD, COD, VESTA export)</div>
+          </div>
+        </div>
+
+        <!-- Structures List & Filters -->
         <div class="card">
           <div class="card-header">
-            <div>
-              <div class="card-title">🧪 Research &amp; Synthesis Notebook</div>
-              <div style="font-size:12px; color:var(--text-muted);">Track Sample IDs, precursors, sintering profiles, XRD/SEM/XPS results &amp; hypotheses</div>
+            <div style="display:flex; gap:10px; flex:1; flex-wrap:wrap;">
+              <input
+                type="text"
+                id="struct-search"
+                placeholder="Search by formula (e.g., BaTiO3, BaSnO3, MoS2, MXene), space group, or mp-id..."
+                style="flex:1; min-width:220px; padding:8px 12px; border:1px solid var(--border-color); border-radius:8px; font-size:13px;"
+                oninput="renderStructuresList()"
+              />
+              <select id="struct-system-filter" onchange="renderStructuresList()" style="padding:8px 12px; border:1px solid var(--border-color); border-radius:8px; font-size:13px;">
+                <option value="ALL">All Crystal Systems</option>
+                <option value="Cubic">Cubic</option>
+                <option value="Tetragonal">Tetragonal</option>
+                <option value="Hexagonal">Hexagonal</option>
+                <option value="Orthorhombic">Orthorhombic</option>
+                <option value="Monoclinic">Monoclinic</option>
+                <option value="Triclinic">Triclinic</option>
+              </select>
+              <select id="struct-type-filter" onchange="renderStructuresList()" style="padding:8px 12px; border:1px solid var(--border-color); border-radius:8px; font-size:13px;">
+                <option value="ALL">All Structure Types</option>
+                <option value="Bulk 3D">Bulk 3D Crystal</option>
+                <option value="2D Monolayer">2D Monolayer / Layered</option>
+                <option value="Surface Slab">Surface Slab</option>
+                <option value="Defect Supercell">Defect Supercell</option>
+              </select>
             </div>
-            <div style="display:flex; gap:8px;">
-              <button class="btn btn-outline btn-sm" onclick="switchTabByName('calendar')">📅 Open Calendar</button>
-              <button class="btn btn-primary btn-sm owner-only-btn" onclick="openNoteModal()">+ New Lab Note</button>
-            </div>
+            <button class="btn btn-primary btn-sm admin-only" onclick="openStructureModal()">+ New Structure</button>
           </div>
 
-          <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
-            <input
-              type="text"
-              id="note-search"
-              placeholder="Filter by Sample ID, formula, method (XRD, XPS, ALD)..."
-              style="flex:1; min-width:220px; padding:8px 12px; border:1px solid var(--border-color); border-radius:8px; font-size:13px;"
-              oninput="renderNotesList()"
-            />
-            <select id="note-cat-filter" onchange="renderNotesList()" style="padding:8px 10px; border:1px solid var(--border-color); border-radius:8px; font-size:12.5px;">
-              <option value="ALL">All Categories</option>
-              <option value="Experiment / Synthesis">Experiment / Synthesis</option>
-              <option value="Characterization Result">Characterization Result</option>
-              <option value="Simulation / DFT">Simulation / DFT</option>
-              <option value="Meeting Note">Meeting Note</option>
-              <option value="Idea / Hypothesis">Idea / Hypothesis</option>
-            </select>
-          </div>
-
-          <div id="notes-list-container"></div>
+          <div id="structures-list-container" class="struct-grid"></div>
         </div>
       </section>
 
@@ -462,7 +518,229 @@
       </section>
 
       <!-- ================================================================ -->
-      <!-- TAB 6: MATERIALS SCIENCE TOOLKIT (PERIODIC TABLE & CALCULATORS)  -->
+      <!-- TAB 6: MANUSCRIPT PLAGIARISM CHECKER & WORD DOCUMENT DIFF        -->
+      <!-- ================================================================ -->
+      <section id="tab-manuscript" class="tab-pane">
+        <!-- Sub-Navigation Toggle between Plagiarism & Word Diff -->
+        <div class="card" style="background: linear-gradient(135deg, #0f172a, #1e293b); color: #fff; border: none; margin-bottom: 16px;">
+          <div class="card-header" style="margin-bottom:0;">
+            <div>
+              <div class="card-title" style="color:#fff; font-size:18px;">📄 Manuscript Verification &amp; Document Comparison Suite</div>
+              <div style="font-size:12.5px; color:#cbd5e1; margin-top:3px;">
+                Check duplicate paragraphs across your Literature Library or compare two Word (.docx) / PDF drafts side-by-side with Word-style Track Changes.
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="btn btn-primary" id="btn-subtab-plag" onclick="switchManuscriptSubTab('plagiarism')">
+                🔍 Duplicate / Plagiarism Check
+              </button>
+              <button class="btn btn-outline" id="btn-subtab-diff" style="background:rgba(255,255,255,0.12); color:#fff; border-color:#475569;" onclick="switchManuscriptSubTab('diff')">
+                ↔️ Compare 2 Word / PDF Files
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUB-TAB 1: PLAGIARISM & DUPLICATE PARAGRAPH CHECKER -->
+        <div id="manuscript-plag-panel">
+          <div class="grid-2">
+            <!-- Left: Upload & Config -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">📤 Upload Manuscript (.pdf, .docx, .txt)</div>
+                <button class="btn btn-outline btn-sm" onclick="loadSampleManuscriptText()">Load Sample Text</button>
+              </div>
+
+              <!-- Drag and drop zone -->
+              <div class="cif-drop-zone" id="plag-drop-zone" onclick="document.getElementById('plag-file-input').click()">
+                <input type="file" id="plag-file-input" accept=".docx,.pdf,.txt" style="display:none;" onchange="handlePlagFileInput(event)" />
+                <div style="font-size:32px; margin-bottom:6px;">📄</div>
+                <div style="font-weight:700; font-size:14px; color:var(--text-main);" id="plag-drop-title">Drop your manuscript (PDF or Word .docx) here</div>
+                <div style="font-size:12px; color:var(--text-muted); margin-top:4px;" id="plag-drop-sub">Extracts text and splits into distinct paragraphs for cross-checking</div>
+              </div>
+
+              <div style="margin-top:14px;">
+                <label style="font-size:12.5px; font-weight:700; color:var(--text-secondary); display:block; margin-bottom:6px;">Or Paste Manuscript Draft Text Below:</label>
+                <textarea id="plag-text-input" rows="5" placeholder="Paste draft paragraphs here to check for duplicate content..." style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border-color); font-size:13px; font-family:inherit;"></textarea>
+              </div>
+
+              <div style="margin-top:12px; padding:12px; background:#f8fafc; border-radius:8px; border:1px solid var(--border-color);">
+                <div style="font-weight:700; font-size:12.5px; margin-bottom:6px;">Cross-Check Sources:</div>
+                <div style="display:flex; flex-direction:column; gap:6px; font-size:12.5px;">
+                  <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                    <input type="checkbox" id="chk-cross-library" checked />
+                    Cross-check against all papers in Literature Library (Abstracts &amp; Notes)
+                  </label>
+                  <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                    <input type="checkbox" id="chk-cross-internal" checked />
+                    Detect internal repetition / duplicate paragraphs within this document
+                  </label>
+                </div>
+              </div>
+
+              <div style="margin-top:14px; display:flex; justify-content:flex-end;">
+                <button class="btn btn-primary" id="btn-run-plag" onclick="runPlagiarismAnalysis()">
+                  ⚡ Check Duplicate Paragraphs
+                </button>
+              </div>
+            </div>
+
+            <!-- Right: Analysis Summary & KPIs -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">📊 Duplication &amp; Overlap Scorecard</div>
+                <div id="plag-file-badge" style="font-size:12px; color:var(--text-muted);"></div>
+              </div>
+
+              <div id="plag-kpi-container" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap:10px; margin-bottom:14px;">
+                <div class="kpi-card" style="padding:10px 12px;">
+                  <div class="kpi-label">Overall Similarity</div>
+                  <div class="kpi-value" id="kpi-overall-sim" style="color:#2563eb;">0%</div>
+                  <div class="kpi-sub">Composite index</div>
+                </div>
+                <div class="kpi-card" style="padding:10px 12px;">
+                  <div class="kpi-label">High Risk</div>
+                  <div class="kpi-value" id="kpi-high-risk" style="color:#e11d48;">0</div>
+                  <div class="kpi-sub">>65% duplicate</div>
+                </div>
+                <div class="kpi-card" style="padding:10px 12px;">
+                  <div class="kpi-label">Moderate Risk</div>
+                  <div class="kpi-value" id="kpi-mod-risk" style="color:#d97706;">0</div>
+                  <div class="kpi-sub">35–64% overlap</div>
+                </div>
+                <div class="kpi-card" style="padding:10px 12px;">
+                  <div class="kpi-label">Paragraphs</div>
+                  <div class="kpi-value" id="kpi-total-paras" style="color:#0d9488;">0</div>
+                  <div class="kpi-sub">Analyzed</div>
+                </div>
+              </div>
+
+              <div id="plag-status-alert" style="padding:10px 14px; border-radius:8px; font-size:12.5px; background:#f8fafc; border:1px solid var(--border-color); color:var(--text-secondary);">
+                Ready to analyze. Upload a PDF or Word document on the left and click "Check Duplicate Paragraphs".
+              </div>
+            </div>
+          </div>
+
+          <!-- Detailed Paragraph Match Table -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">📑 Paragraph-by-Paragraph Duplicate Breakdown</div>
+              <div style="display:flex; gap:8px;">
+                <select id="plag-filter-level" onchange="filterPlagResults()" style="padding:6px 10px; border-radius:6px; border:1px solid var(--border-color); font-size:12.5px;">
+                  <option value="ALL">All Paragraphs</option>
+                  <option value="FLAGGED">Only Flagged (High &amp; Moderate)</option>
+                  <option value="HIGH">High Risk (>65%) Only</option>
+                </select>
+                <button class="btn btn-outline btn-sm" onclick="exportPlagiarismReport()">📥 Export Report</button>
+              </div>
+            </div>
+
+            <div id="plag-results-list" style="display:flex; flex-direction:column; gap:10px;">
+              <div style="padding:24px; text-align:center; color:var(--text-muted); font-size:13px;">
+                No analysis results yet.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUB-TAB 2: TWO-DOCUMENT WORD / PDF COMPARISON (TRACK CHANGES & DIFF) -->
+        <div id="manuscript-diff-panel" style="display:none;">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">⚖️ Compare Two Word (.docx) or PDF Manuscripts</div>
+              <button class="btn btn-outline btn-sm" onclick="loadSampleDiffFiles()">Load Sample Revisions</button>
+            </div>
+
+            <div class="grid-2">
+              <!-- Document A Drop Zone -->
+              <div class="cif-drop-zone" id="diff-drop-a" onclick="document.getElementById('diff-file-a').click()">
+                <input type="file" id="diff-file-a" accept=".docx,.pdf,.txt" style="display:none;" onchange="handleDiffFileInput('A', event)" />
+                <div style="font-size:28px; margin-bottom:4px;">📄</div>
+                <div style="font-weight:700; font-size:13.5px;" id="diff-title-a">Document A: Original Draft (Upload .docx/.pdf)</div>
+                <div style="font-size:11.5px; color:var(--text-muted);" id="diff-sub-a">Click to select original version</div>
+              </div>
+
+              <!-- Document B Drop Zone -->
+              <div class="cif-drop-zone" id="diff-drop-b" onclick="document.getElementById('diff-file-b').click()">
+                <input type="file" id="diff-file-b" accept=".docx,.pdf,.txt" style="display:none;" onchange="handleDiffFileInput('B', event)" />
+                <div style="font-size:28px; margin-bottom:4px;">📝</div>
+                <div style="font-weight:700; font-size:13.5px;" id="diff-title-b">Document B: Revised Draft (Upload .docx/.pdf)</div>
+                <div style="font-size:11.5px; color:var(--text-muted);" id="diff-sub-b">Click to select revised version</div>
+              </div>
+            </div>
+
+            <!-- Optional Text Inputs for quick comparison -->
+            <div class="grid-2" style="margin-top:12px;">
+              <div>
+                <label style="font-size:12px; font-weight:700; color:var(--text-muted);">Or Paste Document A Text:</label>
+                <textarea id="diff-text-a" rows="4" placeholder="Paste original text here..." style="width:100%; padding:8px; border-radius:6px; border:1px solid var(--border-color); font-size:12.5px;"></textarea>
+              </div>
+              <div>
+                <label style="font-size:12px; font-weight:700; color:var(--text-muted);">Or Paste Document B Text:</label>
+                <textarea id="diff-text-b" rows="4" placeholder="Paste revised text here..." style="width:100%; padding:8px; border-radius:6px; border:1px solid var(--border-color); font-size:12.5px;"></textarea>
+              </div>
+            </div>
+
+            <div style="margin-top:14px; display:flex; justify-content:flex-end;">
+              <button class="btn btn-teal" id="btn-run-diff" onclick="runDocumentComparison()">
+                ⚡ Compare Documents &amp; Generate Track Changes
+              </button>
+            </div>
+          </div>
+
+          <!-- Diff Results Deck -->
+          <div id="diff-results-card" class="card" style="display:none;">
+            <div class="card-header">
+              <div>
+                <div class="card-title" id="diff-heading-title">Comparison Results &amp; Track Changes</div>
+                <div style="font-size:12px; color:var(--text-muted);" id="diff-heading-sub"></div>
+              </div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn btn-outline btn-sm active" id="btn-view-inline" onclick="setDiffViewMode('inline')">📝 Track Changes (Inline)</button>
+                <button class="btn btn-outline btn-sm" id="btn-view-side" onclick="setDiffViewMode('side')">↔️ Side-by-Side View</button>
+                <button class="btn btn-teal btn-sm" onclick="copyDiffSummary()">📋 Copy Summary for Reviewers</button>
+              </div>
+            </div>
+
+            <!-- Comparison Scorecard -->
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap:10px; margin-bottom:14px;">
+              <div class="kpi-card" style="padding:10px 12px;">
+                <div class="kpi-label">Similarity Index</div>
+                <div class="kpi-value" id="diff-kpi-sim" style="color:#2563eb;">0%</div>
+                <div class="kpi-sub">Lexical match</div>
+              </div>
+              <div class="kpi-card" style="padding:10px 12px;">
+                <div class="kpi-label">Words Added</div>
+                <div class="kpi-value" id="diff-kpi-added" style="color:#16a34a;">0</div>
+                <div class="kpi-sub">New content</div>
+              </div>
+              <div class="kpi-card" style="padding:10px 12px;">
+                <div class="kpi-label">Words Deleted</div>
+                <div class="kpi-value" id="diff-kpi-deleted" style="color:#dc2626;">0</div>
+                <div class="kpi-sub">Removed content</div>
+              </div>
+              <div class="kpi-card" style="padding:10px 12px;">
+                <div class="kpi-label">Paragraphs Changed</div>
+                <div class="kpi-value" id="diff-kpi-modified" style="color:#d97706;">0</div>
+                <div class="kpi-sub">Modified / added</div>
+              </div>
+            </div>
+
+            <!-- View 1: Track Changes Inline View -->
+            <div id="diff-view-inline-container" style="display:block;">
+              <div id="diff-inline-content" style="background:#fff; border:1px solid var(--border-color); border-radius:8px; padding:16px; font-size:13.5px; line-height:1.65; white-space:pre-wrap;"></div>
+            </div>
+
+            <!-- View 2: Side-by-Side View -->
+            <div id="diff-view-side-container" style="display:none;">
+              <div id="diff-side-by-side-content"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================ -->
+      <!-- TAB 7: MATERIALS SCIENCE TOOLKIT (PERIODIC TABLE & CALCULATORS)  -->
       <!-- ================================================================ -->
       <section id="tab-toolkit" class="tab-pane">
 
@@ -779,64 +1057,81 @@
   </div>
 
   <!-- ==================================================================== -->
-  <!-- MODAL: GOOGLE ACCOUNT OWNER SIGN-IN (EXCLUSIVE: lamvt.skku@gmail.com)-->
+  <!-- MODAL: MODERN AUTHENTICATION DIALOG (MATCHING USER'S MOCKUP)         -->
   <!-- ==================================================================== -->
-  <div id="google-auth-modal" class="modal-backdrop">
-    <div class="modal-box" style="max-width:540px;">
-      <div class="card-header">
-        <div class="card-title">🔐 Owner Google Account Authentication</div>
-        <button class="btn btn-outline btn-sm" onclick="closeModal('google-auth-modal')">✕ Close</button>
+  <div id="login-modal" class="modal-backdrop">
+    <div class="auth-card-modal">
+      <button class="auth-modal-close" onclick="closeModal('login-modal')">✕</button>
+
+      <div class="auth-modal-title">Log in or sign up</div>
+      <div class="auth-modal-subtitle">
+        You'll get full administrative access to manage literature, crystal structures, calendar, and reports.
       </div>
 
-      <div style="background:#eff6ff; border:1px solid #bfdbfe; color:#1e3a8a; padding:12px 14px; border-radius:8px; font-size:13px; margin-bottom:16px;">
-        🔒 This research portal is exclusively linked to the Owner Google Account:<br/>
-        <strong style="font-size:14px;">lamvt.skku@gmail.com</strong>
-      </div>
+      <div class="auth-sso-group">
+        <!-- Continue with Google (Primary SSO) -->
+        <button class="auth-sso-btn" onclick="handleContinueWithGoogle()">
+          <svg width="20" height="20" viewBox="0 0 48 48">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+          </svg>
+          Continue with Google
+        </button>
 
-      <!-- Official Google Identity Services Button Container (if Client ID configured) -->
-      <div id="g-id-button-wrapper" style="margin-bottom:16px; display:none; flex-direction:column; align-items:center; gap:8px; padding:12px; background:#f8fafc; border-radius:10px; border:1px solid var(--border-color);">
-        <div id="g-id-signin-btn"></div>
-        <button class="btn btn-teal btn-sm" onclick="launchGoogleOAuthPopup()">
-          🔗 Sign In &amp; Authorize Google Calendar (OAuth 2.0 Popup)
+        <!-- Continue with Apple -->
+        <button class="auth-sso-btn" onclick="handleContinueWithApple()">
+          <svg width="20" height="20" viewBox="0 0 170 170" fill="#000">
+            <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.69-3.04-7.69-7.85-12.02-14.42-6.53-9.88-11.85-21.41-15.96-34.58-4.11-13.17-6.17-25.2-6.17-36.1 0-15.13 3.65-27.46 10.96-37 7.31-9.54 16.59-14.41 27.84-14.62 4.46 0 9.53 1.16 15.22 3.48 5.68 2.32 9.59 3.54 11.72 3.66 1.83 0 5.86-1.32 12.09-3.95 6.23-2.63 11.51-3.79 15.84-3.48 12.5.85 22.37 5.62 29.61 14.3-10.9 6.56-16.22 15.68-15.96 27.35.26 9.4 3.97 17.27 11.13 23.6 7.16 6.34 15.74 9.94 25.75 10.82-2.32 7.07-5.19 14.33-8.62 21.78zM119.22 33.15c0-7.31 2.65-14.32 7.95-21.03 5.3-6.71 11.95-10.99 19.95-12.84 0 1.27.05 2.54.15 3.81.1 1.27.15 2.33.15 3.17 0 7.2-2.82 14.28-8.46 21.25-5.64 6.98-12.33 11.23-20.08 12.75-.32-2.33-.48-4.7-.48-7.11z"/>
+          </svg>
+          Continue with Apple
+        </button>
+
+        <!-- Continue with phone -->
+        <button class="auth-sso-btn" onclick="handleContinueWithPhone()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+          </svg>
+          Continue with phone
         </button>
       </div>
 
-      <!-- Direct Google Owner Account Sign-In -->
-      <div style="background:#f8fafc; border:1px solid var(--border-color); border-radius:10px; padding:16px; margin-bottom:16px;">
-        <div style="font-weight:700; font-size:13.5px; margin-bottom:10px; display:flex; align-items:center; gap:8px;">
-          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-          Verify Owner Google Account (<code>lamvt.skku@gmail.com</code>)
-        </div>
-        <div class="form-group">
-          <label>Google Account Email *</label>
-          <input type="email" id="auth-google-email" placeholder="lamvt.skku@gmail.com" value="lamvt.skku@gmail.com" />
-        </div>
-        <div class="form-group">
-          <label>Owner Display Name</label>
-          <input type="text" id="auth-google-name" placeholder="Vu Tien Lam" value="Vu Tien Lam" />
-        </div>
-        <button class="btn btn-primary" style="width:100%;" onclick="handleDirectGoogleSignIn()">
-          🔓 Sign In with Google (lamvt.skku@gmail.com)
+      <div class="auth-divider">
+        <span>OR</span>
+      </div>
+
+      <!-- Email & Security Passcode Input -->
+      <div>
+        <input
+          type="email"
+          id="login-email-input"
+          class="auth-email-input"
+          placeholder="Email address"
+          value="lamvt.skku@gmail.com"
+          onkeydown="if(event.key==='Enter') submitEmailLogin()"
+        />
+        <input
+          type="password"
+          id="login-passcode-input"
+          class="auth-email-input"
+          placeholder="Security Passcode (default: skku2026)"
+          value="skku2026"
+          style="margin-top:8px;"
+          onkeydown="if(event.key==='Enter') submitEmailLogin()"
+        />
+        <button class="auth-continue-btn" onclick="submitEmailLogin()" style="margin-top:10px;">
+          Continue with Security Verification
         </button>
       </div>
 
-      <!-- Optional Google Cloud OAuth Client ID for Live Google Calendar API Sync -->
-      <details style="font-size:12.5px; color:var(--text-secondary);">
-        <summary style="cursor:pointer; font-weight:700; color:var(--text-main); padding:6px 0;">
-          ⚙️ Optional: Google Cloud OAuth 2.0 Client ID (For 2-Way Google Calendar API)
-        </summary>
-        <div style="margin-top:10px; padding:12px; background:#fff; border:1px solid var(--border-color); border-radius:8px;">
-          <div class="form-group">
-            <label>Locked Owner Email</label>
-            <input type="email" id="cfg-owner-email" value="lamvt.skku@gmail.com" readonly style="background:#f1f5f9; font-weight:700;" />
-          </div>
-          <div class="form-group">
-            <label>Google Cloud OAuth 2.0 Client ID (Optional — enables 1-click Google OAuth popup &amp; Calendar API)</label>
-            <input type="text" id="cfg-google-client-id" placeholder="xxxx-xxxx.apps.googleusercontent.com" />
-          </div>
-          <button class="btn btn-outline btn-sm" onclick="saveOwnerAuthConfig()">💾 Save Google OAuth Client ID</button>
-        </div>
-      </details>
+      <!-- Google OAuth Client ID Setup Link & Official Google Sign-In wrapper -->
+      <div id="g-id-official-container" style="display:none; justify-content:center; margin-top:12px;"></div>
+
+      <div style="margin-top:14px; display:flex; justify-content:space-between; align-items:center; font-size:11.5px; color:#6b7280;">
+        <span>Target: <strong>lamvt.skku@gmail.com</strong></span>
+        <a href="javascript:void(0)" onclick="openGoogleClientIdConfigPrompt()" style="color:#2563eb; text-decoration:none; font-weight:600;">⚙️ Google OAuth Setup</a>
+      </div>
     </div>
   </div>
 
@@ -944,73 +1239,174 @@
   </div>
 
   <!-- ==================================================================== -->
-  <!-- MODAL: ADD / EDIT LAB NOTE                                           -->
+  <!-- MODAL: ADD / EDIT CRYSTAL STRUCTURE & DFT SIMULATION                 -->
   <!-- ==================================================================== -->
-  <div id="note-modal" class="modal-backdrop">
+  <div id="structure-modal" class="modal-backdrop">
     <div class="modal-box">
       <div class="card-header">
-        <div class="card-title" id="note-modal-title">New Research &amp; Synthesis Note</div>
-        <button class="btn btn-outline btn-sm" onclick="closeModal('note-modal')">✕ Close</button>
+        <div class="card-title" id="struct-modal-title">💎 Add / Edit Crystal Structure (*.cif)</div>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('structure-modal')">✕ Close</button>
       </div>
-      <input type="hidden" id="nm-id" />
+      <input type="hidden" id="struct-id" />
       <div class="form-grid">
-        <div class="form-group full">
-          <label>Note Title *</label>
-          <input type="text" id="nm-title" placeholder="e.g., LLZTO-2026-05: Sintering at 1150 °C in MgO Crucible" />
+        <div class="form-group">
+          <label>Material Name *</label>
+          <input type="text" id="struct-name" placeholder="e.g., BaTiO3 (Cubic Perovskite)" />
         </div>
         <div class="form-group">
-          <label>Category</label>
-          <select id="nm-category">
-            <option value="Experiment / Synthesis">Experiment / Synthesis</option>
-            <option value="Characterization Result">Characterization Result</option>
-            <option value="Simulation / DFT">Simulation / DFT</option>
-            <option value="Meeting Note">Meeting Note</option>
-            <option value="Idea / Hypothesis">Idea / Hypothesis</option>
+          <label>Chemical Formula *</label>
+          <input type="text" id="struct-formula" placeholder="e.g., BaTiO3" />
+        </div>
+        <div class="form-group">
+          <label>Crystal System</label>
+          <select id="struct-system">
+            <option value="Cubic">Cubic</option>
+            <option value="Tetragonal">Tetragonal</option>
+            <option value="Hexagonal">Hexagonal</option>
+            <option value="Orthorhombic">Orthorhombic</option>
+            <option value="Monoclinic">Monoclinic</option>
+            <option value="Triclinic">Triclinic</option>
           </select>
         </div>
         <div class="form-group">
-          <label>Sample Batch ID</label>
-          <input type="text" id="nm-sample" placeholder="e.g., LLZTO-2026-05" />
+          <label>Space Group</label>
+          <input type="text" id="struct-spacegroup" placeholder="e.g., Pm-3m (221)" />
         </div>
         <div class="form-group">
-          <label>Target Material Formula</label>
-          <input type="text" id="nm-formula" placeholder="e.g., Li6.4La3Zr1.4Ta0.6O12" />
+          <label>Structure Type</label>
+          <select id="struct-type">
+            <option value="Bulk 3D">Bulk 3D Crystal</option>
+            <option value="2D Monolayer">2D Monolayer / Layered</option>
+            <option value="Surface Slab">Surface Slab</option>
+            <option value="Defect Supercell">Defect Supercell</option>
+          </select>
         </div>
         <div class="form-group">
-          <label>Characterization Techniques</label>
-          <input type="text" id="nm-char" placeholder="e.g., XRD, FE-SEM, XPS, EIS" />
+          <label>Materials Project ID / COD</label>
+          <input type="text" id="struct-mpid" placeholder="e.g., mp-2998" />
         </div>
-        <div class="form-group full">
-          <label>Precursors &amp; Stoichiometry</label>
-          <input type="text" id="nm-precursors" placeholder="e.g., Li2CO3 (1.42 g), La2O3 (2.68 g), ZrO2 (0.95 g)" />
-        </div>
-        <div class="form-group full">
-          <label>Synthesis / Processing Conditions</label>
-          <input type="text" id="nm-conditions" placeholder="e.g., Calcined 900 °C 6h → CIP 250 MPa → Sintered 1140 °C 12h in O2" />
-        </div>
-        <div class="form-group full">
-          <label>Key Quantitative Findings (Auto-populated into Weekly Report Slide 3)</label>
-          <input type="text" id="nm-findings" placeholder="e.g., Pure cubic Ia-3d phase; relative density 95.8%; σ = 0.84 mS/cm" />
-        </div>
-        <div class="form-group full">
-          <label>Detailed Experimental Log &amp; Observations</label>
-          <textarea id="nm-content" rows="4"></textarea>
+
+        <!-- Lattice Parameters -->
+        <div class="form-group">
+          <label>Lattice a, b, c (Å)</label>
+          <div style="display:flex; gap:6px;">
+            <input type="number" id="struct-a" placeholder="a" step="0.001" value="4.006" style="width:33%;" />
+            <input type="number" id="struct-b" placeholder="b" step="0.001" value="4.006" style="width:33%;" />
+            <input type="number" id="struct-c" placeholder="c" step="0.001" value="4.006" style="width:33%;" />
+          </div>
         </div>
         <div class="form-group">
+          <label>Angles α, β, γ (°)</label>
+          <div style="display:flex; gap:6px;">
+            <input type="number" id="struct-alpha" placeholder="α" step="0.1" value="90.0" style="width:33%;" />
+            <input type="number" id="struct-beta" placeholder="β" step="0.1" value="90.0" style="width:33%;" />
+            <input type="number" id="struct-gamma" placeholder="γ" step="0.1" value="90.0" style="width:33%;" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Cell Volume (Å³) &amp; Atoms Count</label>
+          <div style="display:flex; gap:6px;">
+            <input type="number" id="struct-vol" placeholder="Vol" step="0.01" value="64.29" style="width:50%;" />
+            <input type="number" id="struct-natoms" placeholder="Atoms" value="5" style="width:50%;" />
+          </div>
+        </div>
+
+        <!-- DFT Calculation Parameters -->
+        <div class="form-group">
+          <label>DFT Code &amp; Functional</label>
+          <div style="display:flex; gap:6px;">
+            <select id="struct-dftcode" style="width:50%;">
+              <option value="VASP">VASP</option>
+              <option value="Quantum ESPRESSO">Quantum ESPRESSO</option>
+              <option value="CASTEP">CASTEP</option>
+              <option value="LAMMPS">LAMMPS</option>
+              <option value="CP2K">CP2K</option>
+            </select>
+            <select id="struct-functional" style="width:50%;">
+              <option value="PBE">PBE</option>
+              <option value="PBEsol">PBEsol</option>
+              <option value="SCAN">SCAN</option>
+              <option value="HSE06">HSE06</option>
+              <option value="DFT+U">DFT+U</option>
+              <option value="B3LYP">B3LYP</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Cutoff Energy (eV) &amp; K-points</label>
+          <div style="display:flex; gap:6px;">
+            <input type="number" id="struct-ecut" placeholder="Ecut" value="520" style="width:50%;" />
+            <input type="text" id="struct-kpoints" placeholder="8x8x8" value="8x8x8" style="width:50%;" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Bandgap Eg (eV) &amp; Type</label>
+          <div style="display:flex; gap:6px;">
+            <input type="number" id="struct-bandgap" placeholder="Bandgap" step="0.01" value="3.20" style="width:50%;" />
+            <select id="struct-bandgaptype" style="width:50%;">
+              <option value="Direct">Direct</option>
+              <option value="Indirect">Indirect</option>
+              <option value="Metallic">Metallic (0 eV)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Total Energy (eV/atom) &amp; Magnetic State</label>
+          <div style="display:flex; gap:6px;">
+            <input type="number" id="struct-energy" placeholder="Energy" step="0.01" value="-6.85" style="width:50%;" />
+            <select id="struct-magstate" style="width:50%;">
+              <option value="NM">NM (Non-magnetic)</option>
+              <option value="FM">FM (Ferromagnetic)</option>
+              <option value="AFM">AFM (Antiferro)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group full">
+          <label>Computational Notes &amp; Findings (Auto-populated into Weekly Report)</label>
+          <textarea id="struct-notes" rows="2" placeholder="e.g., Relaxed cell volume matches experimental diffraction within 0.8%. Direct bandgap at Gamma point."></textarea>
+        </div>
+
+        <div class="form-group full">
+          <label>Raw CIF File Content (Optional)</label>
+          <textarea id="struct-cifcontent" rows="4" style="font-family:monospace; font-size:12px;" placeholder="Paste raw CIF content here..."></textarea>
+        </div>
+
+        <div class="form-group full">
           <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-            <input type="checkbox" id="nm-pinned" /> Pin to Top
-          </label>
-        </div>
-        <div class="form-group">
-          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-            <input type="checkbox" id="nm-weekly" checked /> Include in Weekly Report (.pptx)
+            <input type="checkbox" id="struct-weekly" checked />
+            Include this structure &amp; simulation in the next Group Meeting Weekly Report (.pptx)
           </label>
         </div>
       </div>
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px;">
-        <button class="btn btn-outline" onclick="closeModal('note-modal')">Cancel</button>
-        <button class="btn btn-primary" onclick="saveNoteFromModal()">Save Lab Note</button>
+        <button class="btn btn-outline" onclick="closeModal('structure-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveStructureFromModal()">Save Structure</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- MODAL: CIF FILE & VASP POSCAR VIEWER / EXPORTER                      -->
+  <!-- ==================================================================== -->
+  <div id="cif-view-modal" class="modal-backdrop">
+    <div class="modal-box" style="max-width:760px;">
+      <div class="card-header">
+        <div>
+          <div class="card-title" id="cvm-title">Crystal Structure Viewer</div>
+          <div style="font-size:12px; color:var(--text-muted);" id="cvm-subtitle"></div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('cif-view-modal')">✕ Close</button>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" id="cvm-btn-download-cif" onclick="downloadCurrentCif()">📥 Download .cif</button>
+        <button class="btn btn-teal btn-sm" id="cvm-btn-export-poscar" onclick="downloadCurrentPoscar()">⚡ Export VASP POSCAR</button>
+        <button class="btn btn-outline btn-sm" onclick="copyCurrentPoscar()">📋 Copy POSCAR</button>
+        <button class="btn btn-outline btn-sm" onclick="toggleCifViewFormat()">🔄 Switch CIF / POSCAR View</button>
+      </div>
+
+      <div id="cvm-code-wrapper" class="cif-code-preview"></div>
     </div>
   </div>
 
