@@ -152,8 +152,9 @@ class SyncScholarRequest(BaseModel):
 
 
 class StructureCreate(BaseModel):
-    name: str
-    formula: str
+    name: Optional[str] = "Crystal Structure"
+    formula: Optional[str] = ""
+    chemical_formula: Optional[str] = ""
     crystal_system: Optional[str] = "Cubic"
     space_group: Optional[str] = "Pm-3m (221)"
     a: Optional[float] = 4.006
@@ -165,16 +166,23 @@ class StructureCreate(BaseModel):
     volume: Optional[float] = 64.29
     natoms: Optional[int] = 5
     cif_content: Optional[str] = ""
+    raw_cif: Optional[str] = ""
     poscar_content: Optional[str] = ""
+    poscar_text: Optional[str] = ""
     dft_code: Optional[str] = "VASP"
     functional: Optional[str] = "PBE"
+    dft_functional: Optional[str] = ""
     ecut: Optional[float] = 520.0
+    cutoff_energy: Optional[float] = None
     kpoints: Optional[str] = "8x8x8"
     bandgap: Optional[float] = 3.20
+    bandgap_ev: Optional[float] = None
     bandgap_type: Optional[str] = "Direct"
     energy_per_atom: Optional[float] = -6.85
+    total_energy_per_atom: Optional[float] = None
     magnetic_state: Optional[str] = "NM"
     materials_project_id: Optional[str] = ""
+    mp_id: Optional[str] = ""
     structure_type: Optional[str] = "Bulk 3D"
     notes: Optional[str] = ""
     in_weekly_report: Optional[int] = 1
@@ -241,20 +249,22 @@ def parse_cif_string(cif_text: str) -> dict:
         crystal_system = "Triclinic"
 
     atoms = []
-    loop_match = re.search(r"loop_\s+((?:_[^\s]+\s+)+)([\s\S]+?)(?=\n\s*(?:loop_|data_|#|$))", text, re.IGNORECASE)
-    if loop_match:
+    for loop_match in re.finditer(r"loop_\s+((?:_[^\s]+\s+)+)([\s\S]+?)(?=\n\s*(?:loop_|data_|#|\Z))", text + "\n", re.IGNORECASE):
         headers = [h.strip().lower() for h in loop_match.group(1).split() if h.startswith("_")]
-        data_lines = [l.strip() for l in loop_match.group(2).split("\n") if l.strip() and not l.strip().startswith("#") and not l.strip().startswith("_")]
+        if not any("atom_site_fract_x" in h for h in headers):
+            continue
 
+        data_lines = [l.strip() for l in loop_match.group(2).split("\n") if l.strip() and not l.strip().startswith("#") and not l.strip().startswith("_")]
         type_idx = -1
+        label_idx = -1
         x_idx = -1
         y_idx = -1
         z_idx = -1
         for i, h in enumerate(headers):
             if "atom_site_type_symbol" in h:
                 type_idx = i
-            elif "atom_site_label" in h and type_idx == -1:
-                type_idx = i
+            elif "atom_site_label" in h:
+                label_idx = i
             elif "atom_site_fract_x" in h:
                 x_idx = i
             elif "atom_site_fract_y" in h:
@@ -265,16 +275,32 @@ def parse_cif_string(cif_text: str) -> dict:
         if x_idx != -1 and y_idx != -1 and z_idx != -1:
             for line in data_lines:
                 parts = line.split()
-                if len(parts) > max(type_idx, x_idx, y_idx, z_idx):
-                    sym = re.sub(r"\d+", "", parts[type_idx]) if type_idx != -1 else "X"
+                if len(parts) > max(type_idx, label_idx, x_idx, y_idx, z_idx):
+                    sym = ""
+                    if type_idx != -1:
+                        sym = re.sub(r"[^A-Za-z]", "", parts[type_idx])
+                    if not sym and label_idx != -1:
+                        sym = re.sub(r"[^A-Za-z]", "", parts[label_idx])
+                    if not sym:
+                        sym = "X"
                     sym = sym.capitalize().strip()
+
+                    def clean_fract(val_str):
+                        s = re.sub(r"\(\d+\)", "", val_str).strip()
+                        if "/" in s:
+                            n, d = s.split("/")
+                            return float(n) / float(d)
+                        return float(s)
+
                     try:
-                        fx = float(re.sub(r"\(\d+\)", "", parts[x_idx]))
-                        fy = float(re.sub(r"\(\d+\)", "", parts[y_idx]))
-                        fz = float(re.sub(r"\(\d+\)", "", parts[z_idx]))
-                        atoms.append({"element": sym, "x": fx, "y": fy, "z": fz})
+                        fx = clean_fract(parts[x_idx])
+                        fy = clean_fract(parts[y_idx])
+                        fz = clean_fract(parts[z_idx])
+                        lbl = parts[label_idx] if label_idx != -1 else sym
+                        atoms.append({"element": sym, "label": lbl, "x": round(fx, 5), "y": round(fy, 5), "z": round(fz, 5)})
                     except Exception:
                         pass
+            break
 
     natoms = len(atoms) if atoms else 5
     if atoms and (not formula or formula == "UnknownFormula"):
@@ -831,7 +857,18 @@ def list_structures(search: Optional[str] = "", system: Optional[str] = ""):
         query += " WHERE " + " AND ".join(conditions)
     query += " ORDER BY id DESC"
     cur.execute(query, params)
-    rows = [dict(r) for r in cur.fetchall()]
+    rows = []
+    for r in cur.fetchall():
+        d = dict(r)
+        d["chemical_formula"] = d.get("formula") or ""
+        d["raw_cif"] = d.get("cif_content") or ""
+        d["poscar_text"] = d.get("poscar_content") or ""
+        d["dft_functional"] = d.get("functional") or ""
+        d["cutoff_energy"] = d.get("ecut") or 520
+        d["bandgap_ev"] = d.get("bandgap") or 0.0
+        d["total_energy_per_atom"] = d.get("energy_per_atom") or 0.0
+        d["mp_id"] = d.get("materials_project_id") or ""
+        rows.append(d)
     conn.close()
     return rows
 
@@ -845,7 +882,16 @@ def get_structure(struct_id: int):
     conn.close()
     if not row:
         raise HTTPException(status_code=404, detail="Structure not found")
-    return dict(row)
+    d = dict(row)
+    d["chemical_formula"] = d.get("formula") or ""
+    d["raw_cif"] = d.get("cif_content") or ""
+    d["poscar_text"] = d.get("poscar_content") or ""
+    d["dft_functional"] = d.get("functional") or ""
+    d["cutoff_energy"] = d.get("ecut") or 520
+    d["bandgap_ev"] = d.get("bandgap") or 0.0
+    d["total_energy_per_atom"] = d.get("energy_per_atom") or 0.0
+    d["mp_id"] = d.get("materials_project_id") or ""
+    return d
 
 
 @app.post("/api/structures")
@@ -853,6 +899,17 @@ def create_structure(s: StructureCreate):
     conn = get_connection()
     cur = conn.cursor()
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    formula = (s.formula or s.chemical_formula or "Unknown Formula").strip()
+    name = (s.name or formula or "Crystal Structure").strip()
+    cif_content = s.cif_content or s.raw_cif or ""
+    poscar_content = s.poscar_content or s.poscar_text or ""
+    functional = s.functional or s.dft_functional or "PBE"
+    ecut = s.ecut if s.cutoff_energy is None else s.cutoff_energy
+    bandgap = s.bandgap if s.bandgap_ev is None else s.bandgap_ev
+    energy_per_atom = s.energy_per_atom if s.total_energy_per_atom is None else s.total_energy_per_atom
+    mp_id = s.materials_project_id or s.mp_id or ""
+
     cur.execute("""
         INSERT INTO cif_structures (
             name, formula, crystal_system, space_group,
@@ -863,11 +920,11 @@ def create_structure(s: StructureCreate):
             notes, in_weekly_report, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
-        s.name, s.formula, s.crystal_system, s.space_group,
+        name, formula, s.crystal_system, s.space_group,
         s.a, s.b, s.c, s.alpha, s.beta, s.gamma, s.volume, s.natoms,
-        s.cif_content, s.poscar_content, s.dft_code, s.functional,
-        s.ecut, s.kpoints, s.bandgap, s.bandgap_type, s.energy_per_atom,
-        s.magnetic_state, s.materials_project_id, s.structure_type,
+        cif_content, poscar_content, s.dft_code, functional,
+        ecut, s.kpoints, bandgap, s.bandgap_type, energy_per_atom,
+        s.magnetic_state, mp_id, s.structure_type,
         s.notes, s.in_weekly_report, now_str, now_str
     ))
     new_id = cur.lastrowid
@@ -875,6 +932,14 @@ def create_structure(s: StructureCreate):
     cur.execute("SELECT * FROM cif_structures WHERE id = ?", (new_id,))
     row = dict(cur.fetchone())
     conn.close()
+    row["chemical_formula"] = row.get("formula") or ""
+    row["raw_cif"] = row.get("cif_content") or ""
+    row["poscar_text"] = row.get("poscar_content") or ""
+    row["dft_functional"] = row.get("functional") or ""
+    row["cutoff_energy"] = row.get("ecut") or 520
+    row["bandgap_ev"] = row.get("bandgap") or 0.0
+    row["total_energy_per_atom"] = row.get("energy_per_atom") or 0.0
+    row["mp_id"] = row.get("materials_project_id") or ""
     return row
 
 
@@ -883,6 +948,17 @@ def update_structure(struct_id: int, s: StructureCreate):
     conn = get_connection()
     cur = conn.cursor()
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    formula = (s.formula or s.chemical_formula or "Unknown Formula").strip()
+    name = (s.name or formula or "Crystal Structure").strip()
+    cif_content = s.cif_content or s.raw_cif or ""
+    poscar_content = s.poscar_content or s.poscar_text or ""
+    functional = s.functional or s.dft_functional or "PBE"
+    ecut = s.ecut if s.cutoff_energy is None else s.cutoff_energy
+    bandgap = s.bandgap if s.bandgap_ev is None else s.bandgap_ev
+    energy_per_atom = s.energy_per_atom if s.total_energy_per_atom is None else s.total_energy_per_atom
+    mp_id = s.materials_project_id or s.mp_id or ""
+
     cur.execute("""
         UPDATE cif_structures SET
             name=?, formula=?, crystal_system=?, space_group=?,
@@ -893,11 +969,11 @@ def update_structure(struct_id: int, s: StructureCreate):
             notes=?, in_weekly_report=?, updated_at=?
         WHERE id=?
     """, (
-        s.name, s.formula, s.crystal_system, s.space_group,
+        name, formula, s.crystal_system, s.space_group,
         s.a, s.b, s.c, s.alpha, s.beta, s.gamma, s.volume, s.natoms,
-        s.cif_content, s.poscar_content, s.dft_code, s.functional,
-        s.ecut, s.kpoints, s.bandgap, s.bandgap_type, s.energy_per_atom,
-        s.magnetic_state, s.materials_project_id, s.structure_type,
+        cif_content, poscar_content, s.dft_code, functional,
+        ecut, s.kpoints, bandgap, s.bandgap_type, energy_per_atom,
+        s.magnetic_state, mp_id, s.structure_type,
         s.notes, s.in_weekly_report, now_str, struct_id
     ))
     conn.commit()
@@ -906,7 +982,16 @@ def update_structure(struct_id: int, s: StructureCreate):
     conn.close()
     if not row:
         raise HTTPException(status_code=404, detail="Structure not found")
-    return dict(row)
+    d = dict(row)
+    d["chemical_formula"] = d.get("formula") or ""
+    d["raw_cif"] = d.get("cif_content") or ""
+    d["poscar_text"] = d.get("poscar_content") or ""
+    d["dft_functional"] = d.get("functional") or ""
+    d["cutoff_energy"] = d.get("ecut") or 520
+    d["bandgap_ev"] = d.get("bandgap") or 0.0
+    d["total_energy_per_atom"] = d.get("energy_per_atom") or 0.0
+    d["mp_id"] = d.get("materials_project_id") or ""
+    return d
 
 
 @app.delete("/api/structures/{struct_id}")

@@ -162,9 +162,9 @@
         <!-- Visitor Read-Only Notice -->
         <div class="public-mode-banner visitor-only">
           <div>
-            👁️ <strong>Public Viewer Mode:</strong> You are viewing the verified computational materials literature library. Sign in as Administrator (<code>lamvt.skku@gmail.com</code>) to import new papers by DOI.
+            👁️ <strong>Public Viewer Mode:</strong> You are viewing the verified computational materials literature library. Sign in with your Google account to import new papers by DOI.
           </div>
-          <button class="btn btn-primary btn-sm" onclick="openLoginModal()">👤 Log in</button>
+          <button class="btn btn-primary btn-sm" onclick="openLoginModal()">👤 Sign In</button>
         </div>
 
         <div class="card admin-only" style="background: linear-gradient(135deg, #0f172a, #1e293b); color: #fff; border: none;">
@@ -232,18 +232,18 @@
         <!-- Visitor Read-Only Notice -->
         <div class="public-mode-banner visitor-only">
           <div>
-            👁️ <strong>Public Viewer Mode:</strong> You are viewing research milestones and seminar schedules. Sign in as Administrator (<code>lamvt.skku@gmail.com</code>) to schedule events or sync with Google Calendar.
+            👁️ <strong>Public Viewer Mode:</strong> You are viewing research milestones and seminar schedules. Sign in with your Google account to schedule events or sync with Google Calendar.
           </div>
-          <button class="btn btn-primary btn-sm" onclick="openLoginModal()">👤 Log in</button>
+          <button class="btn btn-primary btn-sm" onclick="openLoginModal()">👤 Sign In</button>
         </div>
 
         <!-- Google Calendar Sync Control Bar -->
         <div class="card" style="background: linear-gradient(135deg, #0f172a, #1e3a8a); color:#fff; border:none;">
           <div class="card-header" style="margin-bottom:0;">
             <div>
-              <div class="card-title" style="color:#fff; font-size:17px;">📅 Research &amp; Simulation Calendar — Linked to Google Calendar (<code>lamvt.skku@gmail.com</code>)</div>
+              <div class="card-title" style="color:#fff; font-size:17px;">📅 Research &amp; Simulation Calendar — Google Calendar Integration</div>
               <div style="font-size:12.5px; color:#cbd5e1; margin-top:3px;">
-                Click any date on the monthly calendar to schedule simulations or seminars, push events directly to <strong>lamvt.skku@gmail.com</strong> Google Calendar, export <code>.ics</code>, or sync via Google Calendar API.
+                Click any date on the monthly calendar to schedule simulations or seminars, push events directly to Google Calendar, export <code>.ics</code>, or sync via Google Calendar API.
               </div>
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -263,12 +263,12 @@
           </div>
         </div>
 
-        <!-- Optional Embedded Live Google Calendar View for lamvt.skku@gmail.com -->
+        <!-- Optional Embedded Live Google Calendar View -->
         <div id="gcal-embed-card" class="card" style="display:none;">
           <div class="card-header">
             <div>
-              <div class="card-title">🌐 Embedded Google Calendar — <code>lamvt.skku@gmail.com</code> (Asia/Seoul Timezone)</div>
-              <div style="font-size:12px; color:var(--text-muted);">Make sure you are signed into <code>lamvt.skku@gmail.com</code> in your browser to view private calendar events</div>
+              <div class="card-title">🌐 Embedded Google Calendar View (Asia/Seoul Timezone)</div>
+              <div style="font-size:12px; color:var(--text-muted);">Make sure you are signed into your authorized Google account in your browser to view private calendar events</div>
             </div>
             <a href="https://calendar.google.com/calendar/u/0/r" target="_blank" class="btn btn-outline btn-sm">Open Google Calendar in New Tab ↗</a>
           </div>
@@ -317,7 +317,7 @@
           <div class="card-header">
             <div>
               <div class="card-title">📋 All Scheduled Events &amp; 1-Click Google Calendar Push</div>
-              <div style="font-size:12px; color:var(--text-muted);">Click <strong>"📅 +Google Cal"</strong> on any event to add it directly to <code>lamvt.skku@gmail.com</code></div>
+              <div style="font-size:12px; color:var(--text-muted);">Click <strong>"📅 +Google Cal"</strong> on any event to add it directly to your Google Calendar</div>
             </div>
             <select id="schedule-status-filter" onchange="renderScheduleList()" style="padding:7px 12px; border:1px solid var(--border-color); border-radius:8px; font-size:13px;">
               <option value="ALL">All Statuses</option>
@@ -337,9 +337,9 @@
         <!-- Visitor Read-Only Notice -->
         <div class="public-mode-banner visitor-only">
           <div>
-            👁️ <strong>Public Viewer Mode:</strong> You are browsing the crystal structure &amp; DFT database. Sign in as Administrator (<code>lamvt.skku@gmail.com</code>) to upload *.cif files, edit lattice parameters, or calculate POSCAR.
+            👁️ <strong>Public Viewer Mode:</strong> You are browsing the crystal structure &amp; DFT database. Sign in with your Google account to upload *.cif files, edit lattice parameters, or calculate POSCAR.
           </div>
-          <button class="btn btn-primary btn-sm" onclick="openLoginModal()">👤 Log in</button>
+          <button class="btn btn-primary btn-sm" onclick="openLoginModal()">👤 Sign In</button>
         </div>
 
         <!-- Structure Upload & Import Bar (Admin Only) -->
@@ -1057,80 +1057,109 @@
   </div>
 
   <!-- ==================================================================== -->
-  <!-- MODAL: MODERN AUTHENTICATION DIALOG (MATCHING USER'S MOCKUP)         -->
+  <!-- ==================================================================== -->
+  <!-- MODAL: AUTHENTIC GOOGLE / GMAIL SIGN-IN FLOW (ENTER GOOGLE ACCOUNT)  -->
   <!-- ==================================================================== -->
   <div id="login-modal" class="modal-backdrop">
-    <div class="auth-card-modal">
-      <button class="auth-modal-close" onclick="closeModal('login-modal')">✕</button>
+    <div class="google-auth-card">
+      <button class="google-modal-close" onclick="closeModal('login-modal')" title="Close">✕</button>
 
-      <div class="auth-modal-title">Log in or sign up</div>
-      <div class="auth-modal-subtitle">
-        You'll get full administrative access to manage literature, crystal structures, calendar, and reports.
+      <!-- Google Brand Header -->
+      <div class="google-auth-header">
+        <svg class="google-logo" width="40" height="40" viewBox="0 0 48 48">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+        </svg>
       </div>
 
-      <div class="auth-sso-group">
-        <!-- Continue with Google (Primary SSO) -->
-        <button class="auth-sso-btn" onclick="handleContinueWithGoogle()">
-          <svg width="20" height="20" viewBox="0 0 48 48">
-            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      <!-- STEP 1: ENTER GOOGLE ACCOUNT EMAIL -->
+      <div id="google-step-email">
+        <h2 class="google-auth-title">Sign in</h2>
+        <p class="google-auth-subtitle">with your Google Account to continue to <strong>MatSci Nexus</strong></p>
+
+        <div style="margin-top:28px;">
+          <div class="g-input-wrapper" id="g-email-input-wrapper">
+            <input
+              type="email"
+              id="g-email-input"
+              class="g-input-field"
+              placeholder=" "
+              autocomplete="username"
+              onkeydown="if(event.key==='Enter') handleGoogleEmailNext()"
+              oninput="clearGoogleInputError('email')"
+            />
+            <label class="g-input-label">Email or phone</label>
+          </div>
+          <div id="g-email-error" class="g-error-text" style="display:none;"></div>
+
+          <div style="margin-top:8px;">
+            <a href="https://accounts.google.com/signin/usernamerecovery" target="_blank" rel="noopener" class="g-link-btn">Forgot email?</a>
+          </div>
+
+          <div style="margin-top:24px; font-size:12.5px; color:#5f6368; line-height:1.45;">
+            Not your computer? Use Guest mode to sign in privately. <a href="javascript:void(0)" class="g-link-btn" onclick="showToast('You are currently viewing MatSci Nexus in Public Read-Only mode.')">Learn more</a>
+          </div>
+
+          <div class="g-action-row">
+            <button type="button" class="g-text-btn" onclick="closeModal('login-modal')">Cancel</button>
+            <button type="button" class="g-primary-btn" id="btn-email-next" onclick="handleGoogleEmailNext()">Next</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2: ENTER PASSWORD / VERIFICATION -->
+      <div id="google-step-password" style="display:none;">
+        <h2 class="google-auth-title">Welcome</h2>
+        
+        <!-- User Account Chip with switcher -->
+        <div class="g-user-badge" onclick="backToGoogleEmailStep()" title="Switch account">
+          <div class="g-badge-avatar">V</div>
+          <span id="g-badge-email-text"></span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5f6368" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
-          Continue with Google
-        </button>
+        </div>
 
-        <!-- Continue with Apple -->
-        <button class="auth-sso-btn" onclick="handleContinueWithApple()">
-          <svg width="20" height="20" viewBox="0 0 170 170" fill="#000">
-            <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.69-3.04-7.69-7.85-12.02-14.42-6.53-9.88-11.85-21.41-15.96-34.58-4.11-13.17-6.17-25.2-6.17-36.1 0-15.13 3.65-27.46 10.96-37 7.31-9.54 16.59-14.41 27.84-14.62 4.46 0 9.53 1.16 15.22 3.48 5.68 2.32 9.59 3.54 11.72 3.66 1.83 0 5.86-1.32 12.09-3.95 6.23-2.63 11.51-3.79 15.84-3.48 12.5.85 22.37 5.62 29.61 14.3-10.9 6.56-16.22 15.68-15.96 27.35.26 9.4 3.97 17.27 11.13 23.6 7.16 6.34 15.74 9.94 25.75 10.82-2.32 7.07-5.19 14.33-8.62 21.78zM119.22 33.15c0-7.31 2.65-14.32 7.95-21.03 5.3-6.71 11.95-10.99 19.95-12.84 0 1.27.05 2.54.15 3.81.1 1.27.15 2.33.15 3.17 0 7.2-2.82 14.28-8.46 21.25-5.64 6.98-12.33 11.23-20.08 12.75-.32-2.33-.48-4.7-.48-7.11z"/>
-          </svg>
-          Continue with Apple
-        </button>
+        <div style="margin-top:24px;">
+          <div class="g-input-wrapper" id="g-password-input-wrapper">
+            <input
+              type="password"
+              id="g-password-input"
+              class="g-input-field"
+              placeholder=" "
+              autocomplete="current-password"
+              onkeydown="if(event.key==='Enter') submitGooglePasswordLogin()"
+              oninput="clearGoogleInputError('password')"
+            />
+            <label class="g-input-label">Enter your password</label>
+          </div>
+          <div id="g-password-error" class="g-error-text" style="display:none;"></div>
 
-        <!-- Continue with phone -->
-        <button class="auth-sso-btn" onclick="handleContinueWithPhone()">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-          </svg>
-          Continue with phone
-        </button>
+          <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
+            <label class="g-checkbox-label">
+              <input type="checkbox" id="g-show-password-chk" onchange="toggleGooglePasswordVisibility()" />
+              <span>Show password</span>
+            </label>
+            <a href="https://accounts.google.com/signin/recovery" target="_blank" rel="noopener" class="g-link-btn">Forgot password?</a>
+          </div>
+
+          <div class="g-action-row">
+            <button type="button" class="g-text-btn" onclick="backToGoogleEmailStep()">Back</button>
+            <button type="button" class="g-primary-btn" id="btn-password-submit" onclick="submitGooglePasswordLogin()">Next</button>
+          </div>
+        </div>
       </div>
 
-      <div class="auth-divider">
-        <span>OR</span>
-      </div>
-
-      <!-- Email & Security Passcode Input -->
-      <div>
-        <input
-          type="email"
-          id="login-email-input"
-          class="auth-email-input"
-          placeholder="Email address"
-          value="lamvt.skku@gmail.com"
-          onkeydown="if(event.key==='Enter') submitEmailLogin()"
-        />
-        <input
-          type="password"
-          id="login-passcode-input"
-          class="auth-email-input"
-          placeholder="Security Passcode (default: skku2026)"
-          value="skku2026"
-          style="margin-top:8px;"
-          onkeydown="if(event.key==='Enter') submitEmailLogin()"
-        />
-        <button class="auth-continue-btn" onclick="submitEmailLogin()" style="margin-top:10px;">
-          Continue with Security Verification
-        </button>
-      </div>
-
-      <!-- Google OAuth Client ID Setup Link & Official Google Sign-In wrapper -->
-      <div id="g-id-official-container" style="display:none; justify-content:center; margin-top:12px;"></div>
-
-      <div style="margin-top:14px; display:flex; justify-content:space-between; align-items:center; font-size:11.5px; color:#6b7280;">
-        <span>Target: <strong>lamvt.skku@gmail.com</strong></span>
-        <a href="javascript:void(0)" onclick="openGoogleClientIdConfigPrompt()" style="color:#2563eb; text-decoration:none; font-weight:600;">⚙️ Google OAuth Setup</a>
+      <!-- Footer Language & Links -->
+      <div class="google-auth-bottom-bar" style="margin-top:28px;">
+        <span>English (United States)</span>
+        <div class="google-auth-links">
+          <a href="javascript:void(0)" onclick="showToast('MatSci Nexus Administrator Help')">Help</a>
+          <a href="javascript:void(0)" onclick="showToast('Privacy Policy')">Privacy</a>
+          <a href="javascript:void(0)" onclick="showToast('Terms of Service')">Terms</a>
+        </div>
       </div>
     </div>
   </div>
@@ -1389,24 +1418,100 @@
   <!-- ==================================================================== -->
   <!-- MODAL: CIF FILE & VASP POSCAR VIEWER / EXPORTER                      -->
   <!-- ==================================================================== -->
+  <!-- MODAL: INTERACTIVE 3D CRYSTAL STRUCTURE & POSCAR/CIF VIEWER          -->
+  <!-- ==================================================================== -->
   <div id="cif-view-modal" class="modal-backdrop">
-    <div class="modal-box" style="max-width:760px;">
-      <div class="card-header">
+    <div class="modal-box" style="max-width:860px; max-height:92vh; overflow-y:auto;">
+      <div class="card-header" style="align-items:flex-start;">
         <div>
-          <div class="card-title" id="cvm-title">Crystal Structure Viewer</div>
-          <div style="font-size:12px; color:var(--text-muted);" id="cvm-subtitle"></div>
+          <div class="card-title" id="cvm-title" style="font-size:18px;">Crystal Structure Viewer</div>
+          <div style="font-size:12.5px; color:var(--text-muted); margin-top:3px;" id="cvm-subtitle"></div>
         </div>
-        <button class="btn btn-outline btn-sm" onclick="closeModal('cif-view-modal')">✕ Close</button>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn btn-outline btn-sm" onclick="downloadCurrentCif()">📥 Download .cif</button>
+          <button class="btn btn-teal btn-sm" onclick="downloadCurrentPoscar()">⚡ Export POSCAR</button>
+          <button class="btn btn-outline btn-sm" onclick="closeModal('cif-view-modal')">✕ Close</button>
+        </div>
       </div>
 
-      <div style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
-        <button class="btn btn-primary btn-sm" id="cvm-btn-download-cif" onclick="downloadCurrentCif()">📥 Download .cif</button>
-        <button class="btn btn-teal btn-sm" id="cvm-btn-export-poscar" onclick="downloadCurrentPoscar()">⚡ Export VASP POSCAR</button>
-        <button class="btn btn-outline btn-sm" onclick="copyCurrentPoscar()">📋 Copy POSCAR</button>
-        <button class="btn btn-outline btn-sm" onclick="toggleCifViewFormat()">🔄 Switch CIF / POSCAR View</button>
+      <!-- View Mode Tabs: 3D Crystal Viewer | VASP POSCAR | Raw CIF -->
+      <div class="cif-view-tabs" style="display:flex; gap:6px; margin:10px 0 14px 0; border-bottom:1px solid var(--border-color); padding-bottom:8px;">
+        <button class="btn btn-sm btn-primary" id="btn-tab-3d" onclick="switchCvmTab('3d')">🎮 Interactive 3D Viewer</button>
+        <button class="btn btn-sm btn-outline" id="btn-tab-poscar" onclick="switchCvmTab('poscar')">⚡ VASP POSCAR</button>
+        <button class="btn btn-sm btn-outline" id="btn-tab-cif" onclick="switchCvmTab('cif')">💎 Raw CIF File</button>
       </div>
 
-      <div id="cvm-code-wrapper" class="cif-code-preview"></div>
+      <!-- TAB 1: INTERACTIVE 3D VIEWER -->
+      <div id="cvm-pane-3d">
+        <!-- 3D Toolbar -->
+        <div style="display:flex; justify-content:space-between; align-items:center; background:#1e293b; color:#cbd5e1; padding:8px 12px; border-radius:8px 8px 0 0; font-size:12px; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            <button class="btn btn-outline btn-sm" style="color:#fff; border-color:#475569; padding:4px 8px; font-size:11.5px;" onclick="resetCrystal3DView()">🔄 Reset 3D</button>
+            <button class="btn btn-outline btn-sm" style="color:#fff; border-color:#475569; padding:4px 8px; font-size:11.5px;" id="btn-toggle-box" onclick="toggleUnitCellBox()">📦 Box: ON</button>
+            <button class="btn btn-outline btn-sm" style="color:#fff; border-color:#475569; padding:4px 8px; font-size:11.5px;" id="btn-toggle-labels" onclick="toggleAtomLabels()">🏷️ Labels: ON</button>
+            <button class="btn btn-outline btn-sm" style="color:#fff; border-color:#475569; padding:4px 8px; font-size:11.5px;" onclick="setCrystalViewPreset('iso')">3D Isometric</button>
+            <button class="btn btn-outline btn-sm" style="color:#fff; border-color:#475569; padding:4px 8px; font-size:11.5px;" onclick="setCrystalViewPreset('top')">Z-Top</button>
+            <button class="btn btn-outline btn-sm" style="color:#fff; border-color:#475569; padding:4px 8px; font-size:11.5px;" onclick="setCrystalViewPreset('front')">Y-Front</button>
+            <button class="btn btn-outline btn-sm" style="color:#fff; border-color:#475569; padding:4px 8px; font-size:11.5px;" onclick="setCrystalViewPreset('side')">X-Side</button>
+          </div>
+          <div style="font-size:11px; color:#94a3b8;">
+            🖱️ Drag to rotate 3D • Scroll to zoom
+          </div>
+        </div>
+
+        <!-- 3D Canvas Box -->
+        <div style="position:relative; width:100%; height:380px; background:#0b1120; border-radius:0 0 8px 8px; overflow:hidden;">
+          <canvas id="crystal-3d-canvas" width="800" height="400" style="width:100%; height:100%; display:block; cursor:grab;"></canvas>
+          <div id="crystal-3d-legend" style="position:absolute; bottom:10px; left:10px; background:rgba(15,23,42,0.85); backdrop-filter:blur(4px); padding:6px 10px; border-radius:6px; font-size:11px; color:#e2e8f0; display:flex; gap:10px; flex-wrap:wrap; border:1px solid #334155;"></div>
+        </div>
+
+        <!-- Lattice & Atomic Coordinates Table -->
+        <div style="margin-top:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <strong style="font-size:13px;">Atomic Coordinates &amp; Fractional Positions:</strong>
+            <span id="cvm-atom-count-badge" class="badge badge-blue"></span>
+          </div>
+          <div style="max-height:160px; overflow-y:auto; border:1px solid var(--border-color); border-radius:8px;">
+            <table class="table" style="font-size:12px; margin-bottom:0;" id="cvm-atoms-table">
+              <thead>
+                <tr>
+                  <th style="width:40px;">#</th>
+                  <th style="width:70px;">Element</th>
+                  <th style="width:80px;">Label</th>
+                  <th>Fract X (a)</th>
+                  <th>Fract Y (b)</th>
+                  <th>Fract Z (c)</th>
+                </tr>
+              </thead>
+              <tbody id="cvm-atoms-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: VASP POSCAR -->
+      <div id="cvm-pane-poscar" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <div style="font-size:12px; color:var(--text-muted);">Standard VASP POSCAR format with Cartesian lattice vectors &amp; Direct fractional coordinates:</div>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-outline btn-sm" onclick="copyCurrentPoscar()">📋 Copy POSCAR</button>
+            <button class="btn btn-teal btn-sm" onclick="downloadCurrentPoscar()">⚡ Download POSCAR</button>
+          </div>
+        </div>
+        <pre id="cvm-poscar-code" class="cif-code-preview" style="max-height:360px;"></pre>
+      </div>
+
+      <!-- TAB 3: RAW CIF -->
+      <div id="cvm-pane-cif" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <div style="font-size:12px; color:var(--text-muted);">Crystallographic Information File (*.cif) source:</div>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-outline btn-sm" onclick="copyCurrentCif()">📋 Copy CIF</button>
+            <button class="btn btn-primary btn-sm" onclick="downloadCurrentCif()">📥 Download .cif</button>
+          </div>
+        </div>
+        <pre id="cvm-cif-code" class="cif-code-preview" style="max-height:360px;"></pre>
+      </div>
     </div>
   </div>
 
@@ -1469,7 +1574,7 @@
         <div class="form-group full">
           <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
             <input type="checkbox" id="sm-open-gcal" />
-            Also open in Google Calendar (<code>lamvt.skku@gmail.com</code>) immediately after saving
+            Also open in Google Calendar immediately after saving
           </label>
         </div>
       </div>

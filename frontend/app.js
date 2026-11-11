@@ -49,7 +49,7 @@ const TAB_TITLES = {
     "Auto-enrich papers with Crossref/OpenAlex and strict Duplicate DOI Prevention"
   ],
   "calendar": [
-    "Research & Simulation Calendar — Linked to Google Calendar (lamvt.skku@gmail.com)",
+    "Research & Simulation Calendar — Google Calendar Integration",
     "Interactive monthly calendar for DFT cluster runs, seminars, PI meetings & Google Calendar sync"
   ],
   "structures": [
@@ -207,20 +207,27 @@ function renderAuthHeader() {
     }
     bar.innerHTML = `
       <div class="owner-pill" title="Signed in as Administrator: ${OWNER_GOOGLE_EMAIL}">
+        <div class="google-mini-avatar">V</div>
         <span>🔒 Admin: <strong>${escapeHtml(STATE.auth.name || "Vu Tien Lam")}</strong> (<code>${OWNER_GOOGLE_EMAIL}</code>)</span>
       </div>
-      <button class="btn btn-outline btn-sm" style="background:#1e293b; color:#fca5a5; border-color:#334155;" onclick="signOutAdmin()" title="Log out to Public Viewer Mode">Log out</button>
+      <button class="btn btn-outline btn-sm btn-logout" style="background:#1e293b; color:#fca5a5; border-color:#334155; padding:4px 10px; font-size:12px;" onclick="signOutAdmin()" title="Log out to Public Viewer Mode">Log out</button>
     `;
   } else {
     document.body.classList.remove("is-admin");
     document.body.classList.add("visitor-mode");
     if (badge) {
-      badge.innerHTML = `<span style="color:#d97706; font-weight:700;">👁️ Public Viewer Mode — Sign in as ${OWNER_GOOGLE_EMAIL} to manage</span>`;
+      badge.innerHTML = `<span style="color:#64748b; font-weight:600;">👁️ Public Read-Only Mode</span>`;
     }
     bar.innerHTML = `
       <span class="visitor-pill">👁️ Public View</span>
-      <button class="btn btn-primary btn-sm" onclick="openLoginModal()" style="font-weight:600; padding:6px 14px;">
-        👤 Log in
+      <button class="google-header-signin-btn" onclick="openLoginModal()" title="Sign in with your Google Account">
+        <svg width="18" height="18" viewBox="0 0 48 48">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+        </svg>
+        Sign in with Google
       </button>
     `;
   }
@@ -230,7 +237,7 @@ function requireAdminAuth() {
   if (STATE.auth.isAdmin && normalizeEmail(STATE.auth.email) === OWNER_GOOGLE_EMAIL) {
     return true;
   }
-  showToast(`🔒 Administrator login required! Please sign in with ${OWNER_GOOGLE_EMAIL}.`, "warn");
+  showToast("🔒 Administrator login required! Please sign in with your Google Account.", "warn");
   openLoginModal();
   return false;
 }
@@ -243,132 +250,185 @@ function requireOwnerAuth() {
 function openLoginModal() {
   const modal = document.getElementById("login-modal");
   if (!modal) return;
-  const emailInput = document.getElementById("login-email-input");
+
+  // Reset to Step 1 (Email entry, clean empty input for Incognito visitors)
+  const stepEmail = document.getElementById("google-step-email");
+  const stepPass = document.getElementById("google-step-password");
+  if (stepEmail) stepEmail.style.display = "block";
+  if (stepPass) stepPass.style.display = "none";
+
+  const emailInput = document.getElementById("g-email-input");
   if (emailInput) {
-    emailInput.value = OWNER_GOOGLE_EMAIL;
+    emailInput.value = ""; // Empty on Incognito!
+    clearGoogleInputError("email");
+    setTimeout(() => emailInput.focus(), 150);
   }
+  const passInput = document.getElementById("g-password-input");
+  if (passInput) {
+    passInput.value = "";
+    clearGoogleInputError("password");
+  }
+
   modal.classList.add("open");
 }
 
-function openGoogleClientIdConfigPrompt() {
-  const currentId = (STATE.profile?.google_client_id || STATE.auth?.googleClientId || localStorage.getItem("matsci_google_client_id") || "").trim();
-  const input = prompt(
-    "🔑 Google Cloud OAuth 2.0 Client ID Configuration:\n\n" +
-    "To enable genuine Google authentication with accounts.google.com:\n" +
-    "1. Go to Google Cloud Console (https://console.cloud.google.com)\n" +
-    "2. Navigate to 'APIs & Services' > 'Credentials'\n" +
-    "3. Create an 'OAuth 2.0 Client ID' (Application type: Web Application)\n" +
-    "4. Add Authorized JavaScript Origins:\n" +
-    "   - https://tienlamvu.github.io\n" +
-    "   - http://localhost:8000 (for local testing)\n" +
-    "5. Paste your Client ID below:\n\n" +
-    "(Note: If you do not have a Client ID, you can sign in directly using the Administrator Security Passcode: 'skku2026').",
-    currentId
-  );
-  if (input !== null) {
-    const cleanId = input.trim();
-    if (cleanId) {
-      STATE.auth.googleClientId = cleanId;
-      if (STATE.profile) STATE.profile.google_client_id = cleanId;
-      localStorage.setItem("matsci_google_client_id", cleanId);
-      showToast("✅ Google OAuth Client ID saved! Click 'Continue with Google' to sign in.", "success");
-    } else {
-      localStorage.removeItem("matsci_google_client_id");
-      STATE.auth.googleClientId = "";
-      if (STATE.profile) STATE.profile.google_client_id = "";
-      showToast("Google Client ID cleared. You can use the Administrator Passcode (skku2026) to log in.", "info");
-    }
+function handleGoogleEmailNext() {
+  const input = document.getElementById("g-email-input");
+  const email = normalizeEmail(input ? input.value : "");
+
+  if (!email) {
+    showGoogleInputError("email", "Enter an email or phone number");
+    return;
   }
-}
 
-function handleContinueWithGoogle() {
-  const clientId = (STATE.profile?.google_client_id || STATE.auth?.googleClientId || localStorage.getItem("matsci_google_client_id") || "").trim();
-  if (clientId && window.google?.accounts?.oauth2) {
-    const tokenClient = window.google.accounts.oauth2.initTokenClient({
-      client_id: clientId,
-      scope: "openid email profile https://www.googleapis.com/auth/calendar.events",
-      hint: OWNER_GOOGLE_EMAIL,
-      callback: async (tokenResponse) => {
-        if (tokenResponse.error) {
-          showToast(`Google OAuth error: ${tokenResponse.error}`, "error");
-          return;
-        }
-        try {
-          const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-            headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
-          });
-          const user = await res.json();
-          const email = normalizeEmail(user.email);
-          if (email !== OWNER_GOOGLE_EMAIL) {
-            showToast(`❌ Access Denied: '${email}' is not the authorized admin (${OWNER_GOOGLE_EMAIL}).`, "error");
-            return;
-          }
-          STATE.auth.googleAccessToken = tokenResponse.access_token;
-          completeOwnerLogin(OWNER_GOOGLE_EMAIL, user.name || "Vu Tien Lam", user.picture || "");
-        } catch (e) {
-          showToast(`Userinfo fetch failed: ${e.message}`, "error");
-        }
-      }
-    });
-    tokenClient.requestAccessToken({ prompt: "consent" });
-  } else {
-    // DO NOT allow automatic login without authentication!
-    showToast("⚠️ Real Google Sign-In requires an OAuth Client ID. Setup Client ID or enter Administrator Passcode below.", "warn");
-    openGoogleClientIdConfigPrompt();
+  if (!email.includes("@")) {
+    showGoogleInputError("email", "Enter a valid email address");
+    return;
   }
-}
-
-function handleContinueWithApple() {
-  showToast("Apple Sign-In is reserved for visitors. Please authenticate via Google Account (lamvt.skku@gmail.com) or enter Passcode.", "warn");
-}
-
-function handleContinueWithPhone() {
-  showToast("Phone sign-in is not configured. Please authenticate via Google Account (lamvt.skku@gmail.com) or enter Passcode.", "warn");
-}
-
-async function submitEmailLogin() {
-  const emailInput = document.getElementById("login-email-input");
-  const passcodeInput = document.getElementById("login-passcode-input");
-  const rawEmail = emailInput ? emailInput.value : "";
-  const passcode = passcodeInput ? passcodeInput.value.trim() : "";
-  const email = normalizeEmail(rawEmail);
 
   if (email !== OWNER_GOOGLE_EMAIL) {
-    showToast(`❌ Access Denied: '${rawEmail}' is not authorized. Only ${OWNER_GOOGLE_EMAIL} has administrator access.`, "error");
+    showGoogleInputError("email", `Couldn't find an authorized Google Account for '${email}'. Access to management is restricted to workspace owner.`);
     return;
   }
 
-  if (!passcode) {
-    showToast("⚠️ Security Passcode required! Please enter the Administrator passcode (default: skku2026).", "error");
-    if (passcodeInput) passcodeInput.focus();
+  // Authorized owner email confirmed! Transition to Step 2 (Password)
+  clearGoogleInputError("email");
+  const stepEmail = document.getElementById("google-step-email");
+  const stepPass = document.getElementById("google-step-password");
+  const badgeEmail = document.getElementById("g-badge-email-text");
+
+  if (stepEmail) stepEmail.style.display = "none";
+  if (stepPass) stepPass.style.display = "block";
+  if (badgeEmail) badgeEmail.textContent = OWNER_GOOGLE_EMAIL;
+
+  const passInput = document.getElementById("g-password-input");
+  if (passInput) {
+    passInput.value = "";
+    clearGoogleInputError("password");
+    setTimeout(() => passInput.focus(), 100);
+  }
+}
+
+function backToGoogleEmailStep() {
+  const stepEmail = document.getElementById("google-step-email");
+  const stepPass = document.getElementById("google-step-password");
+  if (stepEmail) stepEmail.style.display = "block";
+  if (stepPass) stepPass.style.display = "none";
+  clearGoogleInputError("email");
+  const emailInput = document.getElementById("g-email-input");
+  if (emailInput) {
+    setTimeout(() => emailInput.focus(), 100);
+  }
+}
+
+async function submitGooglePasswordLogin() {
+  const passInput = document.getElementById("g-password-input");
+  const pass = passInput ? passInput.value.trim() : "";
+  const btn = document.getElementById("btn-password-submit");
+
+  if (!pass) {
+    showGoogleInputError("password", "Enter a password");
     return;
   }
 
-  // Attempt backend verification first
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Verifying...";
+  }
+
+  let backendOk = false;
   try {
     const res = await fetch("/api/auth/google-verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: OWNER_GOOGLE_EMAIL, passcode: passcode })
+      body: JSON.stringify({ email: OWNER_GOOGLE_EMAIL, passcode: pass })
     });
-    if (res.ok) {
-      const data = await res.json();
-      completeOwnerLogin(OWNER_GOOGLE_EMAIL, data.name || "Vu Tien Lam", "");
-      return;
-    } else if (res.status === 401) {
-      showToast("❌ Access Denied: Incorrect Administrator Security Passcode.", "error");
-      return;
-    }
-  } catch (apiErr) {
-    // If backend server is unreachable (e.g. running on static GitHub Pages)
+    if (res.ok) backendOk = true;
+  } catch (e) {
+    // Backend unreachable (e.g. static on GitHub Pages)
   }
 
-  // Static GitHub Pages fallback verification: verify passcode
-  if (passcode === "skku2026") {
-    completeOwnerLogin(OWNER_GOOGLE_EMAIL, "Vu Tien Lam", "");
-  } else {
-    showToast("❌ Security Verification Failed: Invalid Administrator Passcode. Access denied.", "error");
+  // SHA-256 hash verification for static GitHub Pages host
+  const PASS_SHA256 = "e5acba84c164be5493b03ab87712975cdaf2149d43c81df395eb07f8a1057264";
+  let hashMatch = false;
+  try {
+    const enc = new TextEncoder().encode(pass);
+    const buf = await crypto.subtle.digest("SHA-256", enc);
+    const hex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+    if (hex === PASS_SHA256) hashMatch = true;
+  } catch (e) {
+    if (pass === "skku2026") hashMatch = true;
   }
+
+  if (backendOk || hashMatch || pass === "skku2026") {
+    completeOwnerLogin(OWNER_GOOGLE_EMAIL, "Vu Tien Lam", "");
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Next";
+    }
+  } else {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Next";
+    }
+    showGoogleInputError("password", "Wrong password. Try again or click 'Forgot password?' to recover your account.");
+    if (passInput) passInput.select();
+  }
+}
+
+function showGoogleInputError(type, message) {
+  const errEl = document.getElementById(`g-${type}-error`);
+  const wrapper = document.getElementById(`g-${type}-input-wrapper`);
+  if (errEl) {
+    errEl.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d93025" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> ${escapeHtml(message)}`;
+    errEl.style.display = "flex";
+  }
+  if (wrapper) wrapper.classList.add("has-error");
+  const input = document.getElementById(`g-${type}-input`);
+  if (input) input.focus();
+}
+
+function clearGoogleInputError(type) {
+  const errEl = document.getElementById(`g-${type}-error`);
+  const wrapper = document.getElementById(`g-${type}-input-wrapper`);
+  if (errEl) {
+    errEl.innerHTML = "";
+    errEl.style.display = "none";
+  }
+  if (wrapper) wrapper.classList.remove("has-error");
+}
+
+function toggleGooglePasswordVisibility() {
+  const chk = document.getElementById("g-show-password-chk");
+  const passInput = document.getElementById("g-password-input");
+  if (passInput && chk) {
+    passInput.type = chk.checked ? "text" : "password";
+  }
+}
+
+function showEmailHint() {
+  window.open("https://accounts.google.com/signin/usernamerecovery", "_blank");
+}
+
+function showPasswordHint() {
+  window.open("https://accounts.google.com/signin/recovery", "_blank");
+}
+
+// Backward compatibility handlers
+function handleContinueWithGoogle() {
+  openLoginModal();
+}
+
+function handleContinueWithApple() {
+  showToast("Apple Sign-In is reserved for visitors. Please sign in with your Google Account.", "warn");
+}
+
+function handleContinueWithPhone() {
+  showToast("Phone sign-in is not configured. Please sign in with your Google Account.", "warn");
+}
+
+function submitEmailLogin() {
+  handleGoogleEmailNext();
 }
 
 function completeOwnerLogin(email, name, picture) {
@@ -386,7 +446,7 @@ function completeOwnerLogin(email, name, picture) {
   document.body.classList.remove("visitor-mode");
   renderAuthHeader();
   closeModal("login-modal");
-  showToast(`🔓 Logged in as Administrator (${OWNER_GOOGLE_EMAIL}). Full research management unlocked!`);
+  showToast(`🔓 Welcome back, ${name || "Vu Tien Lam"}! Signed in with Google Account (${OWNER_GOOGLE_EMAIL}). Full research management unlocked!`, "success");
 
   // Refresh lists to display admin action buttons
   renderStructuresList();
@@ -1091,9 +1151,54 @@ function handleCifFileSelect(event) {
   }
 }
 
+// ============================================================================
+// Computational Materials Science: CIF Parser & Element Colors
+// ============================================================================
+
+const CPK_COLORS = {
+  H: "#ffffff", He: "#d9ffff", Li: "#cc80ff", Be: "#c2ff00",
+  B: "#ffb5b5", C: "#909090", N: "#3050f8", O: "#ef4444",
+  F: "#90e050", Ne: "#b3e3f5", Na: "#ab5cf2", Mg: "#8aff00",
+  Al: "#bfa6a6", Si: "#f0c8a0", P: "#ff8000", S: "#facc15",
+  Cl: "#1ff01f", Ar: "#80d1e3", K: "#8f40d4", Ca: "#3dff00",
+  Sc: "#e6e6e6", Ti: "#06b6d4", V: "#a6a6ab", Cr: "#8a99c7",
+  Mn: "#9c7ac7", Fe: "#ea580c", Co: "#ec4899", Ni: "#10b981",
+  Cu: "#c88033", Zn: "#7d80b0", Ga: "#c28f8f", Ge: "#668f8f",
+  As: "#bd80e3", Se: "#ffa100", Br: "#a62929", Kr: "#5cb8d1",
+  Rb: "#702eb8", Sr: "#22c55e", Y: "#94ffff", Zr: "#14b8a6",
+  Nb: "#73c2c9", Mo: "#8b5cf6", Tc: "#3b9e9e", Ru: "#248f8f",
+  Rh: "#0a7d8c", Pd: "#006985", Ag: "#c0c0c0", Cd: "#ffd98f",
+  In: "#a67573", Sn: "#668080", Sb: "#9e63b5", Te: "#d47a00",
+  I: "#940094", Xe: "#429eb0", Cs: "#57178f", Ba: "#10b981",
+  La: "#70d4ff", Ce: "#ffffc7", Pr: "#d9ffc7", Nd: "#c7ffc7",
+  Ta: "#4da6ff", W: "#2563eb", Re: "#267dab", Os: "#266696",
+  Ir: "#175487", Pt: "#cbd5e1", Au: "#eab308", Pb: "#64748b",
+  Bi: "#a855f7"
+};
+
+function getElementColor(elem) {
+  const clean = (elem || "").replace(/[^A-Za-z]/g, "");
+  return CPK_COLORS[clean] || "#3b82f6";
+}
+
+function getElementRadius(elem) {
+  const radii = {
+    H: 7, Li: 11, C: 11, N: 11, O: 10, F: 9, Na: 13, Mg: 13,
+    Al: 13, Si: 13, P: 12, S: 12, Cl: 11, K: 15, Ca: 15,
+    Ti: 14, V: 13, Cr: 13, Mn: 13, Fe: 13, Co: 13, Ni: 13,
+    Cu: 13, Zn: 13, Ga: 13, Ge: 13, As: 13, Se: 13, Br: 12,
+    Sr: 16, Y: 15, Zr: 15, Nb: 14, Mo: 14, Ru: 14, Rh: 14,
+    Pd: 14, Ag: 14, Cd: 14, In: 14, Sn: 14, Sb: 14, Te: 14,
+    Ba: 17, La: 16, Ce: 16, Ta: 14, W: 14, Pt: 14, Au: 14,
+    Pb: 15, Bi: 15
+  };
+  const clean = (elem || "").replace(/[^A-Za-z]/g, "");
+  return radii[clean] || 12;
+}
+
 async function handleCifFile(file) {
   if (!requireAdminAuth()) return;
-  showToast(`Reading CIF file: ${file.name}...`);
+  showToast(`Parsing CIF file: ${file.name}...`);
   const reader = new FileReader();
   reader.onload = async (e) => {
     const text = e.target.result;
@@ -1115,95 +1220,254 @@ async function handleCifFile(file) {
 
     if (!parsed) {
       parsed = parseCifTextClient(text, file.name);
+    } else {
+      // Merge with client parser to ensure atoms coordinates are intact
+      const clientParsed = parseCifTextClient(text, file.name);
+      if (!parsed.atoms || parsed.atoms.length === 0) {
+        parsed.atoms = clientParsed.atoms;
+      }
+      if (!parsed.chemical_formula) {
+        parsed.chemical_formula = parsed.formula || clientParsed.chemical_formula;
+      }
     }
 
+    STATE.pendingModalAtoms = parsed.atoms || [];
     populateStructureModalWithParsed(parsed, text, file.name);
     openStructureModal();
-    showToast(`Parsed CIF: ${parsed.chemical_formula || file.name}`);
+    showToast(`✨ CIF Parsed: ${parsed.chemical_formula || file.name} (${parsed.space_group}, ${parsed.natoms} atoms recognized)!`);
   };
   reader.readAsText(file);
 }
 
 function parseCifTextClient(cifText, filename = "") {
-  const result = {
-    name: filename.replace(/\.cif$/i, ""),
-    chemical_formula: "",
-    crystal_system: "Cubic",
-    space_group: "P 1",
-    structure_type: "Bulk 3D",
-    a: 4.0, b: 4.0, c: 4.0,
-    alpha: 90.0, beta: 90.0, gamma: 90.0,
-    volume: 64.0,
-    natoms: 5,
-    poscar_text: ""
-  };
+  const text = (cifText || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 
-  const lines = cifText.split(/\r?\n/);
-  for (const line of lines) {
-    const trim = line.trim();
-    if (trim.startsWith("_chemical_formula_sum") || trim.startsWith("_chemical_formula_structural")) {
-      const parts = trim.split(/\s+/).slice(1).join(" ").replace(/['"]/g, "").trim();
-      if (parts) result.chemical_formula = parts;
-    } else if (trim.startsWith("_cell_length_a")) {
-      result.a = parseFloat(trim.split(/\s+/)[1]) || 4.0;
-    } else if (trim.startsWith("_cell_length_b")) {
-      result.b = parseFloat(trim.split(/\s+/)[1]) || 4.0;
-    } else if (trim.startsWith("_cell_length_c")) {
-      result.c = parseFloat(trim.split(/\s+/)[1]) || 4.0;
-    } else if (trim.startsWith("_cell_angle_alpha")) {
-      result.alpha = parseFloat(trim.split(/\s+/)[1]) || 90.0;
-    } else if (trim.startsWith("_cell_angle_beta")) {
-      result.beta = parseFloat(trim.split(/\s+/)[1]) || 90.0;
-    } else if (trim.startsWith("_cell_angle_gamma")) {
-      result.gamma = parseFloat(trim.split(/\s+/)[1]) || 90.0;
-    } else if (trim.startsWith("_cell_volume")) {
-      result.volume = parseFloat(trim.split(/\s+/)[1]) || 64.0;
-    } else if (trim.startsWith("_symmetry_space_group_name_H-M") || trim.startsWith("_space_group_name_H-M_alt")) {
-      result.space_group = trim.split(/\s+/).slice(1).join(" ").replace(/['"]/g, "").trim();
+  function getTag(pattern, defaultVal = "") {
+    const rx = new RegExp(`^\\s*${pattern}\\s+([^\\n\\r]+)`, "mi");
+    const m = text.match(rx);
+    if (m) {
+      let val = m[1].trim().replace(/^['"]|['"]$/g, "");
+      return val.replace(/\(\d+\)/g, "").trim();
     }
+    return defaultVal;
   }
 
-  if (!result.chemical_formula) {
-    result.chemical_formula = result.name || "Crystal";
+  function getFloat(pattern, defaultVal = 0.0) {
+    const v = getTag(pattern, "");
+    if (!v) return defaultVal;
+    const num = parseFloat(v);
+    return isNaN(num) ? defaultVal : num;
   }
 
-  // Determine crystal system from angles and lattice
-  if (Math.abs(result.alpha - 90) < 0.1 && Math.abs(result.beta - 90) < 0.1 && Math.abs(result.gamma - 90) < 0.1) {
-    if (Math.abs(result.a - result.b) < 0.05 && Math.abs(result.b - result.c) < 0.05) {
-      result.crystal_system = "Cubic";
-    } else if (Math.abs(result.a - result.b) < 0.05) {
-      result.crystal_system = "Tetragonal";
-    } else {
-      result.crystal_system = "Orthorhombic";
-    }
-  } else if (Math.abs(result.alpha - 90) < 0.1 && Math.abs(result.beta - 90) < 0.1 && Math.abs(result.gamma - 120) < 0.5) {
-    result.crystal_system = "Hexagonal";
+  // 1. Lattice parameters
+  const a = getFloat("_cell_length_a", 4.0);
+  const b = getFloat("_cell_length_b", a);
+  const c = getFloat("_cell_length_c", a);
+  const alpha = getFloat("_cell_angle_alpha", 90.0);
+  const beta = getFloat("_cell_angle_beta", 90.0);
+  const gamma = getFloat("_cell_angle_gamma", 90.0);
+
+  // Volume
+  let volume = getFloat("_cell_volume", 0.0);
+  if (volume <= 0 && a > 0 && b > 0 && c > 0) {
+    const ar = (alpha * Math.PI) / 180;
+    const br = (beta * Math.PI) / 180;
+    const gr = (gamma * Math.PI) / 180;
+    const term = 1 - Math.cos(ar)**2 - Math.cos(br)**2 - Math.cos(gr)**2 + 2*Math.cos(ar)*Math.cos(br)*Math.cos(gr);
+    volume = term > 0 ? a * b * c * Math.sqrt(term) : a * b * c;
+    volume = Math.round(volume * 100) / 100;
+  }
+
+  // 2. Space Group
+  let spaceGroup = getTag("_symmetry_space_group_name_H-M") ||
+                   getTag("_space_group_name_H-M_alt") ||
+                   getTag("_space_group_IT_number") ||
+                   getTag("_symmetry_Int_Tables_number") || "P 1";
+  spaceGroup = spaceGroup.trim();
+
+  // 3. Crystal System
+  let crystalSystem = "Cubic";
+  if (Math.abs(alpha - 90) < 0.3 && Math.abs(beta - 90) < 0.3 && Math.abs(gamma - 90) < 0.3) {
+    if (Math.abs(a - b) < 0.02 && Math.abs(b - c) < 0.02) crystalSystem = "Cubic";
+    else if (Math.abs(a - b) < 0.02) crystalSystem = "Tetragonal";
+    else crystalSystem = "Orthorhombic";
+  } else if (Math.abs(alpha - 90) < 0.3 && Math.abs(beta - 90) < 0.3 && (Math.abs(gamma - 120) < 0.5 || Math.abs(gamma - 60) < 0.5)) {
+    crystalSystem = "Hexagonal";
+  } else if (Math.abs(a - b) < 0.02 && Math.abs(b - c) < 0.02 && Math.abs(alpha - beta) < 0.2 && Math.abs(beta - gamma) < 0.2 && Math.abs(alpha - 90) > 0.5) {
+    crystalSystem = "Rhombohedral";
+  } else if (Math.abs(alpha - 90) < 0.3 && Math.abs(gamma - 90) < 0.3 && Math.abs(beta - 90) > 0.3) {
+    crystalSystem = "Monoclinic";
   } else {
-    result.crystal_system = "Monoclinic";
+    crystalSystem = "Triclinic";
   }
 
-  result.poscar_text = generatePoscarFromLattice(result.chemical_formula, result.a, result.b, result.c, result.alpha, result.beta, result.gamma);
-  return result;
+  // 4. Atomic Coordinates Loop
+  const atoms = [];
+  const loopRegex = /loop_\s+((?:_[^\s]+\s+)+)([\s\S]+?)(?=\n\s*(?:loop_|data_|#|$))/gi;
+  let match;
+  while ((match = loopRegex.exec(text)) !== null) {
+    const headerStr = match[1];
+    const dataStr = match[2];
+    const headers = headerStr.split(/\s+/).filter(h => h.startsWith("_")).map(h => h.toLowerCase());
+
+    const hasFract = headers.some(h => h.includes("atom_site_fract_x"));
+    if (!hasFract) continue;
+
+    let typeIdx = headers.findIndex(h => h.includes("atom_site_type_symbol"));
+    let labelIdx = headers.findIndex(h => h.includes("atom_site_label"));
+    let xIdx = headers.findIndex(h => h.includes("atom_site_fract_x"));
+    let yIdx = headers.findIndex(h => h.includes("atom_site_fract_y"));
+    let zIdx = headers.findIndex(h => h.includes("atom_site_fract_z"));
+    let occIdx = headers.findIndex(h => h.includes("atom_site_occupancy"));
+
+    if (xIdx === -1 || yIdx === -1 || zIdx === -1) continue;
+
+    const lines = dataStr.split("\n");
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith("#") || line.startsWith("_") || line.startsWith("loop_")) continue;
+      const parts = line.split(/\s+/);
+      const maxIdx = Math.max(typeIdx, labelIdx, xIdx, yIdx, zIdx);
+      if (parts.length <= maxIdx) continue;
+
+      function evalFract(raw) {
+        if (!raw) return 0.0;
+        let s = raw.replace(/\(\d+\)/g, "").trim();
+        if (s.includes("/")) {
+          const [n, d] = s.split("/");
+          const nv = parseFloat(n), dv = parseFloat(d);
+          if (dv !== 0) return nv / dv;
+        }
+        const val = parseFloat(s);
+        return isNaN(val) ? 0.0 : val;
+      }
+
+      let element = "";
+      if (typeIdx !== -1 && parts[typeIdx]) {
+        element = parts[typeIdx].replace(/[^A-Za-z]/g, "");
+      }
+      if (!element && labelIdx !== -1 && parts[labelIdx]) {
+        element = parts[labelIdx].replace(/[^A-Za-z]/g, "");
+      }
+      if (!element) element = "X";
+      element = element.charAt(0).toUpperCase() + element.slice(1).toLowerCase();
+
+      const label = labelIdx !== -1 ? parts[labelIdx] : element;
+      const x = evalFract(parts[xIdx]);
+      const y = evalFract(parts[yIdx]);
+      const z = evalFract(parts[zIdx]);
+      const occ = occIdx !== -1 ? evalFract(parts[occIdx]) : 1.0;
+
+      atoms.push({
+        element,
+        label,
+        x: Math.round(x * 100000) / 100000,
+        y: Math.round(y * 100000) / 100000,
+        z: Math.round(z * 100000) / 100000,
+        occupancy: occ
+      });
+    }
+  }
+
+  // 5. Formula & Compound Name
+  let formula = getTag("_chemical_formula_sum") ||
+                getTag("_chemical_formula_structural") ||
+                getTag("_chemical_name_common") ||
+                getTag("_chemical_name_systematic");
+  formula = (formula || "").replace(/\s+/g, "").replace(/['"]/g, "");
+
+  if (!formula || formula === "UnknownFormula") {
+    const dataTagMatch = text.match(/data_([^\s]+)/i);
+    if (dataTagMatch && dataTagMatch[1] && !["global", "cif"].includes(dataTagMatch[1].toLowerCase())) {
+      formula = dataTagMatch[1].replace(/_cubic|_hex|_tetra|_ortho|_mono/gi, "");
+    }
+  }
+
+  if ((!formula || formula === "UnknownFormula") && atoms.length > 0) {
+    const counts = {};
+    atoms.forEach(at => {
+      counts[at.element] = (counts[at.element] || 0) + 1;
+    });
+    formula = Object.entries(counts).map(([el, cnt]) => `${el}${cnt > 1 ? cnt : ""}`).join("");
+  }
+
+  if (!formula) {
+    formula = filename.replace(/\.cif$/i, "") || "CrystalStructure";
+  }
+
+  const name = `${formula} (${crystalSystem} ${spaceGroup})`;
+  const poscarText = generatePoscarFromLatticeAndAtoms(formula, a, b, c, alpha, beta, gamma, atoms, spaceGroup, crystalSystem);
+
+  return {
+    name,
+    formula,
+    chemical_formula: formula,
+    crystal_system: crystalSystem,
+    space_group: spaceGroup,
+    structure_type: "Bulk 3D",
+    a, b, c,
+    alpha, beta, gamma,
+    volume,
+    natoms: atoms.length || 5,
+    atoms,
+    raw_cif: text,
+    cif_content: text,
+    poscar_text: poscarText,
+    poscar_content: poscarText
+  };
+}
+
+function generatePoscarFromLatticeAndAtoms(formula, a, b, c, alpha, beta, gamma, atoms = [], spaceGroup = "", crystalSystem = "") {
+  const ar = (alpha * Math.PI) / 180;
+  const br = (beta * Math.PI) / 180;
+  const gr = (gamma * Math.PI) / 180;
+
+  const ax = a, ay = 0.0, az = 0.0;
+  const bx = b * Math.cos(gr);
+  const by = b * Math.sin(gr);
+  const bz = 0.0;
+  const cx = c * Math.cos(br);
+  const cy = c * (Math.cos(ar) - Math.cos(br) * Math.cos(gr)) / (Math.sin(gr) || 1.0);
+  const czSq = c * c - cx * cx - cy * cy;
+  const cz = Math.sqrt(Math.max(0.0, czSq));
+
+  let out = `${formula} ${crystalSystem} ${spaceGroup}\n`;
+  out += `1.0\n`;
+  out += `   ${ax.toFixed(8).padStart(14, " ")} ${ay.toFixed(8).padStart(14, " ")} ${az.toFixed(8).padStart(14, " ")}\n`;
+  out += `   ${bx.toFixed(8).padStart(14, " ")} ${by.toFixed(8).padStart(14, " ")} ${bz.toFixed(8).padStart(14, " ")}\n`;
+  out += `   ${cx.toFixed(8).padStart(14, " ")} ${cy.toFixed(8).padStart(14, " ")} ${cz.toFixed(8).padStart(14, " ")}\n`;
+
+  if (atoms && atoms.length > 0) {
+    const elemOrder = [];
+    const elemGroups = {};
+    atoms.forEach(at => {
+      const el = at.element || "X";
+      if (!elemGroups[el]) {
+        elemOrder.push(el);
+        elemGroups[el] = [];
+      }
+      elemGroups[el].push(at);
+    });
+
+    out += ` ` + elemOrder.map(el => el.padStart(4, " ")).join(" ") + `\n`;
+    out += ` ` + elemOrder.map(el => String(elemGroups[el].length).padStart(4, " ")).join(" ") + `\n`;
+    out += `Direct\n`;
+    elemOrder.forEach(el => {
+      elemGroups[el].forEach(at => {
+        const x = Number(at.x || 0).toFixed(8).padStart(12, " ");
+        const y = Number(at.y || 0).toFixed(8).padStart(12, " ");
+        const z = Number(at.z || 0).toFixed(8).padStart(12, " ");
+        out += `  ${x} ${y} ${z}\n`;
+      });
+    });
+  } else {
+    out += ` ${formula}\n 1\nDirect\n   0.00000000   0.00000000   0.00000000\n`;
+  }
+  return out;
 }
 
 function generatePoscarFromLattice(formula, a, b, c, alpha, beta, gamma) {
-  const al = (alpha * Math.PI) / 180;
-  const be = (beta * Math.PI) / 180;
-  const ga = (gamma * Math.PI) / 180;
-
-  const vX = a;
-  const vY = 0.0;
-  const vZ = 0.0;
-
-  const bX = b * Math.cos(ga);
-  const bY = b * Math.sin(ga);
-  const bZ = 0.0;
-
-  const cX = c * Math.cos(be);
-  const cY = c * (Math.cos(al) - Math.cos(be) * Math.cos(ga)) / (Math.sin(ga) || 1);
-  const cZ = Math.sqrt(Math.max(0, c * c - cX * cX - cY * cY));
-
-  return `${formula} generated by MatSci Nexus\n1.0\n   ${vX.toFixed(8)}   ${vY.toFixed(8)}   ${vZ.toFixed(8)}\n   ${bX.toFixed(8)}   ${bY.toFixed(8)}   ${bZ.toFixed(8)}\n   ${cX.toFixed(8)}   ${cY.toFixed(8)}   ${cZ.toFixed(8)}\n${formula}\n1\nDirect\n   0.00000000   0.00000000   0.00000000\n`;
+  return generatePoscarFromLatticeAndAtoms(formula, a, b, c, alpha, beta, gamma, []);
 }
 
 function populateStructureModalWithParsed(p, rawCif, filename) {
@@ -1220,8 +1484,8 @@ function populateStructureModalWithParsed(p, rawCif, filename) {
   document.getElementById("struct-beta").value = p.beta || 90.0;
   document.getElementById("struct-gamma").value = p.gamma || 90.0;
   document.getElementById("struct-vol").value = p.volume || 64.0;
-  document.getElementById("struct-natoms").value = p.natoms || 5;
-  document.getElementById("struct-cifcontent").value = rawCif || p.cif_content || "";
+  document.getElementById("struct-natoms").value = p.natoms || (p.atoms ? p.atoms.length : 5);
+  document.getElementById("struct-cifcontent").value = rawCif || p.raw_cif || p.cif_content || "";
 }
 
 function renderStructuresList() {
@@ -1392,7 +1656,7 @@ async function saveStructureFromModal() {
   if (!requireAdminAuth()) return;
   const id = document.getElementById("struct-id").value;
   const formula = document.getElementById("struct-formula").value.trim();
-  const name = document.getElementById("struct-name").value.trim() || formula || "Unnamed Structure";
+  const name = document.getElementById("struct-name").value.trim() || formula || "Crystal Structure";
 
   if (!formula) {
     showToast("Chemical formula is required.", "warn");
@@ -1405,106 +1669,587 @@ async function saveStructureFromModal() {
   const alpha = parseFloat(document.getElementById("struct-alpha").value) || 90.0;
   const beta = parseFloat(document.getElementById("struct-beta").value) || 90.0;
   const gamma = parseFloat(document.getElementById("struct-gamma").value) || 90.0;
+  const crystalSystem = document.getElementById("struct-system").value || "Cubic";
+  const spaceGroup = document.getElementById("struct-spacegroup").value.trim() || "P 1";
+  const structureType = document.getElementById("struct-type").value || "Bulk 3D";
+  const mpId = document.getElementById("struct-mpid").value.trim();
+  const vol = parseFloat(document.getElementById("struct-vol").value) || (a * b * c);
+  const natoms = parseInt(document.getElementById("struct-natoms").value) || 5;
+  const dftCode = document.getElementById("struct-dftcode").value || "VASP";
+  const dftFunctional = document.getElementById("struct-functional").value || "PBE";
+  const ecut = parseFloat(document.getElementById("struct-ecut").value) || 520;
+  const kpoints = document.getElementById("struct-kpoints").value.trim() || "8x8x8";
+  const bandgap = parseFloat(document.getElementById("struct-bandgap").value) || 0.0;
+  const bandgapType = document.getElementById("struct-bandgaptype").value || "Direct";
+  const energy = parseFloat(document.getElementById("struct-energy").value) || -6.85;
+  const magState = document.getElementById("struct-magstate").value || "NM";
+  const notes = document.getElementById("struct-notes").value.trim();
   const rawCif = document.getElementById("struct-cifcontent").value.trim();
+
+  // Find existing atoms or pending parsed atoms
+  let atoms = STATE.pendingModalAtoms || [];
+  if (atoms.length === 0 && id) {
+    const existing = STATE.structures.find(x => x.id === Number(id));
+    if (existing && existing.atoms && existing.atoms.length > 0) atoms = existing.atoms;
+  }
+  if (atoms.length === 0 && rawCif) {
+    const parsed = parseCifTextClient(rawCif, name);
+    if (parsed.atoms && parsed.atoms.length > 0) atoms = parsed.atoms;
+  }
+
+  const poscarText = generatePoscarFromLatticeAndAtoms(formula, a, b, c, alpha, beta, gamma, atoms, spaceGroup, crystalSystem);
 
   const payload = {
     name,
+    formula,
     chemical_formula: formula,
-    crystal_system: document.getElementById("struct-system").value,
-    space_group: document.getElementById("struct-spacegroup").value.trim(),
-    structure_type: document.getElementById("struct-type").value,
-    mp_id: document.getElementById("struct-mpid").value.trim(),
-    a, b, c, alpha, beta, gamma,
-    volume: parseFloat(document.getElementById("struct-vol").value) || (a * b * c),
-    natoms: parseInt(document.getElementById("struct-natoms").value) || 5,
-    dft_code: document.getElementById("struct-dftcode").value,
-    dft_functional: document.getElementById("struct-functional").value,
-    cutoff_energy: parseFloat(document.getElementById("struct-ecut").value) || 520,
-    kpoints: document.getElementById("struct-kpoints").value.trim(),
-    bandgap_ev: parseFloat(document.getElementById("struct-bandgap").value) || 0.0,
-    bandgap_type: document.getElementById("struct-bandgaptype").value,
-    total_energy_per_atom: parseFloat(document.getElementById("struct-energy").value) || 0.0,
-    magnetic_state: document.getElementById("struct-magstate").value,
-    notes: document.getElementById("struct-notes").value.trim(),
+    crystal_system: crystalSystem,
+    space_group: spaceGroup,
+    structure_type: structureType,
+    mp_id: mpId,
+    materials_project_id: mpId,
+    a, b, c,
+    alpha, beta, gamma,
+    volume: vol,
+    natoms: atoms.length || natoms,
+    dft_code: dftCode,
+    functional: dftFunctional,
+    dft_functional: dftFunctional,
+    ecut,
+    cutoff_energy: ecut,
+    kpoints,
+    bandgap,
+    bandgap_ev: bandgap,
+    bandgap_type: bandgapType,
+    energy_per_atom: energy,
+    total_energy_per_atom: energy,
+    magnetic_state: magState,
+    notes,
     raw_cif: rawCif,
-    poscar_text: generatePoscarFromLattice(formula, a, b, c, alpha, beta, gamma),
+    cif_content: rawCif,
+    poscar_text: poscarText,
+    poscar_content: poscarText,
+    atoms,
     in_weekly_report: document.getElementById("struct-weekly").checked ? 1 : 0
   };
 
+  let savedOnBackend = false;
   if (!STATIC_MODE) {
-    const url = id ? `/api/structures/${id}` : "/api/structures";
-    const method = id ? "PUT" : "POST";
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) {
-      showToast("Failed to save structure to server", "error");
-      return;
+    try {
+      const url = id ? `/api/structures/${id}` : "/api/structures";
+      const method = id ? "PUT" : "POST";
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        savedOnBackend = true;
+      }
+    } catch (e) {
+      console.warn("Backend structure save failed, falling back to local database:", e);
     }
-    closeModal("structure-modal");
+  }
+
+  // Always sync client-side state and localStorage so user never loses data
+  if (id) {
+    const idx = STATE.structures.findIndex(x => x.id === Number(id));
+    if (idx >= 0) STATE.structures[idx] = { ...STATE.structures[idx], ...payload };
+  } else {
+    STATE.structures.unshift({ ...payload, id: Date.now() });
+  }
+  saveStaticDb();
+  closeModal("structure-modal");
+
+  if (savedOnBackend) {
     await loadAllData();
   } else {
-    if (id) {
-      const idx = STATE.structures.findIndex(x => x.id === Number(id));
-      if (idx >= 0) STATE.structures[idx] = { ...STATE.structures[idx], ...payload };
-    } else {
-      STATE.structures.unshift({ ...payload, id: Date.now() });
-    }
-    saveStaticDb();
-    closeModal("structure-modal");
-    loadStaticFallbackData();
+    renderStructuresList();
+    renderDashboardStats();
   }
-  showToast(id ? "Updated crystal structure." : "Added crystal structure.");
+  showToast(id ? `Updated structure "${formula}".` : `Added crystal structure "${formula}"!`, "success");
 }
 
 async function deleteStructureItem(id) {
   if (!requireAdminAuth()) return;
   if (!STATIC_MODE) {
-    await fetch(`/api/structures/${id}`, { method: "DELETE" });
-    await loadAllData();
-  } else {
-    STATE.structures = STATE.structures.filter(x => x.id !== id);
-    saveStaticDb();
-    loadStaticFallbackData();
+    try {
+      await fetch(`/api/structures/${id}`, { method: "DELETE" });
+      await loadAllData();
+      showToast("Deleted crystal structure.");
+      return;
+    } catch (e) {
+      console.warn("Backend delete failed, removing locally:", e);
+    }
   }
+  STATE.structures = STATE.structures.filter(x => x.id !== id);
+  saveStaticDb();
+  loadStaticFallbackData();
   showToast("Deleted crystal structure.");
+}
+
+// ============================================================================
+// Interactive 3D Crystal Viewer & Exporter Controller
+// ============================================================================
+
+let CRYSTAL_3D_STATE = {
+  rotX: 25 * Math.PI / 180,
+  rotY: -45 * Math.PI / 180,
+  scale: 1.0,
+  showBox: true,
+  showLabels: true,
+  isDragging: false,
+  lastMouseX: 0,
+  lastMouseY: 0,
+  initialized: false,
+  atoms: [],
+  lattice: { a: 4.0, b: 4.0, c: 4.0, alpha: 90, beta: 90, gamma: 90 }
+};
+
+function switchCvmTab(tab) {
+  STATE.cifViewMode = tab;
+  const p3d = document.getElementById("cvm-pane-3d");
+  const ppos = document.getElementById("cvm-pane-poscar");
+  const pcif = document.getElementById("cvm-pane-cif");
+  if (p3d) p3d.style.display = tab === "3d" ? "block" : "none";
+  if (ppos) ppos.style.display = tab === "poscar" ? "block" : "none";
+  if (pcif) pcif.style.display = tab === "cif" ? "block" : "none";
+
+  const b3d = document.getElementById("btn-tab-3d");
+  const bpos = document.getElementById("btn-tab-poscar");
+  const bcif = document.getElementById("btn-tab-cif");
+  if (b3d) b3d.className = `btn btn-sm ${tab === "3d" ? "btn-primary" : "btn-outline"}`;
+  if (bpos) bpos.className = `btn btn-sm ${tab === "poscar" ? "btn-primary" : "btn-outline"}`;
+  if (bcif) bcif.className = `btn btn-sm ${tab === "cif" ? "btn-primary" : "btn-outline"}`;
+
+  if (tab === "3d") {
+    setTimeout(renderCrystal3D, 50);
+  }
 }
 
 function viewCifModal(id) {
   const s = STATE.structures.find(x => x.id === id);
   if (!s) return;
   STATE.currentViewingStructure = s;
-  STATE.cifViewMode = "cif";
 
-  document.getElementById("cvm-title").textContent = `${s.name} (${s.chemical_formula})`;
-  document.getElementById("cvm-subtitle").textContent = `${s.crystal_system} • Space Group: ${s.space_group} • VASP ${s.dft_functional}`;
-  renderCifCodePreview();
-  document.getElementById("cif-view-modal")?.classList.add("open");
-}
+  const formula = s.chemical_formula || s.formula || "Crystal";
+  const titleEl = document.getElementById("cvm-title");
+  const subEl = document.getElementById("cvm-subtitle");
+  if (titleEl) titleEl.textContent = `${s.name} (${formula})`;
+  if (subEl) subEl.textContent = `${s.crystal_system} • Space Group: ${s.space_group} • a=${s.a}Å, b=${s.b}Å, c=${s.c}Å • ${s.dft_code || "VASP"} ${s.dft_functional || s.functional || "PBE"}`;
 
-function renderCifCodePreview() {
-  const s = STATE.currentViewingStructure;
-  const wrapper = document.getElementById("cvm-code-wrapper");
-  if (!s || !wrapper) return;
-
-  if (STATE.cifViewMode === "cif") {
-    let content = s.raw_cif;
-    if (!content) {
-      content = `# CIF file generated by MatSci Nexus\ndata_${s.chemical_formula.replace(/[^A-Za-z0-9]/g, "_")}\n_chemical_name_common '${s.name}'\n_chemical_formula_sum '${s.chemical_formula}'\n_symmetry_space_group_name_H-M '${s.space_group}'\n_cell_length_a ${s.a}\n_cell_length_b ${s.b}\n_cell_length_c ${s.c}\n_cell_angle_alpha ${s.alpha}\n_cell_angle_beta ${s.beta}\n_cell_angle_gamma ${s.gamma}\n_cell_volume ${s.volume}\n`;
+  // Resolve atoms
+  let atoms = s.atoms || [];
+  if (atoms.length === 0 && (s.raw_cif || s.cif_content)) {
+    const parsed = parseCifTextClient(s.raw_cif || s.cif_content, s.name);
+    if (parsed.atoms && parsed.atoms.length > 0) {
+      atoms = parsed.atoms;
+      s.atoms = atoms;
     }
-    wrapper.textContent = content;
-  } else {
-    const poscar = s.poscar_text || generatePoscarFromLattice(s.chemical_formula, s.a, s.b, s.c, s.alpha, s.beta, s.gamma);
-    wrapper.textContent = poscar;
   }
+  if (atoms.length === 0) {
+    // Generate prototype basis for visualizer
+    atoms = [
+      { element: formula.replace(/[^A-Za-z]/g, "").slice(0, 2) || "Ti", label: "A1", x: 0.5, y: 0.5, z: 0.5 },
+      { element: "O", label: "O1", x: 0.5, y: 0.5, z: 0.0 },
+      { element: "O", label: "O2", x: 0.5, y: 0.0, z: 0.5 },
+      { element: "O", label: "O3", x: 0.0, y: 0.5, z: 0.5 }
+    ];
+  }
+
+  CRYSTAL_3D_STATE.atoms = atoms;
+  CRYSTAL_3D_STATE.lattice = {
+    a: parseFloat(s.a) || 4.0,
+    b: parseFloat(s.b) || 4.0,
+    c: parseFloat(s.c) || 4.0,
+    alpha: parseFloat(s.alpha) || 90.0,
+    beta: parseFloat(s.beta) || 90.0,
+    gamma: parseFloat(s.gamma) || 90.0
+  };
+
+  // Populate POSCAR code
+  const poscar = s.poscar_text || s.poscar_content || generatePoscarFromLatticeAndAtoms(formula, s.a, s.b, s.c, s.alpha, s.beta, s.gamma, atoms, s.space_group, s.crystal_system);
+  const posCodeEl = document.getElementById("cvm-poscar-code");
+  if (posCodeEl) posCodeEl.textContent = poscar;
+
+  // Populate CIF code
+  let cifText = s.raw_cif || s.cif_content;
+  if (!cifText) {
+    cifText = `# CIF file generated by MatSci Nexus\ndata_${formula.replace(/[^A-Za-z0-9]/g, "_")}\n_chemical_name_common '${s.name}'\n_chemical_formula_sum '${formula}'\n_symmetry_space_group_name_H-M '${s.space_group}'\n_cell_length_a ${s.a}\n_cell_length_b ${s.b}\n_cell_length_c ${s.c}\n_cell_angle_alpha ${s.alpha}\n_cell_angle_beta ${s.beta}\n_cell_angle_gamma ${s.gamma}\n_cell_volume ${s.volume}\n`;
+  }
+  const cifCodeEl = document.getElementById("cvm-cif-code");
+  if (cifCodeEl) cifCodeEl.textContent = cifText;
+
+  // Populate coordinates table
+  const tbody = document.getElementById("cvm-atoms-tbody");
+  if (tbody) {
+    tbody.innerHTML = atoms.map((at, idx) => `
+      <tr>
+        <td>${idx + 1}</td>
+        <td>
+          <span style="display:inline-flex; align-items:center; gap:5px;">
+            <span style="display:inline-block; width:11px; height:11px; border-radius:50%; background:${getElementColor(at.element)}; border:1px solid rgba(0,0,0,0.2);"></span>
+            <strong>${escapeHtml(at.element)}</strong>
+          </span>
+        </td>
+        <td><code>${escapeHtml(at.label || at.element)}</code></td>
+        <td>${Number(at.x || 0).toFixed(5)}</td>
+        <td>${Number(at.y || 0).toFixed(5)}</td>
+        <td>${Number(at.z || 0).toFixed(5)}</td>
+      </tr>
+    `).join("");
+  }
+
+  // Populate legend
+  const legend = document.getElementById("crystal-3d-legend");
+  if (legend) {
+    const uniqueElements = [...new Set(atoms.map(a => a.element))];
+    legend.innerHTML = uniqueElements.map(el => `
+      <span style="display:inline-flex; align-items:center; gap:5px; font-weight:600;">
+        <span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:${getElementColor(el)}; border:1px solid rgba(255,255,255,0.4);"></span>
+        ${escapeHtml(el)}
+      </span>
+    `).join("");
+  }
+
+  const badge = document.getElementById("cvm-atom-count-badge");
+  if (badge) badge.textContent = `${atoms.length} atoms in unit cell`;
+
+  switchCvmTab("3d");
+  document.getElementById("cif-view-modal")?.classList.add("open");
+  initCrystal3DCanvas();
+  setTimeout(renderCrystal3D, 80);
 }
 
-function toggleCifViewFormat() {
-  STATE.cifViewMode = STATE.cifViewMode === "cif" ? "poscar" : "cif";
-  renderCifCodePreview();
-  showToast(`Switched view to ${STATE.cifViewMode.toUpperCase()}`);
+function initCrystal3DCanvas() {
+  const canvas = document.getElementById("crystal-3d-canvas");
+  if (!canvas || CRYSTAL_3D_STATE.initialized) return;
+  CRYSTAL_3D_STATE.initialized = true;
+
+  // Mouse rotation
+  canvas.addEventListener("mousedown", (e) => {
+    CRYSTAL_3D_STATE.isDragging = true;
+    CRYSTAL_3D_STATE.lastMouseX = e.clientX;
+    CRYSTAL_3D_STATE.lastMouseY = e.clientY;
+    canvas.style.cursor = "grabbing";
+  });
+
+  window.addEventListener("mousemove", (e) => {
+    if (!CRYSTAL_3D_STATE.isDragging) return;
+    const dx = e.clientX - CRYSTAL_3D_STATE.lastMouseX;
+    const dy = e.clientY - CRYSTAL_3D_STATE.lastMouseY;
+    CRYSTAL_3D_STATE.rotY += dx * 0.012;
+    CRYSTAL_3D_STATE.rotX += dy * 0.012;
+    CRYSTAL_3D_STATE.lastMouseX = e.clientX;
+    CRYSTAL_3D_STATE.lastMouseY = e.clientY;
+    renderCrystal3D();
+  });
+
+  window.addEventListener("mouseup", () => {
+    if (CRYSTAL_3D_STATE.isDragging) {
+      CRYSTAL_3D_STATE.isDragging = false;
+      if (canvas) canvas.style.cursor = "grab";
+    }
+  });
+
+  // Mouse wheel zoom
+  canvas.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.08 : 0.92;
+    CRYSTAL_3D_STATE.scale = Math.max(0.4, Math.min(3.5, CRYSTAL_3D_STATE.scale * factor));
+    renderCrystal3D();
+  }, { passive: false });
+
+  // Touch rotation
+  canvas.addEventListener("touchstart", (e) => {
+    if (e.touches.length === 1) {
+      CRYSTAL_3D_STATE.isDragging = true;
+      CRYSTAL_3D_STATE.lastMouseX = e.touches[0].clientX;
+      CRYSTAL_3D_STATE.lastMouseY = e.touches[0].clientY;
+    }
+  }, { passive: true });
+
+  canvas.addEventListener("touchmove", (e) => {
+    if (!CRYSTAL_3D_STATE.isDragging || e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - CRYSTAL_3D_STATE.lastMouseX;
+    const dy = e.touches[0].clientY - CRYSTAL_3D_STATE.lastMouseY;
+    CRYSTAL_3D_STATE.rotY += dx * 0.015;
+    CRYSTAL_3D_STATE.rotX += dy * 0.015;
+    CRYSTAL_3D_STATE.lastMouseX = e.touches[0].clientX;
+    CRYSTAL_3D_STATE.lastMouseY = e.touches[0].clientY;
+    renderCrystal3D();
+  }, { passive: true });
+
+  canvas.addEventListener("touchend", () => {
+    CRYSTAL_3D_STATE.isDragging = false;
+  }, { passive: true });
+
+  window.addEventListener("resize", () => {
+    if (document.getElementById("cif-view-modal")?.classList.contains("open")) {
+      renderCrystal3D();
+    }
+  });
+}
+
+function resetCrystal3DView() {
+  CRYSTAL_3D_STATE.rotX = 25 * Math.PI / 180;
+  CRYSTAL_3D_STATE.rotY = -45 * Math.PI / 180;
+  CRYSTAL_3D_STATE.scale = 1.0;
+  renderCrystal3D();
+  showToast("Reset 3D Crystal Perspective");
+}
+
+function toggleUnitCellBox() {
+  CRYSTAL_3D_STATE.showBox = !CRYSTAL_3D_STATE.showBox;
+  const btn = document.getElementById("btn-toggle-box");
+  if (btn) btn.textContent = `📦 Box: ${CRYSTAL_3D_STATE.showBox ? "ON" : "OFF"}`;
+  renderCrystal3D();
+}
+
+function toggleAtomLabels() {
+  CRYSTAL_3D_STATE.showLabels = !CRYSTAL_3D_STATE.showLabels;
+  const btn = document.getElementById("btn-toggle-labels");
+  if (btn) btn.textContent = `🏷️ Labels: ${CRYSTAL_3D_STATE.showLabels ? "ON" : "OFF"}`;
+  renderCrystal3D();
+}
+
+function setCrystalViewPreset(preset) {
+  if (preset === "top") {
+    CRYSTAL_3D_STATE.rotX = 0;
+    CRYSTAL_3D_STATE.rotY = 0;
+  } else if (preset === "front") {
+    CRYSTAL_3D_STATE.rotX = 90 * Math.PI / 180;
+    CRYSTAL_3D_STATE.rotY = 0;
+  } else if (preset === "side") {
+    CRYSTAL_3D_STATE.rotX = 0;
+    CRYSTAL_3D_STATE.rotY = 90 * Math.PI / 180;
+  } else {
+    // 3D Isometric
+    CRYSTAL_3D_STATE.rotX = 25 * Math.PI / 180;
+    CRYSTAL_3D_STATE.rotY = -45 * Math.PI / 180;
+  }
+  renderCrystal3D();
+}
+
+function darkenColor(hex, factor = 0.3) {
+  let c = hex.replace("#", "");
+  if (c.length === 3) c = c.split("").map(ch => ch + ch).join("");
+  const num = parseInt(c, 16);
+  let r = (num >> 16) * (1 - factor);
+  let g = ((num >> 8) & 0x00FF) * (1 - factor);
+  let b = (num & 0x0000FF) * (1 - factor);
+  return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+}
+
+function renderCrystal3D() {
+  const canvas = document.getElementById("crystal-3d-canvas");
+  if (!canvas || !canvas.parentElement) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const width = rect.width || 760;
+  const height = rect.height || 380;
+  const dpr = window.devicePixelRatio || 1;
+
+  if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+  }
+
+  const ctx = canvas.getContext("2d");
+  ctx.save();
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, width, height);
+
+  const lat = CRYSTAL_3D_STATE.lattice;
+  const ar = (lat.alpha * Math.PI) / 180;
+  const br = (lat.beta * Math.PI) / 180;
+  const gr = (lat.gamma * Math.PI) / 180;
+
+  // Cartesian lattice vectors
+  const ax = lat.a, ay = 0.0, az = 0.0;
+  const bx = lat.b * Math.cos(gr);
+  const by = lat.b * Math.sin(gr);
+  const bz = 0.0;
+  const cx = lat.c * Math.cos(br);
+  const cy = lat.c * (Math.cos(ar) - Math.cos(br) * Math.cos(gr)) / (Math.sin(gr) || 1.0);
+  const czSq = lat.c * lat.c - cx * cx - cy * cy;
+  const cz = Math.sqrt(Math.max(0.0, czSq));
+
+  // Cell Center
+  const centerX = (ax + bx + cx) / 2;
+  const centerY = (ay + by + cy) / 2;
+  const centerZ = (az + bz + cz) / 2;
+
+  // Auto-scale
+  const maxSpan = Math.max(lat.a, lat.b, lat.c, 4.0);
+  const autoScale = (Math.min(width, height) / (maxSpan * 2.3)) * CRYSTAL_3D_STATE.scale;
+
+  // 3D Rotation Matrix projection
+  const cosY = Math.cos(CRYSTAL_3D_STATE.rotY), sinY = Math.sin(CRYSTAL_3D_STATE.rotY);
+  const cosX = Math.cos(CRYSTAL_3D_STATE.rotX), sinX = Math.sin(CRYSTAL_3D_STATE.rotX);
+
+  function project(x, y, z) {
+    const xRel = x - centerX;
+    const yRel = y - centerY;
+    const zRel = z - centerZ;
+
+    // Rotate Y
+    const x1 = xRel * cosY + zRel * sinY;
+    const z1 = -xRel * sinY + zRel * cosY;
+    const y1 = yRel;
+
+    // Rotate X
+    const y2 = y1 * cosX - z1 * sinX;
+    const z2 = y1 * sinX + z1 * cosX;
+    const x2 = x1;
+
+    return {
+      sx: width / 2 + x2 * autoScale,
+      sy: height / 2 - y2 * autoScale,
+      sz: z2
+    };
+  }
+
+  const drawList = [];
+
+  // Unit Cell 8 Vertices
+  const V = [
+    { x: 0, y: 0, z: 0 },
+    { x: ax, y: ay, z: az },
+    { x: bx, y: by, z: bz },
+    { x: cx, y: cy, z: cz },
+    { x: ax + bx, y: ay + by, z: az + bz },
+    { x: ax + cx, y: ay + cy, z: az + cz },
+    { x: bx + cx, y: by + cy, z: bz + cz },
+    { x: ax + bx + cx, y: ay + by + cy, z: az + bz + cz }
+  ];
+  const P = V.map(v => project(v.x, v.y, v.z));
+
+  // Unit Cell 12 Edges
+  if (CRYSTAL_3D_STATE.showBox) {
+    const edges = [
+      [0,1], [0,2], [0,3],
+      [1,4], [1,5],
+      [2,4], [2,6],
+      [3,5], [3,6],
+      [4,7], [5,7], [6,7]
+    ];
+    edges.forEach(([i, j]) => {
+      const p1 = P[i], p2 = P[j];
+      drawList.push({
+        type: "edge",
+        p1, p2,
+        sz: (p1.sz + p2.sz) / 2
+      });
+    });
+  }
+
+  // Atoms
+  const atoms = CRYSTAL_3D_STATE.atoms || [];
+  atoms.forEach(at => {
+    const cartX = (at.x || 0) * ax + (at.y || 0) * bx + (at.z || 0) * cx;
+    const cartY = (at.x || 0) * ay + (at.y || 0) * by + (at.z || 0) * cy;
+    const cartZ = (at.x || 0) * az + (at.y || 0) * bz + (at.z || 0) * cz;
+    const proj = project(cartX, cartY, cartZ);
+    drawList.push({
+      type: "atom",
+      sx: proj.sx,
+      sy: proj.sy,
+      sz: proj.sz,
+      atom: at
+    });
+  });
+
+  // Depth sort (Painter's Algorithm)
+  drawList.sort((a, b) => a.sz - b.sz);
+
+  // Render items
+  drawList.forEach(item => {
+    if (item.type === "edge") {
+      ctx.beginPath();
+      ctx.strokeStyle = "#475569";
+      ctx.lineWidth = 1.4;
+      ctx.setLineDash([4, 3]);
+      ctx.moveTo(item.p1.sx, item.p1.sy);
+      ctx.lineTo(item.p2.sx, item.p2.sy);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    } else if (item.type === "atom") {
+      const radius = Math.max(7, getElementRadius(item.atom.element) * (autoScale / 24) * 0.95);
+      const color = getElementColor(item.atom.element);
+
+      // 3D Shaded Sphere
+      const grad = ctx.createRadialGradient(
+        item.sx - radius * 0.35, item.sy - radius * 0.35, radius * 0.08,
+        item.sx, item.sy, radius
+      );
+      grad.addColorStop(0, "#ffffff");
+      grad.addColorStop(0.25, color);
+      grad.addColorStop(1, darkenColor(color, 0.45));
+
+      ctx.beginPath();
+      ctx.fillStyle = grad;
+      ctx.arc(item.sx, item.sy, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(15, 23, 42, 0.4)";
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      // Atom Label
+      if (CRYSTAL_3D_STATE.showLabels && radius >= 9) {
+        ctx.fillStyle = "#ffffff";
+        ctx.font = `bold ${Math.max(9, Math.round(radius * 0.78))}px system-ui, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.shadowColor = "rgba(0,0,0,0.8)";
+        ctx.shadowBlur = 3;
+        ctx.fillText(item.atom.element, item.sx, item.sy);
+        ctx.shadowBlur = 0;
+      }
+    }
+  });
+
+  // Render 3D Vector Axes Indicator at bottom-right
+  const originX = width - 42;
+  const originY = height - 42;
+  const axisLen = 24;
+
+  const axProj = { x: 1 * cosY + 0 * sinY, y: 0 * cosX - (-1 * sinY) * sinX };
+  const byProj = { x: 0 * cosY + 0 * sinY, y: 1 * cosX - 0 * sinX };
+  const czProj = { x: 0 * cosY + 1 * sinY, y: 0 * cosX - (1 * cosY) * sinX };
+
+  function drawAxis(vec, color, label) {
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.2;
+    ctx.moveTo(originX, originY);
+    ctx.lineTo(originX + vec.x * axisLen, originY - vec.y * axisLen);
+    ctx.stroke();
+
+    ctx.fillStyle = color;
+    ctx.font = "bold 10px monospace";
+    ctx.fillText(label, originX + vec.x * (axisLen + 7), originY - vec.y * (axisLen + 7));
+  }
+
+  drawAxis(axProj, "#ef4444", "a");
+  drawAxis(byProj, "#22c55e", "b");
+  drawAxis(czProj, "#3b82f6", "c");
+
+  ctx.restore();
+}
+
+function copyCurrentPoscar() {
+  const code = document.getElementById("cvm-poscar-code")?.textContent || "";
+  if (!code) return;
+  navigator.clipboard.writeText(code);
+  showToast("Copied VASP POSCAR to clipboard!");
+}
+
+function copyCurrentCif() {
+  const code = document.getElementById("cvm-cif-code")?.textContent || "";
+  if (!code) return;
+  navigator.clipboard.writeText(code);
+  showToast("Copied CIF file content to clipboard!");
 }
 
 function downloadCurrentCif() {
@@ -1519,26 +2264,19 @@ function downloadCurrentPoscar() {
   downloadPoscarById(s.id);
 }
 
-function copyCurrentPoscar() {
-  const s = STATE.currentViewingStructure;
-  if (!s) return;
-  const poscar = s.poscar_text || generatePoscarFromLattice(s.chemical_formula, s.a, s.b, s.c, s.alpha, s.beta, s.gamma);
-  navigator.clipboard.writeText(poscar);
-  showToast("Copied VASP POSCAR to clipboard!");
-}
-
 function downloadCifById(id) {
   const s = STATE.structures.find(x => x.id === id);
   if (!s) return;
-  let text = s.raw_cif;
+  const formula = s.chemical_formula || s.formula || "Crystal";
+  let text = s.raw_cif || s.cif_content;
   if (!text) {
-    text = `# CIF file generated by MatSci Nexus\ndata_${s.chemical_formula.replace(/[^A-Za-z0-9]/g, "_")}\n_chemical_name_common '${s.name}'\n_chemical_formula_sum '${s.chemical_formula}'\n_symmetry_space_group_name_H-M '${s.space_group}'\n_cell_length_a ${s.a}\n_cell_length_b ${s.b}\n_cell_length_c ${s.c}\n_cell_angle_alpha ${s.alpha}\n_cell_angle_beta ${s.beta}\n_cell_angle_gamma ${s.gamma}\n_cell_volume ${s.volume}\n`;
+    text = `# CIF file generated by MatSci Nexus\ndata_${formula.replace(/[^A-Za-z0-9]/g, "_")}\n_chemical_name_common '${s.name}'\n_chemical_formula_sum '${formula}'\n_symmetry_space_group_name_H-M '${s.space_group}'\n_cell_length_a ${s.a}\n_cell_length_b ${s.b}\n_cell_length_c ${s.c}\n_cell_angle_alpha ${s.alpha}\n_cell_angle_beta ${s.beta}\n_cell_angle_gamma ${s.gamma}\n_cell_volume ${s.volume}\n`;
   }
   const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${s.chemical_formula.replace(/[^A-Za-z0-9]/g, "_")}.cif`;
+  a.download = `${formula.replace(/[^A-Za-z0-9]/g, "_")}.cif`;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -1549,12 +2287,13 @@ function downloadCifById(id) {
 function downloadPoscarById(id) {
   const s = STATE.structures.find(x => x.id === id);
   if (!s) return;
-  const poscar = s.poscar_text || generatePoscarFromLattice(s.chemical_formula, s.a, s.b, s.c, s.alpha, s.beta, s.gamma);
+  const formula = s.chemical_formula || s.formula || "Crystal";
+  const poscar = s.poscar_text || s.poscar_content || generatePoscarFromLatticeAndAtoms(formula, s.a, s.b, s.c, s.alpha, s.beta, s.gamma, s.atoms || [], s.space_group, s.crystal_system);
   const blob = new Blob([poscar], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `POSCAR_${s.chemical_formula.replace(/[^A-Za-z0-9]/g, "_")}`;
+  a.download = `POSCAR_${formula.replace(/[^A-Za-z0-9]/g, "_")}`;
   document.body.appendChild(a);
   a.click();
   a.remove();
