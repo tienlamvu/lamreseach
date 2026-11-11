@@ -1,16 +1,16 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-11T13:05:17.453Z",
+  "exported_at": "2026-11-11T13:45:52.592Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
     "title_role": "Ph.D. Candidate in Materials Science & Engineering",
-    "affiliation": "Energy Transport",
-    "advisor": "Prof. Sarah Jenkins",
+    "affiliation": "Energy Transport Lab.",
+    "advisor": "Prof. Seong Chu Lim",
     "research_focus": "Solid-State Electrolytes (LLZO), 2D MXenes, In-situ XRD & XPS Characterization",
     "orcid_id": "0000-0002-3211-5916",
     "scholar_id": "W6aXCxUAAAAJ",
-    "email": "alex.chen@matsci.edu",
+    "email": "lamvt@skku.edu",
     "total_citations": 193,
     "h_index": 5,
     "i10_index": 4,
@@ -20,7 +20,7 @@
     "last_synced_at": "2026-11-11 21:26",
     "phone": "+1 (555) 234-5678",
     "website": "https://github.com/matsci-researcher",
-    "location": "Materials Research Institute",
+    "location": "N Center",
     "experiences_json": "[{\"role\": \"Graduate Research Assistant (Ph.D. Researcher)\", \"organization\": \"Nanomaterials & Energy Storage Laboratory (PI: Prof. Sarah Jenkins)\", \"period\": \"2024 \\u2013 Present\", \"description\": \"Leading solid-state garnet electrolyte synthesis (LLZTO), thermal ALD surface modification, synchrotron XRD Rietveld refinement, and in-situ XPS interfacial analysis.\"}, {\"role\": \"Graduate Teaching Assistant \\u2014 Crystallography & Diffraction (MATSCI 302)\", \"organization\": \"Department of Materials Science & Engineering\", \"period\": \"Fall 2025 \\u2013 Spring 2026\", \"description\": \"Instructed weekly powder XRD laboratory sessions, Bragg/Scherrer phase indexing, and GSAS-II refinement tutorials for 45 undergraduate students.\"}]",
     "conferences_json": "[{\"title\": \"In-Situ Raman and XRD Investigation of Interlayer Expanded MoS2/Ti3C2Tx Heterostructures\", \"event\": \"Electrochemical Society (ECS) International Meeting\", \"type\": \"Poster Presentation (Best Poster Finalist)\", \"year\": 2024}]",
     "skills_json": "{\"synthesis\": \"Solid-State Reaction & High-Temp Sintering (up to 1600 \\u00b0C), Atomic Layer Deposition (ALD), Hydrothermal/Solvothermal, Sol-Gel, Ball Milling, Cold Isostatic Pressing (CIP), Ar-Glovebox Coin/Swagelok Cell Assembly\", \"characterization\": \"Powder & Thin-Film XRD (Bruker D8, Rietveld Refinement via GSAS-II / FullProf), FE-SEM & EDS Mapping, HR-TEM & SAED, XPS Depth Profiling (CasaXPS), Raman & FTIR Spectroscopy, EIS / Cyclic Voltammetry (BioLogic EC-Lab), BET, TGA/DSC\", \"computational\": \"Python (NumPy, SciPy, Matplotlib, Pymatgen), Density Functional Theory (VASP), VESTA 3D Crystal Visualization, OriginPro, ImageJ, LaTeX\"}",
@@ -338,14 +338,7 @@
         "pages": "2716-2731"
       }
     ],
-    "conferences": [
-      {
-        "title": "In-Situ Raman and XRD Investigation of Interlayer Expanded MoS2/Ti3C2Tx Heterostructures",
-        "event": "Electrochemical Society (ECS) International Meeting",
-        "type": "Poster Presentation (Best Poster Finalist)",
-        "year": 2024
-      }
-    ],
+    "conferences": [],
     "skills": {
       "synthesis": "Solid-State Reaction & High-Temp Sintering (up to 1600 °C), Atomic Layer Deposition (ALD), Hydrothermal/Solvothermal, Sol-Gel, Ball Milling, Cold Isostatic Pressing (CIP), Ar-Glovebox Coin/Swagelok Cell Assembly",
       "characterization": "Powder & Thin-Film XRD (Bruker D8, Rietveld Refinement via GSAS-II / FullProf), FE-SEM & EDS Mapping, HR-TEM & SAED, XPS Depth Profiling (CasaXPS), Raman & FTIR Spectroscopy, EIS / Cyclic Voltammetry (BioLogic EC-Lab), BET, TGA/DSC",
