@@ -3158,6 +3158,98 @@ function exportDataJson() {
   showToast("💾 data.json downloaded! Drag and drop into GitHub frontend/ folder to sync to all computers.", "success");
 }
 
+async function commitDataJsonToGitHub() {
+  let token = localStorage.getItem("matsci_github_token") || "";
+  if (!token) {
+    const inputToken = prompt(
+      "Nhập GitHub Personal Access Token (classic token có quyền 'repo' hoặc fine-grained token có quyền Contents:Read & Write):\n\n" +
+      "Sau khi nhập 1 lần, bạn có thể đồng bộ trực tiếp lên GitHub chỉ với 1 cú click chuột mà không cần tải file về nữa!"
+    );
+    if (!inputToken || !inputToken.trim()) {
+      exportDataJson();
+      return;
+    }
+    token = inputToken.trim();
+    localStorage.setItem("matsci_github_token", token);
+  }
+
+  showToast("Đang đồng bộ trực tiếp data.json lên GitHub repository...", "info");
+  try {
+    const repo = "tienlamvu/lamreseach";
+    const path = "frontend/data.json";
+
+    let sha = "";
+    try {
+      const getRes = await fetch(`https://api.github.com/repos/${repo}/contents/${path}?v=${Date.now()}`, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/vnd.github.v3+json"
+        }
+      });
+      if (getRes.ok) {
+        const fileData = await getRes.json();
+        sha = fileData.sha;
+      }
+    } catch (e) {
+      console.warn("Could not get existing file sha:", e);
+    }
+
+    const exportObj = {
+      version: "4.0",
+      exported_at: new Date().toISOString(),
+      profile: STATE.profile,
+      papers: STATE.papers,
+      structures: STATE.structures,
+      schedule: STATE.schedule
+    };
+
+    const contentUtf8 = JSON.stringify(exportObj, null, 2);
+    const bytes = new TextEncoder().encode(contentUtf8);
+    let binary = "";
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const base64Content = btoa(binary);
+
+    const putRes = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
+      method: "PUT",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/vnd.github.v3+json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message: `Direct Cloud Sync: Updated research data & CV [${new Date().toLocaleString()}]`,
+        content: base64Content,
+        sha: sha || undefined
+      })
+    });
+
+    if (!putRes.ok) {
+      const errData = await putRes.json();
+      if (putRes.status === 401 || putRes.status === 403) {
+        localStorage.removeItem("matsci_github_token");
+        throw new Error("GitHub Token không hợp lệ hoặc đã hết hạn. Hãy thử nhập lại.");
+      }
+      throw new Error(errData.message || `Lỗi GitHub HTTP ${putRes.status}`);
+    }
+
+    showToast("🎉 Đã đồng bộ trực tiếp lên GitHub thành công! Mọi thiết bị khác sẽ thấy thay đổi sau khoảng 1 phút.", "success");
+  } catch (err) {
+    console.error("GitHub Sync error:", err);
+    showToast(`Lỗi đồng bộ GitHub: ${err.message}. Đang tải file data.json để upload thủ công.`, "error");
+    exportDataJson();
+  }
+}
+
+function syncOrExportDataJson() {
+  if (confirm("Bạn muốn đồng bộ dữ liệu bằng cách nào?\n\n- Bấm OK: Đồng bộ trực tiếp lên GitHub (Tự động 1 chạm qua GitHub Token)\n- Bấm Cancel: Tải file data.json về máy (Kéo thả thủ công vào GitHub)")) {
+    commitDataJsonToGitHub();
+  } else {
+    exportDataJson();
+  }
+}
+
 // ============================================================================
 // Dashboard Rendering
 // ============================================================================

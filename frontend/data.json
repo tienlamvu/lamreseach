@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-11T19:38:42.186090",
+  "exported_at": "2026-11-11T19:57:48.432308",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -16,7 +16,7 @@
     "i10_index": 4,
     "bio": "Ph.D. researcher investigating ionic conductivity, grain boundary impedance, and phase stability of solid-state electrolytes and 2D functional nanomaterials.",
     "education_json": "[{\"degree\": \"Doctor\", \"institution\": \"Sungkyunkwan University\", \"period\": \"2025 \\u2013 Present\", \"details\": \"\"}, {\"degree\": \"Master of Science\", \"institution\": \"Hanoi University of Science and Technology\", \"period\": \"2022 \\u2013 2024\", \"details\": \"Faculty of Engineering Physics\"}]",
-    "publications_json": "[{\"id\": 1794391897844, \"title\": \"What Is the Role of a Magnetic Mo Antisite Defect on Carrier Relaxation and Spin Dynamics in 2-D MoS<sub>2</sub>?\", \"authors\": \"Chengan Lei; Zhao Qian; Yandong Ma; Rajeev Ahuja\", \"journal\": \"Nano Letters\", \"year\": 2025, \"doi\": \"10.1021/acs.nanolett.5c00628\", \"citations\": 8, \"visibility\": \"Public\", \"source\": \"Academic CV\"}]",
+    "publications_json": "[{\"title\": \"First-principles calculation of the impact of interstitial point defects on the Bi<sub>0.5</sub>Na<sub>0.5</sub>TiO<sub>3</sub> (110) surface\", \"authors\": \"Vu Tien Lam\", \"journal\": \"Dalat University Journal of Science\", \"year\": 2026, \"doi\": \"10.37569/DalatUniversity.16.4S.1620(2026)\", \"citations\": 0, \"source\": \"ORCID\"}, {\"title\": \"Ultrafast switching and high-endurance nonvolatile memory enabled by intrinsic switchable polarization in semiconducting Janus monolayers\", \"authors\": \"Vu Tien Lam\", \"journal\": \"Nature Communications\", \"year\": 2026, \"doi\": \"10.1038/s41467-026-73279-7\", \"citations\": 0, \"source\": \"ORCID\"}, {\"title\": \"Magnetic properties of new binary compounds lead-free ferroelectric (1-x)Ba(Zr0\\u00b72Ti0.8)O3+xFeTiO3 as solid solution\", \"authors\": \"Vu Tien Lam\", \"journal\": \"Journal of Solid State Chemistry\", \"year\": 2025, \"doi\": \"10.1016/j.jssc.2025.125495\", \"citations\": 0, \"source\": \"ORCID\"}, {\"title\": \"Nature defect-mediated room temperature ferromagnetism in lead-free ferroelectric Ba(Zr0.2Ti0.8)O3: A first-principles study\", \"authors\": \"Vu Tien Lam\", \"journal\": \"Next Materials\", \"year\": 2025, \"doi\": \"10.1016/j.nxmate.2025.100916\", \"citations\": 0, \"source\": \"ORCID\"}, {\"title\": \"Role of substitution Zr-site on the electronic structure and magnetic properties of BaTiO3 materials: A first principles calculation\", \"authors\": \"Vu Tien Lam\", \"journal\": \"Computational and Theoretical Chemistry\", \"year\": 2025, \"doi\": \"10.1016/j.comptc.2024.114989\", \"citations\": 0, \"source\": \"ORCID\"}, {\"title\": \"Comparative electronic structure, magnetic and optical properties of cubic perovskite BaXO3 (X=Ti, Sn) with self-defects: A first-principles calculation\", \"authors\": \"Vu Tien Lam\", \"journal\": \"Materials Today Communications\", \"year\": 2024, \"doi\": \"10.1016/j.mtcomm.2024.109686\", \"citations\": 0, \"source\": \"ORCID\"}, {\"title\": \"First-principles calculations of self-defects on the structural, electronic, and optical properties of BaXO3 (X = Ti, Zr, and Hf) perovskite oxide materials\", \"authors\": \"Vu Tien Lam\", \"journal\": \"Materials Today Communications\", \"year\": 2024, \"doi\": \"10.1016/j.mtcomm.2024.110641\", \"citations\": 0, \"source\": \"ORCID\"}, {\"title\": \"Optical, Magnetic, and Electrical Properties of New Binary CoTiO3-Modified Ba(Zr0.2Ti0.8)O3 System as Solid Solution\", \"authors\": \"Vu Tien Lam\", \"journal\": \"Journal of Electronic Materials\", \"year\": 2024, \"doi\": \"10.1007/s11664-024-11514-x\", \"citations\": 0, \"source\": \"ORCID\"}, {\"title\": \"Optical, magnetic and electrical properties of new binary MnTiO3-modified Ba(Zr,Ti)O3 materials as solid solution\", \"authors\": \"Vu Tien Lam\", \"journal\": \"Physica B Condensed Matter\", \"year\": 2024, \"doi\": \"10.1016/j.physb.2024.416444\", \"citations\": 0, \"source\": \"ORCID\"}, {\"title\": \"Structural, electronic and optical properties of complex lead-free ferroelectric Ba0.7Ca0.3TiO3 materials: A DFT study\", \"authors\": \"Vu Tien Lam\", \"journal\": \"MRS Communications\", \"year\": 2024, \"doi\": \"10.1557/s43579-024-00599-4\", \"citations\": 0, \"source\": \"ORCID\"}, {\"title\": \"Electronic Structure and Optical Properties of Cubic Perovskite Baxo3 (X=Ti, Sn): A First Principle Calculations\", \"authors\": \"Vu Tien Lam\", \"journal\": \"Ssrn\", \"year\": 2023, \"doi\": \"10.2139/ssrn.4654244\", \"citations\": 0, \"source\": \"ORCID\"}, {\"title\": \"Fabrication and Optical Properties of (1\\u2212x)Bi\\u00bdNa\\u00bdTiO3\\u2212xEr\\u00bdNa\\u00bdTiO3 Solid Solution System\", \"authors\": \"Vu Tien Lam\", \"journal\": \"Journal of Electronic Materials\", \"year\": 2023, \"doi\": \"10.1007/s11664-022-10134-7\", \"citations\": 0, \"source\": \"ORCID\"}, {\"title\": \"Surface ferromagnetism of complex defects lead-free ferroelectric Bi0.5Na0.5TiO3 materials\", \"authors\": \"Vu Tien Lam\", \"journal\": \"Surface and Interface Analysis\", \"year\": 2023, \"doi\": \"10.1002/sia.7184\", \"citations\": 0, \"source\": \"ORCID\"}, {\"title\": \"Design and optical properties of a new binary Bi1/2Na1/2TiO3-Eu1/2Na1/2TiO3 solid solution system\", \"authors\": \"Vu Tien Lam\", \"journal\": \"Optical Materials\", \"year\": 2022, \"doi\": \"10.1016/j.optmat.2022.113083\", \"citations\": 0, \"source\": \"ORCID\"}, {\"title\": \"Fabrication and Optical Properties of Rare-Earth-Sm-Doped Lead-Free Ferroelectric Bi0.5Na0.5TiO3 Materials\", \"authors\": \"Vu Tien Lam\", \"journal\": \"Lecture Notes in Mechanical Engineering\", \"year\": 2022, \"doi\": \"10.1007/978-3-030-99666-6_85\", \"citations\": 0, \"source\": \"ORCID\"}, {\"title\": \"Fabrication and optical properties of new (1-x)Bi1/2Na1/2TiO3+xHo1/2Na1/2TiO3 solid solution materials\", \"authors\": \"Vu Tien Lam\", \"journal\": \"Optical Materials\", \"year\": 2022, \"doi\": \"10.1016/j.optmat.2022.112750\", \"citations\": 0, \"source\": \"ORCID\"}, {\"title\": \"Magnetic Properties of a (1\\u2212x)Bi0.5Na0.5TiO3+xCaNiO3-\\u03b4 Solid Solution System Prepared by Sol\\u2013Gel Technique\", \"authors\": \"Vu Tien Lam\", \"journal\": \"Journal of Electronic Materials\", \"year\": 2022, \"doi\": \"10.1007/s11664-022-09457-2\", \"citations\": 0, \"source\": \"ORCID\"}, {\"title\": \"Magnetic and Optical Properties of Transition Metal (Cr, Mn, Fe, Co, and Ni) Doped Lead-Free Ferroelectric Bi0.5Na0.5TiO3 Materials\", \"authors\": \"Vu Tien Lam\", \"journal\": \"Lecture Notes in Mechanical Engineering\", \"year\": 2022, \"doi\": \"10.1007/978-3-030-99666-6_88\", \"citations\": 0, \"source\": \"ORCID\"}, {\"title\": \"Magnetic properties of new (1\\u2212x)Bi1/2Na1/2TiO3+xBaNiO3\\u2212\\u03b4 solid solution materials\", \"authors\": \"Vu Tien Lam\", \"journal\": \"Applied Physics A Materials Science and Processing\", \"year\": 2022, \"doi\": \"10.1007/s00339-022-05281-x\", \"citations\": 0, \"source\": \"ORCID\"}, {\"title\": \"Optical and Magnetic Properties of Lead-Free Ferroelectric (Bi0.5Na0.5)0.97A0.03Ti0.97Fe0.03O3 (A = Mg, Sr, Ca, Ba) Materials\", \"authors\": \"Vu Tien Lam\", \"journal\": \"Lecture Notes in Mechanical Engineering\", \"year\": 2022, \"doi\": \"10.1007/978-3-030-99666-6_87\", \"citations\": 0, \"source\": \"ORCID\"}, {\"title\": \"Optical properties of a new binary lead-free ferroelectric semiconductor Bi1/2Na1/2TiO3\\u2013Nd1/2Na1/2TiO3 solid solution system\", \"authors\": \"Vu Tien Lam\", \"journal\": \"Applied Physics A Materials Science and Processing\", \"year\": 2022, \"doi\": \"10.1007/s00339-022-05910-5\", \"citations\": 0, \"source\": \"ORCID\"}, {\"title\": \"Structural, Magnetic, and Optical Properties of Complex Lead-Free Ferroelectric 0.97Bi0.5Na0.5TiO3 + 0.03AMnO3 (A = Mg, Ca, Sr, Ba) Materials\", \"authors\": \"Vu Tien Lam\", \"journal\": \"Lecture Notes in Mechanical Engineering\", \"year\": 2022, \"doi\": \"10.1007/978-3-030-99666-6_86\", \"citations\": 0, \"source\": \"ORCID\"}, {\"title\": \"Structural, optical, and magnetic properties of a new complex (1\\u2212x)Bi1/2Na1/2TiO3 + xMgNiO3\\u2212\\u03b4 solid solution system\", \"authors\": \"Vu Tien Lam\", \"journal\": \"Applied Physics A Materials Science and Processing\", \"year\": 2022, \"doi\": \"10.1007/s00339-021-05255-5\", \"citations\": 0, \"source\": \"ORCID\"}, {\"title\": \"Synthesis and Characterization of (1\\u2212x)Bi1/2Na1/2TiO3+xSrNiO3-\\u03b4 Solid Solution System\", \"authors\": \"Vu Tien Lam\", \"journal\": \"Journal of Electronic Materials\", \"year\": 2022, \"doi\": \"10.1007/s11664-022-09534-6\", \"citations\": 0, \"source\": \"ORCID\"}]",
     "last_synced_at": "2026-11-11 19:12",
     "phone": "+1 (555) 234-5678",
     "website": "https://github.com/matsci-researcher",
@@ -57,15 +57,220 @@
     ],
     "publications": [
       {
-        "id": 1794391897844,
-        "title": "What Is the Role of a Magnetic Mo Antisite Defect on Carrier Relaxation and Spin Dynamics in 2-D MoS<sub>2</sub>?",
-        "authors": "Chengan Lei; Zhao Qian; Yandong Ma; Rajeev Ahuja",
-        "journal": "Nano Letters",
+        "title": "First-principles calculation of the impact of interstitial point defects on the Bi<sub>0.5</sub>Na<sub>0.5</sub>TiO<sub>3</sub> (110) surface",
+        "authors": "Vu Tien Lam",
+        "journal": "Dalat University Journal of Science",
+        "year": 2026,
+        "doi": "10.37569/DalatUniversity.16.4S.1620(2026)",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Ultrafast switching and high-endurance nonvolatile memory enabled by intrinsic switchable polarization in semiconducting Janus monolayers",
+        "authors": "Vu Tien Lam",
+        "journal": "Nature Communications",
+        "year": 2026,
+        "doi": "10.1038/s41467-026-73279-7",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Magnetic properties of new binary compounds lead-free ferroelectric (1-x)Ba(Zr0·2Ti0.8)O3+xFeTiO3 as solid solution",
+        "authors": "Vu Tien Lam",
+        "journal": "Journal of Solid State Chemistry",
         "year": 2025,
-        "doi": "10.1021/acs.nanolett.5c00628",
-        "citations": 8,
-        "visibility": "Public",
-        "source": "Academic CV"
+        "doi": "10.1016/j.jssc.2025.125495",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Nature defect-mediated room temperature ferromagnetism in lead-free ferroelectric Ba(Zr0.2Ti0.8)O3: A first-principles study",
+        "authors": "Vu Tien Lam",
+        "journal": "Next Materials",
+        "year": 2025,
+        "doi": "10.1016/j.nxmate.2025.100916",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Role of substitution Zr-site on the electronic structure and magnetic properties of BaTiO3 materials: A first principles calculation",
+        "authors": "Vu Tien Lam",
+        "journal": "Computational and Theoretical Chemistry",
+        "year": 2025,
+        "doi": "10.1016/j.comptc.2024.114989",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Comparative electronic structure, magnetic and optical properties of cubic perovskite BaXO3 (X=Ti, Sn) with self-defects: A first-principles calculation",
+        "authors": "Vu Tien Lam",
+        "journal": "Materials Today Communications",
+        "year": 2024,
+        "doi": "10.1016/j.mtcomm.2024.109686",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "First-principles calculations of self-defects on the structural, electronic, and optical properties of BaXO3 (X = Ti, Zr, and Hf) perovskite oxide materials",
+        "authors": "Vu Tien Lam",
+        "journal": "Materials Today Communications",
+        "year": 2024,
+        "doi": "10.1016/j.mtcomm.2024.110641",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Optical, Magnetic, and Electrical Properties of New Binary CoTiO3-Modified Ba(Zr0.2Ti0.8)O3 System as Solid Solution",
+        "authors": "Vu Tien Lam",
+        "journal": "Journal of Electronic Materials",
+        "year": 2024,
+        "doi": "10.1007/s11664-024-11514-x",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Optical, magnetic and electrical properties of new binary MnTiO3-modified Ba(Zr,Ti)O3 materials as solid solution",
+        "authors": "Vu Tien Lam",
+        "journal": "Physica B Condensed Matter",
+        "year": 2024,
+        "doi": "10.1016/j.physb.2024.416444",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Structural, electronic and optical properties of complex lead-free ferroelectric Ba0.7Ca0.3TiO3 materials: A DFT study",
+        "authors": "Vu Tien Lam",
+        "journal": "MRS Communications",
+        "year": 2024,
+        "doi": "10.1557/s43579-024-00599-4",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Electronic Structure and Optical Properties of Cubic Perovskite Baxo3 (X=Ti, Sn): A First Principle Calculations",
+        "authors": "Vu Tien Lam",
+        "journal": "Ssrn",
+        "year": 2023,
+        "doi": "10.2139/ssrn.4654244",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Fabrication and Optical Properties of (1−x)Bi½Na½TiO3−xEr½Na½TiO3 Solid Solution System",
+        "authors": "Vu Tien Lam",
+        "journal": "Journal of Electronic Materials",
+        "year": 2023,
+        "doi": "10.1007/s11664-022-10134-7",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Surface ferromagnetism of complex defects lead-free ferroelectric Bi0.5Na0.5TiO3 materials",
+        "authors": "Vu Tien Lam",
+        "journal": "Surface and Interface Analysis",
+        "year": 2023,
+        "doi": "10.1002/sia.7184",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Design and optical properties of a new binary Bi1/2Na1/2TiO3-Eu1/2Na1/2TiO3 solid solution system",
+        "authors": "Vu Tien Lam",
+        "journal": "Optical Materials",
+        "year": 2022,
+        "doi": "10.1016/j.optmat.2022.113083",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Fabrication and Optical Properties of Rare-Earth-Sm-Doped Lead-Free Ferroelectric Bi0.5Na0.5TiO3 Materials",
+        "authors": "Vu Tien Lam",
+        "journal": "Lecture Notes in Mechanical Engineering",
+        "year": 2022,
+        "doi": "10.1007/978-3-030-99666-6_85",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Fabrication and optical properties of new (1-x)Bi1/2Na1/2TiO3+xHo1/2Na1/2TiO3 solid solution materials",
+        "authors": "Vu Tien Lam",
+        "journal": "Optical Materials",
+        "year": 2022,
+        "doi": "10.1016/j.optmat.2022.112750",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Magnetic Properties of a (1−x)Bi0.5Na0.5TiO3+xCaNiO3-δ Solid Solution System Prepared by Sol–Gel Technique",
+        "authors": "Vu Tien Lam",
+        "journal": "Journal of Electronic Materials",
+        "year": 2022,
+        "doi": "10.1007/s11664-022-09457-2",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Magnetic and Optical Properties of Transition Metal (Cr, Mn, Fe, Co, and Ni) Doped Lead-Free Ferroelectric Bi0.5Na0.5TiO3 Materials",
+        "authors": "Vu Tien Lam",
+        "journal": "Lecture Notes in Mechanical Engineering",
+        "year": 2022,
+        "doi": "10.1007/978-3-030-99666-6_88",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Magnetic properties of new (1−x)Bi1/2Na1/2TiO3+xBaNiO3−δ solid solution materials",
+        "authors": "Vu Tien Lam",
+        "journal": "Applied Physics A Materials Science and Processing",
+        "year": 2022,
+        "doi": "10.1007/s00339-022-05281-x",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Optical and Magnetic Properties of Lead-Free Ferroelectric (Bi0.5Na0.5)0.97A0.03Ti0.97Fe0.03O3 (A = Mg, Sr, Ca, Ba) Materials",
+        "authors": "Vu Tien Lam",
+        "journal": "Lecture Notes in Mechanical Engineering",
+        "year": 2022,
+        "doi": "10.1007/978-3-030-99666-6_87",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Optical properties of a new binary lead-free ferroelectric semiconductor Bi1/2Na1/2TiO3–Nd1/2Na1/2TiO3 solid solution system",
+        "authors": "Vu Tien Lam",
+        "journal": "Applied Physics A Materials Science and Processing",
+        "year": 2022,
+        "doi": "10.1007/s00339-022-05910-5",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Structural, Magnetic, and Optical Properties of Complex Lead-Free Ferroelectric 0.97Bi0.5Na0.5TiO3 + 0.03AMnO3 (A = Mg, Ca, Sr, Ba) Materials",
+        "authors": "Vu Tien Lam",
+        "journal": "Lecture Notes in Mechanical Engineering",
+        "year": 2022,
+        "doi": "10.1007/978-3-030-99666-6_86",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Structural, optical, and magnetic properties of a new complex (1−x)Bi1/2Na1/2TiO3 + xMgNiO3−δ solid solution system",
+        "authors": "Vu Tien Lam",
+        "journal": "Applied Physics A Materials Science and Processing",
+        "year": 2022,
+        "doi": "10.1007/s00339-021-05255-5",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Synthesis and Characterization of (1−x)Bi1/2Na1/2TiO3+xSrNiO3-δ Solid Solution System",
+        "authors": "Vu Tien Lam",
+        "journal": "Journal of Electronic Materials",
+        "year": 2022,
+        "doi": "10.1007/s11664-022-09534-6",
+        "citations": 0,
+        "source": "ORCID"
       }
     ],
     "conferences": [

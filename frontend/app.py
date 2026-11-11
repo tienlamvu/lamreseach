@@ -434,6 +434,37 @@ def find_existing_paper_by_doi(raw_doi: str, exclude_id: Optional[int] = None) -
     return dict(row) if row else None
 
 
+def dump_all_to_data_json():
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM papers ORDER BY id DESC")
+        papers = [dict(r) for r in cur.fetchall()]
+        cur.execute("SELECT * FROM cif_structures ORDER BY id DESC")
+        structures = [dict(r) for r in cur.fetchall()]
+        cur.execute("SELECT * FROM schedule_items ORDER BY start_date ASC, start_time ASC")
+        schedule = [dict(r) for r in cur.fetchall()]
+        conn.close()
+        profile = load_full_profile()
+        obj = {
+            "version": "4.0",
+            "exported_at": datetime.now().isoformat(),
+            "profile": profile,
+            "papers": papers,
+            "structures": structures,
+            "schedule": schedule,
+        }
+        for target in [FRONTEND_DIR / "data.json", Path(__file__).parent / "data.json"]:
+            try:
+                with open(target, "w", encoding="utf-8") as f:
+                    json.dump(obj, f, indent=2, ensure_ascii=False)
+            except Exception as write_err:
+                print(f"Error writing to {target}: {write_err}")
+    except Exception as e:
+        print("Auto-export to data.json error:", e)
+
+
+
 # ============================================================================
 # Google Account Authentication & Owner Control API (Locked to lamvt.skku@gmail.com)
 # ============================================================================
@@ -713,6 +744,7 @@ def create_paper(paper: PaperCreate):
     cur.execute("SELECT * FROM papers WHERE id = ?", (new_id,))
     row = dict(cur.fetchone())
     conn.close()
+    dump_all_to_data_json()
     return row
 
 
@@ -754,6 +786,7 @@ def update_paper(paper_id: int, paper: PaperCreate):
     conn.close()
     if not row:
         raise HTTPException(status_code=404, detail="Paper not found")
+    dump_all_to_data_json()
     return dict(row)
 
 
@@ -764,6 +797,7 @@ def delete_paper(paper_id: int):
     cur.execute("DELETE FROM papers WHERE id = ?", (paper_id,))
     conn.commit()
     conn.close()
+    dump_all_to_data_json()
     return {"deleted": True, "id": paper_id}
 
 
@@ -947,6 +981,7 @@ def create_structure(s: StructureCreate):
     row["bandgap_ev"] = row.get("bandgap") or 0.0
     row["total_energy_per_atom"] = row.get("energy_per_atom") or 0.0
     row["mp_id"] = row.get("materials_project_id") or ""
+    dump_all_to_data_json()
     return row
 
 
@@ -998,6 +1033,7 @@ def update_structure(struct_id: int, s: StructureCreate):
     d["bandgap_ev"] = d.get("bandgap") or 0.0
     d["total_energy_per_atom"] = d.get("energy_per_atom") or 0.0
     d["mp_id"] = d.get("materials_project_id") or ""
+    dump_all_to_data_json()
     return d
 
 
@@ -1008,6 +1044,7 @@ def delete_structure(struct_id: int):
     cur.execute("DELETE FROM cif_structures WHERE id = ?", (struct_id,))
     conn.commit()
     conn.close()
+    dump_all_to_data_json()
     return {"deleted": True, "id": struct_id}
 
 
@@ -1288,6 +1325,7 @@ def update_profile(prof: ProfileUpdate):
     ))
     conn.commit()
     conn.close()
+    dump_all_to_data_json()
     return load_full_profile()
 
 
@@ -1339,6 +1377,7 @@ def sync_orcid(req: SyncOrcidRequest):
     ))
     conn.commit()
     conn.close()
+    dump_all_to_data_json()
 
     updated = load_full_profile()
     updated["sync_summary"] = f"Synced ORCID {synced['orcid_id']}: found {len(synced.get('publications', []))} works ({added_count} new added)."
@@ -1392,6 +1431,7 @@ def sync_scholar(req: SyncScholarRequest):
     ))
     conn.commit()
     conn.close()
+    dump_all_to_data_json()
 
     updated = load_full_profile()
     updated["sync_summary"] = (
@@ -1556,4 +1596,14 @@ def serve_js():
 @app.get("/matsci_tools.js")
 def serve_tools_js():
     return FileResponse(str(FRONTEND_DIR / "matsci_tools.js"))
+
+
+@app.get("/index.html")
+def serve_index_html():
+    return FileResponse(str(FRONTEND_DIR / "index.html"))
+
+
+@app.get("/data.json")
+def serve_data_json():
+    return FileResponse(str(FRONTEND_DIR / "data.json"))
 
