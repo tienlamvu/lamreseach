@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-11T11:12:15.948Z",
+  "exported_at": "2026-11-11T11:25:24.939Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -56,17 +56,6 @@
       }
     ],
     "publications": [
-      {
-        "id": 1794395122377,
-        "title": "Universal hydrogen-free synthesis and elemental doping of two-dimensional transition metal selenides",
-        "authors": "Ping Man; Lok Wing Wong; Ka Ho Leung; Zhiqiang Guan; Tianren Chen; Honglin Chen; Jiangbo Peng; Mingjie Li; Chun-Sing Lee; Qingming Deng; Jiong Zhao; Thuc Hue Ly",
-        "journal": "Nature Communications",
-        "year": 2026,
-        "doi": "10.1038/s41467-026-78372-5",
-        "citations": 0,
-        "visibility": "Public",
-        "source": "Academic CV"
-      },
       {
         "title": "First-principles calculation of the impact of interstitial point defects on the Bi<sub>0.5</sub>Na<sub>0.5</sub>TiO<sub>3</sub> (110) surface",
         "authors": "Vu Tien Lam",
