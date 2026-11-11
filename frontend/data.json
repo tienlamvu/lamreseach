@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-11T12:25:19.552Z",
+  "exported_at": "2026-11-11T12:27:13.492Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -338,14 +338,6 @@
       }
     ],
     "conferences": [
-      {
-        "title": "A",
-        "event": "MRS Fall Meeting 2026, Boston, MA, USA",
-        "type": "Oral Presentation",
-        "year": 2026,
-        "visibility": "Public",
-        "url": ""
-      },
       {
         "title": "Suppressing Li Dendrite Propagation at Garnet Solid Electrolyte Interfaces via Atomic Layer Deposition",
         "event": "MRS Fall Meeting & Exhibit (Boston, MA)",
