@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261112_v26" onerror="this.href='/static/styles.css?v=20261112_v26'" />
+  <link rel="stylesheet" href="styles.css?v=20261112_v27" onerror="this.href='/static/styles.css?v=20261112_v27'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -13,6 +13,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
   <!-- Client-side PDF.js for PDF text extraction on GitHub Pages -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- Client-side html2pdf.js for Academic Plagiarism PDF Report generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 
@@ -603,22 +605,29 @@
               </div>
 
               <div style="margin-top:12px; padding:12px; background:#f8fafc; border-radius:8px; border:1px solid var(--border-color);">
-                <div style="font-weight:700; font-size:12.5px; margin-bottom:6px;">Cross-Check Sources:</div>
+                <div style="font-weight:700; font-size:12.5px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+                  <span>Cross-Check Sources &amp; Literature Databases:</span>
+                  <span style="font-size:11px; padding:2px 8px; border-radius:12px; background:#eff6ff; color:#1d4ed8; font-weight:700; border:1px solid #bfdbfe;">Live 250M+ Index</span>
+                </div>
                 <div style="display:flex; flex-direction:column; gap:6px; font-size:12.5px;">
+                  <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; color:#1d4ed8;">
+                    <input type="checkbox" id="chk-cross-internet" checked />
+                    🌐 Deep Internet &amp; Google Scholar Scan (OpenAlex &amp; CrossRef 250M+ Works)
+                  </label>
                   <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
                     <input type="checkbox" id="chk-cross-library" checked />
-                    Cross-check against all papers in Literature Library (Abstracts &amp; Notes)
+                    📚 Literature Library (Abstracts &amp; Notes in personal database)
                   </label>
                   <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
                     <input type="checkbox" id="chk-cross-internal" checked />
-                    Detect internal repetition / duplicate paragraphs within this document
+                    📄 Internal Repetition (Detect duplicated paragraphs within this document)
                   </label>
                 </div>
               </div>
 
               <div style="margin-top:14px; display:flex; justify-content:flex-end;">
                 <button class="btn btn-primary" id="btn-run-plag" onclick="runPlagiarismAnalysis()">
-                  ⚡ Check Duplicate Paragraphs
+                  ⚡ Check Plagiarism &amp; Cross-Check Literature
                 </button>
               </div>
             </div>
@@ -663,13 +672,21 @@
           <div class="card">
             <div class="card-header">
               <div class="card-title">📑 Paragraph-by-Paragraph Duplicate Breakdown</div>
-              <div style="display:flex; gap:8px;">
+              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                 <select id="plag-filter-level" onchange="filterPlagResults()" style="padding:6px 10px; border-radius:6px; border:1px solid var(--border-color); font-size:12.5px;">
                   <option value="ALL">All Paragraphs</option>
                   <option value="FLAGGED">Only Flagged (High &amp; Moderate)</option>
                   <option value="HIGH">High Risk (>65%) Only</option>
                 </select>
-                <button class="btn btn-outline btn-sm" onclick="exportPlagiarismReport()">📥 Export Report</button>
+                <button class="btn btn-primary btn-sm" id="btn-export-pdf" onclick="exportPlagiarismPdfReport()" style="display:inline-flex; align-items:center; gap:6px; font-weight:700; background:#dc2626; border-color:#b91c1c;">
+                  📄 Export PDF Report
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="exportPlagiarismTxtReport()" title="Export summary text file">
+                  📝 Text
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="printPlagiarismReport()" title="Print or save as vector PDF">
+                  🖨️ Print
+                </button>
               </div>
             </div>
 
@@ -1951,8 +1968,9 @@
   </div>
 
   <div id="toast-container"></div>
+  <div id="plag-pdf-render-area" style="display:none;"></div>
 
-  <script src="matsci_tools.js?v=20261112_v26" onerror="this.src='/static/matsci_tools.js?v=20261112_v26'"></script>
-  <script src="app.js?v=20261112_v26" onerror="this.src='/static/app.js?v=20261112_v26'"></script>
+  <script src="matsci_tools.js?v=20261112_v27" onerror="this.src='/static/matsci_tools.js?v=20261112_v27'"></script>
+  <script src="app.js?v=20261112_v27" onerror="this.src='/static/app.js?v=20261112_v27'"></script>
 </body>
 </html>
