@@ -7264,7 +7264,7 @@ function buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr) 
   });
 
   return `
-    <div id="pdf-export-container" style="width:100%; max-width:100%; margin:0; padding:14px 18px; background:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#0f172a; box-sizing:border-box;">
+    <div id="pdf-export-container" style="width:100%; max-width:100%; margin:0; padding:0; background:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#0f172a; box-sizing:border-box;">
       <style>
         .plag-para-card, .pdf-annotated-para, .pdf-avoid-break, tr {
           page-break-inside: avoid !important;
@@ -7445,16 +7445,9 @@ async function exportPlagiarismPdfReport() {
   allPdfBtns.forEach(btn => {
     btn.disabled = true;
     btn.dataset.origHtml = btn.innerHTML;
-    btn.innerHTML = `<span class="loading-spinner"></span> Generating...`;
+    btn.innerHTML = `<span class="loading-spinner"></span> Preparing...`;
   });
-  showToast("📄 Compiling Academic Originality Audit PDF Report...", "info");
-
-  const prevScrollX = window.scrollX || window.pageXOffset || 0;
-  const prevScrollY = window.scrollY || window.pageYOffset || 0;
-
-  // IMPORTANT: Instantly scroll to top (0, 0) so html2canvas and html2pdf container calculations
-  // capture from the very top of the document without any vertical scroll offset void!
-  window.scrollTo(0, 0);
+  showToast("📄 Preparing Academic Originality Audit Vector PDF Report...", "info");
 
   try {
     const data = currentPlagResults;
@@ -7464,59 +7457,161 @@ async function exportPlagiarismPdfReport() {
     const fullDateStr = now.toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric" });
     const reportId = `SKKU-PLAG-${dateStr.replace(/-/g, "")}-${Math.floor(10000 + Math.random() * 90000)}`;
     const docName = currentPlagFile?.name || "Manuscript_Draft.pdf";
+    const reportTitle = `Academic_Originality_Audit_Report_${docName.replace(/\.[^/.]+$/, "")}_${reportId}`;
 
-    const renderArea = document.getElementById("plag-pdf-render-area");
-    if (!renderArea) {
-      showToast("PDF render container missing.", "error");
-      return;
-    }
+    const reportInnerHtml = buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr);
 
-    renderArea.innerHTML = buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr);
-
-    // Setup clean renderArea container at (0,0) without offset or viewport clipping
-    renderArea.style.display = "block";
-    renderArea.style.position = "absolute";
-    renderArea.style.left = "0px";
-    renderArea.style.top = "0px";
-    renderArea.style.width = "780px";
-    renderArea.style.margin = "0";
-    renderArea.style.padding = "0";
-    renderArea.style.background = "#ffffff";
-    renderArea.style.zIndex = "-9999";
-    renderArea.style.boxSizing = "border-box";
-
-    if (typeof html2pdf !== "function") {
-      throw new Error("html2pdf library is not loaded.");
-    }
-
-    const opt = {
-      margin: [8, 8, 8, 8], // 8mm equal margins on all sides (standard compact academic A4)
-      filename: `Academic_Originality_Audit_Report_${docName.replace(/\.[^/.]+$/, "")}_${dateStr}.pdf`,
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        scrollX: 0,
-        scrollY: 0
-      },
-      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-      pagebreak: {
-        mode: ["css", "legacy"],
-        avoid: [".plag-para-card", ".pdf-annotated-para", "tr", ".pdf-avoid-break"]
+    const fullPrintableHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>${escapeHtml(reportTitle)}</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 16mm 14mm 16mm 14mm;
+      @top-left {
+        content: "Report ID: ${reportId}";
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+        font-size: 8.5pt;
+        font-weight: 600;
+        color: #64748b;
       }
-    };
+      @bottom-right {
+        content: "Page " counter(page) "/" counter(pages);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: 8.5pt;
+        font-weight: 600;
+        color: #64748b;
+      }
+    }
 
-    const element = document.getElementById("pdf-export-container") || renderArea;
-    await html2pdf().set(opt).from(element).save();
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
 
-    renderArea.style.display = "none";
-    showToast("✅ Academic Originality PDF Report downloaded successfully!", "success");
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+      color: #0f172a;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.5;
+    }
+
+    #pdf-export-container {
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    .plag-para-card,
+    .pdf-annotated-para,
+    .pdf-avoid-break,
+    tr,
+    table {
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+
+    .turnitin-tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      font-size: 9px;
+      font-weight: 800;
+      color: #fff;
+      margin-left: 3px;
+      vertical-align: middle;
+    }
+    .tag-1 { background-color: #dc2626; }
+    .tag-2 { background-color: #ea580c; }
+    .tag-3 { background-color: #ca8a04; }
+    .tag-4 { background-color: #16a34a; }
+    .tag-5 { background-color: #0284c7; }
+    .tag-6 { background-color: #7c3aed; }
+    .tag-7 { background-color: #db2777; }
+    .tag-8 { background-color: #0d9488; }
+    .tag-9 { background-color: #4b5563; }
+    .tag-10 { background-color: #4f46e5; }
+    
+    .turnitin-color-1 { background-color: rgba(220, 38, 38, 0.16); border-bottom: 1.5px solid #dc2626; }
+    .turnitin-color-2 { background-color: rgba(234, 88, 12, 0.16); border-bottom: 1.5px solid #ea580c; }
+    .turnitin-color-3 { background-color: rgba(202, 138, 4, 0.16); border-bottom: 1.5px solid #ca8a04; }
+    .turnitin-color-4 { background-color: rgba(22, 163, 74, 0.16); border-bottom: 1.5px solid #16a34a; }
+    .turnitin-color-5 { background-color: rgba(2, 132, 199, 0.16); border-bottom: 1.5px solid #0284c7; }
+    .turnitin-color-6 { background-color: rgba(124, 58, 237, 0.16); border-bottom: 1.5px solid #7c3aed; }
+    .turnitin-color-7 { background-color: rgba(219, 39, 119, 0.16); border-bottom: 1.5px solid #db2777; }
+    .turnitin-color-8 { background-color: rgba(13, 148, 136, 0.16); border-bottom: 1.5px solid #0d9488; }
+    .turnitin-color-9 { background-color: rgba(75, 85, 99, 0.16); border-bottom: 1.5px solid #4b5563; }
+    .turnitin-color-10 { background-color: rgba(79, 70, 229, 0.16); border-bottom: 1.5px solid #4f46e5; }
+
+    :root {
+      --t-c1: #dc2626;
+      --t-c2: #ea580c;
+      --t-c3: #ca8a04;
+      --t-c4: #16a34a;
+      --t-c5: #0284c7;
+      --t-c6: #7c3aed;
+      --t-c7: #db2777;
+      --t-c8: #0d9488;
+      --t-c9: #4b5563;
+      --t-c10: #4f46e5;
+    }
+  </style>
+</head>
+<body>
+  ${reportInnerHtml}
+</body>
+</html>`;
+
+    // Remove any previous hidden print iframe
+    let oldIframe = document.getElementById("plag-pdf-print-iframe");
+    if (oldIframe) oldIframe.remove();
+
+    const iframe = document.createElement("iframe");
+    iframe.id = "plag-pdf-print-iframe";
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "none";
+    iframe.style.zIndex = "-99999";
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(fullPrintableHtml);
+    doc.close();
+
+    setTimeout(() => {
+      try {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        showToast("✅ Vector PDF Report ready! Select 'Save as PDF' to download.", "success");
+      } catch (printErr) {
+        console.warn("Iframe direct print fallback:", printErr);
+        const blob = new Blob([fullPrintableHtml], { type: "text/html;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const win = window.open(url, "_blank");
+        if (win) {
+          win.onload = () => { win.focus(); win.print(); };
+        }
+      }
+    }, 400);
+
   } catch (err) {
     console.error("PDF export error:", err);
-    showToast(`PDF generation note: ${err.message}.`, "warn");
+    showToast(`PDF generation note: ${err.message}`, "warn");
   } finally {
-    window.scrollTo(prevScrollX, prevScrollY);
     allPdfBtns.forEach(btn => {
       btn.disabled = false;
       if (btn.dataset.origHtml) btn.innerHTML = btn.dataset.origHtml;
