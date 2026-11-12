@@ -2614,6 +2614,8 @@ function viewCifModal(id) {
     `).join("");
   }
 
+  const isWhite = CRYSTAL_3D_STATE.theme === "white";
+
   // Populate legend
   const legend = document.getElementById("crystal-3d-legend");
   if (legend) {
@@ -2624,33 +2626,7 @@ function viewCifModal(id) {
         ${escapeHtml(el)}
       </span>
     `).join("");
-  }
 
-  const badge = document.getElementById("cvm-atom-count-badge");
-  if (badge) badge.textContent = `${atoms.length} atoms in basis`;
-
-  // Sync toolbar active button classes and icons
-  document.getElementById("btn-toggle-bonds")?.classList.toggle("active", CRYSTAL_3D_STATE.showBonds);
-  document.getElementById("btn-toggle-box")?.classList.toggle("active", CRYSTAL_3D_STATE.showBox);
-  document.getElementById("btn-toggle-labels")?.classList.toggle("active", CRYSTAL_3D_STATE.showLabels);
-
-  const themeBtn = document.getElementById("btn-toggle-theme");
-  const isWhite = CRYSTAL_3D_STATE.theme === "white";
-  if (themeBtn) {
-    themeBtn.textContent = isWhite ? "🌙" : "☀️";
-    themeBtn.title = isWhite ? "Switch to Dark Background" : "Switch to Light Background";
-    themeBtn.classList.toggle("active", isWhite);
-  }
-
-  const box = document.getElementById("crystal-3d-container");
-  if (box) {
-    box.className = isWhite ? "theme-white" : "theme-dark";
-    box.style.background = isWhite ? "#ffffff" : "#0b1120";
-    box.style.borderColor = isWhite ? "#cbd5e1" : "#334155";
-  }
-
-  const legend = document.getElementById("crystal-3d-legend");
-  if (legend) {
     if (isWhite) {
       legend.style.background = "rgba(255,255,255,0.92)";
       legend.style.color = "#0f172a";
@@ -2662,6 +2638,28 @@ function viewCifModal(id) {
       legend.style.borderColor = "#334155";
       legend.style.boxShadow = "0 2px 8px rgba(0,0,0,0.4)";
     }
+  }
+
+  const badge = document.getElementById("cvm-atom-count-badge");
+  if (badge) badge.textContent = `${atoms.length} atoms in basis`;
+
+  // Sync toolbar active button classes and icons
+  document.getElementById("btn-toggle-bonds")?.classList.toggle("active", CRYSTAL_3D_STATE.showBonds);
+  document.getElementById("btn-toggle-box")?.classList.toggle("active", CRYSTAL_3D_STATE.showBox);
+  document.getElementById("btn-toggle-labels")?.classList.toggle("active", CRYSTAL_3D_STATE.showLabels);
+
+  const themeBtn = document.getElementById("btn-toggle-theme");
+  if (themeBtn) {
+    themeBtn.textContent = isWhite ? "🌙" : "☀️";
+    themeBtn.title = isWhite ? "Switch to Dark Background" : "Switch to Light Background";
+    themeBtn.classList.toggle("active", isWhite);
+  }
+
+  const box = document.getElementById("crystal-3d-container");
+  if (box) {
+    box.className = isWhite ? "theme-white" : "theme-dark";
+    box.style.background = isWhite ? "#ffffff" : "#0b1120";
+    box.style.borderColor = isWhite ? "#cbd5e1" : "#334155";
   }
 
   switchCvmTab("3d");
