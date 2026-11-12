@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261112_v22" onerror="this.href='/static/styles.css?v=20261112_v22'" />
+  <link rel="stylesheet" href="styles.css?v=20261112_v23" onerror="this.href='/static/styles.css?v=20261112_v23'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -860,33 +860,33 @@
               <div class="card-header">
                 <div>
                   <div class="card-title">🌈 Spectroscopy &amp; Photon Energy Converter (eV ↔ nm ↔ cm⁻¹)</div>
-                  <div style="font-size:12px; color:var(--text-muted);">Instant conversion for UV-Vis Bandgap (Tauc), Photoluminescence, Raman, FTIR &amp; XPS ($E = hc/\lambda$)</div>
+                  <div style="font-size:12px; color:var(--text-muted);">Instant conversion for UV-Vis Bandgap (Tauc), Photoluminescence, Raman, FTIR &amp; XPS (<i>E</i> = <i>h</i><i>c</i> / λ)</div>
                 </div>
               </div>
 
               <div class="form-grid">
                 <div class="form-group">
-                  <label>Photon Energy $E$ (eV)</label>
+                  <label>Photon Energy <i>E</i> (eV)</label>
                   <input type="number" id="conv-ev" value="2.33" step="0.01" oninput="updateEnergyConverter('ev')" />
                 </div>
                 <div class="form-group">
-                  <label>Wavelength $\lambda$ (nm)</label>
+                  <label>Wavelength λ (nm)</label>
                   <input type="number" id="conv-nm" value="532.1" step="0.5" oninput="updateEnergyConverter('nm')" />
                 </div>
                 <div class="form-group">
-                  <label>Wavelength $\lambda$ (Å)</label>
+                  <label>Wavelength λ (Å)</label>
                   <input type="number" id="conv-ang" value="5321.2" step="1" oninput="updateEnergyConverter('ang')" />
                 </div>
                 <div class="form-group">
-                  <label>Wavenumber $\tilde{\nu}$ (cm⁻¹)</label>
+                  <label>Wavenumber ν̃ (cm⁻¹)</label>
                   <input type="number" id="conv-cm" value="18792" step="10" oninput="updateEnergyConverter('cm')" />
                 </div>
                 <div class="form-group">
-                  <label>Frequency $\nu$ (THz)</label>
+                  <label>Frequency ν (THz)</label>
                   <input type="number" id="conv-thz" value="563.4" step="1" oninput="updateEnergyConverter('thz')" />
                 </div>
                 <div class="form-group">
-                  <label>Thermal Equivalent $T = E/k_B$ (K)</label>
+                  <label>Thermal Equivalent <i>T</i> = <i>E</i> / <i>k</i><sub>B</sub> (K)</label>
                   <input type="number" id="conv-kelvin" value="27039" step="10" readonly style="background:#f8fafc;" />
                 </div>
               </div>
@@ -896,14 +896,14 @@
             <div class="card" style="margin-bottom:0;">
               <div class="card-header">
                 <div>
-                  <div class="card-title">📐 XRD Bragg's Law ($n\lambda = 2d\sin\theta$) &amp; Scherrer Size Calculator</div>
-                  <div style="font-size:12px; color:var(--text-muted);">Compute interplanar $d$-spacing, scattering vector $q$, and crystallite size $D$ from peak FWHM</div>
+                  <div class="card-title">📐 XRD Bragg's Law (<i>n</i>λ = 2<i>d</i>·sin θ) &amp; Scherrer Crystallite Size Calculator</div>
+                  <div style="font-size:12px; color:var(--text-muted);">Compute interplanar <i>d</i>-spacing, scattering vector <i>q</i>, and crystallite size <i>D</i> from peak FWHM</div>
                 </div>
               </div>
 
               <div class="form-grid">
                 <div class="form-group">
-                  <label>X-Ray Source Target ($\lambda$)</label>
+                  <label>X-Ray Source Target (λ)</label>
                   <select id="xrd-source" onchange="handleXrdSourceChange()">
                     <option value="1.54056">Cu Kα₁ (1.54056 Å)</option>
                     <option value="1.54184">Cu Kα avg (1.54184 Å)</option>
@@ -914,23 +914,23 @@
                   </select>
                 </div>
                 <div class="form-group">
-                  <label>Wavelength $\lambda$ (Å)</label>
+                  <label>Wavelength λ (Å)</label>
                   <input type="number" id="xrd-lambda" value="1.54056" step="0.0001" oninput="updateBragg('twotheta')" />
                 </div>
                 <div class="form-group">
-                  <label>Diffraction Angle $2\theta$ (degrees)</label>
+                  <label>Diffraction Angle 2θ (degrees)</label>
                   <input type="number" id="xrd-twotheta" value="30.8" step="0.1" min="0.5" max="179" oninput="updateBragg('twotheta')" />
                 </div>
                 <div class="form-group">
-                  <label>Interplanar Spacing $d$ (Å)</label>
+                  <label>Interplanar Spacing <i>d</i> (Å)</label>
                   <input type="number" id="xrd-d" value="2.899" step="0.001" oninput="updateBragg('d')" />
                 </div>
                 <div class="form-group">
-                  <label>Peak FWHM $\beta$ (degrees $2\theta$)</label>
+                  <label>Peak FWHM β (degrees 2θ)</label>
                   <input type="number" id="xrd-fwhm" value="0.22" step="0.01" min="0.01" oninput="updateBragg('twotheta')" />
                 </div>
                 <div class="form-group">
-                  <label>Shape Factor $K$ (Scherrer)</label>
+                  <label>Shape Factor <i>K</i> (Scherrer)</label>
                   <input type="number" id="xrd-k" value="0.90" step="0.01" oninput="updateBragg('twotheta')" />
                 </div>
               </div>
@@ -1609,7 +1609,7 @@
         </div>
         <div class="form-group">
           <label>Chemical Formula *</label>
-          <input type="text" id="struct-formula" placeholder="e.g., BaTiO3" />
+          <input type="text" id="struct-formula" placeholder="e.g., BaTiO3" onblur="autoSortModalFormula()" />
         </div>
         <div class="form-group">
           <label>Crystal System</label>
@@ -1946,7 +1946,7 @@
 
   <div id="toast-container"></div>
 
-  <script src="matsci_tools.js?v=20261112_v22" onerror="this.src='/static/matsci_tools.js?v=20261112_v22'"></script>
-  <script src="app.js?v=20261112_v22" onerror="this.src='/static/app.js?v=20261112_v22'"></script>
+  <script src="matsci_tools.js?v=20261112_v23" onerror="this.src='/static/matsci_tools.js?v=20261112_v23'"></script>
+  <script src="app.js?v=20261112_v23" onerror="this.src='/static/app.js?v=20261112_v23'"></script>
 </body>
 </html>
