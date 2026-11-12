@@ -2801,6 +2801,68 @@ body.is-admin .visitor-only {
   outline: none;
 }
 
+/* ============================================================================
+   Floating Scroll-to-Top Button
+   ============================================================================ */
+.scroll-top-btn {
+  position: fixed;
+  bottom: 26px;
+  right: 26px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--primary, #b45309);
+  color: #ffffff;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 4px 16px rgba(31, 25, 21, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 9999;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(14px) scale(0.9);
+  transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease, background 0.2s ease, box-shadow 0.2s ease;
+  user-select: none;
+  outline: none;
+}
+
+.scroll-top-btn.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+}
+
+.scroll-top-btn:hover {
+  background: var(--primary-hover, #92400e);
+  box-shadow: 0 6px 20px rgba(31, 25, 21, 0.4);
+  transform: translateY(-3px) scale(1.06);
+}
+
+.scroll-top-btn:active {
+  transform: translateY(0) scale(0.94);
+}
+
+.scroll-top-btn svg {
+  stroke: #ffffff;
+  transition: transform 0.2s ease;
+}
+
+.scroll-top-btn:hover svg {
+  transform: translateY(-1.5px);
+}
+
+@media (max-width: 768px) {
+  .scroll-top-btn {
+    bottom: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+  }
+}
+
+
 
 
 
