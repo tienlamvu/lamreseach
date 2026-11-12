@@ -6325,97 +6325,46 @@ function initDiffDropZones() {
 
 function normalizeManuscriptIntoParagraphs(rawText) {
   if (!rawText) return [];
-  let text = rawText || "";
-  // 1. Normalize quotes and dashes
+
+  // 1. Strip academic line numbers like ' 12', ' 13\n' or line margin numbers
+  let text = rawText.replace(/[ \t]+\d+[ \t]*(?=\r?\n|$)/g, "");
+
+  // 2. Strip standalone page numbers
+  text = text.replace(/^\s*\d+\s*$/gm, "");
+
+  // 3. Normalize quotes and dashes
   text = text.replace(/[\u201c\u201d]/g, '"').replace(/[\u2018\u2019]/g, "'");
   text = text.replace(/[\u2013\u2014\u2212]/g, "-");
 
-  // 2. Strip standalone line/page numbers on separate lines
-  text = text.replace(/^\s*\d+\s*$/gm, "");
-
-  // 3. Strip academic line numbers at beginning or end of lines
-  text = text.replace(/^[ \t]*\d{1,4}[ \t]+/gm, "");
-  text = text.replace(/[ \t]+\d{1,4}[ \t]*$/gm, "");
-
-  // 4. Clean spaced hyphens: two - dimensional -> two-dimensional
-  text = text.replace(/(\b\w+)\s+-\s+(\w+\b)/g, "$1-$2");
-
-  // 5. Clean broken initial capital letters: B ecause -> Because, T he -> The
-  text = text.replace(/\b([A-Z])\s+([a-z]{2,})\b/g, "$1$2");
-
-  // 6. Clean footnote citation numbers right after period: devices.1 Because -> devices. Because
-  text = text.replace(/(\w+\.)\s*(\d{1,3})\s+([A-Z])/g, "$1 $3");
-
-  // 7. Clean inline draft line numbers between words: semiconductors 13 have -> semiconductors have
-  text = text.replace(/([a-z,;])\s+\d{1,3}\s+([a-z])/g, "$1 $2");
-
-  // 8. Clean inline draft line numbers preceding headings: edu 2 Abstract 12 Electrical -> Abstract\n\nElectrical
-  text = text.replace(/\s+\d{1,3}\s+(Abstract|Introduction|Results|Discussion|Methods|Conclusions?|References)\b/gi, "\n\n$1");
-  text = text.replace(/([.!?]|\bAbstract\b|\bIntroduction\b|\bMethods\b)\s+\d{1,3}\s+([A-Z])/g, "$1\n\n$2");
-
-  // 9. Rejoin hyphenated line wraps: "exam-\nple" -> "example"
-  text = text.replace(/(\b\w+)-\s*\r?\n\s*([a-z]\w*\b)/g, "$1$2");
-
-  // 10. Split text into paragraphs based on double newlines and section boundaries
-  const rawBlocks = text.split(/\r?\n\s*\r?\n/).map(b => b.trim()).filter(Boolean);
+  const rawLines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   const paragraphs = [];
+  let curLines = [];
 
-  for (const block of rawBlocks) {
-    const singleLine = block.replace(/\s+/g, " ").trim();
-    if (!singleLine) continue;
+  for (let i = 0; i < rawLines.length; i++) {
+    const line = rawLines[i];
+    curLines.push(line);
+    const wordsCount = curLines.join(" ").split(/\s+/).filter(Boolean).length;
+    const isTerminal = /[\.\?\!]\s*$/.test(line);
+    const isHeading = /^(Abstract|Introduction|Results|Discussion|Methods|Conclusions?|References|Computational Methods|\d+\.\s+[A-Z])\b/i.test(line);
 
-    // Filter out obvious header/footer garbage like page numbers or lone URLs/emails with < 5 words
-    const words = singleLine.split(/\s+/).filter(Boolean);
-    if (words.length < 5 && !/^(Abstract|Introduction|Methods|Results|Discussion|Conclusions?)\b/i.test(singleLine)) {
-      continue;
-    }
-
-    // If block is very long (> 220 words) with multiple sentences, split into logical paragraph units
-    if (words.length > 220) {
-      const sents = splitIntoSentences(singleLine);
-      let cur = [];
-      let curW = 0;
-      for (const s of sents) {
-        cur.push(s);
-        curW += s.split(/\s+/).filter(Boolean).length;
-        if (curW >= 85) {
-          paragraphs.push(cur.join(" ").trim());
-          cur = [];
-          curW = 0;
-        }
+    if ((isTerminal && wordsCount >= 30) || (isHeading && wordsCount > 10)) {
+      const pText = curLines.join(" ").replace(/\s+/g, " ").trim();
+      if (pText.split(/\s+/).length >= 10) {
+        paragraphs.push(pText);
       }
-      if (cur.length > 0) {
-        const rest = cur.join(" ").trim();
-        if (rest.split(/\s+/).filter(Boolean).length >= 15 && paragraphs.length > 0) {
-          paragraphs[paragraphs.length - 1] += " " + rest;
-        } else if (rest.split(/\s+/).filter(Boolean).length >= 8) {
-          paragraphs.push(rest);
-        }
-      }
-    } else if (words.length >= 8) {
-      paragraphs.push(singleLine);
-    } else if (/^(Abstract|Introduction|Methods|Results|Discussion|Conclusions?)\b/i.test(singleLine) && words.length >= 3) {
-      paragraphs.push(singleLine);
+      curLines = [];
     }
   }
 
-  // Fallback to sentence grouping if no paragraphs formed
-  if (paragraphs.length === 0 && text.trim().length > 30) {
-    const sents = splitIntoSentences(text.replace(/\s+/g, " ").trim());
-    let cur = [];
-    let curW = 0;
-    for (const s of sents) {
-      cur.push(s);
-      curW += s.split(/\s+/).filter(Boolean).length;
-      if (curW >= 70) {
-        paragraphs.push(cur.join(" ").trim());
-        cur = [];
-        curW = 0;
-      }
+  if (curLines.length > 0) {
+    const pText = curLines.join(" ").replace(/\s+/g, " ").trim();
+    if (pText.split(/\s+/).length >= 10) {
+      paragraphs.push(pText);
     }
-    if (cur.length > 0) {
-      paragraphs.push(cur.join(" ").trim());
-    }
+  }
+
+  if (paragraphs.length === 0 && rawText.trim().length > 20) {
+    paragraphs.push(rawText.replace(/\s+/g, " ").trim());
   }
 
   return paragraphs;
@@ -6622,10 +6571,7 @@ async function runPlagiarismAnalysis() {
       return;
     }
 
-    const paras = rawText
-      .split(/\n\s*\n/)
-      .map(p => p.trim())
-      .filter(p => p.length >= 25);
+    const paras = normalizeManuscriptIntoParagraphs(rawText);
 
     let internetCandidates = [];
 
@@ -7251,7 +7197,7 @@ function buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr) 
   });
 
   return `
-    <div id="pdf-export-container" style="width:718px; max-width:718px; margin:0 auto; padding:0; background:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#0f172a; box-sizing:border-box;">
+    <div id="pdf-export-container" style="width:780px; min-width:780px; max-width:780px; margin:0 auto; padding:24px 28px; background:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#0f172a; box-sizing:border-box;">
       
       <!-- REPORT HEADER -->
       <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #1e40af; padding-bottom:12px; margin-bottom:14px; gap:12px;">
@@ -7439,26 +7385,20 @@ async function exportPlagiarismPdfReport() {
 
     renderArea.innerHTML = buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr);
     
-    // Position renderArea at absolute top-left (0,0) to prevent any window scroll displacement in html2canvas
-    renderArea.style.position = "fixed";
-    renderArea.style.top = "0";
-    renderArea.style.left = "0";
-    renderArea.style.width = "718px";
-    renderArea.style.zIndex = "-9999";
-    renderArea.style.background = "#ffffff";
-    renderArea.style.display = "block";
-
-    // Scroll to top during capture to ensure perfect starting coordinate (0,0)
+    // Scroll window to top so html2canvas starts from offset (0,0)
     window.scrollTo(0, 0);
+
+    renderArea.style.display = "block";
+    renderArea.style.position = "static";
+    renderArea.style.width = "auto";
+    renderArea.style.background = "#ffffff";
 
     if (typeof html2pdf !== "function") {
       throw new Error("html2pdf library is not loaded.");
     }
 
-    // A4 Portrait: 210mm x 297mm.
-    // Clean 10mm top/bottom and 10mm left/right margins.
     const opt = {
-      margin: [10, 10, 10, 10],
+      margin: [6, 6, 6, 6],
       filename: `Academic_Originality_Audit_Report_${docName.replace(/\.[^/.]+$/, "")}_${dateStr}.pdf`,
       image: { type: "jpeg", quality: 0.98 },
       html2canvas: {
@@ -7466,8 +7406,7 @@ async function exportPlagiarismPdfReport() {
         useCORS: true,
         logging: false,
         scrollY: 0,
-        scrollX: 0,
-        windowWidth: 794
+        scrollX: 0
       },
       jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
       pagebreak: { mode: ["css", "legacy"] }
