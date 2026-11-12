@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261112_v19" onerror="this.href='/static/styles.css?v=20261112_v19'" />
+  <link rel="stylesheet" href="styles.css?v=20261112_v22" onerror="this.href='/static/styles.css?v=20261112_v22'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -30,7 +30,7 @@
       </div>
 
       <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-        <!-- Real-Time Digital Clock (Mệnh Thổ Style) -->
+        <!-- Real-Time Digital Clock -->
         <div class="topbar-clock-chip" id="topbar-live-clock" title="Current Local Time">
           <span class="clock-icon">🕒</span>
           <span id="live-clock-time">--:--:--</span>
@@ -44,7 +44,7 @@
             class="btn btn-outline owner-only-btn"
             style="background:rgba(217,119,6,0.18); color:#fde68a; border-color:#d97706; font-size:13px; font-weight:600; padding:7px 14px; border-radius:8px; display:flex; align-items:center; gap:6px;"
             onclick="syncOrExportDataJson()"
-            title="Đồng bộ trực tiếp lên GitHub hoặc tải file data.json"
+            title="Direct Cloud Sync to GitHub or Export data.json"
           >
             ☁️ Sync/Export data.json
           </button>
@@ -785,9 +785,9 @@
         <div class="card">
           <div class="card-header">
             <div>
-              <div class="card-title">⚛️ Bảng Tuần Hoàn Nguyên Tố &amp; Độ Âm Điện (Periodic Table &amp; Electronegativity)</div>
+              <div class="card-title">⚛️ Interactive Periodic Table of Elements &amp; Electronegativity</div>
               <div style="font-size:12.5px; color:var(--text-muted); margin-top:3px;">
-                Mỗi ô nguyên tố hiển thị: <strong>Số hiệu Z</strong> (góc trái) • <strong>⚡ Độ âm điện Pauling (EN)</strong> (góc phải nổi bật) • <strong>Ký hiệu</strong> (ở giữa) • <strong>Khối lượng</strong> (dưới). Nhấp vào bất kỳ nguyên tố nào để xem chi tiết liên kết và cấu trúc tinh thể.
+                Each element displays: <strong>Atomic Number Z</strong> (top-left) • <strong>⚡ Pauling Electronegativity (EN)</strong> (top-right badge) • <strong>Symbol</strong> (center) • <strong>Atomic Mass</strong> (bottom). Click any element to inspect crystallography, bonding character, and electronic properties.
               </div>
             </div>
             <div style="display:flex; gap:6px; flex-wrap:wrap; font-size:11px;">
@@ -960,7 +960,7 @@
               <button class="btn btn-outline owner-only-btn" style="background:rgba(255,255,255,0.12); color:#fff; border-color:#475569;" onclick="openCvSkillsModal()">
                 ✏️ Edit Technical Skills
               </button>
-              <button class="btn btn-outline owner-only-btn admin-only" style="background:rgba(255,255,255,0.12); color:#38bdf8; border-color:#38bdf8;" onclick="syncOrExportDataJson()" title="Đồng bộ trực tiếp lên GitHub hoặc tải data.json về máy">
+              <button class="btn btn-outline owner-only-btn admin-only" style="background:rgba(255,255,255,0.12); color:#38bdf8; border-color:#38bdf8;" onclick="syncOrExportDataJson()" title="Direct Cloud Sync to GitHub or Download data.json">
                 ☁️ Sync/Export data.json
               </button>
               <button class="btn btn-teal" onclick="window.print()">
@@ -1585,6 +1585,23 @@
         <button class="btn btn-outline btn-sm" onclick="closeModal('structure-modal')">✕ Close</button>
       </div>
       <input type="hidden" id="struct-id" />
+
+      <!-- In-Modal CIF File Upload / Auto-fill Zone -->
+      <div class="cif-modal-dropzone" id="modal-cif-dropzone" onclick="document.getElementById('modal-cif-file-input').click()">
+        <input type="file" id="modal-cif-file-input" accept=".cif" style="display:none;" onchange="handleModalCifFileSelect(event)" />
+        <div style="display:flex; align-items:center; justify-content:center; gap:12px;">
+          <div style="font-size:26px;">📥</div>
+          <div>
+            <div style="font-weight:700; font-size:13.5px; color:var(--primary);">
+              Drop a <strong>*.cif</strong> file here or click to browse
+            </div>
+            <div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">
+              Automatically extracts Material Name, Chemical Formula, Crystal System, Space Group, Lattice Parameters (a,b,c, α,β,γ) &amp; Atomic Coordinates
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="form-grid">
         <div class="form-group">
           <label>Material Name *</label>
@@ -1788,13 +1805,13 @@
         <!-- 3D Toolbar -->
         <div style="display:flex; justify-content:space-between; align-items:center; background:#1e293b; color:#cbd5e1; padding:8px 12px; border-radius:8px 8px 0 0; font-size:12px; flex-wrap:wrap; gap:8px;">
           <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-            <button class="btn btn-outline btn-sm" style="color:#fff; border-color:#475569; padding:4px 8px; font-size:11.5px;" onclick="resetCrystal3DView()">🔄 Reset 3D</button>
-            <button class="btn btn-outline btn-sm" style="color:#fff; border-color:#475569; padding:4px 8px; font-size:11.5px;" id="btn-toggle-box" onclick="toggleUnitCellBox()">📦 Box: ON</button>
-            <button class="btn btn-outline btn-sm" style="color:#fff; border-color:#475569; padding:4px 8px; font-size:11.5px;" id="btn-toggle-labels" onclick="toggleAtomLabels()">🏷️ Labels: ON</button>
-            <button class="btn btn-outline btn-sm" style="color:#fff; border-color:#475569; padding:4px 8px; font-size:11.5px;" onclick="setCrystalViewPreset('iso')">3D Isometric</button>
-            <button class="btn btn-outline btn-sm" style="color:#fff; border-color:#475569; padding:4px 8px; font-size:11.5px;" onclick="setCrystalViewPreset('top')">Z-Top</button>
-            <button class="btn btn-outline btn-sm" style="color:#fff; border-color:#475569; padding:4px 8px; font-size:11.5px;" onclick="setCrystalViewPreset('front')">Y-Front</button>
-            <button class="btn btn-outline btn-sm" style="color:#fff; border-color:#475569; padding:4px 8px; font-size:11.5px;" onclick="setCrystalViewPreset('side')">X-Side</button>
+            <button class="btn-viewer-tool" onclick="resetCrystal3DView()">🔄 Reset 3D</button>
+            <button class="btn-viewer-tool" id="btn-toggle-box" onclick="toggleUnitCellBox()">📦 Box: ON</button>
+            <button class="btn-viewer-tool" id="btn-toggle-labels" onclick="toggleAtomLabels()">🏷️ Labels: ON</button>
+            <button class="btn-viewer-tool" onclick="setCrystalViewPreset('iso')">3D Isometric</button>
+            <button class="btn-viewer-tool" onclick="setCrystalViewPreset('top')">Z-Top</button>
+            <button class="btn-viewer-tool" onclick="setCrystalViewPreset('front')">Y-Front</button>
+            <button class="btn-viewer-tool" onclick="setCrystalViewPreset('side')">X-Side</button>
           </div>
           <div style="font-size:11px; color:#94a3b8;">
             🖱️ Drag to rotate 3D • Scroll to zoom
@@ -1929,7 +1946,7 @@
 
   <div id="toast-container"></div>
 
-  <script src="matsci_tools.js?v=20261112_v19" onerror="this.src='/static/matsci_tools.js?v=20261112_v19'"></script>
-  <script src="app.js?v=20261112_v19" onerror="this.src='/static/app.js?v=20261112_v19'"></script>
+  <script src="matsci_tools.js?v=20261112_v22" onerror="this.src='/static/matsci_tools.js?v=20261112_v22'"></script>
+  <script src="app.js?v=20261112_v22" onerror="this.src='/static/app.js?v=20261112_v22'"></script>
 </body>
 </html>
