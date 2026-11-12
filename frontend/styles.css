@@ -2042,25 +2042,35 @@ body.is-admin .visitor-only {
 }
 
 .plag-para-card {
-  border: 1px solid var(--border-color);
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
-  padding: 12px 14px;
-  background: #fff;
+  padding: 14px 16px;
+  background: #ffffff;
   transition: all 0.2s ease;
+  margin-bottom: 12px;
 }
 
 .plag-para-card.card-risk-high {
-  border-left: 4px solid #e11d48;
-  background: #fff5f5;
+  border-color: #fecaca;
+  background: #ffffff;
 }
 
 .plag-para-card.card-risk-mod {
-  border-left: 4px solid #d97706;
-  background: #fffbeb;
+  border-color: #fed7aa;
+  background: #ffffff;
 }
 
 .plag-para-card.card-risk-low {
-  border-left: 4px solid #16a34a;
+  border-color: #e2e8f0;
+  background: #ffffff;
+}
+
+.plag-para-card mark {
+  background: #fef08a !important;
+  color: #854d0e !important;
+  padding: 1px 4px !important;
+  border-radius: 3px !important;
+  font-weight: 500 !important;
 }
 
 .btn-plag-action {
@@ -2097,22 +2107,31 @@ body.is-admin .visitor-only {
     print-color-adjust: exact !important;
   }
 
-  /* When printing academic plagiarism report, completely hide every other body child from layout */
-  body.printing-plagiarism-report > *:not(#plag-pdf-render-area) {
+  /* Completely hide all website content when printing */
+  .top-app-header,
+  .page-subheader,
+  .main-workspace,
+  .modal-backdrop,
+  #toast-container,
+  .turnitin-modal-overlay,
+  .public-mode-banner,
+  nav, header, footer {
     display: none !important;
   }
 
-  body.printing-plagiarism-report #plag-pdf-render-area {
+  /* Show ONLY the clean Academic PDF report container */
+  #plag-pdf-render-area {
     display: block !important;
     position: static !important;
     width: 100% !important;
+    max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
     box-shadow: none !important;
   }
 
-  body.printing-plagiarism-report #pdf-export-container {
+  #pdf-export-container {
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
@@ -2124,11 +2143,11 @@ body.is-admin .visitor-only {
     print-color-adjust: exact !important;
   }
 
-  body.printing-plagiarism-report table {
+  table {
     page-break-inside: auto;
   }
 
-  body.printing-plagiarism-report tr {
+  tr {
     page-break-inside: avoid !important;
     page-break-after: auto;
   }
@@ -2137,7 +2156,7 @@ body.is-admin .visitor-only {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
-
+}
   .turnitin-tag {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
