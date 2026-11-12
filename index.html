@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261112_v24" onerror="this.href='/static/styles.css?v=20261112_v24'" />
+  <link rel="stylesheet" href="styles.css?v=20261112_v25" onerror="this.href='/static/styles.css?v=20261112_v25'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -1803,28 +1803,31 @@
       <!-- TAB 1: INTERACTIVE 3D VIEWER -->
       <div id="cvm-pane-3d">
         <!-- 3D Toolbar -->
-        <div style="display:flex; justify-content:space-between; align-items:center; background:#1e293b; color:#cbd5e1; padding:8px 12px; border-radius:8px 8px 0 0; font-size:12px; flex-wrap:wrap; gap:8px;">
-          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-            <button class="btn-viewer-tool" onclick="resetCrystal3DView()" title="Reset 3D camera viewpoint">🔄 Reset 3D</button>
-            <button class="btn-viewer-tool active" id="btn-toggle-bonds" onclick="toggleCrystalBonds()" title="Toggle 3D chemical bonds">🔗 Bonds: ON</button>
-            <button class="btn-viewer-tool" id="btn-toggle-style" onclick="cycleCrystalStyle()" title="Cycle display style (Ball & Stick / Space-Filling / Stick)">🎨 Ball &amp; Stick</button>
-            <button class="btn-viewer-tool active" id="btn-toggle-theme" onclick="toggleCrystalTheme()" title="Switch VESTA White / Dark Slate theme">☀️ Theme: White (VESTA)</button>
-            <button class="btn-viewer-tool active" id="btn-toggle-box" onclick="toggleUnitCellBox()" title="Toggle unit cell box wireframe">📦 Box: ON</button>
-            <button class="btn-viewer-tool active" id="btn-toggle-labels" onclick="toggleAtomLabels()" title="Toggle atomic element labels">🏷️ Labels: ON</button>
-            <button class="btn-viewer-tool" onclick="setCrystalViewPreset('iso')">3D Isometric</button>
-            <button class="btn-viewer-tool" onclick="setCrystalViewPreset('top')">Z-Top [001]</button>
-            <button class="btn-viewer-tool" onclick="setCrystalViewPreset('front')">Y-Front [010]</button>
-            <button class="btn-viewer-tool" onclick="setCrystalViewPreset('side')">X-Side [100]</button>
+        <!-- 3D Toolbar (Compact Icon Buttons) -->
+        <div style="display:flex; justify-content:space-between; align-items:center; background:#1e293b; color:#cbd5e1; padding:6px 10px; border-radius:8px 8px 0 0; font-size:12px; gap:8px;">
+          <div style="display:flex; gap:5px; align-items:center; flex-wrap:wrap;">
+            <button class="btn-viewer-tool" onclick="resetCrystal3DView()" title="Reset 3D camera viewpoint">🔄</button>
+            <button class="btn-viewer-tool active" id="btn-toggle-bonds" onclick="toggleCrystalBonds()" title="Toggle Chemical Bonds">🔗</button>
+            <button class="btn-viewer-tool" id="btn-toggle-style" onclick="cycleCrystalStyle()" title="Display Style (Ball &amp; Stick / CPK / Stick)">🎨</button>
+            <button class="btn-viewer-tool active" id="btn-toggle-box" onclick="toggleUnitCellBox()" title="Toggle Unit Cell Box">📦</button>
+            <button class="btn-viewer-tool active" id="btn-toggle-labels" onclick="toggleAtomLabels()" title="Toggle Atom Labels">🏷️</button>
+            <span style="display:inline-block; width:1px; height:18px; background:#475569; margin:0 2px;"></span>
+            <button class="btn-viewer-tool" onclick="setCrystalViewPreset('iso')" title="3D Isometric View" style="font-size:11px; font-weight:700;">3D</button>
+            <button class="btn-viewer-tool" onclick="setCrystalViewPreset('top')" title="View along Z-axis [001] (Top View)" style="font-family:monospace; font-size:10.5px;">[001]</button>
+            <button class="btn-viewer-tool" onclick="setCrystalViewPreset('front')" title="View along Y-axis [010] (Front View)" style="font-family:monospace; font-size:10.5px;">[010]</button>
+            <button class="btn-viewer-tool" onclick="setCrystalViewPreset('side')" title="View along X-axis [100] (Side View)" style="font-family:monospace; font-size:10.5px;">[100]</button>
+            <span style="display:inline-block; width:1px; height:18px; background:#475569; margin:0 2px;"></span>
+            <button class="btn-viewer-tool" id="btn-toggle-theme" onclick="toggleCrystalTheme()" title="Switch Light (White) / Dark Background">☀️</button>
           </div>
-          <div style="font-size:11px; color:#94a3b8;">
-            🖱️ Drag to rotate 3D • Scroll to zoom
+          <div style="font-size:11px; color:#94a3b8; white-space:nowrap;">
+            🖱️ Drag • Scroll
           </div>
         </div>
 
-        <!-- 3D Canvas Box (VESTA-style viewport) -->
-        <div id="crystal-3d-container" class="theme-white" style="position:relative; width:100%; height:410px; background:#ffffff; border:1px solid #cbd5e1; border-top:none; border-radius:0 0 8px 8px; overflow:hidden;">
+        <!-- 3D Canvas Box (Default: Dark theme) -->
+        <div id="crystal-3d-container" class="theme-dark" style="position:relative; width:100%; height:410px; background:#0b1120; border:1px solid #334155; border-top:none; border-radius:0 0 8px 8px; overflow:hidden;">
           <canvas id="crystal-3d-canvas" width="800" height="410" style="width:100%; height:100%; display:block; cursor:grab;"></canvas>
-          <div id="crystal-3d-legend" style="position:absolute; bottom:12px; right:14px; background:rgba(255,255,255,0.92); backdrop-filter:blur(6px); padding:6px 12px; border-radius:6px; font-size:11.5px; color:#0f172a; display:flex; gap:12px; flex-wrap:wrap; border:1px solid #cbd5e1; box-shadow:0 2px 6px rgba(0,0,0,0.08);"></div>
+          <div id="crystal-3d-legend" style="position:absolute; bottom:12px; right:14px; background:rgba(15,23,42,0.88); backdrop-filter:blur(6px); padding:6px 12px; border-radius:6px; font-size:11.5px; color:#e2e8f0; display:flex; gap:12px; flex-wrap:wrap; border:1px solid #334155; box-shadow:0 2px 8px rgba(0,0,0,0.4);"></div>
         </div>
 
         <!-- Lattice & Atomic Coordinates Table -->
@@ -1949,7 +1952,7 @@
 
   <div id="toast-container"></div>
 
-  <script src="matsci_tools.js?v=20261112_v24" onerror="this.src='/static/matsci_tools.js?v=20261112_v24'"></script>
-  <script src="app.js?v=20261112_v24" onerror="this.src='/static/app.js?v=20261112_v24'"></script>
+  <script src="matsci_tools.js?v=20261112_v25" onerror="this.src='/static/matsci_tools.js?v=20261112_v25'"></script>
+  <script src="app.js?v=20261112_v25" onerror="this.src='/static/app.js?v=20261112_v25'"></script>
 </body>
 </html>
