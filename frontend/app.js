@@ -4629,9 +4629,9 @@ function renderAcademicCvPublicationsSection(prof, pubList = []) {
                       ${doiUrl ? `<span>DOI: <a href="${escapeHtml(doiUrl)}" target="_blank">${escapeHtml(p.doi.replace(/^https?:\/\/doi\.org\//i, ''))}</a></span>` : ""}
                       ${p.citations ? `<span class="badge badge-purple" style="font-size:11px;">Cited: ${p.citations}</span>` : ""}
                       <div class="no-print" style="margin-left:auto; display:flex; gap:6px;">
-                        <button class="btn btn-outline btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Edit publication details & visibility" onclick="openOwnPublicationModal(${editIndex})">✏️ Edit</button>
-                        ${p.doi ? `<button class="btn btn-outline btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Import this DOI into References Library" onclick="importPaperByDoiCommon('${escapeHtml(p.doi)}')">📥 +References</button>` : ""}
-                        <button class="btn btn-danger btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Delete entry" onclick="removeOwnPubById(${p.id !== undefined ? p.id : editIndex}, '${escapeHtml(p.doi || '')}', '${escapeHtml((p.title || '').replace(/'/g, "\\'"))}', event)">✕</button>
+                        <button class="btn btn-outline btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Edit publication details & visibility" onclick="openOwnPublicationModal(${editIndex})">✏️</button>
+                        ${p.doi ? `<button class="btn btn-outline btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Import this DOI into References Library" onclick="importPaperByDoiCommon('${escapeHtml(p.doi)}')">📚</button>` : ""}
+                        <button class="btn btn-danger btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Delete publication" onclick="removeOwnPubById(${p.id !== undefined ? p.id : editIndex}, '${escapeHtml(p.doi || '')}', '${escapeHtml((p.title || '').replace(/'/g, "\\'"))}', event)">✕</button>
                       </div>
                     </div>
                   </div>
@@ -8633,3 +8633,23 @@ function clientSideWordDiff(textA, textB, nameA = "Document A", nameB = "Documen
     side_by_side: sideBySide
   };
 }
+
+// ============================================================================
+// Smooth Scroll to Top
+// ============================================================================
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+window.scrollToTop = scrollToTop;
+
+// Window scroll listener for scroll-to-top floating button
+window.addEventListener("scroll", () => {
+  const btn = document.getElementById("btn-scroll-top");
+  if (!btn) return;
+  if ((window.scrollY || window.pageYOffset || 0) > 260) {
+    btn.classList.add("visible");
+  } else {
+    btn.classList.remove("visible");
+  }
+}, { passive: true });
+
