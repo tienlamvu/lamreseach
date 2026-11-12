@@ -1,9 +1,11 @@
 import json
+import re
+import math
 import requests as ext_requests
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
-from fastapi import FastAPI, HTTPException
+from typing import Optional, List
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -12,6 +14,11 @@ from pydantic import BaseModel
 from backend.database import init_db, get_connection
 from backend.services import clean_doi, fetch_doi_metadata, sync_orcid_profile, sync_scholar_profile
 from backend.pptx_generator import build_weekly_report_pptx
+from backend.doc_tools import (
+    extract_text_from_file_bytes,
+    check_manuscript_duplicates,
+    compare_two_word_documents,
+)
 
 app = FastAPI(
     title="MatSci Nexus — PhD Research & Lab Management Suite",
@@ -144,16 +151,241 @@ class SyncScholarRequest(BaseModel):
     scholar_input: str
 
 
+class StructureCreate(BaseModel):
+    name: Optional[str] = "Crystal Structure"
+    formula: Optional[str] = ""
+    chemical_formula: Optional[str] = ""
+    crystal_system: Optional[str] = "Cubic"
+    space_group: Optional[str] = "Pm-3m (221)"
+    a: Optional[float] = 4.006
+    b: Optional[float] = 4.006
+    c: Optional[float] = 4.006
+    alpha: Optional[float] = 90.0
+    beta: Optional[float] = 90.0
+    gamma: Optional[float] = 90.0
+    volume: Optional[float] = 64.29
+    natoms: Optional[int] = 5
+    cif_content: Optional[str] = ""
+    raw_cif: Optional[str] = ""
+    poscar_content: Optional[str] = ""
+    poscar_text: Optional[str] = ""
+    dft_code: Optional[str] = "VASP"
+    functional: Optional[str] = "PBE"
+    dft_functional: Optional[str] = ""
+    ecut: Optional[float] = 520.0
+    cutoff_energy: Optional[float] = None
+    kpoints: Optional[str] = "8x8x8"
+    bandgap: Optional[float] = 3.20
+    bandgap_ev: Optional[float] = None
+    bandgap_type: Optional[str] = "Direct"
+    energy_per_atom: Optional[float] = -6.85
+    total_energy_per_atom: Optional[float] = None
+    magnetic_state: Optional[str] = "NM"
+    materials_project_id: Optional[str] = ""
+    mp_id: Optional[str] = ""
+    structure_type: Optional[str] = "Bulk 3D"
+    notes: Optional[str] = ""
+    in_weekly_report: Optional[int] = 1
+
+
+class CIFParseRequest(BaseModel):
+    cif_text: str
+    filename: Optional[str] = "structure.cif"
+
+
+def parse_cif_string(cif_text: str) -> dict:
+    """Parse raw Crystallographic Information File (CIF) and generate POSCAR format."""
+    text = cif_text.replace("\r\n", "\n").replace("\r", "\n")
+
+    def get_tag_val(tag_pattern, default=""):
+        m = re.search(rf"^\s*{tag_pattern}\s+([^\n\r]+)", text, re.MULTILINE | re.IGNORECASE)
+        if m:
+            val = m.group(1).strip()
+            val = re.sub(r"^['\"]|['\"]$", "", val).strip()
+            val_clean = re.sub(r"\(\d+\)", "", val).strip()
+            return val_clean
+        return default
+
+    formula = get_tag_val(r"_chemical_formula_sum") or get_tag_val(r"_chemical_name_common") or "Unknown Formula"
+    formula = formula.replace(" ", "")
+    space_group = get_tag_val(r"_symmetry_space_group_name_H-M") or get_tag_val(r"_space_group_name_H-M_alt") or "P 1"
+
+    def parse_float(tag, default=0.0):
+        val = get_tag_val(tag, "")
+        try:
+            return float(val)
+        except Exception:
+            return default
+
+    a = parse_float(r"_cell_length_a", 4.0)
+    b = parse_float(r"_cell_length_b", a)
+    c = parse_float(r"_cell_length_c", a)
+    alpha = parse_float(r"_cell_angle_alpha", 90.0)
+    beta = parse_float(r"_cell_angle_beta", 90.0)
+    gamma = parse_float(r"_cell_angle_gamma", 90.0)
+
+    vol = parse_float(r"_cell_volume", 0.0)
+    if vol <= 0.0 and a > 0 and b > 0 and c > 0:
+        ar = math.radians(alpha)
+        br = math.radians(beta)
+        gr = math.radians(gamma)
+        val_in_sqrt = 1 - math.cos(ar)**2 - math.cos(br)**2 - math.cos(gr)**2 + 2*math.cos(ar)*math.cos(br)*math.cos(gr)
+        if val_in_sqrt > 0:
+            vol = round(a * b * c * math.sqrt(val_in_sqrt), 2)
+        else:
+            vol = round(a * b * c, 2)
+
+    if abs(a - b) < 0.01 and abs(b - c) < 0.01 and abs(alpha - 90) < 0.5 and abs(beta - 90) < 0.5 and abs(gamma - 90) < 0.5:
+        crystal_system = "Cubic"
+    elif abs(a - b) < 0.01 and abs(alpha - 90) < 0.5 and abs(beta - 90) < 0.5 and (abs(gamma - 120) < 0.5 or abs(gamma - 60) < 0.5):
+        crystal_system = "Hexagonal"
+    elif abs(a - b) < 0.01 and abs(alpha - 90) < 0.5 and abs(beta - 90) < 0.5 and abs(gamma - 90) < 0.5:
+        crystal_system = "Tetragonal"
+    elif abs(alpha - 90) < 0.5 and abs(beta - 90) < 0.5 and abs(gamma - 90) < 0.5:
+        crystal_system = "Orthorhombic"
+    elif abs(alpha - 90) < 0.5 and abs(gamma - 90) < 0.5:
+        crystal_system = "Monoclinic"
+    else:
+        crystal_system = "Triclinic"
+
+    atoms = []
+    for loop_match in re.finditer(r"loop_\s+((?:_[^\s]+\s+)+)([\s\S]+?)(?=\n\s*(?:loop_|data_|#|\Z))", text + "\n", re.IGNORECASE):
+        headers = [h.strip().lower() for h in loop_match.group(1).split() if h.startswith("_")]
+        if not any("atom_site_fract_x" in h for h in headers):
+            continue
+
+        data_lines = [l.strip() for l in loop_match.group(2).split("\n") if l.strip() and not l.strip().startswith("#") and not l.strip().startswith("_")]
+        type_idx = -1
+        label_idx = -1
+        x_idx = -1
+        y_idx = -1
+        z_idx = -1
+        for i, h in enumerate(headers):
+            if "atom_site_type_symbol" in h:
+                type_idx = i
+            elif "atom_site_label" in h:
+                label_idx = i
+            elif "atom_site_fract_x" in h:
+                x_idx = i
+            elif "atom_site_fract_y" in h:
+                y_idx = i
+            elif "atom_site_fract_z" in h:
+                z_idx = i
+
+        if x_idx != -1 and y_idx != -1 and z_idx != -1:
+            for line in data_lines:
+                parts = line.split()
+                if len(parts) > max(type_idx, label_idx, x_idx, y_idx, z_idx):
+                    sym = ""
+                    if type_idx != -1:
+                        sym = re.sub(r"[^A-Za-z]", "", parts[type_idx])
+                    if not sym and label_idx != -1:
+                        sym = re.sub(r"[^A-Za-z]", "", parts[label_idx])
+                    if not sym:
+                        sym = "X"
+                    sym = sym.capitalize().strip()
+
+                    def clean_fract(val_str):
+                        s = re.sub(r"\(\d+\)", "", val_str).strip()
+                        if "/" in s:
+                            n, d = s.split("/")
+                            return float(n) / float(d)
+                        return float(s)
+
+                    try:
+                        fx = clean_fract(parts[x_idx])
+                        fy = clean_fract(parts[y_idx])
+                        fz = clean_fract(parts[z_idx])
+                        lbl = parts[label_idx] if label_idx != -1 else sym
+                        atoms.append({"element": sym, "label": lbl, "x": round(fx, 5), "y": round(fy, 5), "z": round(fz, 5)})
+                    except Exception:
+                        pass
+            break
+
+    natoms = len(atoms) if atoms else 5
+    if atoms and (not formula or formula == "UnknownFormula"):
+        from collections import Counter
+        elem_counts = Counter(at["element"] for at in atoms)
+        formula = "".join(f"{el}{cnt if cnt > 1 else ''}" for el, cnt in elem_counts.items())
+
+    # Build POSCAR
+    poscar_lines = [f"{formula} {crystal_system} {space_group}", "1.0"]
+    ar = math.radians(alpha)
+    br = math.radians(beta)
+    gr = math.radians(gamma)
+    ax, ay, az = a, 0.0, 0.0
+    bx = b * math.cos(gr)
+    by = b * math.sin(gr)
+    bz = 0.0
+    cx = c * math.cos(br)
+    cy = c * (math.cos(ar) - math.cos(br) * math.cos(gr)) / (math.sin(gr) if math.sin(gr) != 0 else 1.0)
+    cz_sq = c**2 - cx**2 - cy**2
+    cz = math.sqrt(max(0.0, cz_sq))
+    poscar_lines.append(f"  {ax:14.8f} {ay:14.8f} {az:14.8f}")
+    poscar_lines.append(f"  {bx:14.8f} {by:14.8f} {bz:14.8f}")
+    poscar_lines.append(f"  {cx:14.8f} {cy:14.8f} {cz:14.8f}")
+
+    if atoms:
+        elem_order = []
+        elem_map = {}
+        for at in atoms:
+            el = at["element"]
+            if el not in elem_map:
+                elem_order.append(el)
+                elem_map[el] = []
+            elem_map[el].append(at)
+        poscar_lines.append(" " + " ".join(elem_order))
+        poscar_lines.append(" " + " ".join(str(len(elem_map[el])) for el in elem_order))
+        poscar_lines.append("Direct")
+        for el in elem_order:
+            for at in elem_map[el]:
+                poscar_lines.append(f"  {at['x']:12.8f} {at['y']:12.8f} {at['z']:12.8f}")
+    else:
+        poscar_lines.extend([" X", " 1", "Direct", "  0.00000000   0.00000000   0.00000000"])
+
+    poscar_content = "\n".join(poscar_lines) + "\n"
+
+    return {
+        "formula": formula,
+        "name": f"{formula} ({crystal_system} {space_group.strip()})",
+        "crystal_system": crystal_system,
+        "space_group": space_group,
+        "a": round(a, 4),
+        "b": round(b, 4),
+        "c": round(c, 4),
+        "alpha": round(alpha, 2),
+        "beta": round(beta, 2),
+        "gamma": round(gamma, 2),
+        "volume": round(vol, 2),
+        "natoms": natoms,
+        "cif_content": cif_text,
+        "poscar_content": poscar_content,
+        "atoms": atoms[:50],
+    }
+
+
+
 class GoogleVerifyRequest(BaseModel):
     id_token: Optional[str] = ""
+    access_token: Optional[str] = ""
     email: Optional[str] = ""
     name: Optional[str] = ""
     picture: Optional[str] = ""
+    passcode: Optional[str] = ""
 
 
 class AuthConfigUpdate(BaseModel):
-    owner_email: str
+    owner_email: str = "lamvt.skku@gmail.com"
     google_client_id: Optional[str] = ""
+
+
+PRIMARY_OWNER_EMAIL = "lamvt.skku@gmail.com"
+OWNER_SECURITY_PASSCODE = "skku2026"  # Master security passcode for lamvt.skku@gmail.com
+
+
+def normalize_owner_email(raw_email: str) -> str:
+    s = (raw_email or "").strip().lower().replace(",", ".")
+    return s
 
 
 # ============================================================================
@@ -175,6 +407,7 @@ def load_full_profile() -> dict:
     d["conferences"] = json.loads(d.get("conferences_json") or "[]")
     d["skills"] = json.loads(d.get("skills_json") or "{}")
     d["awards"] = json.loads(d.get("awards_json") or "[]")
+    d["owner_email"] = PRIMARY_OWNER_EMAIL
     return d
 
 
@@ -201,15 +434,46 @@ def find_existing_paper_by_doi(raw_doi: str, exclude_id: Optional[int] = None) -
     return dict(row) if row else None
 
 
+def dump_all_to_data_json():
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM papers ORDER BY id DESC")
+        papers = [dict(r) for r in cur.fetchall()]
+        cur.execute("SELECT * FROM cif_structures ORDER BY id DESC")
+        structures = [dict(r) for r in cur.fetchall()]
+        cur.execute("SELECT * FROM schedule_items ORDER BY start_date ASC, start_time ASC")
+        schedule = [dict(r) for r in cur.fetchall()]
+        conn.close()
+        profile = load_full_profile()
+        obj = {
+            "version": "4.0",
+            "exported_at": datetime.now().isoformat(),
+            "profile": profile,
+            "papers": papers,
+            "structures": structures,
+            "schedule": schedule,
+        }
+        for target in [FRONTEND_DIR / "data.json", Path(__file__).parent / "data.json"]:
+            try:
+                with open(target, "w", encoding="utf-8") as f:
+                    json.dump(obj, f, indent=2, ensure_ascii=False)
+            except Exception as write_err:
+                print(f"Error writing to {target}: {write_err}")
+    except Exception as e:
+        print("Auto-export to data.json error:", e)
+
+
+
 # ============================================================================
-# Google Account Authentication & Owner Control API
+# Google Account Authentication & Owner Control API (Locked to lamvt.skku@gmail.com)
 # ============================================================================
 
 @app.get("/api/auth/config")
 def get_auth_config():
     prof = load_full_profile()
     return {
-        "owner_email": prof.get("owner_email") or "",
+        "owner_email": PRIMARY_OWNER_EMAIL,
         "google_client_id": prof.get("google_client_id") or "",
     }
 
@@ -220,7 +484,7 @@ def update_auth_config(cfg: AuthConfigUpdate):
     cur = conn.cursor()
     cur.execute(
         "UPDATE academic_profile SET owner_email = ?, google_client_id = ? WHERE id = 1",
-        (cfg.owner_email.strip().lower(), (cfg.google_client_id or "").strip()),
+        (PRIMARY_OWNER_EMAIL, (cfg.google_client_id or "").strip()),
     )
     conn.commit()
     conn.close()
@@ -233,7 +497,7 @@ def verify_google_login(req: GoogleVerifyRequest):
     name = ""
     picture = ""
 
-    # 1. If a real Google OAuth ID Token is provided, verify with Google tokeninfo API
+    # 1. Verify Google OAuth 2.0 ID Token if provided
     if req.id_token:
         try:
             resp = ext_requests.get(
@@ -243,47 +507,60 @@ def verify_google_login(req: GoogleVerifyRequest):
             if resp.status_code != 200:
                 raise HTTPException(status_code=401, detail="Invalid Google OAuth ID Token.")
             token_data = resp.json()
-            email = (token_data.get("email") or "").strip().lower()
-            name = token_data.get("name") or email.split("@")[0]
+            email = normalize_owner_email(token_data.get("email") or "")
+            name = token_data.get("name") or "Vu Tien Lam"
             picture = token_data.get("picture") or ""
         except HTTPException:
             raise
         except Exception as e:
             raise HTTPException(status_code=401, detail=f"Google token verification error: {str(e)}")
-    else:
-        # 2. Direct Google Account Owner Sign-In
-        email = (req.email or "").strip().lower()
-        name = (req.name or "").strip() or (email.split("@")[0] if email else "Owner")
+    # 2. Verify Google OAuth 2.0 Access Token (from Google Calendar OAuth popup)
+    elif req.access_token:
+        try:
+            resp = ext_requests.get(
+                "https://www.googleapis.com/oauth2/v3/userinfo",
+                headers={"Authorization": f"Bearer {req.access_token}"},
+                timeout=8,
+            )
+            if resp.status_code != 200:
+                raise HTTPException(status_code=401, detail="Invalid Google OAuth Access Token.")
+            user_data = resp.json()
+            email = normalize_owner_email(user_data.get("email") or "")
+            name = user_data.get("name") or "Vu Tien Lam"
+            picture = user_data.get("picture") or ""
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=401, detail=f"Google access token error: {str(e)}")
+    elif req.passcode:
+        # 3. Master Administrator Security Passcode verification
+        if req.passcode.strip() != OWNER_SECURITY_PASSCODE:
+            raise HTTPException(status_code=401, detail="Incorrect Administrator Security Passcode.")
+        raw_e = normalize_owner_email(req.email or PRIMARY_OWNER_EMAIL)
+        if raw_e != PRIMARY_OWNER_EMAIL:
+            raise HTTPException(status_code=403, detail=f"Access Denied: Only {PRIMARY_OWNER_EMAIL} is authorized.")
+        email = PRIMARY_OWNER_EMAIL
+        name = (req.name or "").strip() or "Vu Tien Lam"
         picture = req.picture or ""
+    else:
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication failed: Genuine Google Sign-In (OAuth token) or Administrator Security Passcode is required to unlock administrator privileges.",
+        )
 
-    if not email or "@" not in email:
-        raise HTTPException(status_code=400, detail="Please enter a valid Google email address.")
-
-    prof = load_full_profile()
-    configured_owner = (prof.get("owner_email") or "").strip().lower()
-
-    # If no owner email has been claimed yet, the first Google login claims ownership
-    if not configured_owner:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute("UPDATE academic_profile SET owner_email = ? WHERE id = 1", (email,))
-        conn.commit()
-        conn.close()
-        configured_owner = email
-
-    if email != configured_owner:
+    if email != PRIMARY_OWNER_EMAIL:
         raise HTTPException(
             status_code=403,
-            detail=f"Access Denied: '{email}' is not the registered Owner account ({configured_owner}).",
+            detail=f"Access Denied: '{email}' is not authorized. Only the owner Google account ({PRIMARY_OWNER_EMAIL}) can manage this workspace.",
         )
 
     return {
         "authenticated": True,
         "is_owner": True,
-        "email": email,
+        "email": PRIMARY_OWNER_EMAIL,
         "name": name,
         "picture": picture,
-        "owner_email": configured_owner,
+        "owner_email": PRIMARY_OWNER_EMAIL,
     }
 
 
@@ -299,6 +576,9 @@ def get_dashboard():
     cur.execute("SELECT * FROM papers ORDER BY id DESC")
     papers = [dict(r) for r in cur.fetchall()]
 
+    cur.execute("SELECT * FROM cif_structures ORDER BY id DESC")
+    structures = [dict(r) for r in cur.fetchall()]
+
     cur.execute("SELECT * FROM notes ORDER BY pinned DESC, id DESC")
     notes = [dict(r) for r in cur.fetchall()]
 
@@ -312,14 +592,15 @@ def get_dashboard():
         "stats": {
             "total_papers": len(papers),
             "papers_read": sum(1 for p in papers if p.get("status") in ("Read", "Key Reference", "Cited in Thesis")),
+            "total_structures": len(structures),
             "total_notes": len(notes),
-            "synthesis_batches": sum(1 for n in notes if n.get("sample_id")),
             "upcoming_tasks": sum(1 for s in schedule if s.get("status") != "Completed"),
             "completed_tasks": sum(1 for s in schedule if s.get("status") == "Completed"),
             "total_citations": profile.get("total_citations", 0),
             "h_index": profile.get("h_index", 0),
         },
         "recent_papers": papers[:4],
+        "recent_structures": structures[:4],
         "recent_notes": notes[:4],
         "upcoming_schedule": schedule[:6],
         "profile": profile,
@@ -346,27 +627,37 @@ def add_or_resolve_doi(req: DOILookupRequest):
     if not cleaned:
         raise HTTPException(status_code=400, detail="Please provide a valid DOI string or URL.")
 
-    # 1. Check for duplicate DOI BEFORE inserting
-    existing = find_existing_paper_by_doi(cleaned)
-    if existing:
-        return JSONResponse(
-            status_code=409,
-            content={
-                "detail": f"Duplicate DOI detected! The paper \"{existing['title']}\" (DOI: {existing['doi']}) is already in your library and cannot be added again.",
-                "duplicate": True,
-                "existing_paper": existing,
-            },
-        )
+    # 1. Check for duplicate DOI BEFORE inserting (only when auto_save is True)
+    if req.auto_save:
+        existing = find_existing_paper_by_doi(cleaned)
+        if existing:
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "detail": f"Duplicate DOI detected! The paper \"{existing['title']}\" (DOI: {existing['doi']}) is already in your library and cannot be added again.",
+                    "duplicate": True,
+                    "existing_paper": existing,
+                },
+            )
 
     # 2. Fetch metadata from Crossref / OpenAlex / Semantic Scholar
     try:
         meta = fetch_doi_metadata(cleaned)
     except ValueError as e:
+        existing = find_existing_paper_by_doi(cleaned)
+        if existing and not req.auto_save:
+            return existing
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        existing = find_existing_paper_by_doi(cleaned)
+        if existing and not req.auto_save:
+            return existing
         raise HTTPException(status_code=500, detail=f"DOI lookup error: {str(e)}")
 
-    # Double-check resolved DOI against database
+    if not req.auto_save:
+        return meta
+
+    # Double-check resolved DOI against database when auto_save is True
     existing_resolved = find_existing_paper_by_doi(meta["doi"])
     if existing_resolved:
         return JSONResponse(
@@ -377,9 +668,6 @@ def add_or_resolve_doi(req: DOILookupRequest):
                 "existing_paper": existing_resolved,
             },
         )
-
-    if not req.auto_save:
-        return meta
 
     conn = get_connection()
     cur = conn.cursor()
@@ -456,6 +744,7 @@ def create_paper(paper: PaperCreate):
     cur.execute("SELECT * FROM papers WHERE id = ?", (new_id,))
     row = dict(cur.fetchone())
     conn.close()
+    dump_all_to_data_json()
     return row
 
 
@@ -497,6 +786,7 @@ def update_paper(paper_id: int, paper: PaperCreate):
     conn.close()
     if not row:
         raise HTTPException(status_code=404, detail="Paper not found")
+    dump_all_to_data_json()
     return dict(row)
 
 
@@ -507,6 +797,7 @@ def delete_paper(paper_id: int):
     cur.execute("DELETE FROM papers WHERE id = ?", (paper_id,))
     conn.commit()
     conn.close()
+    dump_all_to_data_json()
     return {"deleted": True, "id": paper_id}
 
 
@@ -583,6 +874,189 @@ def delete_note(note_id: int):
     conn.commit()
     conn.close()
     return {"deleted": True, "id": note_id}
+
+
+# ============================================================================
+# Crystal Structures & Simulation Database (*.cif) API
+# ============================================================================
+
+@app.get("/api/structures")
+def list_structures(search: Optional[str] = "", system: Optional[str] = ""):
+    conn = get_connection()
+    cur = conn.cursor()
+    query = "SELECT * FROM cif_structures"
+    params = []
+    conditions = []
+    if search:
+        s = f"%{search.strip()}%"
+        conditions.append("(name LIKE ? OR formula LIKE ? OR space_group LIKE ? OR materials_project_id LIKE ? OR notes LIKE ?)")
+        params.extend([s, s, s, s, s])
+    if system and system != "ALL":
+        conditions.append("crystal_system = ?")
+        params.append(system)
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+    query += " ORDER BY id DESC"
+    cur.execute(query, params)
+    rows = []
+    for r in cur.fetchall():
+        d = dict(r)
+        d["chemical_formula"] = d.get("formula") or ""
+        d["raw_cif"] = d.get("cif_content") or ""
+        d["poscar_text"] = d.get("poscar_content") or ""
+        d["dft_functional"] = d.get("functional") or ""
+        d["cutoff_energy"] = d.get("ecut") or 520
+        d["bandgap_ev"] = d.get("bandgap") or 0.0
+        d["total_energy_per_atom"] = d.get("energy_per_atom") or 0.0
+        d["mp_id"] = d.get("materials_project_id") or ""
+        rows.append(d)
+    conn.close()
+    return rows
+
+
+@app.get("/api/structures/{struct_id}")
+def get_structure(struct_id: int):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM cif_structures WHERE id = ?", (struct_id,))
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Structure not found")
+    d = dict(row)
+    d["chemical_formula"] = d.get("formula") or ""
+    d["raw_cif"] = d.get("cif_content") or ""
+    d["poscar_text"] = d.get("poscar_content") or ""
+    d["dft_functional"] = d.get("functional") or ""
+    d["cutoff_energy"] = d.get("ecut") or 520
+    d["bandgap_ev"] = d.get("bandgap") or 0.0
+    d["total_energy_per_atom"] = d.get("energy_per_atom") or 0.0
+    d["mp_id"] = d.get("materials_project_id") or ""
+    return d
+
+
+@app.post("/api/structures")
+def create_structure(s: StructureCreate):
+    conn = get_connection()
+    cur = conn.cursor()
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    formula = (s.formula or s.chemical_formula or "Unknown Formula").strip()
+    name = (s.name or formula or "Crystal Structure").strip()
+    cif_content = s.cif_content or s.raw_cif or ""
+    poscar_content = s.poscar_content or s.poscar_text or ""
+    functional = s.functional or s.dft_functional or "PBE"
+    ecut = s.ecut if s.cutoff_energy is None else s.cutoff_energy
+    bandgap = s.bandgap if s.bandgap_ev is None else s.bandgap_ev
+    energy_per_atom = s.energy_per_atom if s.total_energy_per_atom is None else s.total_energy_per_atom
+    mp_id = s.materials_project_id or s.mp_id or ""
+
+    cur.execute("""
+        INSERT INTO cif_structures (
+            name, formula, crystal_system, space_group,
+            a, b, c, alpha, beta, gamma, volume, natoms,
+            cif_content, poscar_content, dft_code, functional,
+            ecut, kpoints, bandgap, bandgap_type, energy_per_atom,
+            magnetic_state, materials_project_id, structure_type,
+            notes, in_weekly_report, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        name, formula, s.crystal_system, s.space_group,
+        s.a, s.b, s.c, s.alpha, s.beta, s.gamma, s.volume, s.natoms,
+        cif_content, poscar_content, s.dft_code, functional,
+        ecut, s.kpoints, bandgap, s.bandgap_type, energy_per_atom,
+        s.magnetic_state, mp_id, s.structure_type,
+        s.notes, s.in_weekly_report, now_str, now_str
+    ))
+    new_id = cur.lastrowid
+    conn.commit()
+    cur.execute("SELECT * FROM cif_structures WHERE id = ?", (new_id,))
+    row = dict(cur.fetchone())
+    conn.close()
+    row["chemical_formula"] = row.get("formula") or ""
+    row["raw_cif"] = row.get("cif_content") or ""
+    row["poscar_text"] = row.get("poscar_content") or ""
+    row["dft_functional"] = row.get("functional") or ""
+    row["cutoff_energy"] = row.get("ecut") or 520
+    row["bandgap_ev"] = row.get("bandgap") or 0.0
+    row["total_energy_per_atom"] = row.get("energy_per_atom") or 0.0
+    row["mp_id"] = row.get("materials_project_id") or ""
+    dump_all_to_data_json()
+    return row
+
+
+@app.put("/api/structures/{struct_id}")
+def update_structure(struct_id: int, s: StructureCreate):
+    conn = get_connection()
+    cur = conn.cursor()
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    formula = (s.formula or s.chemical_formula or "Unknown Formula").strip()
+    name = (s.name or formula or "Crystal Structure").strip()
+    cif_content = s.cif_content or s.raw_cif or ""
+    poscar_content = s.poscar_content or s.poscar_text or ""
+    functional = s.functional or s.dft_functional or "PBE"
+    ecut = s.ecut if s.cutoff_energy is None else s.cutoff_energy
+    bandgap = s.bandgap if s.bandgap_ev is None else s.bandgap_ev
+    energy_per_atom = s.energy_per_atom if s.total_energy_per_atom is None else s.total_energy_per_atom
+    mp_id = s.materials_project_id or s.mp_id or ""
+
+    cur.execute("""
+        UPDATE cif_structures SET
+            name=?, formula=?, crystal_system=?, space_group=?,
+            a=?, b=?, c=?, alpha=?, beta=?, gamma=?, volume=?, natoms=?,
+            cif_content=?, poscar_content=?, dft_code=?, functional=?,
+            ecut=?, kpoints=?, bandgap=?, bandgap_type=?, energy_per_atom=?,
+            magnetic_state=?, materials_project_id=?, structure_type=?,
+            notes=?, in_weekly_report=?, updated_at=?
+        WHERE id=?
+    """, (
+        name, formula, s.crystal_system, s.space_group,
+        s.a, s.b, s.c, s.alpha, s.beta, s.gamma, s.volume, s.natoms,
+        cif_content, poscar_content, s.dft_code, functional,
+        ecut, s.kpoints, bandgap, s.bandgap_type, energy_per_atom,
+        s.magnetic_state, mp_id, s.structure_type,
+        s.notes, s.in_weekly_report, now_str, struct_id
+    ))
+    conn.commit()
+    cur.execute("SELECT * FROM cif_structures WHERE id = ?", (struct_id,))
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Structure not found")
+    d = dict(row)
+    d["chemical_formula"] = d.get("formula") or ""
+    d["raw_cif"] = d.get("cif_content") or ""
+    d["poscar_text"] = d.get("poscar_content") or ""
+    d["dft_functional"] = d.get("functional") or ""
+    d["cutoff_energy"] = d.get("ecut") or 520
+    d["bandgap_ev"] = d.get("bandgap") or 0.0
+    d["total_energy_per_atom"] = d.get("energy_per_atom") or 0.0
+    d["mp_id"] = d.get("materials_project_id") or ""
+    dump_all_to_data_json()
+    return d
+
+
+@app.delete("/api/structures/{struct_id}")
+def delete_structure(struct_id: int):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM cif_structures WHERE id = ?", (struct_id,))
+    conn.commit()
+    conn.close()
+    dump_all_to_data_json()
+    return {"deleted": True, "id": struct_id}
+
+
+@app.post("/api/structures/parse-cif")
+def parse_cif_endpoint(req: CIFParseRequest):
+    if not req.cif_text or not req.cif_text.strip():
+        raise HTTPException(status_code=400, detail="CIF text content is empty.")
+    try:
+        parsed = parse_cif_string(req.cif_text)
+        return parsed
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to parse CIF: {str(e)}")
 
 
 # ============================================================================
@@ -667,6 +1141,9 @@ def autofill_weekly_report():
     conn = get_connection()
     cur = conn.cursor()
 
+    cur.execute("SELECT * FROM cif_structures WHERE in_weekly_report = 1 ORDER BY id DESC")
+    rep_structs = [dict(r) for r in cur.fetchall()]
+
     cur.execute("SELECT * FROM notes WHERE in_weekly_report = 1 ORDER BY id DESC")
     rep_notes = [dict(r) for r in cur.fetchall()]
 
@@ -689,27 +1166,36 @@ def autofill_weekly_report():
             loc = f" ({s['instrument_or_location']})" if s.get("instrument_or_location") else ""
             completed_lines.append(f"Completed {s['title']}{loc}: {s.get('description', '')}".strip(": "))
 
-    for n in rep_notes:
-        if n.get("key_findings"):
-            prefix = f"[{n['sample_id']}] " if n.get("sample_id") else ""
-            completed_lines.append(f"{prefix}{n['key_findings']}")
+    for st in rep_structs[:3]:
+        completed_lines.append(f"Optimized {st['formula']} ({st['space_group']}): Eg = {st['bandgap']} eV ({st['bandgap_type']}), E_tot = {st['energy_per_atom']} eV/atom.")
 
     if not completed_lines:
         completed_lines = [
-            "Synthesized target solid-state electrolyte pellets (LLZTO-2026-04) with 95.8% relative density.",
-            "Completed powder XRD phase confirmation and XPS surface depth profiling.",
-            "Reviewed key benchmark publications on excess Li stoichiometry and ALD surface engineering."
+            "Completed first-principles DFT geometric relaxation and band structure calculations for BaTiO3 and BaSnO3 cubic perovskites.",
+            "Constructed 2D monolayer MoS2 and Ti3C2Tx supercells; computed projected density of states (PDOS).",
+            "Calculated frequency-dependent dielectric functions and optical absorption spectra.",
+            "Reviewed literature on defect physics and transparent conducting perovskites."
         ]
 
     exp_rows = []
-    for n in rep_notes:
-        exp_rows.append({
-            "sample_id": n.get("sample_id") or "EXP-01",
-            "material": n.get("material_formula") or n.get("title", "")[:30],
-            "conditions": n.get("conditions") or "Standard synthesis protocol",
-            "methods": n.get("characterization_methods") or "XRD, SEM",
-            "findings": n.get("key_findings") or "Phase pure structure confirmed."
-        })
+    if rep_structs:
+        for s in rep_structs:
+            exp_rows.append({
+                "sample_id": s.get("formula") or "DFT-Cell",
+                "material": f"{s.get('name', '')} [{s.get('space_group', '')}]",
+                "conditions": f"{s.get('dft_code', 'VASP')} | {s.get('functional', 'PBE')} | Ecut={s.get('ecut', 520)} eV | {s.get('kpoints', '8x8x8')}",
+                "methods": f"Bandgap: {s.get('bandgap', 0.0)} eV ({s.get('bandgap_type', 'Direct')})",
+                "findings": s.get("notes") or f"Lattice relaxed: a={s.get('a')} Å, V={s.get('volume')} Å³, Energy={s.get('energy_per_atom')} eV/atom."
+            })
+    else:
+        for n in rep_notes:
+            exp_rows.append({
+                "sample_id": n.get("sample_id") or "EXP-01",
+                "material": n.get("material_formula") or n.get("title", "")[:30],
+                "conditions": n.get("conditions") or "Standard protocol",
+                "methods": n.get("characterization_methods") or "DFT / VASP",
+                "findings": n.get("key_findings") or "Convergence confirmed."
+            })
 
     lit_rows = []
     for p in rep_papers:
@@ -728,25 +1214,25 @@ def autofill_weekly_report():
 
     if not next_lines:
         next_lines = [
-            "Perform FE-SEM cross-section imaging and EDS elemental mapping on ALD-coated pellets.",
-            "Assemble Li | LLZTO-ALD | Li symmetric cells for critical current density (CCD) stripping/plating tests.",
-            "Complete Rietveld refinement of XRD patterns using GSAS-II."
+            "Compute optical dielectric functions and absorption coefficients for doped cubic perovskite Ba1-xSrxSnO3.",
+            "Perform ab-initio molecular dynamics (AIMD) at 300 K to evaluate lattice dynamic stability.",
+            "Draft manuscript section on electronic structure and orbital hybridization."
         ]
 
     blockers = (
-        "• Trace surface Li2CO3 regeneration noticed after >15 min ambient exposure during sample mounting.\n"
-        "• Mitigation: Implemented vacuum-sealed transfer holder directly from Ar glovebox to XPS intro chamber.\n"
-        "• High-temperature tube furnace #1 thermocouple replacement scheduled; shifted sintering runs to Furnace #2."
+        "• High computational memory demand for hybrid functional (HSE06) band structure calculations on dense k-mesh.\n"
+        "• Solution: Utilizing VASP k-point parallelization (KPAR=4) and irreducible k-points on the SKKU cluster.\n"
+        "• Electronic convergence confirmed below 1e-6 eV and ionic forces below 0.01 eV/Å."
     )
 
     return {
         "title": "Weekly Research Progress Report",
         "week_start": monday.strftime("%Y-%m-%d"),
         "week_end": friday.strftime("%Y-%m-%d"),
-        "presenter_name": prof.get("full_name", "Alex Chen"),
-        "advisor_name": prof.get("advisor", "Prof. Sarah Jenkins"),
-        "lab_name": prof.get("affiliation", "Nanomaterials & Energy Storage Laboratory"),
-        "university": "Department of Materials Science & Engineering",
+        "presenter_name": prof.get("full_name", "Vu Tien Lam"),
+        "advisor_name": prof.get("advisor", "Prof. Advisor"),
+        "lab_name": prof.get("affiliation", "Department of Physics & Energy Materials"),
+        "university": "Sungkyunkwan University (SKKU)",
         "theme_color": "oxford_navy",
         "summary_achievements": "\n".join(f"• {line}" for line in completed_lines[:6]),
         "experimental_results": exp_rows,
@@ -839,6 +1325,7 @@ def update_profile(prof: ProfileUpdate):
     ))
     conn.commit()
     conn.close()
+    dump_all_to_data_json()
     return load_full_profile()
 
 
@@ -890,6 +1377,7 @@ def sync_orcid(req: SyncOrcidRequest):
     ))
     conn.commit()
     conn.close()
+    dump_all_to_data_json()
 
     updated = load_full_profile()
     updated["sync_summary"] = f"Synced ORCID {synced['orcid_id']}: found {len(synced.get('publications', []))} works ({added_count} new added)."
@@ -943,6 +1431,7 @@ def sync_scholar(req: SyncScholarRequest):
     ))
     conn.commit()
     conn.close()
+    dump_all_to_data_json()
 
     updated = load_full_profile()
     updated["sync_summary"] = (
@@ -951,6 +1440,141 @@ def sync_scholar(req: SyncScholarRequest):
         f"({added_count} new publications imported)."
     )
     return updated
+
+
+# ============================================================================
+# Manuscript Tools: Plagiarism & Duplicate Paragraph Checker + Word Doc Diff
+# ============================================================================
+
+@app.post("/api/documents/extract-text")
+async def extract_doc_text_api(file: UploadFile = File(...)):
+    content = await file.read()
+    full_text, paragraphs = extract_text_from_file_bytes(file.filename, content)
+    words = full_text.split()
+    return {
+        "filename": file.filename,
+        "text": full_text,
+        "paragraphs": paragraphs,
+        "word_count": len(words),
+        "paragraph_count": len(paragraphs),
+    }
+
+
+@app.post("/api/documents/check-duplicate")
+async def check_duplicate_api(request: Request):
+    content_type = request.headers.get("content-type", "")
+    target_paragraphs = []
+    custom_ref_paragraphs = None
+    filename = "Pasted Manuscript"
+
+    cross_internet = True
+    if "multipart/form-data" in content_type or "application/x-www-form-urlencoded" in content_type:
+        form = await request.form()
+        file = form.get("file")
+        ref_file = form.get("ref_file")
+        text = form.get("text") or ""
+        ref_text = form.get("ref_text") or ""
+        if "cross_internet" in form:
+            cross_internet = str(form.get("cross_internet")).lower() not in ("false", "0", "no")
+
+        if file and hasattr(file, "filename") and file.filename:
+            filename = file.filename
+            content = await file.read()
+            _, target_paragraphs = extract_text_from_file_bytes(file.filename, content)
+        elif text:
+            target_paragraphs = [p.strip() for p in re.split(r"\n\s*\n", str(text)) if p.strip()]
+
+        if ref_file and hasattr(ref_file, "filename") and ref_file.filename:
+            ref_content = await ref_file.read()
+            _, custom_ref_paragraphs = extract_text_from_file_bytes(ref_file.filename, ref_content)
+        elif ref_text:
+            custom_ref_paragraphs = [p.strip() for p in re.split(r"\n\s*\n", str(ref_text)) if p.strip()]
+    else:
+        body = await request.json()
+        raw_text = body.get("text", "")
+        if "cross_internet" in body:
+            cross_internet = bool(body.get("cross_internet"))
+        if raw_text:
+            target_paragraphs = [p.strip() for p in re.split(r"\n\s*\n", str(raw_text)) if p.strip()]
+        ref_raw = body.get("ref_text", "")
+        if ref_raw:
+            custom_ref_paragraphs = [p.strip() for p in re.split(r"\n\s*\n", str(ref_raw)) if p.strip()]
+
+    if not target_paragraphs:
+        raise HTTPException(status_code=400, detail="Please upload a PDF/Word file or paste manuscript text to check.")
+
+    # Load all literature library papers from database for cross-referencing
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id, title, journal, year, doi, abstract, notes, material_system FROM papers")
+    library_corpus = [dict(r) for r in cur.fetchall()]
+    conn.close()
+
+    analysis = check_manuscript_duplicates(
+        paragraphs=target_paragraphs,
+        library_corpus=library_corpus,
+        custom_reference_paragraphs=custom_ref_paragraphs,
+        cross_internet=cross_internet
+    )
+    analysis["filename"] = filename
+    analysis["checked_against_library_papers"] = len(library_corpus)
+    return analysis
+
+
+@app.post("/api/documents/compare-word")
+async def compare_word_documents_api(request: Request):
+    content_type = request.headers.get("content-type", "")
+    doc_a_name = "Document A (Original)"
+    doc_b_name = "Document B (Revised)"
+    doc_a_text = ""
+    doc_b_text = ""
+    doc_a_paras = []
+    doc_b_paras = []
+
+    if "multipart/form-data" in content_type or "application/x-www-form-urlencoded" in content_type:
+        form = await request.form()
+        file_a = form.get("file_a")
+        file_b = form.get("file_b")
+        text_a = form.get("text_a") or ""
+        text_b = form.get("text_b") or ""
+
+        if file_a and hasattr(file_a, "filename") and file_a.filename:
+            doc_a_name = file_a.filename
+            doc_a_text, doc_a_paras = extract_text_from_file_bytes(file_a.filename, await file_a.read())
+        elif text_a:
+            doc_a_text = str(text_a)
+            doc_a_paras = [p.strip() for p in re.split(r"\n\s*\n", doc_a_text) if p.strip()]
+
+        if file_b and hasattr(file_b, "filename") and file_b.filename:
+            doc_b_name = file_b.filename
+            doc_b_text, doc_b_paras = extract_text_from_file_bytes(file_b.filename, await file_b.read())
+        elif text_b:
+            doc_b_text = str(text_b)
+            doc_b_paras = [p.strip() for p in re.split(r"\n\s*\n", doc_b_text) if p.strip()]
+    else:
+        body = await request.json()
+        doc_a_text = str(body.get("text_a", ""))
+        doc_b_text = str(body.get("text_b", ""))
+        doc_a_name = body.get("name_a", "Document A (Original)")
+        doc_b_name = body.get("name_b", "Document B (Revised)")
+        doc_a_paras = [p.strip() for p in re.split(r"\n\s*\n", doc_a_text) if p.strip()]
+        doc_b_paras = [p.strip() for p in re.split(r"\n\s*\n", doc_b_text) if p.strip()]
+
+    if not doc_a_text or not doc_b_text:
+        raise HTTPException(
+            status_code=400,
+            detail="Please provide both Document A and Document B (upload Word/PDF files or input text) to compare.",
+        )
+
+    diff_result = compare_two_word_documents(
+        doc_a_text=doc_a_text,
+        doc_b_text=doc_b_text,
+        doc_a_paras=doc_a_paras,
+        doc_b_paras=doc_b_paras,
+    )
+    diff_result["doc_a_name"] = doc_a_name
+    diff_result["doc_b_name"] = doc_b_name
+    return diff_result
 
 
 # ============================================================================
@@ -978,4 +1602,19 @@ def serve_js():
 @app.get("/matsci_tools.js")
 def serve_tools_js():
     return FileResponse(str(FRONTEND_DIR / "matsci_tools.js"))
+
+
+@app.get("/index.html")
+def serve_index_html():
+    return FileResponse(str(FRONTEND_DIR / "index.html"))
+
+
+@app.get("/data.json")
+def serve_data_json():
+    return FileResponse(str(FRONTEND_DIR / "data.json"))
+
+
+@app.get("/profile_photo.jpg")
+def serve_profile_photo():
+    return FileResponse(str(FRONTEND_DIR / "profile_photo.jpg"))
 
