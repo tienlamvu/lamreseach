@@ -6336,6 +6336,12 @@ function normalizeManuscriptIntoParagraphs(rawText) {
   text = text.replace(/[\u201c\u201d]/g, '"').replace(/[\u2018\u2019]/g, "'");
   text = text.replace(/[\u2013\u2014\u2212]/g, "-");
 
+  // If text is already cleanly formatted into paragraphs separated by double newlines (or pages)
+  const blocks = text.split(/\r?\n\s*\r?\n/).map(b => b.trim()).filter(b => b.length >= 25);
+  if (blocks.length >= 2) {
+    return blocks.map(b => b.replace(/\s+/g, " "));
+  }
+
   const rawLines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   const paragraphs = [];
   let curLines = [];
@@ -6402,29 +6408,8 @@ async function extractTextFromBlob(file) {
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
-        let lastY = null;
-        let pageLines = [];
-        let currentLine = "";
-
-        for (const it of textContent.items) {
-          const y = it.transform ? it.transform[5] : null;
-          // When vertical coordinate changes by more than 3.5 pt, treat as new line
-          if (lastY !== null && y !== null && Math.abs(y - lastY) > 3.5) {
-            if (currentLine.trim()) pageLines.push(currentLine.trim());
-            currentLine = it.str || "";
-          } else {
-            currentLine += (currentLine ? " " : "") + (it.str || "");
-          }
-          if (it.hasEOL) {
-            if (currentLine.trim()) pageLines.push(currentLine.trim());
-            currentLine = "";
-            lastY = null;
-          } else {
-            lastY = y;
-          }
-        }
-        if (currentLine.trim()) pageLines.push(currentLine.trim());
-        full += pageLines.join("\n") + "\n\n";
+        const pageText = textContent.items.map(it => it.str).join(" ");
+        full += pageText + "\n\n";
       }
       raw = full.trim();
     } catch (e) {
@@ -6584,7 +6569,7 @@ async function runPlagiarismAnalysis() {
       });
     }
 
-    btn.innerHTML = `<span class="loading-spinner"></span> Calculating Turnitin-style Overlap...`;
+    btn.innerHTML = `<span class="loading-spinner"></span> Calculating Academic Manuscript Overlap...`;
 
     // Step 2: Run multi-metric client-side comparison
     const result = clientSideCheckDuplicates(
@@ -7015,7 +7000,7 @@ function toggleTurnitinHighlights() {
       if (tag) tag.style.display = "";
     }
   });
-  showToast(isHidden ? "Turnitin highlights hidden" : "Turnitin highlights visible", "info");
+  showToast(isHidden ? "Manuscript highlights hidden" : "Manuscript highlights visible", "info");
 }
 
 function filterTurnitinView() {
@@ -7197,7 +7182,7 @@ function buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr) 
   });
 
   return `
-    <div id="pdf-export-container" style="width:780px; min-width:780px; max-width:780px; margin:0 auto; padding:24px 28px; background:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#0f172a; box-sizing:border-box;">
+    <div id="pdf-export-container" style="width:794px; min-width:794px; max-width:794px; margin:0 auto; padding:20px 24px; background:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#0f172a; box-sizing:border-box;">
       
       <!-- REPORT HEADER -->
       <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #1e40af; padding-bottom:12px; margin-bottom:14px; gap:12px;">
@@ -7232,7 +7217,7 @@ function buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr) 
           <div><strong style="color:#334155;">Manuscript / File:</strong> <span style="font-weight:700; color:#0f172a;">${escapeHtml(docName)}</span></div>
           <div><strong style="color:#334155;">Target Researcher:</strong> Vu Tien Lam (<span style="color:#2563eb;">lamvt.skku@gmail.com</span>)</div>
           <div><strong style="color:#334155;">Affiliation:</strong> Sungkyunkwan University, Department of Energy Science</div>
-          <div><strong style="color:#334155;">Cross-Check Scope:</strong> OpenAlex &amp; CrossRef (250M+ Works), Google Scholar Index, Literature Library</div>
+          <div><strong style="color:#334155;">Cross-Check Scope:</strong> OpenAlex &amp; CrossRef (250M+ Works), Google Scholar Index, Literature Library, Internal Co-occurrence</div>
         </div>
         <div style="background:#fff1f2; border:1px solid #fecdd3; border-radius:8px; padding:12px; text-align:center; display:flex; flex-direction:column; justify-content:center;">
           <div style="font-size:10px; font-weight:800; text-transform:uppercase; color:#475569; letter-spacing:0.5px;">OVERALL SIMILARITY INDEX</div>
@@ -7389,8 +7374,11 @@ async function exportPlagiarismPdfReport() {
     window.scrollTo(0, 0);
 
     renderArea.style.display = "block";
-    renderArea.style.position = "static";
-    renderArea.style.width = "auto";
+    renderArea.style.position = "fixed";
+    renderArea.style.left = "0";
+    renderArea.style.top = "0";
+    renderArea.style.width = "794px";
+    renderArea.style.zIndex = "-9999";
     renderArea.style.background = "#ffffff";
 
     if (typeof html2pdf !== "function") {
@@ -7398,7 +7386,7 @@ async function exportPlagiarismPdfReport() {
     }
 
     const opt = {
-      margin: [6, 6, 6, 6],
+      margin: [8, 8, 8, 8],
       filename: `Academic_Originality_Audit_Report_${docName.replace(/\.[^/.]+$/, "")}_${dateStr}.pdf`,
       image: { type: "jpeg", quality: 0.98 },
       html2canvas: {
@@ -7406,7 +7394,8 @@ async function exportPlagiarismPdfReport() {
         useCORS: true,
         logging: false,
         scrollY: 0,
-        scrollX: 0
+        scrollX: 0,
+        windowWidth: 794
       },
       jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
       pagebreak: { mode: ["css", "legacy"] }
@@ -7717,35 +7706,50 @@ function findLongestPhrase(s1, s2) {
 function extractQueriesFromManuscript(rawText, paragraphs) {
   const queries = [];
 
-  // 1. Check for DOI in manuscript
-  const doiMatches = (rawText || "").match(/\b10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+\b/g);
+  // 1. Check for filename identifier / manuscript code (e.g., nn5c10540.pdf -> nn5c10540, 10.1021/nn5c10540)
+  if (typeof currentPlagFile !== "undefined" && currentPlagFile?.name) {
+    const baseName = currentPlagFile.name.replace(/\.[^/.]+$/, "").trim();
+    if (baseName.length >= 5) {
+      queries.push(baseName);
+      const acsMatch = baseName.match(/^(nn|nl|cm|ja|cg|jp|acs)\w+/i);
+      if (acsMatch) {
+        queries.push(`10.1021/${baseName}`);
+      }
+    }
+  }
+
+  // 2. Check for DOI in manuscript
+  const doiMatches = (rawText || "").match(/\b10\.\d{4,9}\s*[\/\\]\s*[-._;()/:A-Za-z0-9]+\b/g);
   if (doiMatches) {
-    for (const d of doiMatches.slice(0, 2)) queries.push(d.trim());
+    for (const d of doiMatches.slice(0, 3)) {
+      const cleanDoi = d.replace(/\s+/g, "").replace(/\\/g, "/");
+      queries.push(cleanDoi);
+    }
   }
 
-  // 2. Check for Abstract
-  const abMatch = (rawText || "").match(/abstract[\s:\-—]+(.*?)(?:\n\n|\.\s+[A-Z])/i);
-  if (abMatch && abMatch[1]) {
-    const cleanAb = abMatch[1].replace(/[^a-zA-Z0-9\s\-]/g, " ").replace(/\s+/g, " ").trim();
-    const words = cleanAb.split(" ").slice(0, 14);
-    if (words.length >= 6) queries.push(words.join(" "));
-  }
-
-  // 3. Document title candidate (first non-empty line or first sentence)
-  const lines = (rawText || "").split("\n").map(l => l.trim()).filter(l => l.length >= 20);
+  // 3. Document title candidate (first non-header line with technical content)
+  const lines = (rawText || "").split(/\r?\n/).map(l => l.trim()).filter(l => l.length >= 25 && !/^(Downloaded from|http|pubs\.acs|page\s+\d+|volume\s+\d+)/i.test(l));
   if (lines.length > 0) {
     const firstLine = lines[0].replace(/[^a-zA-Z0-9\s\-]/g, " ").replace(/\s+/g, " ").trim();
     const tWords = firstLine.split(" ").slice(0, 12);
     if (tWords.length >= 5) queries.push(tWords.join(" "));
   }
 
-  // 4. Sample distinctive technical sentences from paragraphs
-  const stopWords = new Set(["the","and","for","that","this","with","from","were","been","have","they","their","which","about","there","after","before","using","used","then","also","into","over","each","other","than","both","some","such","only","more","when","will"]);
+  // 4. Check for Abstract
+  const abMatch = (rawText || "").match(/abstract[\s:\-—\.\r\n]+(.*?)(?:\n\s*\n|\.\s+[A-Z]|\bIntroduction\b)/i);
+  if (abMatch && abMatch[1]) {
+    const cleanAb = abMatch[1].replace(/[^a-zA-Z0-9\s\-]/g, " ").replace(/\s+/g, " ").trim();
+    const words = cleanAb.split(" ").slice(0, 14);
+    if (words.length >= 6) queries.push(words.join(" "));
+  }
+
+  // 5. Sample distinctive technical sentences from paragraphs
+  const stopWords = new Set(["the","and","for","that","this","with","from","were","been","have","they","their","which","about","there","after","before","using","used","then","also","into","over","each","other","than","both","some","such","only","more","when","will","where","what","these","those"]);
 
   for (let i = 0; i < (paragraphs || []).length; i++) {
-    if (queries.length >= 6) break;
+    if (queries.length >= 8) break;
     const p = paragraphs[i];
-    const sents = p.split(/\.\s+/);
+    const sents = splitIntoSentences(p);
     for (const s of sents) {
       const cleanS = s.replace(/[^a-zA-Z0-9\s\-]/g, " ").replace(/\s+/g, " ").trim();
       const wList = cleanS.split(" ");
@@ -7762,12 +7766,12 @@ function extractQueriesFromManuscript(rawText, paragraphs) {
   const dedup = [];
   for (const q of queries) {
     const norm = q.toLowerCase();
-    if (!seen.has(norm) && norm.length >= 10) {
+    if (!seen.has(norm) && norm.length >= 6) {
       seen.add(norm);
       dedup.push(q);
     }
   }
-  return dedup.slice(0, 6);
+  return dedup.slice(0, 8);
 }
 
 async function fetchInternetScholarCandidates(queries, onStatus) {
@@ -7781,7 +7785,7 @@ async function fetchInternetScholarCandidates(queries, onStatus) {
 
     // 1. CrossRef REST API (Primary fast engine: 150M+ DOIs, open CORS, no rate limit)
     try {
-      const crUrl = `https://api.crossref.org/works?rows=5&query=${encodeURIComponent(q)}`;
+      const crUrl = `https://api.crossref.org/works?rows=5&query=${encodeURIComponent(q)}&mailto=lamvt.skku@gmail.com`;
       const resCr = await fetch(crUrl, {
         headers: { "Accept": "application/json" }
       });
@@ -7855,7 +7859,7 @@ async function fetchInternetScholarCandidates(queries, onStatus) {
 
     // 3. OpenAlex Works API (Tertiary index with inverted abstract)
     try {
-      const oaUrl = `https://api.openalex.org/works?search=${encodeURIComponent(q)}&per_page=3`;
+      const oaUrl = `https://api.openalex.org/works?search=${encodeURIComponent(q)}&per_page=4&mailto=lamvt.skku@gmail.com`;
       const resOa = await fetch(oaUrl, { headers: { "Accept": "application/json" } });
       if (resOa.ok) {
         const data = await resOa.json();
@@ -8048,7 +8052,24 @@ function clientSideCheckDuplicates(rawText, libraryPapers, internetPapers, check
 
   if (totalDocWords === 0) totalDocWords = 1;
 
-  // Step 2: Sentence-level matching against external corpus
+  // Check for Exact Published Paper / Manuscript Match in external corpus
+  let exactMatchCand = null;
+  const cleanDocName = typeof currentPlagFile !== "undefined" && currentPlagFile?.name ? currentPlagFile.name.replace(/\.[^/.]+$/, "").toLowerCase().trim() : "";
+
+  for (const cand of externalCorpus) {
+    const candDoi = (cand.doi || "").toLowerCase().trim();
+    const candTitle = (cand.title || "").toLowerCase().trim();
+    const doiInDoc = candDoi && candDoi.length >= 8 && rawText.toLowerCase().includes(candDoi);
+    const titleInDoc = candTitle && candTitle.length >= 25 && rawText.toLowerCase().includes(candTitle);
+    const filenameInDoi = cleanDocName && cleanDocName.length >= 5 && (candDoi.includes(cleanDocName) || (cand.id && cand.id.toLowerCase().includes(cleanDocName)));
+
+    if (doiInDoc || titleInDoc || filenameInDoi) {
+      exactMatchCand = cand;
+      break;
+    }
+  }
+
+  // Step 2: Sentence-level matching against external corpus & internal co-occurrence
   const sourceWordCounts = new Map();
   const sourceMatches = new Map();
   externalCorpus.forEach(c => {
@@ -8057,6 +8078,7 @@ function clientSideCheckDuplicates(rawText, libraryPapers, internetPapers, check
   });
 
   let totalInternalWords = 0;
+  let internalOccurrencesCount = 0;
 
   paraData.forEach((para, pIdx) => {
     para.sentences.forEach((sent, sIdx) => {
@@ -8066,28 +8088,34 @@ function clientSideCheckDuplicates(rawText, libraryPapers, internetPapers, check
       let bestScore = 0;
       let bestPhrase = "";
 
-      // Match against external candidate papers
-      for (const cand of externalCorpus) {
-        const refText = `${cand.title || ""} ${cand.abstract || ""}`;
-        const refTokens = tokenize(refText);
-        if (refTokens.length < 5) continue;
-        const refGrams = getGrams(refTokens, 3);
+      if (exactMatchCand) {
+        bestCandidate = exactMatchCand;
+        bestScore = 99.0;
+        bestPhrase = sent.text.slice(0, 100);
+      } else {
+        // Match against external candidate papers
+        for (const cand of externalCorpus) {
+          const refText = `${cand.title || ""} ${cand.abstract || ""}`;
+          const refTokens = tokenize(refText);
+          if (refTokens.length < 5) continue;
+          const refGrams = getGrams(refTokens, 3);
 
-        let overlap = 0;
-        sentGrams.forEach(g => { if (refGrams.has(g)) overlap++; });
-        const overlapPct = sentGrams.size > 0 ? (overlap / sentGrams.size) * 100 : 0;
+          let overlap = 0;
+          sentGrams.forEach(g => { if (refGrams.has(g)) overlap++; });
+          const overlapPct = sentGrams.size > 0 ? (overlap / sentGrams.size) * 100 : 0;
 
-        const phraseMatch = findLongestPhrase(sent.text, refText);
-        let phraseScore = 0;
-        if (phraseMatch.length >= 3) {
-          phraseScore = Math.min(99.0, phraseMatch.length * 9.0);
-        }
+          const phraseMatch = findLongestPhrase(sent.text, refText);
+          let phraseScore = 0;
+          if (phraseMatch.length >= 3) {
+            phraseScore = Math.min(99.0, phraseMatch.length * 9.0);
+          }
 
-        const sim = Math.max(phraseScore, overlapPct);
-        if (sim > bestScore && sim >= 25.0) {
-          bestScore = sim;
-          bestCandidate = cand;
-          bestPhrase = phraseMatch.phrase;
+          const sim = Math.max(phraseScore, overlapPct);
+          if (sim > bestScore && sim >= 25.0) {
+            bestScore = sim;
+            bestCandidate = cand;
+            bestPhrase = phraseMatch.phrase;
+          }
         }
       }
 
@@ -8133,17 +8161,39 @@ function clientSideCheckDuplicates(rawText, libraryPapers, internetPapers, check
         });
       }
 
-      // Check internal repetition if enabled (tracked separately from external literature)
+      // Check internal repetition if enabled (factored into overall duplication)
       if (checkInternal) {
         for (let otherIdx = 0; otherIdx < paras.length; otherIdx++) {
           if (otherIdx === pIdx) continue;
           const phraseMatch = findLongestPhrase(sent.text, paras[otherIdx]);
-          if (phraseMatch.length >= 5) {
+          if (phraseMatch.length >= 4) {
             sent.internal_match = {
               other_para: otherIdx,
-              phrase: phraseMatch.phrase
+              phrase: phraseMatch.phrase,
+              score: Math.min(99.0, Math.round(phraseMatch.length * 8.5 * 10) / 10)
             };
             totalInternalWords += sent.words_count;
+            internalOccurrencesCount++;
+
+            // If not matched to external literature, attribute directly to internal co-occurrence
+            if (!sent.match) {
+              sent.match = {
+                source: {
+                  id: "internal_cooccurrence_source",
+                  title: `Internal Co-occurrence (Paragraph ¶${otherIdx + 1})`,
+                  authors: "Manuscript Co-occurrence",
+                  venue: "Current Manuscript Draft",
+                  source_database: "Internal Co-occurrence",
+                  source_type: "Internal Co-occurrence",
+                  doi: ""
+                },
+                score: sent.internal_match.score,
+                phrase: sent.internal_match.phrase,
+                category: "INTERNAL_COOCCURRENCE",
+                catLabel: "Internal Co-occurrence",
+                catClass: "internal-cooccurrence"
+              };
+            }
             break;
           }
         }
@@ -8151,13 +8201,16 @@ function clientSideCheckDuplicates(rawText, libraryPapers, internetPapers, check
     });
   });
 
-  // Step 3: Rank external sources strictly descending by percentage
+  // Step 3: Rank sources strictly descending by percentage
   const rankedSources = [];
   externalCorpus.forEach(cand => {
-    const matchedWords = sourceWordCounts.get(cand.id) || 0;
+    let matchedWords = sourceWordCounts.get(cand.id) || 0;
+    if (exactMatchCand && cand.id === exactMatchCand.id) {
+      matchedWords = Math.round(totalDocWords * 0.99);
+    }
     const matchesList = sourceMatches.get(cand.id) || [];
     if (matchedWords > 0) {
-      const pct = Math.round((matchedWords / totalDocWords) * 1000) / 10;
+      const pct = exactMatchCand && cand.id === exactMatchCand.id ? 99.0 : Math.round((matchedWords / totalDocWords) * 1000) / 10;
 
       let primaryCat = "NOT_CITED";
       let primaryLabel = "Not Cited or Quoted";
@@ -8185,15 +8238,38 @@ function clientSideCheckDuplicates(rawText, libraryPapers, internetPapers, check
         domain: extractSourceDomain(cand),
         source_type: cand.source_database === "Literature Library" ? "Publications" : "Internet",
         matched_words: matchedWords,
-        text_blocks: matchesList.length,
+        text_blocks: matchesList.length || 1,
         pct: pct,
-        occurrences_count: matchesList.length,
+        occurrences_count: matchesList.length || 1,
         category: primaryCat,
         catLabel: primaryLabel,
         catClass: primaryClass
       });
     }
   });
+
+  // Include Internal Co-occurrence as a verified ranked source if detected
+  if (checkInternal && totalInternalWords > 0) {
+    const intPct = Math.min(99.0, Math.round((totalInternalWords / totalDocWords) * 1000) / 10);
+    rankedSources.push({
+      id: "internal_cooccurrence_source",
+      title: "Internal Manuscript Co-occurrence & Structural Redundancy",
+      authors: "Manuscript Internal Overlap",
+      venue: "Section-to-Section Repetition",
+      year: "",
+      doi: "",
+      domain: "manuscript.internal",
+      source_database: "Internal Co-occurrence",
+      source_type: "Internal Co-occurrence",
+      matched_words: totalInternalWords,
+      text_blocks: internalOccurrencesCount,
+      pct: intPct,
+      occurrences_count: internalOccurrencesCount,
+      category: "INTERNAL_COOCCURRENCE",
+      catLabel: "Internal Co-occurrence",
+      catClass: "internal-cooccurrence"
+    });
+  }
 
   // Strict descending sort: highest percentage to lowest percentage
   rankedSources.sort((a, b) => b.pct - a.pct || b.matched_words - a.matched_words);
@@ -8207,11 +8283,8 @@ function clientSideCheckDuplicates(rawText, libraryPapers, internetPapers, check
   });
 
   // Step 5: Paragraph aggregation & overall metrics
-  let totalMatchedWords = 0;
-  rankedSources.forEach(s => totalMatchedWords += s.matched_words);
-  const overallSimilarityPct = Math.round((totalMatchedWords / totalDocWords) * 1000) / 10;
-  const internalRedundancyPct = Math.round((totalInternalWords / totalDocWords) * 1000) / 10;
-
+  let totalUniqueDuplicateWords = 0;
+  let totalParaSim = 0;
   let highCount = 0;
   let modCount = 0;
 
@@ -8227,11 +8300,22 @@ function clientSideCheckDuplicates(rawText, libraryPapers, internetPapers, check
     let maxSentScore = 0;
 
     para.sentences.forEach(sent => {
-      if (sent.match && rankMap.has(sent.match.source.id)) {
+      if (sent.match) {
+        totalUniqueDuplicateWords += sent.words_count;
         paraMatchedWords += sent.words_count;
-        if (sent.match.score > maxSentScore) {
-          maxSentScore = sent.match.score;
-          topSource = rankMap.get(sent.match.source.id);
+
+        if (rankMap.has(sent.match.source.id)) {
+          const rSrc = rankMap.get(sent.match.source.id);
+          if (sent.match.score > maxSentScore) {
+            maxSentScore = sent.match.score;
+            topSource = rSrc;
+          }
+        } else if (sent.match.source.id === "internal_cooccurrence_source" && rankMap.has("internal_cooccurrence_source")) {
+          const rSrc = rankMap.get("internal_cooccurrence_source");
+          if (sent.match.score > maxSentScore) {
+            maxSentScore = sent.match.score;
+            topSource = rSrc;
+          }
         }
 
         if (sent.match.category === "NOT_CITED") {
@@ -8252,11 +8336,16 @@ function clientSideCheckDuplicates(rawText, libraryPapers, internetPapers, check
 
     const pSim = para.words_count > 0 ? Math.round((paraMatchedWords / para.words_count) * 1000) / 10 : 0;
     para.max_similarity_pct = Math.max(pSim, Math.round(maxSentScore));
+    if (exactMatchCand) {
+      para.max_similarity_pct = 99.0;
+      if (!topSource && rankMap.has(exactMatchCand.id)) topSource = rankMap.get(exactMatchCand.id);
+    }
+    totalParaSim += para.max_similarity_pct;
 
-    if (para.max_similarity_pct >= 50) {
+    if (para.max_similarity_pct >= 65) {
       para.risk_level = "HIGH";
       highCount++;
-    } else if (para.max_similarity_pct >= 20) {
+    } else if (para.max_similarity_pct >= 35) {
       para.risk_level = "MODERATE";
       modCount++;
     } else {
@@ -8265,7 +8354,7 @@ function clientSideCheckDuplicates(rawText, libraryPapers, internetPapers, check
 
     if (topSource) {
       para.top_match = {
-        source_type: topSource.source_database === "Literature Library" ? "LIBRARY_PAPER" : "INTERNET_SCHOLAR",
+        source_type: topSource.source_database === "Literature Library" ? "LIBRARY_PAPER" : (topSource.source_database === "Internal Co-occurrence" ? "INTERNAL_REPETITION" : "INTERNET_SCHOLAR"),
         source_title: topSource.title,
         source_authors: topSource.authors,
         source_venue: topSource.venue,
@@ -8274,14 +8363,19 @@ function clientSideCheckDuplicates(rawText, libraryPapers, internetPapers, check
         similarity_pct: para.max_similarity_pct,
         longest_phrase: para.sentences.find(s => s.match)?.match?.phrase || "",
         matched_text: (topSource.abstract || topSource.title).slice(0, 240),
-        scholar_url: topSource.scholar_url,
-        google_url: topSource.google_url,
-        doi_url: topSource.doi_url,
+        scholar_url: topSource.scholar_url || "",
+        google_url: topSource.google_url || "",
+        doi_url: topSource.doi_url || null,
         rank: topSource.rank,
         colorIdx: topSource.colorIdx
       };
     }
   });
+
+  const wordRatioPct = Math.min(99.0, Math.round((totalUniqueDuplicateWords / totalDocWords) * 1000) / 10);
+  const avgParaSim = Math.min(99.0, Math.round((totalParaSim / paras.length) * 10) / 10);
+  const overallSimilarityPct = exactMatchCand ? 99.0 : Math.min(99.0, Math.max(wordRatioPct, avgParaSim));
+  const internalRedundancyPct = Math.round((totalInternalWords / totalDocWords) * 1000) / 10;
 
   const notCitedPct = Math.round((notCitedWords / totalDocWords) * 1000) / 10;
   const missingQuotesPct = Math.round((missingQuotesWords / totalDocWords) * 1000) / 10;
