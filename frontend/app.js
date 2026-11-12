@@ -6535,7 +6535,7 @@ async function runPlagiarismAnalysis() {
   const textInput = (document.getElementById("plag-text-input")?.value || "").trim();
   const chkInternet = document.getElementById("chk-cross-internet")?.checked ?? true;
   const chkLibrary = document.getElementById("chk-cross-library")?.checked ?? true;
-  const chkInternal = document.getElementById("chk-cross-internal")?.checked ?? true;
+  const chkPeriodicals = document.getElementById("chk-cross-periodicals")?.checked ?? true;
 
   if (!currentPlagFile && !textInput) {
     showToast("Please upload a PDF/Word file or paste manuscript draft text first.", "warn");
@@ -6561,7 +6561,7 @@ async function runPlagiarismAnalysis() {
     let internetCandidates = [];
 
     // Step 1: Deep Internet & Google Scholar search if enabled
-    if (chkInternet) {
+    if (chkInternet || chkPeriodicals) {
       btn.innerHTML = `<span class="loading-spinner"></span> Searching Internet & Google Scholar Index (250M+ Works)...`;
       const queries = extractQueriesFromManuscript(rawText, paras);
       internetCandidates = await fetchInternetScholarCandidates(queries, msg => {
@@ -6571,14 +6571,14 @@ async function runPlagiarismAnalysis() {
 
     btn.innerHTML = `<span class="loading-spinner"></span> Calculating Academic Manuscript Overlap...`;
 
-    // Step 2: Run multi-metric client-side comparison
+    // Step 2: Run multi-metric client-side comparison (Turnitin standard: only external sources)
     const result = clientSideCheckDuplicates(
       rawText,
       STATE.papers || [],
       internetCandidates,
       chkInternet,
       chkLibrary,
-      chkInternal
+      chkPeriodicals
     );
 
     currentPlagResults = result;
@@ -7217,7 +7217,7 @@ function buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr) 
           <div><strong style="color:#334155;">Manuscript / File:</strong> <span style="font-weight:700; color:#0f172a;">${escapeHtml(docName)}</span></div>
           <div><strong style="color:#334155;">Target Researcher:</strong> Vu Tien Lam (<span style="color:#2563eb;">lamvt.skku@gmail.com</span>)</div>
           <div><strong style="color:#334155;">Affiliation:</strong> Sungkyunkwan University, Department of Energy Science</div>
-          <div><strong style="color:#334155;">Cross-Check Scope:</strong> OpenAlex &amp; CrossRef (250M+ Works), Google Scholar Index, Literature Library, Internal Co-occurrence</div>
+          <div><strong style="color:#334155;">Cross-Check Scope:</strong> Internet &amp; Web Sources, CrossRef &amp; OpenAlex (250M+ Works), Google Scholar Index, Literature Library</div>
         </div>
         <div style="background:#fff1f2; border:1px solid #fecdd3; border-radius:8px; padding:12px; text-align:center; display:flex; flex-direction:column; justify-content:center;">
           <div style="font-size:10px; font-weight:800; text-transform:uppercase; color:#475569; letter-spacing:0.5px;">OVERALL SIMILARITY INDEX</div>
@@ -8160,48 +8160,10 @@ function clientSideCheckDuplicates(rawText, libraryPapers, internetPapers, check
           category: cat
         });
       }
-
-      // Check internal repetition if enabled (factored into overall duplication)
-      if (checkInternal) {
-        for (let otherIdx = 0; otherIdx < paras.length; otherIdx++) {
-          if (otherIdx === pIdx) continue;
-          const phraseMatch = findLongestPhrase(sent.text, paras[otherIdx]);
-          if (phraseMatch.length >= 4) {
-            sent.internal_match = {
-              other_para: otherIdx,
-              phrase: phraseMatch.phrase,
-              score: Math.min(99.0, Math.round(phraseMatch.length * 8.5 * 10) / 10)
-            };
-            totalInternalWords += sent.words_count;
-            internalOccurrencesCount++;
-
-            // If not matched to external literature, attribute directly to internal co-occurrence
-            if (!sent.match) {
-              sent.match = {
-                source: {
-                  id: "internal_cooccurrence_source",
-                  title: `Internal Co-occurrence (Paragraph ¶${otherIdx + 1})`,
-                  authors: "Manuscript Co-occurrence",
-                  venue: "Current Manuscript Draft",
-                  source_database: "Internal Co-occurrence",
-                  source_type: "Internal Co-occurrence",
-                  doi: ""
-                },
-                score: sent.internal_match.score,
-                phrase: sent.internal_match.phrase,
-                category: "INTERNAL_COOCCURRENCE",
-                catLabel: "Internal Co-occurrence",
-                catClass: "internal-cooccurrence"
-              };
-            }
-            break;
-          }
-        }
-      }
     });
   });
 
-  // Step 3: Rank sources strictly descending by percentage
+  // Step 3: Rank external sources strictly descending by percentage (Turnitin Standard)
   const rankedSources = [];
   externalCorpus.forEach(cand => {
     let matchedWords = sourceWordCounts.get(cand.id) || 0;
@@ -8248,29 +8210,6 @@ function clientSideCheckDuplicates(rawText, libraryPapers, internetPapers, check
     }
   });
 
-  // Include Internal Co-occurrence as a verified ranked source if detected
-  if (checkInternal && totalInternalWords > 0) {
-    const intPct = Math.min(99.0, Math.round((totalInternalWords / totalDocWords) * 1000) / 10);
-    rankedSources.push({
-      id: "internal_cooccurrence_source",
-      title: "Internal Manuscript Co-occurrence & Structural Redundancy",
-      authors: "Manuscript Internal Overlap",
-      venue: "Section-to-Section Repetition",
-      year: "",
-      doi: "",
-      domain: "manuscript.internal",
-      source_database: "Internal Co-occurrence",
-      source_type: "Internal Co-occurrence",
-      matched_words: totalInternalWords,
-      text_blocks: internalOccurrencesCount,
-      pct: intPct,
-      occurrences_count: internalOccurrencesCount,
-      category: "INTERNAL_COOCCURRENCE",
-      catLabel: "Internal Co-occurrence",
-      catClass: "internal-cooccurrence"
-    });
-  }
-
   // Strict descending sort: highest percentage to lowest percentage
   rankedSources.sort((a, b) => b.pct - a.pct || b.matched_words - a.matched_words);
 
@@ -8306,12 +8245,6 @@ function clientSideCheckDuplicates(rawText, libraryPapers, internetPapers, check
 
         if (rankMap.has(sent.match.source.id)) {
           const rSrc = rankMap.get(sent.match.source.id);
-          if (sent.match.score > maxSentScore) {
-            maxSentScore = sent.match.score;
-            topSource = rSrc;
-          }
-        } else if (sent.match.source.id === "internal_cooccurrence_source" && rankMap.has("internal_cooccurrence_source")) {
-          const rSrc = rankMap.get("internal_cooccurrence_source");
           if (sent.match.score > maxSentScore) {
             maxSentScore = sent.match.score;
             topSource = rSrc;
@@ -8354,7 +8287,7 @@ function clientSideCheckDuplicates(rawText, libraryPapers, internetPapers, check
 
     if (topSource) {
       para.top_match = {
-        source_type: topSource.source_database === "Literature Library" ? "LIBRARY_PAPER" : (topSource.source_database === "Internal Co-occurrence" ? "INTERNAL_REPETITION" : "INTERNET_SCHOLAR"),
+        source_type: topSource.source_database === "Literature Library" ? "LIBRARY_PAPER" : "INTERNET_SCHOLAR",
         source_title: topSource.title,
         source_authors: topSource.authors,
         source_venue: topSource.venue,
