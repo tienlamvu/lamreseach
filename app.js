@@ -1388,6 +1388,90 @@ function getElementRadius(elem) {
   return radii[clean] || 12;
 }
 
+const KNOWN_ELEMENT_NAMES = [
+  "H","He","Li","Be","B","C","N","O","F","Ne",
+  "Na","Mg","Al","Si","P","S","Cl","Ar","K","Ca",
+  "Sc","Ti","V","Cr","Mn","Fe","Co","Ni","Cu","Zn",
+  "Ga","Ge","As","Se","Br","Kr","Rb","Sr","Y","Zr",
+  "Nb","Mo","Tc","Ru","Rh","Pd","Ag","Cd","In","Sn",
+  "Sb","Te","I","Xe","Cs","Ba","La","Ce","Pr","Nd",
+  "Pm","Sm","Eu","Gd","Tb","Dy","Ho","Er","Tm","Yb",
+  "Lu","Hf","Ta","W","Re","Os","Ir","Pt","Au","Hg",
+  "Tl","Pb","Bi","Po","At","Rn","Fr","Ra","Ac","Th",
+  "Pa","U","Np","Pu","Am","Cm","Bk","Cf","Es","Fm"
+];
+const KNOWN_ELEMENT_MAP = new Map(KNOWN_ELEMENT_NAMES.map(sym => [sym.toUpperCase(), sym]));
+
+function resolveElementSymbol(rawStr) {
+  if (!rawStr) return "X";
+  const s = rawStr.replace(/[^A-Za-z]/g, "").trim();
+  if (!s) return "X";
+  if (s.length >= 2) {
+    const two = s.slice(0, 2).toUpperCase();
+    if (KNOWN_ELEMENT_MAP.has(two)) return KNOWN_ELEMENT_MAP.get(two);
+  }
+  const one = s.slice(0, 1).toUpperCase();
+  if (KNOWN_ELEMENT_MAP.has(one)) return KNOWN_ELEMENT_MAP.get(one);
+  return s.charAt(0).toUpperCase() + s.slice(1, 2).toLowerCase();
+}
+
+function cleanChemicalFormula(raw) {
+  if (!raw) return "";
+  let clean = raw.replace(/['"]/g, "").trim();
+  clean = clean.replace(/([A-Z][a-z]?)1(?![0-9])/g, "$1");
+  clean = clean.replace(/\s+/g, "");
+  return clean;
+}
+
+function handleModalCifFileSelect(event) {
+  const file = event?.target?.files?.[0];
+  if (file) {
+    parseAndFillCifInModal(file);
+    event.target.value = "";
+  }
+}
+
+function parseAndFillCifInModal(file) {
+  showToast(`Parsing CIF file: ${file.name}...`);
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target.result;
+    const parsed = parseCifTextClient(text, file.name);
+    STATE.pendingModalAtoms = parsed.atoms || [];
+    populateStructureModalWithParsed(parsed, text, file.name);
+    showToast(`✨ CIF Auto-filled: ${parsed.chemical_formula || file.name} (${parsed.atoms?.length || 0} atoms loaded)!`);
+  };
+  reader.readAsText(file);
+}
+
+function initModalCifDropzone() {
+  const zone = document.getElementById("modal-cif-dropzone");
+  if (!zone || zone.dataset.bound) return;
+  zone.dataset.bound = "true";
+
+  zone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    zone.classList.add("dragover");
+  });
+  zone.addEventListener("dragleave", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    zone.classList.remove("dragover");
+  });
+  zone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    zone.classList.remove("dragover");
+    const file = e.dataTransfer?.files?.[0];
+    if (file && (file.name.toLowerCase().endsWith(".cif") || file.type.includes("text"))) {
+      parseAndFillCifInModal(file);
+    } else {
+      showToast("Please drop a valid *.cif file.", "warn");
+    }
+  });
+}
+
 async function handleCifFile(file) {
   if (!requireAdminAuth()) return;
   showToast(`Parsing CIF file: ${file.name}...`);
@@ -1413,7 +1497,6 @@ async function handleCifFile(file) {
     if (!parsed) {
       parsed = parseCifTextClient(text, file.name);
     } else {
-      // Merge with client parser to ensure atoms coordinates are intact
       const clientParsed = parseCifTextClient(text, file.name);
       if (!parsed.atoms || parsed.atoms.length === 0) {
         parsed.atoms = clientParsed.atoms;
@@ -1424,9 +1507,9 @@ async function handleCifFile(file) {
     }
 
     STATE.pendingModalAtoms = parsed.atoms || [];
+    openStructureModal(null, { skipReset: true });
     populateStructureModalWithParsed(parsed, text, file.name);
-    openStructureModal();
-    showToast(`✨ CIF Parsed: ${parsed.chemical_formula || file.name} (${parsed.space_group}, ${parsed.natoms} atoms recognized)!`);
+    showToast(`✨ CIF Parsed: ${parsed.chemical_formula || file.name} (${parsed.space_group}, ${parsed.atoms?.length || parsed.natoms || 0} atoms recognized)!`);
   };
   reader.readAsText(file);
 }
@@ -1471,26 +1554,42 @@ function parseCifTextClient(cifText, filename = "") {
   }
 
   // 2. Space Group
-  let spaceGroup = getTag("_symmetry_space_group_name_H-M") ||
-                   getTag("_space_group_name_H-M_alt") ||
-                   getTag("_space_group_IT_number") ||
-                   getTag("_symmetry_Int_Tables_number") || "P 1";
-  spaceGroup = spaceGroup.trim();
+  let sgName = getTag("_symmetry_space_group_name_H-M") ||
+               getTag("_space_group_name_H-M_alt") ||
+               getTag("_space_group_name_Hall") || "";
+  let sgNum = getTag("_space_group_IT_number") ||
+              getTag("_symmetry_Int_Tables_number") || "";
+  sgName = sgName.replace(/['"]/g, "").trim();
+  sgNum = sgNum.replace(/['"]/g, "").trim();
+
+  let spaceGroup = "P 1";
+  if (sgName && sgNum && !sgName.includes(`(${sgNum})`)) {
+    spaceGroup = `${sgName} (${sgNum})`;
+  } else if (sgName) {
+    spaceGroup = sgName;
+  } else if (sgNum) {
+    spaceGroup = `No. ${sgNum}`;
+  }
 
   // 3. Crystal System
-  let crystalSystem = "Cubic";
-  if (Math.abs(alpha - 90) < 0.3 && Math.abs(beta - 90) < 0.3 && Math.abs(gamma - 90) < 0.3) {
-    if (Math.abs(a - b) < 0.02 && Math.abs(b - c) < 0.02) crystalSystem = "Cubic";
-    else if (Math.abs(a - b) < 0.02) crystalSystem = "Tetragonal";
-    else crystalSystem = "Orthorhombic";
-  } else if (Math.abs(alpha - 90) < 0.3 && Math.abs(beta - 90) < 0.3 && (Math.abs(gamma - 120) < 0.5 || Math.abs(gamma - 60) < 0.5)) {
-    crystalSystem = "Hexagonal";
-  } else if (Math.abs(a - b) < 0.02 && Math.abs(b - c) < 0.02 && Math.abs(alpha - beta) < 0.2 && Math.abs(beta - gamma) < 0.2 && Math.abs(alpha - 90) > 0.5) {
-    crystalSystem = "Rhombohedral";
-  } else if (Math.abs(alpha - 90) < 0.3 && Math.abs(gamma - 90) < 0.3 && Math.abs(beta - 90) > 0.3) {
-    crystalSystem = "Monoclinic";
+  let crystalSystem = getTag("_symmetry_cell_setting") ||
+                      getTag("_space_group_crystal_system") || "";
+  if (crystalSystem) {
+    crystalSystem = crystalSystem.charAt(0).toUpperCase() + crystalSystem.slice(1).toLowerCase();
   } else {
-    crystalSystem = "Triclinic";
+    if (Math.abs(alpha - 90) < 0.3 && Math.abs(beta - 90) < 0.3 && Math.abs(gamma - 90) < 0.3) {
+      if (Math.abs(a - b) < 0.02 && Math.abs(b - c) < 0.02) crystalSystem = "Cubic";
+      else if (Math.abs(a - b) < 0.02) crystalSystem = "Tetragonal";
+      else crystalSystem = "Orthorhombic";
+    } else if (Math.abs(alpha - 90) < 0.3 && Math.abs(beta - 90) < 0.3 && (Math.abs(gamma - 120) < 0.5 || Math.abs(gamma - 60) < 0.5)) {
+      crystalSystem = "Hexagonal";
+    } else if (Math.abs(a - b) < 0.02 && Math.abs(b - c) < 0.02 && Math.abs(alpha - beta) < 0.2 && Math.abs(beta - gamma) < 0.2 && Math.abs(alpha - 90) > 0.5) {
+      crystalSystem = "Rhombohedral";
+    } else if (Math.abs(alpha - 90) < 0.3 && Math.abs(gamma - 90) < 0.3 && Math.abs(beta - 90) > 0.3) {
+      crystalSystem = "Monoclinic";
+    } else {
+      crystalSystem = "Triclinic";
+    }
   }
 
   // 4. Atomic Coordinates Loop
@@ -1536,15 +1635,14 @@ function parseCifTextClient(cifText, filename = "") {
 
       let element = "";
       if (typeIdx !== -1 && parts[typeIdx]) {
-        element = parts[typeIdx].replace(/[^A-Za-z]/g, "");
+        element = resolveElementSymbol(parts[typeIdx]);
       }
-      if (!element && labelIdx !== -1 && parts[labelIdx]) {
-        element = parts[labelIdx].replace(/[^A-Za-z]/g, "");
+      if ((!element || element === "X") && labelIdx !== -1 && parts[labelIdx]) {
+        element = resolveElementSymbol(parts[labelIdx]);
       }
       if (!element) element = "X";
-      element = element.charAt(0).toUpperCase() + element.slice(1).toLowerCase();
 
-      const label = labelIdx !== -1 ? parts[labelIdx] : element;
+      const label = labelIdx !== -1 ? parts[labelIdx].replace(/['"]/g, "") : `${element}${atoms.length + 1}`;
       const x = evalFract(parts[xIdx]);
       const y = evalFract(parts[yIdx]);
       const z = evalFract(parts[zIdx]);
@@ -1562,11 +1660,11 @@ function parseCifTextClient(cifText, filename = "") {
   }
 
   // 5. Formula & Compound Name
-  let formula = getTag("_chemical_formula_sum") ||
-                getTag("_chemical_formula_structural") ||
-                getTag("_chemical_name_common") ||
-                getTag("_chemical_name_systematic");
-  formula = (formula || "").replace(/\s+/g, "").replace(/['"]/g, "");
+  let rawFormula = getTag("_chemical_formula_sum") ||
+                   getTag("_chemical_formula_structural") ||
+                   getTag("_chemical_name_common") ||
+                   getTag("_chemical_name_systematic");
+  let formula = cleanChemicalFormula(rawFormula);
 
   if (!formula || formula === "UnknownFormula") {
     const dataTagMatch = text.match(/data_([^\s]+)/i);
@@ -1583,11 +1681,16 @@ function parseCifTextClient(cifText, filename = "") {
     formula = Object.entries(counts).map(([el, cnt]) => `${el}${cnt > 1 ? cnt : ""}`).join("");
   }
 
+  const cleanFilename = (filename || "").replace(/\.[^/.]+$/, "").trim();
   if (!formula) {
-    formula = filename.replace(/\.cif$/i, "") || "CrystalStructure";
+    formula = cleanFilename || "CrystalStructure";
   }
 
-  const name = `${formula} (${crystalSystem} ${spaceGroup})`;
+  let name = cleanFilename;
+  if (!name || ["input", "structure", "crystal", "cif", "data", "upload"].includes(name.toLowerCase())) {
+    name = `${formula} (${crystalSystem} ${spaceGroup})`;
+  }
+
   const poscarText = generatePoscarFromLatticeAndAtoms(formula, a, b, c, alpha, beta, gamma, atoms, spaceGroup, crystalSystem);
 
   return {
@@ -1749,19 +1852,23 @@ function collectModalAtoms() {
 
 function populateStructureModalWithParsed(p, rawCif, filename) {
   document.getElementById("struct-id").value = "";
-  document.getElementById("struct-name").value = p.name || filename.replace(/\.cif$/i, "") || "Crystal Structure";
-  document.getElementById("struct-formula").value = p.chemical_formula || p.formula || "";
+  let cleanName = (filename || "").replace(/\.[^/.]+$/, "").trim();
+  if (!cleanName || ["input", "structure", "crystal", "cif", "data", "upload"].includes(cleanName.toLowerCase())) {
+    cleanName = p.chemical_formula || p.name || "Crystal Structure";
+  }
+  document.getElementById("struct-name").value = cleanName;
+  document.getElementById("struct-formula").value = p.chemical_formula || p.formula || cleanName;
   document.getElementById("struct-system").value = p.crystal_system || "Cubic";
   document.getElementById("struct-spacegroup").value = p.space_group || "";
   document.getElementById("struct-type").value = p.structure_type || "Bulk 3D";
-  document.getElementById("struct-a").value = p.a || 4.0;
-  document.getElementById("struct-b").value = p.b || 4.0;
-  document.getElementById("struct-c").value = p.c || 4.0;
-  document.getElementById("struct-alpha").value = p.alpha || 90.0;
-  document.getElementById("struct-beta").value = p.beta || 90.0;
-  document.getElementById("struct-gamma").value = p.gamma || 90.0;
-  document.getElementById("struct-vol").value = p.volume || 64.0;
-  document.getElementById("struct-natoms").value = p.natoms || (p.atoms ? p.atoms.length : 5);
+  document.getElementById("struct-a").value = p.a != null ? p.a : 4.0;
+  document.getElementById("struct-b").value = p.b != null ? p.b : (p.a || 4.0);
+  document.getElementById("struct-c").value = p.c != null ? p.c : (p.a || 4.0);
+  document.getElementById("struct-alpha").value = p.alpha != null ? p.alpha : 90.0;
+  document.getElementById("struct-beta").value = p.beta != null ? p.beta : 90.0;
+  document.getElementById("struct-gamma").value = p.gamma != null ? p.gamma : 90.0;
+  document.getElementById("struct-vol").value = p.volume != null ? p.volume : 64.0;
+  document.getElementById("struct-natoms").value = p.atoms && p.atoms.length > 0 ? p.atoms.length : (p.natoms || 5);
   document.getElementById("struct-cifcontent").value = rawCif || p.raw_cif || p.cif_content || "";
   renderModalAtomsTable(p.atoms || []);
 }
@@ -1863,10 +1970,12 @@ function renderStructuresList() {
   `).join("");
 }
 
-function openStructureModal(structId = null) {
+function openStructureModal(structId = null, options = {}) {
   if (!requireAdminAuth()) return;
   const modal = document.getElementById("structure-modal");
   if (!modal) return;
+
+  initModalCifDropzone();
 
   if (structId) {
     const s = STATE.structures.find(x => x.id === structId);
@@ -1905,7 +2014,7 @@ function openStructureModal(structId = null) {
       atoms = parsed.atoms || [];
     }
     renderModalAtomsTable(atoms);
-  } else {
+  } else if (!options.skipReset) {
     document.getElementById("struct-modal-title").textContent = "Add Crystal Structure (*.cif)";
     document.getElementById("struct-id").value = "";
     document.getElementById("struct-name").value = "";
@@ -3191,8 +3300,8 @@ async function commitDataJsonToGitHub(options = {}) {
   let token = localStorage.getItem("matsci_github_token") || "";
   if (!token) {
     const inputToken = prompt(
-      "Nhập GitHub Personal Access Token (classic token có quyền 'repo' hoặc fine-grained token có quyền Contents:Read & Write):\n\n" +
-      "Sau khi nhập 1 lần, bạn có thể đồng bộ trực tiếp lên GitHub chỉ với 1 cú click chuột mà không cần tải file về nữa!"
+      "Enter your GitHub Personal Access Token (with 'repo' scope or fine-grained 'Contents: Read & Write'):\n\n" +
+      "Once configured, all database updates and Academic CV changes will automatically sync to GitHub Cloud with 1 click!"
     );
     if (!inputToken || !inputToken.trim()) {
       if (!silent) exportDataJson();
@@ -3203,7 +3312,7 @@ async function commitDataJsonToGitHub(options = {}) {
   localStorage.setItem("matsci_github_token", token);
 
   if (!silent) {
-    showToast("Đang đồng bộ trực tiếp data.json lên GitHub repository...", "info");
+    showToast("Syncing data.json directly to GitHub repository...", "info");
   }
   try {
     const repo = "tienlamvu/lamreseach";
@@ -3260,9 +3369,9 @@ async function commitDataJsonToGitHub(options = {}) {
       const errData = await putRes.json();
       if (putRes.status === 401 || putRes.status === 403) {
         localStorage.removeItem("matsci_github_token");
-        throw new Error("GitHub Token không hợp lệ hoặc đã hết hạn. Hãy thử nhập lại.");
+        throw new Error("Invalid or expired GitHub Token. Please re-enter.");
       }
-      throw new Error(errData.message || `Lỗi GitHub HTTP ${putRes.status}`);
+      throw new Error(errData.message || `GitHub API HTTP Error ${putRes.status}`);
     }
 
     // Also sync root data.json
@@ -3296,21 +3405,21 @@ async function commitDataJsonToGitHub(options = {}) {
     }
 
     if (!silent) {
-      showToast("🎉 Đã đồng bộ trực tiếp lên GitHub thành công! Mọi thiết bị khác sẽ thấy thay đổi sau khoảng 1 phút.", "success");
+      showToast("🎉 Successfully synced directly to GitHub! Changes will appear live across all devices in ~1 minute.", "success");
     } else {
-      showToast("☁️ Đã tự động lưu & đồng bộ lên GitHub!", "success");
+      showToast("☁️ Auto-synced changes to GitHub Cloud!", "success");
     }
   } catch (err) {
     console.error("GitHub Sync error:", err);
     if (!silent) {
-      showToast(`Lỗi đồng bộ GitHub: ${err.message}. Đang tải file data.json để upload thủ công.`, "error");
+      showToast(`GitHub Sync error: ${err.message}. Downloading data.json fallback...`, "error");
       exportDataJson();
     }
   }
 }
 
 function syncOrExportDataJson() {
-  if (confirm("Bạn muốn đồng bộ dữ liệu bằng cách nào?\n\n- Bấm OK: Đồng bộ trực tiếp lên GitHub (Tự động 1 chạm qua GitHub Token)\n- Bấm Cancel: Tải file data.json về máy (Kéo thả thủ công vào GitHub)")) {
+  if (confirm("Choose data synchronization method:\n\n- Click OK: 1-Click Direct Cloud Sync to GitHub via Personal Access Token\n- Click Cancel: Download data.json to upload manually")) {
     commitDataJsonToGitHub();
   } else {
     exportDataJson();
@@ -5057,7 +5166,7 @@ function renderPeriodicTable() {
 
   if (typeof ELEMENTS_DATA === "undefined" || !Array.isArray(ELEMENTS_DATA) || !ELEMENTS_DATA.length) {
     grid.innerHTML = `<div style="grid-column: 1 / -1; padding: 24px; text-align: center; color: var(--text-muted);">
-      ⏳ Đang tải dữ liệu 118 nguyên tố hóa học... Vui lòng chờ 1 giây.
+      ⏳ Loading 118 chemical elements data... Please wait a moment.
     </div>`;
     // Attempt dynamic script load if not already loaded
     if (!document.getElementById("matsci-tools-script")) {
@@ -5084,9 +5193,9 @@ function renderPeriodicTable() {
       const el = posMap[`${row}-${col}`];
       if (el) {
         const enVal = el.en !== null ? el.en.toFixed(1) : "-";
-        const enTooltip = el.en !== null ? `Độ âm điện (Pauling EN): ${el.en}` : "Độ âm điện: N/A";
+        const enTooltip = el.en !== null ? `Pauling Electronegativity (EN): ${el.en}` : "Electronegativity: N/A";
         html += `
-          <div class="pt-cell cat-${el.cat}" onclick="inspectElement(${el.n})" title="${escapeHtml(el.name)} (${el.s}) — No. ${el.n} | ${enTooltip} | Khối lượng: ${el.m} g/mol | Tinh thể: ${el.crys}">
+          <div class="pt-cell cat-${el.cat}" onclick="inspectElement(${el.n})" title="${escapeHtml(el.name)} (${el.s}) — No. ${el.n} | ${enTooltip} | Atomic Mass: ${el.m} g/mol | Crystal: ${el.crys}">
             <div class="pt-top-row">
               <span class="pt-num">${el.n}</span>
               <span class="pt-en" title="${enTooltip}">${enVal}</span>
@@ -5118,20 +5227,20 @@ function inspectElement(atomicNumber) {
   const box = document.getElementById("element-inspector");
   if (!box) return;
 
-  let enDesc = "Chưa xác định độ âm điện thực nghiệm.";
+  let enDesc = "Experimental electronegativity not established.";
   let enBadgeColor = "#64748b";
   if (el.en !== null) {
     if (el.en >= 3.0) {
-      enDesc = "Phi kim có độ âm điện rất cao — Xu hướng hút electron cực mạnh (tạo liên kết ion/cộng hóa trị phân cực cao).";
+      enDesc = "High electronegativity nonmetal — Strong electron affinity; forms polar covalent or ionic bonds.";
       enBadgeColor = "#b91c1c";
     } else if (el.en >= 2.0) {
-      enDesc = "Phi kim / Á kim — Độ âm điện trung bình khá, tạo khung liên kết cộng hóa trị bền vững.";
+      enDesc = "Moderate electronegativity nonmetal/metalloid — Characteristic covalent network former.";
       enBadgeColor = "#c2410c";
     } else if (el.en >= 1.5) {
-      enDesc = "Kim loại chuyển tiếp / Hậu chuyển tiếp — Độ âm điện trung bình, đa hóa trị.";
+      enDesc = "Transition / Post-transition metal — Intermediate electronegativity, variable oxidation states.";
       enBadgeColor = "#1e40af";
     } else {
-      enDesc = "Kim loại hoạt động mạnh (Electropositive) — Dễ nhường electron tạo cation, đặc trưng liên kết ion.";
+      enDesc = "Electropositive metal — Low electronegativity; readily donates electrons to form cations.";
       enBadgeColor = "#047857";
     }
   }
@@ -5147,27 +5256,27 @@ function inspectElement(atomicNumber) {
           <span>${escapeHtml(el.name)} (${el.s})</span>
           <span class="badge cat-${el.cat}" style="text-transform:capitalize; font-size:12px;">${el.cat.replace("-", " ")}</span>
           <span style="font-size:13px; font-weight:700; background:#fef3c7; color:#92400e; padding:3px 10px; border-radius:6px; border:1px solid #fde68a;">
-            ⚡ Độ âm điện Pauling: <strong>${el.en !== null ? el.en : "N/A"}</strong>
+            ⚡ Pauling Electronegativity: <strong>${el.en !== null ? el.en : "N/A"}</strong>
           </span>
         </div>
         <div style="font-size:13px; color:var(--text-secondary); margin-top:4px;">
-          <strong>Khối lượng nguyên tử:</strong> ${el.m} g/mol &nbsp;|&nbsp;
-          <strong>Cấu hình e:</strong> <code>${el.conf}</code> &nbsp;|&nbsp;
-          <strong>Số oxi hóa:</strong> ${el.ox}
+          <strong>Atomic Mass:</strong> ${el.m} g/mol &nbsp;|&nbsp;
+          <strong>Electron Config:</strong> <code>${el.conf}</code> &nbsp;|&nbsp;
+          <strong>Oxidation States:</strong> ${el.ox}
         </div>
         <div style="font-size:13px; color:var(--text-secondary); margin-top:3px;">
-          <strong>Cấu trúc tinh thể:</strong> ${el.crys} ${el.a ? `(a = ${el.a} Å)` : ""} &nbsp;|&nbsp;
-          <strong>Điểm nóng chảy:</strong> ${el.mp !== null ? `${el.mp} °C` : "N/A"} &nbsp;|&nbsp;
-          <strong>Khối lượng riêng:</strong> ${el.rho !== null ? `${el.rho} g/cm³` : "N/A"}
+          <strong>Crystal Structure:</strong> ${el.crys} ${el.a ? `(a = ${el.a} Å)` : ""} &nbsp;|&nbsp;
+          <strong>Melting Point:</strong> ${el.mp !== null ? `${el.mp} °C` : "N/A"} &nbsp;|&nbsp;
+          <strong>Density:</strong> ${el.rho !== null ? `${el.rho} g/cm³` : "N/A"}
         </div>
         <div style="font-size:12.5px; color:${enBadgeColor}; margin-top:4px; font-weight:600;">
-          💡 Đặc tính độ âm điện: ${enDesc}
+          💡 Bonding Character: ${enDesc}
         </div>
       </div>
     </div>
     <div>
       <button class="btn btn-primary btn-sm" onclick="appendElementToFormula('${el.s}')">
-        + Thêm ${el.s} vào Công thức Tính toán
+        + Append ${el.s} to Formula
       </button>
     </div>
   `;
