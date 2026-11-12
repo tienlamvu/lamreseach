@@ -2339,7 +2339,7 @@ let CRYSTAL_3D_STATE = {
   showLabels: true,
   showBonds: true,
   style: "ball-stick", // "ball-stick" | "space-fill" | "stick"
-  theme: "white", // "white" (VESTA standard) | "dark"
+  theme: "dark", // "dark" (default) | "white"
   isDragging: false,
   lastMouseX: 0,
   lastMouseY: 0,
@@ -2629,11 +2629,40 @@ function viewCifModal(id) {
   const badge = document.getElementById("cvm-atom-count-badge");
   if (badge) badge.textContent = `${atoms.length} atoms in basis`;
 
-  // Sync toolbar active button classes
+  // Sync toolbar active button classes and icons
   document.getElementById("btn-toggle-bonds")?.classList.toggle("active", CRYSTAL_3D_STATE.showBonds);
-  document.getElementById("btn-toggle-theme")?.classList.toggle("active", CRYSTAL_3D_STATE.theme === "white");
   document.getElementById("btn-toggle-box")?.classList.toggle("active", CRYSTAL_3D_STATE.showBox);
   document.getElementById("btn-toggle-labels")?.classList.toggle("active", CRYSTAL_3D_STATE.showLabels);
+
+  const themeBtn = document.getElementById("btn-toggle-theme");
+  const isWhite = CRYSTAL_3D_STATE.theme === "white";
+  if (themeBtn) {
+    themeBtn.textContent = isWhite ? "🌙" : "☀️";
+    themeBtn.title = isWhite ? "Switch to Dark Background" : "Switch to Light Background";
+    themeBtn.classList.toggle("active", isWhite);
+  }
+
+  const box = document.getElementById("crystal-3d-container");
+  if (box) {
+    box.className = isWhite ? "theme-white" : "theme-dark";
+    box.style.background = isWhite ? "#ffffff" : "#0b1120";
+    box.style.borderColor = isWhite ? "#cbd5e1" : "#334155";
+  }
+
+  const legend = document.getElementById("crystal-3d-legend");
+  if (legend) {
+    if (isWhite) {
+      legend.style.background = "rgba(255,255,255,0.92)";
+      legend.style.color = "#0f172a";
+      legend.style.borderColor = "#cbd5e1";
+      legend.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)";
+    } else {
+      legend.style.background = "rgba(15,23,42,0.88)";
+      legend.style.color = "#e2e8f0";
+      legend.style.borderColor = "#334155";
+      legend.style.boxShadow = "0 2px 8px rgba(0,0,0,0.4)";
+    }
+  }
 
   switchCvmTab("3d");
   document.getElementById("cif-view-modal")?.classList.add("open");
@@ -2723,7 +2752,8 @@ function toggleCrystalBonds() {
   CRYSTAL_3D_STATE.showBonds = !CRYSTAL_3D_STATE.showBonds;
   const btn = document.getElementById("btn-toggle-bonds");
   if (btn) {
-    btn.textContent = `🔗 Bonds: ${CRYSTAL_3D_STATE.showBonds ? "ON" : "OFF"}`;
+    btn.textContent = "🔗";
+    btn.title = `Chemical Bonds: ${CRYSTAL_3D_STATE.showBonds ? "ON" : "OFF"}`;
     btn.classList.toggle("active", CRYSTAL_3D_STATE.showBonds);
   }
   renderCrystal3D();
@@ -2733,26 +2763,28 @@ function toggleCrystalBonds() {
 function cycleCrystalStyle() {
   const styles = ["ball-stick", "space-fill", "stick"];
   const names = {
-    "ball-stick": "🎨 Ball & Stick",
-    "space-fill": "🎨 Space-Filling (CPK)",
-    "stick": "🎨 Stick / Wire"
+    "ball-stick": "Ball & Stick",
+    "space-fill": "Space-Filling (CPK)",
+    "stick": "Stick / Wire"
   };
   const curIdx = styles.indexOf(CRYSTAL_3D_STATE.style);
   CRYSTAL_3D_STATE.style = styles[(curIdx + 1) % styles.length];
   const btn = document.getElementById("btn-toggle-style");
   if (btn) {
-    btn.textContent = names[CRYSTAL_3D_STATE.style];
+    btn.textContent = "🎨";
+    btn.title = `Display Style: ${names[CRYSTAL_3D_STATE.style]}`;
   }
   renderCrystal3D();
   showToast(`Style: ${names[CRYSTAL_3D_STATE.style]}`);
 }
 
 function toggleCrystalTheme() {
-  CRYSTAL_3D_STATE.theme = CRYSTAL_3D_STATE.theme === "white" ? "dark" : "white";
+  CRYSTAL_3D_STATE.theme = CRYSTAL_3D_STATE.theme === "dark" ? "white" : "dark";
   const isWhite = CRYSTAL_3D_STATE.theme === "white";
   const btn = document.getElementById("btn-toggle-theme");
   if (btn) {
-    btn.textContent = isWhite ? "☀️ Theme: White (VESTA)" : "🌙 Theme: Dark Slate";
+    btn.textContent = isWhite ? "🌙" : "☀️";
+    btn.title = isWhite ? "Switch to Dark Background" : "Switch to Light Background";
     btn.classList.toggle("active", isWhite);
   }
   const box = document.getElementById("crystal-3d-container");
@@ -2769,34 +2801,38 @@ function toggleCrystalTheme() {
       legend.style.borderColor = "#cbd5e1";
       legend.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)";
     } else {
-      legend.style.background = "rgba(15,23,42,0.85)";
+      legend.style.background = "rgba(15,23,42,0.88)";
       legend.style.color = "#e2e8f0";
       legend.style.borderColor = "#334155";
-      legend.style.boxShadow = "none";
+      legend.style.boxShadow = "0 2px 8px rgba(0,0,0,0.4)";
     }
   }
   renderCrystal3D();
-  showToast(`Theme: ${isWhite ? "White (VESTA)" : "Dark Slate"}`);
+  showToast(`Theme: ${isWhite ? "Light (White)" : "Dark Slate"}`);
 }
 
 function toggleUnitCellBox() {
   CRYSTAL_3D_STATE.showBox = !CRYSTAL_3D_STATE.showBox;
   const btn = document.getElementById("btn-toggle-box");
   if (btn) {
-    btn.textContent = `📦 Box: ${CRYSTAL_3D_STATE.showBox ? "ON" : "OFF"}`;
+    btn.textContent = "📦";
+    btn.title = `Unit Cell Box: ${CRYSTAL_3D_STATE.showBox ? "ON" : "OFF"}`;
     btn.classList.toggle("active", CRYSTAL_3D_STATE.showBox);
   }
   renderCrystal3D();
+  showToast(`Unit Cell Box: ${CRYSTAL_3D_STATE.showBox ? "ON" : "OFF"}`);
 }
 
 function toggleAtomLabels() {
   CRYSTAL_3D_STATE.showLabels = !CRYSTAL_3D_STATE.showLabels;
   const btn = document.getElementById("btn-toggle-labels");
   if (btn) {
-    btn.textContent = `🏷️ Labels: ${CRYSTAL_3D_STATE.showLabels ? "ON" : "OFF"}`;
+    btn.textContent = "🏷️";
+    btn.title = `Atom Labels: ${CRYSTAL_3D_STATE.showLabels ? "ON" : "OFF"}`;
     btn.classList.toggle("active", CRYSTAL_3D_STATE.showLabels);
   }
   renderCrystal3D();
+  showToast(`Atom Labels: ${CRYSTAL_3D_STATE.showLabels ? "ON" : "OFF"}`);
 }
 
 function setCrystalViewPreset(preset) {
