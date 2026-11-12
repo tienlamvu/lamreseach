@@ -2303,8 +2303,33 @@ async function deleteStructureItem(id) {
 }
 
 // ============================================================================
-// Interactive 3D Crystal Viewer & Exporter Controller
+// Interactive 3D Crystal Viewer & Exporter Controller (VESTA High-Fidelity)
 // ============================================================================
+
+const COVALENT_RADII = {
+  H: 0.31, He: 0.28, Li: 1.28, Be: 0.96, B: 0.84, C: 0.76, N: 0.71, O: 0.66,
+  F: 0.57, Ne: 0.58, Na: 1.66, Mg: 1.41, Al: 1.21, Si: 1.11, P: 1.07, S: 1.05,
+  Cl: 1.02, Ar: 1.06, K: 2.03, Ca: 1.76, Sc: 1.70, Ti: 1.60, V: 1.53, Cr: 1.39,
+  Mn: 1.39, Fe: 1.32, Co: 1.26, Ni: 1.24, Cu: 1.32, Zn: 1.22, Ga: 1.22, Ge: 1.20,
+  As: 1.19, Se: 1.20, Br: 1.20, Kr: 1.16, Rb: 2.20, Sr: 1.95, Y: 1.90, Zr: 1.75,
+  Nb: 1.64, Mo: 1.54, Tc: 1.47, Ru: 1.46, Rh: 1.42, Pd: 1.39, Ag: 1.45, Cd: 1.44,
+  In: 1.42, Sn: 1.39, Sb: 1.39, Te: 1.38, I: 1.39, Xe: 1.40, Cs: 2.44, Ba: 2.15,
+  La: 2.07, Ce: 2.04, Pr: 2.03, Nd: 2.01, Ta: 1.70, W: 1.62, Re: 1.51, Os: 1.44,
+  Ir: 1.41, Pt: 1.36, Au: 1.36, Pb: 1.46, Bi: 1.48
+};
+
+const METALS_SET = new Set([
+  "Li", "Na", "K", "Rb", "Cs", "Fr",
+  "Be", "Mg", "Ca", "Sr", "Ba", "Ra",
+  "Sc", "Y", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu",
+  "Ti", "Zr", "Hf", "V", "Nb", "Ta", "Cr", "Mo", "W", "Mn", "Tc", "Re",
+  "Fe", "Ru", "Os", "Co", "Rh", "Ir", "Ni", "Pd", "Pt", "Cu", "Ag", "Au",
+  "Zn", "Cd", "Hg", "Al", "Ga", "In", "Tl", "Sn", "Pb", "Bi"
+]);
+
+const NON_METALS_SET = new Set([
+  "H", "B", "C", "N", "O", "F", "Si", "P", "S", "Cl", "Ge", "As", "Se", "Br", "Te", "I", "At"
+]);
 
 let CRYSTAL_3D_STATE = {
   rotX: 25 * Math.PI / 180,
@@ -2312,6 +2337,9 @@ let CRYSTAL_3D_STATE = {
   scale: 1.0,
   showBox: true,
   showLabels: true,
+  showBonds: true,
+  style: "ball-stick", // "ball-stick" | "space-fill" | "stick"
+  theme: "white", // "white" (VESTA standard) | "dark"
   isDragging: false,
   lastMouseX: 0,
   lastMouseY: 0,
@@ -2319,6 +2347,167 @@ let CRYSTAL_3D_STATE = {
   atoms: [],
   lattice: { a: 4.0, b: 4.0, c: 4.0, alpha: 90, beta: 90, gamma: 90 }
 };
+
+function parsePoscarTextClient(poscarText, fallbackFormula = "") {
+  if (!poscarText) return null;
+  const lines = poscarText.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").map(l => l.trim()).filter(l => l.length > 0);
+  if (lines.length < 7) return null;
+
+  try {
+    const scale = parseFloat(lines[1]) || 1.0;
+    const aParts = lines[2].split(/\s+/).map(Number);
+    const bParts = lines[3].split(/\s+/).map(Number);
+    const cParts = lines[4].split(/\s+/).map(Number);
+    if (aParts.length < 3 || bParts.length < 3 || cParts.length < 3) return null;
+
+    const aVec = aParts.map(x => x * scale);
+    const bVec = bParts.map(x => x * scale);
+    const cVec = cParts.map(x => x * scale);
+
+    const aLen = Math.hypot(aVec[0], aVec[1], aVec[2]);
+    const bLen = Math.hypot(bVec[0], bVec[1], bVec[2]);
+    const cLen = Math.hypot(cVec[0], cVec[1], cVec[2]);
+
+    const dot = (v1, v2) => v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2];
+    const alpha = Math.acos(Math.max(-1, Math.min(1, dot(bVec, cVec) / (bLen * cLen)))) * 180 / Math.PI;
+    const beta = Math.acos(Math.max(-1, Math.min(1, dot(aVec, cVec) / (aLen * cLen)))) * 180 / Math.PI;
+    const gamma = Math.acos(Math.max(-1, Math.min(1, dot(aVec, bVec) / (aLen * bLen)))) * 180 / Math.PI;
+
+    const line5Parts = lines[5].split(/\s+/);
+    const line6Parts = lines[6].split(/\s+/);
+
+    const isAllNumbers = (arr) => arr.every(s => !isNaN(parseInt(s)) && !isNaN(Number(s)));
+    let elements = [];
+    let counts = [];
+    let coordStartIdx = 7;
+
+    if (isAllNumbers(line5Parts)) {
+      counts = line5Parts.map(x => parseInt(x));
+      coordStartIdx = 6;
+      const matched = fallbackFormula.match(/[A-Z][a-z]?/g) || [];
+      elements = counts.map((_, i) => matched[i] || "X");
+    } else {
+      elements = line5Parts.map(resolveElementSymbol);
+      counts = line6Parts.map(x => parseInt(x));
+      coordStartIdx = 7;
+    }
+
+    if (lines[coordStartIdx] && lines[coordStartIdx].toLowerCase().startsWith("s")) {
+      coordStartIdx++;
+    }
+
+    let isDirect = true;
+    if (lines[coordStartIdx] && (lines[coordStartIdx].toLowerCase().startsWith("c") || lines[coordStartIdx].toLowerCase().startsWith("k"))) {
+      isDirect = false;
+    }
+    coordStartIdx++;
+
+    const atoms = [];
+    let curLine = coordStartIdx;
+    for (let elemIdx = 0; elemIdx < counts.length; elemIdx++) {
+      const elem = elements[elemIdx] || "X";
+      const num = counts[elemIdx];
+      for (let k = 0; k < num; k++) {
+        if (curLine >= lines.length) break;
+        const parts = lines[curLine].split(/\s+/);
+        let x = parseFloat(parts[0]) || 0;
+        let y = parseFloat(parts[1]) || 0;
+        let z = parseFloat(parts[2]) || 0;
+        if (!isDirect && aLen > 0 && bLen > 0 && cLen > 0) {
+          x = x / aLen; y = y / bLen; z = z / cLen;
+        }
+        x = ((x % 1) + 1) % 1;
+        y = ((y % 1) + 1) % 1;
+        z = ((z % 1) + 1) % 1;
+        atoms.push({
+          element: elem,
+          label: `${elem}${k + 1}`,
+          x: Math.round(x * 100000) / 100000,
+          y: Math.round(y * 100000) / 100000,
+          z: Math.round(z * 100000) / 100000,
+          occupancy: 1.0
+        });
+        curLine++;
+      }
+    }
+
+    return {
+      lattice: { a: aLen, b: bLen, c: cLen, alpha, beta, gamma },
+      atoms
+    };
+  } catch (err) {
+    console.warn("parsePoscarTextClient error:", err);
+    return null;
+  }
+}
+
+function generatePrototypeAtoms(formula, crystalSystem = "") {
+  const clean = (formula || "").replace(/[^A-Za-z0-9]/g, "");
+  const matches = clean.match(/([A-Z][a-z]?)([\d\.]*)/g) || [];
+  const parts = [];
+  for (const m of matches) {
+    const sm = m.match(/([A-Z][a-z]?)([\d\.]*)/);
+    if (sm) {
+      parts.push({ elem: sm[1], count: parseFloat(sm[2]) || 1.0 });
+    }
+  }
+
+  // 1. Perovskite ABO3 / ABX3 (e.g. BaTiO3, SrTiO3, CsPbI3)
+  const isPerovskite = parts.length === 3 && Math.abs(parts[2].count - 3.0) < 0.2;
+  if (isPerovskite) {
+    const [A, B, X] = [parts[0].elem, parts[1].elem, parts[2].elem];
+    return [
+      { element: A, label: `${A}1`, x: 0.0, y: 0.0, z: 0.0 },
+      { element: B, label: `${B}1`, x: 0.5, y: 0.5, z: 0.5 },
+      { element: X, label: `${X}1`, x: 0.5, y: 0.5, z: 0.0 },
+      { element: X, label: `${X}2`, x: 0.5, y: 0.0, z: 0.5 },
+      { element: X, label: `${X}3`, x: 0.0, y: 0.5, z: 0.5 }
+    ];
+  }
+
+  // 2. TMD MX2 / MXY Monolayer (e.g. MoS2, MoSSe, WS2)
+  const isTmd = (parts.length === 2 && Math.abs(parts[1].count - 2.0) < 0.2) ||
+                (parts.length === 3 && Math.abs(parts[1].count - 1.0) < 0.2 && Math.abs(parts[2].count - 1.0) < 0.2);
+  if (isTmd) {
+    const M = parts[0].elem;
+    const X1 = parts[1].elem;
+    const X2 = (parts.length === 3) ? parts[2].elem : parts[1].elem;
+    return [
+      { element: M, label: `${M}1`, x: 0.33333, y: 0.66667, z: 0.50000 },
+      { element: X1, label: `${X1}1`, x: 0.66667, y: 0.33333, z: 0.41400 },
+      { element: X2, label: `${X2}2`, x: 0.66667, y: 0.33333, z: 0.58600 }
+    ];
+  }
+
+  // 3. Rock-Salt AB (e.g. NaCl, MgO)
+  if (parts.length === 2 && Math.abs(parts[0].count - 1.0) < 0.2 && Math.abs(parts[1].count - 1.0) < 0.2) {
+    const [A, B] = [parts[0].elem, parts[1].elem];
+    return [
+      { element: A, label: `${A}1`, x: 0.0, y: 0.0, z: 0.0 },
+      { element: A, label: `${A}2`, x: 0.5, y: 0.5, z: 0.0 },
+      { element: A, label: `${A}3`, x: 0.5, y: 0.0, z: 0.5 },
+      { element: A, label: `${A}4`, x: 0.0, y: 0.5, z: 0.5 },
+      { element: B, label: `${B}1`, x: 0.5, y: 0.0, z: 0.0 },
+      { element: B, label: `${B}2`, x: 0.0, y: 0.5, z: 0.0 },
+      { element: B, label: `${B}3`, x: 0.0, y: 0.0, z: 0.5 },
+      { element: B, label: `${B}4`, x: 0.5, y: 0.5, z: 0.5 }
+    ];
+  }
+
+  // 4. Fallback prototype
+  const atoms = [];
+  const coords = [
+    [0.0, 0.0, 0.0], [0.5, 0.5, 0.5], [0.5, 0.5, 0.0], [0.5, 0.0, 0.5], [0.0, 0.5, 0.5]
+  ];
+  parts.forEach((p, pIdx) => {
+    const c = coords[pIdx % coords.length];
+    atoms.push({ element: p.elem, label: `${p.elem}${pIdx + 1}`, x: c[0], y: c[1], z: c[2] });
+  });
+  if (atoms.length === 0) {
+    atoms.push({ element: "C", label: "C1", x: 0.5, y: 0.5, z: 0.5 });
+  }
+  return atoms;
+}
 
 function switchCvmTab(tab) {
   STATE.cifViewMode = tab;
@@ -2352,8 +2541,12 @@ function viewCifModal(id) {
   if (titleEl) titleEl.textContent = `${s.name} (${formula})`;
   if (subEl) subEl.textContent = `${s.crystal_system} • Space Group: ${s.space_group} • a=${s.a}Å, b=${s.b}Å, c=${s.c}Å • ${s.dft_code || "VASP"} ${s.dft_functional || s.functional || "PBE"}`;
 
-  // Resolve atoms
-  let atoms = s.atoms || [];
+  // Resolve atoms with multi-stage fallback:
+  // 1) Existing parsed atoms in object
+  // 2) Parse from CIF content
+  // 3) Parse from POSCAR content
+  // 4) High-fidelity prototype generator (perovskite / TMD / rocksalt)
+  let atoms = (s.atoms && s.atoms.length > 0) ? s.atoms : [];
   if (atoms.length === 0 && (s.raw_cif || s.cif_content)) {
     const parsed = parseCifTextClient(s.raw_cif || s.cif_content, s.name);
     if (parsed.atoms && parsed.atoms.length > 0) {
@@ -2361,14 +2554,21 @@ function viewCifModal(id) {
       s.atoms = atoms;
     }
   }
+  if (atoms.length === 0 && (s.poscar_text || s.poscar_content)) {
+    const parsedPos = parsePoscarTextClient(s.poscar_text || s.poscar_content, formula);
+    if (parsedPos && parsedPos.atoms && parsedPos.atoms.length > 0) {
+      atoms = parsedPos.atoms;
+      s.atoms = atoms;
+      if (parsedPos.lattice) {
+        if (!s.a || Number(s.a) === 4.0) s.a = Math.round(parsedPos.lattice.a * 1000) / 1000;
+        if (!s.b || Number(s.b) === 4.0) s.b = Math.round(parsedPos.lattice.b * 1000) / 1000;
+        if (!s.c || Number(s.c) === 4.0) s.c = Math.round(parsedPos.lattice.c * 1000) / 1000;
+      }
+    }
+  }
   if (atoms.length === 0) {
-    // Generate prototype basis for visualizer
-    atoms = [
-      { element: formula.replace(/[^A-Za-z]/g, "").slice(0, 2) || "Ti", label: "A1", x: 0.5, y: 0.5, z: 0.5 },
-      { element: "O", label: "O1", x: 0.5, y: 0.5, z: 0.0 },
-      { element: "O", label: "O2", x: 0.5, y: 0.0, z: 0.5 },
-      { element: "O", label: "O3", x: 0.0, y: 0.5, z: 0.5 }
-    ];
+    atoms = generatePrototypeAtoms(formula, s.crystal_system);
+    s.atoms = atoms;
   }
 
   CRYSTAL_3D_STATE.atoms = atoms;
@@ -2420,14 +2620,20 @@ function viewCifModal(id) {
     const uniqueElements = [...new Set(atoms.map(a => a.element))];
     legend.innerHTML = uniqueElements.map(el => `
       <span style="display:inline-flex; align-items:center; gap:5px; font-weight:600;">
-        <span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:${getElementColor(el)}; border:1px solid rgba(255,255,255,0.4);"></span>
+        <span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:${getElementColor(el)}; border:1px solid rgba(0,0,0,0.2); box-shadow:0 1px 3px rgba(0,0,0,0.15);"></span>
         ${escapeHtml(el)}
       </span>
     `).join("");
   }
 
   const badge = document.getElementById("cvm-atom-count-badge");
-  if (badge) badge.textContent = `${atoms.length} atoms in unit cell`;
+  if (badge) badge.textContent = `${atoms.length} atoms in basis`;
+
+  // Sync toolbar active button classes
+  document.getElementById("btn-toggle-bonds")?.classList.toggle("active", CRYSTAL_3D_STATE.showBonds);
+  document.getElementById("btn-toggle-theme")?.classList.toggle("active", CRYSTAL_3D_STATE.theme === "white");
+  document.getElementById("btn-toggle-box")?.classList.toggle("active", CRYSTAL_3D_STATE.showBox);
+  document.getElementById("btn-toggle-labels")?.classList.toggle("active", CRYSTAL_3D_STATE.showLabels);
 
   switchCvmTab("3d");
   document.getElementById("cif-view-modal")?.classList.add("open");
@@ -2513,17 +2719,83 @@ function resetCrystal3DView() {
   showToast("Reset 3D Crystal Perspective");
 }
 
+function toggleCrystalBonds() {
+  CRYSTAL_3D_STATE.showBonds = !CRYSTAL_3D_STATE.showBonds;
+  const btn = document.getElementById("btn-toggle-bonds");
+  if (btn) {
+    btn.textContent = `🔗 Bonds: ${CRYSTAL_3D_STATE.showBonds ? "ON" : "OFF"}`;
+    btn.classList.toggle("active", CRYSTAL_3D_STATE.showBonds);
+  }
+  renderCrystal3D();
+  showToast(`Bonds: ${CRYSTAL_3D_STATE.showBonds ? "ON" : "OFF"}`);
+}
+
+function cycleCrystalStyle() {
+  const styles = ["ball-stick", "space-fill", "stick"];
+  const names = {
+    "ball-stick": "🎨 Ball & Stick",
+    "space-fill": "🎨 Space-Filling (CPK)",
+    "stick": "🎨 Stick / Wire"
+  };
+  const curIdx = styles.indexOf(CRYSTAL_3D_STATE.style);
+  CRYSTAL_3D_STATE.style = styles[(curIdx + 1) % styles.length];
+  const btn = document.getElementById("btn-toggle-style");
+  if (btn) {
+    btn.textContent = names[CRYSTAL_3D_STATE.style];
+  }
+  renderCrystal3D();
+  showToast(`Style: ${names[CRYSTAL_3D_STATE.style]}`);
+}
+
+function toggleCrystalTheme() {
+  CRYSTAL_3D_STATE.theme = CRYSTAL_3D_STATE.theme === "white" ? "dark" : "white";
+  const isWhite = CRYSTAL_3D_STATE.theme === "white";
+  const btn = document.getElementById("btn-toggle-theme");
+  if (btn) {
+    btn.textContent = isWhite ? "☀️ Theme: White (VESTA)" : "🌙 Theme: Dark Slate";
+    btn.classList.toggle("active", isWhite);
+  }
+  const box = document.getElementById("crystal-3d-container");
+  if (box) {
+    box.className = isWhite ? "theme-white" : "theme-dark";
+    box.style.background = isWhite ? "#ffffff" : "#0b1120";
+    box.style.borderColor = isWhite ? "#cbd5e1" : "#334155";
+  }
+  const legend = document.getElementById("crystal-3d-legend");
+  if (legend) {
+    if (isWhite) {
+      legend.style.background = "rgba(255,255,255,0.92)";
+      legend.style.color = "#0f172a";
+      legend.style.borderColor = "#cbd5e1";
+      legend.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)";
+    } else {
+      legend.style.background = "rgba(15,23,42,0.85)";
+      legend.style.color = "#e2e8f0";
+      legend.style.borderColor = "#334155";
+      legend.style.boxShadow = "none";
+    }
+  }
+  renderCrystal3D();
+  showToast(`Theme: ${isWhite ? "White (VESTA)" : "Dark Slate"}`);
+}
+
 function toggleUnitCellBox() {
   CRYSTAL_3D_STATE.showBox = !CRYSTAL_3D_STATE.showBox;
   const btn = document.getElementById("btn-toggle-box");
-  if (btn) btn.textContent = `📦 Box: ${CRYSTAL_3D_STATE.showBox ? "ON" : "OFF"}`;
+  if (btn) {
+    btn.textContent = `📦 Box: ${CRYSTAL_3D_STATE.showBox ? "ON" : "OFF"}`;
+    btn.classList.toggle("active", CRYSTAL_3D_STATE.showBox);
+  }
   renderCrystal3D();
 }
 
 function toggleAtomLabels() {
   CRYSTAL_3D_STATE.showLabels = !CRYSTAL_3D_STATE.showLabels;
   const btn = document.getElementById("btn-toggle-labels");
-  if (btn) btn.textContent = `🏷️ Labels: ${CRYSTAL_3D_STATE.showLabels ? "ON" : "OFF"}`;
+  if (btn) {
+    btn.textContent = `🏷️ Labels: ${CRYSTAL_3D_STATE.showLabels ? "ON" : "OFF"}`;
+    btn.classList.toggle("active", CRYSTAL_3D_STATE.showLabels);
+  }
   renderCrystal3D();
 }
 
@@ -2546,7 +2818,7 @@ function setCrystalViewPreset(preset) {
 }
 
 function darkenColor(hex, factor = 0.3) {
-  let c = hex.replace("#", "");
+  let c = (hex || "#3b82f6").replace("#", "");
   if (c.length === 3) c = c.split("").map(ch => ch + ch).join("");
   const num = parseInt(c, 16);
   let r = (num >> 16) * (1 - factor);
@@ -2555,13 +2827,23 @@ function darkenColor(hex, factor = 0.3) {
   return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
 }
 
+function lightenColor(hex, factor = 0.4) {
+  let c = (hex || "#3b82f6").replace("#", "");
+  if (c.length === 3) c = c.split("").map(ch => ch + ch).join("");
+  const num = parseInt(c, 16);
+  let r = (num >> 16) + (255 - (num >> 16)) * factor;
+  let g = ((num >> 8) & 0x00FF) + (255 - ((num >> 8) & 0x00FF)) * factor;
+  let b = (num & 0x0000FF) + (255 - (num & 0x0000FF)) * factor;
+  return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+}
+
 function renderCrystal3D() {
   const canvas = document.getElementById("crystal-3d-canvas");
   if (!canvas || !canvas.parentElement) return;
 
   const rect = canvas.getBoundingClientRect();
-  const width = rect.width || 760;
-  const height = rect.height || 380;
+  const width = rect.width || 780;
+  const height = rect.height || 410;
   const dpr = window.devicePixelRatio || 1;
 
   if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
@@ -2572,7 +2854,15 @@ function renderCrystal3D() {
   const ctx = canvas.getContext("2d");
   ctx.save();
   ctx.scale(dpr, dpr);
-  ctx.clearRect(0, 0, width, height);
+
+  const isWhite = CRYSTAL_3D_STATE.theme === "white";
+  if (isWhite) {
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+  } else {
+    ctx.fillStyle = "#0b1120";
+    ctx.fillRect(0, 0, width, height);
+  }
 
   const lat = CRYSTAL_3D_STATE.lattice;
   const ar = (lat.alpha * Math.PI) / 180;
@@ -2596,7 +2886,7 @@ function renderCrystal3D() {
 
   // Auto-scale
   const maxSpan = Math.max(lat.a, lat.b, lat.c, 4.0);
-  const autoScale = (Math.min(width, height) / (maxSpan * 2.3)) * CRYSTAL_3D_STATE.scale;
+  const autoScale = (Math.min(width, height) / (maxSpan * 2.35)) * CRYSTAL_3D_STATE.scale;
 
   // 3D Rotation Matrix projection
   const cosY = Math.cos(CRYSTAL_3D_STATE.rotY), sinY = Math.sin(CRYSTAL_3D_STATE.rotY);
@@ -2607,12 +2897,10 @@ function renderCrystal3D() {
     const yRel = y - centerY;
     const zRel = z - centerZ;
 
-    // Rotate Y
     const x1 = xRel * cosY + zRel * sinY;
     const z1 = -xRel * sinY + zRel * cosY;
     const y1 = yRel;
 
-    // Rotate X
     const y2 = y1 * cosX - z1 * sinX;
     const z2 = y1 * sinX + z1 * cosX;
     const x2 = x1;
@@ -2624,9 +2912,93 @@ function renderCrystal3D() {
     };
   }
 
+  // 1. VESTA Boundary Expansion
+  const baseAtoms = CRYSTAL_3D_STATE.atoms || [];
+  const hasAnions = baseAtoms.some(at => NON_METALS_SET.has(at.element));
+  const expandedAtoms = [];
+  const seenAtoms = new Set();
+
+  baseAtoms.forEach((at) => {
+    const elem = at.element || "X";
+    const x0 = Number(at.x) || 0;
+    const y0 = Number(at.y) || 0;
+    const z0 = Number(at.z) || 0;
+
+    const xs = [x0];
+    if (x0 < 0.04) xs.push(1.0);
+    else if (x0 > 0.96) xs.push(0.0);
+
+    const ys = [y0];
+    if (y0 < 0.04) ys.push(1.0);
+    else if (y0 > 0.96) ys.push(0.0);
+
+    const zs = [z0];
+    if (z0 < 0.04) zs.push(1.0);
+    else if (z0 > 0.96) zs.push(0.0);
+
+    xs.forEach(x => {
+      ys.forEach(y => {
+        zs.forEach(z => {
+          const key = `${elem}_${Math.round(x * 1000)}_${Math.round(y * 1000)}_${Math.round(z * 1000)}`;
+          if (seenAtoms.has(key)) return;
+          seenAtoms.add(key);
+
+          const cartX = x * ax + y * bx + z * cx;
+          const cartY = x * ay + y * by + z * cy;
+          const cartZ = x * az + y * bz + z * cz;
+          const proj = project(cartX, cartY, cartZ);
+
+          expandedAtoms.push({
+            element: elem,
+            label: at.label || elem,
+            x, y, z,
+            cartX, cartY, cartZ,
+            sx: proj.sx,
+            sy: proj.sy,
+            sz: proj.sz
+          });
+        });
+      });
+    });
+  });
+
+  // 2. Chemical Bonds Detection
+  const bonds = [];
+  if (CRYSTAL_3D_STATE.showBonds && CRYSTAL_3D_STATE.style !== "space-fill") {
+    for (let i = 0; i < expandedAtoms.length; i++) {
+      const a1 = expandedAtoms[i];
+      const r1 = COVALENT_RADII[a1.element] || 1.25;
+      const isM1 = METALS_SET.has(a1.element);
+
+      for (let j = i + 1; j < expandedAtoms.length; j++) {
+        const a2 = expandedAtoms[j];
+        const isM2 = METALS_SET.has(a2.element);
+        if (hasAnions && isM1 && isM2) continue; // Filter spurious metal-metal bonds in ionic/semiconductors
+
+        const r2 = COVALENT_RADII[a2.element] || 1.25;
+        const dx = a1.cartX - a2.cartX;
+        const dy = a1.cartY - a2.cartY;
+        const dz = a1.cartZ - a2.cartZ;
+        const dist = Math.hypot(dx, dy, dz);
+
+        const maxBondDist = (r1 + r2) * 1.18;
+        if (dist > 0.5 && dist <= maxBondDist) {
+          bonds.push({
+            p1: a1,
+            p2: a2,
+            dist,
+            color1: getElementColor(a1.element),
+            color2: getElementColor(a2.element),
+            sz: (a1.sz + a2.sz) / 2
+          });
+        }
+      }
+    }
+  }
+
   const drawList = [];
 
-  // Unit Cell 8 Vertices
+  // 3. Unit Cell 8 Vertices & 12 Edges
   const V = [
     { x: 0, y: 0, z: 0 },
     { x: ax, y: ay, z: az },
@@ -2639,7 +3011,6 @@ function renderCrystal3D() {
   ];
   const P = V.map(v => project(v.x, v.y, v.z));
 
-  // Unit Cell 12 Edges
   if (CRYSTAL_3D_STATE.showBox) {
     const edges = [
       [0,1], [0,2], [0,3],
@@ -2649,105 +3020,284 @@ function renderCrystal3D() {
       [4,7], [5,7], [6,7]
     ];
     edges.forEach(([i, j]) => {
-      const p1 = P[i], p2 = P[j];
       drawList.push({
         type: "edge",
-        p1, p2,
-        sz: (p1.sz + p2.sz) / 2
+        p1: P[i],
+        p2: P[j],
+        sz: (P[i].sz + P[j].sz) / 2
       });
     });
   }
 
-  // Atoms
-  const atoms = CRYSTAL_3D_STATE.atoms || [];
-  atoms.forEach(at => {
-    const cartX = (at.x || 0) * ax + (at.y || 0) * bx + (at.z || 0) * cx;
-    const cartY = (at.x || 0) * ay + (at.y || 0) * by + (at.z || 0) * cy;
-    const cartZ = (at.x || 0) * az + (at.y || 0) * bz + (at.z || 0) * cz;
-    const proj = project(cartX, cartY, cartZ);
+  // 4. Add Bonds to Draw List
+  const isStick = CRYSTAL_3D_STATE.style === "stick";
+  const isSpaceFill = CRYSTAL_3D_STATE.style === "space-fill";
+  const bondWidth = isStick ? Math.max(4.5, autoScale * 0.18) : Math.max(3.2, autoScale * 0.11);
+
+  bonds.forEach(b => {
+    drawList.push({
+      type: "bond",
+      p1: b.p1,
+      p2: b.p2,
+      color1: b.color1,
+      color2: b.color2,
+      bondWidth,
+      sz: b.sz
+    });
+  });
+
+  // 5. Add Atoms to Draw List
+  expandedAtoms.forEach(at => {
+    let radius;
+    if (isSpaceFill) {
+      radius = Math.max(16, getElementRadius(at.element) * (autoScale / 24) * 2.1);
+    } else if (isStick) {
+      radius = Math.max(4, autoScale * 0.12);
+    } else {
+      // Ball & Stick (VESTA high-fidelity)
+      radius = Math.max(8, getElementRadius(at.element) * (autoScale / 24) * 0.95);
+    }
+
     drawList.push({
       type: "atom",
-      sx: proj.sx,
-      sy: proj.sy,
-      sz: proj.sz,
-      atom: at
+      sx: at.sx,
+      sy: at.sy,
+      sz: at.sz,
+      radius,
+      atom: at,
+      color: getElementColor(at.element)
     });
   });
 
   // Depth sort (Painter's Algorithm)
   drawList.sort((a, b) => a.sz - b.sz);
 
-  // Render items
+  // 6. Render Items
   drawList.forEach(item => {
     if (item.type === "edge") {
       ctx.beginPath();
-      ctx.strokeStyle = "#475569";
+      ctx.strokeStyle = isWhite ? "#64748b" : "#475569";
       ctx.lineWidth = 1.4;
       ctx.setLineDash([4, 3]);
       ctx.moveTo(item.p1.sx, item.p1.sy);
       ctx.lineTo(item.p2.sx, item.p2.sy);
       ctx.stroke();
       ctx.setLineDash([]);
-    } else if (item.type === "atom") {
-      const radius = Math.max(7, getElementRadius(item.atom.element) * (autoScale / 24) * 0.95);
-      const color = getElementColor(item.atom.element);
+    } else if (item.type === "bond") {
+      // Dual-Color 3D Shaded Cylinder (VESTA Style)
+      const p1 = item.p1, p2 = item.p2;
+      const dx = p2.sx - p1.sx;
+      const dy = p2.sy - p1.sy;
+      const len = Math.hypot(dx, dy);
+      if (len < 1.0) return;
 
-      // 3D Shaded Sphere
+      const ux = dx / len, uy = dy / len;
+      const nx = -uy, ny = ux;
+      const hw = item.bondWidth / 2;
+      const mx = (p1.sx + p2.sx) / 2;
+      const my = (p1.sy + p2.sy) / 2;
+
+      // First Half: P1 -> Mid (color1)
+      const grad1 = ctx.createLinearGradient(
+        mx - nx * hw, my - ny * hw,
+        mx + nx * hw, my + ny * hw
+      );
+      grad1.addColorStop(0.0, darkenColor(item.color1, 0.45));
+      grad1.addColorStop(0.25, item.color1);
+      grad1.addColorStop(0.55, lightenColor(item.color1, 0.65));
+      grad1.addColorStop(0.85, item.color1);
+      grad1.addColorStop(1.0, darkenColor(item.color1, 0.4));
+
+      ctx.beginPath();
+      ctx.moveTo(p1.sx - nx * hw, p1.sy - ny * hw);
+      ctx.lineTo(p1.sx + nx * hw, p1.sy + ny * hw);
+      ctx.lineTo(mx + nx * hw, my + ny * hw);
+      ctx.lineTo(mx - nx * hw, my - ny * hw);
+      ctx.closePath();
+      ctx.fillStyle = grad1;
+      ctx.fill();
+
+      // Second Half: Mid -> P2 (color2)
+      const grad2 = ctx.createLinearGradient(
+        mx - nx * hw, my - ny * hw,
+        mx + nx * hw, my + ny * hw
+      );
+      grad2.addColorStop(0.0, darkenColor(item.color2, 0.45));
+      grad2.addColorStop(0.25, item.color2);
+      grad2.addColorStop(0.55, lightenColor(item.color2, 0.65));
+      grad2.addColorStop(0.85, item.color2);
+      grad2.addColorStop(1.0, darkenColor(item.color2, 0.4));
+
+      ctx.beginPath();
+      ctx.moveTo(mx - nx * hw, my - ny * hw);
+      ctx.lineTo(mx + nx * hw, my + ny * hw);
+      ctx.lineTo(p2.sx + nx * hw, p2.sy + ny * hw);
+      ctx.lineTo(p2.sx - nx * hw, p2.sy - ny * hw);
+      ctx.closePath();
+      ctx.fillStyle = grad2;
+      ctx.fill();
+    } else if (item.type === "atom") {
+      const radius = item.radius;
+      const color = item.color;
+
+      // 3D Radial Specular Shaded Sphere (VESTA Style)
       const grad = ctx.createRadialGradient(
         item.sx - radius * 0.35, item.sy - radius * 0.35, radius * 0.08,
         item.sx, item.sy, radius
       );
-      grad.addColorStop(0, "#ffffff");
-      grad.addColorStop(0.25, color);
-      grad.addColorStop(1, darkenColor(color, 0.45));
+      grad.addColorStop(0.0, "#ffffff");
+      grad.addColorStop(0.22, lightenColor(color, 0.4));
+      grad.addColorStop(0.55, color);
+      grad.addColorStop(0.92, darkenColor(color, 0.42));
+      grad.addColorStop(1.0, darkenColor(color, 0.65));
 
       ctx.beginPath();
       ctx.fillStyle = grad;
       ctx.arc(item.sx, item.sy, radius, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = "rgba(15, 23, 42, 0.4)";
-      ctx.lineWidth = 1.2;
+
+      ctx.strokeStyle = isWhite ? "rgba(15, 23, 42, 0.35)" : "rgba(0, 0, 0, 0.5)";
+      ctx.lineWidth = 1.0;
       ctx.stroke();
 
       // Atom Label
       if (CRYSTAL_3D_STATE.showLabels && radius >= 9) {
-        ctx.fillStyle = "#ffffff";
         ctx.font = `bold ${Math.max(9, Math.round(radius * 0.78))}px system-ui, sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.shadowColor = "rgba(0,0,0,0.8)";
-        ctx.shadowBlur = 3;
-        ctx.fillText(item.atom.element, item.sx, item.sy);
-        ctx.shadowBlur = 0;
+
+        if (isWhite) {
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+          ctx.lineWidth = 2.5;
+          ctx.strokeText(item.atom.element, item.sx, item.sy);
+          ctx.fillStyle = "#0f172a";
+          ctx.fillText(item.atom.element, item.sx, item.sy);
+        } else {
+          ctx.shadowColor = "rgba(0,0,0,0.85)";
+          ctx.shadowBlur = 3;
+          ctx.fillStyle = "#ffffff";
+          ctx.fillText(item.atom.element, item.sx, item.sy);
+          ctx.shadowBlur = 0;
+        }
       }
     }
   });
 
-  // Render 3D Vector Axes Indicator at bottom-right
-  const originX = width - 42;
-  const originY = height - 42;
-  const axisLen = 24;
+  // 7. VESTA-Style 3D Triad Coordinate Axes Indicator (Bottom-Left)
+  const originX = 50;
+  const originY = height - 50;
+  const triadLen = 30;
 
-  const axProj = { x: 1 * cosY + 0 * sinY, y: 0 * cosX - (-1 * sinY) * sinX };
-  const byProj = { x: 0 * cosY + 0 * sinY, y: 1 * cosX - 0 * sinX };
-  const czProj = { x: 0 * cosY + 1 * sinY, y: 0 * cosX - (1 * cosY) * sinX };
+  // Real crystal lattice direction vectors
+  const aNorm = Math.hypot(ax, ay, az) || 1.0;
+  const bNorm = Math.hypot(bx, by, bz) || 1.0;
+  const cNorm = Math.hypot(cx, cy, cz) || 1.0;
 
-  function drawAxis(vec, color, label) {
-    ctx.beginPath();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2.2;
-    ctx.moveTo(originX, originY);
-    ctx.lineTo(originX + vec.x * axisLen, originY - vec.y * axisLen);
-    ctx.stroke();
+  const aHat = { x: ax / aNorm, y: ay / aNorm, z: az / aNorm };
+  const bHat = { x: bx / bNorm, y: by / bNorm, z: bz / bNorm };
+  const cHat = { x: cx / cNorm, y: cy / cNorm, z: cz / cNorm };
 
-    ctx.fillStyle = color;
-    ctx.font = "bold 10px monospace";
-    ctx.fillText(label, originX + vec.x * (axisLen + 7), originY - vec.y * (axisLen + 7));
+  function projectDir(v) {
+    const x1 = v.x * cosY + v.z * sinY;
+    const z1 = -v.x * sinY + v.z * cosY;
+    const y1 = v.y;
+    const y2 = y1 * cosX - z1 * sinX;
+    const z2 = y1 * sinX + z1 * cosX;
+    const x2 = x1;
+    return { vx: x2, vy: y2, vz: z2 };
   }
 
-  drawAxis(axProj, "#ef4444", "a");
-  drawAxis(byProj, "#22c55e", "b");
-  drawAxis(czProj, "#3b82f6", "c");
+  const triadAxes = [
+    { label: "a", proj: projectDir(aHat), color: "#dc2626" },
+    { label: "b", proj: projectDir(bHat), color: "#16a34a" },
+    { label: "c", proj: projectDir(cHat), color: "#2563eb" }
+  ];
+
+  // Triad Draw Items (axes + pivot sphere sorted by depth vz)
+  const triadItems = [];
+  triadAxes.forEach(ax => {
+    triadItems.push({
+      type: "axis",
+      label: ax.label,
+      color: ax.color,
+      vx: ax.proj.vx,
+      vy: ax.proj.vy,
+      vz: ax.proj.vz
+    });
+  });
+  triadItems.push({
+    type: "pivot",
+    vz: 0.0
+  });
+
+  triadItems.sort((a, b) => a.vz - b.vz);
+
+  triadItems.forEach(item => {
+    if (item.type === "pivot") {
+      // 3D Silver metallic pivot sphere at origin
+      const pGrad = ctx.createRadialGradient(
+        originX - 1.8, originY - 1.8, 0.8,
+        originX, originY, 5.5
+      );
+      pGrad.addColorStop(0.0, "#ffffff");
+      pGrad.addColorStop(0.35, "#cbd5e1");
+      pGrad.addColorStop(0.75, "#64748b");
+      pGrad.addColorStop(1.0, "#334155");
+
+      ctx.beginPath();
+      ctx.fillStyle = pGrad;
+      ctx.arc(originX, originY, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.3)";
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+    } else if (item.type === "axis") {
+      const tipX = originX + item.vx * triadLen;
+      const tipY = originY - item.vy * triadLen;
+
+      // Axis shaft
+      ctx.beginPath();
+      ctx.strokeStyle = item.color;
+      ctx.lineWidth = 2.4;
+      ctx.lineCap = "round";
+      ctx.moveTo(originX, originY);
+      ctx.lineTo(tipX, tipY);
+      ctx.stroke();
+
+      // Cone/Arrowhead
+      const dirLen = Math.hypot(item.vx, item.vy);
+      if (dirLen > 0.05) {
+        const uAx = item.vx / dirLen;
+        const uAy = -item.vy / dirLen;
+        const normAx = -uAy;
+        const normAy = uAx;
+        const coneLen = 7.5;
+        const coneWidth = 4.0;
+
+        const baseCx = tipX - uAx * coneLen;
+        const baseCy = tipY - uAy * coneLen;
+
+        ctx.beginPath();
+        ctx.moveTo(tipX, tipY);
+        ctx.lineTo(baseCx + normAx * coneWidth, baseCy + normAy * coneWidth);
+        ctx.lineTo(baseCx - normAx * coneWidth, baseCy - normAy * coneWidth);
+        ctx.closePath();
+        ctx.fillStyle = item.color;
+        ctx.fill();
+      }
+
+      // Bold Axis Label
+      const lblDist = triadLen + 10;
+      const lx = originX + item.vx * lblDist;
+      const ly = originY - item.vy * lblDist;
+
+      ctx.fillStyle = item.color;
+      ctx.font = "bold 11.5px 'Fira Code', Menlo, monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(item.label, lx, ly);
+    }
+  });
 
   ctx.restore();
 }
