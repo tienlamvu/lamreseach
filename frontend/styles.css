@@ -1898,6 +1898,12 @@ body.is-admin .visitor-only {
   border: 1px solid #86efac;
 }
 
+.turnitin-cat-badge.internal-cooccurrence {
+  background: #ede9fe;
+  color: #5b21b6;
+  border: 1px solid #c4b5fd;
+}
+
 .turnitin-source-stats {
   display: flex;
   align-items: center;
