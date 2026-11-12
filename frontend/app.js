@@ -6325,40 +6325,99 @@ function initDiffDropZones() {
 
 function normalizeManuscriptIntoParagraphs(rawText) {
   if (!rawText) return [];
-  // 1. Strip academic line numbers like ' 12', ' 13\n' or line margin numbers
-  let text = rawText.replace(/[ \t]+\d+[ \t]*(?=\r?\n|$)/g, "");
-  // 2. Strip standalone page numbers
-  text = text.replace(/^\s*\d+\s*$/gm, "");
-  // 3. Normalize quotes and dashes
+  let text = rawText || "";
+  // 1. Normalize quotes and dashes
   text = text.replace(/[\u201c\u201d]/g, '"').replace(/[\u2018\u2019]/g, "'");
   text = text.replace(/[\u2013\u2014\u2212]/g, "-");
 
-  const rawLines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  // 2. Strip standalone line/page numbers on separate lines
+  text = text.replace(/^\s*\d+\s*$/gm, "");
+
+  // 3. Strip academic line numbers at beginning or end of lines
+  text = text.replace(/^[ \t]*\d{1,4}[ \t]+/gm, "");
+  text = text.replace(/[ \t]+\d{1,4}[ \t]*$/gm, "");
+
+  // 4. Clean spaced hyphens: two - dimensional -> two-dimensional
+  text = text.replace(/(\b\w+)\s+-\s+(\w+\b)/g, "$1-$2");
+
+  // 5. Clean broken initial capital letters: B ecause -> Because, T he -> The
+  text = text.replace(/\b([A-Z])\s+([a-z]{2,})\b/g, "$1$2");
+
+  // 6. Clean footnote citation numbers right after period: devices.1 Because -> devices. Because
+  text = text.replace(/(\w+\.)\s*(\d{1,3})\s+([A-Z])/g, "$1 $3");
+
+  // 7. Clean inline draft line numbers between words: semiconductors 13 have -> semiconductors have
+  text = text.replace(/([a-z,;])\s+\d{1,3}\s+([a-z])/g, "$1 $2");
+
+  // 8. Clean inline draft line numbers preceding headings: edu 2 Abstract 12 Electrical -> Abstract\n\nElectrical
+  text = text.replace(/\s+\d{1,3}\s+(Abstract|Introduction|Results|Discussion|Methods|Conclusions?|References)\b/gi, "\n\n$1");
+  text = text.replace(/([.!?]|\bAbstract\b|\bIntroduction\b|\bMethods\b)\s+\d{1,3}\s+([A-Z])/g, "$1\n\n$2");
+
+  // 9. Rejoin hyphenated line wraps: "exam-\nple" -> "example"
+  text = text.replace(/(\b\w+)-\s*\r?\n\s*([a-z]\w*\b)/g, "$1$2");
+
+  // 10. Split text into paragraphs based on double newlines and section boundaries
+  const rawBlocks = text.split(/\r?\n\s*\r?\n/).map(b => b.trim()).filter(Boolean);
   const paragraphs = [];
-  let curLines = [];
 
-  for (let i = 0; i < rawLines.length; i++) {
-    const line = rawLines[i];
-    curLines.push(line);
-    const wordsCount = curLines.join(" ").split(/\s+/).filter(Boolean).length;
-    const isTerminal = /[\.\?\!]\s*$/.test(line);
-    const isHeading = /^(Abstract|Introduction|Results|Discussion|Methods|Conclusions?|References|Computational Methods|\d+\.\s+[A-Z])\b/i.test(line);
+  for (const block of rawBlocks) {
+    const singleLine = block.replace(/\s+/g, " ").trim();
+    if (!singleLine) continue;
 
-    if ((isTerminal && wordsCount >= 35) || (isHeading && wordsCount > 10)) {
-      const pText = curLines.join(" ").replace(/\s+/g, " ").trim();
-      if (pText.split(/\s+/).length >= 10) {
-        paragraphs.push(pText);
+    // Filter out obvious header/footer garbage like page numbers or lone URLs/emails with < 5 words
+    const words = singleLine.split(/\s+/).filter(Boolean);
+    if (words.length < 5 && !/^(Abstract|Introduction|Methods|Results|Discussion|Conclusions?)\b/i.test(singleLine)) {
+      continue;
+    }
+
+    // If block is very long (> 220 words) with multiple sentences, split into logical paragraph units
+    if (words.length > 220) {
+      const sents = splitIntoSentences(singleLine);
+      let cur = [];
+      let curW = 0;
+      for (const s of sents) {
+        cur.push(s);
+        curW += s.split(/\s+/).filter(Boolean).length;
+        if (curW >= 85) {
+          paragraphs.push(cur.join(" ").trim());
+          cur = [];
+          curW = 0;
+        }
       }
-      curLines = [];
+      if (cur.length > 0) {
+        const rest = cur.join(" ").trim();
+        if (rest.split(/\s+/).filter(Boolean).length >= 15 && paragraphs.length > 0) {
+          paragraphs[paragraphs.length - 1] += " " + rest;
+        } else if (rest.split(/\s+/).filter(Boolean).length >= 8) {
+          paragraphs.push(rest);
+        }
+      }
+    } else if (words.length >= 8) {
+      paragraphs.push(singleLine);
+    } else if (/^(Abstract|Introduction|Methods|Results|Discussion|Conclusions?)\b/i.test(singleLine) && words.length >= 3) {
+      paragraphs.push(singleLine);
     }
   }
 
-  if (curLines.length > 0) {
-    const pText = curLines.join(" ").replace(/\s+/g, " ").trim();
-    if (pText.split(/\s+/).length >= 10) {
-      paragraphs.push(pText);
+  // Fallback to sentence grouping if no paragraphs formed
+  if (paragraphs.length === 0 && text.trim().length > 30) {
+    const sents = splitIntoSentences(text.replace(/\s+/g, " ").trim());
+    let cur = [];
+    let curW = 0;
+    for (const s of sents) {
+      cur.push(s);
+      curW += s.split(/\s+/).filter(Boolean).length;
+      if (curW >= 70) {
+        paragraphs.push(cur.join(" ").trim());
+        cur = [];
+        curW = 0;
+      }
+    }
+    if (cur.length > 0) {
+      paragraphs.push(cur.join(" ").trim());
     }
   }
+
   return paragraphs;
 }
 
@@ -6394,8 +6453,29 @@ async function extractTextFromBlob(file) {
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
-        const pageText = textContent.items.map(it => it.str).join(" ");
-        full += pageText + "\n";
+        let lastY = null;
+        let pageLines = [];
+        let currentLine = "";
+
+        for (const it of textContent.items) {
+          const y = it.transform ? it.transform[5] : null;
+          // When vertical coordinate changes by more than 3.5 pt, treat as new line
+          if (lastY !== null && y !== null && Math.abs(y - lastY) > 3.5) {
+            if (currentLine.trim()) pageLines.push(currentLine.trim());
+            currentLine = it.str || "";
+          } else {
+            currentLine += (currentLine ? " " : "") + (it.str || "");
+          }
+          if (it.hasEOL) {
+            if (currentLine.trim()) pageLines.push(currentLine.trim());
+            currentLine = "";
+            lastY = null;
+          } else {
+            lastY = y;
+          }
+        }
+        if (currentLine.trim()) pageLines.push(currentLine.trim());
+        full += pageLines.join("\n") + "\n\n";
       }
       raw = full.trim();
     } catch (e) {
@@ -6607,6 +6687,23 @@ function renderPlagiarismResults(data) {
   if (alertEl) {
     const topSource = data.ranked_sources && data.ranked_sources.length > 0 ? data.ranked_sources[0] : null;
 
+    const exportToolbarHtml = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; border-top:1px dashed rgba(0,0,0,0.15); padding-top:6px; flex-wrap:wrap; gap:6px;">
+        <span style="font-size:11.5px; opacity:0.9; font-weight:600;">Export Report Dossier:</span>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <button class="btn btn-primary btn-sm btn-export-pdf-action" onclick="exportPlagiarismPdfReport()" style="background:#dc2626; border-color:#b91c1c; font-size:11.5px; padding:3px 10px; font-weight:700;">
+            📄 Export PDF Report
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="exportPlagiarismTxtReport()" style="font-size:11.5px; padding:3px 8px;">
+            📝 Text
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="printPlagiarismReport()" style="font-size:11.5px; padding:3px 8px;">
+            🖨️ Print
+          </button>
+        </div>
+      </div>
+    `;
+
     if (data.overall_similarity_pct >= 50 || data.high_risk_count > 0) {
       alertEl.style.background = "#fff1f2";
       alertEl.style.borderColor = "#fecdd3";
@@ -6620,6 +6717,7 @@ function renderPlagiarismResults(data) {
           ${topSource ? `<div style="margin-top:4px; font-size:12px;">Primary Match [1]: <strong>${escapeHtml(topSource.title)}</strong> <em>(${escapeHtml(topSource.venue || "Journal")} ${topSource.year || ""})</em> &mdash; <strong style="color:#e11d48;">${topSource.pct}% Match</strong> ${topSource.doi ? `<a href="https://doi.org/${encodeURIComponent(topSource.doi)}" target="_blank" style="color:#0284c7; text-decoration:underline; margin-left:4px;">DOI: ${escapeHtml(topSource.doi)} ↗</a>` : ""}</div>` : ""}
           <div style="margin-top:4px; font-size:11.5px; color:#9f1239;">Please paraphrase or provide proper scholarly citations prior to journal submission.</div>
         </div>
+        ${exportToolbarHtml}
       `;
     } else if (data.overall_similarity_pct >= 20 || data.moderate_risk_count > 0) {
       alertEl.style.background = "#fffbeb";
@@ -6630,6 +6728,7 @@ function renderPlagiarismResults(data) {
           Detected <strong>${data.moderate_risk_count}</strong> paragraph(s) with standard academic phrasing or literature overlap.
           ${topSource ? `<div style="margin-top:3px; font-size:12px;">Top Match [1]: <strong>${escapeHtml(topSource.title)}</strong> (${topSource.pct}%)</div>` : ""}
         </div>
+        ${exportToolbarHtml}
       `;
     } else {
       alertEl.style.background = "#f0fdf4";
@@ -6639,6 +6738,7 @@ function renderPlagiarismResults(data) {
         <div style="color:#166534; margin-top:3px;">
           Cross-checked across 150M+ CrossRef DOIs, Europe PMC, OpenAlex, and personal Literature Library. No severe duplicate content found. Clean manuscript draft ready for submission drafting.
         </div>
+        ${exportToolbarHtml}
       `;
     }
   }
@@ -6950,17 +7050,167 @@ function filterPlagResults() {
   listEl.innerHTML = html;
 }
 
+function buildTurnitinReportHtml(data, docName, reportId, fullDateStr, timeStr) {
+  const simColor = data.overall_similarity_pct >= 50 ? "#dc2626" : (data.overall_similarity_pct >= 25 ? "#d97706" : "#16a34a");
+
+  let sourcesTableRows = "";
+  if (!data.ranked_sources || data.ranked_sources.length === 0) {
+    sourcesTableRows = `<tr><td colspan="5" style="text-align:center; padding:14px; color:#64748b; font-style:italic;">No external duplicate sources detected. High manuscript originality.</td></tr>`;
+  } else {
+    data.ranked_sources.forEach(s => {
+      sourcesTableRows += `
+        <tr style="border-bottom:1px solid #e2e8f0; font-size:11px;">
+          <td style="padding:8px; text-align:center;">
+            <span class="turnitin-tag tag-${s.colorIdx}" style="width:20px; height:20px; font-size:11px;">${s.rank}</span>
+          </td>
+          <td style="padding:8px; font-weight:800; color:var(--t-c${s.colorIdx}); font-size:13px; text-align:center;">${s.pct}%</td>
+          <td style="padding:8px;">
+            <div style="font-weight:700; color:#0f172a; line-height:1.3;">${escapeHtml(s.title)}</div>
+            ${s.authors ? `<div style="color:#64748b; font-size:10px; margin-top:2px;">${escapeHtml(s.authors)}</div>` : ""}
+          </td>
+          <td style="padding:8px; color:#475569;">
+            ${escapeHtml(s.venue || "Academic Publication")} ${s.year ? `(${s.year})` : ""}
+          </td>
+          <td style="padding:8px;">
+            <div style="font-size:9.5px; font-weight:700; color:#64748b;">${escapeHtml(s.source_database || "CrossRef")}</div>
+            ${s.doi ? `<div style="font-size:10px; color:#0284c7; margin-top:2px;">DOI: ${escapeHtml(s.doi)}</div>` : ""}
+          </td>
+        </tr>
+      `;
+    });
+  }
+
+  let annotatedManuscriptHtml = "";
+  data.paragraphs.forEach(para => {
+    let pContent = "";
+    para.sentences.forEach(sent => {
+      if (sent.match && data.rank_map && data.rank_map.has(sent.match.source.id)) {
+        const rInfo = data.rank_map.get(sent.match.source.id);
+        pContent += `<mark class="turnitin-highlight turnitin-color-${rInfo.colorIdx}">${escapeHtml(sent.text)}<span class="turnitin-tag tag-${rInfo.colorIdx}">${rInfo.rank}</span></mark> `;
+      } else {
+        pContent += escapeHtml(sent.text) + " ";
+      }
+    });
+    annotatedManuscriptHtml += `
+      <div style="margin-bottom:14px; position:relative; padding-left:32px; font-size:12px; line-height:1.75; font-family:Charter, Georgia, serif; color:#1e293b; text-align:justify;">
+        <span style="position:absolute; left:0; top:0; font-family:monospace; font-size:10px; font-weight:700; color:#94a3b8;">¶ ${para.index + 1}</span>
+        ${pContent.trim()}
+      </div>
+    `;
+  });
+
+  return `
+    <div id="pdf-export-container" style="width:780px; margin:0 auto; padding:28px 32px; background:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color:#0f172a; box-sizing:border-box;">
+      
+      <!-- TURNITIN REPORT HEADER -->
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #dc2626; padding-bottom:14px; margin-bottom:18px;">
+        <div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div style="width:36px; height:36px; background:#dc2626; border-radius:6px; color:#fff; font-weight:900; font-size:18px; display:flex; align-items:center; justify-content:center;">T</div>
+            <div>
+              <div style="font-size:16px; font-weight:900; color:#dc2626; letter-spacing:0.5px;">TURNITIN ORIGINALITY REPORT</div>
+              <div style="font-size:10px; color:#64748b; font-weight:700; text-transform:uppercase;">Academic Integrity &amp; Scholar Similarity Index</div>
+            </div>
+          </div>
+          <h1 style="margin:12px 0 2px 0; font-size:17px; font-weight:800; color:#0f172a;">
+            ${escapeHtml(docName)}
+          </h1>
+          <div style="font-size:11px; color:#475569;">
+            By Vu Tien Lam (Department of Energy Science, Sungkyunkwan University)
+          </div>
+        </div>
+        <div style="text-align:right; font-size:10.5px; color:#64748b; line-height:1.4;">
+          <div>Report ID: <strong style="color:#0f172a;">${reportId}</strong></div>
+          <div>Date: <strong style="color:#0f172a;">${fullDateStr}</strong></div>
+          <div>Time: <strong style="color:#0f172a;">${timeStr}</strong></div>
+          <div style="margin-top:4px; display:inline-block; padding:2px 8px; border-radius:4px; background:#fee2e2; color:#991b1b; font-weight:800; font-size:10px; border:1px solid #fca5a5;">Turnitin Core Standard</div>
+        </div>
+      </div>
+
+      <!-- SIMILARITY SCORECARD & SUB-GAUGES -->
+      <div style="display:grid; grid-template-columns: 140px 1fr; gap:16px; margin-bottom:20px; align-items:center; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:14px 18px;">
+        <div style="text-align:center; border-right:1px solid #e2e8f0; padding-right:14px;">
+          <div style="font-size:42px; font-weight:900; color:${simColor}; line-height:1;">${data.overall_similarity_pct}%</div>
+          <div style="font-size:9.5px; font-weight:800; text-transform:uppercase; color:#64748b; margin-top:4px;">Similarity Index</div>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; text-align:center;">
+          <div style="background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:8px;">
+            <div style="font-size:18px; font-weight:800; color:#2563eb;">${data.internet_pct || 0}%</div>
+            <div style="font-size:9.5px; font-weight:700; color:#64748b; text-transform:uppercase;">Internet Sources</div>
+          </div>
+          <div style="background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:8px;">
+            <div style="font-size:18px; font-weight:800; color:#7c3aed;">${data.library_pct || 0}%</div>
+            <div style="font-size:9.5px; font-weight:700; color:#64748b; text-transform:uppercase;">Publications</div>
+          </div>
+          <div style="background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:8px;">
+            <div style="font-size:18px; font-weight:800; color:#64748b;">${data.internal_redundancy_pct || 0}%</div>
+            <div style="font-size:9.5px; font-weight:700; color:#64748b; text-transform:uppercase;">Internal Redundancy</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 1: MATCH OVERVIEW (PRIMARY SOURCES) -->
+      <div style="margin-bottom:24px;">
+        <div style="font-size:12.5px; font-weight:800; color:#0f172a; text-transform:uppercase; letter-spacing:0.5px; border-bottom:2px solid #cbd5e1; padding-bottom:4px; margin-bottom:8px; display:flex; justify-content:space-between;">
+          <span>Primary Sources &amp; Literature Overlap Breakdown</span>
+          <span style="font-size:10px; color:#64748b; font-weight:normal;">Ranked highest to lowest %</span>
+        </div>
+        <table style="width:100%; border-collapse:collapse; background:#fff; border:1px solid #cbd5e1; border-radius:6px; overflow:hidden;">
+          <thead>
+            <tr style="background:#f1f5f9; border-bottom:2px solid #cbd5e1; font-size:10px; color:#475569; text-transform:uppercase;">
+              <th style="padding:8px; width:44px; text-align:center;">Source</th>
+              <th style="padding:8px; width:65px; text-align:center;">Overlap</th>
+              <th style="padding:8px; text-align:left;">Publication Title &amp; Authors</th>
+              <th style="padding:8px; width:170px; text-align:left;">Journal / Venue &amp; Year</th>
+              <th style="padding:8px; width:130px; text-align:left;">Database &amp; DOI</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${sourcesTableRows}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- SECTION 2: FULL ANNOTATED MANUSCRIPT WITH MULTI-COLOR TURNITIN HIGHLIGHTS -->
+      <div style="margin-top:28px; page-break-before:always;">
+        <div style="font-size:12.5px; font-weight:800; color:#0f172a; text-transform:uppercase; letter-spacing:0.5px; border-bottom:2px solid #cbd5e1; padding-bottom:4px; margin-bottom:14px;">
+          Annotated Manuscript Draft with Turnitin Source Number Badges
+        </div>
+        <div style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:20px 24px;">
+          ${annotatedManuscriptHtml}
+        </div>
+      </div>
+
+      <!-- FOOTER & CERTIFICATION -->
+      <div style="page-break-inside:avoid; margin-top:24px; padding:12px 16px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; font-size:10.5px; line-height:1.5;">
+        <div style="font-weight:700; color:#1e293b; margin-bottom:3px; text-transform:uppercase;">
+          Academic Authenticity &amp; Turnitin Evaluation Notice
+        </div>
+        <p style="margin:0; color:#475569;">
+          This originality audit was executed against 150M+ CrossRef DOIs, Europe PMC, and Google Scholar index. Overlap highlighting represents exact phrase matches and high-density semantic phrasing corresponding to the ranked sources listed above.
+        </p>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; border-top:1px dashed #cbd5e1; padding-top:6px; color:#64748b; font-size:9.5px;">
+          <span>Report Generated by Computational Database • Sungkyunkwan University</span>
+          <span>https://tienlamvu.github.io/lamreseach/</span>
+        </div>
+      </div>
+
+    </div>
+  `;
+}
+
 async function exportPlagiarismPdfReport() {
   if (!currentPlagResults || !currentPlagResults.paragraphs || currentPlagResults.paragraphs.length === 0) {
     showToast("No plagiarism analysis results to export. Please run a check first.", "warn");
     return;
   }
 
-  const btn = document.getElementById("btn-export-pdf");
-  if (btn) {
+  const allPdfBtns = document.querySelectorAll(".btn-export-pdf-action, #btn-export-pdf");
+  allPdfBtns.forEach(btn => {
     btn.disabled = true;
-    btn.innerHTML = `<span class="loading-spinner"></span> Generating Turnitin Report...`;
-  }
+    btn.dataset.origHtml = btn.innerHTML;
+    btn.innerHTML = `<span class="loading-spinner"></span> Generating...`;
+  });
   showToast("📄 Compiling Academic Turnitin Originality PDF Report...", "info");
 
   try {
@@ -6978,153 +7228,7 @@ async function exportPlagiarismPdfReport() {
       return;
     }
 
-    const simColor = data.overall_similarity_pct >= 50 ? "#dc2626" : (data.overall_similarity_pct >= 25 ? "#d97706" : "#16a34a");
-
-    let sourcesTableRows = "";
-    if (!data.ranked_sources || data.ranked_sources.length === 0) {
-      sourcesTableRows = `<tr><td colspan="5" style="text-align:center; padding:14px; color:#64748b; font-style:italic;">No external duplicate sources detected. High manuscript originality.</td></tr>`;
-    } else {
-      data.ranked_sources.forEach(s => {
-        sourcesTableRows += `
-          <tr style="border-bottom:1px solid #e2e8f0; font-size:11px;">
-            <td style="padding:8px; text-align:center;">
-              <span class="turnitin-tag tag-${s.colorIdx}" style="width:20px; height:20px; font-size:11px;">${s.rank}</span>
-            </td>
-            <td style="padding:8px; font-weight:800; color:var(--t-c${s.colorIdx}); font-size:13px; text-align:center;">${s.pct}%</td>
-            <td style="padding:8px;">
-              <div style="font-weight:700; color:#0f172a; line-height:1.3;">${escapeHtml(s.title)}</div>
-              ${s.authors ? `<div style="color:#64748b; font-size:10px; margin-top:2px;">${escapeHtml(s.authors)}</div>` : ""}
-            </td>
-            <td style="padding:8px; color:#475569;">
-              ${escapeHtml(s.venue || "Academic Publication")} ${s.year ? `(${s.year})` : ""}
-            </td>
-            <td style="padding:8px;">
-              <div style="font-size:9.5px; font-weight:700; color:#64748b;">${escapeHtml(s.source_database || "CrossRef")}</div>
-              ${s.doi ? `<div style="font-size:10px; color:#0284c7; margin-top:2px;">DOI: ${escapeHtml(s.doi)}</div>` : ""}
-            </td>
-          </tr>
-        `;
-      });
-    }
-
-    let annotatedManuscriptHtml = "";
-    data.paragraphs.forEach(para => {
-      let pContent = "";
-      para.sentences.forEach(sent => {
-        if (sent.match && data.rank_map && data.rank_map.has(sent.match.source.id)) {
-          const rInfo = data.rank_map.get(sent.match.source.id);
-          pContent += `<mark class="turnitin-highlight turnitin-color-${rInfo.colorIdx}">${escapeHtml(sent.text)}<span class="turnitin-tag tag-${rInfo.colorIdx}">${rInfo.rank}</span></mark> `;
-        } else {
-          pContent += escapeHtml(sent.text) + " ";
-        }
-      });
-      annotatedManuscriptHtml += `
-        <div style="margin-bottom:14px; position:relative; padding-left:32px; font-size:12px; line-height:1.75; font-family:Charter, Georgia, serif; color:#1e293b; text-align:justify;">
-          <span style="position:absolute; left:0; top:0; font-family:monospace; font-size:10px; font-weight:700; color:#94a3b8;">¶ ${para.index + 1}</span>
-          ${pContent.trim()}
-        </div>
-      `;
-    });
-
-    renderArea.innerHTML = `
-      <div id="pdf-export-container" style="width:780px; margin:0 auto; padding:28px 32px; background:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color:#0f172a; box-sizing:border-box;">
-        
-        <!-- TURNITIN REPORT HEADER -->
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #dc2626; padding-bottom:14px; margin-bottom:18px;">
-          <div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <div style="width:36px; height:36px; background:#dc2626; border-radius:6px; color:#fff; font-weight:900; font-size:18px; display:flex; align-items:center; justify-content:center;">T</div>
-              <div>
-                <div style="font-size:16px; font-weight:900; color:#dc2626; letter-spacing:0.5px;">TURNITIN ORIGINALITY REPORT</div>
-                <div style="font-size:10px; color:#64748b; font-weight:700; text-transform:uppercase;">Academic Integrity &amp; Scholar Similarity Index</div>
-              </div>
-            </div>
-            <h1 style="margin:12px 0 2px 0; font-size:17px; font-weight:800; color:#0f172a;">
-              ${escapeHtml(docName)}
-            </h1>
-            <div style="font-size:11px; color:#475569;">
-              By Vu Tien Lam (Department of Energy Science, Sungkyunkwan University)
-            </div>
-          </div>
-          <div style="text-align:right; font-size:10.5px; color:#64748b; line-height:1.4;">
-            <div>Report ID: <strong style="color:#0f172a;">${reportId}</strong></div>
-            <div>Date: <strong style="color:#0f172a;">${fullDateStr}</strong></div>
-            <div>Time: <strong style="color:#0f172a;">${timeStr}</strong></div>
-            <div style="margin-top:4px; display:inline-block; padding:2px 8px; border-radius:4px; background:#fee2e2; color:#991b1b; font-weight:800; font-size:10px; border:1px solid #fca5a5;">Turnitin Core Standard</div>
-          </div>
-        </div>
-
-        <!-- SIMILARITY SCORECARD & SUB-GAUGES -->
-        <div style="display:grid; grid-template-columns: 140px 1fr; gap:16px; margin-bottom:20px; align-items:center; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:14px 18px;">
-          <div style="text-align:center; border-right:1px solid #e2e8f0; padding-right:14px;">
-            <div style="font-size:42px; font-weight:900; color:${simColor}; line-height:1;">${data.overall_similarity_pct}%</div>
-            <div style="font-size:9.5px; font-weight:800; text-transform:uppercase; color:#64748b; margin-top:4px;">Similarity Index</div>
-          </div>
-          <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; text-align:center;">
-            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:8px;">
-              <div style="font-size:18px; font-weight:800; color:#2563eb;">${data.internet_pct || 0}%</div>
-              <div style="font-size:9.5px; font-weight:700; color:#64748b; text-transform:uppercase;">Internet Sources</div>
-            </div>
-            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:8px;">
-              <div style="font-size:18px; font-weight:800; color:#7c3aed;">${data.library_pct || 0}%</div>
-              <div style="font-size:9.5px; font-weight:700; color:#64748b; text-transform:uppercase;">Publications</div>
-            </div>
-            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:8px;">
-              <div style="font-size:18px; font-weight:800; color:#64748b;">${data.internal_redundancy_pct || 0}%</div>
-              <div style="font-size:9.5px; font-weight:700; color:#64748b; text-transform:uppercase;">Internal Redundancy</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SECTION 1: MATCH OVERVIEW (PRIMARY SOURCES) -->
-        <div style="margin-bottom:24px;">
-          <div style="font-size:12.5px; font-weight:800; color:#0f172a; text-transform:uppercase; letter-spacing:0.5px; border-bottom:2px solid #cbd5e1; padding-bottom:4px; margin-bottom:8px; display:flex; justify-content:space-between;">
-            <span>Primary Sources &amp; Literature Overlap Breakdown</span>
-            <span style="font-size:10px; color:#64748b; font-weight:normal;">Ranked highest to lowest %</span>
-          </div>
-          <table style="width:100%; border-collapse:collapse; background:#fff; border:1px solid #cbd5e1; border-radius:6px; overflow:hidden;">
-            <thead>
-              <tr style="background:#f1f5f9; border-bottom:2px solid #cbd5e1; font-size:10px; color:#475569; text-transform:uppercase;">
-                <th style="padding:8px; width:44px; text-align:center;">Source</th>
-                <th style="padding:8px; width:65px; text-align:center;">Overlap</th>
-                <th style="padding:8px; text-align:left;">Publication Title &amp; Authors</th>
-                <th style="padding:8px; width:170px; text-align:left;">Journal / Venue &amp; Year</th>
-                <th style="padding:8px; width:130px; text-align:left;">Database &amp; DOI</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${sourcesTableRows}
-            </tbody>
-          </table>
-        </div>
-
-        <!-- SECTION 2: FULL ANNOTATED MANUSCRIPT WITH MULTI-COLOR TURNITIN HIGHLIGHTS -->
-        <div style="margin-top:28px; page-break-before:always;">
-          <div style="font-size:12.5px; font-weight:800; color:#0f172a; text-transform:uppercase; letter-spacing:0.5px; border-bottom:2px solid #cbd5e1; padding-bottom:4px; margin-bottom:14px;">
-            Annotated Manuscript Draft with Turnitin Source Number Badges
-          </div>
-          <div style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:20px 24px;">
-            ${annotatedManuscriptHtml}
-          </div>
-        </div>
-
-        <!-- FOOTER & CERTIFICATION -->
-        <div style="page-break-inside:avoid; margin-top:24px; padding:12px 16px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; font-size:10.5px; line-height:1.5;">
-          <div style="font-weight:700; color:#1e293b; margin-bottom:3px; text-transform:uppercase;">
-            Academic Authenticity &amp; Turnitin Evaluation Notice
-          </div>
-          <p style="margin:0; color:#475569;">
-            This originality audit was executed against 150M+ CrossRef DOIs, Europe PMC, and Google Scholar index. Overlap highlighting represents exact phrase matches and high-density semantic phrasing corresponding to the ranked sources listed above.
-          </p>
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; border-top:1px dashed #cbd5e1; padding-top:6px; color:#64748b; font-size:9.5px;">
-            <span>Report Generated by Computational Database • Sungkyunkwan University</span>
-            <span>https://tienlamvu.github.io/lamreseach/</span>
-          </div>
-        </div>
-
-      </div>
-    `;
-
+    renderArea.innerHTML = buildTurnitinReportHtml(data, docName, reportId, fullDateStr, timeStr);
     renderArea.style.display = "block";
 
     if (typeof html2pdf !== "function") {
@@ -7148,10 +7252,10 @@ async function exportPlagiarismPdfReport() {
     console.error("PDF export error:", err);
     showToast(`PDF generation note: ${err.message}. You can also click Print to save as PDF.`, "warn");
   } finally {
-    if (btn) {
+    allPdfBtns.forEach(btn => {
       btn.disabled = false;
-      btn.innerHTML = `📄 Export PDF Report`;
-    }
+      if (btn.dataset.origHtml) btn.innerHTML = btn.dataset.origHtml;
+    });
   }
 }
 
@@ -7204,19 +7308,29 @@ function printPlagiarismReport() {
     showToast("No plagiarism analysis results to print. Please run a check first.", "warn");
     return;
   }
-  exportPlagiarismPdfReport();
   const renderArea = document.getElementById("plag-pdf-render-area");
-  if (renderArea) {
-    renderArea.style.display = "block";
-    document.body.classList.add("printing-plagiarism-report");
-    setTimeout(() => {
-      window.print();
-      setTimeout(() => {
-        document.body.classList.remove("printing-plagiarism-report");
-        renderArea.style.display = "none";
-      }, 600);
-    }, 400);
+  if (!renderArea) {
+    showToast("PDF render container missing.", "error");
+    return;
   }
+  const data = currentPlagResults;
+  const now = new Date();
+  const dateStr = now.toISOString().split("T")[0];
+  const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const fullDateStr = now.toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric" });
+  const reportId = `TURNITIN-${dateStr.replace(/-/g, "")}-${Math.floor(10000 + Math.random() * 90000)}`;
+  const docName = currentPlagFile?.name || "Manuscript_Draft.pdf";
+
+  renderArea.innerHTML = buildTurnitinReportHtml(data, docName, reportId, fullDateStr, timeStr);
+  renderArea.style.display = "block";
+  document.body.classList.add("printing-plagiarism-report");
+  setTimeout(() => {
+    window.print();
+    setTimeout(() => {
+      document.body.classList.remove("printing-plagiarism-report");
+      renderArea.style.display = "none";
+    }, 600);
+  }, 400);
 }
 
 
