@@ -14,53 +14,79 @@ import pypdf
 import docx
 
 
+def normalize_manuscript(raw_text: str) -> List[str]:
+    """
+    Normalizes manuscript text into canonical, cohesive paragraphs for both PDF and Word files.
+    Strips academic line numbers, page numbers, and running headers.
+    """
+    if not raw_text:
+        return []
+    text = re.sub(r'[ \t]+\d+[ \t]*(?=\r?\n|$)', '', raw_text)
+    text = re.sub(r'^\s*\d+\s*$', '', text, flags=re.MULTILINE)
+    text = text.replace('\u201c', '"').replace('\u201d', '"').replace('\u2018', "'").replace('\u2019', "'")
+    text = text.replace('\u2013', '-').replace('\u2014', '-').replace('\u2212', '-')
+
+    raw_lines = [l.strip() for l in text.splitlines() if l.strip()]
+    paragraphs = []
+    cur_lines = []
+
+    for l in raw_lines:
+        cur_lines.append(l)
+        words_count = len(' '.join(cur_lines).split())
+        is_terminal = bool(re.search(r'[\.\?\!]\s*$', l))
+        is_heading = bool(re.match(r'^(Abstract|Introduction|Results|Discussion|Methods|Conclusions?|References|Computational Methods|\d+\.\s+[A-Z])\b', l, re.IGNORECASE))
+
+        if (is_terminal and words_count >= 35) or (is_heading and words_count > 10):
+            p_text = ' '.join(cur_lines).strip()
+            p_text = re.sub(r'\s+', ' ', p_text)
+            if len(p_text.split()) >= 10:
+                paragraphs.append(p_text)
+            cur_lines = []
+
+    if cur_lines:
+        p_text = re.sub(r'\s+', ' ', ' '.join(cur_lines).strip())
+        if len(p_text.split()) >= 10:
+            paragraphs.append(p_text)
+    return paragraphs
+
+
 def extract_text_from_file_bytes(filename: str, content: bytes) -> Tuple[str, List[str]]:
     """
     Extracts plain text and clean paragraphs from PDF, DOCX, or TXT file bytes.
     """
     filename_lower = filename.lower()
-    paragraphs = []
+    raw_text = ""
 
     if filename_lower.endswith(".docx"):
         try:
             doc = docx.Document(io.BytesIO(content))
-            for p in doc.paragraphs:
-                txt = p.text.strip()
-                if txt:
-                    paragraphs.append(txt)
+            lines = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
             for table in doc.tables:
                 for row in table.rows:
                     row_txt = " | ".join(cell.text.strip() for cell in row.cells if cell.text.strip())
                     if row_txt:
-                        paragraphs.append(row_txt)
+                        lines.append(row_txt)
+            raw_text = "\n".join(lines)
         except Exception as e:
-            paragraphs.append(f"Error parsing Word file: {str(e)}")
+            raw_text = f"Error parsing Word file: {str(e)}"
 
     elif filename_lower.endswith(".pdf"):
         try:
             reader = pypdf.PdfReader(io.BytesIO(content))
-            for page_idx, page in enumerate(reader.pages):
-                page_text = page.extract_text() or ""
-                # Split page text into natural paragraphs
-                raw_paras = re.split(r"\n\s*\n", page_text)
-                for p in raw_paras:
-                    cleaned = re.sub(r"\s+", " ", p).strip()
-                    if cleaned and len(cleaned) > 20:
-                        paragraphs.append(cleaned)
+            pages = []
+            for page in reader.pages:
+                pages.append(page.extract_text() or "")
+            raw_text = "\n".join(pages)
         except Exception as e:
-            paragraphs.append(f"Error parsing PDF file: {str(e)}")
+            raw_text = f"Error parsing PDF file: {str(e)}"
 
     else:
-        # Plain text / fallback
         try:
             raw_text = content.decode("utf-8")
         except UnicodeDecodeError:
             raw_text = content.decode("latin-1", errors="ignore")
-        for p in re.split(r"\n\s*\n", raw_text):
-            cleaned = re.sub(r"\s+", " ", p).strip()
-            if cleaned:
-                paragraphs.append(cleaned)
 
+    paragraphs = normalize_manuscript(raw_text)
     full_text = "\n\n".join(paragraphs)
     return full_text, paragraphs
 
@@ -143,6 +169,63 @@ def query_internet_candidates_py(queries: List[str]) -> List[Dict]:
         clean_q = re.sub(r"[^a-zA-Z0-9\s\-]", " ", q).strip()
         if len(clean_q) < 8:
             continue
+
+        # 1. CrossRef REST API
+        try:
+            url_cr = f"https://api.crossref.org/works?rows=4&query={urllib.parse.quote(clean_q)}"
+            req_cr = urllib.request.Request(url_cr, headers={"User-Agent": "MatSciPhDHub/2.0 (mailto:lamvt.skku@gmail.com)"})
+            with urllib.request.urlopen(req_cr, timeout=5) as resp:
+                cr_data = json.loads(resp.read().decode("utf-8"))
+                for it in cr_data.get("message", {}).get("items", []):
+                    doi = (it.get("DOI") or "").strip()
+                    title = it.get("title", [""])[0] if isinstance(it.get("title"), list) else it.get("title", "")
+                    title_norm = re.sub(r"[^a-z0-9]", "", title.lower())
+                    if (doi and doi.lower() in seen_dois) or (title_norm and title_norm in seen_titles) or not title_norm:
+                        continue
+                    if doi: seen_dois.add(doi.lower())
+                    if title_norm: seen_titles.add(title_norm)
+                    venue = it.get("container-title", [""])[0] if isinstance(it.get("container-title"), list) else it.get("container-title", "")
+                    year = str(it.get("created", {}).get("date-parts", [[None]])[0][0] or "")
+                    authors = ", ".join(f"{a.get('given','')} {a.get('family','')}".strip() for a in it.get("author", [])[:3])
+                    candidates.append({
+                        "title": title or "Published Paper",
+                        "doi": doi,
+                        "journal": venue or "CrossRef Publication",
+                        "year": year,
+                        "authors": f"{authors} et al." if len(it.get("author", [])) > 3 else authors,
+                        "abstract": it.get("abstract", "") or "",
+                        "source_type": "CrossRef Index"
+                    })
+        except Exception:
+            pass
+
+        # 2. Europe PMC REST API
+        try:
+            url_ep = f"https://www.ebi.ac.uk/europepmc/webservices/rest/search?query={urllib.parse.quote(clean_q)}&format=json&pageSize=4"
+            req_ep = urllib.request.Request(url_ep, headers={"User-Agent": "MatSciPhDHub/2.0"})
+            with urllib.request.urlopen(req_ep, timeout=5) as resp:
+                ep_data = json.loads(resp.read().decode("utf-8"))
+                for it in ep_data.get("resultList", {}).get("result", []):
+                    doi = (it.get("doi") or "").strip()
+                    title = (it.get("title") or "").replace("<[^>]+>", "").strip()
+                    title_norm = re.sub(r"[^a-z0-9]", "", title.lower())
+                    if (doi and doi.lower() in seen_dois) or (title_norm and title_norm in seen_titles) or not title_norm:
+                        continue
+                    if doi: seen_dois.add(doi.lower())
+                    if title_norm: seen_titles.add(title_norm)
+                    candidates.append({
+                        "title": title or "Peer-Reviewed Article",
+                        "doi": doi,
+                        "journal": it.get("journalTitle") or "Europe PMC Index",
+                        "year": str(it.get("pubYear") or ""),
+                        "authors": it.get("authorString") or "",
+                        "abstract": it.get("abstractText", "") or "",
+                        "source_type": "Europe PMC Index"
+                    })
+        except Exception:
+            pass
+
+        # 3. OpenAlex fallback
         try:
             url = f"https://api.openalex.org/works?search={urllib.parse.quote(clean_q)}&per_page=3"
             req = urllib.request.Request(url, headers={"User-Agent": "MatSciNexus/1.0 (mailto:lamvt.skku@gmail.com)"})
@@ -152,7 +235,7 @@ def query_internet_candidates_py(queries: List[str]) -> List[Dict]:
                     doi = (w.get("doi") or "").replace("https://doi.org/", "").strip()
                     title = (w.get("title") or w.get("display_name") or "").strip()
                     title_norm = re.sub(r"[^a-z0-9]", "", title.lower())
-                    if (doi and doi.lower() in seen_dois) or (title_norm and title_norm in seen_titles):
+                    if (doi and doi.lower() in seen_dois) or (title_norm and title_norm in seen_titles) or not title_norm:
                         continue
                     if doi: seen_dois.add(doi.lower())
                     if title_norm: seen_titles.add(title_norm)
@@ -176,7 +259,7 @@ def query_internet_candidates_py(queries: List[str]) -> List[Dict]:
                         "year": year,
                         "authors": f"{authors} et al." if len(w.get("authorships") or []) > 4 else authors,
                         "abstract": ab_text,
-                        "source_type": "Internet & Google Scholar Index"
+                        "source_type": "Google Scholar & OpenAlex"
                     })
         except Exception:
             pass
