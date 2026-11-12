@@ -3184,7 +3184,8 @@ function exportDataJson() {
   showToast("💾 data.json downloaded! Drag and drop into GitHub frontend/ folder to sync to all computers.", "success");
 }
 
-async function commitDataJsonToGitHub() {
+async function commitDataJsonToGitHub(options = {}) {
+  const silent = !!(options && options.silent);
   let token = localStorage.getItem("matsci_github_token") || "";
   if (!token) {
     const inputToken = prompt(
@@ -3192,14 +3193,16 @@ async function commitDataJsonToGitHub() {
       "Sau khi nhập 1 lần, bạn có thể đồng bộ trực tiếp lên GitHub chỉ với 1 cú click chuột mà không cần tải file về nữa!"
     );
     if (!inputToken || !inputToken.trim()) {
-      exportDataJson();
+      if (!silent) exportDataJson();
       return;
     }
     token = inputToken.trim();
-    localStorage.setItem("matsci_github_token", token);
   }
+  localStorage.setItem("matsci_github_token", token);
 
-  showToast("Đang đồng bộ trực tiếp data.json lên GitHub repository...", "info");
+  if (!silent) {
+    showToast("Đang đồng bộ trực tiếp data.json lên GitHub repository...", "info");
+  }
   try {
     const repo = "tienlamvu/lamreseach";
     const path = "frontend/data.json";
@@ -3290,11 +3293,17 @@ async function commitDataJsonToGitHub() {
       console.warn("Could not sync root data.json:", e);
     }
 
-    showToast("🎉 Đã đồng bộ trực tiếp lên GitHub thành công! Mọi thiết bị khác sẽ thấy thay đổi sau khoảng 1 phút.", "success");
+    if (!silent) {
+      showToast("🎉 Đã đồng bộ trực tiếp lên GitHub thành công! Mọi thiết bị khác sẽ thấy thay đổi sau khoảng 1 phút.", "success");
+    } else {
+      showToast("☁️ Đã tự động lưu & đồng bộ lên GitHub!", "success");
+    }
   } catch (err) {
     console.error("GitHub Sync error:", err);
-    showToast(`Lỗi đồng bộ GitHub: ${err.message}. Đang tải file data.json để upload thủ công.`, "error");
-    exportDataJson();
+    if (!silent) {
+      showToast(`Lỗi đồng bộ GitHub: ${err.message}. Đang tải file data.json để upload thủ công.`, "error");
+      exportDataJson();
+    }
   }
 }
 
@@ -3807,9 +3816,9 @@ function renderAcademicCvPublicationsSection(prof, pubList = []) {
                       ${doiUrl ? `<span>DOI: <a href="${escapeHtml(doiUrl)}" target="_blank">${escapeHtml(p.doi.replace(/^https?:\/\/doi\.org\//i, ''))}</a></span>` : ""}
                       ${p.citations ? `<span class="badge badge-purple" style="font-size:11px;">Cited: ${p.citations}</span>` : ""}
                       <div class="no-print" style="margin-left:auto; display:flex; gap:6px;">
-                        <button class="btn btn-outline btn-sm owner-only-btn admin-only" title="Edit publication details & visibility" onclick="openOwnPublicationModal(${editIndex})">✏️ Edit</button>
-                        ${p.doi ? `<button class="btn btn-outline btn-sm owner-only-btn admin-only" title="Import this DOI into References Library" onclick="importPaperByDoiCommon('${escapeHtml(p.doi)}')">📥 +References</button>` : ""}
-                        <button class="btn btn-danger btn-sm owner-only-btn admin-only" title="Delete entry" onclick="removeOwnPubById(${p.id !== undefined ? p.id : editIndex})">✕</button>
+                        <button class="btn btn-outline btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Edit publication details & visibility" onclick="openOwnPublicationModal(${editIndex})">✏️ Edit</button>
+                        ${p.doi ? `<button class="btn btn-outline btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Import this DOI into References Library" onclick="importPaperByDoiCommon('${escapeHtml(p.doi)}')">📥 +References</button>` : ""}
+                        <button class="btn btn-danger btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Delete entry" onclick="removeOwnPubById(${p.id !== undefined ? p.id : editIndex}, '${escapeHtml(p.doi || '')}', '${escapeHtml((p.title || '').replace(/'/g, "\\'"))}', event)">✕</button>
                       </div>
                     </div>
                   </div>
@@ -3861,16 +3870,48 @@ function switchPubViewMode(mode) {
   renderAcademicCvSheet(STATE.profile);
 }
 
-function removeOwnPubById(idOrIdx) {
-  if (!requireAdminAuth()) return;
-  if (typeof idOrIdx === "number" && idOrIdx < (STATE.profile.publications || []).length) {
-    STATE.profile.publications.splice(idOrIdx, 1);
-  } else {
-    STATE.profile.publications = (STATE.profile.publications || []).filter(p => p.id !== idOrIdx);
+async function removeOwnPubById(idOrIdx, doi = "", title = "", e = null) {
+  if (e) {
+    if (e.stopPropagation) e.stopPropagation();
+    if (e.preventDefault) e.preventDefault();
   }
-  saveStaticDb();
-  renderAcademicCvSheet(STATE.profile);
-  showToast("Removed publication.");
+  if (!requireAdminAuth()) return;
+  const pubs = STATE.profile.publications || [];
+  let targetIdx = -1;
+
+  // 1. Try finding by DOI
+  if (doi) {
+    const cleanDoi = doi.trim().toLowerCase().replace(/^https?:\/\/doi\.org\//, "");
+    targetIdx = pubs.findIndex(p => p.doi && p.doi.trim().toLowerCase().replace(/^https?:\/\/doi\.org\//, "") === cleanDoi);
+  }
+  // 2. Try finding by Title
+  if (targetIdx < 0 && title) {
+    const cleanTitle = title.trim().toLowerCase().replace(/<[^>]+>/g, "");
+    targetIdx = pubs.findIndex(p => (p.title || "").trim().toLowerCase().replace(/<[^>]+>/g, "") === cleanTitle);
+  }
+  // 3. Try finding by ID
+  if (targetIdx < 0 && idOrIdx !== undefined && idOrIdx !== null) {
+    targetIdx = pubs.findIndex(p => p.id !== undefined && p.id === idOrIdx);
+  }
+  // 4. Try as direct array index
+  if (targetIdx < 0 && typeof idOrIdx === "number" && idOrIdx >= 0 && idOrIdx < pubs.length) {
+    targetIdx = idOrIdx;
+  }
+
+  if (targetIdx >= 0) {
+    const removed = pubs.splice(targetIdx, 1)[0];
+    STATE.profile.publications = pubs;
+    renderAcademicCvSheet(STATE.profile);
+    showToast(`Deleted publication "${(removed.title || '').slice(0, 32)}..."!`, "info");
+    try {
+      await persistProfileState();
+    } catch (err) {
+      console.error("Failed to persist publication deletion:", err);
+    }
+  } else {
+    console.warn("Could not find publication to remove:", { idOrIdx, doi, title });
+    showToast("Could not locate publication to remove.", "warn");
+  }
 }
 
 // ============================================================================
@@ -4854,6 +4895,13 @@ async function persistProfileState() {
     saveStaticDb();
     renderProfile(STATE.profile);
     renderAcademicCvSheet(STATE.profile);
+
+    // Auto-sync directly to GitHub repository in background so changes persist across all devices
+    if (typeof commitDataJsonToGitHub === "function") {
+      commitDataJsonToGitHub({ silent: true }).catch(err => {
+        console.warn("Background GitHub auto-sync notice:", err);
+      });
+    }
   }
 }
 
