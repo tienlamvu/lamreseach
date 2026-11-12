@@ -1415,12 +1415,119 @@ function resolveElementSymbol(rawStr) {
   return s.charAt(0).toUpperCase() + s.slice(1, 2).toLowerCase();
 }
 
-function cleanChemicalFormula(raw) {
+const ELEMENT_FORMULA_ORDER = {
+  // Group 1 (Alkali metals)
+  Cs: 10, Rb: 11, K: 12, Na: 13, Li: 14, Fr: 15,
+  // Group 2 (Alkaline Earth)
+  Ba: 20, Sr: 21, Ca: 22, Mg: 23, Be: 24, Ra: 25,
+  // Lanthanides & Actinides
+  La: 30, Ce: 31, Pr: 32, Nd: 33, Pm: 34, Sm: 35, Eu: 36, Gd: 37,
+  Tb: 38, Dy: 39, Ho: 40, Er: 41, Tm: 42, Yb: 43, Lu: 44,
+  Ac: 45, Th: 46, Pa: 47, U: 48, Np: 49, Pu: 50, Am: 51,
+  // Early Transition Metals (Group 3-7)
+  Sc: 60, Y: 61,
+  Ti: 62, Zr: 63, Hf: 64,
+  V: 65, Nb: 66, Ta: 67,
+  Cr: 68, Mo: 69, W: 70,
+  Mn: 71, Tc: 72, Re: 73,
+  // Late Transition Metals (Group 8-12)
+  Fe: 80, Ru: 81, Os: 82,
+  Co: 83, Rh: 84, Ir: 85,
+  Ni: 86, Pd: 87, Pt: 88,
+  Cu: 89, Ag: 90, Au: 91,
+  Zn: 92, Cd: 93, Hg: 94,
+  // Post-transition metals & Metalloids
+  Al: 100, Ga: 101, In: 102, Tl: 103,
+  Ge: 104, Sn: 105, Pb: 106,
+  Bi: 107, Sb: 108,
+  B: 110, Si: 111, C: 112,
+  // Pnictogens (Group 15)
+  N: 120, P: 121, As: 122,
+  // Chalcogens (Group 16) - O < S < Se < Te < Po
+  O: 130, S: 131, Se: 132, Te: 133, Po: 134,
+  // Halogens (Group 17) - F < Cl < Br < I < At
+  F: 140, Cl: 141, Br: 142, I: 143, At: 144,
+  // Hydrogen
+  H: 150
+};
+
+function getCleanBasename(pathStr) {
+  if (!pathStr) return "";
+  let clean = String(pathStr).replace(/['"]/g, "").trim();
+  const parts = clean.split(/[/\\]/);
+  let last = parts[parts.length - 1] || clean;
+  if (/^\d+(\.\d+)?$/.test(last) && parts.length > 1) {
+    last = parts[parts.length - 2];
+  }
+  return last.replace(/\.[a-zA-Z]{1,6}$/i, "").trim();
+}
+
+function cleanAndSortChemicalFormula(raw) {
   if (!raw) return "";
-  let clean = raw.replace(/['"]/g, "").trim();
-  clean = clean.replace(/([A-Z][a-z]?)1(?![0-9])/g, "$1");
-  clean = clean.replace(/\s+/g, "");
-  return clean;
+  let s = String(raw).replace(/['"]/g, "").trim();
+  if (s.includes("/") || s.includes("\\")) {
+    const parts = s.split(/[/\\]/);
+    let last = parts[parts.length - 1];
+    if (/^\d+(\.\d+)?$/.test(last) && parts.length > 1) {
+      s = parts[parts.length - 2];
+    } else {
+      s = last;
+    }
+  }
+  s = s.replace(/\.[a-zA-Z]{1,6}$/i, "").trim();
+  s = s.replace(/[/\\]\d+(\.\d+)?.*$/, "");
+  s = s.replace(/_\d+(\.\d+)?$/, "");
+  s = s.replace(/\s*\(\d+\)$/, "");
+  s = s.replace(/\s+\d+(\.\d+)?$/, "");
+  s = s.replace(/([A-Z][a-z]?)1(?![0-9.])/g, "$1");
+
+  const tokenRe = /([A-Z][a-z]?)([\d.]*)/g;
+  let match;
+  const elemCounts = {};
+  let foundAny = false;
+
+  while ((match = tokenRe.exec(s)) !== null) {
+    const elem = resolveElementSymbol(match[1]);
+    if (elem && elem !== "X" && ELEMENT_FORMULA_ORDER[elem] != null) {
+      foundAny = true;
+      const countStr = match[2];
+      const countVal = countStr ? parseFloat(countStr) : 1.0;
+      elemCounts[elem] = (elemCounts[elem] || 0) + (isNaN(countVal) ? 1.0 : countVal);
+    }
+  }
+
+  if (!foundAny) {
+    return s.replace(/\s+/g, "");
+  }
+
+  const sortedElems = Object.keys(elemCounts).sort((a, b) => {
+    const orderA = ELEMENT_FORMULA_ORDER[a] != null ? ELEMENT_FORMULA_ORDER[a] : 999;
+    const orderB = ELEMENT_FORMULA_ORDER[b] != null ? ELEMENT_FORMULA_ORDER[b] : 999;
+    return orderA - orderB;
+  });
+
+  return sortedElems.map(el => {
+    const cnt = elemCounts[el];
+    if (Math.abs(cnt - 1.0) < 1e-4) return el;
+    if (Number.isInteger(cnt)) return `${el}${cnt}`;
+    return `${el}${parseFloat(cnt.toFixed(4))}`;
+  }).join("");
+}
+
+const cleanChemicalFormula = cleanAndSortChemicalFormula;
+
+function autoSortModalFormula() {
+  const input = document.getElementById("struct-formula");
+  if (input && input.value) {
+    const sorted = cleanAndSortChemicalFormula(input.value);
+    if (sorted) input.value = sorted;
+  }
+}
+
+function formatFormulaHtml(formula) {
+  if (!formula) return "";
+  const clean = cleanAndSortChemicalFormula(formula);
+  return clean.replace(/([A-Za-z\)])([\d.]+)/g, "$1<sub>$2</sub>");
 }
 
 function handleModalCifFileSelect(event) {
@@ -1664,12 +1771,16 @@ function parseCifTextClient(cifText, filename = "") {
                    getTag("_chemical_formula_structural") ||
                    getTag("_chemical_name_common") ||
                    getTag("_chemical_name_systematic");
-  let formula = cleanChemicalFormula(rawFormula);
+  let formula = cleanAndSortChemicalFormula(rawFormula);
 
   if (!formula || formula === "UnknownFormula") {
     const dataTagMatch = text.match(/data_([^\s]+)/i);
-    if (dataTagMatch && dataTagMatch[1] && !["global", "cif"].includes(dataTagMatch[1].toLowerCase())) {
-      formula = dataTagMatch[1].replace(/_cubic|_hex|_tetra|_ortho|_mono/gi, "");
+    if (dataTagMatch && dataTagMatch[1]) {
+      let dTag = dataTagMatch[1].replace(/_cubic|_hex|_tetra|_ortho|_mono/gi, "");
+      // Ignore generic calculation names
+      if (!["global", "cif", "data", "input", "structure", "soc", "opt", "relax", "band", "dos"].includes(dTag.toLowerCase())) {
+        formula = cleanAndSortChemicalFormula(dTag);
+      }
     }
   }
 
@@ -1678,16 +1789,21 @@ function parseCifTextClient(cifText, filename = "") {
     atoms.forEach(at => {
       counts[at.element] = (counts[at.element] || 0) + 1;
     });
-    formula = Object.entries(counts).map(([el, cnt]) => `${el}${cnt > 1 ? cnt : ""}`).join("");
+    const sortedElems = Object.keys(counts).sort((a, b) => {
+      const orderA = ELEMENT_FORMULA_ORDER[a] != null ? ELEMENT_FORMULA_ORDER[a] : 999;
+      const orderB = ELEMENT_FORMULA_ORDER[b] != null ? ELEMENT_FORMULA_ORDER[b] : 999;
+      return orderA - orderB;
+    });
+    formula = sortedElems.map(el => `${el}${counts[el] > 1 ? counts[el] : ""}`).join("");
   }
 
-  const cleanFilename = (filename || "").replace(/\.[^/.]+$/, "").trim();
+  const cleanFilename = getCleanBasename(filename);
   if (!formula) {
-    formula = cleanFilename || "CrystalStructure";
+    formula = cleanAndSortChemicalFormula(cleanFilename) || cleanFilename || "CrystalStructure";
   }
 
   let name = cleanFilename;
-  if (!name || ["input", "structure", "crystal", "cif", "data", "upload"].includes(name.toLowerCase())) {
+  if (!name || ["input", "structure", "crystal", "cif", "data", "upload", "soc"].includes(name.toLowerCase())) {
     name = `${formula} (${crystalSystem} ${spaceGroup})`;
   }
 
@@ -1852,12 +1968,13 @@ function collectModalAtoms() {
 
 function populateStructureModalWithParsed(p, rawCif, filename) {
   document.getElementById("struct-id").value = "";
-  let cleanName = (filename || "").replace(/\.[^/.]+$/, "").trim();
-  if (!cleanName || ["input", "structure", "crystal", "cif", "data", "upload"].includes(cleanName.toLowerCase())) {
+  let cleanName = getCleanBasename(filename || p.name);
+  if (!cleanName || ["input", "structure", "crystal", "cif", "data", "upload", "soc"].includes(cleanName.toLowerCase())) {
     cleanName = p.chemical_formula || p.name || "Crystal Structure";
   }
   document.getElementById("struct-name").value = cleanName;
-  document.getElementById("struct-formula").value = p.chemical_formula || p.formula || cleanName;
+  const sortedFormula = cleanAndSortChemicalFormula(p.chemical_formula || p.formula || cleanName);
+  document.getElementById("struct-formula").value = sortedFormula;
   document.getElementById("struct-system").value = p.crystal_system || "Cubic";
   document.getElementById("struct-spacegroup").value = p.space_group || "";
   document.getElementById("struct-type").value = p.structure_type || "Bulk 3D";
@@ -1905,7 +2022,7 @@ function renderStructuresList() {
           </div>
           <div class="struct-title">${escapeHtml(s.name)}</div>
           <div style="font-size:13px; color:var(--text-secondary); margin-top:2px;">
-            Formula: <strong style="color:var(--primary); font-family:monospace; font-size:14px;">${escapeHtml(s.chemical_formula)}</strong>
+            Formula: <strong style="color:var(--primary); font-family:monospace; font-size:14px;">${formatFormulaHtml(s.chemical_formula || s.formula)}</strong>
             &nbsp;|&nbsp; Space Group: <code>${escapeHtml(s.space_group || "P1")}</code>
           </div>
         </div>
@@ -2051,7 +2168,8 @@ function openStructureModal(structId = null, options = {}) {
 async function saveStructureFromModal() {
   if (!requireAdminAuth()) return;
   const id = document.getElementById("struct-id").value;
-  const formula = document.getElementById("struct-formula").value.trim();
+  const rawFormula = document.getElementById("struct-formula").value.trim();
+  const formula = cleanAndSortChemicalFormula(rawFormula);
   const name = document.getElementById("struct-name").value.trim() || formula || "Crystal Structure";
 
   if (!formula) {
@@ -5512,9 +5630,9 @@ function updateBragg(mode) {
   const banner = document.getElementById("xrd-results-banner");
   if (banner) {
     banner.innerHTML = `
-      <strong>Interplanar Spacing $d$:</strong> ${dSpacing.toFixed(4)} Å (${(dSpacing / 10).toFixed(4)} nm) &nbsp;|&nbsp;
-      <strong>Scattering Vector $q$:</strong> ${qVector.toFixed(3)} Å⁻¹ &nbsp;|&nbsp;
-      <strong>Scherrer Crystallite Size $D$:</strong> <span style="color:#0d9488; font-weight:800;">${crystalliteNm.toFixed(1)} nm</span>
+      <strong>Interplanar Spacing <i>d</i>:</strong> ${dSpacing.toFixed(4)} Å (${(dSpacing / 10).toFixed(4)} nm) &nbsp;|&nbsp;
+      <strong>Scattering Vector <i>q</i>:</strong> ${qVector.toFixed(3)} Å⁻¹ &nbsp;|&nbsp;
+      <strong>Scherrer Crystallite Size <i>D</i>:</strong> <span style="color:#0d9488; font-weight:800;">${crystalliteNm.toFixed(1)} nm</span>
     `;
   }
 }
