@@ -7135,27 +7135,27 @@ function buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr) 
             : `<span style="background:#dcfce7; color:#166534; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:700; border:1px solid #86efac; white-space:nowrap;">Cited and Quoted</span>`));
 
       sourcesTableRows += `
-        <tr style="border-bottom:1px solid #e2e8f0; font-size:11px;">
-          <td style="padding:8px 6px; text-align:center;">
-            <span class="turnitin-tag tag-${s.colorIdx}" style="width:22px; height:22px; font-size:11px; display:inline-flex; align-items:center; justify-content:center;">${s.rank}</span>
+        <tr style="border-bottom:1px solid #e2e8f0; font-size:11px; page-break-inside:avoid;">
+          <td style="padding:6px 6px; text-align:center;">
+            <span class="turnitin-tag tag-${s.colorIdx}" style="width:20px; height:20px; font-size:10.5px; display:inline-flex; align-items:center; justify-content:center;">${s.rank}</span>
           </td>
-          <td style="padding:8px 6px; font-weight:800; color:var(--t-c${s.colorIdx}); font-size:13.5px; text-align:center;">${s.pct}%</td>
-          <td style="padding:8px 10px;">
-            <div style="font-weight:700; color:#0f172a; line-height:1.35; font-size:11.5px;">${escapeHtml(s.title)}</div>
-            ${s.domain ? `<div style="font-size:10.5px; color:#2563eb; font-family:monospace; margin-top:2px;">${escapeHtml(s.domain)}</div>` : ""}
-            ${s.authors ? `<div style="color:#64748b; font-size:10px; margin-top:2px;">${escapeHtml(s.authors)}</div>` : ""}
+          <td style="padding:6px 6px; font-weight:800; color:var(--t-c${s.colorIdx}); font-size:13px; text-align:center;">${s.pct}%</td>
+          <td style="padding:6px 8px;">
+            <div style="font-weight:700; color:#0f172a; line-height:1.3; font-size:11px;">${escapeHtml(s.title)}</div>
+            ${s.domain ? `<div style="font-size:10px; color:#2563eb; font-family:monospace; margin-top:2px;">${escapeHtml(s.domain)}</div>` : ""}
+            ${s.authors ? `<div style="color:#64748b; font-size:9.5px; margin-top:2px;">${escapeHtml(s.authors)}</div>` : ""}
           </td>
-          <td style="padding:8px 8px; font-size:11px; color:#334155; white-space:nowrap;">
+          <td style="padding:6px 6px; font-size:10.5px; color:#334155; white-space:nowrap;">
             <div><strong>${s.text_blocks || 1}</strong> text blocks</div>
-            <div style="color:#64748b; font-size:10px;"><strong>${s.matched_words || 0}</strong> words</div>
+            <div style="color:#64748b; font-size:9.5px;"><strong>${s.matched_words || 0}</strong> words</div>
           </td>
-          <td style="padding:8px 6px; text-align:center;">
+          <td style="padding:6px 6px; text-align:center;">
             ${catBadge}
           </td>
-          <td style="padding:8px 10px;">
-            <div style="font-size:10.5px; color:#475569; font-weight:600;">${escapeHtml(s.venue || "Academic Publication")} ${s.year ? `(${s.year})` : ""}</div>
-            <div style="font-size:9.5px; color:#64748b; margin-top:2px;">${escapeHtml(s.source_database || "CrossRef")}</div>
-            ${s.doi ? `<div style="font-size:10px; color:#0284c7; margin-top:2px;">DOI: ${escapeHtml(s.doi)}</div>` : ""}
+          <td style="padding:6px 8px;">
+            <div style="font-size:10px; color:#475569; font-weight:600;">${escapeHtml(s.venue || "Academic Publication")} ${s.year ? `(${s.year})` : ""}</div>
+            <div style="font-size:9px; color:#64748b; margin-top:2px;">${escapeHtml(s.source_database || "CrossRef")}</div>
+            ${s.doi ? `<div style="font-size:9.5px; color:#0284c7; margin-top:2px;">DOI: ${escapeHtml(s.doi)}</div>` : ""}
           </td>
         </tr>
       `;
@@ -7174,127 +7174,127 @@ function buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr) 
       }
     });
     annotatedManuscriptHtml += `
-      <div style="margin-bottom:16px; position:relative; padding-left:36px; font-size:12.5px; line-height:1.8; font-family:Charter, Georgia, serif; color:#1e293b; text-align:justify; page-break-inside:avoid;">
-        <span style="position:absolute; left:0; top:0; font-family:-apple-system, monospace; font-size:10.5px; font-weight:700; color:#94a3b8;">¶ ${para.index + 1}</span>
+      <div style="margin-bottom:12px; position:relative; padding-left:32px; font-size:11.5px; line-height:1.65; font-family:Charter, Georgia, serif; color:#1e293b; text-align:justify; page-break-inside:avoid;">
+        <span style="position:absolute; left:0; top:0; font-family:-apple-system, monospace; font-size:10px; font-weight:700; color:#94a3b8;">¶ ${para.index + 1}</span>
         ${pContent.trim()}
       </div>
     `;
   });
 
   return `
-    <div id="pdf-export-container" style="width:100%; max-width:100%; margin:0; padding:20px 24px; background:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#0f172a; box-sizing:border-box;">
+    <div id="pdf-export-container" style="width:100%; max-width:100%; margin:0; padding:14px 18px; background:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#0f172a; box-sizing:border-box;">
       
       <!-- REPORT HEADER -->
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #1e40af; padding-bottom:12px; margin-bottom:14px; gap:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #1e40af; padding-bottom:10px; margin-bottom:12px; gap:12px; page-break-inside:avoid;">
         <div style="flex:1; min-width:0;">
           <div style="display:flex; align-items:center; gap:10px;">
-            <div style="width:36px; height:36px; min-width:36px; background:#0284c7; border-radius:8px; color:#ffffff; font-weight:900; font-size:16px; display:flex; align-items:center; justify-content:center; letter-spacing:-0.5px;">CD</div>
+            <div style="width:34px; height:34px; min-width:34px; background:#0284c7; border-radius:8px; color:#ffffff; font-weight:900; font-size:15px; display:flex; align-items:center; justify-content:center; letter-spacing:-0.5px;">CD</div>
             <div>
-              <div style="font-size:13px; font-weight:900; color:#0f172a; letter-spacing:0.2px; text-transform:uppercase; line-height:1.2;">COMPUTATIONAL DATABASE &amp; MATERIALS RESEARCH HUB</div>
-              <div style="font-size:10.5px; color:#475569; font-weight:600; margin-top:2px;">Sungkyunkwan University (SKKU) • Advanced 2D &amp; TMDC Energy Materials</div>
+              <div style="font-size:12.5px; font-weight:900; color:#0f172a; letter-spacing:0.2px; text-transform:uppercase; line-height:1.2;">COMPUTATIONAL DATABASE &amp; MATERIALS RESEARCH HUB</div>
+              <div style="font-size:10px; color:#475569; font-weight:600; margin-top:2px;">Sungkyunkwan University (SKKU) • Advanced 2D &amp; TMDC Energy Materials</div>
             </div>
           </div>
-          <h1 style="margin:10px 0 2px 0; font-size:16px; font-weight:900; color:#0f172a; letter-spacing:-0.3px; line-height:1.25;">
+          <h1 style="margin:8px 0 2px 0; font-size:15px; font-weight:900; color:#0f172a; letter-spacing:-0.3px; line-height:1.25;">
             ACADEMIC MANUSCRIPT PLAGIARISM &amp; ORIGINALITY AUDIT REPORT
           </h1>
-          <div style="font-size:10.5px; color:#64748b; font-weight:500;">
+          <div style="font-size:10px; color:#64748b; font-weight:500;">
             Formal Pre-Submission Screening for Peer-Reviewed Journals (ACS, Nature, APS, Wiley, Elsevier)
           </div>
         </div>
-        <div style="min-width:215px; max-width:230px; text-align:right; font-size:10px; color:#475569; line-height:1.5; white-space:nowrap;">
-          <div>Report ID: <strong style="color:#0f172a; font-family:monospace; font-size:10.5px;">${reportId}</strong></div>
+        <div style="min-width:210px; max-width:225px; text-align:right; font-size:9.5px; color:#475569; line-height:1.45; white-space:nowrap;">
+          <div>Report ID: <strong style="color:#0f172a; font-family:monospace; font-size:10px;">${reportId}</strong></div>
           <div>Date: <strong style="color:#0f172a;">${fullDateStr}</strong></div>
           <div>Time: <strong style="color:#0f172a;">${timeStr}</strong></div>
-          <div style="margin-top:5px; display:inline-block; padding:2px 8px; border-radius:4px; background:#ecfdf5; color:#047857; font-weight:700; font-size:9.5px; border:1px solid #a7f3d0; white-space:nowrap;">
+          <div style="margin-top:4px; display:inline-block; padding:2px 7px; border-radius:4px; background:#ecfdf5; color:#047857; font-weight:700; font-size:9px; border:1px solid #a7f3d0; white-space:nowrap;">
             Verified Automated Audit
           </div>
         </div>
       </div>
 
       <!-- MANUSCRIPT INFO & OVERALL SIMILARITY -->
-      <div style="display:grid; grid-template-columns: 1fr 220px; gap:12px; margin-bottom:12px; align-items:stretch;">
-        <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:12px 14px; font-size:11px; line-height:1.6; display:flex; flex-direction:column; justify-content:center;">
+      <div style="display:grid; grid-template-columns: 1fr 210px; gap:10px; margin-bottom:10px; align-items:stretch; page-break-inside:avoid;">
+        <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; padding:10px 12px; font-size:10.5px; line-height:1.55; display:flex; flex-direction:column; justify-content:center;">
           <div><strong style="color:#334155;">Manuscript / File:</strong> <span style="font-weight:700; color:#0f172a;">${escapeHtml(docName)}</span></div>
           <div><strong style="color:#334155;">Target Researcher:</strong> Vu Tien Lam (<span style="color:#2563eb;">lamvt.skku@gmail.com</span>)</div>
           <div><strong style="color:#334155;">Affiliation:</strong> Sungkyunkwan University, Department of Energy Science</div>
           <div><strong style="color:#334155;">Cross-Check Scope:</strong> Internet &amp; Web Sources, CrossRef &amp; OpenAlex (250M+ Works), Google Scholar Index, Literature Library</div>
         </div>
-        <div style="background:#fff1f2; border:1px solid #fecdd3; border-radius:8px; padding:12px; text-align:center; display:flex; flex-direction:column; justify-content:center;">
-          <div style="font-size:10px; font-weight:800; text-transform:uppercase; color:#475569; letter-spacing:0.5px;">OVERALL SIMILARITY INDEX</div>
-          <div style="font-size:36px; font-weight:900; color:${simColor}; line-height:1; margin:4px 0;">${data.overall_similarity_pct}%</div>
-          <div style="font-size:10.5px; font-weight:700; color:${data.overall_similarity_pct >= 25 ? '#dc2626' : '#16a34a'};">
+        <div style="background:#fff1f2; border:1px solid #fecdd3; border-radius:6px; padding:10px; text-align:center; display:flex; flex-direction:column; justify-content:center;">
+          <div style="font-size:9.5px; font-weight:800; text-transform:uppercase; color:#475569; letter-spacing:0.5px;">OVERALL SIMILARITY INDEX</div>
+          <div style="font-size:32px; font-weight:900; color:${simColor}; line-height:1; margin:3px 0;">${data.overall_similarity_pct}%</div>
+          <div style="font-size:10px; font-weight:700; color:${data.overall_similarity_pct >= 25 ? '#dc2626' : '#16a34a'};">
             ${data.overall_similarity_pct >= 25 ? '⚠️ Significant Overlap' : '✅ Original Manuscript Verified'}
           </div>
         </div>
       </div>
 
       <!-- 4 RISK KPI STAT CARDS -->
-      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:8px; margin-bottom:12px; text-align:center;">
-        <div style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:8px;">
-          <div style="font-size:18px; font-weight:900; color:#dc2626; line-height:1.1;">${data.high_risk_count || 0}</div>
-          <div style="font-size:9.5px; font-weight:700; color:#64748b; margin-top:2px;">High Risk (&gt;65%)</div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:6px; margin-bottom:10px; text-align:center; page-break-inside:avoid;">
+        <div style="background:#fff; border:1px solid #cbd5e1; border-radius:5px; padding:6px;">
+          <div style="font-size:16px; font-weight:900; color:#dc2626; line-height:1.1;">${data.high_risk_count || 0}</div>
+          <div style="font-size:9px; font-weight:700; color:#64748b; margin-top:2px;">High Risk (&gt;65%)</div>
         </div>
-        <div style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:8px;">
-          <div style="font-size:18px; font-weight:900; color:#d97706; line-height:1.1;">${data.moderate_risk_count || 0}</div>
-          <div style="font-size:9.5px; font-weight:700; color:#64748b; margin-top:2px;">Moderate (35–64%)</div>
+        <div style="background:#fff; border:1px solid #cbd5e1; border-radius:5px; padding:6px;">
+          <div style="font-size:16px; font-weight:900; color:#d97706; line-height:1.1;">${data.moderate_risk_count || 0}</div>
+          <div style="font-size:9px; font-weight:700; color:#64748b; margin-top:2px;">Moderate (35–64%)</div>
         </div>
-        <div style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:8px;">
-          <div style="font-size:18px; font-weight:900; color:#16a34a; line-height:1.1;">${data.low_risk_count || 0}</div>
-          <div style="font-size:9.5px; font-weight:700; color:#64748b; margin-top:2px;">Original (&lt;35%)</div>
+        <div style="background:#fff; border:1px solid #cbd5e1; border-radius:5px; padding:6px;">
+          <div style="font-size:16px; font-weight:900; color:#16a34a; line-height:1.1;">${data.low_risk_count || 0}</div>
+          <div style="font-size:9px; font-weight:700; color:#64748b; margin-top:2px;">Original (&lt;35%)</div>
         </div>
-        <div style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:8px;">
-          <div style="font-size:18px; font-weight:900; color:#2563eb; line-height:1.1;">${data.total_paragraphs || 0}</div>
-          <div style="font-size:9.5px; font-weight:700; color:#64748b; margin-top:2px;">Paragraphs Analyzed</div>
+        <div style="background:#fff; border:1px solid #cbd5e1; border-radius:5px; padding:6px;">
+          <div style="font-size:16px; font-weight:900; color:#2563eb; line-height:1.1;">${data.total_paragraphs || 0}</div>
+          <div style="font-size:9px; font-weight:700; color:#64748b; margin-top:2px;">Paragraphs Analyzed</div>
         </div>
       </div>
 
       <!-- 4 CATEGORY MATCH GROUPS SUMMARY -->
-      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:8px; margin-bottom:16px;">
-        <div style="background:#fff; border:1px solid #fca5a5; border-radius:6px; padding:6px 8px; display:flex; align-items:center; gap:6px;">
-          <span style="font-size:16px;">📕</span>
+      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:6px; margin-bottom:12px; page-break-inside:avoid;">
+        <div style="background:#fff; border:1px solid #fca5a5; border-radius:5px; padding:5px 7px; display:flex; align-items:center; gap:6px;">
+          <span style="font-size:14px;">📕</span>
           <div>
-            <div style="font-size:9px; font-weight:800; color:#991b1b; text-transform:uppercase;">Not Cited or Quoted</div>
-            <div style="font-size:10.5px; font-weight:700; color:#0f172a;">${data.not_cited_count || 0} matches <span style="color:#dc2626;">(${data.not_cited_pct || 0}%)</span></div>
+            <div style="font-size:8.5px; font-weight:800; color:#991b1b; text-transform:uppercase;">Not Cited or Quoted</div>
+            <div style="font-size:10px; font-weight:700; color:#0f172a;">${data.not_cited_count || 0} matches <span style="color:#dc2626;">(${data.not_cited_pct || 0}%)</span></div>
           </div>
         </div>
-        <div style="background:#fff; border:1px solid #fdba74; border-radius:6px; padding:6px 8px; display:flex; align-items:center; gap:6px;">
-          <span style="font-size:16px;">💬</span>
+        <div style="background:#fff; border:1px solid #fdba74; border-radius:5px; padding:5px 7px; display:flex; align-items:center; gap:6px;">
+          <span style="font-size:14px;">💬</span>
           <div>
-            <div style="font-size:9px; font-weight:800; color:#9a3412; text-transform:uppercase;">Missing Quotations</div>
-            <div style="font-size:10.5px; font-weight:700; color:#0f172a;">${data.missing_quotes_count || 0} matches <span style="color:#ea580c;">(${data.missing_quotes_pct || 0}%)</span></div>
+            <div style="font-size:8.5px; font-weight:800; color:#9a3412; text-transform:uppercase;">Missing Quotations</div>
+            <div style="font-size:10px; font-weight:700; color:#0f172a;">${data.missing_quotes_count || 0} matches <span style="color:#ea580c;">(${data.missing_quotes_pct || 0}%)</span></div>
           </div>
         </div>
-        <div style="background:#fff; border:1px solid #fde047; border-radius:6px; padding:6px 8px; display:flex; align-items:center; gap:6px;">
-          <span style="font-size:16px;">📑</span>
+        <div style="background:#fff; border:1px solid #fde047; border-radius:5px; padding:5px 7px; display:flex; align-items:center; gap:6px;">
+          <span style="font-size:14px;">📑</span>
           <div>
-            <div style="font-size:9px; font-weight:800; color:#854d0e; text-transform:uppercase;">Missing Citation</div>
-            <div style="font-size:10.5px; font-weight:700; color:#0f172a;">${data.missing_cite_count || 0} matches <span style="color:#ca8a04;">(${data.missing_cite_pct || 0}%)</span></div>
+            <div style="font-size:8.5px; font-weight:800; color:#854d0e; text-transform:uppercase;">Missing Citation</div>
+            <div style="font-size:10px; font-weight:700; color:#0f172a;">${data.missing_cite_count || 0} matches <span style="color:#ca8a04;">(${data.missing_cite_pct || 0}%)</span></div>
           </div>
         </div>
-        <div style="background:#fff; border:1px solid #86efac; border-radius:6px; padding:6px 8px; display:flex; align-items:center; gap:6px;">
-          <span style="font-size:16px;">🎓</span>
+        <div style="background:#fff; border:1px solid #86efac; border-radius:5px; padding:5px 7px; display:flex; align-items:center; gap:6px;">
+          <span style="font-size:14px;">🎓</span>
           <div>
-            <div style="font-size:9px; font-weight:800; color:#166534; text-transform:uppercase;">Cited and Quoted</div>
-            <div style="font-size:10.5px; font-weight:700; color:#0f172a;">${data.cited_quoted_count || 0} matches <span style="color:#16a34a;">(${data.cited_quoted_pct || 0}%)</span></div>
+            <div style="font-size:8.5px; font-weight:800; color:#166534; text-transform:uppercase;">Cited and Quoted</div>
+            <div style="font-size:10px; font-weight:700; color:#0f172a;">${data.cited_quoted_count || 0} matches <span style="color:#16a34a;">(${data.cited_quoted_pct || 0}%)</span></div>
           </div>
         </div>
       </div>
 
       <!-- SECTION 1: PRIMARY SOURCES OVERLAP TABLE -->
-      <div style="margin-bottom:20px; page-break-inside:avoid;">
-        <div style="font-size:11.5px; font-weight:800; color:#0f172a; text-transform:uppercase; letter-spacing:0.5px; border-bottom:2px solid #cbd5e1; padding-bottom:4px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+      <div style="margin-bottom:12px;">
+        <div style="font-size:11px; font-weight:800; color:#0f172a; text-transform:uppercase; letter-spacing:0.5px; border-bottom:2px solid #cbd5e1; padding-bottom:3px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
           <span>Primary Sources &amp; Literature Overlap Breakdown</span>
-          <span style="font-size:9.5px; color:#64748b; font-weight:600; text-transform:none;">Sorted strictly descending by % match</span>
+          <span style="font-size:9px; color:#64748b; font-weight:600; text-transform:none;">Sorted strictly descending by % match</span>
         </div>
-        <table style="width:100%; border-collapse:collapse; background:#fff; border:1px solid #cbd5e1; border-radius:6px; overflow:hidden; table-layout:fixed;">
+        <table style="width:100%; border-collapse:collapse; background:#fff; border:1px solid #cbd5e1; border-radius:5px; overflow:hidden; table-layout:fixed;">
           <thead>
-            <tr style="background:#f1f5f9; border-bottom:2px solid #cbd5e1; font-size:9px; color:#475569; text-transform:uppercase; letter-spacing:0.5px;">
-              <th style="padding:6px 4px; width:30px; text-align:center;">#</th>
-              <th style="padding:6px 4px; width:54px; text-align:center;">Overlap</th>
-              <th style="padding:6px 8px; width:220px; text-align:left;">Source Title &amp; Domain</th>
-              <th style="padding:6px 6px; width:90px; text-align:left;">Match Units</th>
-              <th style="padding:6px 4px; width:115px; text-align:center;">Category</th>
-              <th style="padding:6px 8px; text-align:left;">Journal &amp; Index</th>
+            <tr style="background:#f1f5f9; border-bottom:2px solid #cbd5e1; font-size:8.5px; color:#475569; text-transform:uppercase; letter-spacing:0.5px;">
+              <th style="padding:5px 4px; width:28px; text-align:center;">#</th>
+              <th style="padding:5px 4px; width:50px; text-align:center;">Overlap</th>
+              <th style="padding:5px 6px; width:220px; text-align:left;">Source Title &amp; Domain</th>
+              <th style="padding:5px 6px; width:88px; text-align:left;">Match Units</th>
+              <th style="padding:5px 4px; width:110px; text-align:center;">Category</th>
+              <th style="padding:5px 6px; text-align:left;">Journal &amp; Index</th>
             </tr>
           </thead>
           <tbody>
@@ -7303,26 +7303,26 @@ function buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr) 
         </table>
       </div>
 
-      <!-- SECTION 2: FULL ANNOTATED MANUSCRIPT WITH MULTI-COLOR ATTRIBUTION HIGHLIGHTS -->
-      <div style="margin-top:20px; page-break-before:always;">
-        <div style="font-size:11.5px; font-weight:800; color:#0f172a; text-transform:uppercase; letter-spacing:0.5px; border-bottom:2px solid #cbd5e1; padding-bottom:4px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+      <!-- SECTION 2: FULL ANNOTATED MANUSCRIPT WITH MULTI-COLOR ATTRIBUTION HIGHLIGHTS (FLOWS NATURALLY) -->
+      <div style="margin-top:12px;">
+        <div style="font-size:11px; font-weight:800; color:#0f172a; text-transform:uppercase; letter-spacing:0.5px; border-bottom:2px solid #cbd5e1; padding-bottom:3px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
           <span>Annotated Manuscript Draft with Source Attribution Tags</span>
-          <span style="font-size:9.5px; color:#64748b; font-weight:normal;">Clause-by-Clause Multi-Color Highlighting</span>
+          <span style="font-size:9px; color:#64748b; font-weight:normal;">Clause-by-Clause Multi-Color Highlighting</span>
         </div>
-        <div style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:18px 22px;">
+        <div style="background:#fff; border:1px solid #cbd5e1; border-radius:5px; padding:14px 18px;">
           ${annotatedManuscriptHtml}
         </div>
       </div>
 
       <!-- FOOTER & CERTIFICATION -->
-      <div style="page-break-inside:avoid; margin-top:20px; padding:10px 14px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; font-size:10px; line-height:1.5;">
-        <div style="font-weight:700; color:#1e293b; margin-bottom:3px; text-transform:uppercase; letter-spacing:0.3px;">
+      <div style="page-break-inside:avoid; margin-top:12px; padding:8px 12px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:5px; font-size:9.5px; line-height:1.45;">
+        <div style="font-weight:700; color:#1e293b; margin-bottom:2px; text-transform:uppercase; letter-spacing:0.3px;">
           Academic Authenticity &amp; Pre-Submission Originality Audit Notice
         </div>
-        <p style="margin:0; color:#475569; font-size:9.5px;">
+        <p style="margin:0; color:#475569; font-size:9px;">
           This originality audit was executed against 150M+ CrossRef DOIs, Europe PMC, and Google Scholar index. Overlap highlighting represents exact phrase matches and high-density semantic phrasing corresponding to the ranked sources listed above.
         </p>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; border-top:1px dashed #cbd5e1; padding-top:6px; color:#64748b; font-size:9px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; border-top:1px dashed #cbd5e1; padding-top:4px; color:#64748b; font-size:8.5px;">
           <span>Report Generated by Computational Database • Sungkyunkwan University</span>
           <span>https://tienlamvu.github.io/lamreseach/</span>
         </div>
@@ -7350,8 +7350,12 @@ async function exportPlagiarismPdfReport() {
   });
   showToast("📄 Compiling Academic Originality Audit PDF Report...", "info");
 
-  const prevScrollX = window.scrollX;
-  const prevScrollY = window.scrollY;
+  const prevScrollX = window.scrollX || window.pageXOffset || 0;
+  const prevScrollY = window.scrollY || window.pageYOffset || 0;
+
+  // IMPORTANT: Instantly scroll to top (0, 0) so html2canvas and html2pdf container calculations
+  // capture from the very top of the document without any vertical scroll offset void!
+  window.scrollTo(0, 0);
 
   try {
     const data = currentPlagResults;
@@ -7387,13 +7391,15 @@ async function exportPlagiarismPdfReport() {
     }
 
     const opt = {
-      margin: [10, 10, 10, 10], // 10mm equal margins on all sides (standard A4)
+      margin: [8, 8, 8, 8], // 8mm equal margins on all sides (standard compact academic A4)
       filename: `Academic_Originality_Audit_Report_${docName.replace(/\.[^/.]+$/, "")}_${dateStr}.pdf`,
       image: { type: "jpeg", quality: 0.98 },
       html2canvas: {
         scale: 2,
         useCORS: true,
-        logging: false
+        logging: false,
+        scrollX: 0,
+        scrollY: 0
       },
       jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
       pagebreak: { mode: ["css", "legacy"] }
