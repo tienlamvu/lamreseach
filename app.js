@@ -7162,6 +7162,88 @@ function buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr) 
     });
   }
 
+  // 1. Build Section 2: Paragraph-by-Paragraph Duplicate Breakdown Cards (matching user UI)
+  let paraCardsHtml = "";
+  (data.paragraphs || []).forEach(p => {
+    const isHigh = p.risk_level === "HIGH" || (p.max_similarity_pct >= 65);
+    const isMod = p.risk_level === "MODERATE" || (p.max_similarity_pct >= 35 && p.max_similarity_pct < 65);
+
+    let riskBadgeHtml = "";
+    let cardBorder = "1px solid #cbd5e1";
+    let calloutBorder = "#16a34a";
+
+    if (isHigh) {
+      cardBorder = "1px solid #fca5a5";
+      calloutBorder = "#dc2626";
+      riskBadgeHtml = `<span style="border:1px solid #fca5a5; background:#fef2f2; color:#dc2626; padding:2px 8px; border-radius:12px; font-weight:700; font-size:9px; display:inline-flex; align-items:center; gap:3px; white-space:nowrap;">🚨 HIGH DUPLICATE (${p.max_similarity_pct || 0}%)</span>`;
+    } else if (isMod) {
+      cardBorder = "1px solid #fde047";
+      calloutBorder = "#d97706";
+      riskBadgeHtml = `<span style="border:1px solid #fde047; background:#fef9c3; color:#ca8a04; padding:2px 8px; border-radius:12px; font-weight:700; font-size:9px; display:inline-flex; align-items:center; gap:3px; white-space:nowrap;">⚠️ MODERATE OVERLAP (${p.max_similarity_pct || 0}%)</span>`;
+    } else {
+      cardBorder = "1px solid #cbd5e1";
+      calloutBorder = "#16a34a";
+      riskBadgeHtml = `<span style="border:1px solid #86efac; background:#ecfdf5; color:#166534; padding:2px 8px; border-radius:12px; font-weight:700; font-size:9px; display:inline-flex; align-items:center; gap:3px; white-space:nowrap;">✅ HIGH ORIGINALITY (${p.max_similarity_pct || 0}%)</span>`;
+    }
+
+    let pHighlightedText = "";
+    if (p.sentences && p.sentences.length > 0) {
+      p.sentences.forEach(s => {
+        if (s.match && data.rank_map && data.rank_map.has(s.match.source.id)) {
+          pHighlightedText += `<mark style="border:1.5px dashed #d97706; background:#fef3c7; color:#92400e; padding:1px 4px; border-radius:3px; font-weight:600; display:inline;">${escapeHtml(s.text)}</mark> `;
+        } else {
+          pHighlightedText += escapeHtml(s.text) + " ";
+        }
+      });
+    } else {
+      pHighlightedText = escapeHtml(p.text || "");
+    }
+
+    let matchCalloutHtml = "";
+    if (p.top_match && p.top_match.similarity_pct > 15) {
+      const src = p.top_match;
+      matchCalloutHtml = `
+        <div style="margin-top:8px; padding:7px 10px; background:#f8fafc; border-radius:4px; border:1px solid #e2e8f0; border-left:3.5px solid ${calloutBorder}; font-size:9.5px; line-height:1.45; page-break-inside:avoid; break-inside:avoid;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+            <div style="font-weight:700; color:#0f172a; font-size:10px; line-height:1.3;">
+              Matched Publication: ${escapeHtml(src.source_title || src.title || "Academic Literature")}
+            </div>
+            <div style="font-weight:800; color:${calloutBorder}; font-size:10.5px; white-space:nowrap; margin-left:8px;">
+              ${src.similarity_pct}% Overlap
+            </div>
+          </div>
+          <div style="color:#475569; font-size:9px; margin-top:2px;">
+            Venue: <strong>${escapeHtml(src.source_venue || src.venue || "Academic Publication")}</strong> ${src.source_year || src.year ? `(${src.source_year || src.year})` : ""}
+            ${src.source_doi || src.doi ? ` | DOI: <span style="color:#0284c7;">${escapeHtml(src.source_doi || src.doi)}</span>` : ""}
+          </div>
+          ${src.longest_phrase ? `
+            <div style="color:#854d0e; font-size:9px; margin-top:3px; font-style:italic;">
+              Verbatim identical phrasing: "${escapeHtml(src.longest_phrase)}"
+            </div>
+          ` : ""}
+        </div>
+      `;
+    }
+
+    const wordCount = p.words_count || p.word_count || (p.text ? p.text.trim().split(/\s+/).length : 0);
+
+    paraCardsHtml += `
+      <div class="plag-para-card" style="border:${cardBorder}; border-radius:6px; padding:9px 12px; background:#ffffff; margin-bottom:9px; page-break-inside:avoid; break-inside:avoid; box-sizing:border-box;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+          <span style="font-weight:700; font-size:11px; color:#1e293b;">
+            Paragraph #${p.index + 1} <span style="font-size:9.5px; color:#64748b; font-weight:normal;">(${wordCount} words)</span>
+          </span>
+          ${riskBadgeHtml}
+        </div>
+        <div style="font-size:10.5px; line-height:1.55; color:#1e293b; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; text-align:justify;">
+          ${pHighlightedText.trim()}
+        </div>
+        ${matchCalloutHtml}
+      </div>
+    `;
+  });
+
+  // 2. Build Section 3: Full Annotated Continuous Manuscript Draft with Source Attribution Tags
   let annotatedManuscriptHtml = "";
   data.paragraphs.forEach(para => {
     let pContent = "";
@@ -7174,8 +7256,8 @@ function buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr) 
       }
     });
     annotatedManuscriptHtml += `
-      <div style="margin-bottom:12px; position:relative; padding-left:32px; font-size:11.5px; line-height:1.65; font-family:Charter, Georgia, serif; color:#1e293b; text-align:justify; page-break-inside:avoid;">
-        <span style="position:absolute; left:0; top:0; font-family:-apple-system, monospace; font-size:10px; font-weight:700; color:#94a3b8;">¶ ${para.index + 1}</span>
+      <div class="pdf-annotated-para" style="margin-bottom:10px; position:relative; padding-left:30px; font-size:10.5px; line-height:1.6; font-family:Charter, Georgia, serif; color:#1e293b; text-align:justify; page-break-inside:avoid; break-inside:avoid;">
+        <span style="position:absolute; left:0; top:0; font-family:-apple-system, monospace; font-size:9.5px; font-weight:700; color:#94a3b8;">¶ ${para.index + 1}</span>
         ${pContent.trim()}
       </div>
     `;
@@ -7183,9 +7265,15 @@ function buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr) 
 
   return `
     <div id="pdf-export-container" style="width:100%; max-width:100%; margin:0; padding:14px 18px; background:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#0f172a; box-sizing:border-box;">
+      <style>
+        .plag-para-card, .pdf-annotated-para, .pdf-avoid-break, tr {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+        }
+      </style>
       
       <!-- REPORT HEADER -->
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #1e40af; padding-bottom:10px; margin-bottom:12px; gap:12px; page-break-inside:avoid;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #1e40af; padding-bottom:10px; margin-bottom:12px; gap:12px; page-break-inside:avoid; break-inside:avoid;">
         <div style="flex:1; min-width:0;">
           <div style="display:flex; align-items:center; gap:10px;">
             <div style="width:34px; height:34px; min-width:34px; background:#0284c7; border-radius:8px; color:#ffffff; font-weight:900; font-size:15px; display:flex; align-items:center; justify-content:center; letter-spacing:-0.5px;">CD</div>
@@ -7212,7 +7300,7 @@ function buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr) 
       </div>
 
       <!-- MANUSCRIPT INFO & OVERALL SIMILARITY -->
-      <div style="display:grid; grid-template-columns: 1fr 210px; gap:10px; margin-bottom:10px; align-items:stretch; page-break-inside:avoid;">
+      <div style="display:grid; grid-template-columns: 1fr 210px; gap:10px; margin-bottom:10px; align-items:stretch; page-break-inside:avoid; break-inside:avoid;">
         <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; padding:10px 12px; font-size:10.5px; line-height:1.55; display:flex; flex-direction:column; justify-content:center;">
           <div><strong style="color:#334155;">Manuscript / File:</strong> <span style="font-weight:700; color:#0f172a;">${escapeHtml(docName)}</span></div>
           <div><strong style="color:#334155;">Target Researcher:</strong> Vu Tien Lam (<span style="color:#2563eb;">lamvt.skku@gmail.com</span>)</div>
@@ -7229,7 +7317,7 @@ function buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr) 
       </div>
 
       <!-- 4 RISK KPI STAT CARDS -->
-      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:6px; margin-bottom:10px; text-align:center; page-break-inside:avoid;">
+      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:6px; margin-bottom:10px; text-align:center; page-break-inside:avoid; break-inside:avoid;">
         <div style="background:#fff; border:1px solid #cbd5e1; border-radius:5px; padding:6px;">
           <div style="font-size:16px; font-weight:900; color:#dc2626; line-height:1.1;">${data.high_risk_count || 0}</div>
           <div style="font-size:9px; font-weight:700; color:#64748b; margin-top:2px;">High Risk (&gt;65%)</div>
@@ -7249,7 +7337,7 @@ function buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr) 
       </div>
 
       <!-- 4 CATEGORY MATCH GROUPS SUMMARY -->
-      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:6px; margin-bottom:12px; page-break-inside:avoid;">
+      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:6px; margin-bottom:12px; page-break-inside:avoid; break-inside:avoid;">
         <div style="background:#fff; border:1px solid #fca5a5; border-radius:5px; padding:5px 7px; display:flex; align-items:center; gap:6px;">
           <span style="font-size:14px;">📕</span>
           <div>
@@ -7282,13 +7370,13 @@ function buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr) 
 
       <!-- SECTION 1: PRIMARY SOURCES OVERLAP TABLE -->
       <div style="margin-bottom:12px;">
-        <div style="font-size:11px; font-weight:800; color:#0f172a; text-transform:uppercase; letter-spacing:0.5px; border-bottom:2px solid #cbd5e1; padding-bottom:3px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+        <div style="font-size:11px; font-weight:800; color:#0f172a; text-transform:uppercase; letter-spacing:0.5px; border-bottom:2px solid #cbd5e1; padding-bottom:3px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; page-break-inside:avoid; break-inside:avoid;">
           <span>Primary Sources &amp; Literature Overlap Breakdown</span>
           <span style="font-size:9px; color:#64748b; font-weight:600; text-transform:none;">Sorted strictly descending by % match</span>
         </div>
         <table style="width:100%; border-collapse:collapse; background:#fff; border:1px solid #cbd5e1; border-radius:5px; overflow:hidden; table-layout:fixed;">
           <thead>
-            <tr style="background:#f1f5f9; border-bottom:2px solid #cbd5e1; font-size:8.5px; color:#475569; text-transform:uppercase; letter-spacing:0.5px;">
+            <tr style="background:#f1f5f9; border-bottom:2px solid #cbd5e1; font-size:8.5px; color:#475569; text-transform:uppercase; letter-spacing:0.5px; page-break-inside:avoid; break-inside:avoid;">
               <th style="padding:5px 4px; width:28px; text-align:center;">#</th>
               <th style="padding:5px 4px; width:50px; text-align:center;">Overlap</th>
               <th style="padding:5px 6px; width:220px; text-align:left;">Source Title &amp; Domain</th>
@@ -7303,19 +7391,30 @@ function buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr) 
         </table>
       </div>
 
-      <!-- SECTION 2: FULL ANNOTATED MANUSCRIPT WITH MULTI-COLOR ATTRIBUTION HIGHLIGHTS (FLOWS NATURALLY) -->
-      <div style="margin-top:12px;">
-        <div style="font-size:11px; font-weight:800; color:#0f172a; text-transform:uppercase; letter-spacing:0.5px; border-bottom:2px solid #cbd5e1; padding-bottom:3px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-          <span>Annotated Manuscript Draft with Source Attribution Tags</span>
+      <!-- SECTION 2: PARAGRAPH-BY-PARAGRAPH DUPLICATE BREAKDOWN -->
+      <div style="margin-top:14px; margin-bottom:12px;">
+        <div style="font-size:11px; font-weight:800; color:#0f172a; text-transform:uppercase; letter-spacing:0.5px; border-bottom:2px solid #cbd5e1; padding-bottom:3px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; page-break-inside:avoid; break-inside:avoid;">
+          <span>Paragraph-by-Paragraph Duplicate Breakdown</span>
+          <span style="font-size:9px; color:#64748b; font-weight:600;">${data.total_paragraphs || (data.paragraphs ? data.paragraphs.length : 0)} Paragraphs Audited</span>
+        </div>
+        <div id="pdf-para-cards-list">
+          ${paraCardsHtml}
+        </div>
+      </div>
+
+      <!-- SECTION 3: FULL ANNOTATED MANUSCRIPT WITH MULTI-COLOR ATTRIBUTION HIGHLIGHTS -->
+      <div style="margin-top:14px; margin-bottom:12px;">
+        <div style="font-size:11px; font-weight:800; color:#0f172a; text-transform:uppercase; letter-spacing:0.5px; border-bottom:2px solid #cbd5e1; padding-bottom:3px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; page-break-inside:avoid; break-inside:avoid;">
+          <span>Full Annotated Manuscript Draft with Source Attribution Tags</span>
           <span style="font-size:9px; color:#64748b; font-weight:normal;">Clause-by-Clause Multi-Color Highlighting</span>
         </div>
-        <div style="background:#fff; border:1px solid #cbd5e1; border-radius:5px; padding:14px 18px;">
+        <div style="background:#fff; border:1px solid #cbd5e1; border-radius:5px; padding:12px 16px;">
           ${annotatedManuscriptHtml}
         </div>
       </div>
 
       <!-- FOOTER & CERTIFICATION -->
-      <div style="page-break-inside:avoid; margin-top:12px; padding:8px 12px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:5px; font-size:9.5px; line-height:1.45;">
+      <div style="page-break-inside:avoid; break-inside:avoid; margin-top:12px; padding:8px 12px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:5px; font-size:9.5px; line-height:1.45;">
         <div style="font-weight:700; color:#1e293b; margin-bottom:2px; text-transform:uppercase; letter-spacing:0.3px;">
           Academic Authenticity &amp; Pre-Submission Originality Audit Notice
         </div>
@@ -7402,7 +7501,10 @@ async function exportPlagiarismPdfReport() {
         scrollY: 0
       },
       jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-      pagebreak: { mode: ["css", "legacy"] }
+      pagebreak: {
+        mode: ["css", "legacy"],
+        avoid: [".plag-para-card", ".pdf-annotated-para", "tr", ".pdf-avoid-break"]
+      }
     };
 
     const element = document.getElementById("pdf-export-container") || renderArea;
