@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261112_v31" onerror="this.href='/static/styles.css?v=20261112_v31'" />
+  <link rel="stylesheet" href="styles.css?v=20261112_v32" onerror="this.href='/static/styles.css?v=20261112_v32'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -668,199 +668,32 @@
             </div>
           </div>
 
-          <!-- ACADEMIC ORIGINALITY STUDIO DUAL-PANE CONTAINER -->
-          <div id="turnitin-interactive-container" style="display:none; margin-top:16px;">
-            
-            <!-- Originality Studio Top Navigation Bar -->
-            <div class="turnitin-app-bar">
-              <div class="turnitin-app-brand">
-                <div style="width:26px; height:26px; background:#0284c7; border-radius:6px; color:#fff; font-weight:900; font-size:13px; display:inline-flex; align-items:center; justify-content:center;">CD</div>
-                <span class="turnitin-brand-text" style="font-size:16px; color:#0f172a; margin-left:6px;">Originality Studio</span>
-                <span class="turnitin-doc-breadcrumb" id="turnitin-breadcrumb-doc">Manuscript Draft</span>
-              </div>
-
-              <!-- Top Center Pill Tabs: Similarity % & Integrity Flags -->
-              <div class="turnitin-top-tabs">
-                <button class="turnitin-top-tab active" id="turnitin-top-sim-tab" onclick="switchTurnitinTab('GROUPS')">
-                  <span>Similarity</span>
-                  <span class="turnitin-top-tab-badge" id="turnitin-top-sim-badge">0%</span>
-                </button>
-                <button class="turnitin-top-tab" id="turnitin-top-flags-tab" onclick="switchTurnitinTab('FLAGS')">
-                  <span>Flags</span>
-                  <span class="turnitin-top-tab-flag" id="turnitin-top-flags-badge">0</span>
-                </button>
-              </div>
-
-              <!-- Top Right Controls (Image 4 Button Style) -->
-              <div class="turnitin-app-actions" style="display:flex; gap:8px; align-items:center;">
-                <button class="btn btn-primary btn-sm btn-export-pdf-action" onclick="exportPlagiarismPdfReport()" style="background:#dc2626; border:none; border-radius:6px; color:#fff; font-weight:700; font-size:12px; padding:6px 14px; display:inline-flex; align-items:center; gap:6px;">
-                  📄 Export PDF Report
-                </button>
-                <button class="btn btn-outline btn-sm" onclick="exportPlagiarismTxtReport()" style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; font-size:12px; padding:6px 12px; color:#334155; display:inline-flex; align-items:center; gap:6px;">
-                  📝 Text
-                </button>
-                <button class="btn btn-outline btn-sm" onclick="printPlagiarismReport()" style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; font-size:12px; padding:6px 12px; color:#334155; display:inline-flex; align-items:center; gap:6px;">
-                  🖨️ Print
-                </button>
-              </div>
-            </div>
-
-            <div class="turnitin-layout">
-              <!-- Left: Document Viewer with Real Paper Sheet Layout -->
-              <div class="turnitin-doc-pane" id="turnitin-doc-pane">
-                <div class="turnitin-doc-header">
-                  <div>
-                    <div class="turnitin-doc-title" id="turnitin-doc-title">📄 Manuscript Originality Document Viewer</div>
-                    <div class="turnitin-doc-meta" id="turnitin-doc-meta">Normalized into sentences &amp; paragraphs with multi-color attribution</div>
-                  </div>
-                  <!-- Clean controls: Highlights toggle & View filter -->
-                  <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                    <button class="btn btn-outline btn-sm" id="btn-toggle-highlights" onclick="toggleTurnitinHighlights()" style="font-size:12px; padding:5px 10px; border-radius:6px;">
-                      👁️ Toggle Highlights
-                    </button>
-                    <select id="turnitin-filter-select" onchange="filterTurnitinView()" style="padding:5px 10px; border-radius:6px; border:1px solid #cbd5e1; font-size:12px; background:#fff;">
-                      <option value="ALL">Show All Text</option>
-                      <option value="MATCHED">Show Only Matched Paragraphs</option>
-                      <option value="HIGH">Show Only High Risk (&gt;50%)</option>
-                    </select>
-                  </div>
-                </div>
-
-                <!-- Paper Sheet Container -->
-                <div class="turnitin-paper-sheet" id="turnitin-paper-sheet">
-                  <div id="turnitin-doc-body">
-                    <!-- Rendered paragraphs with Turnitin multi-color highlights go here -->
-                  </div>
-                </div>
-
-                <!-- Bottom Document Status Pill -->
-                <div class="turnitin-paper-footer">
-                  <div style="display:flex; align-items:center; gap:12px;">
-                    <span class="turnitin-footer-pill" id="turnitin-page-stat">📄 Page 1 of 1</span>
-                    <span class="turnitin-footer-pill" id="turnitin-word-stat">0 words</span>
-                  </div>
-                  <div class="turnitin-zoom-control">
-                    <button class="turnitin-zoom-btn" onclick="zoomTurnitinDoc(-10)" title="Zoom Out">−</button>
-                    <span id="turnitin-zoom-val" style="min-width:44px; text-align:center;">100%</span>
-                    <button class="turnitin-zoom-btn" onclick="zoomTurnitinDoc(10)" title="Zoom In">+</button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Right: Turnitin Match Overview Sidebar -->
-              <div class="turnitin-sidebar" id="turnitin-sidebar-pane">
-                
-                <!-- Header with Title & Filter -->
-                <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;">
-                  <h3 style="font-size:22px; font-weight:800; color:#0f172a; margin:0;" id="turnitin-sidebar-sim-title">0% Overall Similarity</h3>
-                  <button class="btn btn-outline btn-sm" onclick="filterTurnitinView()" style="font-size:11px; padding:2px 8px;">Filters</button>
-                </div>
-
-                <!-- Segmented Tabs: Match Groups vs Sources -->
-                <div class="turnitin-view-tabs">
-                  <button class="turnitin-view-tab active" id="tab-btn-groups" onclick="switchTurnitinTab('GROUPS')">Match Groups</button>
-                  <button class="turnitin-view-tab" id="tab-btn-sources" onclick="switchTurnitinTab('SOURCES')">Sources</button>
-                </div>
-
-                <!-- Integrity Flags Card -->
-                <div class="turnitin-flags-card" id="turnitin-flags-card">
-                  <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div style="display:flex; align-items:center; gap:6px; font-weight:700; color:#dc2626;">
-                      <span>🚩</span>
-                      <span id="turnitin-flags-label">0 Integrity Flags</span>
-                    </div>
-                    <span style="font-size:11px; color:#2563eb; cursor:pointer;" onclick="switchTurnitinTab('FLAGS')">View Flags &rarr;</span>
-                  </div>
-                  <div style="font-size:11px; color:#64748b; margin-top:4px;" id="turnitin-flags-sub">
-                    Scanned 250M+ CrossRef DOIs, Europe PMC &amp; Google Scholar index
-                  </div>
-                </div>
-
-                <!-- Match Groups Summary (Categories) -->
-                <div class="turnitin-groups-summary" id="turnitin-groups-summary">
-                  <div class="turnitin-group-pill" id="pill-not-cited" onclick="filterByTurnitinCategory('NOT_CITED')">
-                    <span class="turnitin-group-icon">📕</span>
-                    <span class="turnitin-group-name">Not Cited or Quoted</span>
-                    <span class="turnitin-group-count" id="count-not-cited">0</span>
-                    <span class="turnitin-group-pct" id="pct-not-cited">0%</span>
-                  </div>
-                  <div class="turnitin-group-pill" id="pill-missing-quotes" onclick="filterByTurnitinCategory('MISSING_QUOTES')">
-                    <span class="turnitin-group-icon">💬</span>
-                    <span class="turnitin-group-name">Missing Quotations</span>
-                    <span class="turnitin-group-count" id="count-missing-quotes">0</span>
-                    <span class="turnitin-group-pct" id="pct-missing-quotes">0%</span>
-                  </div>
-                  <div class="turnitin-group-pill" id="pill-missing-cite" onclick="filterByTurnitinCategory('MISSING_CITE')">
-                    <span class="turnitin-group-icon">📑</span>
-                    <span class="turnitin-group-name">Missing Citation</span>
-                    <span class="turnitin-group-count" id="count-missing-cite">0</span>
-                    <span class="turnitin-group-pct" id="pct-missing-cite">0%</span>
-                  </div>
-                  <div class="turnitin-group-pill" id="pill-cited-quoted" onclick="filterByTurnitinCategory('CITED_QUOTED')">
-                    <span class="turnitin-group-icon">🎓</span>
-                    <span class="turnitin-group-name">Cited and Quoted</span>
-                    <span class="turnitin-group-count" id="count-cited-quoted">0</span>
-                    <span class="turnitin-group-pct" id="pct-cited-quoted">0%</span>
-                  </div>
-                </div>
-
-                <!-- Prominent Turnitin PDF Report Download Button -->
-                <button class="btn btn-primary btn-block btn-export-pdf-action" id="btn-sidebar-export-pdf" onclick="exportPlagiarismPdfReport()" style="width:100%; margin:12px 0 16px 0; background:linear-gradient(135deg, #dc2626, #b91c1c); border:none; color:#ffffff; font-weight:800; font-size:13px; padding:10px 14px; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 2px 6px rgba(220,38,38,0.3); cursor:pointer;">
-                  <span>📄</span>
-                  <span>Export Turnitin PDF Report</span>
-                </button>
-
-                <!-- Sub-index breakdown -->
-                <div class="turnitin-sub-gauges" style="margin-bottom:14px;">
-                  <div class="turnitin-sub-card">
-                    <div class="turnitin-sub-card-val" id="turnitin-sub-internet" style="color:#2563eb;">0%</div>
-                    <div class="turnitin-sub-card-lbl">Internet</div>
-                  </div>
-                  <div class="turnitin-sub-card">
-                    <div class="turnitin-sub-card-val" id="turnitin-sub-pubs" style="color:#7c3aed;">0%</div>
-                    <div class="turnitin-sub-card-lbl">Publications</div>
-                  </div>
-                  <div class="turnitin-sub-card">
-                    <div class="turnitin-sub-card-val" id="turnitin-sub-internal" style="color:#64748b;">0%</div>
-                    <div class="turnitin-sub-card-lbl">Internal</div>
-                  </div>
-                </div>
-
-                <!-- Match List Container: shows Match Groups or Ranked Sources -->
-                <div class="turnitin-sources-header" id="turnitin-sources-header">
-                  <span id="turnitin-list-header-title">Match Overview</span>
-                  <span style="font-size:10px; color:#64748b; font-weight:normal;" id="turnitin-list-header-sub">Ranked by %</span>
-                </div>
-
-                <!-- Ranked sources items go here -->
-                <div id="turnitin-sources-list">
-                  <div style="font-size:12px; color:#64748b; text-align:center; padding:12px;">No matches detected.</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Detailed Paragraph Match Table -->
+          <!-- Detailed Paragraph Match Table (Primary Results View) -->
           <div class="card" id="plag-breakdown-card" style="margin-top:16px;">
-            <div class="card-header">
-              <div class="card-title">📑 Paragraph-by-Paragraph Duplicate Breakdown</div>
+            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+              <div class="card-title" style="font-size:15px; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:8px;">
+                <span>📄</span> Paragraph-by-Paragraph Duplicate Breakdown
+              </div>
               <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                <select id="plag-filter-level" onchange="filterPlagResults()" style="padding:6px 10px; border-radius:6px; border:1px solid var(--border-color); font-size:12.5px; background:#fff;">
+                <select id="plag-filter-level" onchange="filterPlagResults()" style="padding:6px 12px; border-radius:6px; border:1px solid #cbd5e1; font-size:12.5px; background:#fff; color:#334155; font-weight:500;">
                   <option value="ALL">All Paragraphs</option>
                   <option value="FLAGGED">Only Flagged (High &amp; Moderate)</option>
                   <option value="HIGH">High Risk (&gt;65%) Only</option>
                 </select>
-                <button class="btn btn-primary btn-sm btn-export-pdf-action" id="btn-export-pdf" onclick="exportPlagiarismPdfReport()" style="display:inline-flex; align-items:center; gap:6px; font-weight:700; background:#dc2626; border:none; border-radius:6px; padding:6px 14px; color:#fff;">
+                <button class="btn btn-primary btn-sm btn-export-pdf-action" id="btn-export-pdf" onclick="exportPlagiarismPdfReport()" style="display:inline-flex; align-items:center; gap:6px; font-weight:700; background:#dc2626; border:none; border-radius:6px; padding:6px 14px; color:#fff; font-size:12px; box-shadow:0 1px 2px rgba(220,38,38,0.2);">
                   📄 Export PDF Report
                 </button>
-                <button class="btn btn-outline btn-sm" onclick="exportPlagiarismTxtReport()" style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:6px 12px; color:#334155; display:inline-flex; align-items:center; gap:6px;" title="Export summary text file">
+                <button class="btn btn-outline btn-sm" onclick="exportPlagiarismTxtReport()" style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:6px 12px; color:#334155; font-size:12px; font-weight:500; display:inline-flex; align-items:center; gap:6px;" title="Export summary text file">
                   📝 Text
                 </button>
-                <button class="btn btn-outline btn-sm" onclick="printPlagiarismReport()" style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:6px 12px; color:#334155; display:inline-flex; align-items:center; gap:6px;" title="Print or save as vector PDF">
+                <button class="btn btn-outline btn-sm" onclick="printPlagiarismReport()" style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:6px 12px; color:#334155; font-size:12px; font-weight:500; display:inline-flex; align-items:center; gap:6px;" title="Print or save as vector PDF">
                   🖨️ Print
                 </button>
               </div>
             </div>
+
+            <!-- Top Overlap Sources Summary Bar -->
+            <div id="plag-sources-summary-bar" style="display:none; padding:12px 16px; border-bottom:1px solid var(--border-color); background:#f8fafc;"></div>
 
             <div id="plag-results-list" style="display:flex; flex-direction:column; gap:10px;">
               <div style="padding:24px; text-align:center; color:var(--text-muted); font-size:13px;">
@@ -2158,7 +1991,7 @@
   <div id="toast-container"></div>
   <div id="plag-pdf-render-area" style="display:none;"></div>
 
-  <script src="matsci_tools.js?v=20261112_v31" onerror="this.src='/static/matsci_tools.js?v=20261112_v31'"></script>
-  <script src="app.js?v=20261112_v31" onerror="this.src='/static/app.js?v=20261112_v31'"></script>
+  <script src="matsci_tools.js?v=20261112_v32" onerror="this.src='/static/matsci_tools.js?v=20261112_v32'"></script>
+  <script src="app.js?v=20261112_v32" onerror="this.src='/static/app.js?v=20261112_v32'"></script>
 </body>
 </html>
