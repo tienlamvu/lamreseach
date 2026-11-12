@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-12T14:29:44.322Z",
+  "exported_at": "2026-11-12T14:30:19.750Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -598,81 +598,5 @@
       "mp_id": ""
     }
   ],
-  "schedule": [
-    {
-      "id": 1,
-      "title": "High-Temp Tube Furnace Sintering (LLZTO-2026-04)",
-      "event_type": "Synthesis / Furnace",
-      "instrument_or_location": "Carbolite 1600°C Tube Furnace #2",
-      "start_date": "2026-11-08",
-      "start_time": "08:30",
-      "end_time": "20:30",
-      "priority": "High",
-      "status": "Completed",
-      "sample_id": "LLZTO-2026-04",
-      "description": "1140 °C for 12h under flowing dry O2 (50 sccm), ramp rate 3 °C/min.",
-      "in_weekly_report": 1,
-      "created_at": "2026-11-10 12:08:05"
-    },
-    {
-      "id": 2,
-      "title": "Powder & Pellet XRD Phase Analysis",
-      "event_type": "Characterization (XRD/SEM/TEM/XPS)",
-      "instrument_or_location": "Bruker D8 Advance XRD (Cu Kα)",
-      "start_date": "2026-11-09",
-      "start_time": "10:00",
-      "end_time": "12:00",
-      "priority": "High",
-      "status": "Completed",
-      "sample_id": "LLZTO-2026-04",
-      "description": "2θ = 10° to 80°, step size 0.02°, 0.5 s/step for Rietveld refinement.",
-      "in_weekly_report": 1,
-      "created_at": "2026-11-10 12:08:05"
-    },
-    {
-      "id": 3,
-      "title": "XPS Surface & Depth Profile Measurement",
-      "event_type": "Characterization (XRD/SEM/TEM/XPS)",
-      "instrument_or_location": "Thermo K-Alpha XPS System",
-      "start_date": "2026-11-10",
-      "start_time": "14:00",
-      "end_time": "17:00",
-      "priority": "High",
-      "status": "In Progress",
-      "sample_id": "LLZTO-2026-04-ALD",
-      "description": "High-resolution scans of Li 1s, Al 2p, Zr 3d, La 3d, C 1s, and O 1s with Ar+ depth profiling.",
-      "in_weekly_report": 1,
-      "created_at": "2026-11-10 12:08:05"
-    },
-    {
-      "id": 4,
-      "title": "Weekly Subgroup & PI Progress Meeting",
-      "event_type": "Group Meeting / PI Meeting",
-      "instrument_or_location": "Materials Bldg Room 304 / Zoom",
-      "start_date": "2026-11-11",
-      "start_time": "15:00",
-      "end_time": "16:30",
-      "priority": "High",
-      "status": "Scheduled",
-      "sample_id": "",
-      "description": "Present LLZTO-2026-04 XRD/EIS results and ALD interface optimization slides.",
-      "in_weekly_report": 1,
-      "created_at": "2026-11-10 12:08:05"
-    },
-    {
-      "id": 5,
-      "title": "FE-SEM Cross-Section & EDS Elemental Mapping",
-      "event_type": "Characterization (XRD/SEM/TEM/XPS)",
-      "instrument_or_location": "JEOL JSM-7800F Prime FE-SEM",
-      "start_date": "2026-11-12",
-      "start_time": "09:30",
-      "end_time": "12:00",
-      "priority": "Medium",
-      "status": "Scheduled",
-      "sample_id": "LLZTO-2026-04-ALD",
-      "description": "Examine fracture cross-section grain size distribution and Al2O3 conformal coating.",
-      "in_weekly_report": 1,
-      "created_at": "2026-11-10 12:08:05"
-    }
-  ]
+  "schedule": []
 }
