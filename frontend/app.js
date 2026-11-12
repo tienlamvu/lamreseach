@@ -6687,23 +6687,6 @@ function renderPlagiarismResults(data) {
   if (alertEl) {
     const topSource = data.ranked_sources && data.ranked_sources.length > 0 ? data.ranked_sources[0] : null;
 
-    const exportToolbarHtml = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; border-top:1px dashed rgba(0,0,0,0.15); padding-top:6px; flex-wrap:wrap; gap:6px;">
-        <span style="font-size:11.5px; opacity:0.9; font-weight:600;">Export Report Dossier:</span>
-        <div style="display:flex; gap:6px; align-items:center;">
-          <button class="btn btn-primary btn-sm btn-export-pdf-action" onclick="exportPlagiarismPdfReport()" style="background:#dc2626; border-color:#b91c1c; font-size:11.5px; padding:3px 10px; font-weight:700;">
-            📄 Export PDF Report
-          </button>
-          <button class="btn btn-outline btn-sm" onclick="exportPlagiarismTxtReport()" style="font-size:11.5px; padding:3px 8px;">
-            📝 Text
-          </button>
-          <button class="btn btn-outline btn-sm" onclick="printPlagiarismReport()" style="font-size:11.5px; padding:3px 8px;">
-            🖨️ Print
-          </button>
-        </div>
-      </div>
-    `;
-
     if (data.overall_similarity_pct >= 50 || data.high_risk_count > 0) {
       alertEl.style.background = "#fff1f2";
       alertEl.style.borderColor = "#fecdd3";
@@ -6717,7 +6700,6 @@ function renderPlagiarismResults(data) {
           ${topSource ? `<div style="margin-top:4px; font-size:12px;">Primary Match [1]: <strong>${escapeHtml(topSource.title)}</strong> <em>(${escapeHtml(topSource.venue || "Journal")} ${topSource.year || ""})</em> &mdash; <strong style="color:#e11d48;">${topSource.pct}% Match</strong> ${topSource.doi ? `<a href="https://doi.org/${encodeURIComponent(topSource.doi)}" target="_blank" style="color:#0284c7; text-decoration:underline; margin-left:4px;">DOI: ${escapeHtml(topSource.doi)} ↗</a>` : ""}</div>` : ""}
           <div style="margin-top:4px; font-size:11.5px; color:#9f1239;">Please paraphrase or provide proper scholarly citations prior to journal submission.</div>
         </div>
-        ${exportToolbarHtml}
       `;
     } else if (data.overall_similarity_pct >= 20 || data.moderate_risk_count > 0) {
       alertEl.style.background = "#fffbeb";
@@ -6728,7 +6710,6 @@ function renderPlagiarismResults(data) {
           Detected <strong>${data.moderate_risk_count}</strong> paragraph(s) with standard academic phrasing or literature overlap.
           ${topSource ? `<div style="margin-top:3px; font-size:12px;">Top Match [1]: <strong>${escapeHtml(topSource.title)}</strong> (${topSource.pct}%)</div>` : ""}
         </div>
-        ${exportToolbarHtml}
       `;
     } else {
       alertEl.style.background = "#f0fdf4";
@@ -6738,7 +6719,6 @@ function renderPlagiarismResults(data) {
         <div style="color:#166534; margin-top:3px;">
           Cross-checked across 150M+ CrossRef DOIs, Europe PMC, OpenAlex, and personal Literature Library. No severe duplicate content found. Clean manuscript draft ready for submission drafting.
         </div>
-        ${exportToolbarHtml}
       `;
     }
   }
@@ -7239,7 +7219,7 @@ function filterPlagResults() {
   listEl.innerHTML = html;
 }
 
-function buildTurnitinReportHtml(data, docName, reportId, fullDateStr, timeStr) {
+function buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr) {
   const simColor = data.overall_similarity_pct >= 50 ? "#dc2626" : (data.overall_similarity_pct >= 25 ? "#d97706" : "#16a34a");
 
   let sourcesTableRows = "";
@@ -7303,58 +7283,69 @@ function buildTurnitinReportHtml(data, docName, reportId, fullDateStr, timeStr) 
   });
 
   return `
-    <div id="pdf-export-container" style="width:790px; margin:0 auto; padding:28px 32px; background:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color:#0f172a; box-sizing:border-box;">
+    <div id="pdf-export-container" style="width:790px; margin:0 auto; padding:24px 30px; background:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#0f172a; box-sizing:border-box;">
       
-      <!-- TURNITIN REPORT HEADER -->
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #0070ba; padding-bottom:14px; margin-bottom:18px;">
+      <!-- REPORT HEADER (EXACT REPLICA OF USER REFERENCE IMAGE 2) -->
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #1e40af; padding-bottom:12px; margin-bottom:16px;">
         <div>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <div style="width:36px; height:36px; background:#0070ba; border-radius:6px; color:#fff; font-weight:900; font-size:19px; display:flex; align-items:center; justify-content:center;">T</div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:38px; height:38px; background:#0284c7; border-radius:8px; color:#ffffff; font-weight:900; font-size:17px; display:flex; align-items:center; justify-content:center; letter-spacing:-0.5px;">CD</div>
             <div>
-              <div style="font-size:17px; font-weight:900; color:#0070ba; letter-spacing:0.3px;">turnitin <span style="font-weight:400; color:#64748b; font-size:14px;">| Feedback Studio</span></div>
-              <div style="font-size:10px; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Academic Originality &amp; Similarity Report</div>
+              <div style="font-size:15px; font-weight:900; color:#0f172a; letter-spacing:0.3px; text-transform:uppercase;">COMPUTATIONAL DATABASE &amp; MATERIALS RESEARCH HUB</div>
+              <div style="font-size:11px; color:#475569; font-weight:600;">Sungkyunkwan University (SKKU) • Advanced 2D &amp; TMDC Energy Materials</div>
             </div>
           </div>
-          <h1 style="margin:12px 0 2px 0; font-size:16.5px; font-weight:800; color:#0f172a; line-height:1.3;">
-            ${escapeHtml(docName)}
+          <h1 style="margin:12px 0 2px 0; font-size:17.5px; font-weight:900; color:#0f172a; letter-spacing:-0.3px;">
+            ACADEMIC MANUSCRIPT PLAGIARISM &amp; ORIGINALITY AUDIT REPORT
           </h1>
-          <div style="font-size:11px; color:#475569;">
-            Author: Vu Tien Lam • Department of Energy Science, Sungkyunkwan University
+          <div style="font-size:11px; color:#64748b; font-weight:500;">
+            Formal Pre-Submission Screening for Peer-Reviewed Journals (ACS, Nature, APS, Wiley, Elsevier)
           </div>
         </div>
-        <div style="text-align:right; font-size:10.5px; color:#64748b; line-height:1.45;">
+        <div style="text-align:right; font-size:10.5px; color:#475569; line-height:1.45;">
           <div>Report ID: <strong style="color:#0f172a; font-family:monospace;">${reportId}</strong></div>
           <div>Date: <strong style="color:#0f172a;">${fullDateStr}</strong></div>
           <div>Time: <strong style="color:#0f172a;">${timeStr}</strong></div>
-          <div style="margin-top:4px; display:inline-block; padding:2px 8px; border-radius:4px; background:#e0f2fe; color:#0369a1; font-weight:800; font-size:10px; border:1px solid #bae6fd;">Turnitin Feedback Studio Core</div>
+          <div style="margin-top:6px; display:inline-block; padding:2px 10px; border-radius:4px; background:#ecfdf5; color:#047857; font-weight:700; font-size:10px; border:1px solid #a7f3d0;">
+            Verified Automated Audit
+          </div>
         </div>
       </div>
 
-      <!-- SIMILARITY SCORECARD & BREAKDOWN -->
-      <div style="display:grid; grid-template-columns: 140px 1fr; gap:16px; margin-bottom:16px; align-items:center; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:14px 18px;">
-        <div style="text-align:center; border-right:1px solid #e2e8f0; padding-right:14px;">
-          <div style="font-size:42px; font-weight:900; color:${simColor}; line-height:1;">${data.overall_similarity_pct}%</div>
-          <div style="font-size:10px; font-weight:800; text-transform:uppercase; color:#64748b; margin-top:5px; letter-spacing:0.5px;">Overall Similarity</div>
+      <!-- MANUSCRIPT INFO & OVERALL SIMILARITY (IMAGE 2) -->
+      <div style="display:grid; grid-template-columns: 1fr 240px; gap:14px; margin-bottom:14px; align-items:stretch;">
+        <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:12px 16px; font-size:11.5px; line-height:1.65; display:flex; flex-direction:column; justify-content:center;">
+          <div><strong style="color:#334155;">Manuscript / File:</strong> <span style="font-weight:700; color:#0f172a;">${escapeHtml(docName)}</span></div>
+          <div><strong style="color:#334155;">Target Researcher:</strong> Vu Tien Lam (<span style="color:#2563eb;">lamvt.skku@gmail.com</span>)</div>
+          <div><strong style="color:#334155;">Affiliation:</strong> Sungkyunkwan University, Department of Energy Science</div>
+          <div><strong style="color:#334155;">Cross-Check Scope:</strong> OpenAlex &amp; CrossRef (250M+ Works), Google Scholar Index, Literature Library, Internal Co-occurrence</div>
         </div>
-        <div>
-          <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; text-align:center; margin-bottom:8px;">
-            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:7px 8px;">
-              <div style="font-size:17px; font-weight:800; color:#2563eb;">${data.internet_pct || 0}%</div>
-              <div style="font-size:9px; font-weight:700; color:#64748b; text-transform:uppercase;">Internet Sources</div>
-            </div>
-            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:7px 8px;">
-              <div style="font-size:17px; font-weight:800; color:#7c3aed;">${data.library_pct || 0}%</div>
-              <div style="font-size:9px; font-weight:700; color:#64748b; text-transform:uppercase;">Publications</div>
-            </div>
-            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:7px 8px;">
-              <div style="font-size:17px; font-weight:800; color:#64748b;">${data.internal_redundancy_pct || 0}%</div>
-              <div style="font-size:9px; font-weight:700; color:#64748b; text-transform:uppercase;">Internal Overlap</div>
-            </div>
+        <div style="background:#fff1f2; border:1px solid #fecdd3; border-radius:8px; padding:12px; text-align:center; display:flex; flex-direction:column; justify-content:center;">
+          <div style="font-size:10.5px; font-weight:800; text-transform:uppercase; color:#475569; letter-spacing:0.5px;">OVERALL SIMILARITY INDEX</div>
+          <div style="font-size:38px; font-weight:900; color:${simColor}; line-height:1; margin:4px 0;">${data.overall_similarity_pct}%</div>
+          <div style="font-size:11px; font-weight:700; color:${data.overall_similarity_pct >= 25 ? '#dc2626' : '#16a34a'};">
+            ${data.overall_similarity_pct >= 25 ? '⚠️ Significant Overlap Detected' : '✅ Original Manuscript Verified'}
           </div>
-          <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; padding:4px 8px; background:#fff; border:1px solid #e2e8f0; border-radius:6px;">
-            <span style="color:#b91c1c; font-weight:700;">🚩 ${data.integrity_flags_count || 0} Integrity Flags</span>
-            <span style="color:#64748b;">${data.total_words} words | ${data.total_paragraphs} paragraphs</span>
-          </div>
+        </div>
+      </div>
+
+      <!-- 4 RISK KPI STAT CARDS (IMAGE 2) -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:10px; margin-bottom:16px; text-align:center;">
+        <div style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:8px 10px;">
+          <div style="font-size:20px; font-weight:900; color:#dc2626; line-height:1.1;">${data.high_risk_count || 0}</div>
+          <div style="font-size:10px; font-weight:700; color:#64748b; margin-top:2px;">High Risk (&gt;65%)</div>
+        </div>
+        <div style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:8px 10px;">
+          <div style="font-size:20px; font-weight:900; color:#d97706; line-height:1.1;">${data.moderate_risk_count || 0}</div>
+          <div style="font-size:10px; font-weight:700; color:#64748b; margin-top:2px;">Moderate (35–64%)</div>
+        </div>
+        <div style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:8px 10px;">
+          <div style="font-size:20px; font-weight:900; color:#16a34a; line-height:1.1;">${data.low_risk_count || 0}</div>
+          <div style="font-size:10px; font-weight:700; color:#64748b; margin-top:2px;">Original (&lt;35%)</div>
+        </div>
+        <div style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:8px 10px;">
+          <div style="font-size:20px; font-weight:900; color:#2563eb; line-height:1.1;">${data.total_paragraphs || 0}</div>
+          <div style="font-size:10px; font-weight:700; color:#64748b; margin-top:2px;">Paragraphs Analyzed</div>
         </div>
       </div>
 
@@ -7363,28 +7354,28 @@ function buildTurnitinReportHtml(data, docName, reportId, fullDateStr, timeStr) 
         <div style="background:#fff; border:1px solid #fca5a5; border-radius:6px; padding:8px 10px; display:flex; align-items:center; gap:8px;">
           <span style="font-size:18px;">📕</span>
           <div>
-            <div style="font-size:10px; font-weight:800; color:#991b1b; text-transform:uppercase;">Not Cited or Quoted</div>
+            <div style="font-size:9.5px; font-weight:800; color:#991b1b; text-transform:uppercase;">Not Cited or Quoted</div>
             <div style="font-size:11.5px; font-weight:700; color:#0f172a;">${data.not_cited_count || 0} matches <span style="color:#dc2626;">(${data.not_cited_pct || 0}%)</span></div>
           </div>
         </div>
         <div style="background:#fff; border:1px solid #fdba74; border-radius:6px; padding:8px 10px; display:flex; align-items:center; gap:8px;">
           <span style="font-size:18px;">💬</span>
           <div>
-            <div style="font-size:10px; font-weight:800; color:#9a3412; text-transform:uppercase;">Missing Quotations</div>
+            <div style="font-size:9.5px; font-weight:800; color:#9a3412; text-transform:uppercase;">Missing Quotations</div>
             <div style="font-size:11.5px; font-weight:700; color:#0f172a;">${data.missing_quotes_count || 0} matches <span style="color:#ea580c;">(${data.missing_quotes_pct || 0}%)</span></div>
           </div>
         </div>
         <div style="background:#fff; border:1px solid #fde047; border-radius:6px; padding:8px 10px; display:flex; align-items:center; gap:8px;">
           <span style="font-size:18px;">📑</span>
           <div>
-            <div style="font-size:10px; font-weight:800; color:#854d0e; text-transform:uppercase;">Missing Citation</div>
+            <div style="font-size:9.5px; font-weight:800; color:#854d0e; text-transform:uppercase;">Missing Citation</div>
             <div style="font-size:11.5px; font-weight:700; color:#0f172a;">${data.missing_cite_count || 0} matches <span style="color:#ca8a04;">(${data.missing_cite_pct || 0}%)</span></div>
           </div>
         </div>
         <div style="background:#fff; border:1px solid #86efac; border-radius:6px; padding:8px 10px; display:flex; align-items:center; gap:8px;">
           <span style="font-size:18px;">🎓</span>
           <div>
-            <div style="font-size:10px; font-weight:800; color:#166534; text-transform:uppercase;">Cited and Quoted</div>
+            <div style="font-size:9.5px; font-weight:800; color:#166534; text-transform:uppercase;">Cited and Quoted</div>
             <div style="font-size:11.5px; font-weight:700; color:#0f172a;">${data.cited_quoted_count || 0} matches <span style="color:#16a34a;">(${data.cited_quoted_pct || 0}%)</span></div>
           </div>
         </div>
@@ -7413,11 +7404,11 @@ function buildTurnitinReportHtml(data, docName, reportId, fullDateStr, timeStr) 
         </table>
       </div>
 
-      <!-- SECTION 2: FULL ANNOTATED MANUSCRIPT WITH MULTI-COLOR TURNITIN HIGHLIGHTS -->
+      <!-- SECTION 2: FULL ANNOTATED MANUSCRIPT WITH MULTI-COLOR ATTRIBUTION HIGHLIGHTS -->
       <div style="margin-top:28px; page-break-before:always;">
         <div style="font-size:12px; font-weight:800; color:#0f172a; text-transform:uppercase; letter-spacing:0.5px; border-bottom:2px solid #cbd5e1; padding-bottom:4px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center;">
-          <span>Annotated Manuscript Draft with Turnitin Source Number Badges</span>
-          <span style="font-size:10px; color:#64748b; font-weight:normal;">Clause-by-Clause Turnitin Color Highlighting</span>
+          <span>Annotated Manuscript Draft with Multi-Color Source Number Badges</span>
+          <span style="font-size:10px; color:#64748b; font-weight:normal;">Clause-by-Clause Multi-Color Highlighting</span>
         </div>
         <div style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:22px 28px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
           ${annotatedManuscriptHtml}
@@ -7427,7 +7418,7 @@ function buildTurnitinReportHtml(data, docName, reportId, fullDateStr, timeStr) 
       <!-- FOOTER & CERTIFICATION -->
       <div style="page-break-inside:avoid; margin-top:24px; padding:12px 16px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; font-size:10.5px; line-height:1.5;">
         <div style="font-weight:700; color:#1e293b; margin-bottom:3px; text-transform:uppercase; letter-spacing:0.3px;">
-          Academic Authenticity &amp; Turnitin Evaluation Notice
+          Academic Authenticity &amp; Pre-Submission Originality Audit Notice
         </div>
         <p style="margin:0; color:#475569; font-size:10px;">
           This originality audit was executed against 150M+ CrossRef DOIs, Europe PMC, and Google Scholar index. Overlap highlighting represents exact phrase matches and high-density semantic phrasing corresponding to the ranked sources listed above.
@@ -7442,6 +7433,10 @@ function buildTurnitinReportHtml(data, docName, reportId, fullDateStr, timeStr) 
   `;
 }
 
+function buildTurnitinReportHtml(data, docName, reportId, fullDateStr, timeStr) {
+  return buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr);
+}
+
 async function exportPlagiarismPdfReport() {
   if (!currentPlagResults || !currentPlagResults.paragraphs || currentPlagResults.paragraphs.length === 0) {
     showToast("No plagiarism analysis results to export. Please run a check first.", "warn");
@@ -7454,7 +7449,7 @@ async function exportPlagiarismPdfReport() {
     btn.dataset.origHtml = btn.innerHTML;
     btn.innerHTML = `<span class="loading-spinner"></span> Generating...`;
   });
-  showToast("📄 Compiling Academic Turnitin Originality PDF Report...", "info");
+  showToast("📄 Compiling Academic Originality Audit PDF Report...", "info");
 
   try {
     const data = currentPlagResults;
@@ -7462,7 +7457,7 @@ async function exportPlagiarismPdfReport() {
     const dateStr = now.toISOString().split("T")[0];
     const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
     const fullDateStr = now.toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric" });
-    const reportId = `TURNITIN-${dateStr.replace(/-/g, "")}-${Math.floor(10000 + Math.random() * 90000)}`;
+    const reportId = `SKKU-PLAG-${dateStr.replace(/-/g, "")}-${Math.floor(10000 + Math.random() * 90000)}`;
     const docName = currentPlagFile?.name || "Manuscript_Draft.pdf";
 
     const renderArea = document.getElementById("plag-pdf-render-area");
@@ -7471,7 +7466,7 @@ async function exportPlagiarismPdfReport() {
       return;
     }
 
-    renderArea.innerHTML = buildTurnitinReportHtml(data, docName, reportId, fullDateStr, timeStr);
+    renderArea.innerHTML = buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr);
     renderArea.style.display = "block";
 
     if (typeof html2pdf !== "function") {
@@ -7480,7 +7475,7 @@ async function exportPlagiarismPdfReport() {
 
     const opt = {
       margin: [6, 6, 6, 6],
-      filename: `Turnitin_Originality_Report_${docName.replace(/\.[^/.]+$/, "")}_${dateStr}.pdf`,
+      filename: `Academic_Originality_Audit_Report_${docName.replace(/\.[^/.]+$/, "")}_${dateStr}.pdf`,
       image: { type: "jpeg", quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true, logging: false },
       jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
@@ -7490,7 +7485,7 @@ async function exportPlagiarismPdfReport() {
     await html2pdf().set(opt).from(document.getElementById("pdf-export-container")).save();
 
     renderArea.style.display = "none";
-    showToast("✅ Turnitin Originality PDF Report generated & downloaded successfully!", "success");
+    showToast("✅ Academic Originality PDF Report generated & downloaded successfully!", "success");
   } catch (err) {
     console.error("PDF export error:", err);
     showToast(`PDF generation note: ${err.message}. You can also click Print to save as PDF.`, "warn");
@@ -7561,19 +7556,24 @@ function printPlagiarismReport() {
   const dateStr = now.toISOString().split("T")[0];
   const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const fullDateStr = now.toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric" });
-  const reportId = `TURNITIN-${dateStr.replace(/-/g, "")}-${Math.floor(10000 + Math.random() * 90000)}`;
+  const reportId = `SKKU-PLAG-${dateStr.replace(/-/g, "")}-${Math.floor(10000 + Math.random() * 90000)}`;
   const docName = currentPlagFile?.name || "Manuscript_Draft.pdf";
 
-  renderArea.innerHTML = buildTurnitinReportHtml(data, docName, reportId, fullDateStr, timeStr);
+  renderArea.innerHTML = buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr);
   renderArea.style.display = "block";
   document.body.classList.add("printing-plagiarism-report");
+
+  const cleanup = () => {
+    document.body.classList.remove("printing-plagiarism-report");
+    renderArea.style.display = "none";
+    window.removeEventListener("afterprint", cleanup);
+  };
+  window.addEventListener("afterprint", cleanup);
+
   setTimeout(() => {
     window.print();
-    setTimeout(() => {
-      document.body.classList.remove("printing-plagiarism-report");
-      renderArea.style.display = "none";
-    }, 600);
-  }, 400);
+    setTimeout(cleanup, 2500);
+  }, 300);
 }
 
 
