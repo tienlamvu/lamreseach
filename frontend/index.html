@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261112_v27" onerror="this.href='/static/styles.css?v=20261112_v27'" />
+  <link rel="stylesheet" href="styles.css?v=20261112_v28" onerror="this.href='/static/styles.css?v=20261112_v28'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -668,8 +668,72 @@
             </div>
           </div>
 
+          <!-- TURNITIN DUAL-PANE ORIGINALITY & MATCH OVERVIEW CONTAINER -->
+          <div id="turnitin-interactive-container" style="display:none; margin-top:16px;">
+            <div class="turnitin-layout">
+              <!-- Left: Document Viewer with Multi-Color Sentence Highlights -->
+              <div class="turnitin-doc-pane" id="turnitin-doc-pane">
+                <div class="turnitin-doc-header">
+                  <div>
+                    <div class="turnitin-doc-title" id="turnitin-doc-title">📄 Manuscript Originality Document Viewer</div>
+                    <div class="turnitin-doc-meta" id="turnitin-doc-meta">Normalized into sentences &amp; paragraphs with Turnitin multi-color attribution</div>
+                  </div>
+                  <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <button class="btn btn-outline btn-sm" id="btn-toggle-highlights" onclick="toggleTurnitinHighlights()" style="font-size:12px;">
+                      👁️ Toggle Highlights
+                    </button>
+                    <select id="turnitin-filter-select" onchange="filterTurnitinView()" style="padding:4px 8px; border-radius:6px; border:1px solid #cbd5e1; font-size:12px;">
+                      <option value="ALL">Show All Text</option>
+                      <option value="MATCHED">Show Only Matched Paragraphs</option>
+                      <option value="HIGH">Show Only High Risk (>50%)</option>
+                    </select>
+                  </div>
+                </div>
+                <div id="turnitin-doc-body">
+                  <!-- Rendered paragraphs with Turnitin multi-color highlights go here -->
+                </div>
+              </div>
+
+              <!-- Right: Turnitin Match Overview Sidebar -->
+              <div class="turnitin-sidebar" id="turnitin-sidebar-pane">
+                <!-- Circular Similarity Gauge -->
+                <div class="turnitin-gauge" id="turnitin-main-gauge">
+                  <div class="turnitin-gauge-val" id="turnitin-gauge-value" style="color:#16a34a;">0%</div>
+                  <div class="turnitin-gauge-lbl">Similarity Index</div>
+                </div>
+
+                <!-- Sub-index breakdown -->
+                <div class="turnitin-sub-gauges">
+                  <div class="turnitin-sub-card">
+                    <div class="turnitin-sub-card-val" id="turnitin-sub-internet" style="color:#2563eb;">0%</div>
+                    <div class="turnitin-sub-card-lbl">Internet</div>
+                  </div>
+                  <div class="turnitin-sub-card">
+                    <div class="turnitin-sub-card-val" id="turnitin-sub-pubs" style="color:#7c3aed;">0%</div>
+                    <div class="turnitin-sub-card-lbl">Publications</div>
+                  </div>
+                  <div class="turnitin-sub-card">
+                    <div class="turnitin-sub-card-val" id="turnitin-sub-internal" style="color:#64748b;">0%</div>
+                    <div class="turnitin-sub-card-lbl">Internal</div>
+                  </div>
+                </div>
+
+                <!-- Ranked Sources List Header -->
+                <div class="turnitin-sources-header">
+                  <span>Match Overview</span>
+                  <span style="font-size:10px; color:#64748b; font-weight:normal;">Ranked by %</span>
+                </div>
+
+                <!-- Ranked sources items go here -->
+                <div id="turnitin-sources-list">
+                  <div style="font-size:12px; color:#64748b; text-align:center; padding:12px;">No matches detected.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Detailed Paragraph Match Table -->
-          <div class="card">
+          <div class="card" id="plag-breakdown-card" style="margin-top:16px;">
             <div class="card-header">
               <div class="card-title">📑 Paragraph-by-Paragraph Duplicate Breakdown</div>
               <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
@@ -1967,10 +2031,26 @@
     </div>
   </div>
 
+  <!-- TURNITIN COMPARISON MODAL -->
+  <div id="turnitin-comparison-modal" class="turnitin-modal-overlay" style="display:none;" onclick="if(event.target===this) closeTurnitinModal()">
+    <div class="turnitin-modal-card">
+      <div class="turnitin-modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span id="turnitin-modal-rank-badge" class="turnitin-tag tag-1" style="width:22px; height:22px; font-size:12px;">1</span>
+          <strong id="turnitin-modal-source-title" style="font-size:14px; color:#0f172a;">Source Match Comparison</strong>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="closeTurnitinModal()" style="padding:2px 8px;">✕</button>
+      </div>
+      <div class="turnitin-modal-body" id="turnitin-modal-body">
+        <!-- Comparison content loaded dynamically -->
+      </div>
+    </div>
+  </div>
+
   <div id="toast-container"></div>
   <div id="plag-pdf-render-area" style="display:none;"></div>
 
-  <script src="matsci_tools.js?v=20261112_v27" onerror="this.src='/static/matsci_tools.js?v=20261112_v27'"></script>
-  <script src="app.js?v=20261112_v27" onerror="this.src='/static/app.js?v=20261112_v27'"></script>
+  <script src="matsci_tools.js?v=20261112_v28" onerror="this.src='/static/matsci_tools.js?v=20261112_v28'"></script>
+  <script src="app.js?v=20261112_v28" onerror="this.src='/static/app.js?v=20261112_v28'"></script>
 </body>
 </html>
