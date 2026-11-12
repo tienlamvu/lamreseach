@@ -6469,6 +6469,7 @@ function loadSampleDiffFiles() {
 async function runPlagiarismAnalysis() {
   const btn = document.getElementById("btn-run-plag");
   const textInput = (document.getElementById("plag-text-input")?.value || "").trim();
+  const chkInternet = document.getElementById("chk-cross-internet")?.checked ?? true;
   const chkLibrary = document.getElementById("chk-cross-library")?.checked ?? true;
   const chkInternal = document.getElementById("chk-cross-internal")?.checked ?? true;
 
@@ -6478,58 +6479,62 @@ async function runPlagiarismAnalysis() {
   }
 
   btn.disabled = true;
-  btn.innerHTML = `<span class="loading-spinner"></span> Analyzing Duplicates...`;
+  btn.innerHTML = `<span class="loading-spinner"></span> Extracting manuscript text...`;
 
   try {
-    let result = null;
-
-    // Try backend API first
-    if (currentPlagFile) {
-      try {
-        const fd = new FormData();
-        fd.append("file", currentPlagFile);
-        fd.append("cross_library", chkLibrary ? "true" : "false");
-        fd.append("detect_internal", chkInternal ? "true" : "false");
-        const res = await fetch("/api/documents/check-duplicate", { method: "POST", body: fd });
-        if (res.ok) result = await res.json();
-      } catch (e) {
-        console.warn("Backend API unavailable, falling back to client-side analysis:", e);
-      }
-    } else {
-      try {
-        const res = await fetch("/api/documents/check-duplicate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            text: textInput,
-            cross_library: chkLibrary,
-            detect_internal: chkInternal
-          })
-        });
-        if (res.ok) result = await res.json();
-      } catch (e) {
-        console.warn("Backend API unavailable, falling back to client-side analysis:", e);
-      }
+    let rawText = textInput;
+    if (currentPlagFile && !rawText) {
+      rawText = await extractTextFromBlob(currentPlagFile);
     }
 
-    // Client-side fallback if backend not available
-    if (!result) {
-      let rawText = textInput;
-      if (currentPlagFile && !rawText) {
-        rawText = await extractTextFromBlob(currentPlagFile);
-      }
-      result = clientSideCheckDuplicates(rawText, STATE.papers || [], chkLibrary, chkInternal);
+    if (!rawText || rawText.trim().length < 25) {
+      showToast("Could not extract sufficient text from the manuscript. Please paste text directly.", "warn");
+      return;
     }
+
+    const paras = rawText
+      .split(/\n\s*\n/)
+      .map(p => p.trim())
+      .filter(p => p.length >= 25);
+
+    let internetCandidates = [];
+
+    // Step 1: Deep Internet & Google Scholar search if enabled
+    if (chkInternet) {
+      btn.innerHTML = `<span class="loading-spinner"></span> Searching Internet & Google Scholar Index (250M+ Works)...`;
+      const queries = extractQueriesFromManuscript(rawText, paras);
+      internetCandidates = await fetchInternetScholarCandidates(queries, msg => {
+        btn.innerHTML = `<span class="loading-spinner"></span> ${escapeHtml(msg)}`;
+      });
+    }
+
+    btn.innerHTML = `<span class="loading-spinner"></span> Calculating Turnitin-style Overlap...`;
+
+    // Step 2: Run multi-metric client-side comparison
+    const result = clientSideCheckDuplicates(
+      rawText,
+      STATE.papers || [],
+      internetCandidates,
+      chkInternet,
+      chkLibrary,
+      chkInternal
+    );
 
     currentPlagResults = result;
     renderPlagiarismResults(result);
-    showToast(`✅ Manuscript analysis complete! Overall similarity: ${result.overall_similarity_pct}%`, "success");
+
+    const hitInternet = result.paragraphs.some(p => p.top_match && p.top_match.source_type === "INTERNET_SCHOLAR" && p.top_match.similarity_pct >= 35);
+    if (hitInternet) {
+      showToast(`⚠️ Matched published literature on Internet / Google Scholar! Overall similarity: ${result.overall_similarity_pct}%`, "warn");
+    } else {
+      showToast(`✅ Manuscript analysis complete! Overall similarity: ${result.overall_similarity_pct}%`, "success");
+    }
   } catch (err) {
     showToast(`Analysis failed: ${err.message}`, "error");
-    console.error(err);
+    console.error("Plagiarism analysis error:", err);
   } finally {
     btn.disabled = false;
-    btn.innerHTML = `⚡ Check Duplicate Paragraphs`;
+    btn.innerHTML = `⚡ Check Plagiarism &amp; Cross-Check Literature`;
   }
 }
 
@@ -6539,33 +6544,58 @@ function renderPlagiarismResults(data) {
   const kpiMod = document.getElementById("kpi-mod-risk");
   const kpiParas = document.getElementById("kpi-total-paras");
 
-  if (kpiSim) kpiSim.textContent = `${data.overall_similarity_pct}%`;
+  if (kpiSim) {
+    kpiSim.textContent = `${data.overall_similarity_pct}%`;
+    kpiSim.style.color = data.overall_similarity_pct >= 65 ? "#dc2626" : (data.overall_similarity_pct >= 35 ? "#d97706" : "#16a34a");
+  }
   if (kpiHigh) kpiHigh.textContent = data.high_risk_count;
   if (kpiMod) kpiMod.textContent = data.moderate_risk_count;
   if (kpiParas) kpiParas.textContent = data.total_paragraphs;
 
   const alertEl = document.getElementById("plag-status-alert");
   if (alertEl) {
-    if (data.high_risk_count > 0) {
+    // Find top overall match
+    let topOverall = null;
+    let maxOverallSim = 0;
+    (data.paragraphs || []).forEach(p => {
+      if (p.top_match && p.top_match.similarity_pct > maxOverallSim) {
+        maxOverallSim = p.top_match.similarity_pct;
+        topOverall = p.top_match;
+      }
+    });
+
+    if (data.high_risk_count > 0 || (topOverall && topOverall.similarity_pct >= 65)) {
       alertEl.style.background = "#fff1f2";
       alertEl.style.borderColor = "#fecdd3";
       alertEl.innerHTML = `
-        <div style="color:#be123c; font-weight:700;">⚠️ Potential Plagiarism / Duplicate Alert!</div>
-        <div style="color:#881337; margin-top:2px;">Found <strong>${data.high_risk_count}</strong> high-risk duplicate paragraph(s) (>65% similarity). Please rephrase or add citations before submitting to peer-reviewed journals.</div>
+        <div style="color:#be123c; font-weight:700; display:flex; justify-content:space-between; align-items:center;">
+          <span>🚨 High Duplication / Plagiarism Risk Detected!</span>
+          <span style="font-size:11px; padding:2px 8px; border-radius:10px; background:#ffe4e6; color:#9f1239;">Action Required</span>
+        </div>
+        <div style="color:#881337; margin-top:4px; line-height:1.5;">
+          Found <strong>${data.high_risk_count}</strong> high-risk paragraph(s) with &gt;65% similarity.
+          ${topOverall ? `<div style="margin-top:4px; font-size:12px;">Primary Match: <strong>${escapeHtml(topOverall.source_title)}</strong> ${topOverall.source_venue ? `<em>(${escapeHtml(topOverall.source_venue)} ${topOverall.source_year || ""})</em>` : ""} &mdash; <strong style="color:#e11d48;">${topOverall.similarity_pct}% Match</strong> ${topOverall.doi_url ? `<a href="${topOverall.doi_url}" target="_blank" style="color:#0284c7; text-decoration:underline; margin-left:4px;">DOI: ${escapeHtml(topOverall.source_doi)} ↗</a>` : ""}</div>` : ""}
+          <div style="margin-top:4px; font-size:11.5px; color:#9f1239;">Please paraphrase or provide proper scholarly citations prior to journal submission.</div>
+        </div>
       `;
     } else if (data.moderate_risk_count > 0) {
       alertEl.style.background = "#fffbeb";
       alertEl.style.borderColor = "#fef3c7";
       alertEl.innerHTML = `
-        <div style="color:#b45309; font-weight:700;">ℹ️ Moderate Overlap Detected</div>
-        <div style="color:#78350f; margin-top:2px;">Detected <strong>${data.moderate_risk_count}</strong> paragraph(s) with moderate overlap (35–64%). Ensure proper citations are included.</div>
+        <div style="color:#b45309; font-weight:700;">ℹ️ Moderate Overlap Detected (35–64%)</div>
+        <div style="color:#78350f; margin-top:3px; line-height:1.4;">
+          Detected <strong>${data.moderate_risk_count}</strong> paragraph(s) with partial overlap or standard phrasing.
+          ${topOverall ? `<div style="margin-top:3px; font-size:12px;">Top Match: <strong>${escapeHtml(topOverall.source_title)}</strong> (${topOverall.similarity_pct}%)</div>` : ""}
+        </div>
       `;
     } else {
       alertEl.style.background = "#f0fdf4";
       alertEl.style.borderColor = "#bbf7d0";
       alertEl.innerHTML = `
         <div style="color:#15803d; font-weight:700;">✅ High Originality Verified!</div>
-        <div style="color:#166534; margin-top:2px;">No significant duplication found across the literature library or internally. The text appears highly original.</div>
+        <div style="color:#166534; margin-top:3px;">
+          Scanned across 250M+ OpenAlex/CrossRef works and local Literature Library. No significant duplicate paragraphs detected. Clean manuscript ready for pre-submission drafting.
+        </div>
       `;
     }
   }
@@ -6590,37 +6620,65 @@ function filterPlagResults() {
   }
 
   if (paras.length === 0) {
-    listEl.innerHTML = `<div style="padding:24px; text-align:center; color:#16a34a; font-size:13px; font-weight:600;">✅ No paragraphs match filter "${filter}". Clean manuscript!</div>`;
+    listEl.innerHTML = `<div style="padding:24px; text-align:center; color:#16a34a; font-size:13px; font-weight:600;">✅ No paragraphs match filter "${filter}". Clean manuscript section!</div>`;
     return;
   }
 
   let html = "";
   paras.forEach(p => {
     const riskBadgeClass = p.risk_level === "HIGH" ? "badge-risk-high" : (p.risk_level === "MODERATE" ? "badge-risk-mod" : "badge-risk-low");
-    const riskIcon = p.risk_level === "HIGH" ? "🚨 High Duplicate" : (p.risk_level === "MODERATE" ? "⚠️ Moderate Overlap" : "✅ Original");
+    const riskIcon = p.risk_level === "HIGH" ? "🚨 High Duplicate" : (p.risk_level === "MODERATE" ? "⚠️ Moderate Overlap" : "✅ High Originality");
 
     let matchInfoHtml = "";
     if (p.top_match && p.top_match.similarity_pct > 15) {
       const src = p.top_match;
+      const typeBadge = src.source_type === "INTERNET_SCHOLAR" 
+        ? `<span style="display:inline-block; padding:2px 8px; border-radius:12px; background:#eff6ff; color:#1d4ed8; font-weight:700; font-size:10.5px; border:1px solid #bfdbfe;">🌐 Internet &amp; Google Scholar Index</span>`
+        : (src.source_type === "LIBRARY_PAPER" 
+          ? `<span style="display:inline-block; padding:2px 8px; border-radius:12px; background:#f5f3ff; color:#6d28d9; font-weight:700; font-size:10.5px; border:1px solid #ddd6fe;">📚 Literature Library</span>`
+          : `<span style="display:inline-block; padding:2px 8px; border-radius:12px; background:#f1f5f9; color:#475569; font-weight:700; font-size:10.5px; border:1px solid #cbd5e1;">📄 Internal Repetition</span>`);
+
+      const scholarBtn = src.scholar_url 
+        ? `<a href="${src.scholar_url}" target="_blank" class="btn-plag-action" title="Open Google Scholar search with exact quoted phrase">🔍 Search Google Scholar</a>` 
+        : "";
+      const googleBtn = src.google_url 
+        ? `<a href="${src.google_url}" target="_blank" class="btn-plag-action" title="Search web via Google">🌐 Google Search</a>` 
+        : "";
+      const doiBtn = src.doi_url 
+        ? `<a href="${src.doi_url}" target="_blank" class="btn-plag-action" style="color:#0284c7; border-color:#bae6fd;" title="Open article DOI">🔗 View DOI (${escapeHtml(src.source_doi)})</a>` 
+        : "";
+
       matchInfoHtml = `
-        <div style="margin-top:8px; padding:8px 12px; background:#f1f5f9; border-radius:6px; font-size:12px;">
-          <div style="font-weight:700; color:var(--text-secondary); display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
-            <span>Top Match: <strong>${escapeHtml(src.source_title)}</strong></span>
-            <span style="color:#2563eb; font-weight:800;">${src.similarity_pct}% Match</span>
+        <div style="margin-top:10px; padding:10px 12px; background:#f8fafc; border-radius:6px; font-size:12px; border:1px solid #e2e8f0;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:4px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              ${typeBadge}
+              <span style="font-weight:700; color:#1e293b;">${escapeHtml(src.source_title)}</span>
+            </div>
+            <span style="color:#2563eb; font-weight:800; font-size:13px;">${src.similarity_pct}% Overlap</span>
           </div>
-          ${src.source_doi ? `<div style="margin-top:2px;"><a href="https://doi.org/${encodeURIComponent(src.source_doi)}" target="_blank" style="color:#0284c7; text-decoration:none;">DOI: ${escapeHtml(src.source_doi)} ↗</a></div>` : ""}
-          <div style="margin-top:4px; color:#64748b; font-style:italic; font-size:11.5px;">Matched excerpt: "${escapeHtml(src.matched_text.slice(0, 180))}..."</div>
+          ${src.source_authors ? `<div style="font-size:11px; color:#64748b; margin-bottom:2px;">Authors: ${escapeHtml(src.source_authors)}</div>` : ""}
+          ${src.source_venue ? `<div style="font-size:11px; color:#475569; margin-bottom:4px;">Venue: <strong>${escapeHtml(src.source_venue)}</strong> ${src.source_year ? `(${src.source_year})` : ""}</div>` : ""}
+          ${src.longest_phrase ? `<div style="margin:4px 0; color:#b45309; font-size:11.5px; background:#fef3c7; padding:4px 8px; border-radius:4px; border:1px dashed #fde68a;"><strong>Verbatim Match:</strong> "${escapeHtml(src.longest_phrase)}"</div>` : ""}
+          <div style="color:#64748b; font-style:italic; font-size:11.5px; margin-top:4px;">Matched excerpt: "${escapeHtml(src.matched_text)}..."</div>
+          <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+            ${scholarBtn}
+            ${googleBtn}
+            ${doiBtn}
+          </div>
         </div>
       `;
     }
 
+    const cardBorderClass = p.risk_level === "HIGH" ? "card-risk-high" : (p.risk_level === "MODERATE" ? "card-risk-mod" : "card-risk-low");
+
     html += `
-      <div class="plag-para-card" style="background:#fff; border:1px solid var(--border-color); border-radius:8px; padding:12px 14px;">
+      <div class="plag-para-card ${cardBorderClass}">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
           <span style="font-weight:700; font-size:13px; color:var(--text-secondary);">Paragraph #${p.index + 1} <span style="font-size:11px; color:var(--text-muted); font-weight:normal;">(${p.word_count} words)</span></span>
           <span class="badge ${riskBadgeClass}">${riskIcon} (${p.max_similarity_pct}%)</span>
         </div>
-        <div style="font-size:13px; line-height:1.6; color:#334155; white-space:pre-wrap;">${escapeHtml(p.text)}</div>
+        <div style="font-size:13px; line-height:1.6; color:#334155; white-space:pre-wrap;">${highlightMatchedPhrases(p.text, p.top_match?.longest_phrase)}</div>
         ${matchInfoHtml}
       </div>
     `;
@@ -6629,7 +6687,266 @@ function filterPlagResults() {
   listEl.innerHTML = html;
 }
 
-function exportPlagiarismReport() {
+async function exportPlagiarismPdfReport() {
+  if (!currentPlagResults || !currentPlagResults.paragraphs || currentPlagResults.paragraphs.length === 0) {
+    showToast("No plagiarism analysis results to export. Please run a check first.", "warn");
+    return;
+  }
+
+  const btn = document.getElementById("btn-export-pdf");
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span class="loading-spinner"></span> Generating PDF...`;
+  }
+  showToast("📄 Compiling Academic Plagiarism PDF Report...", "info");
+
+  try {
+    const data = currentPlagResults;
+    const now = new Date();
+    const dateStr = now.toISOString().split("T")[0];
+    const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const fullDateStr = now.toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric" });
+    const reportId = `SKKU-PLAG-${dateStr.replace(/-/g, "")}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const docName = currentPlagFile?.name || "Manuscript_Draft.pdf";
+
+    // Collect primary matched sources
+    const sourceMap = new Map();
+    data.paragraphs.forEach(p => {
+      if (p.top_match && p.top_match.similarity_pct > 15) {
+        const key = p.top_match.source_doi || p.top_match.source_title;
+        if (!sourceMap.has(key) || sourceMap.get(key).similarity_pct < p.top_match.similarity_pct) {
+          sourceMap.set(key, p.top_match);
+        }
+      }
+    });
+    const rankedSources = Array.from(sourceMap.values()).sort((a, b) => b.similarity_pct - a.similarity_pct);
+
+    const renderArea = document.getElementById("plag-pdf-render-area");
+    if (!renderArea) {
+      showToast("PDF render container missing.", "error");
+      return;
+    }
+
+    const simColor = data.overall_similarity_pct >= 65 ? "#dc2626" : (data.overall_similarity_pct >= 35 ? "#d97706" : "#16a34a");
+    const simBg = data.overall_similarity_pct >= 65 ? "#fef2f2" : (data.overall_similarity_pct >= 35 ? "#fffbeb" : "#f0fdf4");
+    const simBorder = data.overall_similarity_pct >= 65 ? "#fca5a5" : (data.overall_similarity_pct >= 35 ? "#fde68a" : "#bbf7d0");
+
+    let sourcesTableRows = "";
+    if (rankedSources.length === 0) {
+      sourcesTableRows = `<tr><td colspan="5" style="text-align:center; padding:12px; color:#64748b; font-style:italic;">No external duplicate sources detected. High manuscript originality.</td></tr>`;
+    } else {
+      rankedSources.slice(0, 10).forEach((s, idx) => {
+        const badgeColor = s.source_type === "INTERNET_SCHOLAR" ? "#2563eb" : (s.source_type === "LIBRARY_PAPER" ? "#7c3aed" : "#64748b");
+        const typeLabel = s.source_type === "INTERNET_SCHOLAR" ? "Internet & Scholar Index" : (s.source_type === "LIBRARY_PAPER" ? "Literature Library" : "Internal Repetition");
+        sourcesTableRows += `
+          <tr style="border-bottom:1px solid #e2e8f0; font-size:11px;">
+            <td style="padding:7px 8px; font-weight:700; color:#1e293b; text-align:center;">#${idx + 1}</td>
+            <td style="padding:7px 8px; font-weight:800; color:${s.similarity_pct >= 65 ? '#dc2626' : (s.similarity_pct >= 35 ? '#d97706' : '#16a34a')}; text-align:center;">${s.similarity_pct}%</td>
+            <td style="padding:7px 8px;">
+              <div style="font-weight:700; color:#0f172a;">${escapeHtml(s.source_title)}</div>
+              ${s.source_authors ? `<div style="color:#64748b; font-size:10px;">${escapeHtml(s.source_authors)}</div>` : ""}
+            </td>
+            <td style="padding:7px 8px; color:#475569;">
+              ${escapeHtml(s.source_venue || "Scholarly Source")} ${s.source_year ? `(${s.source_year})` : ""}
+            </td>
+            <td style="padding:7px 8px;">
+              <span style="display:inline-block; padding:2px 6px; border-radius:4px; font-size:9.5px; font-weight:700; background:#f1f5f9; color:${badgeColor}; border:1px solid #cbd5e1;">${typeLabel}</span>
+              ${s.source_doi ? `<div style="margin-top:2px; font-size:10px;"><a href="https://doi.org/${encodeURIComponent(s.source_doi)}" target="_blank" style="color:#0284c7; text-decoration:none;">DOI: ${escapeHtml(s.source_doi)}</a></div>` : ""}
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    let paragraphsHtml = "";
+    data.paragraphs.forEach(p => {
+      const pColor = p.risk_level === "HIGH" ? "#dc2626" : (p.risk_level === "MODERATE" ? "#d97706" : "#16a34a");
+      const pBg = p.risk_level === "HIGH" ? "#fef2f2" : (p.risk_level === "MODERATE" ? "#fffbeb" : "#ffffff");
+      const pBorder = p.risk_level === "HIGH" ? "#fecaca" : (p.risk_level === "MODERATE" ? "#fde68a" : "#e2e8f0");
+      const pIcon = p.risk_level === "HIGH" ? "🚨 HIGH DUPLICATE RISK" : (p.risk_level === "MODERATE" ? "⚠️ MODERATE OVERLAP" : "✅ HIGH ORIGINALITY");
+
+      let matchBox = "";
+      if (p.top_match && p.top_match.similarity_pct > 15) {
+        const m = p.top_match;
+        matchBox = `
+          <div style="margin-top:8px; padding:8px 10px; background:#f8fafc; border-left:3px solid ${pColor}; border-radius:4px; font-size:11px;">
+            <div style="display:flex; justify-content:space-between; font-weight:700; color:#334155;">
+              <span>Matched Publication: <strong>${escapeHtml(m.source_title)}</strong></span>
+              <span style="color:${pColor}; font-weight:800;">${m.similarity_pct}% Overlap</span>
+            </div>
+            <div style="color:#64748b; font-size:10.5px; margin-top:2px;">
+              Venue: ${escapeHtml(m.source_venue || "Academic Publication")} ${m.source_year ? `(${m.source_year})` : ""}
+              ${m.source_doi ? ` | DOI: <span style="color:#0284c7;">${escapeHtml(m.source_doi)}</span>` : ""}
+            </div>
+            ${m.longest_phrase ? `<div style="margin-top:4px; color:#475569; font-size:10.5px;"><strong>Verbatim identical phrasing:</strong> "${escapeHtml(m.longest_phrase)}"</div>` : ""}
+          </div>
+        `;
+      }
+
+      paragraphsHtml += `
+        <div style="page-break-inside:avoid; margin-bottom:12px; padding:10px 12px; background:${pBg}; border:1px solid ${pBorder}; border-radius:6px; font-size:11.5px; line-height:1.5;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <span style="font-weight:700; color:#1e293b;">Paragraph #${p.index + 1} <span style="font-size:10.5px; font-weight:normal; color:#64748b;">(${p.word_count} words)</span></span>
+            <span style="font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px; background:#fff; color:${pColor}; border:1px solid ${pColor};">${pIcon} (${p.max_similarity_pct}%)</span>
+          </div>
+          <div style="color:#1e293b; white-space:pre-wrap; text-align:justify;">${highlightMatchedPhrases(p.text, p.top_match?.longest_phrase)}</div>
+          ${matchBox}
+        </div>
+      `;
+    });
+
+    renderArea.innerHTML = `
+      <div id="pdf-export-container" style="width:780px; margin:0 auto; padding:24px 28px; background:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#0f172a; box-sizing:border-box;">
+        
+        <!-- Header Banner -->
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #1e3a8a; padding-bottom:14px; margin-bottom:16px;">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <div style="width:34px; height:34px; background:linear-gradient(135deg, #1e3a8a, #0284c7); border-radius:8px; color:#fff; font-weight:900; font-size:16px; display:flex; align-items:center; justify-content:center;">CD</div>
+              <div>
+                <div style="font-size:14px; font-weight:800; color:#1e3a8a; letter-spacing:0.5px;">COMPUTATIONAL DATABASE &amp; MATERIALS RESEARCH HUB</div>
+                <div style="font-size:10.5px; color:#64748b;">Sungkyunkwan University (SKKU) • Advanced 2D &amp; TMDC Energy Materials</div>
+              </div>
+            </div>
+            <h1 style="margin:12px 0 2px 0; font-size:18px; font-weight:900; color:#0f172a; text-transform:uppercase; letter-spacing:0.5px;">
+              Academic Manuscript Plagiarism &amp; Originality Audit Report
+            </h1>
+            <div style="font-size:11px; color:#475569;">
+              Formal Pre-Submission Screening for Peer-Reviewed Journals (ACS, Nature, APS, Wiley, Elsevier)
+            </div>
+          </div>
+          <div style="text-align:right; font-size:10.5px; color:#64748b; line-height:1.4;">
+            <div>Report ID: <strong style="color:#0f172a;">${reportId}</strong></div>
+            <div>Date: <strong style="color:#0f172a;">${fullDateStr}</strong></div>
+            <div>Time: <strong style="color:#0f172a;">${timeStr}</strong></div>
+            <div style="margin-top:4px; display:inline-block; padding:2px 8px; border-radius:4px; background:#ecfdf5; color:#065f46; font-weight:700; border:1px solid #a7f3d0;">Verified Automated Audit</div>
+          </div>
+        </div>
+
+        <!-- Metadata & Scope Block -->
+        <div style="display:grid; grid-template-columns: 2fr 1fr; gap:12px; margin-bottom:16px;">
+          <div style="padding:10px 14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; font-size:11.5px; line-height:1.5;">
+            <div><strong>Manuscript / File:</strong> <span style="color:#1e293b;">${escapeHtml(docName)}</span></div>
+            <div><strong>Target Researcher:</strong> <span style="color:#1e293b;">Vu Tien Lam (lamvt.skku@gmail.com)</span></div>
+            <div><strong>Affiliation:</strong> <span style="color:#1e293b;">Sungkyunkwan University, Department of Energy Science</span></div>
+            <div><strong>Cross-Check Scope:</strong> <span style="color:#1d4ed8; font-weight:600;">OpenAlex &amp; CrossRef (250M+ Works), Google Scholar Index, Literature Library, Internal Co-occurrence</span></div>
+          </div>
+
+          <!-- Overall Similarity Gauge Box -->
+          <div style="padding:10px 14px; background:${simBg}; border:2px solid ${simBorder}; border-radius:6px; text-align:center; display:flex; flex-direction:column; justify-content:center;">
+            <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">Overall Similarity Index</div>
+            <div style="font-size:32px; font-weight:900; color:${simColor}; line-height:1.1; margin:4px 0;">${data.overall_similarity_pct}%</div>
+            <div style="font-size:10.5px; font-weight:700; color:${simColor};">
+              ${data.overall_similarity_pct >= 65 ? "⚠️ Significant Overlap Detected" : (data.overall_similarity_pct >= 35 ? "ℹ️ Moderate Overlap" : "✅ High Originality Verified")}
+            </div>
+          </div>
+        </div>
+
+        <!-- KPI Breakdown Metrics -->
+        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; margin-bottom:18px;">
+          <div style="padding:8px 10px; background:#fff; border:1px solid #e2e8f0; border-radius:6px; text-align:center;">
+            <div style="font-size:16px; font-weight:800; color:#dc2626;">${data.high_risk_count}</div>
+            <div style="font-size:10px; color:#64748b; font-weight:600;">High Risk (>65%)</div>
+          </div>
+          <div style="padding:8px 10px; background:#fff; border:1px solid #e2e8f0; border-radius:6px; text-align:center;">
+            <div style="font-size:16px; font-weight:800; color:#d97706;">${data.moderate_risk_count}</div>
+            <div style="font-size:10px; color:#64748b; font-weight:600;">Moderate (35–64%)</div>
+          </div>
+          <div style="padding:8px 10px; background:#fff; border:1px solid #e2e8f0; border-radius:6px; text-align:center;">
+            <div style="font-size:16px; font-weight:800; color:#16a34a;">${data.low_risk_count}</div>
+            <div style="font-size:10px; color:#64748b; font-weight:600;">Original (<35%)</div>
+          </div>
+          <div style="padding:8px 10px; background:#fff; border:1px solid #e2e8f0; border-radius:6px; text-align:center;">
+            <div style="font-size:16px; font-weight:800; color:#0284c7;">${data.total_paragraphs}</div>
+            <div style="font-size:10px; color:#64748b; font-weight:600;">Paragraphs Analyzed</div>
+          </div>
+        </div>
+
+        <!-- Section 1: Ranked Literature & Internet Sources Table -->
+        <div style="margin-bottom:20px;">
+          <div style="font-size:13px; font-weight:800; color:#1e3a8a; border-bottom:1.5px solid #cbd5e1; padding-bottom:4px; margin-bottom:8px; text-transform:uppercase;">
+            1. Primary Matched Scientific Literature &amp; Online Sources
+          </div>
+          <table style="width:100%; border-collapse:collapse; background:#fff; border:1px solid #cbd5e1; border-radius:6px; overflow:hidden;">
+            <thead>
+              <tr style="background:#f1f5f9; border-bottom:2px solid #cbd5e1; font-size:10.5px; color:#475569; text-transform:uppercase;">
+                <th style="padding:8px; width:36px; text-align:center;">Rank</th>
+                <th style="padding:8px; width:70px; text-align:center;">Overlap</th>
+                <th style="padding:8px; text-align:left;">Publication Title &amp; Authors</th>
+                <th style="padding:8px; width:170px; text-align:left;">Journal / Venue &amp; Year</th>
+                <th style="padding:8px; width:150px; text-align:left;">Source Index &amp; DOI</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${sourcesTableRows}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Section 2: Detailed Paragraph Evidence -->
+        <div style="margin-bottom:20px;">
+          <div style="font-size:13px; font-weight:800; color:#1e3a8a; border-bottom:1.5px solid #cbd5e1; padding-bottom:4px; margin-bottom:10px; text-transform:uppercase;">
+            2. Paragraph-by-Paragraph Originality &amp; Duplicate Breakdown
+          </div>
+          ${paragraphsHtml}
+        </div>
+
+        <!-- Section 3: Academic Pre-Submission Verification & Certification -->
+        <div style="page-break-inside:avoid; margin-top:24px; padding:12px 16px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; font-size:11px; line-height:1.5;">
+          <div style="font-weight:700; color:#1e293b; margin-bottom:4px; text-transform:uppercase;">
+            3. Academic Integrity &amp; Journal Pre-Submission Verification
+          </div>
+          <p style="margin:0 0 6px 0; color:#475569;">
+            This originality audit was executed against over 250,000,000 peer-reviewed scientific publications, CrossRef registered digital object identifiers (DOIs), and Google Scholar indexing. High similarity scores (>65%) indicate verbatim phrases or text overlap that should be properly quoted, paraphrased, or attributed with scholarly citations prior to peer-reviewed manuscript submission.
+          </p>
+          <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:12px; border-top:1px dashed #cbd5e1; padding-top:8px;">
+            <div>
+              <div style="font-size:10px; color:#64748b;">Report Generated Automatically by:</div>
+              <div style="font-weight:700; color:#0f172a;">Computational Database Suite v27</div>
+              <div style="font-size:9.5px; color:#94a3b8;">https://tienlamvu.github.io/lamreseach/</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:10px; color:#64748b;">Audited for Lab Administrator:</div>
+              <div style="font-weight:800; color:#1e3a8a; font-size:12px;">Vu Tien Lam</div>
+              <div style="font-size:9.5px; color:#64748b;">Sungkyunkwan University (lamvt.skku@gmail.com)</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    `;
+
+    renderArea.style.display = "block";
+
+    if (typeof html2pdf !== "function") {
+      throw new Error("html2pdf library is not loaded. Please use the Print button to save as PDF.");
+    }
+
+    const opt = {
+      margin: [8, 8, 8, 8],
+      filename: `Manuscript_Plagiarism_Report_${dateStr}.pdf`,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, logging: false },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      pagebreak: { mode: ["avoid-all", "css", "legacy"] }
+    };
+
+    await html2pdf().set(opt).from(document.getElementById("pdf-export-container")).save();
+
+    renderArea.style.display = "none";
+    showToast("✅ Academic Plagiarism PDF Report generated & downloaded successfully!", "success");
+  } catch (err) {
+    console.error("PDF export error:", err);
+    showToast(`PDF generation note: ${err.message}. You can also click Print to save as PDF.`, "warn");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `📄 Export PDF Report`;
+    }
+  }
+}
+
+function exportPlagiarismTxtReport() {
   if (!currentPlagResults) {
     showToast("No analysis results to export.", "warn");
     return;
@@ -6652,6 +6969,7 @@ function exportPlagiarismReport() {
     if (p.top_match && p.top_match.similarity_pct > 15) {
       report += `Matched Source: ${p.top_match.source_title} (${p.top_match.similarity_pct}%)\n`;
       if (p.top_match.source_doi) report += `DOI: https://doi.org/${p.top_match.source_doi}\n`;
+      if (p.top_match.scholar_url) report += `Google Scholar: ${p.top_match.scholar_url}\n`;
     }
     report += `\n`;
   });
@@ -6665,8 +6983,33 @@ function exportPlagiarismReport() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  showToast("Downloaded Plagiarism & Duplicate Report.", "success");
+  showToast("Downloaded Plagiarism Text Report.", "success");
 }
+
+function exportPlagiarismReport() {
+  exportPlagiarismPdfReport();
+}
+
+function printPlagiarismReport() {
+  if (!currentPlagResults || !currentPlagResults.paragraphs || currentPlagResults.paragraphs.length === 0) {
+    showToast("No plagiarism analysis results to print. Please run a check first.", "warn");
+    return;
+  }
+  exportPlagiarismPdfReport();
+  const renderArea = document.getElementById("plag-pdf-render-area");
+  if (renderArea) {
+    renderArea.style.display = "block";
+    document.body.classList.add("printing-plagiarism-report");
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        document.body.classList.remove("printing-plagiarism-report");
+        renderArea.style.display = "none";
+      }, 600);
+    }, 400);
+  }
+}
+
 
 async function runDocumentComparison() {
   const btn = document.getElementById("btn-run-diff");
@@ -6843,7 +7186,215 @@ function copyDiffSummary() {
   });
 }
 
-function clientSideCheckDuplicates(rawText, libraryPapers, checkLib, checkInternal) {
+function escapeRegex(str) {
+  return (str || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function highlightMatchedPhrases(paraText, matchedPhrase) {
+  if (!matchedPhrase || matchedPhrase.trim().length < 14) return escapeHtml(paraText);
+  const clean = matchedPhrase.trim();
+  const esc = escapeHtml(paraText);
+  try {
+    const reg = new RegExp(`(${escapeRegex(clean)})`, "gi");
+    if (reg.test(esc)) {
+      return esc.replace(reg, `<mark class="plag-highlight">$1</mark>`);
+    }
+    const words = clean.split(/\s+/).filter(w => w.length > 3);
+    if (words.length >= 4) {
+      const chunk = words.slice(0, 6).join(" ");
+      const regChunk = new RegExp(`(${escapeRegex(chunk)})`, "gi");
+      if (regChunk.test(esc)) {
+        return esc.replace(regChunk, `<mark class="plag-highlight">$1</mark>`);
+      }
+    }
+  } catch (e) {
+    console.warn("Highlight regex error:", e);
+  }
+  return esc;
+}
+
+function findLongestPhrase(s1, s2) {
+  const w1 = (s1 || "").toLowerCase().replace(/[^a-z0-9\s\-]/g, " ").split(/\s+/).filter(w => w.length >= 2);
+  const w2 = (s2 || "").toLowerCase().replace(/[^a-z0-9\s\-]/g, " ").split(/\s+/).filter(w => w.length >= 2);
+  let bestPhrase = "";
+  let maxLen = 0;
+  
+  const w2Map = new Map();
+  for (let j = 0; j < w2.length; j++) {
+    const w = w2[j];
+    if (!w2Map.has(w)) w2Map.set(w, []);
+    w2Map.get(w).push(j);
+  }
+
+  for (let i = 0; i < w1.length; i++) {
+    const candidates = w2Map.get(w1[i]) || [];
+    for (const j of candidates) {
+      let k = 0;
+      while (i + k < w1.length && j + k < w2.length && w1[i + k] === w2[j + k]) {
+        k++;
+      }
+      if (k > maxLen && k >= 4) {
+        maxLen = k;
+        bestPhrase = w1.slice(i, i + k).join(" ");
+      }
+    }
+  }
+  return { phrase: bestPhrase, length: maxLen };
+}
+
+function extractQueriesFromManuscript(rawText, paragraphs) {
+  const queries = [];
+
+  // 1. Check for DOI in manuscript
+  const doiMatches = (rawText || "").match(/\b10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+\b/g);
+  if (doiMatches) {
+    for (const d of doiMatches.slice(0, 2)) queries.push(d.trim());
+  }
+
+  // 2. Check for Abstract
+  const abMatch = (rawText || "").match(/abstract[\s:\-—]+(.*?)(?:\n\n|\.\s+[A-Z])/i);
+  if (abMatch && abMatch[1]) {
+    const cleanAb = abMatch[1].replace(/[^a-zA-Z0-9\s\-]/g, " ").replace(/\s+/g, " ").trim();
+    const words = cleanAb.split(" ").slice(0, 14);
+    if (words.length >= 6) queries.push(words.join(" "));
+  }
+
+  // 3. Document title candidate (first non-empty line or first sentence)
+  const lines = (rawText || "").split("\n").map(l => l.trim()).filter(l => l.length >= 20);
+  if (lines.length > 0) {
+    const firstLine = lines[0].replace(/[^a-zA-Z0-9\s\-]/g, " ").replace(/\s+/g, " ").trim();
+    const tWords = firstLine.split(" ").slice(0, 12);
+    if (tWords.length >= 5) queries.push(tWords.join(" "));
+  }
+
+  // 4. Sample distinctive technical sentences from paragraphs
+  const stopWords = new Set(["the","and","for","that","this","with","from","were","been","have","they","their","which","about","there","after","before","using","used","then","also","into","over","each","other","than","both","some","such","only","more","when","will"]);
+
+  for (let i = 0; i < (paragraphs || []).length; i++) {
+    if (queries.length >= 6) break;
+    const p = paragraphs[i];
+    const sents = p.split(/\.\s+/);
+    for (const s of sents) {
+      const cleanS = s.replace(/[^a-zA-Z0-9\s\-]/g, " ").replace(/\s+/g, " ").trim();
+      const wList = cleanS.split(" ");
+      const techWords = wList.filter(w => w.length >= 5 && !stopWords.has(w.toLowerCase()));
+      if (wList.length >= 8 && techWords.length >= 3) {
+        queries.push(wList.slice(0, 14).join(" "));
+        break;
+      }
+    }
+  }
+
+  // Deduplicate
+  const seen = new Set();
+  const dedup = [];
+  for (const q of queries) {
+    const norm = q.toLowerCase();
+    if (!seen.has(norm) && norm.length >= 10) {
+      seen.add(norm);
+      dedup.push(q);
+    }
+  }
+  return dedup.slice(0, 6);
+}
+
+async function fetchInternetScholarCandidates(queries, onStatus) {
+  const candidates = [];
+  const seenDois = new Set();
+  const seenTitles = new Set();
+
+  for (let i = 0; i < queries.length; i++) {
+    const q = queries[i];
+    if (onStatus) onStatus(`Querying Internet & Scholar Index (${i + 1}/${queries.length}): "${q.slice(0, 32)}..."`);
+
+    // 1. OpenAlex Works API (250M+ scholarly publications with inverted abstract)
+    try {
+      const oaUrl = `https://api.openalex.org/works?search=${encodeURIComponent(q)}&per_page=4`;
+      const res = await fetch(oaUrl, { headers: { "Accept": "application/json" } });
+      if (res.ok) {
+        const data = await res.json();
+        for (const work of (data.results || [])) {
+          const doi = (work.doi || "").replace(/^https?:\/\/doi\.org\//i, "").trim();
+          const title = (work.title || work.display_name || "").trim();
+          const titleNorm = title.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+          if ((doi && seenDois.has(doi.toLowerCase())) || (titleNorm && seenTitles.has(titleNorm))) continue;
+          if (doi) seenDois.add(doi.toLowerCase());
+          if (titleNorm) seenTitles.add(titleNorm);
+
+          // Reconstruct abstract from inverted index
+          let abstractText = "";
+          const inv = work.abstract_inverted_index;
+          if (inv) {
+            const wordMap = {};
+            for (const [w, posList] of Object.entries(inv)) {
+              for (const p of posList) wordMap[p] = w;
+            }
+            abstractText = Object.keys(wordMap).sort((a, b) => Number(a) - Number(b)).map(k => wordMap[k]).join(" ");
+          }
+
+          const venue = work.primary_location?.source?.display_name || work.host_venue?.name || "";
+          const authors = (work.authorships || []).slice(0, 4).map(a => a.author?.display_name || "").filter(Boolean).join(", ");
+          const authorStr = authors ? (work.authorships.length > 4 ? `${authors} et al.` : authors) : "";
+
+          candidates.push({
+            id: work.id,
+            title: title || "Scholarly Publication",
+            doi: doi,
+            venue: venue,
+            year: work.publication_year ? String(work.publication_year) : "",
+            authors: authorStr,
+            abstract: abstractText,
+            source_database: "OpenAlex & Google Scholar Index",
+            cited_by_count: work.cited_by_count || 0
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("OpenAlex lookup failed:", q, e);
+    }
+
+    // 2. CrossRef REST API fallback
+    try {
+      const crUrl = `https://api.crossref.org/works?rows=3&query=${encodeURIComponent(q)}`;
+      const resCr = await fetch(crUrl);
+      if (resCr.ok) {
+        const crData = await resCr.json();
+        for (const item of (crData.message?.items || [])) {
+          const doi = (item.DOI || "").trim();
+          const title = Array.isArray(item.title) ? item.title[0] : (item.title || "");
+          const titleNorm = title.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+          if ((doi && seenDois.has(doi.toLowerCase())) || (titleNorm && seenTitles.has(titleNorm))) continue;
+          if (doi) seenDois.add(doi.toLowerCase());
+          if (titleNorm) seenTitles.add(titleNorm);
+
+          const venue = Array.isArray(item["container-title"]) ? item["container-title"][0] : (item["container-title"] || "");
+          const year = item.created?.["date-parts"]?.[0]?.[0] || item.published?.["date-parts"]?.[0]?.[0] || "";
+          const authors = (item.author || []).slice(0, 4).map(a => `${a.given || ""} ${a.family || ""}`.trim()).filter(Boolean).join(", ");
+
+          candidates.push({
+            id: doi || title,
+            title: title || "Published Paper",
+            doi: doi,
+            venue: venue,
+            year: year ? String(year) : "",
+            authors: authors ? (item.author?.length > 4 ? `${authors} et al.` : authors) : "",
+            abstract: item.abstract ? item.abstract.replace(/<[^>]+>/g, " ") : "",
+            source_database: "CrossRef Index",
+            cited_by_count: item["is-referenced-by-count"] || 0
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("CrossRef lookup failed:", q, e);
+    }
+  }
+
+  return candidates;
+}
+
+function clientSideCheckDuplicates(rawText, libraryPapers, internetPapers, checkInternet, checkLib, checkInternal) {
   const paras = (rawText || "")
     .split(/\n\s*\n/)
     .map(p => p.trim())
@@ -6860,8 +7411,8 @@ function clientSideCheckDuplicates(rawText, libraryPapers, checkLib, checkIntern
     };
   }
 
-  const tokenize = str => str.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(w => w.length > 2);
-  const getGrams = (words, n = 3) => {
+  const tokenize = str => (str || "").toLowerCase().replace(/[^a-z0-9\s\-]/g, " ").split(/\s+/).filter(w => w.length >= 2);
+  const getGrams = (words, n = 4) => {
     const s = new Set();
     for (let i = 0; i <= words.length - n; i++) s.add(words.slice(i, i + n).join(" "));
     return s;
@@ -6874,51 +7425,124 @@ function clientSideCheckDuplicates(rawText, libraryPapers, checkLib, checkIntern
 
   paras.forEach((para, idx) => {
     const words = tokenize(para);
-    const grams = getGrams(words, 3);
+    const grams = getGrams(words, 4);
     let maxSim = 0;
     let topMatch = null;
 
-    if (checkLib && libraryPapers && libraryPapers.length > 0) {
-      libraryPapers.forEach(paper => {
-        const refText = `${paper.title || ""} ${paper.abstract || ""} ${paper.notes || ""}`;
+    // 1. Check against Internet & Google Scholar candidate papers
+    if (checkInternet && internetPapers && internetPapers.length > 0) {
+      internetPapers.forEach(paper => {
+        const refText = `${paper.title || ""} ${paper.abstract || ""}`;
         const refWords = tokenize(refText);
         if (refWords.length < 5) return;
-        const refGrams = getGrams(refWords, 3);
+        const refGrams = getGrams(refWords, 4);
 
         let overlap = 0;
         grams.forEach(g => { if (refGrams.has(g)) overlap++; });
-        const sim = grams.size > 0 ? (overlap / grams.size) * 100 : 0;
+        const overlapPct = grams.size > 0 ? (overlap / grams.size) * 100 : 0;
+
+        const phraseMatch = findLongestPhrase(para, refText);
+        let phraseScore = 0;
+        if (phraseMatch.length >= 4) {
+          phraseScore = Math.min(98.5, phraseMatch.length * 6.5);
+        }
+
+        const s1 = new Set(words);
+        const s2 = new Set(refWords);
+        let inter = 0;
+        s1.forEach(w => { if (s2.has(w)) inter++; });
+        const unionSize = s1.size + s2.size - inter;
+        const jaccard = unionSize > 0 ? (inter / unionSize) * 100 : 0;
+
+        let sim = Math.max(phraseScore, (overlapPct * 0.65) + (jaccard * 0.35));
+        if (overlapPct >= 45) sim = Math.max(sim, overlapPct);
+        sim = Math.min(sim, 99.5);
 
         if (sim > maxSim) {
           maxSim = sim;
+          const longestPhrase = phraseMatch.phrase || "";
+          const scholarQ = longestPhrase || paper.title;
           topMatch = {
-            source_type: "LIBRARY_PAPER",
-            source_title: paper.title || "Untitled Paper",
+            source_type: "INTERNET_SCHOLAR",
+            source_title: paper.title || "Scholarly Publication",
+            source_authors: paper.authors || "",
+            source_venue: paper.venue || "Academic Publication",
+            source_year: paper.year || "",
             source_doi: paper.doi || "",
             similarity_pct: Math.round(sim * 10) / 10,
-            matched_text: (paper.abstract || paper.title || "").slice(0, 200)
+            longest_phrase: longestPhrase,
+            matched_text: (paper.abstract || paper.title || "").slice(0, 240),
+            scholar_url: `https://scholar.google.com/scholar?q=${encodeURIComponent('"' + scholarQ + '"')}`,
+            google_url: `https://www.google.com/search?q=${encodeURIComponent('"' + scholarQ + '"')}`,
+            doi_url: paper.doi ? `https://doi.org/${encodeURIComponent(paper.doi)}` : null
           };
         }
       });
     }
 
+    // 2. Personal Literature Library
+    if (checkLib && libraryPapers && libraryPapers.length > 0) {
+      libraryPapers.forEach(paper => {
+        const refText = `${paper.title || ""} ${paper.abstract || ""} ${paper.notes || ""}`;
+        const refWords = tokenize(refText);
+        if (refWords.length < 5) return;
+        const refGrams = getGrams(refWords, 4);
+
+        let overlap = 0;
+        grams.forEach(g => { if (refGrams.has(g)) overlap++; });
+        const overlapPct = grams.size > 0 ? (overlap / grams.size) * 100 : 0;
+        const phraseMatch = findLongestPhrase(para, refText);
+        let phraseScore = phraseMatch.length >= 4 ? Math.min(98, phraseMatch.length * 6.5) : 0;
+
+        let sim = Math.max(phraseScore, overlapPct);
+        sim = Math.min(sim, 99.5);
+
+        if (sim > maxSim) {
+          maxSim = sim;
+          const longestPhrase = phraseMatch.phrase || "";
+          const scholarQ = longestPhrase || paper.title;
+          topMatch = {
+            source_type: "LIBRARY_PAPER",
+            source_title: paper.title || "Library Paper",
+            source_authors: paper.authors || "",
+            source_venue: paper.journal || "",
+            source_year: paper.year || "",
+            source_doi: paper.doi || "",
+            similarity_pct: Math.round(sim * 10) / 10,
+            longest_phrase: longestPhrase,
+            matched_text: (paper.abstract || paper.notes || paper.title || "").slice(0, 240),
+            scholar_url: `https://scholar.google.com/scholar?q=${encodeURIComponent('"' + scholarQ + '"')}`,
+            google_url: `https://www.google.com/search?q=${encodeURIComponent('"' + scholarQ + '"')}`,
+            doi_url: paper.doi ? `https://doi.org/${encodeURIComponent(paper.doi)}` : null
+          };
+        }
+      });
+    }
+
+    // 3. Internal repetition
     if (checkInternal) {
       paras.forEach((otherPara, otherIdx) => {
         if (otherIdx === idx) return;
-        const otherWords = tokenize(otherPara);
-        const otherGrams = getGrams(otherWords, 3);
-        let overlap = 0;
-        grams.forEach(g => { if (otherGrams.has(g)) overlap++; });
-        const sim = grams.size > 0 ? (overlap / grams.size) * 100 : 0;
-        if (sim > maxSim) {
-          maxSim = sim;
-          topMatch = {
-            source_type: "INTERNAL_REPETITION",
-            source_title: `Paragraph #${otherIdx + 1} (Internal Duplication)`,
-            source_doi: "",
-            similarity_pct: Math.round(sim * 10) / 10,
-            matched_text: otherPara.slice(0, 200)
-          };
+        const phraseMatch = findLongestPhrase(para, otherPara);
+        if (phraseMatch.length >= 6) {
+          const sim = Math.min(99.0, Math.round(phraseMatch.length * 7.5 * 10) / 10);
+          if (sim > maxSim) {
+            maxSim = sim;
+            topMatch = {
+              source_type: "INTERNAL_REPETITION",
+              source_title: `Paragraph #${otherIdx + 1} (Internal Repetition)`,
+              source_authors: "Manuscript Co-author",
+              source_venue: "Current Manuscript Draft",
+              source_year: "",
+              source_doi: "",
+              similarity_pct: sim,
+              longest_phrase: phraseMatch.phrase,
+              matched_text: otherPara.slice(0, 240),
+              scholar_url: "",
+              google_url: "",
+              doi_url: null
+            };
+          }
         }
       });
     }
