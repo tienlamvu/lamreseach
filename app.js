@@ -7182,7 +7182,7 @@ function buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr) 
   });
 
   return `
-    <div id="pdf-export-container" style="width:794px; min-width:794px; max-width:794px; margin:0 auto; padding:20px 24px; background:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#0f172a; box-sizing:border-box;">
+    <div id="pdf-export-container" style="width:100%; max-width:100%; margin:0; padding:20px 24px; background:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#0f172a; box-sizing:border-box;">
       
       <!-- REPORT HEADER -->
       <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #1e40af; padding-bottom:12px; margin-bottom:14px; gap:12px;">
@@ -7369,43 +7369,41 @@ async function exportPlagiarismPdfReport() {
     }
 
     renderArea.innerHTML = buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr);
-    
-    // Scroll window to top so html2canvas starts from offset (0,0)
-    window.scrollTo(0, 0);
 
+    // Setup clean renderArea container at (0,0) without offset or viewport clipping
     renderArea.style.display = "block";
-    renderArea.style.position = "fixed";
-    renderArea.style.left = "0";
-    renderArea.style.top = "0";
-    renderArea.style.width = "794px";
-    renderArea.style.zIndex = "-9999";
+    renderArea.style.position = "absolute";
+    renderArea.style.left = "0px";
+    renderArea.style.top = "0px";
+    renderArea.style.width = "780px";
+    renderArea.style.margin = "0";
+    renderArea.style.padding = "0";
     renderArea.style.background = "#ffffff";
+    renderArea.style.zIndex = "-9999";
+    renderArea.style.boxSizing = "border-box";
 
     if (typeof html2pdf !== "function") {
       throw new Error("html2pdf library is not loaded.");
     }
 
     const opt = {
-      margin: [8, 8, 8, 8],
+      margin: [10, 10, 10, 10], // 10mm equal margins on all sides (standard A4)
       filename: `Academic_Originality_Audit_Report_${docName.replace(/\.[^/.]+$/, "")}_${dateStr}.pdf`,
       image: { type: "jpeg", quality: 0.98 },
       html2canvas: {
         scale: 2,
         useCORS: true,
-        logging: false,
-        scrollY: 0,
-        scrollX: 0,
-        windowWidth: 794
+        logging: false
       },
       jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
       pagebreak: { mode: ["css", "legacy"] }
     };
 
-    const element = document.getElementById("pdf-export-container");
+    const element = document.getElementById("pdf-export-container") || renderArea;
     await html2pdf().set(opt).from(element).save();
 
     renderArea.style.display = "none";
-    showToast("✅ Academic Originality PDF Report generated & downloaded successfully!", "success");
+    showToast("✅ Academic Originality PDF Report downloaded successfully!", "success");
   } catch (err) {
     console.error("PDF export error:", err);
     showToast(`PDF generation note: ${err.message}.`, "warn");
@@ -7462,196 +7460,13 @@ function exportPlagiarismReport() {
   exportPlagiarismPdfReport();
 }
 
-function openPlagiarismPrintPreview() {
-  if (!currentPlagResults || !currentPlagResults.paragraphs || currentPlagResults.paragraphs.length === 0) {
-    showToast("Vui lòng tải tài liệu và thực hiện kiểm tra trước khi xem trước bản in.", "warn");
-    return;
-  }
-
-  const modal = document.getElementById("plag-print-preview-modal");
-  const paperSheet = document.getElementById("plag-preview-paper-sheet");
-  if (!modal || !paperSheet) {
-    showToast("Giao diện xem trước in chưa sẵn sàng.", "error");
-    return;
-  }
-
-  const data = currentPlagResults;
-  const now = new Date();
-  const dateStr = now.toISOString().split("T")[0];
-  const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  const fullDateStr = now.toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric" });
-  const reportId = `SKKU-PLAG-${dateStr.replace(/-/g, "")}-${Math.floor(10000 + Math.random() * 90000)}`;
-  const docName = currentPlagFile?.name || "Manuscript_Draft.pdf";
-
-  const reportHtml = buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr);
-  paperSheet.innerHTML = reportHtml;
-
-  // Also pre-render into plag-pdf-render-area so html2pdf can access it if triggered from modal
-  const renderArea = document.getElementById("plag-pdf-render-area");
-  if (renderArea) {
-    renderArea.innerHTML = reportHtml;
-  }
-
-  modal.style.display = "flex";
-  document.body.style.overflow = "hidden";
-  modal.scrollTop = 0;
-  showToast("🔍 Đang mở bản xem trước in PDF...", "info");
-}
-
-function closePlagiarismPrintPreview() {
-  const modal = document.getElementById("plag-print-preview-modal");
-  if (modal) {
-    modal.style.display = "none";
-    document.body.style.overflow = "";
-  }
-}
-
-function executeNativePrintPlagiarism() {
-  if (!currentPlagResults || !currentPlagResults.paragraphs || currentPlagResults.paragraphs.length === 0) {
-    showToast("Chưa có kết quả kiểm tra để in.", "warn");
-    return;
-  }
-
-  const data = currentPlagResults;
-  const now = new Date();
-  const dateStr = now.toISOString().split("T")[0];
-  const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  const fullDateStr = now.toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric" });
-  const reportId = `SKKU-PLAG-${dateStr.replace(/-/g, "")}-${Math.floor(10000 + Math.random() * 90000)}`;
-  const docName = currentPlagFile?.name || "Manuscript_Draft.pdf";
-
-  const reportHtml = buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr);
-
-  let iframe = document.getElementById("plag-native-print-frame");
-  if (!iframe) {
-    iframe = document.createElement("iframe");
-    iframe.id = "plag-native-print-frame";
-    iframe.style.position = "fixed";
-    iframe.style.right = "0";
-    iframe.style.bottom = "0";
-    iframe.style.width = "0";
-    iframe.style.height = "0";
-    iframe.style.border = "none";
-    iframe.style.zIndex = "-99999";
-    document.body.appendChild(iframe);
-  }
-
-  const iframeDoc = iframe.contentWindow.document;
-  iframeDoc.open();
-  iframeDoc.write(`<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Academic_Originality_Audit_Report_${docName.replace(/\.[^/.]+$/, "")}</title>
-  <style>
-    @page {
-      size: A4 portrait;
-      margin: 8mm 8mm 8mm 8mm;
-    }
-    * {
-      box-sizing: border-box;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: #ffffff !important;
-      color: #0f172a !important;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
-    #pdf-export-container {
-      width: 100% !important;
-      max-width: 100% !important;
-      min-width: 100% !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      box-shadow: none !important;
-      border: none !important;
-      background: #ffffff !important;
-    }
-    table {
-      width: 100% !important;
-      border-collapse: collapse;
-      page-break-inside: auto;
-    }
-    tr {
-      page-break-inside: avoid !important;
-      page-break-after: auto;
-    }
-    .turnitin-highlight {
-      border-radius: 2px;
-      padding: 1px 2px;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-    .turnitin-color-1 { background-color: rgba(220, 38, 38, 0.18) !important; border-bottom: 2px solid #dc2626 !important; color: #991b1b !important; }
-    .turnitin-color-2 { background-color: rgba(37, 99, 235, 0.18) !important; border-bottom: 2px solid #2563eb !important; color: #1e40af !important; }
-    .turnitin-color-3 { background-color: rgba(217, 119, 6, 0.18) !important; border-bottom: 2px solid #d97706 !important; color: #92400e !important; }
-    .turnitin-color-4 { background-color: rgba(124, 58, 237, 0.18) !important; border-bottom: 2px solid #7c3aed !important; color: #5b21b6 !important; }
-    .turnitin-color-5 { background-color: rgba(5, 150, 105, 0.18) !important; border-bottom: 2px solid #059669 !important; color: #065f46 !important; }
-    .turnitin-color-6 { background-color: rgba(219, 39, 119, 0.18) !important; border-bottom: 2px solid #db2777 !important; color: #9d174d !important; }
-    .turnitin-color-7 { background-color: rgba(8, 145, 178, 0.18) !important; border-bottom: 2px solid #0891b2 !important; color: #155e75 !important; }
-    .turnitin-color-8 { background-color: rgba(234, 88, 12, 0.18) !important; border-bottom: 2px solid #ea580c !important; color: #9a3412 !important; }
-    .turnitin-color-9 { background-color: rgba(79, 70, 229, 0.18) !important; border-bottom: 2px solid #4f46e5 !important; color: #3730a3 !important; }
-    .turnitin-color-10 { background-color: rgba(22, 163, 74, 0.18) !important; border-bottom: 2px solid #16a34a !important; color: #166534 !important; }
-
-    .turnitin-tag {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 15px;
-      height: 15px;
-      border-radius: 50%;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-size: 9px;
-      font-weight: 800;
-      color: #ffffff !important;
-      margin-left: 3px;
-      vertical-align: middle;
-      line-height: 1;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-    .tag-1 { background: #dc2626 !important; }
-    .tag-2 { background: #2563eb !important; }
-    .tag-3 { background: #d97706 !important; }
-    .tag-4 { background: #7c3aed !important; }
-    .tag-5 { background: #059669 !important; }
-    .tag-6 { background: #db2777 !important; }
-    .tag-7 { background: #0891b2 !important; }
-    .tag-8 { background: #ea580c !important; }
-    .tag-9 { background: #4f46e5 !important; }
-    .tag-10 { background: #16a34a !important; }
-  </style>
-</head>
-<body>
-  ${reportHtml}
-</body>
-</html>`);
-  iframeDoc.close();
-
-  showToast("🖨️ Đang mở hộp thoại In / Lưu PDF...", "info");
-
-  setTimeout(() => {
-    iframe.contentWindow.focus();
-    iframe.contentWindow.print();
-  }, 350);
-}
-
 function printPlagiarismReport() {
-  openPlagiarismPrintPreview();
+  exportPlagiarismPdfReport();
 }
 
-window.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") {
-    closePlagiarismPrintPreview();
-  }
-});
-
-window.openPlagiarismPrintPreview = openPlagiarismPrintPreview;
-window.closePlagiarismPrintPreview = closePlagiarismPrintPreview;
-window.executeNativePrintPlagiarism = executeNativePrintPlagiarism;
+window.exportPlagiarismPdfReport = exportPlagiarismPdfReport;
+window.exportPlagiarismTxtReport = exportPlagiarismTxtReport;
+window.exportPlagiarismReport = exportPlagiarismReport;
 window.printPlagiarismReport = printPlagiarismReport;
 
 
