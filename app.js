@@ -156,6 +156,8 @@ function switchTab(tabId, btnEl) {
     renderMonthlyCalendar();
   } else if (tabId === "structures") {
     renderStructuresList();
+  } else if (tabId === "toolkit") {
+    if (typeof renderPeriodicTable === "function") renderPeriodicTable();
   }
 }
 
@@ -5051,7 +5053,25 @@ async function removeOwnPub(idx, e) {
 
 function renderPeriodicTable() {
   const grid = document.getElementById("periodic-table-grid");
-  if (!grid || typeof ELEMENTS_DATA === "undefined") return;
+  if (!grid) return;
+
+  if (typeof ELEMENTS_DATA === "undefined" || !Array.isArray(ELEMENTS_DATA) || !ELEMENTS_DATA.length) {
+    grid.innerHTML = `<div style="grid-column: 1 / -1; padding: 24px; text-align: center; color: var(--text-muted);">
+      ⏳ Đang tải dữ liệu 118 nguyên tố hóa học... Vui lòng chờ 1 giây.
+    </div>`;
+    // Attempt dynamic script load if not already loaded
+    if (!document.getElementById("matsci-tools-script")) {
+      const s = document.createElement("script");
+      s.id = "matsci-tools-script";
+      s.src = `matsci_tools.js?v=${Date.now()}`;
+      s.onload = () => {
+        renderPeriodicTable();
+        inspectElement(3);
+      };
+      document.body.appendChild(s);
+    }
+    return;
+  }
 
   const posMap = {};
   ELEMENTS_DATA.forEach(el => {
@@ -5063,9 +5083,14 @@ function renderPeriodicTable() {
     for (let col = 1; col <= 18; col++) {
       const el = posMap[`${row}-${col}`];
       if (el) {
+        const enVal = el.en !== null ? el.en.toFixed(1) : "-";
+        const enTooltip = el.en !== null ? `Độ âm điện (Pauling EN): ${el.en}` : "Độ âm điện: N/A";
         html += `
-          <div class="pt-cell cat-${el.cat}" onclick="inspectElement(${el.n})" title="${el.name} (${el.s}) — ${el.m} g/mol | Crystal: ${el.crys}">
-            <div class="pt-num">${el.n}</div>
+          <div class="pt-cell cat-${el.cat}" onclick="inspectElement(${el.n})" title="${escapeHtml(el.name)} (${el.s}) — No. ${el.n} | ${enTooltip} | Khối lượng: ${el.m} g/mol | Tinh thể: ${el.crys}">
+            <div class="pt-top-row">
+              <span class="pt-num">${el.n}</span>
+              <span class="pt-en" title="${enTooltip}">${enVal}</span>
+            </div>
             <div class="pt-sym">${el.s}</div>
             <div class="pt-mass">${el.m.toFixed(el.m < 10 ? 2 : 1)}</div>
           </div>
@@ -5092,33 +5117,57 @@ function inspectElement(atomicNumber) {
 
   const box = document.getElementById("element-inspector");
   if (!box) return;
+
+  let enDesc = "Chưa xác định độ âm điện thực nghiệm.";
+  let enBadgeColor = "#64748b";
+  if (el.en !== null) {
+    if (el.en >= 3.0) {
+      enDesc = "Phi kim có độ âm điện rất cao — Xu hướng hút electron cực mạnh (tạo liên kết ion/cộng hóa trị phân cực cao).";
+      enBadgeColor = "#b91c1c";
+    } else if (el.en >= 2.0) {
+      enDesc = "Phi kim / Á kim — Độ âm điện trung bình khá, tạo khung liên kết cộng hóa trị bền vững.";
+      enBadgeColor = "#c2410c";
+    } else if (el.en >= 1.5) {
+      enDesc = "Kim loại chuyển tiếp / Hậu chuyển tiếp — Độ âm điện trung bình, đa hóa trị.";
+      enBadgeColor = "#1e40af";
+    } else {
+      enDesc = "Kim loại hoạt động mạnh (Electropositive) — Dễ nhường electron tạo cation, đặc trưng liên kết ion.";
+      enBadgeColor = "#047857";
+    }
+  }
+
   box.innerHTML = `
-    <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
-      <div class="cat-${el.cat}" style="width:60px; height:60px; border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; border:1px solid rgba(0,0,0,0.1); flex-shrink:0;">
+    <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap;">
+      <div class="cat-${el.cat}" style="width:68px; height:68px; border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; border:1px solid rgba(0,0,0,0.12); flex-shrink:0; box-shadow:0 3px 8px rgba(0,0,0,0.06);">
         <div style="font-size:11px; font-weight:700;">${el.n}</div>
-        <div style="font-size:22px; font-weight:800; line-height:1;">${el.s}</div>
+        <div style="font-size:24px; font-weight:800; line-height:1;">${el.s}</div>
       </div>
       <div>
-        <div style="font-size:17px; font-weight:800; color:var(--text-main);">
-          ${el.name} (${el.s})
-          <span class="badge cat-${el.cat}" style="margin-left:6px; text-transform:capitalize;">${el.cat.replace("-", " ")}</span>
+        <div style="font-size:18px; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span>${escapeHtml(el.name)} (${el.s})</span>
+          <span class="badge cat-${el.cat}" style="text-transform:capitalize; font-size:12px;">${el.cat.replace("-", " ")}</span>
+          <span style="font-size:13px; font-weight:700; background:#fef3c7; color:#92400e; padding:3px 10px; border-radius:6px; border:1px solid #fde68a;">
+            ⚡ Độ âm điện Pauling: <strong>${el.en !== null ? el.en : "N/A"}</strong>
+          </span>
         </div>
-        <div style="font-size:12.5px; color:var(--text-secondary); margin-top:4px;">
-          <strong>Atomic Mass:</strong> ${el.m} g/mol &nbsp;|&nbsp;
-          <strong>Electron Config:</strong> <code>${el.conf}</code> &nbsp;|&nbsp;
-          <strong>Oxidation States:</strong> ${el.ox}
+        <div style="font-size:13px; color:var(--text-secondary); margin-top:4px;">
+          <strong>Khối lượng nguyên tử:</strong> ${el.m} g/mol &nbsp;|&nbsp;
+          <strong>Cấu hình e:</strong> <code>${el.conf}</code> &nbsp;|&nbsp;
+          <strong>Số oxi hóa:</strong> ${el.ox}
         </div>
-        <div style="font-size:12.5px; color:var(--text-secondary); margin-top:3px;">
-          <strong>Crystal Structure:</strong> ${el.crys} ${el.a ? `(a = ${el.a} Å)` : ""} &nbsp;|&nbsp;
-          <strong>Melting Point:</strong> ${el.mp !== null ? `${el.mp} °C` : "N/A"} &nbsp;|&nbsp;
-          <strong>Density:</strong> ${el.rho !== null ? `${el.rho} g/cm³` : "N/A"} &nbsp;|&nbsp;
-          <strong>Electronegativity:</strong> ${el.en !== null ? el.en : "N/A"}
+        <div style="font-size:13px; color:var(--text-secondary); margin-top:3px;">
+          <strong>Cấu trúc tinh thể:</strong> ${el.crys} ${el.a ? `(a = ${el.a} Å)` : ""} &nbsp;|&nbsp;
+          <strong>Điểm nóng chảy:</strong> ${el.mp !== null ? `${el.mp} °C` : "N/A"} &nbsp;|&nbsp;
+          <strong>Khối lượng riêng:</strong> ${el.rho !== null ? `${el.rho} g/cm³` : "N/A"}
+        </div>
+        <div style="font-size:12.5px; color:${enBadgeColor}; margin-top:4px; font-weight:600;">
+          💡 Đặc tính độ âm điện: ${enDesc}
         </div>
       </div>
     </div>
     <div>
       <button class="btn btn-primary btn-sm" onclick="appendElementToFormula('${el.s}')">
-        + Append ${el.s} to Stoichiometry Formula
+        + Thêm ${el.s} vào Công thức Tính toán
       </button>
     </div>
   `;
