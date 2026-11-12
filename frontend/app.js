@@ -6723,101 +6723,64 @@ function renderPlagiarismResults(data) {
     }
   }
 
-  // Show Turnitin Dual-Pane Container
-  const turnitinContainer = document.getElementById("turnitin-interactive-container");
-  if (turnitinContainer) turnitinContainer.style.display = "block";
-
   const docName = currentPlagFile?.name || "Manuscript_Draft.pdf";
 
-  // 1. Update Turnitin Top Bar
-  const breadcrumb = document.getElementById("turnitin-breadcrumb-doc");
-  const topSimBadge = document.getElementById("turnitin-top-sim-badge");
-  const topFlagsBadge = document.getElementById("turnitin-top-flags-badge");
-  if (breadcrumb) breadcrumb.textContent = docName;
-  if (topSimBadge) {
-    topSimBadge.textContent = `${data.overall_similarity_pct}%`;
-    topSimBadge.style.background = data.overall_similarity_pct >= 50 ? "#dc2626" : (data.overall_similarity_pct >= 25 ? "#d97706" : "#0284c7");
+  // Pre-render formal Academic Report into #plag-pdf-render-area so it is immediately ready for Print & PDF export
+  const renderArea = document.getElementById("plag-pdf-render-area");
+  if (renderArea) {
+    const now = new Date();
+    const dateStr = now.toISOString().split("T")[0];
+    const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const fullDateStr = now.toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric" });
+    const reportId = `SKKU-PLAG-${dateStr.replace(/-/g, "")}-${Math.floor(10000 + Math.random() * 90000)}`;
+    renderArea.innerHTML = buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr);
   }
-  if (topFlagsBadge) topFlagsBadge.textContent = data.integrity_flags_count || 0;
 
-  // 2. Update Document Viewer Header & Footer Stats
-  const titleEl = document.getElementById("turnitin-doc-title");
-  const metaEl = document.getElementById("turnitin-doc-meta");
-  const pageStat = document.getElementById("turnitin-page-stat");
-  const wordStat = document.getElementById("turnitin-word-stat");
+  // Hide the clunky Turnitin interactive container if present
+  const turnitinContainer = document.getElementById("turnitin-interactive-container");
+  if (turnitinContainer) turnitinContainer.style.display = "none";
 
-  if (titleEl) titleEl.textContent = `📄 Manuscript: ${docName}`;
-  if (metaEl) metaEl.textContent = `${data.total_words} words | ${data.total_paragraphs} paragraphs | Turnitin Multi-Color Attribution Active`;
-  if (pageStat) pageStat.textContent = `📄 Page 1 of ${Math.max(1, Math.ceil(data.total_words / 450))}`;
-  if (wordStat) wordStat.textContent = `${data.total_words} words`;
+  // Display the clean, primary Paragraph-by-Paragraph Duplicate Breakdown card
+  const breakdownCard = document.getElementById("plag-breakdown-card");
+  if (breakdownCard) breakdownCard.style.display = "block";
 
-  // 3. Render Document Viewer Body (inside real paper sheet)
-  const docBody = document.getElementById("turnitin-doc-body");
-  if (docBody) {
-    let docHtml = "";
-    data.paragraphs.forEach(para => {
-      let pContent = "";
-      para.sentences.forEach(sent => {
-        if (sent.match && data.rank_map && data.rank_map.has(sent.match.source.id)) {
-          const rInfo = data.rank_map.get(sent.match.source.id);
-          pContent += `<mark class="turnitin-highlight turnitin-color-${rInfo.colorIdx}" data-source-rank="${rInfo.rank}" data-category="${sent.match.category || 'NOT_CITED'}" onclick="showTurnitinMatchModal(${rInfo.rank}, ${para.index}, ${sent.index})" title="Source #${rInfo.rank}: ${escapeHtml(rInfo.title)} (${rInfo.pct}% Overlap - ${sent.match.catLabel || 'Not Cited'})">${escapeHtml(sent.text)}<span class="turnitin-tag tag-${rInfo.colorIdx}">${rInfo.rank}</span></mark> `;
-        } else {
-          pContent += escapeHtml(sent.text) + " ";
-        }
-      });
-      docHtml += `
-        <div class="turnitin-para-block" id="turnitin-para-${para.index}" data-risk="${para.risk_level}">
-          <div class="turnitin-para-num">¶ ${para.index + 1}</div>
-          ${pContent.trim()}
+  // Populate compact Top Sources Summary Bar if sources exist
+  const sourcesBar = document.getElementById("plag-sources-summary-bar");
+  if (sourcesBar) {
+    if (data.ranked_sources && data.ranked_sources.length > 0) {
+      let sHtml = `
+        <div style="font-size:12.5px; font-weight:800; color:#0f172a; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+          <span>📚 Primary Detected Literature Overlap Sources (${data.ranked_sources.length} detected)</span>
+          <span style="font-size:11px; color:#64748b; font-weight:normal;">Ranked Descending by %</span>
         </div>
+        <div style="display:flex; flex-wrap:wrap; gap:8px;">
       `;
-    });
-    docBody.innerHTML = docHtml;
-  }
-
-  // 4. Update Turnitin Sidebar Header & Scorecards
-  const sideTitle = document.getElementById("turnitin-sidebar-sim-title");
-  if (sideTitle) {
-    sideTitle.textContent = `${data.overall_similarity_pct}% Overall Similarity`;
-    sideTitle.style.color = data.overall_similarity_pct >= 50 ? "#dc2626" : (data.overall_similarity_pct >= 25 ? "#d97706" : "#0f172a");
-  }
-
-  // Integrity Flags Card
-  const flagsLabel = document.getElementById("turnitin-flags-label");
-  const flagsSub = document.getElementById("turnitin-flags-sub");
-  if (flagsLabel) flagsLabel.textContent = `${data.integrity_flags_count || 0} Integrity Flags`;
-  if (flagsSub) {
-    if (data.integrity_flags_count > 0 && data.integrity_flags && data.integrity_flags.length > 0) {
-      flagsSub.innerHTML = `<span style="color:#b91c1c; font-weight:700;">${escapeHtml(data.integrity_flags.join("; "))}</span>`;
+      data.ranked_sources.forEach(s => {
+        sHtml += `
+          <div style="display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:4px 10px; font-size:11.5px; box-shadow:0 1px 2px rgba(0,0,0,0.03);">
+            <span class="turnitin-tag tag-${s.colorIdx}" style="width:18px; height:18px; font-size:10px; display:inline-flex; align-items:center; justify-content:center;">${s.rank}</span>
+            <strong style="color:var(--t-c${s.colorIdx}); font-size:12px;">${s.pct}%</strong>
+            <span style="font-weight:600; color:#1e293b; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(s.title)}</span>
+            ${s.doi ? `<a href="https://doi.org/${encodeURIComponent(s.doi)}" target="_blank" style="color:#0284c7; text-decoration:none; margin-left:4px;" title="View DOI">DOI ↗</a>` : ""}
+            ${s.scholar_url ? `<a href="${s.scholar_url}" target="_blank" style="color:#1d4ed8; text-decoration:none;" title="Open in Google Scholar">Scholar ↗</a>` : ""}
+          </div>
+        `;
+      });
+      sHtml += `</div>`;
+      sourcesBar.innerHTML = sHtml;
+      sourcesBar.style.display = "block";
     } else {
-      flagsSub.textContent = "Scanned 250M+ CrossRef DOIs, Europe PMC & Google Scholar index";
+      sourcesBar.style.display = "none";
     }
   }
 
-  // Match Category Breakdown Counts & Pct
-  const setElText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  setElText("count-not-cited", `${data.not_cited_count || 0}`);
-  setElText("pct-not-cited", `${data.not_cited_pct || 0}%`);
-  setElText("count-missing-quotes", `${data.missing_quotes_count || 0}`);
-  setElText("pct-missing-quotes", `${data.missing_quotes_pct || 0}%`);
-  setElText("count-missing-cite", `${data.missing_cite_count || 0}`);
-  setElText("pct-missing-cite", `${data.missing_cite_pct || 0}%`);
-  setElText("count-cited-quoted", `${data.cited_quoted_count || 0}`);
-  setElText("pct-cited-quoted", `${data.cited_quoted_pct || 0}%`);
-
-  // Sub-gauges
-  const subInternet = document.getElementById("turnitin-sub-internet");
-  const subPubs = document.getElementById("turnitin-sub-pubs");
-  const subInternal = document.getElementById("turnitin-sub-internal");
-  if (subInternet) subInternet.textContent = `${data.internet_pct || 0}%`;
-  if (subPubs) subPubs.textContent = `${data.library_pct || 0}%`;
-  if (subInternal) subInternal.textContent = `${data.internal_redundancy_pct || 0}%`;
-
-  // Render Sidebar Sources according to active tab ('GROUPS' or 'SOURCES')
-  switchTurnitinTab(currentTurnitinTab || "GROUPS");
-
-  // Also render detailed paragraph table below
+  // Render detailed paragraph table matching Image 3
   filterPlagResults();
+
+  // Scroll smoothly to results card
+  if (breakdownCard) {
+    breakdownCard.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 }
 
 let currentTurnitinTab = "GROUPS";
@@ -7148,13 +7111,19 @@ function filterPlagResults() {
 
   let html = "";
   paras.forEach(p => {
-    const riskBadgeClass = p.risk_level === "HIGH" ? "badge-risk-high" : (p.risk_level === "MODERATE" ? "badge-risk-mod" : "badge-risk-low");
-    const riskIcon = p.risk_level === "HIGH" ? "🚨 High Duplicate" : (p.risk_level === "MODERATE" ? "⚠️ Moderate Overlap" : "✅ High Originality");
+    let riskBadgeHtml = "";
+    if (p.risk_level === "HIGH") {
+      riskBadgeHtml = `<span style="color:#dc2626; font-weight:700; font-size:12.5px; display:inline-flex; align-items:center; gap:4px;">▲ High Duplicate (${p.max_similarity_pct}%)</span>`;
+    } else if (p.risk_level === "MODERATE") {
+      riskBadgeHtml = `<span style="color:#d97706; font-weight:700; font-size:12.5px; display:inline-flex; align-items:center; gap:4px;">⚠️ Moderate Overlap (${p.max_similarity_pct}%)</span>`;
+    } else {
+      riskBadgeHtml = `<span style="color:#16a34a; font-weight:700; font-size:12.5px; display:inline-flex; align-items:center; gap:4px;">✅ High Originality (${p.max_similarity_pct || 0}%)</span>`;
+    }
 
     let matchInfoHtml = "";
     if (p.top_match && p.top_match.similarity_pct > 15) {
       const src = p.top_match;
-      const typeBadge = `<span style="display:inline-block; padding:2px 8px; border-radius:12px; background:#eff6ff; color:#1d4ed8; font-weight:700; font-size:10.5px; border:1px solid #bfdbfe;">🌐 ${escapeHtml(src.source_venue || "Academic Literature")}</span>`;
+      const typeBadge = `<span style="display:inline-block; padding:2px 10px; border-radius:12px; background:#eff6ff; color:#1d4ed8; font-weight:700; font-size:11px; border:1px solid #bfdbfe;">🌐 ${escapeHtml(src.source_venue || "Academic Publication")}</span>`;
 
       const scholarBtn = src.scholar_url 
         ? `<a href="${src.scholar_url}" target="_blank" class="btn-plag-action" title="Open Google Scholar search with exact quoted phrase">🔍 Search Google Scholar</a>` 
@@ -7167,18 +7136,18 @@ function filterPlagResults() {
         : "";
 
       matchInfoHtml = `
-        <div style="margin-top:10px; padding:10px 12px; background:#f8fafc; border-radius:6px; font-size:12px; border:1px solid #e2e8f0;">
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:4px;">
-            <div style="display:flex; align-items:center; gap:8px;">
+        <div style="margin-top:12px; padding:12px 14px; background:#ffffff; border-radius:8px; font-size:12px; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
               ${typeBadge}
-              <span style="font-weight:700; color:#1e293b;">${escapeHtml(src.source_title)}</span>
+              <span style="font-weight:700; color:#0f172a; font-size:12.5px;">${escapeHtml(src.source_title)}</span>
             </div>
-            <span style="color:#2563eb; font-weight:800; font-size:13px;">${src.similarity_pct}% Overlap</span>
+            <span style="color:#2563eb; font-weight:800; font-size:13px; margin-left:auto; white-space:nowrap;">${src.similarity_pct}% Overlap</span>
           </div>
-          ${src.source_authors ? `<div style="font-size:11px; color:#64748b; margin-bottom:2px;">Authors: ${escapeHtml(src.source_authors)}</div>` : ""}
-          ${src.source_venue ? `<div style="font-size:11px; color:#475569; margin-bottom:4px;">Venue: <strong>${escapeHtml(src.source_venue)}</strong> ${src.source_year ? `(${src.source_year})` : ""}</div>` : ""}
-          ${src.longest_phrase ? `<div style="margin:4px 0; color:#b45309; font-size:11.5px; background:#fef3c7; padding:4px 8px; border-radius:4px; border:1px dashed #fde68a;"><strong>Verbatim Match:</strong> "${escapeHtml(src.longest_phrase)}"</div>` : ""}
-          <div style="color:#64748b; font-style:italic; font-size:11.5px; margin-top:4px;">Matched excerpt: "${escapeHtml(src.matched_text)}..."</div>
+          ${src.source_authors ? `<div style="font-size:11px; color:#64748b; margin-bottom:3px;">Authors: ${escapeHtml(src.source_authors)}</div>` : ""}
+          ${src.source_venue ? `<div style="font-size:11px; color:#475569; margin-bottom:5px;">Venue: <strong>${escapeHtml(src.source_venue)}</strong> ${src.source_year ? `(${src.source_year})` : ""}</div>` : ""}
+          ${src.longest_phrase ? `<div style="margin:6px 0; color:#854d0e; font-size:12px; background:#fef9c3; padding:5px 10px; border-radius:4px; border:1px dashed #fde047;"><strong>Verbatim Match:</strong> "${escapeHtml(src.longest_phrase)}"</div>` : ""}
+          ${src.matched_text ? `<div style="color:#64748b; font-style:italic; font-size:11.5px; margin-top:4px; margin-bottom:8px;">Matched excerpt: "${escapeHtml(src.matched_text)}..."</div>` : ""}
           <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
             ${scholarBtn}
             ${googleBtn}
@@ -7194,8 +7163,7 @@ function filterPlagResults() {
     if (p.sentences && p.sentences.length > 0) {
       p.sentences.forEach(s => {
         if (s.match && currentPlagResults.rank_map && currentPlagResults.rank_map.has(s.match.source.id)) {
-          const rInfo = currentPlagResults.rank_map.get(s.match.source.id);
-          pHighlightedText += `<mark class="turnitin-highlight turnitin-color-${rInfo.colorIdx}">${escapeHtml(s.text)}<span class="turnitin-tag tag-${rInfo.colorIdx}">${rInfo.rank}</span></mark> `;
+          pHighlightedText += `<mark style="background:#fef08a; color:#854d0e; padding:1px 4px; border-radius:3px; font-weight:500;">${escapeHtml(s.text)}</mark> `;
         } else {
           pHighlightedText += escapeHtml(s.text) + " ";
         }
@@ -7205,12 +7173,12 @@ function filterPlagResults() {
     }
 
     html += `
-      <div class="plag-para-card ${cardBorderClass}">
+      <div class="plag-para-card ${cardBorderClass}" style="border:1px solid #e2e8f0; border-radius:8px; padding:14px 16px; background:#ffffff; margin-bottom:12px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
-          <span style="font-weight:700; font-size:13px; color:var(--text-secondary);">Paragraph #${p.index + 1} <span style="font-size:11px; color:var(--text-muted); font-weight:normal;">(${p.words_count || p.word_count} words)</span></span>
-          <span class="badge ${riskBadgeClass}">${riskIcon} (${p.max_similarity_pct}%)</span>
+          <span style="font-weight:700; font-size:13.5px; color:#1e293b;">Paragraph #${p.index + 1} <span style="font-size:11.5px; color:#64748b; font-weight:normal;">(${p.words_count || p.word_count || 0} words)</span></span>
+          ${riskBadgeHtml}
         </div>
-        <div style="font-size:13px; line-height:1.6; color:#334155;">${pHighlightedText.trim()}</div>
+        <div style="font-size:13.5px; line-height:1.65; color:#1e293b; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">${pHighlightedText.trim()}</div>
         ${matchInfoHtml}
       </div>
     `;
@@ -7541,39 +7509,13 @@ function exportPlagiarismReport() {
   exportPlagiarismPdfReport();
 }
 
-function printPlagiarismReport() {
+async function printPlagiarismReport() {
   if (!currentPlagResults || !currentPlagResults.paragraphs || currentPlagResults.paragraphs.length === 0) {
-    showToast("No plagiarism analysis results to print. Please run a check first.", "warn");
+    showToast("No plagiarism analysis results to export. Please run a check first.", "warn");
     return;
   }
-  const renderArea = document.getElementById("plag-pdf-render-area");
-  if (!renderArea) {
-    showToast("PDF render container missing.", "error");
-    return;
-  }
-  const data = currentPlagResults;
-  const now = new Date();
-  const dateStr = now.toISOString().split("T")[0];
-  const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  const fullDateStr = now.toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric" });
-  const reportId = `SKKU-PLAG-${dateStr.replace(/-/g, "")}-${Math.floor(10000 + Math.random() * 90000)}`;
-  const docName = currentPlagFile?.name || "Manuscript_Draft.pdf";
-
-  renderArea.innerHTML = buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr);
-  renderArea.style.display = "block";
-  document.body.classList.add("printing-plagiarism-report");
-
-  const cleanup = () => {
-    document.body.classList.remove("printing-plagiarism-report");
-    renderArea.style.display = "none";
-    window.removeEventListener("afterprint", cleanup);
-  };
-  window.addEventListener("afterprint", cleanup);
-
-  setTimeout(() => {
-    window.print();
-    setTimeout(cleanup, 2500);
-  }, 300);
+  showToast("📄 Compiling & Downloading Academic Originality Audit PDF Report...", "info");
+  await exportPlagiarismPdfReport();
 }
 
 
