@@ -1419,10 +1419,10 @@ body.is-admin .visitor-only {
 }
 
 .turnitin-brand-text {
-  font-size: 19px;
+  font-size: 16px;
   font-weight: 800;
-  color: #0070ba;
-  letter-spacing: -0.5px;
+  color: #0f172a;
+  letter-spacing: -0.3px;
 }
 
 .turnitin-doc-breadcrumb {
@@ -2085,45 +2085,59 @@ body.is-admin .visitor-only {
 }
 
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm 10mm 10mm 10mm;
+  }
+
   body {
     background: #ffffff !important;
     color: #0f172a !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
-  body.printing-plagiarism-report * {
-    visibility: hidden !important;
+
+  /* When printing academic plagiarism report, completely hide every other body child from layout */
+  body.printing-plagiarism-report > *:not(#plag-pdf-render-area) {
+    display: none !important;
   }
-  body.printing-plagiarism-report #plag-pdf-render-area,
-  body.printing-plagiarism-report #plag-pdf-render-area * {
-    visibility: visible !important;
-  }
+
   body.printing-plagiarism-report #plag-pdf-render-area {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100% !important;
     display: block !important;
-    background: #ffffff !important;
+    position: static !important;
+    width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
+    background: #ffffff !important;
     box-shadow: none !important;
   }
-  #pdf-export-container {
+
+  body.printing-plagiarism-report #pdf-export-container {
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
-    padding: 10mm 12mm !important;
+    padding: 0 !important;
     box-shadow: none !important;
     border: none !important;
     background: #ffffff !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
+  body.printing-plagiarism-report table {
+    page-break-inside: auto;
+  }
+
+  body.printing-plagiarism-report tr {
+    page-break-inside: avoid !important;
+    page-break-after: auto;
+  }
+
   .turnitin-highlight {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
   .turnitin-tag {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
