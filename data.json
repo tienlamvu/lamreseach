@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:18:26.726Z",
+  "exported_at": "2026-11-13T05:18:34.291Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -380,16 +380,17 @@
       },
       {
         "title": "Synthesis and Characterization of (1−x)Bi1/2Na1/2TiO3+xSrNiO3-δ Solid Solution System",
-        "authors": "Dung, D.D., Thoan, N.H., Dung, N.Q., Lam, N.H., Lam, V.T., Vinh, P.V., Luong, P.D., Van, D.Q.",
+        "authors": "Dang Duc Dung; Nguyen Hoang Thoan; Nguyen Quoc Dung; Nguyen Huu Lam; Vu Tien Lam; Pham Van Vinh; Pham Dinh Luong; Duong Quoc Van",
         "journal": "Journal of Electronic Materials",
         "year": 2022,
         "doi": "10.1007/s11664-022-09534-6",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
-        "pages": "",
+        "citations": 9,
+        "volume": "51",
+        "issue": "6",
+        "pages": "2716-2731",
         "source": "ORCID",
-        "visibility": "Public"
+        "visibility": "Public",
+        "id": 1794547113838
       }
     ],
     "conferences": [],
