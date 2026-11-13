@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T02:27:04.832Z",
+  "exported_at": "2026-11-13T02:27:05.884Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -57,18 +57,6 @@
       }
     ],
     "publications": [
-      {
-        "title": "Structural, optical, and magnetic properties of a new complex (1−x)Bi<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub> + xMgNiO<sub>3−δ</sub> solid solution system",
-        "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Quoc Dung, Nguyen Huu Lam, Pham Van Vinh, Vu Tien Lam, Pham Dinh Luong, Duong Quoc Van",
-        "journal": "Applied Physics A Materials Science and Processing",
-        "year": 2022,
-        "doi": "10.1007/s00339-021-05255-5",
-        "citations": 0,
-        "source": "ORCID",
-        "volume": "128",
-        "issue": "2",
-        "pages": "129"
-      },
       {
         "title": "Synthesis and Characterization of (1−x)Bi<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub> + xSrNiO<sub>3-δ</sub> Solid Solution System",
         "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Quoc Dung, Nguyen Huu Lam, Vu Tien Lam, Pham Van Vinh, Pham Dinh Luong, Duong Quoc Van",
