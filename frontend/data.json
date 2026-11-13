@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:04:34.280Z",
+  "exported_at": "2026-11-13T05:04:36.064Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -57,32 +57,6 @@
       }
     ],
     "publications": [
-      {
-        "title": "Structural, optical, and magnetic properties of a new complex (1−x)Bi1/2Na1/2TiO3 + xMgNiO3−δ solid solution system",
-        "authors": "Dung, D.D., Thoan, N.H., Dung, N.Q., Lam, N.H., Van Vinh, P., Lam, V.T., Luong, P.D., Van, D.Q.",
-        "journal": "Applied Physics A Materials Science and Processing",
-        "year": 2022,
-        "doi": "10.1007/s00339-021-05255-5",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
-        "pages": "",
-        "source": "ORCID",
-        "visibility": "Public"
-      },
-      {
-        "title": "Synthesis and Characterization of (1−x)Bi1/2Na1/2TiO3+xSrNiO3-δ Solid Solution System",
-        "authors": "Dung, D.D., Thoan, N.H., Dung, N.Q., Lam, N.H., Lam, V.T., Vinh, P.V., Luong, P.D., Van, D.Q.",
-        "journal": "Journal of Electronic Materials",
-        "year": 2022,
-        "doi": "10.1007/s11664-022-09534-6",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
-        "pages": "",
-        "source": "ORCID",
-        "visibility": "Public"
-      },
       {
         "title": "First-principles calculation of the impact of interstitial point defects on the Bi<sub>0.5</sub>Na<sub>0.5</sub>TiO<sub>3</sub> (110) surface",
         "authors": "Tien Lam Vu, Huu Lam Nguyen, Quoc Van Duong, Duc Dung Dang",
