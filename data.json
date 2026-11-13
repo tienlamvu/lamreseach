@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:17:56.396Z",
+  "exported_at": "2026-11-13T05:17:59.851Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -282,16 +282,17 @@
       },
       {
         "title": "Magnetic Properties of a (1−x)Bi0.5Na0.5TiO3+xCaNiO3-δ Solid Solution System Prepared by Sol–Gel Technique",
-        "authors": "Dung, D.D., Thoan, N.H., Dung, N.Q., Vinh, P.V., Lam, N.H., Lam, V.T., Luong, P.D., Van, D.Q.",
+        "authors": "D. D. Dung; N. H. Thoan; N. Q. Dung; P. V. Vinh; N. H. Lam; V. T. Lam; P. D. Luong; D. Q. Van",
         "journal": "Journal of Electronic Materials",
         "year": 2022,
         "doi": "10.1007/s11664-022-09457-2",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
-        "pages": "",
+        "citations": 12,
+        "volume": "51",
+        "issue": "5",
+        "pages": "1905-1921",
         "source": "ORCID",
-        "visibility": "Public"
+        "visibility": "Public",
+        "id": 1794547079358
       },
       {
         "title": "Magnetic and Optical Properties of Transition Metal (Cr, Mn, Fe, Co, and Ni) Doped Lead-Free Ferroelectric Bi0.5Na0.5TiO3 Materials",
