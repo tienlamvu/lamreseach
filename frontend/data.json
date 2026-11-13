@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T01:42:29.250Z",
+  "exported_at": "2026-11-13T01:44:09.928Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -239,6 +239,14 @@
       }
     ],
     "conferences": [
+      {
+        "title": "Theoretical Predictions of Valley Hall Transport in 2D Transition-Metal Dichalcogenide MoSSe Monolayers",
+        "event": "ISPSA 2026, Jeju, South Korea",
+        "type": "Poster Presentation",
+        "year": 2026,
+        "visibility": "Public",
+        "url": ""
+      },
       {
         "title": "Intrinsic and Electrically Tunable Spin-Valley Splitting in Janus MoSSe Monolayers",
         "event": "2025 KPS Fall Meeting, Gwangju, South Korea",
