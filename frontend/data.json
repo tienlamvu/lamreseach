@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T12:16:07.129Z",
+  "exported_at": "2026-11-13T12:18:17.621Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -448,6 +448,24 @@
     ]
   },
   "papers": [
+    {
+      "id": 1794572247854,
+      "doi": "10.1016/j.ijhydene.2022.01.236",
+      "title": "Y-decorated MoS2 monolayer for promising hydrogen storage: A DFT study",
+      "authors": "Hongying Liu, Shulin Yang, Gu Lei, Miaojing Xu, Huoxi Xu",
+      "journal": "International Journal of Hydrogen Energy",
+      "year": 2022,
+      "volume": "47",
+      "pages": "12096-12106",
+      "abstract": "",
+      "citation_count": 53,
+      "material_system": "Perovskite / 2D Material",
+      "synthesis_method": "First-principles DFT",
+      "characterization_tags": "DFT, VASP, XRD",
+      "status": "To Read",
+      "notes": "",
+      "in_weekly_report": 1
+    },
     {
       "id": 1794572106086,
       "doi": "10.1038/s41467-026-71890-2",
