@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:12:02.332Z",
+  "exported_at": "2026-11-13T05:12:03.802Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -57,46 +57,6 @@
       }
     ],
     "publications": [
-      {
-        "title": "Surface ferromagnetism of complex defects lead-free ferroelectric Bi0.5Na0.5TiO3 materials",
-        "authors": "Lam, V.T., Thoan, N.H., Trung, N.N., Van, D.Q., Dung, D.D.",
-        "journal": "Surface and Interface Analysis",
-        "year": 2023,
-        "doi": "10.1002/sia.7184",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
-        "pages": "",
-        "source": "ORCID",
-        "visibility": "Public"
-      },
-      {
-        "title": "Design and optical properties of a new binary Bi1/2Na1/2TiO3-Eu1/2Na1/2TiO3 solid solution system",
-        "authors": "Vu Tien Lam; Nguyen Hoang Thoan; Nguyen Huu Lam; Luong Thi Kim Phuong; Duong Quoc Van; Dang Duc Dung",
-        "journal": "Optical Materials",
-        "year": 2022,
-        "doi": "10.1016/j.optmat.2022.113083",
-        "citations": 0,
-        "volume": "134",
-        "issue": "",
-        "pages": "113083",
-        "source": "ORCID",
-        "visibility": "Public",
-        "id": 1794546564593
-      },
-      {
-        "title": "Fabrication and Optical Properties of Rare-Earth-Sm-Doped Lead-Free Ferroelectric Bi0.5Na0.5TiO3 Materials",
-        "authors": "Duong Quoc Van, Nguyen Hoang Thoan, Nguyen Huu Lam, Vu Tien Lam, Nguyen Ngoc Trung, Ngo Duc Quan, Dang Duc Dung",
-        "journal": "Lecture Notes in Mechanical Engineering",
-        "year": 2022,
-        "doi": "10.1007/978-3-030-99666-6_85",
-        "citations": 1,
-        "volume": "",
-        "issue": "",
-        "pages": "592-598",
-        "source": "ORCID",
-        "visibility": "Public"
-      },
       {
         "title": "Fabrication and optical properties of new (1-x)Bi1/2Na1/2TiO3+xHo1/2Na1/2TiO3 solid solution materials",
         "authors": "Dung, D.D., Thoan, N.H., Lam, N.H., Tho, D.D., Lam, V.T., Van, D.Q.",
