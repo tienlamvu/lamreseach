@@ -2862,6 +2862,149 @@ body.is-admin .visitor-only {
   }
 }
 
+/* ============================================================================
+   AI Journal Finder & Publisher Badges
+   ============================================================================ */
+.pub-badge-wiley {
+  background: rgba(124, 58, 237, 0.12) !important;
+  color: #7c3aed !important;
+  border: 1px solid rgba(124, 58, 237, 0.3) !important;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+}
+.pub-badge-springer {
+  background: rgba(5, 150, 105, 0.12) !important;
+  color: #059669 !important;
+  border: 1px solid rgba(5, 150, 105, 0.3) !important;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+}
+.pub-badge-elsevier {
+  background: rgba(234, 88, 12, 0.12) !important;
+  color: #ea580c !important;
+  border: 1px solid rgba(234, 88, 12, 0.3) !important;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+}
+.pub-badge-acs {
+  background: rgba(2, 132, 199, 0.12) !important;
+  color: #0284c7 !important;
+  border: 1px solid rgba(2, 132, 199, 0.3) !important;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+}
+.pub-badge-aps {
+  background: rgba(220, 38, 38, 0.12) !important;
+  color: #dc2626 !important;
+  border: 1px solid rgba(220, 38, 38, 0.3) !important;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+}
+.pub-badge-rsc {
+  background: rgba(8, 145, 178, 0.12) !important;
+  color: #0891b2 !important;
+  border: 1px solid rgba(8, 145, 178, 0.3) !important;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+}
+.pub-badge-iop {
+  background: rgba(75, 85, 99, 0.12) !important;
+  color: #4b5563 !important;
+  border: 1px solid rgba(75, 85, 99, 0.3) !important;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.journal-card {
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 16px 20px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(31, 25, 21, 0.04);
+  position: relative;
+}
+.journal-card:hover {
+  border-color: #b45309;
+  box-shadow: 0 6px 18px rgba(180, 83, 9, 0.12);
+  transform: translateY(-2px);
+}
+
+.journal-match-score {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-weight: 900;
+  font-size: 13.5px;
+  letter-spacing: -0.2px;
+}
+.journal-match-score.score-high {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1.5px solid #a7f3d0;
+}
+.journal-match-score.score-medium {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1.5px solid #bfdbfe;
+}
+.journal-match-score.score-fair {
+  background: #fefce8;
+  color: #a16207;
+  border: 1.5px solid #fef08a;
+}
+
+.journal-tag-chip {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.journal-tag-chip.matched {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+  font-weight: 700;
+}
+
+
 
 
 
