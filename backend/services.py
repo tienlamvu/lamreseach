@@ -355,34 +355,112 @@ def sync_orcid_profile(raw_orcid: str) -> dict:
         works_resp = requests.get(f"{base_url}/works", headers=orcid_headers, timeout=10)
         if works_resp.status_code == 200:
             groups = works_resp.json().get("group", [])
-            for grp in groups[:35]:
+            put_codes = []
+            for grp in groups[:50]:
+                summaries = grp.get("work-summary", [])
+                if summaries and summaries[0].get("put-code"):
+                    put_codes.append(str(summaries[0].get("put-code")))
+
+            work_details_map = {}
+            if put_codes:
+                try:
+                    bulk_csv = ",".join(put_codes[:50])
+                    b_resp = requests.get(f"{base_url}/works/{bulk_csv}", headers=orcid_headers, timeout=15)
+                    if b_resp.status_code == 200:
+                        for item in b_resp.json().get("bulk", []):
+                            w_item = item.get("work", {})
+                            pc = str(w_item.get("put-code", ""))
+                            if pc:
+                                work_details_map[pc] = w_item
+                except Exception:
+                    pass
+
+            for grp in groups[:50]:
                 summaries = grp.get("work-summary", [])
                 if not summaries:
                     continue
                 ws = summaries[0]
-                title_obj = (ws.get("title") or {}).get("title") or {}
+                pc = str(ws.get("put-code", ""))
+                work_detail = work_details_map.get(pc, ws)
+
+                title_obj = (work_detail.get("title") or {}).get("title") or {}
                 w_title = title_obj.get("value", "Untitled Work")
-                journal_obj = ws.get("journal-title") or {}
-                w_journal = journal_obj.get("value", "") or ws.get("type", "Publication").replace("_", " ").title()
-                pub_date = ws.get("publication-date") or {}
-                w_year = int(((pub_date.get("year") or {}).get("value") or 2025))
+                journal_obj = work_detail.get("journal-title") or {}
+                w_journal = journal_obj.get("value", "") or work_detail.get("type", "Publication").replace("_", " ").title()
+                pub_date = work_detail.get("publication-date") or {}
+                w_year = int(((pub_date.get("year") or {}).get("value") or 2026))
 
                 w_doi = ""
-                ext_ids = (ws.get("external-ids") or {}).get("external-id", [])
+                ext_ids = (work_detail.get("external-ids") or {}).get("external-id", [])
                 for eid in ext_ids:
                     if (eid.get("external-id-type") or "").lower() == "doi":
                         w_doi = eid.get("external-id-value", "")
                         break
 
-                publications.append({
+                # Extract all contributors / co-authors
+                author_names = []
+                contribs = (work_detail.get("contributors") or {}).get("contributor", [])
+                for c in contribs:
+                    c_name = ((c.get("credit-name") or {}).get("value") or "").strip()
+                    if c_name:
+                        author_names.append(c_name)
+
+                w_authors = ", ".join(author_names) if author_names else full_name
+                w_volume = ""
+                w_issue = ""
+                w_pages = ""
+                w_citations = 0
+
+                # Crossref enrichment for DOIs
+                if w_doi:
+                    try:
+                        cr_resp = requests.get(
+                            f"https://api.crossref.org/works/{requests.utils.quote(w_doi)}",
+                            headers={"User-Agent": "MatSciHub/1.0 (mailto:lamvt@skku.edu)"},
+                            timeout=5
+                        )
+                        if cr_resp.status_code == 200:
+                            cr_msg = cr_resp.json().get("message", {})
+                            if not author_names and cr_msg.get("author"):
+                                cr_authors = []
+                                for a in cr_msg.get("author", []):
+                                    given = a.get("given", "").strip()
+                                    family = a.get("family", "").strip()
+                                    if given and family:
+                                        cr_authors.append(f"{given} {family}")
+                                    elif family:
+                                        cr_authors.append(family)
+                                if cr_authors:
+                                    w_authors = ", ".join(cr_authors)
+                            w_volume = str(cr_msg.get("volume") or "")
+                            w_issue = str(cr_msg.get("issue") or "")
+                            w_pages = str(cr_msg.get("page") or "")
+                            w_citations = int(cr_msg.get("is-referenced-by-count") or 0)
+                            if not w_journal or w_journal == "Publication":
+                                ct = cr_msg.get("container-title", [])
+                                if ct:
+                                    w_journal = ct[0]
+                    except Exception:
+                        pass
+
+                pub_entry = {
                     "title": w_title,
-                    "authors": full_name,
+                    "authors": w_authors,
                     "journal": w_journal,
                     "year": w_year,
                     "doi": w_doi,
-                    "citations": 0,
-                    "source": "ORCID"
-                })
+                    "citations": w_citations,
+                    "source": "ORCID",
+                    "visibility": "Public"
+                }
+                if w_volume:
+                    pub_entry["volume"] = w_volume
+                if w_issue:
+                    pub_entry["issue"] = w_issue
+                if w_pages:
+                    pub_entry["pages"] = w_pages
+
+                publications.append(pub_entry)
     except Exception:
         pass
 
