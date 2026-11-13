@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:18:22.594Z",
+  "exported_at": "2026-11-13T05:18:26.726Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -365,17 +365,18 @@
         "id": 1794547102134
       },
       {
-        "title": "Structural, optical, and magnetic properties of a new complex (1−x)Bi1/2Na1/2TiO3 + xMgNiO3−δ solid solution system",
-        "authors": "Dung, D.D., Thoan, N.H., Dung, N.Q., Lam, N.H., Van Vinh, P., Lam, V.T., Luong, P.D., Van, D.Q.",
-        "journal": "Applied Physics A Materials Science and Processing",
+        "title": "Structural, optical, and magnetic properties of a new complex (1−x)Bi1/2Na1/2TiO3 + xMgNiO3−δ solid solution system",
+        "authors": "Dang Duc Dung; Nguyen Hoang Thoan; Nguyen Quoc Dung; Nguyen Huu Lam; Pham Van Vinh; Vu Tien Lam; Pham Dinh Luong; Duong Quoc Van",
+        "journal": "Applied Physics A",
         "year": 2022,
         "doi": "10.1007/s00339-021-05255-5",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
+        "citations": 13,
+        "volume": "128",
+        "issue": "2",
         "pages": "",
         "source": "ORCID",
-        "visibility": "Public"
+        "visibility": "Public",
+        "id": 1794547106270
       },
       {
         "title": "Synthesis and Characterization of (1−x)Bi1/2Na1/2TiO3+xSrNiO3-δ Solid Solution System",
