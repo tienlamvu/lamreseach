@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T02:12:40.236Z",
+  "exported_at": "2026-11-13T02:12:42.015Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -57,30 +57,6 @@
       }
     ],
     "publications": [
-      {
-        "title": "Ultrafast switching and high-endurance nonvolatile memory enabled by intrinsic switchable polarization in semiconducting Janus monolayers",
-        "authors": "Ngoc Thanh Duong, Swathi Krishna, Minh Chien Nguyen, Hang Sik Kim, Vu Tien Lam, Hamza Zad Gul, Soo Ho Choi, Minjeong Kim, Daekwon Lee, Thi Uyen Tran, Vu Khac Dat, Van Dam Do, Van Huy Hoang, Heesuk Rho, Young-Min Kim, Woo Jong Yu, Ki Kang Kim, Seong Chu Lim",
-        "journal": "Nature Communications",
-        "year": 2026,
-        "doi": "10.1038/s41467-026-73279-7",
-        "citations": 0,
-        "source": "ORCID",
-        "volume": "17",
-        "issue": "1",
-        "pages": "6644"
-      },
-      {
-        "title": "Magnetic properties of new binary compounds lead-free ferroelectric (1-x)Ba(Zr<sub>0.2</sub>Ti<sub>0.8</sub>)O<sub>3</sub> + xFeTiO<sub>3</sub> as solid solution",
-        "authors": "Dang Duc Dung, Nguyen Huu Lam, Luong Thi Kim Phuong, Dang Ba Tung, Jitendra Pal Singh, Nguyen Hoang Thoan, Vu Tien Lam, Duong Quoc Van",
-        "journal": "Journal of Solid State Chemistry",
-        "year": 2025,
-        "doi": "10.1016/j.jssc.2025.125495",
-        "citations": 0,
-        "source": "ORCID",
-        "volume": "350",
-        "pages": "125495",
-        "issue": ""
-      },
       {
         "title": "Nature defect-mediated room temperature ferromagnetism in lead-free ferroelectric Ba(Zr<sub>0.2</sub>Ti<sub>0.8</sub>)O<sub>3</sub>: A first-principles study",
         "authors": "Vu Tien Lam, N.H. Lam, D.Q. Van, N.T. Trang, J.P. Singh, N.H. Linh, N.H. Thoan, N.N. Trung, D.D. Dung",
