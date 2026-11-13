@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:18:07.015Z",
+  "exported_at": "2026-11-13T05:18:10.886Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -310,16 +310,17 @@
       },
       {
         "title": "Magnetic properties of new (1−x)Bi1/2Na1/2TiO3+xBaNiO3−δ solid solution materials",
-        "authors": "Dung, D.D., Thoan, N.H., Van Vinh, P., Lam, N.H., Lam, V.T., Luong, P.D., Van, D.Q., Odkhuu, D.",
-        "journal": "Applied Physics A Materials Science and Processing",
+        "authors": "Dang Duc Dung; Nguyen Hoang Thoan; Phan Van Vinh; Nguyen Huu Lam; Vu Tien Lam; Pham Dinh Luong; Duong Quoc Van; Dorj Odkhuu",
+        "journal": "Applied Physics A",
         "year": 2022,
         "doi": "10.1007/s00339-022-05281-x",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
+        "citations": 11,
+        "volume": "128",
+        "issue": "2",
         "pages": "",
         "source": "ORCID",
-        "visibility": "Public"
+        "visibility": "Public",
+        "id": 1794547090422
       },
       {
         "title": "Optical and Magnetic Properties of Lead-Free Ferroelectric (Bi0.5Na0.5)0.97A0.03Ti0.97Fe0.03O3 (A = Mg, Sr, Ca, Ba) Materials",
