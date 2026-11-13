@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261113_v48_mobile" onerror="this.href='/static/styles.css?v=20261113_v48_mobile'" />
+  <link rel="stylesheet" href="styles.css?v=20261113_v49_mobile_dropdown" onerror="this.href='/static/styles.css?v=20261113_v49_mobile_dropdown'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -47,6 +47,35 @@
         <!-- Google Account Owner Auth Bar (lamvt.skku@gmail.com) -->
         <div class="google-auth-bar" id="google-auth-bar"></div>
       </div>
+    </div>
+
+    <!-- Mobile Compact Dropdown Navigation Bar (Mobile Only) -->
+    <div class="mobile-tab-nav-bar mobile-only">
+      <button type="button" class="mobile-nav-step-btn" onclick="stepMobileTab(-1)" title="Previous Tab" aria-label="Previous Tab">◀</button>
+      
+      <div class="mobile-tab-dropdown-wrap">
+        <div class="mobile-tab-display-pill" id="mobile-tab-current-pill">
+          <span class="mobile-tab-icon" id="mobile-nav-icon">📊</span>
+          <span class="mobile-tab-title" id="mobile-nav-title">Dashboard</span>
+          <span class="mobile-tab-caret">▼</span>
+        </div>
+        <select id="mobile-tab-select" class="mobile-tab-native-select" onchange="switchTab(this.value)" aria-label="Select Navigation Tab">
+          <option value="dashboard">📊 Dashboard</option>
+          <option value="literature">📚 References (Literature)</option>
+          <option value="calendar">📅 Calendar &amp; Google Calendar</option>
+          <option value="structures">💎 Crystal Structures (*.cif)</option>
+          <option value="weekly-report" class="admin-only">📽️ Weekly Report (PPTX)</option>
+          <option value="manuscript">🎯 Journal Finder &amp; Plagiarism</option>
+          <option value="toolkit">⚛️ Periodic Table &amp; Calc</option>
+          <option value="cv">📜 Academic CV</option>
+        </select>
+      </div>
+
+      <button type="button" class="mobile-nav-step-btn" onclick="stepMobileTab(1)" title="Next Tab" aria-label="Next Tab">▶</button>
+      
+      <button type="button" class="mobile-nav-toggle-strip-btn" onclick="toggleMobileHorizontalStrip()" title="Toggle Horizontal Tabs Strip" aria-label="Toggle Horizontal Tabs">
+        <span id="mobile-strip-toggle-icon">☰</span>
+      </button>
     </div>
 
     <!-- Horizontal Navigation Tabs Row -->
@@ -2247,7 +2276,7 @@
   <div id="toast-container"></div>
   <div id="plag-pdf-render-area" style="display:none;"></div>
 
-  <script src="matsci_tools.js?v=20261113_v48_mobile" onerror="this.src='/static/matsci_tools.js?v=20261113_v48_mobile'"></script>
-  <script src="app.js?v=20261113_v48_mobile" onerror="this.src='/static/app.js?v=20261113_v48_mobile'"></script>
+  <script src="matsci_tools.js?v=20261113_v49_mobile_dropdown" onerror="this.src='/static/matsci_tools.js?v=20261113_v49_mobile_dropdown'"></script>
+  <script src="app.js?v=20261113_v49_mobile_dropdown" onerror="this.src='/static/app.js?v=20261113_v49_mobile_dropdown'"></script>
 </body>
 </html>
