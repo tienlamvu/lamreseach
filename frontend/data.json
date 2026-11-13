@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T02:12:44.453Z",
+  "exported_at": "2026-11-13T02:12:45.479Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -57,30 +57,6 @@
       }
     ],
     "publications": [
-      {
-        "title": "Structural, electronic and optical properties of complex lead-free ferroelectric Ba<sub>0.7</sub>Ca<sub>0.3</sub>TiO<sub>3</sub> materials: A DFT study",
-        "authors": "Ngo Huyen Ngan, Vu Tien Lam, Nguyen Huu Lam, Pham Thi Huyen, Duong Quoc Van, Nguyen Hoang Thoan, Dang Duc Dung",
-        "journal": "MRS Communications",
-        "year": 2024,
-        "doi": "10.1557/s43579-024-00599-4",
-        "citations": 0,
-        "source": "ORCID",
-        "volume": "14",
-        "issue": "4",
-        "pages": "667-675"
-      },
-      {
-        "title": "Electronic Structure and Optical Properties of Cubic Perovskite Baxo3 (X=Ti, Sn): A First Principle Calculations",
-        "authors": "Vu Tien Lam, Nguyen Huu Lam, Van Duong Quoc, Nguyen Hoang Thoan, Dang Duc Dung",
-        "journal": "Ssrn",
-        "year": 2023,
-        "doi": "10.2139/ssrn.4654244",
-        "citations": 0,
-        "source": "ORCID",
-        "volume": "",
-        "issue": "",
-        "pages": ""
-      },
       {
         "title": "Fabrication and Optical Properties of (1−x)Bi<sub>½</sub>Na<sub>½</sub>TiO<sub>3</sub> − xEr<sub>½</sub>Na<sub>½</sub>TiO<sub>3</sub> Solid Solution System",
         "authors": "Nguyen Hoang Thoan, Nguyen Huu Lam, Vu Tien Lam, Duong Quoc Van, Dang Duc Dung",
