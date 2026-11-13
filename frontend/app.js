@@ -3677,6 +3677,36 @@ async function loadStaticFallbackData() {
           STATE.profile = remoteData.profile || {};
           loadedFromDataJson = true;
         }
+        if (remoteData && remoteData.profile && Array.isArray(remoteData.profile.publications)) {
+          const remoteMap = new Map();
+          remoteData.profile.publications.forEach(rp => {
+            if (rp.doi) remoteMap.set(rp.doi.toLowerCase().trim(), rp);
+            if (rp.title) remoteMap.set(rp.title.toLowerCase().replace(/<[^>]+>/g, '').trim(), rp);
+          });
+
+          const currentPubs = STATE.profile.publications || [];
+          if (currentPubs.length === 0) {
+            STATE.profile.publications = remoteData.profile.publications;
+          } else {
+            STATE.profile.publications = currentPubs.map(p => {
+              const keyDoi = (p.doi || '').toLowerCase().trim();
+              const keyTitle = (p.title || '').toLowerCase().replace(/<[^>]+>/g, '').trim();
+              const match = remoteMap.get(keyDoi) || remoteMap.get(keyTitle);
+              if (match) {
+                return {
+                  ...p,
+                  authors: (p.authors && p.authors.includes(',')) ? p.authors : (match.authors || p.authors),
+                  volume: p.volume || match.volume || "",
+                  issue: p.issue || match.issue || "",
+                  pages: p.pages || match.pages || "",
+                  doi: p.doi || match.doi || "",
+                  journal: p.journal || match.journal || ""
+                };
+              }
+              return p;
+            });
+          }
+        }
       }
     }
   } catch (e) {
@@ -3869,94 +3899,277 @@ async function loadStaticFallbackData() {
       ],
       publications: [
         {
-          id: 1,
-          title: "First-principles calculation of the impact of interstitial point defects on the Bi<sub>0.5</sub>Na<sub>0.5</sub>TiO<sub>3</sub> (110) surface",
-          authors: "Vu Tien Lam",
-          journal: "Dalat University Journal of Science",
-          year: 2026,
-          doi: "10.46544/RSEJ.2026.01.02",
-          citations: 4,
-          visibility: "Public",
-          source: "ORCID"
+                "title": "First-principles calculation of the impact of interstitial point defects on the Bi<sub>0.5</sub>Na<sub>0.5</sub>TiO<sub>3</sub> (110) surface",
+                "authors": "Tien Lam Vu, Huu Lam Nguyen, Quoc Van Duong, Duc Dung Dang",
+                "journal": "Dalat University Journal of Science",
+                "year": 2026,
+                "doi": "10.37569/DalatUniversity.16.4S.1620(2026)",
+                "citations": 0,
+                "source": "ORCID",
+                "pages": "1620",
+                "volume": "16",
+                "issue": "4S"
         },
         {
-          id: 2,
-          title: "Ultrafast switching and high-endurance nonvolatile memory enabled by intrinsic switchable polarization in semiconducting Janus monolayers",
-          authors: "Vu Tien Lam; Min-Ho Kim; Won Jong Yoo",
-          journal: "Nature Communications",
-          year: 2026,
-          doi: "10.1038/s41467-026-58210-x",
-          citations: 18,
-          visibility: "Public",
-          source: "ORCID"
+                "title": "Ultrafast switching and high-endurance nonvolatile memory enabled by intrinsic switchable polarization in semiconducting Janus monolayers",
+                "authors": "Ngoc Thanh Duong, Swathi Krishna, Minh Chien Nguyen, Hang Sik Kim, Vu Tien Lam, Hamza Zad Gul, Soo Ho Choi, Minjeong Kim, Daekwon Lee, Thi Uyen Tran, Vu Khac Dat, Van Dam Do, Van Huy Hoang, Heesuk Rho, Young-Min Kim, Woo Jong Yu, Ki Kang Kim, Seong Chu Lim",
+                "journal": "Nature Communications",
+                "year": 2026,
+                "doi": "10.1038/s41467-026-73279-7",
+                "citations": 0,
+                "source": "ORCID",
+                "volume": "17",
+                "issue": "1",
+                "pages": "6644"
         },
         {
-          id: 3,
-          title: "Magnetic properties of new binary compounds lead-free ferroelectric (1-x)Ba(Zr0.2Ti0.8)O3+xFeTiO3 as solid solution",
-          authors: "Vu Tien Lam; Seok-Woo Kang; Jin-Woo Park",
-          journal: "Journal of Solid State Chemistry",
-          year: 2025,
-          doi: "10.1016/j.jssc.2025.124589",
-          citations: 22,
-          visibility: "Public",
-          source: "ORCID"
+                "title": "Magnetic properties of new binary compounds lead-free ferroelectric (1-x)Ba(Zr<sub>0.2</sub>Ti<sub>0.8</sub>)O<sub>3</sub> + xFeTiO<sub>3</sub> as solid solution",
+                "authors": "Dang Duc Dung, Nguyen Huu Lam, Luong Thi Kim Phuong, Dang Ba Tung, Jitendra Pal Singh, Nguyen Hoang Thoan, Vu Tien Lam, Duong Quoc Van",
+                "journal": "Journal of Solid State Chemistry",
+                "year": 2025,
+                "doi": "10.1016/j.jssc.2025.125495",
+                "citations": 0,
+                "source": "ORCID",
+                "volume": "350",
+                "pages": "125495"
         },
         {
-          id: 4,
-          title: "Nature defect-mediated room temperature ferromagnetism in lead-free ferroelectric Ba(Zr0.2Ti0.8)O3: A first-principles study",
-          authors: "Vu Tien Lam; Nguyen Van Minh; Won Jong Yoo",
-          journal: "Physical Review Materials",
-          year: 2025,
-          doi: "10.1103/PhysRevMaterials.2025.064402",
-          citations: 15,
-          visibility: "Public",
-          source: "ORCID"
+                "title": "Nature defect-mediated room temperature ferromagnetism in lead-free ferroelectric Ba(Zr<sub>0.2</sub>Ti<sub>0.8</sub>)O<sub>3</sub>: A first-principles study",
+                "authors": "Vu Tien Lam, N.H. Lam, D.Q. Van, N.T. Trang, J.P. Singh, N.H. Linh, N.H. Thoan, N.N. Trung, D.D. Dung",
+                "journal": "Next Materials",
+                "year": 2025,
+                "doi": "10.1016/j.nxmate.2025.100916",
+                "citations": 0,
+                "source": "ORCID",
+                "volume": "8",
+                "pages": "100916",
+                "id": 1794397736877,
+                "visibility": "Public"
         },
         {
-          id: 5,
-          title: "Near-Ideal van der Waals NbSe2 Contacts for WSe2 CMOS Electronics",
-          authors: "Hyungyu Choi; Yunseo Song; Nasir Ali; Hoseong Shin; Tae Woong Yoon; Inhee Jeong; Hyokwang Park; Seunguk Song; Min Sup Choi; Boseok Kang; Won Jong Yoo",
-          journal: "Nano Letters",
-          year: 2026,
-          doi: "10.1021/acs.nanolett.6c00871",
-          citations: 12,
-          visibility: "Public",
-          source: "ORCID"
+                "title": "Role of substitution Zr-site on the electronic structure and magnetic properties of BaTiO<sub>3</sub> materials: A first principles calculation",
+                "authors": "Vu Tien Lam, Nguyen Huu Lam, Duong Quoc Van, Nguyen Hoang Thoan, Nguyen Ngoc Trung, Dang Duc Dung",
+                "journal": "Computational and Theoretical Chemistry",
+                "year": 2025,
+                "doi": "10.1016/j.comptc.2024.114989",
+                "citations": 0,
+                "source": "ORCID",
+                "volume": "1243",
+                "pages": "114989"
         },
         {
-          id: 6,
-          title: "Indium selenides for next-generation low-power computing devices",
-          authors: "Seunguk Song; Michael Altvater; Wonchan Lee; Hyeon Suk Shin; Nicholas Glavin; Deep Jariwala",
-          journal: "Nature Reviews Electrical Engineering",
-          year: 2026,
-          doi: "10.1038/s44287-025-00123-x",
-          citations: 28,
-          visibility: "Public",
-          source: "ORCID"
+                "title": "Comparative electronic structure, magnetic and optical properties of cubic perovskite Ba<sub>X</sub>O<sub>3</sub> (X=Ti, Sn) with self-defects: A first-principles calculation",
+                "authors": "Vu Tien Lam, Nguyen Huu Lam, Nguyen Hoang Thoan, Duong Quoc Van, Dang Duc Dung",
+                "journal": "Materials Today Communications",
+                "year": 2024,
+                "doi": "10.1016/j.mtcomm.2024.109686",
+                "citations": 0,
+                "source": "ORCID",
+                "volume": "40",
+                "pages": "109686"
         },
         {
-          id: 7,
-          title: "Vacancy-Mediated Ion Transport in Ta-Doped Cubic LLZO: Combined First-Principles DFT and Impedance Spectroscopy",
-          authors: "Vu Tien Lam; Min-Ho Kim; Seok-Woo Kang; Jin-Woo Park",
-          journal: "ACS Applied Materials & Interfaces",
-          year: 2025,
-          doi: "10.1021/acsami.4c12984",
-          citations: 34,
-          visibility: "Public",
-          source: "ORCID"
+                "title": "First-principles calculations of self-defects on the structural, electronic, and optical properties of Ba<sub>X</sub>O<sub>3</sub> (X = Ti, Zr, and Hf) perovskite oxide materials",
+                "authors": "Vu Tien Lam, Nguyen Huu Lam, Duong Quoc Van, Nguyen Minh Quan, Nguyen Hoang Thoan, Dang Duc Dung",
+                "journal": "Materials Today Communications",
+                "year": 2024,
+                "doi": "10.1016/j.mtcomm.2024.110641",
+                "citations": 0,
+                "source": "ORCID",
+                "volume": "41",
+                "pages": "110641"
         },
         {
-          id: 8,
-          title: "Phase Stability and Bandgap Engineering of 2D Transition Metal Dichalcogenides via Strain Modulation",
-          authors: "Tien Lam Vu; H. Shin; K. S. Novoselov; W. J. Yoo",
-          journal: "Physical Review B",
-          year: 2024,
-          doi: "10.1103/PhysRevB.109.155402",
-          citations: 45,
-          visibility: "Public",
-          source: "ORCID"
+                "title": "Optical, Magnetic, and Electrical Properties of New Binary CoTiO<sub>3</sub>-Modified Ba(Zr<sub>0.2</sub>Ti<sub>0.8</sub>)O<sub>3</sub> System as Solid Solution",
+                "authors": "Luong Hong Dang, Luong Thi Kim Phuong, Nguyen Huu Lam, Duong Van Thiet, Nguyen Hoang Thoan, Vu Tien Lam, Duong Quoc Van, Dang Duc Dung",
+                "journal": "Journal of Electronic Materials",
+                "year": 2024,
+                "doi": "10.1007/s11664-024-11514-x",
+                "citations": 0,
+                "source": "ORCID",
+                "volume": "53",
+                "issue": "12",
+                "pages": "7819-7838"
+        },
+        {
+                "title": "Optical, magnetic and electrical properties of new binary MnTiO<sub>3</sub>-modified Ba(Zr,Ti)O<sub>3</sub> materials as solid solution",
+                "authors": "Dung Dang Duc, Luong Thi Kim Phuong, Nguyen Huu Lam, Duong Van Thiet, Luong Hong Dang, Nguyen Hoang Thoan, Vu Tien Lam, Duong Quoc Van",
+                "journal": "Physica B Condensed Matter",
+                "year": 2024,
+                "doi": "10.1016/j.physb.2024.416444",
+                "citations": 0,
+                "source": "ORCID",
+                "volume": "694",
+                "pages": "416444"
+        },
+        {
+                "title": "Structural, electronic and optical properties of complex lead-free ferroelectric Ba<sub>0.7</sub>Ca<sub>0.3</sub>TiO<sub>3</sub> materials: A DFT study",
+                "authors": "Ngo Huyen Ngan, Vu Tien Lam, Nguyen Huu Lam, Pham Thi Huyen, Duong Quoc Van, Nguyen Hoang Thoan, Dang Duc Dung",
+                "journal": "MRS Communications",
+                "year": 2024,
+                "doi": "10.1557/s43579-024-00599-4",
+                "citations": 0,
+                "source": "ORCID",
+                "volume": "14",
+                "issue": "4",
+                "pages": "667-675"
+        },
+        {
+                "title": "Electronic Structure and Optical Properties of Cubic Perovskite Baxo3 (X=Ti, Sn): A First Principle Calculations",
+                "authors": "Vu Tien Lam, Nguyen Huu Lam, Van Duong Quoc, Nguyen Hoang Thoan, Dang Duc Dung",
+                "journal": "Ssrn",
+                "year": 2023,
+                "doi": "10.2139/ssrn.4654244",
+                "citations": 0,
+                "source": "ORCID"
+        },
+        {
+                "title": "Fabrication and Optical Properties of (1−x)Bi<sub>½</sub>Na<sub>½</sub>TiO<sub>3</sub> − xEr<sub>½</sub>Na<sub>½</sub>TiO<sub>3</sub> Solid Solution System",
+                "authors": "Nguyen Hoang Thoan, Nguyen Huu Lam, Vu Tien Lam, Duong Quoc Van, Dang Duc Dung",
+                "journal": "Journal of Electronic Materials",
+                "year": 2023,
+                "doi": "10.1007/s11664-022-10134-7",
+                "citations": 0,
+                "source": "ORCID",
+                "volume": "52",
+                "issue": "2",
+                "pages": "1564-1574"
+        },
+        {
+                "title": "Surface ferromagnetism of complex defects lead-free ferroelectric Bi<sub>0.5</sub>Na<sub>0.5</sub>TiO<sub>3</sub> materials",
+                "authors": "Vu Tien Lam, Nguyen Hoang Thoan, Nguyen Ngoc Trung, Duong Quoc Van, Dang Duc Dung",
+                "journal": "Surface and Interface Analysis",
+                "year": 2023,
+                "doi": "10.1002/sia.7184",
+                "citations": 0,
+                "source": "ORCID",
+                "volume": "55",
+                "issue": "4",
+                "pages": "243-255"
+        },
+        {
+                "title": "Design and optical properties of a new binary Bi<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub>-Eu<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub> solid solution system",
+                "authors": "Vu Tien Lam, Nguyen Hoang Thoan, Nguyen Huu Lam, Luong Thi Kim Phuong, Duong Quoc Van, Dang Duc Dung",
+                "journal": "Optical Materials",
+                "year": 2022,
+                "doi": "10.1016/j.optmat.2022.113083",
+                "citations": 0,
+                "source": "ORCID",
+                "volume": "134",
+                "pages": "113083"
+        },
+        {
+                "title": "Fabrication and Optical Properties of Rare-Earth-Sm-Doped Lead-Free Ferroelectric Bi<sub>0.5</sub>Na<sub>0.5</sub>TiO<sub>3</sub> Materials",
+                "authors": "Duong Quoc Van, Nguyen Hoang Thoan, Nguyen Huu Lam, Vu Tien Lam, Nguyen Ngoc Trung, Ngo Duc Quan, Dang Duc Dung",
+                "journal": "Lecture Notes in Mechanical Engineering",
+                "year": 2022,
+                "doi": "10.1007/978-3-030-99666-6_85",
+                "citations": 0,
+                "source": "ORCID",
+                "pages": "592-598"
+        },
+        {
+                "title": "Fabrication and optical properties of new (1-x)Bi<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub> + xHo<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub> solid solution materials",
+                "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Huu Lam, Do Duc Tho, Vu Tien Lam, Duong Quoc Van",
+                "journal": "Optical Materials",
+                "year": 2022,
+                "doi": "10.1016/j.optmat.2022.112750",
+                "citations": 0,
+                "source": "ORCID",
+                "volume": "132",
+                "pages": "112750"
+        },
+        {
+                "title": "Magnetic Properties of a (1−x)Bi<sub>0.5</sub>Na<sub>0.5</sub>TiO<sub>3</sub> + xCaNiO<sub>3-δ</sub> Solid Solution System Prepared by Sol–Gel Technique",
+                "authors": "D. D. Dung, N. H. Thoan, N. Q. Dung, P. V. Vinh, N. H. Lam, V. T. Lam, P. D. Luong, D. Q. Van",
+                "journal": "Journal of Electronic Materials",
+                "year": 2022,
+                "doi": "10.1007/s11664-022-09457-2",
+                "citations": 0,
+                "source": "ORCID",
+                "volume": "51",
+                "issue": "5",
+                "pages": "1905-1921"
+        },
+        {
+                "title": "Magnetic and Optical Properties of Transition Metal (Cr, Mn, Fe, Co, and Ni) Doped Lead-Free Ferroelectric Bi<sub>0.5</sub>Na<sub>0.5</sub>TiO<sub>3</sub> Materials",
+                "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Huu Lam, Vu Tien Lam, Nguyen Ngoc Trung, Nguyen Hoang Linh, Duong Quoc Van",
+                "journal": "Lecture Notes in Mechanical Engineering",
+                "year": 2022,
+                "doi": "10.1007/978-3-030-99666-6_88",
+                "citations": 0,
+                "source": "ORCID",
+                "pages": "610-614"
+        },
+        {
+                "title": "Magnetic properties of new (1−x)Bi<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub> + xBaNiO<sub>3−δ</sub> solid solution materials",
+                "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Phan Van Vinh, Nguyen Huu Lam, Vu Tien Lam, Pham Dinh Luong, Duong Quoc Van, Dorj Odkhuu",
+                "journal": "Applied Physics A Materials Science and Processing",
+                "year": 2022,
+                "doi": "10.1007/s00339-022-05281-x",
+                "citations": 0,
+                "source": "ORCID",
+                "volume": "128",
+                "issue": "2",
+                "pages": "168"
+        },
+        {
+                "title": "Optical and Magnetic Properties of Lead-Free Ferroelectric (Bi<sub>0.5</sub>Na<sub>0.5</sub>)<sub>0.97</sub>A<sub>0.03</sub>Ti<sub>0.97</sub>Fe<sub>0.03</sub>O<sub>3</sub> (A = Mg, Sr, Ca, Ba) Materials",
+                "authors": "Dang Duc Dung, Nguyen Huu Lam, Nguyen Hoang Thoan, Vu Tien Lam, Nguyen Ngoc Trung, Nguyen Hoang Tuan, Duong Quoc Van",
+                "journal": "Lecture Notes in Mechanical Engineering",
+                "year": 2022,
+                "doi": "10.1007/978-3-030-99666-6_87",
+                "citations": 0,
+                "source": "ORCID",
+                "pages": "604-609"
+        },
+        {
+                "title": "Optical properties of a new binary lead-free ferroelectric semiconductor Bi<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub>–Nd1/2Na1/2TiO<sub>3</sub> solid solution system",
+                "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Huu Lam, Do Duc Tho, Vu Tien Lam, Nguyen Thi Trang, Duong Quoc Van",
+                "journal": "Applied Physics A Materials Science and Processing",
+                "year": 2022,
+                "doi": "10.1007/s00339-022-05910-5",
+                "citations": 0,
+                "source": "ORCID",
+                "volume": "128",
+                "issue": "9",
+                "pages": "798"
+        },
+        {
+                "title": "Structural, Magnetic, and Optical Properties of Complex Lead-Free Ferroelectric 0.97Bi0.5Na0.5TiO<sub>3</sub> + 0.03AMnO<sub>3</sub> (A = Mg, Ca, Sr, Ba) Materials",
+                "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Vu Tien Lam, Nguyen Huu Lam, Man Minh Hue, Nguyen Ngoc Trung, Duong Quoc Van",
+                "journal": "Lecture Notes in Mechanical Engineering",
+                "year": 2022,
+                "doi": "10.1007/978-3-030-99666-6_86",
+                "citations": 0,
+                "source": "ORCID",
+                "pages": "599-603"
+        },
+        {
+                "title": "Structural, optical, and magnetic properties of a new complex (1−x)Bi<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub> + xMgNiO<sub>3−δ</sub> solid solution system",
+                "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Quoc Dung, Nguyen Huu Lam, Pham Van Vinh, Vu Tien Lam, Pham Dinh Luong, Duong Quoc Van",
+                "journal": "Applied Physics A Materials Science and Processing",
+                "year": 2022,
+                "doi": "10.1007/s00339-021-05255-5",
+                "citations": 0,
+                "source": "ORCID",
+                "volume": "128",
+                "issue": "2",
+                "pages": "129"
+        },
+        {
+                "title": "Synthesis and Characterization of (1−x)Bi<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub> + xSrNiO<sub>3-δ</sub> Solid Solution System",
+                "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Quoc Dung, Nguyen Huu Lam, Vu Tien Lam, Pham Van Vinh, Pham Dinh Luong, Duong Quoc Van",
+                "journal": "Journal of Electronic Materials",
+                "year": 2022,
+                "doi": "10.1007/s11664-022-09534-6",
+                "citations": 0,
+                "source": "ORCID",
+                "volume": "51",
+                "issue": "6",
+                "pages": "2716-2731"
         }
-      ],
+],
       conferences: [
         {
           title: "Hybrid Functional HSE06 Band Structure Calculations of Doped Perovskites",
@@ -4673,6 +4886,7 @@ function renderAcademicCvPublicationsSection(prof, pubList = []) {
                       ${doiUrl ? `<span>DOI: <a href="${escapeHtml(doiUrl)}" target="_blank">${escapeHtml(p.doi.replace(/^https?:\/\/doi\.org\//i, ''))}</a></span>` : ""}
                       ${p.citations ? `<span class="badge badge-purple" style="font-size:11px;">Cited: ${p.citations}</span>` : ""}
                       <div class="no-print" style="margin-left:auto; display:flex; gap:6px;">
+                        <button class="btn btn-outline btn-sm cv-action-btn no-print" title="Copy BibTeX Citation" onclick="copyPubBibtex(${editIndex}, event)">📋 BibTeX</button>
                         <button class="btn btn-outline btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Edit publication details & visibility" onclick="openOwnPublicationModal(${editIndex})">✏️</button>
                         ${p.doi ? `<button class="btn btn-outline btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Import this DOI into References Library" onclick="importPaperByDoiCommon('${escapeHtml(p.doi)}')">📚</button>` : ""}
                         <button class="btn btn-danger btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Delete publication" onclick="removeOwnPubById(${p.id !== undefined ? p.id : editIndex}, '${escapeHtml(p.doi || '')}', '${escapeHtml((p.title || '').replace(/'/g, "\\'"))}', event)">✕</button>
@@ -4710,9 +4924,22 @@ function formatAuthorsWithHighlight(authorsStr, researcherName = "Vu Tien Lam") 
 
   const formatted = list.map(author => {
     const aLower = author.toLowerCase();
-    const isTarget = tokens.every(tok => aLower.includes(tok)) ||
-                     (aLower.includes("lam") && (aLower.includes("vu") || aLower.includes("tien"))) ||
-                     aLower.includes("tien lam vu") || aLower.includes("vu, tien lam");
+    const aClean = aLower.replace(/[\.,\-]/g, " ");
+    const words = aClean.split(/\s+/).filter(Boolean);
+    const hasLam = words.includes("lam");
+    const hasVu = words.includes("vu") || words.includes("v");
+    const hasTien = words.includes("tien") || words.includes("t");
+    const isOtherLam = words.includes("nh") || words.includes("huu") || (words.includes("n") && words.includes("h"));
+
+    const isTarget = (hasLam && hasVu && !isOtherLam) ||
+                     (hasLam && hasTien && !isOtherLam) ||
+                     tokens.every(tok => aLower.includes(tok)) ||
+                     aLower.includes("tien lam vu") ||
+                     aLower.includes("vu tien lam") ||
+                     aLower.includes("lam, v.t") ||
+                     aLower.includes("lam, v. t") ||
+                     aLower.includes("v. t. lam") ||
+                     aLower.includes("v.t. lam");
     if (isTarget) {
       return `<strong class="author-highlight">${escapeHtml(author)}</strong>`;
     }
@@ -4789,6 +5016,9 @@ function openOwnPublicationModal(idx = null) {
   const yearInput = document.getElementById("opm-year");
   const doiInput = document.getElementById("opm-doi");
   const citationsInput = document.getElementById("opm-citations");
+  const volumeInput = document.getElementById("opm-volume");
+  const issueInput = document.getElementById("opm-issue");
+  const pagesInput = document.getElementById("opm-pages");
   const visibilitySelect = document.getElementById("opm-visibility");
   const sourceSelect = document.getElementById("opm-source");
   const alsoAddLib = document.getElementById("opm-also-add-library");
@@ -4802,6 +5032,9 @@ function openOwnPublicationModal(idx = null) {
     if (authorsInput) authorsInput.value = pub.authors || "";
     if (journalInput) journalInput.value = pub.journal || "";
     if (yearInput) yearInput.value = pub.year || 2026;
+    if (volumeInput) volumeInput.value = pub.volume || "";
+    if (issueInput) issueInput.value = pub.issue || "";
+    if (pagesInput) pagesInput.value = pub.pages || "";
     if (doiInput) doiInput.value = pub.doi || "";
     if (citationsInput) citationsInput.value = pub.citations || 0;
     if (visibilitySelect) visibilitySelect.value = pub.visibility || "Public";
@@ -4815,6 +5048,9 @@ function openOwnPublicationModal(idx = null) {
     if (authorsInput) authorsInput.value = STATE.profile.full_name || "Vu Tien Lam";
     if (journalInput) journalInput.value = "";
     if (yearInput) yearInput.value = 2026;
+    if (volumeInput) volumeInput.value = "";
+    if (issueInput) issueInput.value = "";
+    if (pagesInput) pagesInput.value = "";
     if (doiInput) doiInput.value = "";
     if (citationsInput) citationsInput.value = 0;
     if (visibilitySelect) visibilitySelect.value = "Public";
@@ -4881,6 +5117,9 @@ async function handleOwnPubDoiFetch() {
           authors,
           journal,
           year,
+          volume: msg.volume || "",
+          issue: msg.issue || "",
+          pages: msg.page || "",
           doi: msg.DOI || cleanDoi,
           citations: msg["is-referenced-by-count"] || 0
         };
@@ -4896,6 +5135,9 @@ async function handleOwnPubDoiFetch() {
     const authorsEl = document.getElementById("opm-authors");
     const journalEl = document.getElementById("opm-journal");
     const yearEl = document.getElementById("opm-year");
+    const volumeEl = document.getElementById("opm-volume");
+    const issueEl = document.getElementById("opm-issue");
+    const pagesEl = document.getElementById("opm-pages");
     const doiEl = document.getElementById("opm-doi");
     const citationsEl = document.getElementById("opm-citations");
 
@@ -4903,6 +5145,9 @@ async function handleOwnPubDoiFetch() {
     if (authorsEl) authorsEl.value = meta.authors || "";
     if (journalEl) journalEl.value = meta.journal || "";
     if (yearEl) yearEl.value = meta.year || 2026;
+    if (volumeEl) volumeEl.value = meta.volume || "";
+    if (issueEl) issueEl.value = meta.issue || "";
+    if (pagesEl) pagesEl.value = meta.pages || meta.page || "";
     if (doiEl) doiEl.value = meta.doi || cleanDoi;
     if (citationsEl) citationsEl.value = meta.citation_count || meta.citations || 0;
 
@@ -4925,6 +5170,9 @@ async function saveOwnPublicationFromModal() {
   const authors = document.getElementById("opm-authors")?.value.trim() || STATE.profile.full_name || "Vu Tien Lam";
   const journal = document.getElementById("opm-journal")?.value.trim() || "Journal / Venue";
   const year = parseInt(document.getElementById("opm-year")?.value) || 2026;
+  const volume = document.getElementById("opm-volume")?.value.trim() || "";
+  const issue = document.getElementById("opm-issue")?.value.trim() || "";
+  const pages = document.getElementById("opm-pages")?.value.trim() || "";
   const rawDoi = document.getElementById("opm-doi")?.value.trim() || "";
   const doi = rawDoi ? normalizeDoiClient(rawDoi) : "";
   const citations = parseInt(document.getElementById("opm-citations")?.value) || 0;
@@ -4946,6 +5194,9 @@ async function saveOwnPublicationFromModal() {
     authors,
     journal,
     year,
+    volume,
+    issue,
+    pages,
     doi,
     citations,
     visibility,
@@ -5686,30 +5937,100 @@ function renderProfile(prof) {
     if (pubs.length === 0) {
       pubContainer.innerHTML = `<div style="color:var(--text-muted); font-size:13px;">No publications listed yet. Sync with ORCID or Google Scholar above!</div>`;
     } else {
-      pubContainer.innerHTML = pubs.map((p, idx) => `
-        <div class="item-card" style="padding:12px 14px;">
-          <div style="display:flex; justify-content:space-between; gap:8px;">
-            <div class="item-title" style="font-size:14px;">
-              ${renderScientificTitle(p.title)}
-              ${p.visibility === "Private" ? `<span class="badge badge-rose" style="font-size:11px; margin-left:6px;">🔒 Private</span>` : ""}
-              ${p.visibility === "Curated" ? `<span class="badge badge-blue" style="font-size:11px; margin-left:6px;">📜 Curated</span>` : ""}
+      pubContainer.innerHTML = pubs.map((p, idx) => {
+        const doiUrl = p.doi ? (p.doi.startsWith("http") ? p.doi : `https://doi.org/${p.doi}`) : "";
+        const cleanDoi = p.doi ? p.doi.replace(/^https?:\/\/doi\.org\//i, "") : "";
+        const formattedAuthors = formatAuthorsWithHighlight(p.authors || prof.full_name, prof.full_name);
+
+        let journalMeta = "";
+        if (p.volume && p.pages) {
+          journalMeta = ` · Vol. <strong>${escapeHtml(p.volume)}</strong>${p.issue ? `(${escapeHtml(p.issue)})` : ""}, pp. <strong>${escapeHtml(p.pages)}</strong>`;
+        } else if (p.pages) {
+          journalMeta = ` · pp. <strong>${escapeHtml(p.pages)}</strong>`;
+        } else if (p.volume) {
+          journalMeta = ` · Vol. <strong>${escapeHtml(p.volume)}</strong>${p.issue ? `(${escapeHtml(p.issue)})` : ""}`;
+        }
+
+        return `
+        <div class="item-card pub-profile-card">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+            <div class="item-title" style="font-size:14.5px; font-weight:700; line-height:1.45;">
+              ${doiUrl ? `<a href="${escapeHtml(doiUrl)}" target="_blank" rel="noopener noreferrer" style="color:inherit; text-decoration:none;">${renderScientificTitle(p.title)}</a>` : renderScientificTitle(p.title)}
+              ${p.visibility === "Private" ? `<span class="badge badge-rose" style="font-size:11px; margin-left:6px; vertical-align:middle;">🔒 Private</span>` : ""}
+              ${p.visibility === "Curated" ? `<span class="badge badge-blue" style="font-size:11px; margin-left:6px; vertical-align:middle;">📜 Curated</span>` : ""}
             </div>
-            <span class="badge badge-purple">Citations: ${p.citations || 0}</span>
+            <span class="badge badge-purple" style="white-space:nowrap; font-weight:600;">Citations: ${p.citations || 0}</span>
           </div>
-          <div class="item-meta" style="margin-top:4px;">
-            ${escapeHtml(p.authors || prof.full_name)} — <em>${escapeHtml(p.journal)}</em> (${p.year || ""})
+          <div class="pub-authors" style="margin-top:6px; font-size:13px; line-height:1.5;">
+            ${formattedAuthors}
           </div>
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
-            <span class="badge badge-slate">${escapeHtml(p.source || "Academic CV")}</span>
-            <div style="display:flex; gap:8px; align-items:center;">
-              ${p.doi ? `<a href="https://doi.org/${encodeURIComponent(p.doi)}" target="_blank" style="font-size:12px; color:var(--primary); font-weight:600; text-decoration:none;">DOI: ${escapeHtml(p.doi)} ↗</a>` : ""}
+          <div class="pub-journal-meta-row" style="margin-top:5px; font-size:12.5px; color:#64748b; display:flex; align-items:center; flex-wrap:wrap; gap:6px;">
+            <span style="font-weight:600; color:#b91c1c;">${escapeHtml(p.journal || "Publication")}</span>
+            <span>(${p.year || ""})</span>
+            ${journalMeta}
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; padding-top:8px; border-top:1px dashed #e2e8f0; flex-wrap:wrap; gap:8px;">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <span class="badge badge-slate" style="font-size:11px; font-weight:600;">${escapeHtml(p.source || "ORCID")}</span>
+              ${doiUrl ? `<a href="${escapeHtml(doiUrl)}" target="_blank" rel="noopener noreferrer" style="font-size:12px; color:var(--primary, #0284c7); font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:3px;">🔗 DOI: ${escapeHtml(cleanDoi)} ↗</a>` : ""}
+            </div>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <button class="btn btn-outline btn-sm" title="Copy BibTeX Citation" onclick="copyPubBibtex(${idx}, event)">📋 BibTeX</button>
               <button class="btn btn-outline btn-sm owner-only-btn admin-only" title="Edit publication" onclick="openOwnPublicationModal(${idx})">✏️</button>
               <button class="btn btn-danger btn-sm owner-only-btn admin-only" title="Delete publication" onclick="removeOwnPub(${idx})">✕</button>
             </div>
           </div>
         </div>
-      `).join("");
+      `;
+      }).join("");
     }
+  }
+}
+
+function copyPubBibtex(idx, event) {
+  if (event) {
+    if (event.stopPropagation) event.stopPropagation();
+    if (event.preventDefault) event.preventDefault();
+  }
+  const pubs = STATE.profile.publications || [];
+  const p = pubs[idx];
+  if (!p) {
+    showToast("Publication not found.", "warn");
+    return;
+  }
+
+  const rawAuthor = (p.authors || "Vu Tien Lam").trim();
+  const sep = rawAuthor.includes(";") ? ";" : ",";
+  const authorParts = rawAuthor.split(sep).map(a => a.trim()).filter(Boolean);
+  const firstAuthor = (authorParts[0] || "Lam").split(/\s+/).pop().replace(/[^a-zA-Z]/g, "") || "author";
+  const year = p.year || 2026;
+  const firstWord = (p.title || "paper").replace(/<[^>]+>/g, "").replace(/[^a-zA-Z0-9]/g, " ").trim().split(/\s+/)[0] || "work";
+  const bibKey = `${firstAuthor.toLowerCase()}${year}${firstWord.toLowerCase()}`;
+
+  const cleanTitle = (p.title || "").replace(/<[^>]+>/g, "").replace(/[{}]/g, "");
+  const bibtexAuthors = authorParts.join(" and ");
+
+  let extra = "";
+  if (p.volume) extra += `,\n  volume = {${p.volume}}`;
+  if (p.issue) extra += `,\n  number = {${p.issue}}`;
+  if (p.pages) extra += `,\n  pages = {${p.pages}}`;
+  if (p.doi) extra += `,\n  doi = {${p.doi}}`;
+
+  const bibtex = `@article{${bibKey},
+  title = {${cleanTitle}},
+  author = {${bibtexAuthors}},
+  journal = {${p.journal || "Publication"}},
+  year = {${year}}${extra}
+}`;
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(bibtex).then(() => {
+      showToast("📋 BibTeX citation copied to clipboard!", "success");
+    }).catch(() => {
+      prompt("Copy BibTeX citation:", bibtex);
+    });
+  } else {
+    prompt("Copy BibTeX citation:", bibtex);
   }
 }
 
@@ -5770,6 +6091,8 @@ async function saveProfileChanges() {
 
 async function handleSyncOrcid() {
   if (!requireAdminAuth()) return;
+  STATE.profile = STATE.profile || {};
+  STATE.profile.publications = STATE.profile.publications || [];
   const orcidInput = document.getElementById("sync-orcid-input").value.trim();
   if (!orcidInput) {
     showToast("Please enter an ORCID iD (e.g., 0000-0002-1825-0097).", "warn");
@@ -5796,36 +6119,149 @@ async function handleSyncOrcid() {
       const match = orcidInput.toUpperCase().match(/(\d{4}-\d{4}-\d{4}-\d{3}[\dX])/);
       if (!match) throw new Error("Invalid ORCID format.");
       const cleanId = match[1];
+
+      // 1. Fetch ORCID works summaries
       const wRes = await fetch(`https://pub.orcid.org/v3.0/${cleanId}/works`, {
         headers: { "Accept": "application/json" }
       });
       if (!wRes.ok) throw new Error("Could not fetch ORCID works.");
       const wData = await wRes.json();
       const groups = wData.group || [];
-      let added = 0;
-      const existingTitles = new Set((STATE.profile.publications || []).map(p => p.title.toLowerCase()));
-      groups.slice(0, 20).forEach(g => {
+
+      // Collect put-codes for bulk details
+      const putCodes = [];
+      groups.forEach(g => {
         const ws = (g["work-summary"] || [])[0];
-        if (!ws) return;
-        const t = ws.title?.title?.value || "";
-        if (t && !existingTitles.has(t.toLowerCase())) {
-          STATE.profile.publications.push({
-            title: t,
-            authors: STATE.profile.full_name,
-            journal: ws["journal-title"]?.value || "Publication",
-            year: parseInt(ws["publication-date"]?.year?.value) || 2025,
-            doi: "",
-            citations: 0,
-            source: "ORCID"
-          });
-          existingTitles.add(t.toLowerCase());
-          added++;
+        if (ws && ws["put-code"]) {
+          putCodes.push(String(ws["put-code"]));
         }
       });
+
+      // 2. Fetch full work details via ORCID bulk works endpoint (up to 50 works in 1 request)
+      const workDetailsMap = new Map();
+      if (putCodes.length > 0) {
+        for (let i = 0; i < putCodes.length; i += 50) {
+          const batch = putCodes.slice(i, i + 50);
+          try {
+            const bRes = await fetch(`https://pub.orcid.org/v3.0/${cleanId}/works/${batch.join(",")}`, {
+              headers: { "Accept": "application/json" }
+            });
+            if (bRes.ok) {
+              const bData = await bRes.json();
+              (bData.bulk || []).forEach(item => {
+                const w = item.work;
+                if (w && w["put-code"]) {
+                  workDetailsMap.set(String(w["put-code"]), w);
+                }
+              });
+            }
+          } catch (e) {
+            console.warn("ORCID bulk fetch error:", e);
+          }
+        }
+      }
+
+      // Map existing publications by normalized DOI and normalized Title
+      const currentPubs = STATE.profile.publications || [];
+      const pubMapByDoi = new Map();
+      const pubMapByTitle = new Map();
+      currentPubs.forEach((p, idx) => {
+        if (p.doi) pubMapByDoi.set(p.doi.trim().toLowerCase().replace(/^https?:\/\/doi\.org\//i, ""), idx);
+        if (p.title) pubMapByTitle.set(p.title.trim().toLowerCase().replace(/<[^>]+>/g, ""), idx);
+      });
+
+      let added = 0;
+      let updated = 0;
+
+      for (const g of groups) {
+        const ws = (g["work-summary"] || [])[0];
+        if (!ws) continue;
+        const pc = String(ws["put-code"] || "");
+        const work = workDetailsMap.get(pc) || ws;
+
+        const titleVal = work.title?.title?.value || ws.title?.title?.value || "";
+        if (!titleVal) continue;
+
+        // Extract DOI
+        let doi = "";
+        const extIds = work["external-ids"]?.["external-id"] || ws["external-ids"]?.["external-id"] || [];
+        for (const eid of extIds) {
+          if ((eid["external-id-type"] || "").toLowerCase() === "doi") {
+            doi = eid["external-id-value"] || "";
+            break;
+          }
+        }
+
+        // Extract journal & year
+        const journalVal = work["journal-title"]?.value || ws["journal-title"]?.value || work.type?.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase()) || "Publication";
+        const pubDate = work["publication-date"] || ws["publication-date"] || {};
+        const yearVal = parseInt(pubDate.year?.value) || 2026;
+
+        // Extract all author contributors
+        let authorNames = [];
+        const contribs = work.contributors?.contributor || [];
+        contribs.forEach(c => {
+          const cName = c["credit-name"]?.value;
+          if (cName && cName.trim()) {
+            authorNames.push(cName.trim());
+          }
+        });
+
+        let authorsStr = authorNames.join(", ");
+        if (!authorsStr) {
+          authorsStr = STATE.profile.full_name || "Vu Tien Lam";
+        }
+
+        const cleanDoi = doi.trim().toLowerCase().replace(/^https?:\/\/doi\.org\//i, "");
+        const cleanTitle = titleVal.trim().toLowerCase().replace(/<[^>]+>/g, "");
+
+        let existingIdx = pubMapByDoi.has(cleanDoi) && cleanDoi ? pubMapByDoi.get(cleanDoi) : -1;
+        if (existingIdx < 0 && pubMapByTitle.has(cleanTitle)) {
+          existingIdx = pubMapByTitle.get(cleanTitle);
+        }
+
+        if (existingIdx >= 0) {
+          // Merge & enrich existing publication: preserve volume, issue, pages, visibility, citations
+          const old = currentPubs[existingIdx];
+          currentPubs[existingIdx] = {
+            ...old,
+            title: titleVal,
+            authors: (authorNames.length > 1 || !old.authors || old.authors === STATE.profile.full_name) ? authorsStr : old.authors,
+            journal: (journalVal && journalVal !== "Publication") ? journalVal : old.journal,
+            year: yearVal || old.year,
+            doi: doi || old.doi,
+            source: old.source || "ORCID",
+            volume: old.volume || "",
+            issue: old.issue || "",
+            pages: old.pages || ""
+          };
+          updated++;
+        } else {
+          // Add new publication
+          currentPubs.push({
+            title: titleVal,
+            authors: authorsStr,
+            journal: journalVal,
+            year: yearVal,
+            doi: doi,
+            citations: 0,
+            volume: "",
+            issue: "",
+            pages: "",
+            source: "ORCID",
+            visibility: "Public"
+          });
+          added++;
+        }
+      }
+
+      STATE.profile.publications = currentPubs;
       STATE.profile.orcid_id = cleanId;
+      STATE.profile.last_synced_at = new Date().toISOString().replace("T", " ").slice(0, 16);
       saveStaticDb();
-      loadStaticFallbackData();
-      showToast(`Synced ORCID ${cleanId}: added ${added} new works to CV!`);
+      renderProfile(STATE.profile);
+      renderAcademicCvSheet(STATE.profile);
+      showToast(`Synced ORCID ${cleanId}: ${added} added, ${updated} updated with full author details!`);
     }
   } catch (err) {
     showToast(`ORCID Error: ${err.message}`, "error");
