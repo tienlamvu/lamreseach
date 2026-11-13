@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T02:27:01.171Z",
+  "exported_at": "2026-11-13T02:27:05.884Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -57,42 +57,6 @@
       }
     ],
     "publications": [
-      {
-        "title": "Optical properties of a new binary lead-free ferroelectric semiconductor Bi<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub>–Nd1/2Na1/2TiO<sub>3</sub> solid solution system",
-        "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Huu Lam, Do Duc Tho, Vu Tien Lam, Nguyen Thi Trang, Duong Quoc Van",
-        "journal": "Applied Physics A Materials Science and Processing",
-        "year": 2022,
-        "doi": "10.1007/s00339-022-05910-5",
-        "citations": 0,
-        "source": "ORCID",
-        "volume": "128",
-        "issue": "9",
-        "pages": "798"
-      },
-      {
-        "title": "Structural, Magnetic, and Optical Properties of Complex Lead-Free Ferroelectric 0.97Bi0.5Na0.5TiO<sub>3</sub> + 0.03AMnO<sub>3</sub> (A = Mg, Ca, Sr, Ba) Materials",
-        "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Vu Tien Lam, Nguyen Huu Lam, Man Minh Hue, Nguyen Ngoc Trung, Duong Quoc Van",
-        "journal": "Lecture Notes in Mechanical Engineering",
-        "year": 2022,
-        "doi": "10.1007/978-3-030-99666-6_86",
-        "citations": 0,
-        "source": "ORCID",
-        "pages": "599-603",
-        "volume": "",
-        "issue": ""
-      },
-      {
-        "title": "Structural, optical, and magnetic properties of a new complex (1−x)Bi<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub> + xMgNiO<sub>3−δ</sub> solid solution system",
-        "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Quoc Dung, Nguyen Huu Lam, Pham Van Vinh, Vu Tien Lam, Pham Dinh Luong, Duong Quoc Van",
-        "journal": "Applied Physics A Materials Science and Processing",
-        "year": 2022,
-        "doi": "10.1007/s00339-021-05255-5",
-        "citations": 0,
-        "source": "ORCID",
-        "volume": "128",
-        "issue": "2",
-        "pages": "129"
-      },
       {
         "title": "Synthesis and Characterization of (1−x)Bi<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub> + xSrNiO<sub>3-δ</sub> Solid Solution System",
         "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Quoc Dung, Nguyen Huu Lam, Vu Tien Lam, Pham Van Vinh, Pham Dinh Luong, Duong Quoc Van",
