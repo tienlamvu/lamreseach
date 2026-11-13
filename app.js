@@ -3692,17 +3692,20 @@ async function loadStaticFallbackData() {
               const keyDoi = (p.doi || '').toLowerCase().trim();
               const keyTitle = (p.title || '').toLowerCase().replace(/<[^>]+>/g, '').trim();
               const match = remoteMap.get(keyDoi) || remoteMap.get(keyTitle);
-              if (match) {
-                return {
-                  ...p,
-                  authors: (p.authors && p.authors.includes(',')) ? p.authors : (match.authors || p.authors),
-                  volume: p.volume || match.volume || "",
-                  issue: p.issue || match.issue || "",
-                  pages: p.pages || match.pages || "",
-                  doi: p.doi || match.doi || "",
-                  journal: p.journal || match.journal || ""
-                };
-              }
+              const hasAbbrev = (s) => /\b[A-Z]\./.test(s || "") || /,\s*[A-Z]\./.test(s || "");
+              const authorsToUse = (match.authors && (!p.authors || hasAbbrev(p.authors) || !p.authors.includes(',') || p.authors === STATE.profile.full_name))
+                ? match.authors
+                : (p.authors || match.authors);
+
+              return {
+                ...p,
+                authors: authorsToUse,
+                volume: p.volume || match.volume || "",
+                issue: p.issue || match.issue || "",
+                pages: p.pages || match.pages || "",
+                doi: p.doi || match.doi || "",
+                journal: p.journal || match.journal || ""
+              };
               return p;
             });
           }
@@ -3935,7 +3938,7 @@ async function loadStaticFallbackData() {
         },
         {
                 "title": "Nature defect-mediated room temperature ferromagnetism in lead-free ferroelectric Ba(Zr<sub>0.2</sub>Ti<sub>0.8</sub>)O<sub>3</sub>: A first-principles study",
-                "authors": "Vu Tien Lam, N.H. Lam, D.Q. Van, N.T. Trang, J.P. Singh, N.H. Linh, N.H. Thoan, N.N. Trung, D.D. Dung",
+                "authors": "Vu Tien Lam, Nguyen Huu Lam, Duong Quoc Van, Nguyen Thi Thu Trang, Jitendra Pal Singh, Nguyen Hoang Linh, Nguyen Hoang Thoan, Nguyen Ngoc Trung, Dang Duc Dung",
                 "journal": "Next Materials",
                 "year": 2025,
                 "doi": "10.1016/j.nxmate.2025.100916",
@@ -4081,7 +4084,7 @@ async function loadStaticFallbackData() {
         },
         {
                 "title": "Magnetic Properties of a (1−x)Bi<sub>0.5</sub>Na<sub>0.5</sub>TiO<sub>3</sub> + xCaNiO<sub>3-δ</sub> Solid Solution System Prepared by Sol–Gel Technique",
-                "authors": "D. D. Dung, N. H. Thoan, N. Q. Dung, P. V. Vinh, N. H. Lam, V. T. Lam, P. D. Luong, D. Q. Van",
+                "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Quoc Dung, Pham Van Vinh, Nguyen Huu Lam, Vu Tien Lam, Pham Dinh Luong, Duong Quoc Van",
                 "journal": "Journal of Electronic Materials",
                 "year": 2022,
                 "doi": "10.1007/s11664-022-09457-2",
@@ -4886,7 +4889,7 @@ function renderAcademicCvPublicationsSection(prof, pubList = []) {
                       ${doiUrl ? `<span>DOI: <a href="${escapeHtml(doiUrl)}" target="_blank">${escapeHtml(p.doi.replace(/^https?:\/\/doi\.org\//i, ''))}</a></span>` : ""}
                       ${p.citations ? `<span class="badge badge-purple" style="font-size:11px;">Cited: ${p.citations}</span>` : ""}
                       <div class="no-print" style="margin-left:auto; display:flex; gap:6px;">
-                        <button class="btn btn-outline btn-sm cv-action-btn no-print" title="Copy BibTeX Citation" onclick="copyPubBibtex(${editIndex}, event)">📋 BibTeX</button>
+                        <button class="btn btn-outline btn-sm cv-action-btn no-print" title="Copy BibTeX Citation" onclick="copyPubBibtex(${editIndex}, event)">📋</button>
                         <button class="btn btn-outline btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Edit publication details & visibility" onclick="openOwnPublicationModal(${editIndex})">✏️</button>
                         ${p.doi ? `<button class="btn btn-outline btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Import this DOI into References Library" onclick="importPaperByDoiCommon('${escapeHtml(p.doi)}')">📚</button>` : ""}
                         <button class="btn btn-danger btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Delete publication" onclick="removeOwnPubById(${p.id !== undefined ? p.id : editIndex}, '${escapeHtml(p.doi || '')}', '${escapeHtml((p.title || '').replace(/'/g, "\\'"))}', event)">✕</button>
@@ -5975,7 +5978,7 @@ function renderProfile(prof) {
               ${doiUrl ? `<a href="${escapeHtml(doiUrl)}" target="_blank" rel="noopener noreferrer" style="font-size:12px; color:var(--primary, #0284c7); font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:3px;">🔗 DOI: ${escapeHtml(cleanDoi)} ↗</a>` : ""}
             </div>
             <div style="display:flex; gap:6px; align-items:center;">
-              <button class="btn btn-outline btn-sm" title="Copy BibTeX Citation" onclick="copyPubBibtex(${idx}, event)">📋 BibTeX</button>
+              <button class="btn btn-outline btn-sm cv-action-btn" title="Copy BibTeX Citation" onclick="copyPubBibtex(${idx}, event)">📋</button>
               <button class="btn btn-outline btn-sm owner-only-btn admin-only" title="Edit publication" onclick="openOwnPublicationModal(${idx})">✏️</button>
               <button class="btn btn-danger btn-sm owner-only-btn admin-only" title="Delete publication" onclick="removeOwnPub(${idx})">✕</button>
             </div>
@@ -6170,6 +6173,76 @@ async function handleSyncOrcid() {
         if (p.title) pubMapByTitle.set(p.title.trim().toLowerCase().replace(/<[^>]+>/g, ""), idx);
       });
 
+      // 3. Collect all DOIs from works to fetch accurate metadata & full authors from CrossRef / OpenAlex
+      const rawDois = [];
+      for (const g of groups) {
+        const ws = (g["work-summary"] || [])[0];
+        if (!ws) continue;
+        const pc = String(ws["put-code"] || "");
+        const work = workDetailsMap.get(pc) || ws;
+        const extIds = work["external-ids"]?.["external-id"] || ws["external-ids"]?.["external-id"] || [];
+        for (const eid of extIds) {
+          if ((eid["external-id-type"] || "").toLowerCase() === "doi" && eid["external-id-value"]) {
+            rawDois.push(eid["external-id-value"].trim());
+            break;
+          }
+        }
+      }
+
+      const doiMetaMap = new Map();
+      const uniqueDois = Array.from(new Set(rawDois.map(d => d.replace(/^https?:\/\/doi\.org\//i, "").trim()).filter(Boolean)));
+
+      if (uniqueDois.length > 0) {
+        btn.textContent = `⏳ Resolving DOIs (0/${uniqueDois.length})...`;
+        let resolvedCount = 0;
+        await Promise.all(uniqueDois.map(async (cleanDoi) => {
+          try {
+            const crRes = await fetch(`https://api.crossref.org/works/${encodeURIComponent(cleanDoi)}`, {
+              headers: { "Accept": "application/json" }
+            });
+            if (crRes.ok) {
+              const crData = await crRes.json();
+              const msg = crData.message || {};
+              const crAuthors = (msg.author || []).map(a => {
+                const given = (a.given || "").trim();
+                const family = (a.family || "").trim();
+                return (given && family) ? `${given} ${family}` : (family || given);
+              }).filter(Boolean);
+
+              let fullAuthorStr = crAuthors.join(", ");
+              // If CrossRef authors contain initials (e.g. V.T. Lam or Dung, D.D.), attempt OpenAlex expansion
+              const hasInit = (s) => /\b[A-Z]\./.test(s || "") || /,\s*[A-Z]\./.test(s || "");
+              if (hasInit(fullAuthorStr) || crAuthors.length === 0) {
+                try {
+                  const oaRes = await fetch(`https://api.openalex.org/works/https://doi.org/${encodeURIComponent(cleanDoi)}`);
+                  if (oaRes.ok) {
+                    const oaData = await oaRes.json();
+                    const oaNames = (oaData.authorships || []).map(ash => ash.author?.display_name).filter(Boolean);
+                    if (oaNames.length > 0 && !hasInit(oaNames.join(", "))) {
+                      fullAuthorStr = oaNames.join(", ");
+                    }
+                  }
+                } catch (e) {}
+              }
+
+              doiMetaMap.set(cleanDoi.toLowerCase(), {
+                authors: fullAuthorStr,
+                volume: String(msg.volume || ""),
+                issue: String(msg.issue || ""),
+                pages: String(msg.page || ""),
+                journal: (msg["container-title"] && msg["container-title"][0]) ? msg["container-title"][0] : "",
+                citations: parseInt(msg["is-referenced-by-count"]) || 0
+              });
+            }
+          } catch (e) {
+            console.warn("DOI lookup notice:", cleanDoi, e);
+          } finally {
+            resolvedCount++;
+            btn.textContent = `⏳ Resolving DOIs (${resolvedCount}/${uniqueDois.length})...`;
+          }
+        }));
+      }
+
       let added = 0;
       let updated = 0;
 
@@ -6197,7 +6270,7 @@ async function handleSyncOrcid() {
         const pubDate = work["publication-date"] || ws["publication-date"] || {};
         const yearVal = parseInt(pubDate.year?.value) || 2026;
 
-        // Extract all author contributors
+        // Extract all author contributors from ORCID
         let authorNames = [];
         const contribs = work.contributors?.contributor || [];
         contribs.forEach(c => {
@@ -6214,11 +6287,33 @@ async function handleSyncOrcid() {
 
         const cleanDoi = doi.trim().toLowerCase().replace(/^https?:\/\/doi\.org\//i, "");
         const cleanTitle = titleVal.trim().toLowerCase().replace(/<[^>]+>/g, "");
+        const doiMeta = doiMetaMap.get(cleanDoi);
+
+        const hasInit = (s) => /\b[A-Z]\./.test(s || "") || /,\s*[A-Z]\./.test(s || "");
 
         let existingIdx = pubMapByDoi.has(cleanDoi) && cleanDoi ? pubMapByDoi.get(cleanDoi) : -1;
         if (existingIdx < 0 && pubMapByTitle.has(cleanTitle)) {
           existingIdx = pubMapByTitle.get(cleanTitle);
         }
+
+        // Select the most complete, non-abbreviated authors string
+        let bestAuthors = authorsStr;
+        if (doiMeta && doiMeta.authors && (!hasInit(doiMeta.authors) || hasInit(bestAuthors))) {
+          bestAuthors = doiMeta.authors;
+        }
+
+        if (existingIdx >= 0) {
+          const old = currentPubs[existingIdx];
+          if (old.authors && !hasInit(old.authors) && hasInit(bestAuthors)) {
+            bestAuthors = old.authors; // Keep existing full names!
+          }
+        }
+
+        const bestVolume = (doiMeta && doiMeta.volume) ? doiMeta.volume : (existingIdx >= 0 ? currentPubs[existingIdx].volume || "" : "");
+        const bestIssue = (doiMeta && doiMeta.issue) ? doiMeta.issue : (existingIdx >= 0 ? currentPubs[existingIdx].issue || "" : "");
+        const bestPages = (doiMeta && doiMeta.pages) ? doiMeta.pages : (existingIdx >= 0 ? currentPubs[existingIdx].pages || "" : "");
+        const bestJournal = (doiMeta && doiMeta.journal) ? doiMeta.journal : journalVal;
+        const bestCitations = (doiMeta && doiMeta.citations) ? doiMeta.citations : (existingIdx >= 0 ? currentPubs[existingIdx].citations || 0 : 0);
 
         if (existingIdx >= 0) {
           // Merge & enrich existing publication: preserve volume, issue, pages, visibility, citations
@@ -6226,28 +6321,29 @@ async function handleSyncOrcid() {
           currentPubs[existingIdx] = {
             ...old,
             title: titleVal,
-            authors: (authorNames.length > 1 || !old.authors || old.authors === STATE.profile.full_name) ? authorsStr : old.authors,
-            journal: (journalVal && journalVal !== "Publication") ? journalVal : old.journal,
+            authors: bestAuthors,
+            journal: (bestJournal && bestJournal !== "Publication") ? bestJournal : old.journal,
             year: yearVal || old.year,
             doi: doi || old.doi,
             source: old.source || "ORCID",
-            volume: old.volume || "",
-            issue: old.issue || "",
-            pages: old.pages || ""
+            volume: bestVolume || old.volume || "",
+            issue: bestIssue || old.issue || "",
+            pages: bestPages || old.pages || "",
+            citations: bestCitations || old.citations || 0
           };
           updated++;
         } else {
           // Add new publication
           currentPubs.push({
             title: titleVal,
-            authors: authorsStr,
-            journal: journalVal,
+            authors: bestAuthors,
+            journal: bestJournal,
             year: yearVal,
             doi: doi,
-            citations: 0,
-            volume: "",
-            issue: "",
-            pages: "",
+            citations: bestCitations,
+            volume: bestVolume,
+            issue: bestIssue,
+            pages: bestPages,
             source: "ORCID",
             visibility: "Public"
           });
