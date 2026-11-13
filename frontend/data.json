@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:16:45.166Z",
+  "exported_at": "2026-11-13T05:16:51.325Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -114,16 +114,17 @@
       },
       {
         "title": "Role of substitution Zr-site on the electronic structure and magnetic properties of BaTiO3 materials: A first principles calculation",
-        "authors": "Lam, V.T., Lam, N.H., Van, D.Q., Thoan, N.H., Trung, N.N., Dung, D.D.",
+        "authors": "Vu Tien Lam; Nguyen Huu Lam; Duong Quoc Van; Nguyen Hoang Thoan; Nguyen Ngoc Trung; Dang Duc Dung",
         "journal": "Computational and Theoretical Chemistry",
         "year": 2025,
         "doi": "10.1016/j.comptc.2024.114989",
-        "citations": 0,
-        "volume": "",
+        "citations": 7,
+        "volume": "1243",
         "issue": "",
-        "pages": "",
+        "pages": "114989",
         "source": "ORCID",
-        "visibility": "Public"
+        "visibility": "Public",
+        "id": 1794547010879
       },
       {
         "title": "Comparative electronic structure, magnetic and optical properties of cubic perovskite BaXO3 (X=Ti, Sn) with self-defects: A first-principles calculation",
