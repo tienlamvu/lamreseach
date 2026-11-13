@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:04:19.997Z",
+  "exported_at": "2026-11-13T05:04:21.167Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -57,19 +57,6 @@
       }
     ],
     "publications": [
-      {
-        "title": "First-principles calculations of self-defects on the structural, electronic, and optical properties of BaXO3 (X = Ti, Zr, and Hf) perovskite oxide materials",
-        "authors": "Lam, V.T., Lam, N.H., Van, D.Q., Quan, N.M., Thoan, N.H., Dung, D.D.",
-        "journal": "Materials Today Communications",
-        "year": 2024,
-        "doi": "10.1016/j.mtcomm.2024.110641",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
-        "pages": "",
-        "source": "ORCID",
-        "visibility": "Public"
-      },
       {
         "title": "Optical, Magnetic, and Electrical Properties of New Binary CoTiO3-Modified Ba(Zr0.2Ti0.8)O3 System as Solid Solution",
         "authors": "Luong Hong Dang, Luong Thi Kim Phuong, Nguyen Huu Lam, Duong Van Thiet, Nguyen Hoang Thoan, Vu Tien Lam, Duong Quoc Van, Dang Duc Dung",
