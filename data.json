@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:18:14.927Z",
+  "exported_at": "2026-11-13T05:18:18.329Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -338,16 +338,17 @@
       },
       {
         "title": "Optical properties of a new binary lead-free ferroelectric semiconductor Bi1/2Na1/2TiO3–Nd1/2Na1/2TiO3 solid solution system",
-        "authors": "Dung, D.D., Thoan, N.H., Lam, N.H., Tho, D.D., Lam, V.T., Trang, N.T., Van, D.Q.",
-        "journal": "Applied Physics A Materials Science and Processing",
+        "authors": "Dang Duc Dung; Nguyen Hoang Thoan; Nguyen Huu Lam; Do Duc Tho; Vu Tien Lam; Nguyen Thi Trang; Duong Quoc Van",
+        "journal": "Applied Physics A",
         "year": 2022,
         "doi": "10.1007/s00339-022-05910-5",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
+        "citations": 2,
+        "volume": "128",
+        "issue": "9",
         "pages": "",
         "source": "ORCID",
-        "visibility": "Public"
+        "visibility": "Public",
+        "id": 1794547097846
       },
       {
         "title": "Structural, Magnetic, and Optical Properties of Complex Lead-Free Ferroelectric 0.97Bi0.5Na0.5TiO3 + 0.03AMnO3 (A = Mg, Ca, Sr, Ba) Materials",
