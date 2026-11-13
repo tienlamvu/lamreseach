@@ -2897,6 +2897,50 @@ body.is-admin .visitor-only {
 /* ============================================================================
    AI Journal Finder & Publisher Badges
    ============================================================================ */
+.pub-badge-aaas {
+  background: rgba(225, 29, 72, 0.12) !important;
+  color: #be123c !important;
+  border: 1px solid rgba(225, 29, 72, 0.35) !important;
+  font-weight: 800;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+}
+.pub-badge-cell {
+  background: rgba(14, 165, 233, 0.12) !important;
+  color: #0369a1 !important;
+  border: 1px solid rgba(14, 165, 233, 0.35) !important;
+  font-weight: 800;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+}
+.pub-badge-nas {
+  background: rgba(30, 58, 138, 0.12) !important;
+  color: #1e3a8a !important;
+  border: 1px solid rgba(30, 58, 138, 0.35) !important;
+  font-weight: 800;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+}
+.pub-badge-aip {
+  background: rgba(79, 70, 229, 0.12) !important;
+  color: #4338ca !important;
+  border: 1px solid rgba(79, 70, 229, 0.35) !important;
+  font-weight: 800;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+}
 .pub-badge-wiley {
   background: rgba(124, 58, 237, 0.12) !important;
   color: #7c3aed !important;
