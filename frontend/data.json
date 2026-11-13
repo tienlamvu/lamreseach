@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:02:54.957Z",
+  "exported_at": "2026-11-13T05:02:56.036Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -56,34 +56,7 @@
         "description": "Instructed weekly powder XRD laboratory sessions, Bragg/Scherrer phase indexing, and GSAS-II refinement tutorials for 45 undergraduate students."
       }
     ],
-    "publications": [
-      {
-        "title": "Structural, optical, and magnetic properties of a new complex (1−x)Bi1/2Na1/2TiO3 + xMgNiO3−δ solid solution system",
-        "authors": "Dung, D.D., Thoan, N.H., Dung, N.Q., Lam, N.H., Van Vinh, P., Lam, V.T., Luong, P.D., Van, D.Q.",
-        "journal": "Applied Physics A Materials Science and Processing",
-        "year": 2022,
-        "doi": "10.1007/s00339-021-05255-5",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
-        "pages": "",
-        "source": "ORCID",
-        "visibility": "Public"
-      },
-      {
-        "title": "Synthesis and Characterization of (1−x)Bi1/2Na1/2TiO3+xSrNiO3-δ Solid Solution System",
-        "authors": "Dung, D.D., Thoan, N.H., Dung, N.Q., Lam, N.H., Lam, V.T., Vinh, P.V., Luong, P.D., Van, D.Q.",
-        "journal": "Journal of Electronic Materials",
-        "year": 2022,
-        "doi": "10.1007/s11664-022-09534-6",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
-        "pages": "",
-        "source": "ORCID",
-        "visibility": "Public"
-      }
-    ],
+    "publications": [],
     "conferences": [],
     "skills": {
       "synthesis": "Solid-State Reaction & High-Temp Sintering (up to 1600 °C), Atomic Layer Deposition (ALD), Hydrothermal/Solvothermal, Sol-Gel, Ball Milling, Cold Isostatic Pressing (CIP), Ar-Glovebox Coin/Swagelok Cell Assembly",
