@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:11:41.560Z",
+  "exported_at": "2026-11-13T05:11:42.925Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -57,32 +57,6 @@
       }
     ],
     "publications": [
-      {
-        "title": "Structural, Magnetic, and Optical Properties of Complex Lead-Free Ferroelectric 0.97Bi0.5Na0.5TiO3 + 0.03AMnO3 (A = Mg, Ca, Sr, Ba) Materials",
-        "authors": "Dung, D.D., Thoan, N.H., Lam, V.T., Lam, N.H., Hue, M.M., Trung, N.N., Van, D.Q.",
-        "journal": "Lecture Notes in Mechanical Engineering",
-        "year": 2022,
-        "doi": "10.1007/978-3-030-99666-6_86",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
-        "pages": "",
-        "source": "ORCID",
-        "visibility": "Public"
-      },
-      {
-        "title": "Structural, optical, and magnetic properties of a new complex (1−x)Bi1/2Na1/2TiO3 + xMgNiO3−δ solid solution system",
-        "authors": "Dung, D.D., Thoan, N.H., Dung, N.Q., Lam, N.H., Van Vinh, P., Lam, V.T., Luong, P.D., Van, D.Q.",
-        "journal": "Applied Physics A Materials Science and Processing",
-        "year": 2022,
-        "doi": "10.1007/s00339-021-05255-5",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
-        "pages": "",
-        "source": "ORCID",
-        "visibility": "Public"
-      },
       {
         "title": "Synthesis and Characterization of (1−x)Bi1/2Na1/2TiO3+xSrNiO3-δ Solid Solution System",
         "authors": "Dung, D.D., Thoan, N.H., Dung, N.Q., Lam, N.H., Lam, V.T., Vinh, P.V., Luong, P.D., Van, D.Q.",
