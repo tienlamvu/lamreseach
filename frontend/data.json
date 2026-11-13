@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T02:13:28.153Z",
+  "exported_at": "2026-11-13T02:13:29.587Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -57,30 +57,6 @@
       }
     ],
     "publications": [
-      {
-        "title": "Design and optical properties of a new binary Bi<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub>-Eu<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub> solid solution system",
-        "authors": "Vu Tien Lam, Nguyen Hoang Thoan, Nguyen Huu Lam, Luong Thi Kim Phuong, Duong Quoc Van, Dang Duc Dung",
-        "journal": "Optical Materials",
-        "year": 2022,
-        "doi": "10.1016/j.optmat.2022.113083",
-        "citations": 0,
-        "source": "ORCID",
-        "volume": "134",
-        "pages": "113083",
-        "issue": ""
-      },
-      {
-        "title": "Fabrication and Optical Properties of Rare-Earth-Sm-Doped Lead-Free Ferroelectric Bi<sub>0.5</sub>Na<sub>0.5</sub>TiO<sub>3</sub> Materials",
-        "authors": "Duong Quoc Van, Nguyen Hoang Thoan, Nguyen Huu Lam, Vu Tien Lam, Nguyen Ngoc Trung, Ngo Duc Quan, Dang Duc Dung",
-        "journal": "Lecture Notes in Mechanical Engineering",
-        "year": 2022,
-        "doi": "10.1007/978-3-030-99666-6_85",
-        "citations": 0,
-        "source": "ORCID",
-        "pages": "592-598",
-        "volume": "",
-        "issue": ""
-      },
       {
         "title": "Fabrication and optical properties of new (1-x)Bi<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub> + xHo<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub> solid solution materials",
         "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Huu Lam, Do Duc Tho, Vu Tien Lam, Duong Quoc Van",
