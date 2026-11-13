@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T10:10:57.121Z",
+  "exported_at": "2026-11-13T10:11:00.247Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -28,13 +28,6 @@
     "owner_email": "lamvt.skku@gmail.com",
     "google_client_id": "",
     "education": [
-      {
-        "degree": "Doctor",
-        "institution": "Sungkyunkwan University (SKKU)",
-        "period": "2024 – Present",
-        "visibility": "Private",
-        "details": ""
-      },
       {
         "degree": "Doctor",
         "institution": "Sungkyunkwan University, South Korea",
