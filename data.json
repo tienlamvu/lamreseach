@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T10:43:23.559Z",
+  "exported_at": "2026-11-13T10:43:35.228Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -274,7 +274,7 @@
       },
       {
         "title": "Fabrication and optical properties of new (1-x)Bi1/2Na1/2TiO3+xHo1/2Na1/2TiO3 solid solution materials",
-        "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Huu Lam, Do Duc Tho, Vu Tien Lam, Duong Quoc Van",
+        "authors": "Dang Duc Dung; Nguyen Hoang Thoan; Nguyen Huu Lam; Do Duc Tho; Vu Tien Lam; Duong Quoc Van",
         "journal": "Optical Materials",
         "year": 2022,
         "doi": "10.1016/j.optmat.2022.112750",
@@ -283,7 +283,8 @@
         "issue": "",
         "pages": "112750",
         "source": "ORCID",
-        "visibility": "Public"
+        "visibility": "Public",
+        "id": 1794566614728
       },
       {
         "title": "Magnetic Properties of a (1−x)Bi0.5Na0.5TiO3+xCaNiO3-δ Solid Solution System Prepared by Sol–Gel Technique",
