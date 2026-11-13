@@ -984,6 +984,119 @@ body.visitor-mode .owner-only-btn {
   display: none !important;
 }
 
+/* Mobile Navigation Dropdown Bar Styles (Hidden on Desktop) */
+.mobile-tab-nav-bar {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #18110d;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid #0f172a;
+}
+
+.mobile-nav-step-btn {
+  background: #2b221c;
+  border: 1px solid #4a3b32;
+  color: #fde68a;
+  border-radius: 8px;
+  width: 36px;
+  height: 38px;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 13px;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+.mobile-nav-step-btn:active {
+  background: #b45309;
+  color: #fff;
+  transform: scale(0.95);
+}
+
+.mobile-tab-dropdown-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+}
+
+.mobile-tab-display-pill {
+  width: 100%;
+  height: 38px;
+  background: linear-gradient(135deg, #2b221c, #3a2e26);
+  border: 1.5px solid #d97706;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  gap: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.mobile-tab-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.mobile-tab-title {
+  flex: 1;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #fef3c7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.mobile-tab-caret {
+  font-size: 13px;
+  color: #f59e0b;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+.mobile-tab-native-select {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  font-size: 16px !important;
+  z-index: 2;
+  -webkit-appearance: menulist;
+}
+
+.mobile-nav-toggle-strip-btn {
+  background: #2b221c;
+  border: 1px solid #4a3b32;
+  color: #cbd5e1;
+  border-radius: 8px;
+  width: 36px;
+  height: 38px;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+.mobile-nav-toggle-strip-btn:active {
+  background: #475569;
+  color: #fff;
+}
+
 @media (max-width: 1050px) {
   .grid-2, .grid-3 {
     grid-template-columns: 1fr;
@@ -1108,11 +1221,22 @@ body.visitor-mode .owner-only-btn {
     white-space: nowrap;
   }
 
-  /* Horizontal Tabs Nav */
+  /* Mobile Tab Navigation Bar */
+  .mobile-tab-nav-bar {
+    display: flex !important;
+  }
+
+  /* By default on mobile, collapse the wide horizontal scrollbar tabs, show compact dropdown */
   .header-nav-wrapper {
+    display: none !important;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     width: 100%;
+  }
+  .header-nav-wrapper.mobile-expanded {
+    display: block !important;
+    border-top: 1px solid #334155;
+    background: #18110d;
   }
   .horizontal-tabs {
     padding: 6px 8px;
@@ -1328,7 +1452,7 @@ body.visitor-mode .owner-only-btn {
 
   /* Tab 8: Academic CV */
   .cv-paper-sheet {
-    padding: 16px 12px !important;
+    padding: 18px 14px !important;
     width: 100% !important;
     border-radius: 8px !important;
     box-sizing: border-box;
@@ -1336,27 +1460,53 @@ body.visitor-mode .owner-only-btn {
   .cv-header-block {
     flex-direction: column !important;
     align-items: center !important;
+    justify-content: center !important;
     text-align: center !important;
     gap: 12px !important;
+    width: 100% !important;
   }
   .cv-avatar-wrap {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    text-align: center !important;
+    margin: 0 auto 6px !important;
+    padding: 0 !important;
+  }
+  .cv-avatar-img {
     margin: 0 auto !important;
+    display: block !important;
+    max-width: 140px;
   }
   .cv-header-block > div {
     min-width: 100% !important;
     width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+  }
+  .cv-name, .cv-role, .cv-affil {
+    text-align: center !important;
+    width: 100% !important;
   }
   .cv-header-block .badge {
-    justify-content: center;
+    justify-content: center !important;
+  }
+  .cv-header-block > div > div:last-child {
+    justify-content: center !important;
+    width: 100% !important;
   }
   .cv-contact-box {
     text-align: center !important;
     width: 100% !important;
-    margin-top: 10px !important;
+    margin: 10px auto 0 !important;
     padding: 10px 8px !important;
     background: #f8fafc !important;
     border-radius: 8px !important;
     border: 1px solid #e2e8f0 !important;
+    box-sizing: border-box !important;
   }
 }
 
