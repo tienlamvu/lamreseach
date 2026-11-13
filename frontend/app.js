@@ -140,11 +140,14 @@ function switchTab(tabId, btnEl) {
 
   const target = document.getElementById(`tab-${tabId}`);
   if (target) target.classList.add("active");
-  if (btnEl) {
-    btnEl.classList.add("active");
-  } else {
-    const matchedBtn = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
-    if (matchedBtn) matchedBtn.classList.add("active");
+  const activeBtn = btnEl || document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
+  if (activeBtn) {
+    activeBtn.classList.add("active");
+    if (activeBtn.scrollIntoView) {
+      try {
+        activeBtn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      } catch (e) {}
+    }
   }
 
   if (TAB_TITLES[tabId]) {
@@ -14114,7 +14117,7 @@ function sortAndRenderJournalResults() {
         </div>
 
         <!-- Metrics Strip (Clarivate IF, CiteScore, Speed, Acceptance, Tier) -->
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(115px, 1fr)); gap:8px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; margin-bottom:10px;">
+        <div class="journal-metrics-strip" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(115px, 1fr)); gap:8px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; margin-bottom:10px;">
           <div>
             <span style="font-size:11px; color:#64748b; font-weight:600; display:block;">Clarivate IF</span>
             <span style="font-size:14px; font-weight:800; color:#b45309;">${j.impactFactor}</span>
