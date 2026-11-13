@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T02:12:42.015Z",
+  "exported_at": "2026-11-13T02:12:42.913Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -57,32 +57,6 @@
       }
     ],
     "publications": [
-      {
-        "title": "Nature defect-mediated room temperature ferromagnetism in lead-free ferroelectric Ba(Zr<sub>0.2</sub>Ti<sub>0.8</sub>)O<sub>3</sub>: A first-principles study",
-        "authors": "Vu Tien Lam, N.H. Lam, D.Q. Van, N.T. Trang, J.P. Singh, N.H. Linh, N.H. Thoan, N.N. Trung, D.D. Dung",
-        "journal": "Next Materials",
-        "year": 2025,
-        "doi": "10.1016/j.nxmate.2025.100916",
-        "citations": 0,
-        "source": "ORCID",
-        "volume": "8",
-        "pages": "100916",
-        "id": 1794397736877,
-        "visibility": "Public",
-        "issue": ""
-      },
-      {
-        "title": "Role of substitution Zr-site on the electronic structure and magnetic properties of BaTiO<sub>3</sub> materials: A first principles calculation",
-        "authors": "Vu Tien Lam, Nguyen Huu Lam, Duong Quoc Van, Nguyen Hoang Thoan, Nguyen Ngoc Trung, Dang Duc Dung",
-        "journal": "Computational and Theoretical Chemistry",
-        "year": 2025,
-        "doi": "10.1016/j.comptc.2024.114989",
-        "citations": 0,
-        "source": "ORCID",
-        "volume": "1243",
-        "pages": "114989",
-        "issue": ""
-      },
       {
         "title": "Comparative electronic structure, magnetic and optical properties of cubic perovskite Ba<sub>X</sub>O<sub>3</sub> (X=Ti, Sn) with self-defects: A first-principles calculation",
         "authors": "Vu Tien Lam, Nguyen Huu Lam, Nguyen Hoang Thoan, Duong Quoc Van, Dang Duc Dung",
