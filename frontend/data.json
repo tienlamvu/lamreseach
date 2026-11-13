@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T01:39:43.298Z",
+  "exported_at": "2026-11-13T01:39:44.384Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -57,28 +57,6 @@
       }
     ],
     "publications": [
-      {
-        "title": "Magnetic and Optical Properties of Transition Metal (Cr, Mn, Fe, Co, and Ni) Doped Lead-Free Ferroelectric Bi0.5Na0.5TiO3 Materials",
-        "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Huu Lam, Vu Tien Lam, Nguyen Ngoc Trung, Nguyen Hoang Linh, Duong Quoc Van",
-        "journal": "Lecture Notes in Mechanical Engineering",
-        "year": 2022,
-        "doi": "10.1007/978-3-030-99666-6_88",
-        "citations": 0,
-        "source": "ORCID",
-        "pages": "610-614"
-      },
-      {
-        "title": "Magnetic properties of new (1−x)Bi1/2Na1/2TiO3+xBaNiO3−δ solid solution materials",
-        "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Phan Van Vinh, Nguyen Huu Lam, Vu Tien Lam, Pham Dinh Luong, Duong Quoc Van, Dorj Odkhuu",
-        "journal": "Applied Physics A Materials Science and Processing",
-        "year": 2022,
-        "doi": "10.1007/s00339-022-05281-x",
-        "citations": 0,
-        "source": "ORCID",
-        "volume": "128",
-        "issue": "2",
-        "pages": "168"
-      },
       {
         "title": "Optical and Magnetic Properties of Lead-Free Ferroelectric (Bi0.5Na0.5)0.97A0.03Ti0.97Fe0.03O3 (A = Mg, Sr, Ca, Ba) Materials",
         "authors": "Dang Duc Dung, Nguyen Huu Lam, Nguyen Hoang Thoan, Vu Tien Lam, Nguyen Ngoc Trung, Nguyen Hoang Tuan, Duong Quoc Van",
