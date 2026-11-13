@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:15:29.591Z",
+  "exported_at": "2026-11-13T05:15:30.602Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -63,32 +63,6 @@
         "journal": "Surface and Interface Analysis",
         "year": 2023,
         "doi": "10.1002/sia.7184",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
-        "pages": "",
-        "source": "ORCID",
-        "visibility": "Public"
-      },
-      {
-        "title": "Design and optical properties of a new binary Bi1/2Na1/2TiO3-Eu1/2Na1/2TiO3 solid solution system",
-        "authors": "Lam, V.T., Thoan, N.H., Lam, N.H., Phuong, L.T.K., Van, D.Q., Dung, D.D.",
-        "journal": "Optical Materials",
-        "year": 2022,
-        "doi": "10.1016/j.optmat.2022.113083",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
-        "pages": "",
-        "source": "ORCID",
-        "visibility": "Public"
-      },
-      {
-        "title": "Fabrication and Optical Properties of Rare-Earth-Sm-Doped Lead-Free Ferroelectric Bi0.5Na0.5TiO3 Materials",
-        "authors": "Van, D.Q., Thoan, N.H., Lam, N.H., Lam, V.T., Trung, N.N., Quan, N.D., Dung, D.D.",
-        "journal": "Lecture Notes in Mechanical Engineering",
-        "year": 2022,
-        "doi": "10.1007/978-3-030-99666-6_85",
         "citations": 0,
         "volume": "",
         "issue": "",
