@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T10:30:35.664Z",
+  "exported_at": "2026-11-13T10:40:24.449Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -204,9 +204,9 @@
         "id": 1794563926832
       },
       {
-        "title": "Electronic Structure and Optical Properties of Cubic Perovskite Baxo3 (X=Ti, Sn): A First Principle Calculations",
-        "authors": "Vu Tien Lam, Nguyen Huu Lam, Duong Quoc Van, Nguyen Hoang Thoan, Dang Duc Dung",
-        "journal": "Ssrn",
+        "title": "Electronic Structure and Optical Properties of Cubic Perovskite BaXO3 (X=Ti, Sn): A First Principle Calculations",
+        "authors": "Vu Tien Lam; Nguyen Huu Lam; Van Duong Quoc; Nguyen Hoang Thoan; Dang Duc Dung",
+        "journal": "Journal / Venue",
         "year": 2023,
         "doi": "10.2139/ssrn.4654244",
         "citations": 0,
@@ -214,7 +214,8 @@
         "issue": "",
         "pages": "",
         "source": "ORCID",
-        "visibility": "Public"
+        "visibility": "Public",
+        "id": 1794566423945
       },
       {
         "title": "Fabrication and Optical Properties of (1−x)Bi½Na½TiO3−xEr½Na½TiO3 Solid Solution System",
