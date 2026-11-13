@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T01:45:31.023Z",
+  "exported_at": "2026-11-13T01:47:38.944Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -59,12 +59,14 @@
     "publications": [
       {
         "title": "First-principles calculation of the impact of interstitial point defects on the Bi<sub>0.5</sub>Na<sub>0.5</sub>TiO<sub>3</sub> (110) surface",
-        "authors": "Vu Tien Lam",
+        "authors": "Vu Tien Lam; Nguyen Huu Lam; Duong Quoc Van; Nguyen Hoang Thoan; Nguyen Ngoc Trung; Dang Duc Dung",
         "journal": "Dalat University Journal of Science",
         "year": 2026,
         "doi": "",
         "citations": 0,
-        "source": "ORCID"
+        "source": "ORCID",
+        "id": 1794534458468,
+        "visibility": "Public"
       },
       {
         "title": "Ultrafast switching and high-endurance nonvolatile memory enabled by intrinsic switchable polarization in semiconducting Janus monolayers",
