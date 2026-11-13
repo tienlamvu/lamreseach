@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:16:51.325Z",
+  "exported_at": "2026-11-13T05:16:57.853Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -128,16 +128,17 @@
       },
       {
         "title": "Comparative electronic structure, magnetic and optical properties of cubic perovskite BaXO3 (X=Ti, Sn) with self-defects: A first-principles calculation",
-        "authors": "Lam, V.T., Lam, N.H., Thoan, N.H., Van, D.Q., Dung, D.D.",
+        "authors": "Vu Tien Lam; Nguyen Huu Lam; Nguyen Hoang Thoan; Duong Quoc Van; Dang Duc Dung",
         "journal": "Materials Today Communications",
         "year": 2024,
         "doi": "10.1016/j.mtcomm.2024.109686",
         "citations": 0,
-        "volume": "",
+        "volume": "40",
         "issue": "",
-        "pages": "",
+        "pages": "109686",
         "source": "ORCID",
-        "visibility": "Public"
+        "visibility": "Public",
+        "id": 1794547017383
       },
       {
         "title": "First-principles calculations of self-defects on the structural, electronic, and optical properties of BaXO3 (X = Ti, Zr, and Hf) perovskite oxide materials",
