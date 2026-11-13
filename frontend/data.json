@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T10:43:04.954Z",
+  "exported_at": "2026-11-13T10:43:13.936Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -231,17 +231,18 @@
         "visibility": "Public"
       },
       {
-        "title": "Surface ferromagnetism of complex defects lead-free ferroelectric Bi0.5Na0.5TiO3 materials",
-        "authors": "Vu Tien Lam, Nguyen Hoang Thoan, Nguyen Ngoc Trung, Duong Quoc Van, Dang Duc Dung",
+        "title": "Surface ferromagnetism of complex defects lead‐free ferroelectric Bi                    <sub>0.5</sub>                    Na                    <sub>0.5</sub>                    TiO                    <sub>3</sub>                    materials",
+        "authors": "Vu Tien Lam; Nguyen Hoang Thoan; Nguyen Ngoc Trung; Duong Quoc Van; Dang Duc Dung",
         "journal": "Surface and Interface Analysis",
-        "year": 2023,
+        "year": 2022,
         "doi": "10.1002/sia.7184",
         "citations": 8,
         "volume": "55",
         "issue": "4",
         "pages": "243-255",
         "source": "ORCID",
-        "visibility": "Public"
+        "visibility": "Public",
+        "id": 1794566593480
       },
       {
         "title": "Design and optical properties of a new binary Bi1/2Na1/2TiO3-Eu1/2Na1/2TiO3 solid solution system",
