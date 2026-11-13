@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T01:49:19.369Z",
+  "exported_at": "2026-11-13T01:52:37.880Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -57,6 +57,159 @@
       }
     ],
     "publications": [
+      {
+        "title": "Magnetic properties of new binary compounds lead-free ferroelectric (1-x)Ba(Zr0·2Ti0.8)O3+xFeTiO3 as solid solution",
+        "authors": "Vu Tien Lam",
+        "journal": "Journal of Solid State Chemistry",
+        "year": 2025,
+        "doi": "",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Nature defect-mediated room temperature ferromagnetism in lead-free ferroelectric Ba(Zr0.2Ti0.8)O3: A first-principles study",
+        "authors": "Vu Tien Lam",
+        "journal": "Next Materials",
+        "year": 2025,
+        "doi": "",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Role of substitution Zr-site on the electronic structure and magnetic properties of BaTiO3 materials: A first principles calculation",
+        "authors": "Vu Tien Lam",
+        "journal": "Computational and Theoretical Chemistry",
+        "year": 2025,
+        "doi": "",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Comparative electronic structure, magnetic and optical properties of cubic perovskite BaXO3 (X=Ti, Sn) with self-defects: A first-principles calculation",
+        "authors": "Vu Tien Lam",
+        "journal": "Materials Today Communications",
+        "year": 2024,
+        "doi": "",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "First-principles calculations of self-defects on the structural, electronic, and optical properties of BaXO3 (X = Ti, Zr, and Hf) perovskite oxide materials",
+        "authors": "Vu Tien Lam",
+        "journal": "Materials Today Communications",
+        "year": 2024,
+        "doi": "",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Optical, Magnetic, and Electrical Properties of New Binary CoTiO3-Modified Ba(Zr0.2Ti0.8)O3 System as Solid Solution",
+        "authors": "Vu Tien Lam",
+        "journal": "Journal of Electronic Materials",
+        "year": 2024,
+        "doi": "",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Optical, magnetic and electrical properties of new binary MnTiO3-modified Ba(Zr,Ti)O3 materials as solid solution",
+        "authors": "Vu Tien Lam",
+        "journal": "Physica B Condensed Matter",
+        "year": 2024,
+        "doi": "",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Structural, electronic and optical properties of complex lead-free ferroelectric Ba0.7Ca0.3TiO3 materials: A DFT study",
+        "authors": "Vu Tien Lam",
+        "journal": "MRS Communications",
+        "year": 2024,
+        "doi": "",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Electronic Structure and Optical Properties of Cubic Perovskite Baxo3 (X=Ti, Sn): A First Principle Calculations",
+        "authors": "Vu Tien Lam",
+        "journal": "Ssrn",
+        "year": 2023,
+        "doi": "",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Fabrication and Optical Properties of (1−x)Bi½Na½TiO3−xEr½Na½TiO3 Solid Solution System",
+        "authors": "Vu Tien Lam",
+        "journal": "Journal of Electronic Materials",
+        "year": 2023,
+        "doi": "",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Surface ferromagnetism of complex defects lead-free ferroelectric Bi0.5Na0.5TiO3 materials",
+        "authors": "Vu Tien Lam",
+        "journal": "Surface and Interface Analysis",
+        "year": 2023,
+        "doi": "",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Design and optical properties of a new binary Bi1/2Na1/2TiO3-Eu1/2Na1/2TiO3 solid solution system",
+        "authors": "Vu Tien Lam",
+        "journal": "Optical Materials",
+        "year": 2022,
+        "doi": "",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Fabrication and Optical Properties of Rare-Earth-Sm-Doped Lead-Free Ferroelectric Bi0.5Na0.5TiO3 Materials",
+        "authors": "Vu Tien Lam",
+        "journal": "Lecture Notes in Mechanical Engineering",
+        "year": 2022,
+        "doi": "",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Fabrication and optical properties of new (1-x)Bi1/2Na1/2TiO3+xHo1/2Na1/2TiO3 solid solution materials",
+        "authors": "Vu Tien Lam",
+        "journal": "Optical Materials",
+        "year": 2022,
+        "doi": "",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Magnetic Properties of a (1−x)Bi0.5Na0.5TiO3+xCaNiO3-δ Solid Solution System Prepared by Sol–Gel Technique",
+        "authors": "Vu Tien Lam",
+        "journal": "Journal of Electronic Materials",
+        "year": 2022,
+        "doi": "",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Magnetic and Optical Properties of Transition Metal (Cr, Mn, Fe, Co, and Ni) Doped Lead-Free Ferroelectric Bi0.5Na0.5TiO3 Materials",
+        "authors": "Vu Tien Lam",
+        "journal": "Lecture Notes in Mechanical Engineering",
+        "year": 2022,
+        "doi": "",
+        "citations": 0,
+        "source": "ORCID"
+      },
+      {
+        "title": "Magnetic properties of new (1−x)Bi1/2Na1/2TiO3+xBaNiO3−δ solid solution materials",
+        "authors": "Vu Tien Lam",
+        "journal": "Applied Physics A Materials Science and Processing",
+        "year": 2022,
+        "doi": "",
+        "citations": 0,
+        "source": "ORCID"
+      },
       {
         "title": "Optical and Magnetic Properties of Lead-Free Ferroelectric (Bi0.5Na0.5)0.97A0.03Ti0.97Fe0.03O3 (A = Mg, Sr, Ca, Ba) Materials",
         "authors": "Vu Tien Lam",
