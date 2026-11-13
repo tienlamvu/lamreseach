@@ -25,6 +25,8 @@ let STATE = {
     { formula: "Ta2O5", ratio: 0.3, excessPct: 0 }
   ],
   selectedElement: typeof ELEMENTS_DATA !== "undefined" ? ELEMENTS_DATA[2] : null,
+  selectedPaperIds: new Set(),
+  selectedPubKeys: new Set(),
   calendarYear: nowDate.getFullYear(),
   calendarMonth: nowDate.getMonth(),
   auth: {
@@ -1311,6 +1313,8 @@ function renderPapersList() {
     return hay.includes(query);
   });
 
+  updatePaperBatchBar(filtered);
+
   const container = document.getElementById("papers-list-container");
   if (!container) return;
   if (filtered.length === 0) {
@@ -1318,20 +1322,27 @@ function renderPapersList() {
     return;
   }
 
-  container.innerHTML = filtered.map(p => `
-    <div class="item-card" id="paper-card-${p.id}">
+  container.innerHTML = filtered.map(p => {
+    const isSelected = STATE.selectedPaperIds && STATE.selectedPaperIds.has(p.id);
+    return `
+    <div class="item-card" id="paper-card-${p.id}" style="${isSelected ? 'border-color: #2563eb; background: #f0f7ff;' : ''}">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
-        <div style="flex:1; min-width:240px;">
-          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
-            <span class="badge ${p.status === 'Key Reference' ? 'badge-rose' : p.status === 'Read' ? 'badge-green' : 'badge-blue'}">${escapeHtml(p.status)}</span>
-            ${p.in_weekly_report ? `<span class="badge badge-amber">📽️ In Weekly Report</span>` : ""}
-            <span style="font-size:12px; color:var(--text-muted);">📈 Citations: <strong>${p.citation_count || 0}</strong></span>
-            ${p.doi ? `<a href="https://doi.org/${encodeURIComponent(p.doi)}" target="_blank" style="font-size:12px; color:var(--primary); text-decoration:none; font-weight:600;">DOI: ${escapeHtml(p.doi)} ↗</a>` : ""}
+        <div style="display:flex; gap:12px; align-items:flex-start; flex:1; min-width:240px;">
+          <div class="admin-only" style="padding-top:2px;">
+            <input type="checkbox" class="paper-select-cb" data-id="${p.id}" ${isSelected ? "checked" : ""} onchange="toggleSelectPaper(${p.id}, this.checked)" style="width:17px; height:17px; accent-color:#2563eb; cursor:pointer;" title="Select paper for batch actions" />
           </div>
-          <div class="item-title">${renderScientificTitle(p.title)}</div>
-          <div class="item-meta">
-            <strong>${escapeHtml(p.authors)}</strong> &nbsp;•&nbsp; <em>${escapeHtml(p.journal)}</em> (${p.year || ""})
-            ${p.volume ? `, Vol. ${escapeHtml(p.volume)}` : ""}${p.pages ? `, pp. ${escapeHtml(p.pages)}` : ""}
+          <div style="flex:1;">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
+              <span class="badge ${p.status === 'Key Reference' ? 'badge-rose' : p.status === 'Read' ? 'badge-green' : 'badge-blue'}">${escapeHtml(p.status)}</span>
+              ${p.in_weekly_report ? `<span class="badge badge-amber">📽️ In Weekly Report</span>` : ""}
+              <span style="font-size:12px; color:var(--text-muted);">📈 Citations: <strong>${p.citation_count || 0}</strong></span>
+              ${p.doi ? `<a href="https://doi.org/${encodeURIComponent(p.doi)}" target="_blank" style="font-size:12px; color:var(--primary); text-decoration:none; font-weight:600;">DOI: ${escapeHtml(p.doi)} ↗</a>` : ""}
+            </div>
+            <div class="item-title">${renderScientificTitle(p.title)}</div>
+            <div class="item-meta">
+              <strong>${escapeHtml(p.authors)}</strong> &nbsp;•&nbsp; <em>${escapeHtml(p.journal)}</em> (${p.year || ""})
+              ${p.volume ? `, Vol. ${escapeHtml(p.volume)}` : ""}${p.pages ? `, pp. ${escapeHtml(p.pages)}` : ""}
+            </div>
           </div>
         </div>
 
@@ -1352,7 +1363,122 @@ function renderPapersList() {
         ${(p.characterization_tags || "").split(",").filter(Boolean).map(t => `<span class="badge badge-slate">🔬 ${escapeHtml(t.trim())}</span>`).join("")}
       </div>
     </div>
-  `).join("");
+  `;
+  }).join("");
+}
+
+function updatePaperBatchBar(filtered = null) {
+  if (!STATE.selectedPaperIds) STATE.selectedPaperIds = new Set();
+  const countTextEl = document.getElementById("paper-batch-count-text");
+  const delBtn = document.getElementById("paper-batch-delete-btn");
+  const delCountEl = document.getElementById("paper-batch-delete-count");
+  const clearBtn = document.getElementById("paper-batch-clear-btn");
+  const selectAllCb = document.getElementById("paper-select-all-cb");
+
+  const visibleList = filtered || STATE.papers || [];
+  const count = STATE.selectedPaperIds.size;
+
+  if (countTextEl) countTextEl.textContent = `• ${count} selected`;
+  if (delCountEl) delCountEl.textContent = count;
+
+  if (delBtn) delBtn.style.display = count > 0 ? "inline-flex" : "none";
+  if (clearBtn) clearBtn.style.display = count > 0 ? "inline-flex" : "none";
+
+  if (selectAllCb) {
+    if (visibleList.length > 0 && visibleList.every(p => STATE.selectedPaperIds.has(p.id))) {
+      selectAllCb.checked = true;
+      selectAllCb.indeterminate = false;
+    } else if (visibleList.some(p => STATE.selectedPaperIds.has(p.id))) {
+      selectAllCb.checked = false;
+      selectAllCb.indeterminate = true;
+    } else {
+      selectAllCb.checked = false;
+      selectAllCb.indeterminate = false;
+    }
+  }
+}
+
+function toggleSelectPaper(id, isChecked) {
+  if (!STATE.selectedPaperIds) STATE.selectedPaperIds = new Set();
+  const numId = Number(id);
+  if (isChecked) {
+    STATE.selectedPaperIds.add(numId);
+  } else {
+    STATE.selectedPaperIds.delete(numId);
+  }
+  const card = document.getElementById(`paper-card-${id}`);
+  if (card) {
+    if (isChecked) {
+      card.style.borderColor = "#2563eb";
+      card.style.background = "#f0f7ff";
+    } else {
+      card.style.borderColor = "";
+      card.style.background = "";
+    }
+  }
+  updatePaperBatchBar();
+}
+
+function toggleSelectAllPapers(isChecked) {
+  if (!STATE.selectedPaperIds) STATE.selectedPaperIds = new Set();
+  const query = (document.getElementById("paper-search")?.value || "").toLowerCase();
+  const statusFilter = document.getElementById("paper-status-filter")?.value || "ALL";
+
+  const filtered = STATE.papers.filter(p => {
+    if (statusFilter !== "ALL" && p.status !== statusFilter) return false;
+    if (!query) return true;
+    const hay = `${p.title} ${p.authors} ${p.journal} ${p.doi} ${p.material_system} ${p.characterization_tags} ${p.notes}`.toLowerCase();
+    return hay.includes(query);
+  });
+
+  if (isChecked) {
+    filtered.forEach(p => STATE.selectedPaperIds.add(p.id));
+  } else {
+    filtered.forEach(p => STATE.selectedPaperIds.delete(p.id));
+  }
+
+  renderPapersList();
+}
+
+function clearSelectedPapers() {
+  if (STATE.selectedPaperIds) STATE.selectedPaperIds.clear();
+  renderPapersList();
+}
+
+async function deleteSelectedPapers() {
+  if (!requireAdminAuth()) return;
+  if (!STATE.selectedPaperIds || STATE.selectedPaperIds.size === 0) {
+    showToast("No papers selected to delete.", "warn");
+    return;
+  }
+  const count = STATE.selectedPaperIds.size;
+  const msg = count === 1
+    ? "Are you sure you want to remove the selected paper from your reference library?"
+    : `Are you sure you want to permanently remove ${count} selected papers from your reference library?`;
+  const itemDesc = `Total of ${count} paper${count > 1 ? "s" : ""} will be permanently removed.`;
+
+  const ok = await confirmAction(msg, itemDesc);
+  if (!ok) return;
+
+  const idsToDelete = new Set(Array.from(STATE.selectedPaperIds).map(Number));
+
+  if (!STATIC_MODE) {
+    for (const id of idsToDelete) {
+      try {
+        await fetch(`/api/papers/${id}`, { method: "DELETE" });
+      } catch (err) {
+        console.error("Failed to delete paper via API:", id, err);
+      }
+    }
+    STATE.selectedPaperIds.clear();
+    await loadAllData();
+  } else {
+    STATE.papers = STATE.papers.filter(p => !idsToDelete.has(Number(p.id)));
+    STATE.selectedPaperIds.clear();
+    saveStaticDb();
+    loadStaticFallbackData();
+  }
+  showToast(`Successfully removed ${count} paper(s) from reference library.`, "success");
 }
 
 function openPaperModal(paperId = null) {
@@ -1465,6 +1591,11 @@ async function deletePaperItem(id) {
   const pTitle = p ? (p.title || `ID #${id}`) : `ID #${id}`;
   const ok = await confirmAction("Are you sure you want to remove this paper from your reference library?", pTitle);
   if (!ok) return;
+
+  if (STATE.selectedPaperIds) {
+    STATE.selectedPaperIds.delete(id);
+    STATE.selectedPaperIds.delete(Number(id));
+  }
 
   if (!STATIC_MODE) {
     await fetch(`/api/papers/${id}`, { method: "DELETE" });
@@ -4847,6 +4978,166 @@ function renderAcademicCvSheet(prof) {
   `;
 }
 
+function getPubUniqueKey(p, idx) {
+  if (!p) return `idx_${idx}`;
+  if (p.id !== undefined && p.id !== null && p.id !== "") return `id_${p.id}`;
+  if (p.doi && typeof p.doi === "string" && p.doi.trim()) {
+    return `doi_${p.doi.trim().toLowerCase().replace(/^https?:\/\/doi\.org\//i, "").replace(/[^a-z0-9]/g, "_")}`;
+  }
+  if (p.title && typeof p.title === "string" && p.title.trim()) {
+    return `title_${p.title.trim().toLowerCase().slice(0, 32).replace(/[^a-z0-9]/g, "_")}`;
+  }
+  return `idx_${idx}`;
+}
+
+function updatePubBatchBar(allPubs = null) {
+  if (!STATE.selectedPubKeys) STATE.selectedPubKeys = new Set();
+  const selectAllCb = document.getElementById("pub-select-all-cb");
+  const countTextEl = document.getElementById("pub-batch-count-text");
+  const delBtn = document.getElementById("pub-batch-delete-btn");
+  const delCountEl = document.getElementById("pub-batch-delete-count");
+  const clearBtn = document.getElementById("pub-batch-clear-btn");
+
+  const profDelBtn = document.getElementById("prof-pub-batch-delete-btn");
+  const profDelCount = document.getElementById("prof-pub-delete-count");
+
+  let list = allPubs;
+  if (!list) {
+    if (CURRENT_PUB_VIEW_MODE === "orcid" && STATE.orcidLiveWorks && STATE.orcidLiveWorks.length > 0) {
+      list = STATE.orcidLiveWorks;
+    } else {
+      list = (STATE.profile && STATE.profile.publications) || [];
+    }
+  }
+  const count = STATE.selectedPubKeys.size;
+
+  if (countTextEl) countTextEl.textContent = `• ${count} selected`;
+  if (delCountEl) delCountEl.textContent = count;
+  if (delBtn) delBtn.style.display = count > 0 ? "inline-flex" : "none";
+  if (clearBtn) clearBtn.style.display = count > 0 ? "inline-flex" : "none";
+
+  if (profDelBtn) profDelBtn.style.display = count > 0 ? "inline-flex" : "none";
+  if (profDelCount) profDelCount.textContent = count;
+
+  if (selectAllCb) {
+    const visibleKeys = list.map((p, idx) => getPubUniqueKey(p, idx));
+    if (visibleKeys.length > 0 && visibleKeys.every(k => STATE.selectedPubKeys.has(k))) {
+      selectAllCb.checked = true;
+      selectAllCb.indeterminate = false;
+    } else if (visibleKeys.some(k => STATE.selectedPubKeys.has(k))) {
+      selectAllCb.checked = false;
+      selectAllCb.indeterminate = true;
+    } else {
+      selectAllCb.checked = false;
+      selectAllCb.indeterminate = false;
+    }
+  }
+}
+
+function toggleSelectPub(key, isChecked) {
+  if (!STATE.selectedPubKeys) STATE.selectedPubKeys = new Set();
+  if (isChecked) {
+    STATE.selectedPubKeys.add(key);
+  } else {
+    STATE.selectedPubKeys.delete(key);
+  }
+  const item = document.getElementById(`pub-item-${key}`);
+  if (item) {
+    if (isChecked) {
+      item.style.background = "#eff6ff";
+      item.style.borderLeft = "4px solid #2563eb";
+      item.style.paddingLeft = "10px";
+      item.style.borderRadius = "6px";
+    } else {
+      item.style.background = "";
+      item.style.borderLeft = "";
+      item.style.paddingLeft = "";
+      item.style.borderRadius = "";
+    }
+  }
+  const profCard = document.getElementById(`profile-pub-card-${key}`);
+  if (profCard) {
+    if (isChecked) {
+      profCard.style.borderColor = "#2563eb";
+      profCard.style.background = "#f0f7ff";
+    } else {
+      profCard.style.borderColor = "";
+      profCard.style.background = "";
+    }
+  }
+  updatePubBatchBar();
+}
+
+function toggleSelectAllPubs(isChecked) {
+  if (!STATE.selectedPubKeys) STATE.selectedPubKeys = new Set();
+  let papers = STATE.profile && STATE.profile.publications ? STATE.profile.publications : [];
+  if (CURRENT_PUB_VIEW_MODE === "orcid" && STATE.orcidLiveWorks && STATE.orcidLiveWorks.length > 0) {
+    papers = STATE.orcidLiveWorks;
+  }
+  if (isChecked) {
+    papers.forEach((p, idx) => {
+      const key = getPubUniqueKey(p, idx);
+      STATE.selectedPubKeys.add(key);
+    });
+  } else {
+    papers.forEach((p, idx) => {
+      const key = getPubUniqueKey(p, idx);
+      STATE.selectedPubKeys.delete(key);
+    });
+  }
+  renderAcademicCvSheet(STATE.profile);
+  renderProfile(STATE.profile);
+}
+
+function clearSelectedPubs() {
+  if (STATE.selectedPubKeys) STATE.selectedPubKeys.clear();
+  renderAcademicCvSheet(STATE.profile);
+  renderProfile(STATE.profile);
+}
+
+async function deleteSelectedPublications() {
+  if (!requireAdminAuth()) return;
+  if (!STATE.selectedPubKeys || STATE.selectedPubKeys.size === 0) {
+    showToast("No publications selected to delete.", "warn");
+    return;
+  }
+  const count = STATE.selectedPubKeys.size;
+  const msg = count === 1
+    ? "Are you sure you want to remove the selected publication from your CV & portfolio?"
+    : `Are you sure you want to permanently delete ${count} selected publications from your CV & portfolio?`;
+  const itemDesc = `Total of ${count} publication${count > 1 ? "s" : ""} will be permanently removed.`;
+
+  const ok = await confirmAction(msg, itemDesc);
+  if (!ok) return;
+
+  const pubs = STATE.profile.publications || [];
+  const remaining = pubs.filter((p, idx) => {
+    const key = getPubUniqueKey(p, idx);
+    return !STATE.selectedPubKeys.has(key);
+  });
+
+  const removedCount = pubs.length - remaining.length;
+  STATE.profile.publications = remaining;
+
+  if (Array.isArray(STATE.orcidLiveWorks)) {
+    STATE.orcidLiveWorks = STATE.orcidLiveWorks.filter((p, idx) => {
+      const key = getPubUniqueKey(p, idx);
+      return !STATE.selectedPubKeys.has(key);
+    });
+  }
+
+  STATE.selectedPubKeys.clear();
+  renderAcademicCvSheet(STATE.profile);
+  renderProfile(STATE.profile);
+  showToast(`Successfully deleted ${removedCount > 0 ? removedCount : count} publication(s).`, "info");
+
+  try {
+    await persistProfileState();
+  } catch (err) {
+    console.error("Failed to persist bulk publication deletion:", err);
+  }
+}
+
 let CURRENT_PUB_VIEW_MODE = "curated"; // 'curated' (default with enriched 24 publications) or 'orcid'
 
 function renderAcademicCvPublicationsSection(prof, pubList = []) {
@@ -4985,6 +5276,23 @@ function renderAcademicCvPublicationsSection(prof, pubList = []) {
         </button>
       </div>
 
+      <!-- Admin Batch Action Bar for Publications -->
+      <div class="pub-batch-bar admin-only no-print" id="pub-batch-bar" style="display:flex; align-items:center; justify-content:space-between; gap:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:9px 14px; margin-top:10px; margin-bottom:12px; font-size:13px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; color:#334155; margin:0;">
+            <input type="checkbox" id="pub-select-all-cb" onchange="toggleSelectAllPubs(this.checked)" style="width:16px; height:16px; accent-color:var(--primary); cursor:pointer;" />
+            Select All Publications (${papers.length})
+          </label>
+          <span id="pub-batch-count-text" style="color:#64748b; font-size:12.5px;">• ${STATE.selectedPubKeys ? STATE.selectedPubKeys.size : 0} selected</span>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-outline btn-sm" id="pub-batch-clear-btn" style="${STATE.selectedPubKeys && STATE.selectedPubKeys.size > 0 ? 'display:inline-flex;' : 'display:none;'}" onclick="clearSelectedPubs()">Clear Selection</button>
+          <button class="btn btn-danger btn-sm" id="pub-batch-delete-btn" style="${STATE.selectedPubKeys && STATE.selectedPubKeys.size > 0 ? 'display:inline-flex;' : 'display:none;'} font-weight:700; background:#dc2626; color:#ffffff; border:none; display:inline-flex; align-items:center; gap:4px;" onclick="deleteSelectedPublications()">
+            🗑️ Delete Selected (<span id="pub-batch-delete-count">${STATE.selectedPubKeys ? STATE.selectedPubKeys.size : 0}</span>)
+          </button>
+        </div>
+      </div>
+
       <!-- Auto-synced Banner -->
       <div class="orcid-notice-banner">
         <div>
@@ -5021,6 +5329,8 @@ function renderAcademicCvPublicationsSection(prof, pubList = []) {
               const formattedAuthors = formatAuthorsWithHighlight(p.authors, researcherName);
               const realPubIndex = (STATE.profile.publications || []).findIndex(x => (x.id && p.id && x.id === p.id) || (x.doi && p.doi && x.doi === p.doi) || (x.title === p.title));
               const editIndex = realPubIndex >= 0 ? realPubIndex : pIdx;
+              const pubKey = getPubUniqueKey(p, editIndex);
+              const isPubSelected = STATE.selectedPubKeys && STATE.selectedPubKeys.has(pubKey);
 
               let journalMeta = "";
               if (p.volume && p.pages) {
@@ -5034,7 +5344,10 @@ function renderAcademicCvPublicationsSection(prof, pubList = []) {
               }
 
               return `
-                <div class="pub-item">
+                <div class="pub-item" id="pub-item-${escapeHtml(pubKey)}" style="${isPubSelected ? 'background: #eff6ff; border-left: 4px solid #2563eb; padding-left: 10px; border-radius: 6px;' : ''}">
+                  <div class="admin-only no-print" style="display:flex; align-items:flex-start; padding-top:4px;">
+                    <input type="checkbox" class="pub-select-cb" data-key="${escapeHtml(pubKey)}" ${isPubSelected ? "checked" : ""} onchange="toggleSelectPub('${escapeHtml(pubKey)}', this.checked)" style="width:17px; height:17px; accent-color:#2563eb; cursor:pointer;" title="Select publication for batch actions" />
+                  </div>
                   <div class="pub-num">${currentNum}</div>
                   <div class="pub-body">
                     <!-- Line 1: Journal in uppercase maroon + Article meta (as in screenshot) -->
@@ -5166,6 +5479,9 @@ async function removeOwnPubById(idOrIdx, doi = "", title = "", e = null) {
     if (!ok) return;
 
     const removed = pubs.splice(targetIdx, 1)[0];
+    if (STATE.selectedPubKeys) {
+      STATE.selectedPubKeys.delete(getPubUniqueKey(removed, targetIdx));
+    }
     STATE.profile.publications = pubs;
     renderAcademicCvSheet(STATE.profile);
     showToast(`Deleted publication "${(removed.title || '').slice(0, 32)}..."!`, "info");
@@ -5846,11 +6162,7 @@ function populateReportForm(data) {
   updateSlidePreview();
 }
 
-async function removeExpReportRow(idx) {
-  const r = STATE.expReportRows[idx];
-  const desc = r ? (r.sample_id || r.material || `Row #${idx + 1}`) : `Row #${idx + 1}`;
-  const ok = await confirmAction("Are you sure you want to delete this research result row?", desc);
-  if (!ok) return;
+function removeExpReportRow(idx) {
   STATE.expReportRows.splice(idx, 1);
   renderExpReportRows();
   updateSlidePreview();
@@ -5881,11 +6193,7 @@ function addExpResultRow() {
   updateSlidePreview();
 }
 
-async function removeLitReportRow(idx) {
-  const r = STATE.litReportRows[idx];
-  const desc = r ? (r.title || `Row #${idx + 1}`) : `Row #${idx + 1}`;
-  const ok = await confirmAction("Are you sure you want to delete this literature review row?", desc);
-  if (!ok) return;
+function removeLitReportRow(idx) {
   STATE.litReportRows.splice(idx, 1);
   renderLitReportRows();
   updateSlidePreview();
@@ -6151,6 +6459,8 @@ function renderProfile(prof) {
       pubContainer.innerHTML = `<div style="color:var(--text-muted); font-size:13px;">No publications listed yet. Sync with ORCID or Google Scholar above!</div>`;
     } else {
       pubContainer.innerHTML = pubs.map((p, idx) => {
+        const pubKey = getPubUniqueKey(p, idx);
+        const isPubSelected = STATE.selectedPubKeys && STATE.selectedPubKeys.has(pubKey);
         const doiUrl = p.doi ? (p.doi.startsWith("http") ? p.doi : `https://doi.org/${p.doi}`) : "";
         const cleanDoi = p.doi ? p.doi.replace(/^https?:\/\/doi\.org\//i, "") : "";
         const formattedAuthors = formatAuthorsWithHighlight(p.authors || prof.full_name, prof.full_name);
@@ -6165,12 +6475,17 @@ function renderProfile(prof) {
         }
 
         return `
-        <div class="item-card pub-profile-card">
+        <div class="item-card pub-profile-card" id="profile-pub-card-${escapeHtml(pubKey)}" style="${isPubSelected ? 'border-color: #2563eb; background: #f0f7ff;' : ''}">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
-            <div class="item-title" style="font-size:14.5px; font-weight:700; line-height:1.45;">
-              ${doiUrl ? `<a href="${escapeHtml(doiUrl)}" target="_blank" rel="noopener noreferrer" style="color:inherit; text-decoration:none;">${renderScientificTitle(p.title)}</a>` : renderScientificTitle(p.title)}
-              ${p.visibility === "Private" ? `<span class="badge badge-rose" style="font-size:11px; margin-left:6px; vertical-align:middle;">🔒 Private</span>` : ""}
-              ${p.visibility === "Curated" ? `<span class="badge badge-blue" style="font-size:11px; margin-left:6px; vertical-align:middle;">📜 Curated</span>` : ""}
+            <div style="display:flex; gap:10px; align-items:flex-start; flex:1;">
+              <div class="admin-only" style="padding-top:2px;">
+                <input type="checkbox" class="pub-select-cb" data-key="${escapeHtml(pubKey)}" ${isPubSelected ? "checked" : ""} onchange="toggleSelectPub('${escapeHtml(pubKey)}', this.checked)" style="width:16px; height:16px; accent-color:#2563eb; cursor:pointer;" title="Select publication for batch actions" />
+              </div>
+              <div class="item-title" style="font-size:14.5px; font-weight:700; line-height:1.45;">
+                ${doiUrl ? `<a href="${escapeHtml(doiUrl)}" target="_blank" rel="noopener noreferrer" style="color:inherit; text-decoration:none;">${renderScientificTitle(p.title)}</a>` : renderScientificTitle(p.title)}
+                ${p.visibility === "Private" ? `<span class="badge badge-rose" style="font-size:11px; margin-left:6px; vertical-align:middle;">🔒 Private</span>` : ""}
+                ${p.visibility === "Curated" ? `<span class="badge badge-blue" style="font-size:11px; margin-left:6px; vertical-align:middle;">📜 Curated</span>` : ""}
+              </div>
             </div>
             <span class="badge badge-purple" style="white-space:nowrap; font-weight:600;">Citations: ${p.citations || 0}</span>
           </div>
@@ -6196,6 +6511,7 @@ function renderProfile(prof) {
         </div>
       `;
       }).join("");
+      updatePubBatchBar(pubs);
     }
   }
 }
@@ -7149,7 +7465,10 @@ async function removeOwnPub(idx, e) {
   const ok = await confirmAction("Are you sure you want to remove this publication from your CV & portfolio?", pubTitle);
   if (!ok) return;
 
-  STATE.profile.publications.splice(idx, 1);
+  const removed = STATE.profile.publications.splice(idx, 1)[0];
+  if (STATE.selectedPubKeys) {
+    STATE.selectedPubKeys.delete(getPubUniqueKey(removed, idx));
+  }
   renderProfile(STATE.profile);
   renderAcademicCvSheet(STATE.profile);
   showToast("Publication removed!", "info");
@@ -7371,11 +7690,7 @@ function runStoichiometryCalc() {
   }
 }
 
-async function removePrecursorRow(idx) {
-  const p = STATE.precursors[idx];
-  const desc = p ? (p.formula || `Precursor #${idx + 1}`) : `Precursor #${idx + 1}`;
-  const ok = await confirmAction("Are you sure you want to remove this precursor material?", desc);
-  if (!ok) return;
+function removePrecursorRow(idx) {
   STATE.precursors.splice(idx, 1);
   renderPrecursorInputs();
   runStoichiometryCalc();
