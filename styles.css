@@ -2722,6 +2722,38 @@ body.is-admin .visitor-only {
   text-decoration: underline;
 }
 
+.pub-profile-card {
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 10px;
+  background: var(--card-bg, #ffffff);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+.pub-profile-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06);
+}
+
+.dark-mode .pub-profile-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.dark-mode .pub-profile-card .item-title a {
+  color: #f8fafc !important;
+}
+
+.dark-mode .pub-profile-card .pub-authors {
+  color: #cbd5e1 !important;
+}
+
+.dark-mode .author-highlight {
+  color: #38bdf8 !important;
+}
+
 .pub-year-jump-bar {
   display: flex;
   align-items: center;
