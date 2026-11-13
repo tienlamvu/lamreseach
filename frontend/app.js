@@ -183,7 +183,8 @@ function escapeHtml(str) {
 function renderScientificTitle(rawTitle) {
   if (rawTitle === null || rawTitle === undefined) return "";
   let s = String(rawTitle);
-  // Decode common encoded chemical/scientific tags if already escaped
+
+  // 1. Decode common encoded chemical/scientific tags if already escaped
   s = s.replace(/&lt;(\/?)sub&gt;/gi, '<$1sub>')
        .replace(/&lt;(\/?)sup&gt;/gi, '<$1sup>')
        .replace(/&lt;(\/?)i&gt;/gi, '<$1i>')
@@ -191,7 +192,50 @@ function renderScientificTitle(rawTitle) {
        .replace(/&lt;(\/?)em&gt;/gi, '<$1em>')
        .replace(/&lt;(\/?)strong&gt;/gi, '<$1strong>');
 
-  // Whitelist safe chemical formatting tags: sub, sup, i, b, em, strong
+  // 2. Normalize middle dot in decimals (e.g. 0·2 -> 0.2)
+  s = s.replace(/(\d)·(\d)/g, '$1.$2');
+
+  const twoLetterElem = "He|Li|Be|Ne|Na|Mg|Al|Si|Cl|Ar|Ca|Sc|Ti|Cr|Mn|Fe|Co|Ni|Cu|Zn|Ga|Ge|As|Se|Br|Kr|Rb|Sr|Zr|Nb|Mo|Tc|Ru|Rh|Pd|Ag|Cd|In|Sn|Sb|Te|Xe|Cs|Ba|La|Ce|Pr|Nd|Pm|Sm|Eu|Gd|Tb|Dy|Ho|Er|Tm|Yb|Lu|Hf|Ta|Re|Os|Ir|Pt|Au|Hg|Tl|Pb|Bi|Po|At|Rn|Fr|Ra|Ac|Th|Pa|Np|Pu|Am|RE|TM|Ln";
+  const oneLetterElem = "H|B|C|N|O|F|P|S|K|V|Y|I|W|U|X|M|A";
+  const allElem = twoLetterElem + "|" + oneLetterElem;
+
+  // 3. Separate +x or -x phase addition when followed by an element symbol (e.g. O3+xFeTiO3 -> O3 + xFeTiO3)
+  const phaseAddRegex = new RegExp("(\\d)\\s*([\\+−\\-])\\s*([xXyYzZδ])(?=(?:" + allElem + "))", "g");
+  s = s.replace(phaseAddRegex, "$1 $2 $3");
+
+  // 4. Temporary mask existing safe HTML tags (sub, sup, i, b, em, strong)
+  const tags = [];
+  s = s.replace(/<\/?(?:sub|sup|i|b|em|strong)>/gi, (m) => {
+    tags.push(m.toLowerCase());
+    return "___HTMLTAG" + (tags.length - 1) + "___";
+  });
+
+  // 5. Parenthesized group subscript: e.g. (Bi0.5Na0.5)0.97 -> (Bi0.5Na0.5)<sub>0.97</sub>
+  s = s.replace(/(\))\s*(0\.[0-9]+|[0-9]+\/[0-9]+|[½⅓¼]|[0-9]+)/g, "$1<sub>$2</sub>");
+
+  // 6. Match element followed by subscript:
+  const subPattern = "(?:[0-9]+\\/[0-9]+|[½⅓¼]|[0-9]+\\.[0-9]+|[0-9]+[−\\-\\+](?:[0-9]+|[xXyYzZδ])|[xXyYzZδ]|[2-9]|1[0-9]+)";
+  const chemRegexClean = new RegExp("(^|[\\s\\(\\)\\[\\]\\-\\+−–—\\/\\=~>,]|\\d+\\.\\d+|\\d+|" + allElem + "|[xXyYzZ])(" + allElem + ")(" + subPattern + ")(?=[^a-zA-Z0-9]|$|" + allElem + "|[\\)\\],])", "g");
+
+  const chemReplacer = (match, prefix, elem, sub) => {
+    if (elem === "D" && prefix && prefix.endsWith("-")) {
+      return match; // Keep "2-D", "3-D" untouched!
+    }
+    return prefix + elem + "<sub>" + sub + "</sub>";
+  };
+
+  for (let pass = 0; pass < 6; pass++) {
+    const prev = s;
+    s = s.replace(chemRegexClean, chemReplacer);
+    if (s === prev) break;
+  }
+
+  // 7. Unmask HTML tags
+  for (let i = 0; i < tags.length; i++) {
+    s = s.replace("___HTMLTAG" + i + "___", tags[i]);
+  }
+
+  // 8. Safely preserve whitelisted tags while escaping any other arbitrary HTML characters
   const allowedTagRegex = /<\/?(sub|sup|i|b|em|strong)>/gi;
   const parts = [];
   let lastIndex = 0;
@@ -958,7 +1002,7 @@ function showDuplicateDoiWarning(existingPaper, attemptedDoi) {
 
   const title = existingPaper?.title || "Existing Paper";
   const doi = existingPaper?.doi || attemptedDoi;
-  textEl.innerHTML = `DOI <code>${escapeHtml(doi)}</code> has already been added previously: <strong>"${escapeHtml(title)}"</strong> (${escapeHtml(existingPaper?.journal || "")}, ${existingPaper?.year || ""}). Duplicate addition was blocked.`;
+  textEl.innerHTML = `DOI <code>${escapeHtml(doi)}</code> has already been added previously: <strong>"${renderScientificTitle(title)}"</strong> (${escapeHtml(existingPaper?.journal || "")}, ${existingPaper?.year || ""}). Duplicate addition was blocked.`;
   banner.classList.add("show");
 
   if (viewBtn) {
@@ -1139,7 +1183,7 @@ function renderPapersList() {
             <span style="font-size:12px; color:var(--text-muted);">📈 Citations: <strong>${p.citation_count || 0}</strong></span>
             ${p.doi ? `<a href="https://doi.org/${encodeURIComponent(p.doi)}" target="_blank" style="font-size:12px; color:var(--primary); text-decoration:none; font-weight:600;">DOI: ${escapeHtml(p.doi)} ↗</a>` : ""}
           </div>
-          <div class="item-title">${escapeHtml(p.title)}</div>
+          <div class="item-title">${renderScientificTitle(p.title)}</div>
           <div class="item-meta">
             <strong>${escapeHtml(p.authors)}</strong> &nbsp;•&nbsp; <em>${escapeHtml(p.journal)}</em> (${p.year || ""})
             ${p.volume ? `, Vol. ${escapeHtml(p.volume)}` : ""}${p.pages ? `, pp. ${escapeHtml(p.pages)}` : ""}
@@ -4231,7 +4275,7 @@ function renderDashboard(dash) {
               <span class="badge badge-green">${escapeHtml(p.status)}</span>
               <span style="font-size:11.5px; color:var(--text-muted);">Cited: ${p.citation_count || 0}</span>
             </div>
-            <div class="item-title" style="font-size:14px;">${escapeHtml(p.title)}</div>
+            <div class="item-title" style="font-size:14px;">${renderScientificTitle(p.title)}</div>
             <div class="item-meta">${escapeHtml(p.authors)} — <em>${escapeHtml(p.journal)}</em> (${p.year || ""})</div>
           </div>
           <div class="item-tags">
@@ -5509,7 +5553,7 @@ function updateSlidePreview() {
       <div class="slide-mock-body">
         ${data.literature_review.map((p, i) => `
           <div style="background:#fff; padding:8px 10px; border-radius:6px; border:1px solid #e2e8f0; margin-bottom:6px;">
-            <div style="font-weight:700; color:${tc.head};">[${i + 1}] ${escapeHtml(p.title)}</div>
+            <div style="font-weight:700; color:${tc.head};">[${i + 1}] ${renderScientificTitle(p.title)}</div>
             <div style="font-size:11px; color:${tc.bar}; font-weight:600;">${escapeHtml(p.journal)}</div>
             <div style="font-size:11.5px; margin-top:2px;">${escapeHtml(p.takeaway)}</div>
           </div>
