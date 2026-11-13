@@ -7355,6 +7355,12 @@ let currentDiffResults = null;
 // Multi-Tier Semantic Scope Matching, Word-Count Validation & Desk-Reject Risk
 // ============================================================================
 
+// ============================================================================
+// MATSCI NEXUS ADVANCED AI JOURNAL MATCHER & PUBLISHING RECOMMENDATION ENGINE
+// Modeled after Springer Nature Journal Suggester & Elsevier JournalFinder
+// Multi-Tier Semantic Scope Matching, Word-Count Validation & Desk-Reject Risk
+// ============================================================================
+
 let currentJournalResults = [];
 let currentJournalFiltered = [];
 
@@ -9913,6 +9919,3570 @@ const JOURNAL_DATABASE = [
     "discipline": "multidisciplinary",
     "editorialTier": "COMMUNITY_CORE",
     "secondaryDisciplines": []
+  },
+  {
+    "id": "nature-photonics",
+    "name": "Nature Photonics",
+    "publisher": "Springer Nature",
+    "publisherClass": "pub-badge-springer",
+    "impactFactor": 32.8,
+    "citeScore": 55.4,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 4.5,
+    "acceptanceRate": 8,
+    "url": "https://www.nature.com/nphoton/",
+    "scope": "The premier international journal dedicated to light generation, manipulation, and detection, covering 2D optoelectronics, polaritons, laser physics, and quantum photonics.",
+    "keywords": [
+      "photonics",
+      "optoelectronics",
+      "lasers",
+      "2d materials",
+      "quantum optics",
+      "photodetector",
+      "plasmonics",
+      "polaritons",
+      "led",
+      "waveguide"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "PREMIER_DISCIPLINE"
+  },
+  {
+    "id": "nature-synthesis",
+    "name": "Nature Synthesis",
+    "publisher": "Springer Nature",
+    "publisherClass": "pub-badge-springer",
+    "impactFactor": 14.8,
+    "citeScore": 19.2,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 4.0,
+    "acceptanceRate": 10,
+    "url": "https://www.nature.com/natsynth/",
+    "scope": "Brings together research from all areas of chemical synthesis and materials synthesis, including scalable CVD growth, crystal synthesis, solid-state reactions, and automation.",
+    "keywords": [
+      "synthesis",
+      "materials synthesis",
+      "chemical synthesis",
+      "cvd",
+      "crystal growth",
+      "2d materials",
+      "inorganic synthesis",
+      "solid state",
+      "automation"
+    ],
+    "discipline": "catalysis-chem",
+    "secondaryDisciplines": [
+      "2d-nano",
+      "perovskite-oxides"
+    ],
+    "editorialTier": "PREMIER_DISCIPLINE"
+  },
+  {
+    "id": "nature-reviews-materials",
+    "name": "Nature Reviews Materials",
+    "publisher": "Springer Nature",
+    "publisherClass": "pub-badge-springer",
+    "impactFactor": 79.8,
+    "citeScore": 115.0,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 5.0,
+    "acceptanceRate": 6,
+    "url": "https://www.nature.com/natrevmats/",
+    "scope": "The world's highest-impact journal in materials science, publishing authoritative, peer-reviewed Reviews and Perspectives across the entire materials spectrum.",
+    "keywords": [
+      "materials science",
+      "reviews",
+      "2d materials",
+      "solid-state batteries",
+      "perovskites",
+      "quantum materials",
+      "energy storage",
+      "catalysis"
+    ],
+    "discipline": "multidisciplinary",
+    "secondaryDisciplines": [
+      "2d-nano",
+      "energy-storage",
+      "physics-condmat"
+    ],
+    "editorialTier": "FLAGSHIP_ULTRA"
+  },
+  {
+    "id": "communications-physics",
+    "name": "Communications Physics",
+    "publisher": "Springer Nature",
+    "publisherClass": "pub-badge-springer",
+    "impactFactor": 5.5,
+    "citeScore": 8.4,
+    "quartile": "Q1",
+    "oaType": "Gold OA",
+    "reviewWeeks": 4.2,
+    "acceptanceRate": 25,
+    "url": "https://www.nature.com/commsphys/",
+    "scope": "Open access journal from Nature Portfolio publishing high-quality research, reviews, and commentary across all physical sciences, condensed matter, and quantum transport.",
+    "keywords": [
+      "physics",
+      "condensed matter",
+      "topological",
+      "quantum materials",
+      "spintronics",
+      "magnetism",
+      "stoner magnetism",
+      "transport",
+      "dft",
+      "semiconductors"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "communications-chemistry",
+    "name": "Communications Chemistry",
+    "publisher": "Springer Nature",
+    "publisherClass": "pub-badge-springer",
+    "impactFactor": 5.9,
+    "citeScore": 8.1,
+    "quartile": "Q1",
+    "oaType": "Gold OA",
+    "reviewWeeks": 4.1,
+    "acceptanceRate": 28,
+    "url": "https://www.nature.com/commschem/",
+    "scope": "Open access journal from Nature Portfolio covering all areas of the chemical sciences, including inorganic materials, electrocatalysis, and coordination chemistry.",
+    "keywords": [
+      "chemistry",
+      "chemical synthesis",
+      "electrocatalysis",
+      "her",
+      "oer",
+      "water splitting",
+      "inorganic chemistry",
+      "coordination",
+      "crystal structure"
+    ],
+    "discipline": "catalysis-chem",
+    "secondaryDisciplines": [
+      "energy-storage"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "npj-flexible-electronics",
+    "name": "npj Flexible Electronics",
+    "publisher": "Springer Nature",
+    "publisherClass": "pub-badge-springer",
+    "impactFactor": 12.3,
+    "citeScore": 18.5,
+    "quartile": "Q1",
+    "oaType": "Gold OA",
+    "reviewWeeks": 3.8,
+    "acceptanceRate": 16,
+    "url": "https://www.nature.com/npjflexelectron/",
+    "scope": "Dedicated to flexible, stretchable, wearable, and printed electronic materials, 2D semiconductor transistors, sensors, and bio-integrated devices.",
+    "keywords": [
+      "flexible electronics",
+      "2d electronics",
+      "transistor",
+      "fet",
+      "carrier mobility",
+      "sensors",
+      "wearable",
+      "2d materials",
+      "thin films",
+      "printed electronics"
+    ],
+    "discipline": "2d-nano",
+    "secondaryDisciplines": [
+      "physics-condmat"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "npj-quantum-materials",
+    "name": "npj Quantum Materials",
+    "publisher": "Springer Nature",
+    "publisherClass": "pub-badge-springer",
+    "impactFactor": 7.2,
+    "citeScore": 11.4,
+    "quartile": "Q1",
+    "oaType": "Gold OA",
+    "reviewWeeks": 4.0,
+    "acceptanceRate": 20,
+    "url": "https://www.nature.com/npjquantmats/",
+    "scope": "High-impact open access journal dedicated to quantum phenomena in condensed matter, topological insulators, Chern states, 2D magnetism, and superconductivity.",
+    "keywords": [
+      "quantum materials",
+      "topological",
+      "chern",
+      "quantum anomalous hall",
+      "ferromagnetism",
+      "stoner magnetism",
+      "spintronics",
+      "superconductivity",
+      "dft",
+      "2d materials"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "npj-spintronics",
+    "name": "npj Spintronics",
+    "publisher": "Springer Nature",
+    "publisherClass": "pub-badge-springer",
+    "impactFactor": 5.8,
+    "citeScore": 7.5,
+    "quartile": "Q1",
+    "oaType": "Gold OA",
+    "reviewWeeks": 3.6,
+    "acceptanceRate": 24,
+    "url": "https://www.nature.com/npjspintron/",
+    "scope": "Focused on spintronics, magnetic semiconductors, valleytronics, spin-orbit torque, magnetic 2D van der Waals crystals, and spin transport devices.",
+    "keywords": [
+      "spintronics",
+      "spin-orbit coupling",
+      "soc",
+      "valleytronics",
+      "valley hall",
+      "ferromagnetism",
+      "stoner magnetism",
+      "2d materials",
+      "magnetic semiconductors",
+      "tunnel junctions"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "nano-research",
+    "name": "Nano Research",
+    "publisher": "Springer Nature",
+    "publisherClass": "pub-badge-springer",
+    "impactFactor": 9.5,
+    "citeScore": 16.2,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.2,
+    "acceptanceRate": 18,
+    "url": "https://www.springer.com/journal/12274",
+    "scope": "Peer-reviewed, international and multidisciplinary journal publishing high-impact research on all aspects of nanoscience and nanotechnology, 2D crystals, and batteries.",
+    "keywords": [
+      "nanotechnology",
+      "nanomaterials",
+      "2d materials",
+      "tmd",
+      "mos2",
+      "wse2",
+      "batteries",
+      "solid electrolyte",
+      "electrocatalysis",
+      "her",
+      "cvd",
+      "heterostructures"
+    ],
+    "discipline": "2d-nano",
+    "secondaryDisciplines": [
+      "energy-storage",
+      "catalysis-chem"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "science-china-materials",
+    "name": "Science China Materials",
+    "publisher": "Springer Nature",
+    "publisherClass": "pub-badge-springer",
+    "impactFactor": 7.4,
+    "citeScore": 12.0,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.5,
+    "acceptanceRate": 22,
+    "url": "https://www.springer.com/journal/40843",
+    "scope": "High-impact international journal covering cutting-edge materials science, 2D TMDs, battery energy storage, catalytic materials, and advanced functional ceramics.",
+    "keywords": [
+      "materials science",
+      "2d materials",
+      "tmd",
+      "heterostructures",
+      "batteries",
+      "solid-state batteries",
+      "electrocatalysis",
+      "perovskites",
+      "dft",
+      "synthesis"
+    ],
+    "discipline": "multidisciplinary",
+    "secondaryDisciplines": [
+      "2d-nano",
+      "energy-storage"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "rare-metals",
+    "name": "Rare Metals",
+    "publisher": "Springer Nature",
+    "publisherClass": "pub-badge-springer",
+    "impactFactor": 9.6,
+    "citeScore": 14.8,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.6,
+    "acceptanceRate": 18,
+    "url": "https://www.springer.com/journal/12598",
+    "scope": "Dedicated to rare, refractory, and precious metals, including transition metal dichalcogenides (W, Mo, Se, Te), advanced alloys, and energy materials.",
+    "keywords": [
+      "rare metals",
+      "transition metals",
+      "wse2",
+      "mos2",
+      "tmd",
+      "alloys",
+      "catalysis",
+      "energy materials",
+      "synthesis",
+      "metallurgy"
+    ],
+    "discipline": "2d-nano",
+    "secondaryDisciplines": [
+      "catalysis-chem"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "journal-of-materials-science",
+    "name": "Journal of Materials Science",
+    "publisher": "Springer Nature",
+    "publisherClass": "pub-badge-springer",
+    "impactFactor": 3.5,
+    "citeScore": 7.3,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 4.1,
+    "acceptanceRate": 32,
+    "url": "https://www.springer.com/journal/10853",
+    "scope": "Key international venue publishing significant research on structure, properties, synthesis, and processing of all structural and functional engineering materials.",
+    "keywords": [
+      "materials science",
+      "microstructure",
+      "mechanical properties",
+      "ceramics",
+      "alloys",
+      "sintering",
+      "thin films",
+      "characterization",
+      "xrd",
+      "sem"
+    ],
+    "discipline": "perovskite-oxides",
+    "secondaryDisciplines": [
+      "physics-condmat"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "applied-physics-a",
+    "name": "Applied Physics A",
+    "publisher": "Springer Nature",
+    "publisherClass": "pub-badge-springer",
+    "impactFactor": 2.5,
+    "citeScore": 4.8,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.8,
+    "acceptanceRate": 35,
+    "url": "https://www.springer.com/journal/339",
+    "scope": "Covers experimental and theoretical research in applied physics and materials science, including thin films, surface modification, 2D crystals, and electronic materials.",
+    "keywords": [
+      "applied physics",
+      "thin films",
+      "surface physics",
+      "semiconductors",
+      "laser processing",
+      "2d materials",
+      "deposition",
+      "electronic properties"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "plasmonics",
+    "name": "Plasmonics",
+    "publisher": "Springer Nature",
+    "publisherClass": "pub-badge-springer",
+    "impactFactor": 3.3,
+    "citeScore": 5.4,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.9,
+    "acceptanceRate": 30,
+    "url": "https://www.springer.com/journal/11468",
+    "scope": "Dedicated to the physics, chemistry, and applications of plasmonics, polaritons, metallic nanostructures, and 2D plasmonic materials.",
+    "keywords": [
+      "plasmonics",
+      "surface plasmons",
+      "polaritons",
+      "nanophotonics",
+      "2d materials",
+      "graphene",
+      "sensors",
+      "optical resonance"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "journal-of-electronic-materials",
+    "name": "Journal of Electronic Materials",
+    "publisher": "Springer Nature",
+    "publisherClass": "pub-badge-springer",
+    "impactFactor": 2.2,
+    "citeScore": 4.3,
+    "quartile": "Q3",
+    "oaType": "Hybrid",
+    "reviewWeeks": 4.2,
+    "acceptanceRate": 38,
+    "url": "https://www.springer.com/journal/11664",
+    "scope": "Peer-reviewed journal reporting on the physics, chemistry, and fabrication of electronic materials, semiconductor devices, contacts, and packaging.",
+    "keywords": [
+      "electronic materials",
+      "semiconductors",
+      "transistor",
+      "carrier mobility",
+      "doping",
+      "ohmic contact",
+      "thin films",
+      "heterojunction",
+      "device fabrication"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "microchimica-acta",
+    "name": "Microchimica Acta",
+    "publisher": "Springer Nature",
+    "publisherClass": "pub-badge-springer",
+    "impactFactor": 5.3,
+    "citeScore": 9.8,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.5,
+    "acceptanceRate": 26,
+    "url": "https://www.springer.com/journal/604",
+    "scope": "Focuses on micro- and nano-analytical chemistry, chemical sensors, 2D nanomaterial sensor platforms, and surface bioanalysis.",
+    "keywords": [
+      "chemical sensors",
+      "biosensors",
+      "nanomaterials",
+      "2d materials",
+      "mxene",
+      "electrochemical detection",
+      "fluorescence",
+      "surface analysis"
+    ],
+    "discipline": "catalysis-chem",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "materials-today-energy",
+    "name": "Materials Today Energy",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 9.3,
+    "citeScore": 14.6,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.6,
+    "acceptanceRate": 20,
+    "url": "https://www.sciencedirect.com/journal/materials-today-energy",
+    "scope": "High-impact venue for revolutionary materials in energy generation, solid-state batteries, lithium dendrite suppression, fuel cells, and supercapacitors.",
+    "keywords": [
+      "energy storage",
+      "battery",
+      "batteries",
+      "solid electrolyte",
+      "all-solid-state",
+      "garnet",
+      "lithium metal",
+      "critical current density",
+      "anode",
+      "cathode"
+    ],
+    "discipline": "energy-storage",
+    "secondaryDisciplines": [
+      "catalysis-chem"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "materials-today-nano",
+    "name": "Materials Today Nano",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 10.3,
+    "citeScore": 16.4,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.4,
+    "acceptanceRate": 18,
+    "url": "https://www.sciencedirect.com/journal/materials-today-nano",
+    "scope": "Publishes high-caliber nanoscience and nanotechnology, 2D monolayers, TMD heterostructures, quantum transport, and nanodevice fabrication.",
+    "keywords": [
+      "nanotechnology",
+      "2d materials",
+      "tmd",
+      "mos2",
+      "wse2",
+      "heterostructures",
+      "monolayers",
+      "cvd",
+      "doping",
+      "nanoelectronics",
+      "nanodevices"
+    ],
+    "discipline": "2d-nano",
+    "secondaryDisciplines": [
+      "physics-condmat"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "chemical-engineering-journal",
+    "name": "Chemical Engineering Journal",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 13.3,
+    "citeScore": 22.8,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.3,
+    "acceptanceRate": 16,
+    "url": "https://www.sciencedirect.com/journal/chemical-engineering-journal",
+    "scope": "One of the world's leading chemical engineering venues, publishing advances in electrocatalytic water splitting, batteries, environmental remediation, and separation membranes.",
+    "keywords": [
+      "chemical engineering",
+      "electrocatalysis",
+      "her",
+      "oer",
+      "co2rr",
+      "water splitting",
+      "batteries",
+      "supercapacitors",
+      "adsorption",
+      "kinetics"
+    ],
+    "discipline": "catalysis-chem",
+    "secondaryDisciplines": [
+      "energy-storage"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "electrochimica-acta",
+    "name": "Electrochimica Acta",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 5.5,
+    "citeScore": 10.8,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.8,
+    "acceptanceRate": 26,
+    "url": "https://www.sciencedirect.com/journal/electrochimica-acta",
+    "scope": "The official journal of the International Society of Electrochemistry (ISE), publishing fundamental and applied electrochemistry, batteries, EIS, and corrosion.",
+    "keywords": [
+      "electrochemistry",
+      "battery",
+      "batteries",
+      "solid electrolyte",
+      "impedance spectroscopy",
+      "eis",
+      "ionic conductivity",
+      "cyclic voltammetry",
+      "c-rate",
+      "corrosion"
+    ],
+    "discipline": "energy-storage",
+    "secondaryDisciplines": [
+      "catalysis-chem"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "journal-of-colloid-and-interface-science",
+    "name": "Journal of Colloid and Interface Science",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 9.4,
+    "citeScore": 17.5,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.2,
+    "acceptanceRate": 20,
+    "url": "https://www.sciencedirect.com/journal/journal-of-colloid-and-interface-science",
+    "scope": "Publishes fundamental research on colloidal dispersions, 2D nanosheet self-assembly, interfaces, electrocatalytic surfaces, and adsorption kinetics.",
+    "keywords": [
+      "colloid",
+      "interface",
+      "surfaces",
+      "2d materials",
+      "mxene",
+      "nanosheets",
+      "adsorption",
+      "electrocatalysis",
+      "her",
+      "supercapacitors"
+    ],
+    "discipline": "catalysis-chem",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "chemical-physics-letters",
+    "name": "Chemical Physics Letters",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 2.8,
+    "citeScore": 5.3,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 2.9,
+    "acceptanceRate": 36,
+    "url": "https://www.sciencedirect.com/journal/chemical-physics-letters",
+    "scope": "Urgent letters on the physics of chemistry and molecular dynamics, DFT electronic structures, spectroscopy, and chemical bonding.",
+    "keywords": [
+      "chemical physics",
+      "dft",
+      "density functional theory",
+      "electronic structure",
+      "spectroscopy",
+      "molecular dynamics",
+      "quantum chemistry"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [
+      "catalysis-chem"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "surface-science",
+    "name": "Surface Science",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 2.1,
+    "citeScore": 4.1,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 4.0,
+    "acceptanceRate": 38,
+    "url": "https://www.sciencedirect.com/journal/surface-science",
+    "scope": "The classical international journal devoted to the physics and chemistry of surfaces, interfaces, single crystal LEED/XPS, and 2D atomic layers.",
+    "keywords": [
+      "surface science",
+      "surfaces",
+      "interfaces",
+      "xps",
+      "adsorption",
+      "single crystal",
+      "monolayer",
+      "work function",
+      "epitaxy"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [
+      "catalysis-chem"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "thin-solid-films",
+    "name": "Thin Solid Films",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 2.0,
+    "citeScore": 4.2,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 4.2,
+    "acceptanceRate": 40,
+    "url": "https://www.sciencedirect.com/journal/thin-solid-films",
+    "scope": "Reports on the synthesis, characterization, and physical properties of thin films, CVD coatings, sputtering, and electronic semiconductor layers.",
+    "keywords": [
+      "thin films",
+      "cvd",
+      "sputtering",
+      "deposition",
+      "semiconductors",
+      "epitaxy",
+      "coatings",
+      "optical properties",
+      "carrier mobility"
+    ],
+    "discipline": "perovskite-oxides",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "solar-energy-materials-and-solar-cells",
+    "name": "Solar Energy Materials and Solar Cells",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 6.3,
+    "citeScore": 12.1,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.7,
+    "acceptanceRate": 25,
+    "url": "https://www.sciencedirect.com/journal/solar-energy-materials-and-solar-cells",
+    "scope": "Dedicated to materials science aspects of photovoltaic, photothermal, and photochemical solar energy conversion, perovskite solar cells, and tandem devices.",
+    "keywords": [
+      "solar cells",
+      "photovoltaic",
+      "perovskite solar cells",
+      "perovskite",
+      "tandem",
+      "charge transport",
+      "efficiency",
+      "stability",
+      "thin films"
+    ],
+    "discipline": "perovskite-oxides",
+    "secondaryDisciplines": [
+      "energy-storage"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "ceramics-international",
+    "name": "Ceramics International",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 5.2,
+    "citeScore": 9.5,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.4,
+    "acceptanceRate": 28,
+    "url": "https://www.sciencedirect.com/journal/ceramics-international",
+    "scope": "Covers the science and technology of advanced ceramic materials, ferroelectric perovskites, titanates, solid electrolytes, and ceramic grain boundaries.",
+    "keywords": [
+      "ceramics",
+      "perovskite",
+      "ferroelectric",
+      "piezoelectric",
+      "dielectric",
+      "bnt",
+      "solid electrolyte",
+      "llzo",
+      "sintering",
+      "grain boundary"
+    ],
+    "discipline": "perovskite-oxides",
+    "secondaryDisciplines": [
+      "energy-storage"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "journal-of-the-european-ceramic-society",
+    "name": "Journal of the European Ceramic Society",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 5.8,
+    "citeScore": 10.6,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.8,
+    "acceptanceRate": 24,
+    "url": "https://www.sciencedirect.com/journal/journal-of-the-european-ceramic-society",
+    "scope": "Premier European ceramic venue focusing on structural, functional, dielectric, piezoelectric, and electrochemical ceramic materials.",
+    "keywords": [
+      "ceramics",
+      "ferroelectric",
+      "piezoelectric",
+      "perovskites",
+      "grain boundaries",
+      "dielectrics",
+      "solid electrolytes",
+      "sintering"
+    ],
+    "discipline": "perovskite-oxides",
+    "secondaryDisciplines": [
+      "energy-storage"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "journal-of-magnetism-and-magnetic-materials",
+    "name": "Journal of Magnetism and Magnetic Materials",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 2.5,
+    "citeScore": 5.1,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 4.0,
+    "acceptanceRate": 36,
+    "url": "https://www.sciencedirect.com/journal/journal-of-magnetism-and-magnetic-materials",
+    "scope": "Covers basic physics and applications of magnetism, ferromagnetic thin films, Stoner magnetism, spintronics, and magnetic nanoparticles.",
+    "keywords": [
+      "magnetism",
+      "ferromagnetism",
+      "stoner magnetism",
+      "curie temperature",
+      "spintronics",
+      "magnetic thin films",
+      "hysteresis",
+      "magnetic semiconductor"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "physica-b-condensed-matter",
+    "name": "Physica B: Condensed Matter",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 2.8,
+    "citeScore": 5.2,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.9,
+    "acceptanceRate": 38,
+    "url": "https://www.sciencedirect.com/journal/physica-b-condensed-matter",
+    "scope": "Experimental and theoretical work in condensed matter physics, electronic structure, DFT, phonon dynamics, and phase transitions.",
+    "keywords": [
+      "condensed matter",
+      "dft",
+      "density functional theory",
+      "band structure",
+      "electronic properties",
+      "phonons",
+      "magnetism",
+      "semiconductors"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "physica-e-low-dimensional-systems",
+    "name": "Physica E: Low-dimensional Systems and Nanostructures",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 2.9,
+    "citeScore": 5.8,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.8,
+    "acceptanceRate": 35,
+    "url": "https://www.sciencedirect.com/journal/physica-e-low-dimensional-systems-and-nanostructures",
+    "scope": "Dedicated to the physics and engineering of low-dimensional systems, 2D van der Waals crystals, quantum wells, and graphene physics.",
+    "keywords": [
+      "2d materials",
+      "nanostructures",
+      "quantum transport",
+      "monolayers",
+      "heterostructures",
+      "graphene",
+      "tmd",
+      "valley hall",
+      "carrier mobility"
+    ],
+    "discipline": "2d-nano",
+    "secondaryDisciplines": [
+      "physics-condmat"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "applied-materials-today",
+    "name": "Applied Materials Today",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 7.2,
+    "citeScore": 13.0,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.6,
+    "acceptanceRate": 22,
+    "url": "https://www.sciencedirect.com/journal/applied-materials-today",
+    "scope": "Covers applied materials science, 2D functional devices, advanced batteries, sensor materials, and electronic applications.",
+    "keywords": [
+      "applied materials",
+      "2d materials",
+      "batteries",
+      "energy storage",
+      "sensors",
+      "devices",
+      "nanotechnology",
+      "synthesis"
+    ],
+    "discipline": "multidisciplinary",
+    "secondaryDisciplines": [
+      "2d-nano",
+      "energy-storage"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "materials-characterization",
+    "name": "Materials Characterization",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 4.7,
+    "citeScore": 8.8,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.7,
+    "acceptanceRate": 28,
+    "url": "https://www.sciencedirect.com/journal/materials-characterization",
+    "scope": "Focuses on examination and evaluation of materials microstructures, STEM, HAADF, electron diffraction, XRD, and grain boundary imaging.",
+    "keywords": [
+      "characterization",
+      "microstructure",
+      "stem",
+      "haadf",
+      "tem",
+      "xrd",
+      "grain boundary",
+      "phase transformation",
+      "diffraction"
+    ],
+    "discipline": "perovskite-oxides",
+    "secondaryDisciplines": [
+      "physics-condmat"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "sensors-and-actuators-b-chemical",
+    "name": "Sensors and Actuators B: Chemical",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 8.0,
+    "citeScore": 14.8,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.5,
+    "acceptanceRate": 22,
+    "url": "https://www.sciencedirect.com/journal/sensors-and-actuators-b-chemical",
+    "scope": "Premier journal on chemical sensors, electrochemical sensing, 2D gas sensors, electronic noses, and optochemical probes.",
+    "keywords": [
+      "chemical sensors",
+      "gas sensor",
+      "2d materials",
+      "mxene",
+      "tmd",
+      "electrochemical sensor",
+      "sensitivity",
+      "detection limit",
+      "transducers"
+    ],
+    "discipline": "catalysis-chem",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "progress-in-materials-science",
+    "name": "Progress in Materials Science",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 33.6,
+    "citeScore": 60.5,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 5.5,
+    "acceptanceRate": 8,
+    "url": "https://www.sciencedirect.com/journal/progress-in-materials-science",
+    "scope": "Publishes authoritative, in-depth invited reviews on fundamental breakthroughs in materials physics, metallurgy, and advanced functional solids.",
+    "keywords": [
+      "materials science",
+      "reviews",
+      "phase transformation",
+      "grain boundary",
+      "microstructure",
+      "solid electrolytes",
+      "2d materials"
+    ],
+    "discipline": "multidisciplinary",
+    "secondaryDisciplines": [
+      "perovskite-oxides",
+      "2d-nano"
+    ],
+    "editorialTier": "PREMIER_DISCIPLINE"
+  },
+  {
+    "id": "advanced-optical-materials",
+    "name": "Advanced Optical Materials",
+    "publisher": "Wiley",
+    "publisherClass": "pub-badge-wiley",
+    "impactFactor": 8.0,
+    "citeScore": 13.5,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.6,
+    "acceptanceRate": 22,
+    "url": "https://onlinelibrary.wiley.com/journal/21951071",
+    "scope": "Dedicated to photonics, plasmonics, 2D optical materials, polaritons, light-matter interactions, and optoelectronic devices.",
+    "keywords": [
+      "optical materials",
+      "photonics",
+      "plasmonics",
+      "2d materials",
+      "optoelectronics",
+      "photodetector",
+      "lasers",
+      "polaritons"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "small-methods",
+    "name": "Small Methods",
+    "publisher": "Wiley",
+    "publisherClass": "pub-badge-wiley",
+    "impactFactor": 10.7,
+    "citeScore": 17.2,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.4,
+    "acceptanceRate": 18,
+    "url": "https://onlinelibrary.wiley.com/journal/23669608",
+    "scope": "Focuses on innovative materials synthesis protocols, advanced characterization techniques, and device fabrication methods at micro/nanoscale.",
+    "keywords": [
+      "methodology",
+      "nanomaterials",
+      "characterization",
+      "cvd",
+      "synthesis protocol",
+      "2d materials",
+      "battery testing",
+      "stem",
+      "haadf"
+    ],
+    "discipline": "2d-nano",
+    "secondaryDisciplines": [
+      "energy-storage"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "chemsuschem",
+    "name": "ChemSusChem",
+    "publisher": "Wiley",
+    "publisherClass": "pub-badge-wiley",
+    "impactFactor": 7.5,
+    "citeScore": 13.8,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.5,
+    "acceptanceRate": 24,
+    "url": "https://onlinelibrary.wiley.com/journal/1864564x",
+    "scope": "Top venue for chemistry, catalysis, and materials science dedicated to sustainable energy, electrocatalytic water splitting, and battery chemistry.",
+    "keywords": [
+      "sustainability",
+      "electrocatalysis",
+      "her",
+      "oer",
+      "water splitting",
+      "co2rr",
+      "batteries",
+      "green chemistry",
+      "overpotential"
+    ],
+    "discipline": "catalysis-chem",
+    "secondaryDisciplines": [
+      "energy-storage"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "solar-rrl",
+    "name": "Solar RRL",
+    "publisher": "Wiley",
+    "publisherClass": "pub-badge-wiley",
+    "impactFactor": 6.0,
+    "citeScore": 10.4,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.2,
+    "acceptanceRate": 25,
+    "url": "https://onlinelibrary.wiley.com/journal/2367198x",
+    "scope": "Rapid research letters on solar energy conversion, perovskite photovoltaics, thin-film solar cells, and photodetectors.",
+    "keywords": [
+      "solar energy",
+      "photovoltaics",
+      "perovskite",
+      "perovskite solar cells",
+      "halide perovskite",
+      "tandem",
+      "stability",
+      "efficiency"
+    ],
+    "discipline": "perovskite-oxides",
+    "secondaryDisciplines": [
+      "energy-storage"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "journal-of-the-american-ceramic-society",
+    "name": "Journal of the American Ceramic Society",
+    "publisher": "Wiley",
+    "publisherClass": "pub-badge-wiley",
+    "impactFactor": 3.5,
+    "citeScore": 6.8,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 4.0,
+    "acceptanceRate": 30,
+    "url": "https://ceramics.onlinelibrary.wiley.com/journal/15512916",
+    "scope": "The flagship publication of ACerS, publishing basic ceramic science, dielectric and piezoelectric perovskites, garnet solid electrolytes, and phase diagrams.",
+    "keywords": [
+      "ceramics",
+      "perovskite",
+      "ferroelectric",
+      "piezoelectric",
+      "dielectric",
+      "solid electrolyte",
+      "llzo",
+      "sintering",
+      "grain boundary"
+    ],
+    "discipline": "perovskite-oxides",
+    "secondaryDisciplines": [
+      "energy-storage"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "physica-status-solidi-rrl",
+    "name": "physica status solidi (RRL) - Rapid Research Letters",
+    "publisher": "Wiley",
+    "publisherClass": "pub-badge-wiley",
+    "impactFactor": 2.6,
+    "citeScore": 5.2,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 2.8,
+    "acceptanceRate": 35,
+    "url": "https://onlinelibrary.wiley.com/journal/18626270",
+    "scope": "Fastest peer-reviewed publication venue for solid state and materials physics, 2D materials, topological states, and semiconductor transport.",
+    "keywords": [
+      "rapid letters",
+      "solid state physics",
+      "2d materials",
+      "semiconductors",
+      "carrier mobility",
+      "topological",
+      "ferromagnetism",
+      "transport"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "physica-status-solidi-b",
+    "name": "physica status solidi (b) - basic solid state physics",
+    "publisher": "Wiley",
+    "publisherClass": "pub-badge-wiley",
+    "impactFactor": 1.5,
+    "citeScore": 3.1,
+    "quartile": "Q3",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.9,
+    "acceptanceRate": 45,
+    "url": "https://onlinelibrary.wiley.com/journal/15213951",
+    "scope": "Theoretical and fundamental solid-state physics, DFT band structures, phonons, optical properties, and exciton physics.",
+    "keywords": [
+      "solid state physics",
+      "dft",
+      "band structure",
+      "phonons",
+      "electronic structure",
+      "excitons",
+      "vasp",
+      "theory"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "advanced-materials-interfaces",
+    "name": "Advanced Materials Interfaces",
+    "publisher": "Wiley",
+    "publisherClass": "pub-badge-wiley",
+    "impactFactor": 4.3,
+    "citeScore": 8.0,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.6,
+    "acceptanceRate": 28,
+    "url": "https://onlinelibrary.wiley.com/journal/21967350",
+    "scope": "Surfaces and interfaces, van der Waals 2D heterostructures, electronic interface barrier, coatings, and interfacial charge transfer.",
+    "keywords": [
+      "interfaces",
+      "surfaces",
+      "2d materials",
+      "heterostructures",
+      "charge transfer",
+      "band alignment",
+      "thin films",
+      "coatings"
+    ],
+    "discipline": "2d-nano",
+    "secondaryDisciplines": [
+      "perovskite-oxides"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "chemistry-a-european-journal",
+    "name": "Chemistry - A European Journal",
+    "publisher": "Wiley",
+    "publisherClass": "pub-badge-wiley",
+    "impactFactor": 3.9,
+    "citeScore": 7.4,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.5,
+    "acceptanceRate": 30,
+    "url": "https://chemistry-europe.onlinelibrary.wiley.com/journal/15213765",
+    "scope": "Broad chemical society journal publishing high-quality papers in coordination chemistry, inorganic materials synthesis, and electrocatalytic mechanisms.",
+    "keywords": [
+      "chemistry",
+      "inorganic chemistry",
+      "synthesis",
+      "coordination",
+      "catalysis",
+      "crystal structure",
+      "electrocatalysis"
+    ],
+    "discipline": "catalysis-chem",
+    "secondaryDisciplines": [],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "carbon-energy",
+    "name": "Carbon Energy",
+    "publisher": "Wiley",
+    "publisherClass": "pub-badge-wiley",
+    "impactFactor": 19.5,
+    "citeScore": 25.4,
+    "quartile": "Q1",
+    "oaType": "Gold OA",
+    "reviewWeeks": 3.2,
+    "acceptanceRate": 15,
+    "url": "https://onlinelibrary.wiley.com/journal/26379368",
+    "scope": "High-impact open access journal focusing on advanced carbon materials, 2D graphene, batteries, electrocatalytic energy conversion, and supercapacitors.",
+    "keywords": [
+      "carbon",
+      "graphene",
+      "energy storage",
+      "battery",
+      "batteries",
+      "solid electrolyte",
+      "electrocatalysis",
+      "her",
+      "oer",
+      "supercapacitors"
+    ],
+    "discipline": "energy-storage",
+    "secondaryDisciplines": [
+      "2d-nano",
+      "catalysis-chem"
+    ],
+    "editorialTier": "PREMIER_DISCIPLINE"
+  },
+  {
+    "id": "smartmat",
+    "name": "SmartMat",
+    "publisher": "Wiley",
+    "publisherClass": "pub-badge-wiley",
+    "impactFactor": 20.4,
+    "citeScore": 24.0,
+    "quartile": "Q1",
+    "oaType": "Gold OA",
+    "reviewWeeks": 3.1,
+    "acceptanceRate": 14,
+    "url": "https://onlinelibrary.wiley.com/journal/2688819x",
+    "scope": "High-impact journal devoted to smart materials, responsive 2D electronics, sensors, stimuli-responsive systems, and intelligent functional devices.",
+    "keywords": [
+      "smart materials",
+      "2d materials",
+      "sensors",
+      "transistor",
+      "stimuli-responsive",
+      "devices",
+      "nanotechnology",
+      "energy storage"
+    ],
+    "discipline": "multidisciplinary",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "PREMIER_DISCIPLINE"
+  },
+  {
+    "id": "acs-applied-nano-materials",
+    "name": "ACS Applied Nano Materials",
+    "publisher": "ACS",
+    "publisherClass": "pub-badge-acs",
+    "impactFactor": 5.3,
+    "citeScore": 9.1,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.5,
+    "acceptanceRate": 26,
+    "url": "https://pubs.acs.org/journal/aanmf6",
+    "scope": "Dedicated to all aspects of applied nanomaterials, 2D TMDs, nanodevices, functional nanoscale coatings, and catalytic nanoparticles.",
+    "keywords": [
+      "nanomaterials",
+      "2d materials",
+      "tmd",
+      "mos2",
+      "wse2",
+      "heterostructures",
+      "monolayers",
+      "nanodevices",
+      "synthesis",
+      "electrocatalysis"
+    ],
+    "discipline": "2d-nano",
+    "secondaryDisciplines": [
+      "catalysis-chem"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "acs-applied-electronic-materials",
+    "name": "ACS Applied Electronic Materials",
+    "publisher": "ACS",
+    "publisherClass": "pub-badge-acs",
+    "impactFactor": 4.3,
+    "citeScore": 7.4,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.4,
+    "acceptanceRate": 28,
+    "url": "https://pubs.acs.org/journal/aaembp",
+    "scope": "Covers applied electronic materials, 2D semiconductor transistors, field-effect mobility, memristors, ferroelectrics, and device physics.",
+    "keywords": [
+      "electronic materials",
+      "2d electronics",
+      "transistor",
+      "fet",
+      "carrier mobility",
+      "hole mobility",
+      "on/off ratio",
+      "2d materials",
+      "wse2",
+      "doping"
+    ],
+    "discipline": "2d-nano",
+    "secondaryDisciplines": [
+      "physics-condmat"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "acs-applied-energy-materials",
+    "name": "ACS Applied Energy Materials",
+    "publisher": "ACS",
+    "publisherClass": "pub-badge-acs",
+    "impactFactor": 5.4,
+    "citeScore": 9.6,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.4,
+    "acceptanceRate": 26,
+    "url": "https://pubs.acs.org/journal/aaemcq",
+    "scope": "Publishes research on materials for energy storage, solid-state batteries, lithium dendrites, fuel cells, supercapacitors, and solar cells.",
+    "keywords": [
+      "energy materials",
+      "battery",
+      "batteries",
+      "solid electrolyte",
+      "all-solid-state",
+      "garnet",
+      "lithium metal",
+      "anode",
+      "cathode",
+      "supercapacitors"
+    ],
+    "discipline": "energy-storage",
+    "secondaryDisciplines": [
+      "catalysis-chem"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "acs-sensors",
+    "name": "ACS Sensors",
+    "publisher": "ACS",
+    "publisherClass": "pub-badge-acs",
+    "impactFactor": 8.2,
+    "citeScore": 14.5,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.3,
+    "acceptanceRate": 20,
+    "url": "https://pubs.acs.org/journal/ascefj",
+    "scope": "Premier journal covering all aspects of sensor science, 2D material gas sensors, wearable electronic sensors, and optical biosensing.",
+    "keywords": [
+      "sensors",
+      "gas sensor",
+      "2d materials",
+      "mxene",
+      "tmd",
+      "field-effect sensor",
+      "biosensors",
+      "wearable",
+      "detection limit"
+    ],
+    "discipline": "2d-nano",
+    "secondaryDisciplines": [
+      "catalysis-chem"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "langmuir",
+    "name": "Langmuir",
+    "publisher": "ACS",
+    "publisherClass": "pub-badge-acs",
+    "impactFactor": 3.7,
+    "citeScore": 7.5,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.6,
+    "acceptanceRate": 32,
+    "url": "https://pubs.acs.org/journal/langd5",
+    "scope": "The ACS journal of fundamental interface science, monolayers, self-assembly, wetting, 2D crystal surfaces, and colloidal phenomena.",
+    "keywords": [
+      "surfaces",
+      "interfaces",
+      "monolayers",
+      "self-assembly",
+      "colloids",
+      "wetting",
+      "adsorption",
+      "thin films",
+      "2d materials"
+    ],
+    "discipline": "catalysis-chem",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "crystal-growth-and-design",
+    "name": "Crystal Growth & Design",
+    "publisher": "ACS",
+    "publisherClass": "pub-badge-acs",
+    "impactFactor": 3.2,
+    "citeScore": 6.8,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.7,
+    "acceptanceRate": 34,
+    "url": "https://pubs.acs.org/journal/cgdefu",
+    "scope": "Dedicated to physical and chemical phenomena of crystal growth, CVD nucleation, polymorphism, single crystals, and epitaxial 2D materials.",
+    "keywords": [
+      "crystal growth",
+      "crystallization",
+      "cvd",
+      "single crystal",
+      "nucleation",
+      "epitaxy",
+      "2d materials",
+      "polymorphism",
+      "xrd"
+    ],
+    "discipline": "perovskite-oxides",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "analytical-chemistry",
+    "name": "Analytical Chemistry",
+    "publisher": "ACS",
+    "publisherClass": "pub-badge-acs",
+    "impactFactor": 6.7,
+    "citeScore": 12.8,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.5,
+    "acceptanceRate": 24,
+    "url": "https://pubs.acs.org/journal/ancham",
+    "scope": "The leading journal in analytical chemistry, spectroscopy, mass spectrometry, electrochemical sensing, and instrumental characterization.",
+    "keywords": [
+      "analytical chemistry",
+      "spectroscopy",
+      "xps",
+      "electrochemical",
+      "sensors",
+      "instrumentation",
+      "mass spectrometry",
+      "detection"
+    ],
+    "discipline": "catalysis-chem",
+    "secondaryDisciplines": [],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "acs-sustainable-chemistry-engineering",
+    "name": "ACS Sustainable Chemistry & Engineering",
+    "publisher": "ACS",
+    "publisherClass": "pub-badge-acs",
+    "impactFactor": 7.1,
+    "citeScore": 13.6,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.4,
+    "acceptanceRate": 22,
+    "url": "https://pubs.acs.org/journal/ascecg",
+    "scope": "Publishes green chemistry advances, electrocatalysis, battery recycling, circular materials, and biomass valorization.",
+    "keywords": [
+      "sustainability",
+      "electrocatalysis",
+      "her",
+      "oer",
+      "co2rr",
+      "batteries",
+      "recycling",
+      "green chemistry",
+      "biomass"
+    ],
+    "discipline": "catalysis-chem",
+    "secondaryDisciplines": [
+      "energy-storage"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "chemical-reviews",
+    "name": "Chemical Reviews",
+    "publisher": "ACS",
+    "publisherClass": "pub-badge-acs",
+    "impactFactor": 51.4,
+    "citeScore": 92.0,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 6.0,
+    "acceptanceRate": 5,
+    "url": "https://pubs.acs.org/journal/chreay",
+    "scope": "The world's premier review journal in chemistry, providing comprehensive, authoritative, critical overviews of key chemical and materials topics.",
+    "keywords": [
+      "reviews",
+      "chemistry",
+      "materials chemistry",
+      "catalysis",
+      "batteries",
+      "2d materials",
+      "perovskites",
+      "solid electrolytes"
+    ],
+    "discipline": "multidisciplinary",
+    "secondaryDisciplines": [
+      "catalysis-chem",
+      "2d-nano"
+    ],
+    "editorialTier": "FLAGSHIP_ULTRA"
+  },
+  {
+    "id": "acs-central-science",
+    "name": "ACS Central Science",
+    "publisher": "ACS",
+    "publisherClass": "pub-badge-acs",
+    "impactFactor": 12.7,
+    "citeScore": 22.4,
+    "quartile": "Q1",
+    "oaType": "Gold OA",
+    "reviewWeeks": 3.8,
+    "acceptanceRate": 12,
+    "url": "https://pubs.acs.org/journal/acscii",
+    "scope": "ACS diamond open access flagship journal publishing exceptional multidisciplinary discoveries with chemical principles at their core.",
+    "keywords": [
+      "chemistry",
+      "chemical science",
+      "materials",
+      "catalysis",
+      "batteries",
+      "2d materials",
+      "open access",
+      "breakthrough"
+    ],
+    "discipline": "multidisciplinary",
+    "secondaryDisciplines": [
+      "catalysis-chem"
+    ],
+    "editorialTier": "PREMIER_DISCIPLINE"
+  },
+  {
+    "id": "nanoscale-horizons",
+    "name": "Nanoscale Horizons",
+    "publisher": "RSC",
+    "publisherClass": "pub-badge-rsc",
+    "impactFactor": 9.7,
+    "citeScore": 15.6,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.2,
+    "acceptanceRate": 16,
+    "url": "https://www.rsc.org/journals-books-databases/about-journals/nanoscale-horizons/",
+    "scope": "Premier venue for first reports of significant new concepts and revolutionary advances in nanoscale materials and 2D physics.",
+    "keywords": [
+      "nanoscale",
+      "2d materials",
+      "tmd",
+      "heterostructures",
+      "monolayers",
+      "nanodevices",
+      "cvd",
+      "doping",
+      "carrier mobility"
+    ],
+    "discipline": "2d-nano",
+    "secondaryDisciplines": [
+      "physics-condmat"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "dalton-transactions",
+    "name": "Dalton Transactions",
+    "publisher": "RSC",
+    "publisherClass": "pub-badge-rsc",
+    "impactFactor": 3.5,
+    "citeScore": 7.1,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.6,
+    "acceptanceRate": 34,
+    "url": "https://www.rsc.org/journals-books-databases/about-journals/dalton-transactions/",
+    "scope": "Leading international journal for inorganic, organometallic, and coordination chemistry, crystal structures, and solid-state materials.",
+    "keywords": [
+      "inorganic chemistry",
+      "coordination",
+      "crystal structure",
+      "organometallic",
+      "synthesis",
+      "xrd",
+      "magnetism",
+      "metal complexes"
+    ],
+    "discipline": "catalysis-chem",
+    "secondaryDisciplines": [],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "physical-chemistry-chemical-physics",
+    "name": "Physical Chemistry Chemical Physics (PCCP)",
+    "publisher": "RSC",
+    "publisherClass": "pub-badge-rsc",
+    "impactFactor": 2.9,
+    "citeScore": 6.4,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.4,
+    "acceptanceRate": 36,
+    "url": "https://www.rsc.org/journals-books-databases/about-journals/pccp/",
+    "scope": "Broad physical chemistry journal covering DFT calculations, reaction kinetics, spectroscopy, theoretical solid-state physics, and electrochemistry.",
+    "keywords": [
+      "physical chemistry",
+      "dft",
+      "density functional theory",
+      "spectroscopy",
+      "kinetics",
+      "band structure",
+      "reaction mechanism",
+      "catalysis"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [
+      "catalysis-chem"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "rsc-advances",
+    "name": "RSC Advances",
+    "publisher": "RSC",
+    "publisherClass": "pub-badge-rsc",
+    "impactFactor": 3.9,
+    "citeScore": 7.2,
+    "quartile": "Q2",
+    "oaType": "Gold OA",
+    "reviewWeeks": 3.2,
+    "acceptanceRate": 40,
+    "url": "https://www.rsc.org/journals-books-databases/about-journals/rsc-advances/",
+    "scope": "Global open access journal publishing solidly grounded research across all branches of chemical sciences and materials technology.",
+    "keywords": [
+      "chemistry",
+      "materials science",
+      "synthesis",
+      "catalysis",
+      "batteries",
+      "nanomaterials",
+      "characterization",
+      "open access"
+    ],
+    "discipline": "multidisciplinary",
+    "secondaryDisciplines": [
+      "catalysis-chem"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "sustainable-energy-and-fuels",
+    "name": "Sustainable Energy & Fuels",
+    "publisher": "RSC",
+    "publisherClass": "pub-badge-rsc",
+    "impactFactor": 5.0,
+    "citeScore": 9.4,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.5,
+    "acceptanceRate": 28,
+    "url": "https://www.rsc.org/journals-books-databases/about-journals/sustainable-energy-fuels/",
+    "scope": "Publishes high-quality research on sustainable energy technologies, solid-state batteries, electrocatalytic water splitting, and solar fuels.",
+    "keywords": [
+      "energy",
+      "battery",
+      "batteries",
+      "solid electrolyte",
+      "electrocatalysis",
+      "her",
+      "oer",
+      "solar fuels",
+      "fuel cells"
+    ],
+    "discipline": "energy-storage",
+    "secondaryDisciplines": [
+      "catalysis-chem"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "materials-advances",
+    "name": "Materials Advances",
+    "publisher": "RSC",
+    "publisherClass": "pub-badge-rsc",
+    "impactFactor": 5.2,
+    "citeScore": 8.0,
+    "quartile": "Q1",
+    "oaType": "Gold OA",
+    "reviewWeeks": 3.4,
+    "acceptanceRate": 30,
+    "url": "https://www.rsc.org/journals-books-databases/about-journals/materials-advances/",
+    "scope": "Gold open access journal publishing high-quality research across materials science, functional devices, and 2D materials.",
+    "keywords": [
+      "materials science",
+      "2d materials",
+      "batteries",
+      "functional materials",
+      "synthesis",
+      "characterization",
+      "open access"
+    ],
+    "discipline": "multidisciplinary",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "chemical-society-reviews",
+    "name": "Chemical Society Reviews",
+    "publisher": "RSC",
+    "publisherClass": "pub-badge-rsc",
+    "impactFactor": 40.4,
+    "citeScore": 68.2,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 5.5,
+    "acceptanceRate": 6,
+    "url": "https://www.rsc.org/journals-books-databases/about-journals/chem-soc-rev/",
+    "scope": "Publishes authoritative, high-impact review articles summarizing groundbreaking developments across all areas of the chemical sciences.",
+    "keywords": [
+      "reviews",
+      "chemical society",
+      "catalysis",
+      "batteries",
+      "2d materials",
+      "perovskites",
+      "materials chemistry"
+    ],
+    "discipline": "multidisciplinary",
+    "secondaryDisciplines": [
+      "catalysis-chem"
+    ],
+    "editorialTier": "FLAGSHIP_ULTRA"
+  },
+  {
+    "id": "ieee-transactions-on-electron-devices",
+    "name": "IEEE Transactions on Electron Devices",
+    "publisher": "IEEE",
+    "publisherClass": "pub-badge-ieee",
+    "impactFactor": 2.9,
+    "citeScore": 6.8,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 4.5,
+    "acceptanceRate": 30,
+    "url": "https://ieeexplore.ieee.org/xpl/RecentIssue.jsp?punumber=16",
+    "scope": "The classical, benchmark journal for semiconductor device physics, MOSFETs, 2D field-effect transistors, carrier mobility, and contact resistance.",
+    "keywords": [
+      "electron devices",
+      "transistor",
+      "fet",
+      "carrier mobility",
+      "hole mobility",
+      "on/off ratio",
+      "2d electronics",
+      "wse2",
+      "doping",
+      "subthreshold",
+      "semiconductor devices"
+    ],
+    "discipline": "2d-nano",
+    "secondaryDisciplines": [
+      "physics-condmat"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "ieee-electron-device-letters",
+    "name": "IEEE Electron Device Letters",
+    "publisher": "IEEE",
+    "publisherClass": "pub-badge-ieee",
+    "impactFactor": 4.1,
+    "citeScore": 8.5,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 2.6,
+    "acceptanceRate": 22,
+    "url": "https://ieeexplore.ieee.org/xpl/RecentIssue.jsp?punumber=55",
+    "scope": "Premier, rapid publication letters on breakthrough electronic devices, high-mobility 2D transistors, memristors, and advanced semiconductor fabrication.",
+    "keywords": [
+      "rapid letters",
+      "electron devices",
+      "2d electronics",
+      "transistor",
+      "fet",
+      "carrier mobility",
+      "hole mobility",
+      "on/off ratio",
+      "wse2",
+      "doping",
+      "semiconductors"
+    ],
+    "discipline": "2d-nano",
+    "secondaryDisciplines": [
+      "physics-condmat"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "ieee-transactions-on-nanotechnology",
+    "name": "IEEE Transactions on Nanotechnology",
+    "publisher": "IEEE",
+    "publisherClass": "pub-badge-ieee",
+    "impactFactor": 2.1,
+    "citeScore": 4.8,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 4.2,
+    "acceptanceRate": 35,
+    "url": "https://ieeexplore.ieee.org/xpl/RecentIssue.jsp?punumber=7729",
+    "scope": "Reports on physical, chemical, and biological nanostructures, 2D nanomaterial electronics, quantum devices, and nanoscale fabrication.",
+    "keywords": [
+      "nanotechnology",
+      "2d materials",
+      "transistor",
+      "quantum devices",
+      "nanoelectronics",
+      "sensors",
+      "devices",
+      "carrier mobility"
+    ],
+    "discipline": "2d-nano",
+    "secondaryDisciplines": [],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "ieee-transactions-on-magnetics",
+    "name": "IEEE Transactions on Magnetics",
+    "publisher": "IEEE",
+    "publisherClass": "pub-badge-ieee",
+    "impactFactor": 2.1,
+    "citeScore": 4.5,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 4.4,
+    "acceptanceRate": 36,
+    "url": "https://ieeexplore.ieee.org/xpl/RecentIssue.jsp?punumber=20",
+    "scope": "The standard IEEE venue for basic and applied magnetism, magnetic semiconductors, spintronics, magnetic recording, and magnetic field sensors.",
+    "keywords": [
+      "magnetics",
+      "magnetism",
+      "ferromagnetism",
+      "stoner magnetism",
+      "spintronics",
+      "magnetic thin films",
+      "magnetic sensors",
+      "hysteresis"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "ieee-sensors-journal",
+    "name": "IEEE Sensors Journal",
+    "publisher": "IEEE",
+    "publisherClass": "pub-badge-ieee",
+    "impactFactor": 4.3,
+    "citeScore": 8.6,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.8,
+    "acceptanceRate": 28,
+    "url": "https://ieeexplore.ieee.org/xpl/RecentIssue.jsp?punumber=7361",
+    "scope": "Focuses on sensor physics, 2D sensing materials, piezoelectric and ferroelectric transducers, and intelligent sensor systems.",
+    "keywords": [
+      "sensors",
+      "transducers",
+      "piezoelectric",
+      "2d materials",
+      "gas sensors",
+      "wearable",
+      "ferroelectric",
+      "sensitivity"
+    ],
+    "discipline": "perovskite-oxides",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "ieee-journal-of-photovoltaics",
+    "name": "IEEE Journal of Photovoltaics",
+    "publisher": "IEEE",
+    "publisherClass": "pub-badge-ieee",
+    "impactFactor": 3.7,
+    "citeScore": 6.8,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 4.0,
+    "acceptanceRate": 30,
+    "url": "https://ieeexplore.ieee.org/xpl/RecentIssue.jsp?punumber=5503869",
+    "scope": "Peer-reviewed journal publishing original and review research in photovoltaic science and engineering, perovskite solar cells, and device physics.",
+    "keywords": [
+      "photovoltaics",
+      "solar cells",
+      "perovskite",
+      "efficiency",
+      "quantum efficiency",
+      "tandem",
+      "recombination",
+      "carrier transport"
+    ],
+    "discipline": "perovskite-oxides",
+    "secondaryDisciplines": [
+      "energy-storage"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "prx-energy",
+    "name": "PRX Energy",
+    "publisher": "APS",
+    "publisherClass": "pub-badge-aps",
+    "impactFactor": 7.0,
+    "citeScore": 8.5,
+    "quartile": "Q1",
+    "oaType": "Gold OA",
+    "reviewWeeks": 3.8,
+    "acceptanceRate": 18,
+    "url": "https://journals.aps.org/prxenergy/",
+    "scope": "Open-access journal from APS dedicated to foundational physics of energy conversion and storage, battery physics, and sustainable energy science.",
+    "keywords": [
+      "energy physics",
+      "battery",
+      "batteries",
+      "solid electrolyte",
+      "all-solid-state",
+      "ionic transport",
+      "electrocatalysis",
+      "dft",
+      "condensed matter"
+    ],
+    "discipline": "energy-storage",
+    "secondaryDisciplines": [
+      "physics-condmat"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "physical-review-research",
+    "name": "Physical Review Research",
+    "publisher": "APS",
+    "publisherClass": "pub-badge-aps",
+    "impactFactor": 4.0,
+    "citeScore": 6.9,
+    "quartile": "Q1",
+    "oaType": "Gold OA",
+    "reviewWeeks": 3.9,
+    "acceptanceRate": 30,
+    "url": "https://journals.aps.org/prresearch/",
+    "scope": "APS broad-scope open access journal welcoming high-quality research across the full spectrum of physics, condensed matter, and quantum systems.",
+    "keywords": [
+      "physics",
+      "condensed matter",
+      "topological",
+      "quantum anomalous hall",
+      "dft",
+      "spintronics",
+      "ferromagnetism",
+      "transport",
+      "2d materials"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "reviews-of-modern-physics",
+    "name": "Reviews of Modern Physics",
+    "publisher": "APS",
+    "publisherClass": "pub-badge-aps",
+    "impactFactor": 45.9,
+    "citeScore": 85.0,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 6.5,
+    "acceptanceRate": 4,
+    "url": "https://journals.aps.org/rmp/",
+    "scope": "The world's highest-impact physics review journal, offering authoritative and comprehensive review articles across condensed matter, quantum, and applied physics.",
+    "keywords": [
+      "reviews",
+      "physics",
+      "condensed matter",
+      "topological insulators",
+      "quantum hall",
+      "superconductivity",
+      "spintronics",
+      "dft"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [
+      "multidisciplinary"
+    ],
+    "editorialTier": "FLAGSHIP_ULTRA"
+  },
+  {
+    "id": "apl-electronic-devices",
+    "name": "APL Electronic Devices",
+    "publisher": "AIP",
+    "publisherClass": "pub-badge-aip",
+    "impactFactor": 4.2,
+    "citeScore": 6.5,
+    "quartile": "Q2",
+    "oaType": "Gold OA",
+    "reviewWeeks": 3.3,
+    "acceptanceRate": 25,
+    "url": "https://pubs.aip.org/aip/ael",
+    "scope": "Open-access venue for electronic device physics, 2D semiconductor transistors, carrier mobility, memristors, and advanced logic devices.",
+    "keywords": [
+      "electronic devices",
+      "transistor",
+      "fet",
+      "carrier mobility",
+      "hole mobility",
+      "on/off ratio",
+      "2d electronics",
+      "wse2",
+      "doping",
+      "semiconductors"
+    ],
+    "discipline": "2d-nano",
+    "secondaryDisciplines": [
+      "physics-condmat"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "apl-photonics",
+    "name": "APL Photonics",
+    "publisher": "AIP",
+    "publisherClass": "pub-badge-aip",
+    "impactFactor": 5.4,
+    "citeScore": 9.2,
+    "quartile": "Q1",
+    "oaType": "Gold OA",
+    "reviewWeeks": 3.4,
+    "acceptanceRate": 24,
+    "url": "https://pubs.aip.org/aip/app",
+    "scope": "Premier open access journal dedicated to fundamental and applied photonics, lasers, optoelectronics, and 2D photonic materials.",
+    "keywords": [
+      "photonics",
+      "optoelectronics",
+      "lasers",
+      "2d materials",
+      "quantum optics",
+      "photodetector",
+      "polaritons"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "journal-of-chemical-physics",
+    "name": "The Journal of Chemical Physics",
+    "publisher": "AIP",
+    "publisherClass": "pub-badge-aip",
+    "impactFactor": 3.8,
+    "citeScore": 7.4,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.6,
+    "acceptanceRate": 30,
+    "url": "https://pubs.aip.org/aip/jcp",
+    "scope": "Reports on experimental and theoretical chemical physics, quantum chemistry methods, DFT algorithms, molecular dynamics, and spectroscopy.",
+    "keywords": [
+      "chemical physics",
+      "dft",
+      "density functional theory",
+      "quantum chemistry",
+      "molecular dynamics",
+      "spectroscopy",
+      "electronic structure"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [
+      "catalysis-chem"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "applied-physics-reviews",
+    "name": "Applied Physics Reviews",
+    "publisher": "AIP",
+    "publisherClass": "pub-badge-aip",
+    "impactFactor": 11.9,
+    "citeScore": 23.5,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 4.5,
+    "acceptanceRate": 12,
+    "url": "https://pubs.aip.org/aip/apr",
+    "scope": "Features groundbreaking reviews and significant original research across materials physics, 2D electronics, energy conversion, and applied physics.",
+    "keywords": [
+      "applied physics",
+      "reviews",
+      "2d materials",
+      "semiconductors",
+      "energy storage",
+      "devices",
+      "nanotechnology"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "PREMIER_DISCIPLINE"
+  },
+  {
+    "id": "nanotechnology",
+    "name": "Nanotechnology",
+    "publisher": "IOP",
+    "publisherClass": "pub-badge-iop",
+    "impactFactor": 2.9,
+    "citeScore": 6.2,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.5,
+    "acceptanceRate": 34,
+    "url": "https://iopscience.iop.org/journal/0957-4484",
+    "scope": "The pioneering journal for nanoscale science and engineering, 2D nanostructures, nanofabrication, nanoelectronics, and nanodevices.",
+    "keywords": [
+      "nanotechnology",
+      "2d materials",
+      "nanomaterials",
+      "heterostructures",
+      "monolayers",
+      "nanoelectronics",
+      "cvd",
+      "transistor",
+      "nanodevices"
+    ],
+    "discipline": "2d-nano",
+    "secondaryDisciplines": [],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "journal-of-physics-d-applied-physics",
+    "name": "Journal of Physics D: Applied Physics",
+    "publisher": "IOP",
+    "publisherClass": "pub-badge-iop",
+    "impactFactor": 3.1,
+    "citeScore": 6.5,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.7,
+    "acceptanceRate": 32,
+    "url": "https://iopscience.iop.org/journal/0022-3727",
+    "scope": "Recognized international journal for applied physics, semiconductor thin films, applied magnetism, spintronics, and plasma materials.",
+    "keywords": [
+      "applied physics",
+      "semiconductors",
+      "thin films",
+      "magnetism",
+      "spintronics",
+      "carrier transport",
+      "dielectrics"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "semiconductor-science-and-technology",
+    "name": "Semiconductor Science and Technology",
+    "publisher": "IOP",
+    "publisherClass": "pub-badge-iop",
+    "impactFactor": 1.9,
+    "citeScore": 4.1,
+    "quartile": "Q3",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.9,
+    "acceptanceRate": 40,
+    "url": "https://iopscience.iop.org/journal/0268-1242",
+    "scope": "Covers all aspects of semiconductor materials, 2D semiconductors (WSe2, MoS2), doping, carrier mobility, contacts, and device physics.",
+    "keywords": [
+      "semiconductors",
+      "transistor",
+      "carrier mobility",
+      "hole mobility",
+      "2d electronics",
+      "wse2",
+      "doping",
+      "ohmic contact",
+      "heterojunction"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "electronic-structure",
+    "name": "Electronic Structure",
+    "publisher": "IOP",
+    "publisherClass": "pub-badge-iop",
+    "impactFactor": 2.4,
+    "citeScore": 4.6,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.6,
+    "acceptanceRate": 36,
+    "url": "https://iopscience.iop.org/journal/2516-1075",
+    "scope": "Dedicated exclusively to all theoretical and computational aspects of electronic structure, DFT algorithms, VASP, band structures, and Berry curvature.",
+    "keywords": [
+      "electronic structure",
+      "dft",
+      "density functional theory",
+      "vasp",
+      "band structure",
+      "density of states",
+      "berry curvature",
+      "first-principles"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "flexible-and-printed-electronics",
+    "name": "Flexible and Printed Electronics",
+    "publisher": "IOP",
+    "publisherClass": "pub-badge-iop",
+    "impactFactor": 2.8,
+    "citeScore": 5.4,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.8,
+    "acceptanceRate": 35,
+    "url": "https://iopscience.iop.org/journal/2058-8585",
+    "scope": "Publishes research on printed electronics, 2D conductive inks, flexible field-effect transistors, and wearable sensors.",
+    "keywords": [
+      "printed electronics",
+      "flexible electronics",
+      "2d materials",
+      "transistor",
+      "sensors",
+      "inks",
+      "wearable"
+    ],
+    "discipline": "2d-nano",
+    "secondaryDisciplines": [],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "nanomaterials-mdpi",
+    "name": "Nanomaterials",
+    "publisher": "MDPI",
+    "publisherClass": "pub-badge-mdpi",
+    "impactFactor": 4.4,
+    "citeScore": 7.8,
+    "quartile": "Q1",
+    "oaType": "Gold OA",
+    "reviewWeeks": 2.2,
+    "acceptanceRate": 48,
+    "url": "https://www.mdpi.com/journal/nanomaterials",
+    "scope": "Fast-turnaround peer-reviewed open access journal covering all aspects of 2D nanomaterials, synthesis, batteries, and electrocatalytic nanostructures.",
+    "keywords": [
+      "nanomaterials",
+      "2d materials",
+      "tmd",
+      "mos2",
+      "wse2",
+      "batteries",
+      "electrocatalysis",
+      "her",
+      "cvd",
+      "monolayers",
+      "fast review"
+    ],
+    "discipline": "2d-nano",
+    "secondaryDisciplines": [
+      "catalysis-chem",
+      "energy-storage"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "batteries-mdpi",
+    "name": "Batteries",
+    "publisher": "MDPI",
+    "publisherClass": "pub-badge-mdpi",
+    "impactFactor": 4.6,
+    "citeScore": 7.5,
+    "quartile": "Q2",
+    "oaType": "Gold OA",
+    "reviewWeeks": 2.1,
+    "acceptanceRate": 46,
+    "url": "https://www.mdpi.com/journal/batteries",
+    "scope": "Rapid peer-reviewed open access venue exclusively devoted to battery science, solid electrolytes, lithium metal anodes, and energy storage.",
+    "keywords": [
+      "battery",
+      "batteries",
+      "solid electrolyte",
+      "all-solid-state",
+      "lithium metal",
+      "garnet",
+      "anode",
+      "cathode",
+      "c-rate",
+      "cycling"
+    ],
+    "discipline": "energy-storage",
+    "secondaryDisciplines": [],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "materials-mdpi",
+    "name": "Materials",
+    "publisher": "MDPI",
+    "publisherClass": "pub-badge-mdpi",
+    "impactFactor": 3.1,
+    "citeScore": 5.8,
+    "quartile": "Q2",
+    "oaType": "Gold OA",
+    "reviewWeeks": 2.0,
+    "acceptanceRate": 50,
+    "url": "https://www.mdpi.com/journal/materials",
+    "scope": "High-volume rapid open access journal publishing sound research across all branches of materials science, metallurgy, and functional coatings.",
+    "keywords": [
+      "materials science",
+      "synthesis",
+      "microstructure",
+      "thin films",
+      "characterization",
+      "alloys",
+      "mechanical properties",
+      "fast review"
+    ],
+    "discipline": "multidisciplinary",
+    "secondaryDisciplines": [
+      "perovskite-oxides"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "crystals-mdpi",
+    "name": "Crystals",
+    "publisher": "MDPI",
+    "publisherClass": "pub-badge-mdpi",
+    "impactFactor": 2.4,
+    "citeScore": 4.6,
+    "quartile": "Q2",
+    "oaType": "Gold OA",
+    "reviewWeeks": 2.1,
+    "acceptanceRate": 52,
+    "url": "https://www.mdpi.com/journal/crystals",
+    "scope": "Rapid open access journal focusing on crystal growth, XRD structure determination, single crystals, polymorphism, and mineralogy.",
+    "keywords": [
+      "crystal growth",
+      "single crystal",
+      "xrd",
+      "crystallography",
+      "perovskite",
+      "phase transition",
+      "inorganic synthesis"
+    ],
+    "discipline": "perovskite-oxides",
+    "secondaryDisciplines": [],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "inorganics-mdpi",
+    "name": "Inorganics",
+    "publisher": "MDPI",
+    "publisherClass": "pub-badge-mdpi",
+    "impactFactor": 2.7,
+    "citeScore": 4.8,
+    "quartile": "Q2",
+    "oaType": "Gold OA",
+    "reviewWeeks": 2.2,
+    "acceptanceRate": 48,
+    "url": "https://www.mdpi.com/journal/inorganics",
+    "scope": "Open access journal dedicated to inorganic chemistry, coordination complexes, solid-state compounds, and inorganic catalysts.",
+    "keywords": [
+      "inorganic chemistry",
+      "coordination",
+      "crystal structure",
+      "catalysis",
+      "metal complexes",
+      "synthesis"
+    ],
+    "discipline": "catalysis-chem",
+    "secondaryDisciplines": [],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "frontiers-in-materials",
+    "name": "Frontiers in Materials",
+    "publisher": "Frontiers",
+    "publisherClass": "pub-badge-frontiers",
+    "impactFactor": 2.6,
+    "citeScore": 4.8,
+    "quartile": "Q2",
+    "oaType": "Gold OA",
+    "reviewWeeks": 3.0,
+    "acceptanceRate": 45,
+    "url": "https://www.frontiersin.org/journals/materials",
+    "scope": "Community open access journal publishing across mechanics of materials, energy materials, functional ceramics, and biomaterials.",
+    "keywords": [
+      "materials science",
+      "energy materials",
+      "ceramics",
+      "alloys",
+      "functional materials",
+      "open access"
+    ],
+    "discipline": "multidisciplinary",
+    "secondaryDisciplines": [],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "frontiers-in-chemistry",
+    "name": "Frontiers in Chemistry",
+    "publisher": "Frontiers",
+    "publisherClass": "pub-badge-frontiers",
+    "impactFactor": 3.8,
+    "citeScore": 6.6,
+    "quartile": "Q2",
+    "oaType": "Gold OA",
+    "reviewWeeks": 3.0,
+    "acceptanceRate": 42,
+    "url": "https://www.frontiersin.org/journals/chemistry",
+    "scope": "Open access venue publishing across all chemical disciplines, electrocatalysis, nanochemistry, and coordination compounds.",
+    "keywords": [
+      "chemistry",
+      "catalysis",
+      "electrocatalysis",
+      "synthesis",
+      "nanoscience",
+      "inorganic chemistry"
+    ],
+    "discipline": "catalysis-chem",
+    "secondaryDisciplines": [],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "frontiers-in-energy-research",
+    "name": "Frontiers in Energy Research",
+    "publisher": "Frontiers",
+    "publisherClass": "pub-badge-frontiers",
+    "impactFactor": 2.6,
+    "citeScore": 4.6,
+    "quartile": "Q3",
+    "oaType": "Gold OA",
+    "reviewWeeks": 3.2,
+    "acceptanceRate": 46,
+    "url": "https://www.frontiersin.org/journals/energy-research",
+    "scope": "Open access journal addressing clean energy conversion, battery systems, fuel cells, and hydrogen production.",
+    "keywords": [
+      "energy research",
+      "batteries",
+      "fuel cells",
+      "solar energy",
+      "hydrogen",
+      "energy storage"
+    ],
+    "discipline": "energy-storage",
+    "secondaryDisciplines": [],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "national-science-review",
+    "name": "National Science Review",
+    "publisher": "Oxford",
+    "publisherClass": "pub-badge-oxford",
+    "impactFactor": 16.3,
+    "citeScore": 25.8,
+    "quartile": "Q1",
+    "oaType": "Gold OA",
+    "reviewWeeks": 3.5,
+    "acceptanceRate": 12,
+    "url": "https://academic.oup.com/nsr",
+    "scope": "Flagship multidisciplinary journal of the Chinese Academy of Sciences (CAS) published by Oxford University Press, covering premier scientific breakthroughs.",
+    "keywords": [
+      "multidisciplinary",
+      "materials science",
+      "2d materials",
+      "batteries",
+      "quantum transport",
+      "condensed matter",
+      "topological",
+      "high-impact"
+    ],
+    "discipline": "multidisciplinary",
+    "secondaryDisciplines": [
+      "2d-nano",
+      "physics-condmat",
+      "energy-storage"
+    ],
+    "editorialTier": "PREMIER_DISCIPLINE"
+  },
+  {
+    "id": "chinese-chemical-letters",
+    "name": "Chinese Chemical Letters",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 9.4,
+    "citeScore": 15.2,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 2.8,
+    "acceptanceRate": 20,
+    "url": "https://www.sciencedirect.com/journal/chinese-chemical-letters",
+    "scope": "Fast-publishing high-impact letters reporting major advances in chemical sciences, 2D materials, electrocatalysis, and batteries.",
+    "keywords": [
+      "chemistry",
+      "2d materials",
+      "batteries",
+      "electrocatalysis",
+      "her",
+      "synthesis",
+      "rapid publication"
+    ],
+    "discipline": "catalysis-chem",
+    "secondaryDisciplines": [
+      "2d-nano",
+      "energy-storage"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "acta-physico-chimica-sinica",
+    "name": "Acta Physico-Chimica Sinica",
+    "publisher": "Peking University",
+    "publisherClass": "pub-badge-cell",
+    "impactFactor": 10.8,
+    "citeScore": 16.5,
+    "quartile": "Q1",
+    "oaType": "Gold OA",
+    "reviewWeeks": 3.0,
+    "acceptanceRate": 18,
+    "url": "http://www.whxb.pku.edu.cn/",
+    "scope": "High-impact physical chemistry journal publishing cutting-edge research in battery electrolytes, electrocatalysis, 2D materials, and DFT modeling.",
+    "keywords": [
+      "physical chemistry",
+      "batteries",
+      "solid electrolyte",
+      "electrocatalysis",
+      "2d materials",
+      "dft",
+      "energy storage"
+    ],
+    "discipline": "energy-storage",
+    "secondaryDisciplines": [
+      "catalysis-chem",
+      "2d-nano"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "particuology",
+    "name": "Particuology",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 3.5,
+    "citeScore": 6.8,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.8,
+    "acceptanceRate": 32,
+    "url": "https://www.sciencedirect.com/journal/particuology",
+    "scope": "Focuses on particle science, powder processing, sintering kinetics, solid electrolyte powders, and solid-state materials synthesis.",
+    "keywords": [
+      "particle science",
+      "powder",
+      "sintering",
+      "solid electrolyte",
+      "sps",
+      "synthesis",
+      "grain boundary"
+    ],
+    "discipline": "perovskite-oxides",
+    "secondaryDisciplines": [
+      "energy-storage"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "nano-convergence",
+    "name": "Nano Convergence",
+    "publisher": "Springer Nature",
+    "publisherClass": "pub-badge-springer",
+    "impactFactor": 8.5,
+    "citeScore": 14.2,
+    "quartile": "Q1",
+    "oaType": "Gold OA",
+    "reviewWeeks": 3.2,
+    "acceptanceRate": 20,
+    "url": "https://nanoconvergencejournal.springeropen.com/",
+    "scope": "Premier open-access journal supported by the Korea Nano Technology Research Society, covering 2D materials, nanodevices, sensors, and nanostructured energy materials.",
+    "keywords": [
+      "nanotechnology",
+      "2d materials",
+      "tmd",
+      "mos2",
+      "wse2",
+      "nanodevices",
+      "sensors",
+      "energy storage",
+      "flexible electronics",
+      "skku"
+    ],
+    "discipline": "2d-nano",
+    "secondaryDisciplines": [
+      "physics-condmat"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "metals-and-materials-international",
+    "name": "Metals and Materials International",
+    "publisher": "Springer Nature",
+    "publisherClass": "pub-badge-springer",
+    "impactFactor": 3.5,
+    "citeScore": 6.8,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.6,
+    "acceptanceRate": 28,
+    "url": "https://www.springer.com/journal/12540",
+    "scope": "Flagship journal of the Korean Institute of Metals and Materials (KIMM), publishing advanced structural and functional materials, phase transitions, and grain boundary phenomena.",
+    "keywords": [
+      "metals",
+      "materials science",
+      "phase transformation",
+      "microstructure",
+      "mechanical properties",
+      "alloys",
+      "sintering",
+      "grain boundary"
+    ],
+    "discipline": "perovskite-oxides",
+    "secondaryDisciplines": [
+      "physics-condmat"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "electronic-materials-letters",
+    "name": "Electronic Materials Letters",
+    "publisher": "Springer Nature",
+    "publisherClass": "pub-badge-springer",
+    "impactFactor": 2.7,
+    "citeScore": 5.4,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.4,
+    "acceptanceRate": 32,
+    "url": "https://www.springer.com/journal/13391",
+    "scope": "Official journal of KIMM covering electronic, optical, and magnetic materials, semiconductor thin films, 2D devices, and functional ceramics.",
+    "keywords": [
+      "electronic materials",
+      "semiconductors",
+      "thin films",
+      "2d materials",
+      "transistor",
+      "ferroelectric",
+      "piezoelectric",
+      "devices"
+    ],
+    "discipline": "2d-nano",
+    "secondaryDisciplines": [
+      "physics-condmat"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "carbon-letters",
+    "name": "Carbon Letters",
+    "publisher": "Springer Nature",
+    "publisherClass": "pub-badge-springer",
+    "impactFactor": 3.5,
+    "citeScore": 6.2,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.4,
+    "acceptanceRate": 34,
+    "url": "https://www.springer.com/journal/42823",
+    "scope": "The official journal of the Korean Carbon Society, publishing all aspects of carbon science, graphene, carbon nanotubes, and supercapacitor electrodes.",
+    "keywords": [
+      "carbon",
+      "graphene",
+      "carbon nanotubes",
+      "supercapacitors",
+      "anode",
+      "batteries",
+      "nanomaterials",
+      "porous carbon"
+    ],
+    "discipline": "2d-nano",
+    "secondaryDisciplines": [
+      "energy-storage"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "current-applied-physics",
+    "name": "Current Applied Physics",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 2.4,
+    "citeScore": 4.8,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.5,
+    "acceptanceRate": 36,
+    "url": "https://www.sciencedirect.com/journal/current-applied-physics",
+    "scope": "Official publication of the Korean Physical Society (KPS), covering applied physics, condensed matter, semiconductor devices, 2D materials, and thin films.",
+    "keywords": [
+      "applied physics",
+      "condensed matter",
+      "2d materials",
+      "semiconductors",
+      "thin films",
+      "carrier mobility",
+      "dft",
+      "devices"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "journal-of-the-korean-ceramic-society",
+    "name": "Journal of the Korean Ceramic Society",
+    "publisher": "Springer Nature",
+    "publisherClass": "pub-badge-springer",
+    "impactFactor": 2.3,
+    "citeScore": 4.5,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.5,
+    "acceptanceRate": 38,
+    "url": "https://www.springer.com/journal/43207",
+    "scope": "Official journal of the Korean Ceramic Society (KCS), publishing research on functional ceramics, dielectric perovskites, solid electrolytes, and electronic ceramics.",
+    "keywords": [
+      "ceramics",
+      "perovskite",
+      "ferroelectric",
+      "piezoelectric",
+      "dielectric",
+      "solid electrolyte",
+      "llzo",
+      "sintering"
+    ],
+    "discipline": "perovskite-oxides",
+    "secondaryDisciplines": [
+      "energy-storage"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "korean-journal-of-chemical-engineering",
+    "name": "Korean Journal of Chemical Engineering",
+    "publisher": "Springer Nature",
+    "publisherClass": "pub-badge-springer",
+    "impactFactor": 2.9,
+    "citeScore": 5.8,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.8,
+    "acceptanceRate": 35,
+    "url": "https://www.springer.com/journal/11814",
+    "scope": "Official journal of the Korean Institute of Chemical Engineers (KIChE), covering energy materials, batteries, electrocatalysis, and reaction engineering.",
+    "keywords": [
+      "chemical engineering",
+      "batteries",
+      "electrocatalysis",
+      "adsorption",
+      "separation",
+      "polymers",
+      "synthesis"
+    ],
+    "discipline": "catalysis-chem",
+    "secondaryDisciplines": [
+      "energy-storage"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "advanced-composites-and-hybrid-materials",
+    "name": "Advanced Composites and Hybrid Materials",
+    "publisher": "Springer Nature",
+    "publisherClass": "pub-badge-springer",
+    "impactFactor": 20.1,
+    "citeScore": 23.5,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.3,
+    "acceptanceRate": 15,
+    "url": "https://www.springer.com/journal/42114",
+    "scope": "Fast-rising high-impact journal dedicated to hybrid materials, 2D nanocomposites, MXene composites, energy conversion, and smart multifunctional materials.",
+    "keywords": [
+      "hybrid materials",
+      "composites",
+      "2d materials",
+      "mxene",
+      "graphene",
+      "electromagnetic shielding",
+      "energy storage",
+      "supercapacitors"
+    ],
+    "discipline": "multidisciplinary",
+    "secondaryDisciplines": [
+      "2d-nano",
+      "energy-storage"
+    ],
+    "editorialTier": "PREMIER_DISCIPLINE"
+  },
+  {
+    "id": "materials-science-and-engineering-a",
+    "name": "Materials Science and Engineering: A",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 6.1,
+    "citeScore": 11.2,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.7,
+    "acceptanceRate": 25,
+    "url": "https://www.sciencedirect.com/journal/materials-science-and-engineering-a",
+    "scope": "Provides an international forum on the mechanical properties, deformation mechanisms, microstructures, and processing of structural solids.",
+    "keywords": [
+      "materials science",
+      "mechanical properties",
+      "microstructure",
+      "dislocation",
+      "grain boundary",
+      "phase transformation",
+      "tensile"
+    ],
+    "discipline": "perovskite-oxides",
+    "secondaryDisciplines": [
+      "physics-condmat"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "materials-science-and-engineering-b",
+    "name": "Materials Science and Engineering: B",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 3.6,
+    "citeScore": 7.4,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.9,
+    "acceptanceRate": 32,
+    "url": "https://www.sciencedirect.com/journal/materials-science-and-engineering-b",
+    "scope": "Covers advanced functional solid-state materials, electronic, optical, and magnetic properties, 2D materials, and semiconductor processing.",
+    "keywords": [
+      "functional materials",
+      "semiconductors",
+      "electronic materials",
+      "2d materials",
+      "thin films",
+      "magnetic properties",
+      "dielectrics"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "solid-state-communications",
+    "name": "Solid State Communications",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 2.1,
+    "citeScore": 4.4,
+    "quartile": "Q3",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.2,
+    "acceptanceRate": 38,
+    "url": "https://www.sciencedirect.com/journal/solid-state-communications",
+    "scope": "Rapid international communications in solid-state physics, electronic band structure, Raman spectroscopy, excitons, and 2D transport.",
+    "keywords": [
+      "solid state physics",
+      "condensed matter",
+      "raman",
+      "band structure",
+      "dft",
+      "exciton",
+      "optical transitions",
+      "2d materials"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "journal-of-solid-state-chemistry",
+    "name": "Journal of Solid State Chemistry",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 3.3,
+    "citeScore": 6.2,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.8,
+    "acceptanceRate": 34,
+    "url": "https://www.sciencedirect.com/journal/journal-of-solid-state-chemistry",
+    "scope": "The classical home for chemical synthesis, crystal structure determination, phase transitions, and defect equilibria in solid-state inorganic materials.",
+    "keywords": [
+      "solid state chemistry",
+      "crystal structure",
+      "xrd",
+      "inorganic synthesis",
+      "perovskites",
+      "phase transition",
+      "defect chemistry"
+    ],
+    "discipline": "perovskite-oxides",
+    "secondaryDisciplines": [
+      "catalysis-chem"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "journal-of-non-crystalline-solids",
+    "name": "Journal of Non-Crystalline Solids",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 3.2,
+    "citeScore": 6.5,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.7,
+    "acceptanceRate": 34,
+    "url": "https://www.sciencedirect.com/journal/journal-of-non-crystalline-solids",
+    "scope": "Covers amorphous semiconductors, glassy solid electrolytes, ionic conduction in disordered media, and sol-gel glasses.",
+    "keywords": [
+      "amorphous",
+      "glass",
+      "solid electrolyte",
+      "ionic conductivity",
+      "disordered systems",
+      "thin films",
+      "dielectrics"
+    ],
+    "discipline": "energy-storage",
+    "secondaryDisciplines": [
+      "perovskite-oxides"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "vacuum",
+    "name": "Vacuum",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 3.8,
+    "citeScore": 7.5,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.5,
+    "acceptanceRate": 32,
+    "url": "https://www.sciencedirect.com/journal/vacuum",
+    "scope": "Dedicated to vacuum deposition, CVD, magnetron sputtering, plasma surface modification, and electronic thin-film growth.",
+    "keywords": [
+      "vacuum",
+      "cvd",
+      "sputtering",
+      "plasma",
+      "thin films",
+      "coatings",
+      "surface modification",
+      "deposition"
+    ],
+    "discipline": "perovskite-oxides",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "applied-clay-science",
+    "name": "Applied Clay Science",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 5.3,
+    "citeScore": 10.2,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.8,
+    "acceptanceRate": 26,
+    "url": "https://www.sciencedirect.com/journal/applied-clay-science",
+    "scope": "Focuses on 2D layered silicates, clays, exfoliation, intercalation, nanocomposites, and 2D ion transport membranes.",
+    "keywords": [
+      "clays",
+      "layered materials",
+      "intercalation",
+      "exfoliation",
+      "2d materials",
+      "membranes",
+      "adsorption"
+    ],
+    "discipline": "2d-nano",
+    "secondaryDisciplines": [
+      "energy-storage"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "optical-materials",
+    "name": "Optical Materials",
+    "publisher": "Elsevier",
+    "publisherClass": "pub-badge-elsevier",
+    "impactFactor": 3.8,
+    "citeScore": 7.2,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.6,
+    "acceptanceRate": 32,
+    "url": "https://www.sciencedirect.com/journal/optical-materials",
+    "scope": "Publishes research on the design, synthesis, and characterization of optical and photonic materials, 2D photodetectors, and luminescent phosphors.",
+    "keywords": [
+      "optical materials",
+      "luminescence",
+      "photodetector",
+      "perovskite",
+      "phosphors",
+      "optoelectronics",
+      "thin films"
+    ],
+    "discipline": "perovskite-oxides",
+    "secondaryDisciplines": [
+      "physics-condmat"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "energy-technology",
+    "name": "Energy Technology",
+    "publisher": "Wiley",
+    "publisherClass": "pub-badge-wiley",
+    "impactFactor": 3.6,
+    "citeScore": 7.0,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.6,
+    "acceptanceRate": 30,
+    "url": "https://onlinelibrary.wiley.com/journal/21944296",
+    "scope": "Covers applied energy research, battery manufacturing, fuel cells, supercapacitors, and scalable energy storage materials.",
+    "keywords": [
+      "energy technology",
+      "battery",
+      "batteries",
+      "solid-state batteries",
+      "supercapacitors",
+      "fuel cells",
+      "scale-up"
+    ],
+    "discipline": "energy-storage",
+    "secondaryDisciplines": [],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "advanced-engineering-materials",
+    "name": "Advanced Engineering Materials",
+    "publisher": "Wiley",
+    "publisherClass": "pub-badge-wiley",
+    "impactFactor": 3.4,
+    "citeScore": 6.8,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.8,
+    "acceptanceRate": 32,
+    "url": "https://onlinelibrary.wiley.com/journal/15272648",
+    "scope": "Reports on high-performance engineering alloys, intermetallics, advanced composites, and materials processing technologies.",
+    "keywords": [
+      "engineering materials",
+      "alloys",
+      "mechanical properties",
+      "composites",
+      "additive manufacturing",
+      "sintering"
+    ],
+    "discipline": "perovskite-oxides",
+    "secondaryDisciplines": [],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "advanced-intelligent-systems",
+    "name": "Advanced Intelligent Systems",
+    "publisher": "Wiley",
+    "publisherClass": "pub-badge-wiley",
+    "impactFactor": 6.8,
+    "citeScore": 10.5,
+    "quartile": "Q1",
+    "oaType": "Gold OA",
+    "reviewWeeks": 3.5,
+    "acceptanceRate": 20,
+    "url": "https://onlinelibrary.wiley.com/journal/26404567",
+    "scope": "Covers artificial intelligence hardware, 2D neuromorphic computing, memristors, robotic sensors, and smart electronic materials.",
+    "keywords": [
+      "intelligent systems",
+      "memristor",
+      "neuromorphic",
+      "2d electronics",
+      "transistor",
+      "synapse",
+      "sensors",
+      "robotics"
+    ],
+    "discipline": "2d-nano",
+    "secondaryDisciplines": [
+      "physics-condmat"
+    ],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "crystengcomm",
+    "name": "CrystEngComm",
+    "publisher": "RSC",
+    "publisherClass": "pub-badge-rsc",
+    "impactFactor": 2.6,
+    "citeScore": 5.4,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.4,
+    "acceptanceRate": 36,
+    "url": "https://www.rsc.org/journals-books-databases/about-journals/crystengcomm/",
+    "scope": "Focuses on crystal engineering, epitaxial growth, polymorphism, hydrogen bonding, and coordination network design.",
+    "keywords": [
+      "crystal engineering",
+      "crystallization",
+      "polymorphism",
+      "single crystal",
+      "coordination",
+      "epitaxy",
+      "xrd"
+    ],
+    "discipline": "perovskite-oxides",
+    "secondaryDisciplines": [
+      "catalysis-chem"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "catalysis-science-and-technology",
+    "name": "Catalysis Science & Technology",
+    "publisher": "RSC",
+    "publisherClass": "pub-badge-rsc",
+    "impactFactor": 4.4,
+    "citeScore": 8.5,
+    "quartile": "Q1",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.4,
+    "acceptanceRate": 28,
+    "url": "https://www.rsc.org/journals-books-databases/about-journals/catalysis-science-technology/",
+    "scope": "Dedicated to the science and technology of catalysis, active sites, electrocatalytic water splitting, and reaction energetics.",
+    "keywords": [
+      "catalysis",
+      "electrocatalysis",
+      "her",
+      "oer",
+      "active sites",
+      "reaction mechanism",
+      "kinetics",
+      "overpotential"
+    ],
+    "discipline": "catalysis-chem",
+    "secondaryDisciplines": [],
+    "editorialTier": "SPECIALIZED_HIGH"
+  },
+  {
+    "id": "acs-omega",
+    "name": "ACS Omega",
+    "publisher": "ACS",
+    "publisherClass": "pub-badge-acs",
+    "impactFactor": 3.7,
+    "citeScore": 6.8,
+    "quartile": "Q2",
+    "oaType": "Gold OA",
+    "reviewWeeks": 3.0,
+    "acceptanceRate": 42,
+    "url": "https://pubs.acs.org/journal/acsodf",
+    "scope": "ACS broad-scope open-access journal publishing high-quality research spanning chemistry, chemical engineering, and materials science.",
+    "keywords": [
+      "chemistry",
+      "materials science",
+      "synthesis",
+      "catalysis",
+      "batteries",
+      "nanomaterials",
+      "open access"
+    ],
+    "discipline": "multidisciplinary",
+    "secondaryDisciplines": [
+      "catalysis-chem"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "journal-of-physical-chemistry-a",
+    "name": "The Journal of Physical Chemistry A",
+    "publisher": "ACS",
+    "publisherClass": "pub-badge-acs",
+    "impactFactor": 2.7,
+    "citeScore": 5.5,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.6,
+    "acceptanceRate": 34,
+    "url": "https://pubs.acs.org/journal/jpcafh",
+    "scope": "Physical chemistry of molecules, gas-phase kinetics, spectroscopy, radicals, and theoretical chemistry.",
+    "keywords": [
+      "physical chemistry",
+      "kinetics",
+      "spectroscopy",
+      "quantum chemistry",
+      "dft",
+      "reaction dynamics"
+    ],
+    "discipline": "catalysis-chem",
+    "secondaryDisciplines": [
+      "physics-condmat"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "journal-of-physical-chemistry-b",
+    "name": "The Journal of Physical Chemistry B",
+    "publisher": "ACS",
+    "publisherClass": "pub-badge-acs",
+    "impactFactor": 2.8,
+    "citeScore": 5.8,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.6,
+    "acceptanceRate": 35,
+    "url": "https://pubs.acs.org/journal/jpcbfk",
+    "scope": "Focuses on biophysical chemistry, soft matter, polymers, polymer electrolytes, and ionic liquids.",
+    "keywords": [
+      "soft matter",
+      "polymers",
+      "polymer electrolyte",
+      "ionic liquids",
+      "solvation",
+      "biophysics"
+    ],
+    "discipline": "energy-storage",
+    "secondaryDisciplines": [
+      "catalysis-chem"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "superconductor-science-and-technology",
+    "name": "Superconductor Science and Technology",
+    "publisher": "IOP",
+    "publisherClass": "pub-badge-iop",
+    "impactFactor": 2.7,
+    "citeScore": 5.5,
+    "quartile": "Q2",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.6,
+    "acceptanceRate": 35,
+    "url": "https://iopscience.iop.org/journal/0953-2048",
+    "scope": "Dedicated exclusively to superconductivity, high-Tc superconductors, Josephson junctions, vortex dynamics, and superconducting wires.",
+    "keywords": [
+      "superconductivity",
+      "superconductors",
+      "critical current",
+      "josephson",
+      "vortex pinning",
+      "condensed matter",
+      "transport"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "review-of-scientific-instruments",
+    "name": "Review of Scientific Instruments",
+    "publisher": "AIP",
+    "publisherClass": "pub-badge-aip",
+    "impactFactor": 1.3,
+    "citeScore": 3.1,
+    "quartile": "Q3",
+    "oaType": "Hybrid",
+    "reviewWeeks": 3.9,
+    "acceptanceRate": 45,
+    "url": "https://pubs.aip.org/aip/rsi",
+    "scope": "Publishes novel instrumentation, in-situ characterization stages, cryogenic measurement systems, and advanced scientific apparatus.",
+    "keywords": [
+      "instrumentation",
+      "in-situ",
+      "cryogenics",
+      "measurement",
+      "sensor",
+      "vacuum stage",
+      "spectroscopy design"
+    ],
+    "discipline": "physics-condmat",
+    "secondaryDisciplines": [],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "sensors-mdpi",
+    "name": "Sensors",
+    "publisher": "MDPI",
+    "publisherClass": "pub-badge-mdpi",
+    "impactFactor": 3.4,
+    "citeScore": 7.3,
+    "quartile": "Q2",
+    "oaType": "Gold OA",
+    "reviewWeeks": 2.2,
+    "acceptanceRate": 48,
+    "url": "https://www.mdpi.com/journal/sensors",
+    "scope": "Leading rapid open access journal devoted to sensor science and technology, 2D material transducers, and physical sensing.",
+    "keywords": [
+      "sensors",
+      "transducers",
+      "2d materials",
+      "gas sensor",
+      "piezoelectric",
+      "wearable",
+      "fast review"
+    ],
+    "discipline": "perovskite-oxides",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "polymers-mdpi",
+    "name": "Polymers",
+    "publisher": "MDPI",
+    "publisherClass": "pub-badge-mdpi",
+    "impactFactor": 4.7,
+    "citeScore": 8.0,
+    "quartile": "Q1",
+    "oaType": "Gold OA",
+    "reviewWeeks": 2.1,
+    "acceptanceRate": 46,
+    "url": "https://www.mdpi.com/journal/polymers",
+    "scope": "Rapid peer-reviewed journal on polymer science, solid polymer electrolytes for batteries, conductive polymers, and nanocomposites.",
+    "keywords": [
+      "polymers",
+      "polymer electrolyte",
+      "solid electrolyte",
+      "ionic conductivity",
+      "batteries",
+      "nanocomposites",
+      "fast review"
+    ],
+    "discipline": "energy-storage",
+    "secondaryDisciplines": [],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "catalysts-mdpi",
+    "name": "Catalysts",
+    "publisher": "MDPI",
+    "publisherClass": "pub-badge-mdpi",
+    "impactFactor": 3.8,
+    "citeScore": 6.8,
+    "quartile": "Q2",
+    "oaType": "Gold OA",
+    "reviewWeeks": 2.1,
+    "acceptanceRate": 48,
+    "url": "https://www.mdpi.com/journal/catalysts",
+    "scope": "Rapid open access journal publishing high-quality research in homogeneous, heterogeneous, and electrocatalysis, HER, and OER.",
+    "keywords": [
+      "catalysis",
+      "electrocatalysis",
+      "her",
+      "oer",
+      "water splitting",
+      "overpotential",
+      "active sites",
+      "fast review"
+    ],
+    "discipline": "catalysis-chem",
+    "secondaryDisciplines": [],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "molecules-mdpi",
+    "name": "Molecules",
+    "publisher": "MDPI",
+    "publisherClass": "pub-badge-mdpi",
+    "impactFactor": 4.2,
+    "citeScore": 7.4,
+    "quartile": "Q2",
+    "oaType": "Gold OA",
+    "reviewWeeks": 2.1,
+    "acceptanceRate": 48,
+    "url": "https://www.mdpi.com/journal/molecules",
+    "scope": "Rapid open access journal publishing across organic, inorganic, computational chemistry, and materials synthesis.",
+    "keywords": [
+      "chemistry",
+      "inorganic",
+      "synthesis",
+      "dft",
+      "coordination",
+      "crystal structure",
+      "fast review"
+    ],
+    "discipline": "catalysis-chem",
+    "secondaryDisciplines": [],
+    "editorialTier": "COMMUNITY_CORE"
+  },
+  {
+    "id": "applied-sciences-mdpi",
+    "name": "Applied Sciences",
+    "publisher": "MDPI",
+    "publisherClass": "pub-badge-mdpi",
+    "impactFactor": 2.5,
+    "citeScore": 5.3,
+    "quartile": "Q2",
+    "oaType": "Gold OA",
+    "reviewWeeks": 2.2,
+    "acceptanceRate": 50,
+    "url": "https://www.mdpi.com/journal/applsci",
+    "scope": "Wide-scope rapid open access journal for applied physics, materials engineering, nanotechnology, and energy systems.",
+    "keywords": [
+      "applied sciences",
+      "materials",
+      "engineering",
+      "nanotechnology",
+      "energy",
+      "devices",
+      "fast review"
+    ],
+    "discipline": "multidisciplinary",
+    "secondaryDisciplines": [],
+    "editorialTier": "COMMUNITY_CORE"
   }
 ];
 
@@ -10382,11 +13952,18 @@ function applyJournalFilters() {
   // 3. Publisher filter
   if (pubFilter !== "ALL") {
     filtered = filtered.filter(j => {
-      if (pubFilter === "AAAS") return j.publisher.toLowerCase() === "aaas";
-      if (pubFilter === "Cell Press") return j.publisher.toLowerCase() === "cell press";
-      if (pubFilter === "NAS") return j.publisher.toLowerCase() === "nas";
-      if (pubFilter === "AIP") return j.publisher.toLowerCase() === "aip";
-      return j.publisher.toLowerCase() === pubFilter.toLowerCase();
+      const p = (j.publisher || "").toLowerCase();
+      const pf = pubFilter.toLowerCase();
+      if (pf === "aaas") return p === "aaas";
+      if (pf === "cell press") return p.includes("cell press") || p === "cell";
+      if (pf === "nas") return p === "nas";
+      if (pf === "aip") return p === "aip";
+      if (pf === "iop") return p.includes("iop");
+      if (pf === "ieee") return p.includes("ieee");
+      if (pf === "mdpi") return p === "mdpi";
+      if (pf === "frontiers") return p.includes("frontiers");
+      if (pf === "springer nature") return p.includes("springer") || p.includes("nature");
+      return p.includes(pf);
     });
   }
 
