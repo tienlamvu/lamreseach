@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T02:13:21.516Z",
+  "exported_at": "2026-11-13T02:13:22.635Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -57,30 +57,6 @@
       }
     ],
     "publications": [
-      {
-        "title": "Role of substitution Zr-site on the electronic structure and magnetic properties of BaTiO<sub>3</sub> materials: A first principles calculation",
-        "authors": "Vu Tien Lam, Nguyen Huu Lam, Duong Quoc Van, Nguyen Hoang Thoan, Nguyen Ngoc Trung, Dang Duc Dung",
-        "journal": "Computational and Theoretical Chemistry",
-        "year": 2025,
-        "doi": "10.1016/j.comptc.2024.114989",
-        "citations": 0,
-        "source": "ORCID",
-        "volume": "1243",
-        "pages": "114989",
-        "issue": ""
-      },
-      {
-        "title": "Comparative electronic structure, magnetic and optical properties of cubic perovskite Ba<sub>X</sub>O<sub>3</sub> (X=Ti, Sn) with self-defects: A first-principles calculation",
-        "authors": "Vu Tien Lam, Nguyen Huu Lam, Nguyen Hoang Thoan, Duong Quoc Van, Dang Duc Dung",
-        "journal": "Materials Today Communications",
-        "year": 2024,
-        "doi": "10.1016/j.mtcomm.2024.109686",
-        "citations": 0,
-        "source": "ORCID",
-        "volume": "40",
-        "pages": "109686",
-        "issue": ""
-      },
       {
         "title": "First-principles calculations of self-defects on the structural, electronic, and optical properties of Ba<sub>X</sub>O<sub>3</sub> (X = Ti, Zr, and Hf) perovskite oxide materials",
         "authors": "Vu Tien Lam, Nguyen Huu Lam, Duong Quoc Van, Nguyen Minh Quan, Nguyen Hoang Thoan, Dang Duc Dung",
