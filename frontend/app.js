@@ -121,9 +121,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadAllData();
   await autofillReportFromDatabase(true);
 
-  const initialActive = document.querySelector(".tab-pane.active");
-  const initialTabId = initialActive ? initialActive.id.replace("tab-", "") : "dashboard";
-  updateMobileNavPill(initialTabId);
+  const hashTab = window.location.hash ? window.location.hash.replace("#", "") : null;
+  if (hashTab && TABS_ORDER.includes(hashTab)) {
+    switchTab(hashTab);
+  } else {
+    const initialActive = document.querySelector(".tab-pane.active");
+    const initialTabId = initialActive ? initialActive.id.replace("tab-", "") : "dashboard";
+    updateMobileNavPill(initialTabId);
+  }
 });
 
 function showToast(msg, type = "info") {
@@ -207,8 +212,10 @@ function switchTab(tabId, btnEl) {
   updateMobileNavPill(tabId);
 
   if (TAB_TITLES[tabId]) {
-    document.getElementById("page-heading").textContent = TAB_TITLES[tabId][0];
-    document.getElementById("page-subheading").textContent = TAB_TITLES[tabId][1];
+    const headingEl = document.getElementById("page-heading");
+    const subheadEl = document.getElementById("page-subheading");
+    if (headingEl) headingEl.textContent = TAB_TITLES[tabId][0];
+    if (subheadEl) subheadEl.textContent = TAB_TITLES[tabId][1];
   }
 
   if (tabId === "calendar") {
@@ -4611,10 +4618,10 @@ function renderAcademicCvSheet(prof) {
       </div>
 
       <div class="cv-contact-box">
-        <div>📧 ${escapeHtml(prof.email || OWNER_GOOGLE_EMAIL)}</div>
-        <div>📞 ${escapeHtml(prof.phone || "+82-10-0000-0000")}</div>
-        <div>📍 ${escapeHtml(prof.location || "Sungkyunkwan University (SKKU)")}</div>
-        ${prof.website ? `<div>🌐 <a href="${escapeHtml(prof.website)}" target="_blank" style="color:var(--primary); text-decoration:none;">${escapeHtml(prof.website)}</a></div>` : ""}
+        <div class="cv-contact-line"><span class="cv-contact-ico">📧</span> <span class="cv-contact-val">${escapeHtml(prof.email || OWNER_GOOGLE_EMAIL)}</span></div>
+        <div class="cv-contact-line"><span class="cv-contact-ico">📞</span> <span class="cv-contact-val">${escapeHtml(prof.phone || "+82-10-0000-0000")}</span></div>
+        <div class="cv-contact-line"><span class="cv-contact-ico">📍</span> <span class="cv-contact-val">${escapeHtml(prof.location || "Sungkyunkwan University (SKKU)")}</span></div>
+        ${prof.website ? `<div class="cv-contact-line"><span class="cv-contact-ico">🌐</span> <a href="${escapeHtml(prof.website)}" target="_blank" class="cv-contact-val" style="color:var(--primary); text-decoration:none;">${escapeHtml(prof.website)}</a></div>` : ""}
       </div>
     </div>
 
