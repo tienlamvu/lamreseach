@@ -615,24 +615,51 @@
               </div>
 
               <div style="margin-bottom:14px;">
-                <label style="font-size:12.5px; font-weight:700; color:var(--text-secondary); display:block; margin-bottom:5px;">
-                  Manuscript Abstract <span style="color:#dc2626;">*</span>
-                </label>
-                <textarea id="finder-abstract-input" rows="7" placeholder="Paste your complete abstract here. The AI model extracts scientific keywords, methodology (DFT, experimental, synthesis), material families, and target application domains to match with editorial aims and scopes..." style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-color); font-size:13px; font-family:inherit; box-sizing:border-box; line-height:1.5;"></textarea>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                  <label style="font-size:12.5px; font-weight:700; color:var(--text-secondary);">
+                    Manuscript Abstract <span style="color:#dc2626;">*</span>
+                  </label>
+                  <div id="finder-word-count-badge" style="font-size:11.5px; color:#64748b;">
+                    <span>0 words (Paste full abstract, 100–300 words recommended)</span>
+                  </div>
+                </div>
+                <textarea id="finder-abstract-input" rows="7" oninput="updateAbstractWordCount()" placeholder="Paste your complete abstract here. In Springer Nature &amp; Elsevier systems, the matching engine extracts scientific background, specific methodology (DFT, in-situ XRD/XPS, synthesis), quantitative results, and material families to evaluate editorial aims and desk-rejection risk..." style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-color); font-size:13px; font-family:inherit; box-sizing:border-box; line-height:1.5;"></textarea>
+                <div style="font-size:11px; color:#94a3b8; margin-top:3px; display:flex; justify-content:space-between;">
+                  <span>💡 Note: Ultra-flagships (Nature, Science) require full abstracts with cross-disciplinary conceptual impact.</span>
+                  <span>Protocol: Springer Nature &amp; Elsevier Suggester</span>
+                </div>
               </div>
 
-              <!-- Match Options & Filters -->
-              <div style="background:#f8fafc; border:1px solid var(--border-color); border-radius:8px; padding:12px; margin-bottom:14px;">
-                <div style="font-size:12px; font-weight:700; color:#334155; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.3px;">
-                  ⚙️ Search Preferences &amp; Publisher Filters
+              <!-- Springer Nature & Elsevier Match Preferences & Filters -->
+              <div style="background:#f8fafc; border:1px solid var(--border-color); border-radius:8px; padding:12px 14px; margin-bottom:14px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <div style="font-size:12px; font-weight:800; color:#334155; text-transform:uppercase; letter-spacing:0.3px;">
+                    ⚙️ Springer Nature &amp; Publisher Scope Filters
+                  </div>
+                  <button type="button" class="btn btn-outline btn-sm" onclick="resetJournalFilters()" style="padding:2px 8px; font-size:11px; color:#64748b;">
+                    Reset Filters
+                  </button>
                 </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
                   <div>
-                    <label style="font-size:11.5px; color:#64748b; font-weight:600; display:block; margin-bottom:3px;">Filter by Publisher</label>
+                    <label style="font-size:11.5px; color:#64748b; font-weight:600; display:block; margin-bottom:3px;">Field of Study / Discipline</label>
+                    <select id="finder-filter-discipline" onchange="applyJournalFilters()" style="width:100%; padding:6px 10px; border-radius:6px; border:1px solid #cbd5e1; font-size:12px; background:#fff; color:#1e293b; font-weight:500;">
+                      <option value="ALL">All Fields of Study (Default)</option>
+                      <option value="energy-storage">🔋 Energy Storage, Batteries &amp; Solid Electrolytes</option>
+                      <option value="2d-nano">🔬 2D Materials &amp; Nanotechnology</option>
+                      <option value="physics-condmat">💻 Condensed Matter Physics &amp; DFT Theory</option>
+                      <option value="catalysis-chem">⚡ Heterogeneous Catalysis &amp; Chemical Sciences</option>
+                      <option value="perovskite-oxides">💎 Perovskites, Ferroelectrics &amp; Functional Oxides</option>
+                      <option value="multidisciplinary">🌐 Multidisciplinary Sciences (Nature, Science, PNAS)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style="font-size:11.5px; color:#64748b; font-weight:600; display:block; margin-bottom:3px;">Publisher Portfolio</label>
                     <select id="finder-filter-publisher" onchange="applyJournalFilters()" style="width:100%; padding:6px 10px; border-radius:6px; border:1px solid #cbd5e1; font-size:12px; background:#fff; color:#1e293b; font-weight:500;">
-                      <option value="ALL">All Publishers (AAAS Science, Nature, Cell, Wiley, ACS, Elsevier, APS, RSC, AIP, NAS, IOP)</option>
+                      <option value="ALL">All Publishers (AAAS, Nature, Cell, Wiley, ACS, Elsevier, APS, RSC, AIP, NAS, IOP)</option>
+                      <option value="Springer Nature">Springer Nature Portfolio</option>
                       <option value="AAAS">AAAS (Science Family)</option>
-                      <option value="Springer Nature">Springer Nature</option>
                       <option value="Cell Press">Cell Press / Elsevier</option>
                       <option value="Wiley">Wiley-VCH</option>
                       <option value="ACS">ACS (American Chemical Society)</option>
@@ -644,14 +671,45 @@
                       <option value="IOP">IOP Publishing</option>
                     </select>
                   </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:10px;">
                   <div>
                     <label style="font-size:11.5px; color:#64748b; font-weight:600; display:block; margin-bottom:3px;">Publishing Model</label>
                     <select id="finder-filter-oa" onchange="applyJournalFilters()" style="width:100%; padding:6px 10px; border-radius:6px; border:1px solid #cbd5e1; font-size:12px; background:#fff; color:#1e293b; font-weight:500;">
                       <option value="ALL">All Models (Hybrid &amp; Gold OA)</option>
                       <option value="Hybrid">Hybrid / Subscription (No Mandatory APC)</option>
-                      <option value="Open Access">Gold Open Access Only</option>
+                      <option value="Gold OA">Gold Open Access Only</option>
                     </select>
                   </div>
+                  <div>
+                    <label style="font-size:11.5px; color:#64748b; font-weight:600; display:block; margin-bottom:3px;">Minimum Clarivate IF</label>
+                    <select id="finder-filter-min-if" onchange="applyJournalFilters()" style="width:100%; padding:6px 10px; border-radius:6px; border:1px solid #cbd5e1; font-size:12px; background:#fff; color:#1e293b; font-weight:500;">
+                      <option value="0">Any Impact Factor</option>
+                      <option value="3">IF ≥ 3.0</option>
+                      <option value="5">IF ≥ 5.0</option>
+                      <option value="10">IF ≥ 10.0 (High Impact)</option>
+                      <option value="20">IF ≥ 20.0 (Premier Tier)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style="font-size:11.5px; color:#64748b; font-weight:600; display:block; margin-bottom:3px;">Max Review Speed</label>
+                    <select id="finder-filter-speed" onchange="applyJournalFilters()" style="width:100%; padding:6px 10px; border-radius:6px; border:1px solid #cbd5e1; font-size:12px; background:#fff; color:#1e293b; font-weight:500;">
+                      <option value="0">Any Speed</option>
+                      <option value="3.0">⚡ Rapid (≤ 3.0 weeks)</option>
+                      <option value="4.0">Standard (≤ 4.0 weeks)</option>
+                      <option value="5.0">≤ 5.0 weeks</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Strict Quality Threshold (Prevents showing Nature for trivial or unelaborated inputs!) -->
+                <div style="background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:7px 10px; display:flex; align-items:center; justify-content:space-between;">
+                  <label style="display:inline-flex; align-items:center; gap:7px; font-size:12px; font-weight:700; color:#1e293b; cursor:pointer;">
+                    <input type="checkbox" id="finder-hide-low-matches" checked onchange="applyJournalFilters()" style="accent-color:#b45309;" />
+                    <span>Strict Scope Filter: Hide poor matches (&lt; 40%) &amp; extreme desk-rejection risks</span>
+                  </label>
+                  <span style="font-size:11px; color:#059669; font-weight:600;">✓ Prevents false recommendations</span>
                 </div>
               </div>
 
