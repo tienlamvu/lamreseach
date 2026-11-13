@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:02:40.980Z",
+  "exported_at": "2026-11-13T05:02:42.291Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -57,19 +57,6 @@
       }
     ],
     "publications": [
-      {
-        "title": "Nature defect-mediated room temperature ferromagnetism in lead-free ferroelectric Ba(Zr0.2Ti0.8)O3: A first-principles study",
-        "authors": "Lam, V.T., Lam, N.H., Van, D.Q., Trang, N.T., Singh, J.P., Linh, N.H., Thoan, N.H., Trung, N.N., Dung, D.D.",
-        "journal": "Next Materials",
-        "year": 2025,
-        "doi": "10.1016/j.nxmate.2025.100916",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
-        "pages": "",
-        "source": "ORCID",
-        "visibility": "Public"
-      },
       {
         "title": "Role of substitution Zr-site on the electronic structure and magnetic properties of BaTiO3 materials: A first principles calculation",
         "authors": "Lam, V.T., Lam, N.H., Van, D.Q., Thoan, N.H., Trung, N.N., Dung, D.D.",
