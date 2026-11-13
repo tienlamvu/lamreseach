@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T10:40:57.685Z",
+  "exported_at": "2026-11-13T10:43:04.954Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -245,16 +245,17 @@
       },
       {
         "title": "Design and optical properties of a new binary Bi1/2Na1/2TiO3-Eu1/2Na1/2TiO3 solid solution system",
-        "authors": "Vu Tien Lam, Nguyen Hoang Thoan, Nguyen Huu Lam, Luong Thi Kim Phuong, Duong Quoc Van, Dang Duc Dung",
+        "authors": "Vu Tien Lam; Nguyen Hoang Thoan; Nguyen Huu Lam; Luong Thi Kim Phuong; Duong Quoc Van; Dang Duc Dung",
         "journal": "Optical Materials",
         "year": 2022,
         "doi": "10.1016/j.optmat.2022.113083",
-        "citations": 2,
+        "citations": 0,
         "volume": "134",
         "issue": "",
         "pages": "113083",
         "source": "ORCID",
-        "visibility": "Public"
+        "visibility": "Public",
+        "id": 1794566584392
       },
       {
         "title": "Fabrication and Optical Properties of Rare-Earth-Sm-Doped Lead-Free Ferroelectric Bi0.5Na0.5TiO3 Materials",
