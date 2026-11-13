@@ -143,6 +143,81 @@ function showToast(msg, type = "info") {
   }, 4500);
 }
 
+function confirmAction(message, itemDesc = "") {
+  return new Promise((resolve) => {
+    const modal = document.getElementById("confirm-dialog-modal");
+    if (!modal) {
+      const nativeMsg = itemDesc ? `${message}\n\n"${itemDesc}"` : message;
+      resolve(window.confirm(nativeMsg));
+      return;
+    }
+
+    const titleEl = document.getElementById("confirm-dialog-title");
+    const msgEl = document.getElementById("confirm-dialog-msg");
+    const itemBox = document.getElementById("confirm-dialog-item-box");
+    const okBtn = document.getElementById("confirm-dialog-ok-btn");
+    const cancelBtn = document.getElementById("confirm-dialog-cancel-btn");
+
+    if (msgEl) msgEl.textContent = message || "Bạn có chắc chắn muốn thực hiện thao tác xóa này không?";
+    if (itemBox) {
+      if (itemDesc) {
+        itemBox.textContent = itemDesc;
+        itemBox.style.display = "block";
+      } else {
+        itemBox.style.display = "none";
+      }
+    }
+
+    modal.classList.add("open");
+
+    const cleanup = () => {
+      modal.classList.remove("open");
+      if (okBtn) okBtn.removeEventListener("click", onOk);
+      if (cancelBtn) cancelBtn.removeEventListener("click", onCancel);
+      document.removeEventListener("keydown", onKey);
+      modal.removeEventListener("click", onBackdrop);
+    };
+
+    const onOk = (e) => {
+      if (e) {
+        if (e.stopPropagation) e.stopPropagation();
+        if (e.preventDefault) e.preventDefault();
+      }
+      cleanup();
+      resolve(true);
+    };
+
+    const onCancel = (e) => {
+      if (e) {
+        if (e.stopPropagation) e.stopPropagation();
+        if (e.preventDefault) e.preventDefault();
+      }
+      cleanup();
+      resolve(false);
+    };
+
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        onCancel(e);
+      }
+    };
+
+    const onBackdrop = (e) => {
+      if (e.target === modal) {
+        onCancel(e);
+      }
+    };
+
+    if (okBtn) okBtn.addEventListener("click", onOk);
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", onCancel);
+      cancelBtn.focus();
+    }
+    document.addEventListener("keydown", onKey);
+    modal.addEventListener("click", onBackdrop);
+  });
+}
+
 const TABS_ORDER = ["dashboard", "literature", "calendar", "structures", "weekly-report", "manuscript", "toolkit", "cv"];
 
 const TAB_META = {
@@ -1386,6 +1461,11 @@ async function savePaperFromModal() {
 
 async function deletePaperItem(id) {
   if (!requireAdminAuth()) return;
+  const p = STATE.papers.find(x => x.id === id);
+  const pTitle = p ? (p.title || `ID #${id}`) : `ID #${id}`;
+  const ok = await confirmAction("Bạn có chắc chắn muốn xóa tài liệu tham khảo này khỏi thư viện?", pTitle);
+  if (!ok) return;
+
   if (!STATIC_MODE) {
     await fetch(`/api/papers/${id}`, { method: "DELETE" });
     await loadAllData();
@@ -2065,13 +2145,20 @@ function addAtomRowToModal() {
   renderModalAtomsTable(STATE.pendingModalAtoms);
 }
 
-function removeAtomRowFromModal(idx) {
+async function removeAtomRowFromModal(idx) {
   if (!STATE.pendingModalAtoms) return;
+  const a = STATE.pendingModalAtoms[idx];
+  const desc = a ? `${a.element || "Nguyên tử"} (x: ${a.x}, y: ${a.y}, z: ${a.z})` : `Dòng #${idx + 1}`;
+  const ok = await confirmAction("Bạn có chắc chắn muốn xóa nguyên tử này khỏi cấu trúc?", desc);
+  if (!ok) return;
   STATE.pendingModalAtoms.splice(idx, 1);
   renderModalAtomsTable(STATE.pendingModalAtoms);
 }
 
-function clearModalAtoms() {
+async function clearModalAtoms() {
+  if (!STATE.pendingModalAtoms || STATE.pendingModalAtoms.length === 0) return;
+  const ok = await confirmAction("Bạn có chắc chắn muốn xóa toàn bộ danh sách nguyên tử này không?", `Tổng số ${STATE.pendingModalAtoms.length} nguyên tử`);
+  if (!ok) return;
   STATE.pendingModalAtoms = [];
   renderModalAtomsTable([]);
 }
@@ -2400,6 +2487,11 @@ async function saveStructureFromModal() {
 
 async function deleteStructureItem(id) {
   if (!requireAdminAuth()) return;
+  const s = STATE.structures.find(x => x.id === id);
+  const sName = s ? (s.chemical_formula ? `${s.chemical_formula} - ${s.name || ""}` : (s.name || `ID #${id}`)) : `ID #${id}`;
+  const ok = await confirmAction("Bạn có chắc chắn muốn xóa cấu trúc tinh thể này?", sName);
+  if (!ok) return;
+
   if (!STATIC_MODE) {
     try {
       await fetch(`/api/structures/${id}`, { method: "DELETE" });
@@ -3667,6 +3759,11 @@ async function cycleScheduleStatus(id) {
 
 async function deleteScheduleItem(id) {
   if (!requireAdminAuth()) return;
+  const s = STATE.schedule.find(x => x.id === id);
+  const sTitle = s ? (s.title || `ID #${id}`) : `ID #${id}`;
+  const ok = await confirmAction("Bạn có chắc chắn muốn xóa sự kiện lịch này?", sTitle);
+  if (!ok) return;
+
   if (!STATIC_MODE) {
     await fetch(`/api/schedule/${id}`, { method: "DELETE" });
     await loadAllData();
@@ -5063,6 +5160,11 @@ async function removeOwnPubById(idOrIdx, doi = "", title = "", e = null) {
   }
 
   if (targetIdx >= 0) {
+    const pub = pubs[targetIdx];
+    const pubTitle = pub ? (pub.title || "Ấn phẩm") : (title || "Ấn phẩm");
+    const ok = await confirmAction("Bạn có chắc chắn muốn xóa bài báo này khỏi danh mục ấn phẩm?", pubTitle);
+    if (!ok) return;
+
     const removed = pubs.splice(targetIdx, 1)[0];
     STATE.profile.publications = pubs;
     renderAcademicCvSheet(STATE.profile);
@@ -5635,6 +5737,17 @@ async function removeCvItem(listKey, idx, e) {
   if (!Array.isArray(STATE.profile[listKey])) return;
   if (idx < 0 || idx >= STATE.profile[listKey].length) return;
 
+  const item = STATE.profile[listKey][idx];
+  let itemDesc = "";
+  if (listKey === "education") itemDesc = `${item.degree || "Học vị"} • ${item.institution || ""}`;
+  else if (listKey === "experiences") itemDesc = `${item.role || "Chức danh"} • ${item.organization || ""}`;
+  else if (listKey === "conferences") itemDesc = `${item.title || "Báo cáo"} (${item.event || ""})`;
+  else if (listKey === "awards") itemDesc = `${item.title || "Giải thưởng"} (${item.issuer || ""})`;
+  else itemDesc = JSON.stringify(item);
+
+  const ok = await confirmAction("Bạn có chắc chắn muốn xóa mục này khỏi CV học thuật?", itemDesc);
+  if (!ok) return;
+
   STATE.profile[listKey].splice(idx, 1);
   renderAcademicCvSheet(STATE.profile);
   showToast("Item deleted from Academic CV!", "info");
@@ -5733,6 +5846,16 @@ function populateReportForm(data) {
   updateSlidePreview();
 }
 
+async function removeExpReportRow(idx) {
+  const r = STATE.expReportRows[idx];
+  const desc = r ? (r.sample_id || r.material || `Dòng #${idx + 1}`) : `Dòng #${idx + 1}`;
+  const ok = await confirmAction("Bạn có chắc chắn muốn xóa dòng kết quả nghiên cứu này?", desc);
+  if (!ok) return;
+  STATE.expReportRows.splice(idx, 1);
+  renderExpReportRows();
+  updateSlidePreview();
+}
+
 function renderExpReportRows() {
   const container = document.getElementById("rep-exp-rows-container");
   if (!container) return;
@@ -5742,7 +5865,7 @@ function renderExpReportRows() {
       <input type="text" placeholder="DFT Setup / Code" value="${escapeHtml(r.material)}" oninput="STATE.expReportRows[${idx}].material=this.value; updateSlidePreview()" />
       <input type="text" placeholder="Bandgap / Energy" value="${escapeHtml(r.conditions)}" oninput="STATE.expReportRows[${idx}].conditions=this.value; updateSlidePreview()" />
       <input type="text" placeholder="Key Simulation Finding" value="${escapeHtml(r.findings)}" oninput="STATE.expReportRows[${idx}].findings=this.value; updateSlidePreview()" />
-      <button type="button" class="btn btn-danger btn-sm" onclick="STATE.expReportRows.splice(${idx},1); renderExpReportRows(); updateSlidePreview()">✕</button>
+      <button type="button" class="btn btn-danger btn-sm" onclick="removeExpReportRow(${idx})">✕</button>
     </div>
   `).join("");
 }
@@ -5758,6 +5881,16 @@ function addExpResultRow() {
   updateSlidePreview();
 }
 
+async function removeLitReportRow(idx) {
+  const r = STATE.litReportRows[idx];
+  const desc = r ? (r.title || `Dòng #${idx + 1}`) : `Dòng #${idx + 1}`;
+  const ok = await confirmAction("Bạn có chắc chắn muốn xóa dòng tài liệu tổng quan này?", desc);
+  if (!ok) return;
+  STATE.litReportRows.splice(idx, 1);
+  renderLitReportRows();
+  updateSlidePreview();
+}
+
 function renderLitReportRows() {
   const container = document.getElementById("rep-lit-rows-container");
   if (!container) return;
@@ -5766,7 +5899,7 @@ function renderLitReportRows() {
       <input type="text" placeholder="Paper Title" value="${escapeHtml(r.title)}" oninput="STATE.litReportRows[${idx}].title=this.value; updateSlidePreview()" />
       <input type="text" placeholder="Journal (Year)" value="${escapeHtml(r.journal)}" oninput="STATE.litReportRows[${idx}].journal=this.value; updateSlidePreview()" />
       <input type="text" placeholder="Key Takeaway" value="${escapeHtml(r.takeaway)}" oninput="STATE.litReportRows[${idx}].takeaway=this.value; updateSlidePreview()" />
-      <button type="button" class="btn btn-danger btn-sm" onclick="STATE.litReportRows.splice(${idx},1); renderLitReportRows(); updateSlidePreview()">✕</button>
+      <button type="button" class="btn btn-danger btn-sm" onclick="removeLitReportRow(${idx})">✕</button>
     </div>
   `).join("");
 }
@@ -7011,6 +7144,11 @@ async function removeOwnPub(idx, e) {
   if (!Array.isArray(STATE.profile.publications)) return;
   if (idx < 0 || idx >= STATE.profile.publications.length) return;
 
+  const pub = STATE.profile.publications[idx];
+  const pubTitle = pub ? (pub.title || "Ấn phẩm") : "Ấn phẩm";
+  const ok = await confirmAction("Bạn có chắc chắn muốn xóa bài báo này khỏi danh mục ấn phẩm?", pubTitle);
+  if (!ok) return;
+
   STATE.profile.publications.splice(idx, 1);
   renderProfile(STATE.profile);
   renderAcademicCvSheet(STATE.profile);
@@ -7233,6 +7371,16 @@ function runStoichiometryCalc() {
   }
 }
 
+async function removePrecursorRow(idx) {
+  const p = STATE.precursors[idx];
+  const desc = p ? (p.formula || `Tiền chất #${idx + 1}`) : `Tiền chất #${idx + 1}`;
+  const ok = await confirmAction("Bạn có chắc chắn muốn xóa tiền chất hóa học này?", desc);
+  if (!ok) return;
+  STATE.precursors.splice(idx, 1);
+  renderPrecursorInputs();
+  runStoichiometryCalc();
+}
+
 function renderPrecursorInputs() {
   const container = document.getElementById("precursor-rows-container");
   if (!container) return;
@@ -7241,7 +7389,7 @@ function renderPrecursorInputs() {
       <input type="text" placeholder="Precursor (e.g. Li2CO3)" value="${escapeHtml(p.formula)}" oninput="STATE.precursors[${idx}].formula=this.value; runStoichiometryCalc()" style="padding:7px 10px; border:1px solid var(--border-color); border-radius:6px; font-size:12.5px;" />
       <input type="number" step="0.05" placeholder="Molar Ratio" value="${p.ratio}" oninput="STATE.precursors[${idx}].ratio=parseFloat(this.value)||0; runStoichiometryCalc()" style="padding:7px 10px; border:1px solid var(--border-color); border-radius:6px; font-size:12.5px;" title="Moles of precursor per 1 mole of target formula" />
       <input type="number" step="1" placeholder="Excess %" value="${p.excessPct}" oninput="STATE.precursors[${idx}].excessPct=parseFloat(this.value)||0; runStoichiometryCalc()" style="padding:7px 10px; border:1px solid var(--border-color); border-radius:6px; font-size:12.5px;" title="Excess %" />
-      <button class="btn btn-danger btn-sm" onclick="STATE.precursors.splice(${idx},1); renderPrecursorInputs(); runStoichiometryCalc()">✕</button>
+      <button class="btn btn-danger btn-sm" onclick="removePrecursorRow(${idx})">✕</button>
     </div>
   `).join("");
 }
