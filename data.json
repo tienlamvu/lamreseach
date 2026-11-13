@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:17:07.909Z",
+  "exported_at": "2026-11-13T05:17:12.797Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -170,16 +170,17 @@
       },
       {
         "title": "Optical, magnetic and electrical properties of new binary MnTiO3-modified Ba(Zr,Ti)O3 materials as solid solution",
-        "authors": "Dang Duc, D., Phuong, L.T.K., Lam, N.H., Van Thiet, D., Dang, L.H., Thoan, N.H., Lam, V.T., Van, D.Q.",
-        "journal": "Physica B Condensed Matter",
+        "authors": "Dung Dang Duc; Luong Thi Kim Phuong; Nguyen Huu Lam; Duong Van Thiet; Luong Hong Dang; Nguyen Hoang Thoan; Vu Tien Lam; Duong Quoc Van",
+        "journal": "Physica B: Condensed Matter",
         "year": 2024,
         "doi": "10.1016/j.physb.2024.416444",
-        "citations": 0,
-        "volume": "",
+        "citations": 1,
+        "volume": "694",
         "issue": "",
-        "pages": "",
+        "pages": "416444",
         "source": "ORCID",
-        "visibility": "Public"
+        "visibility": "Public",
+        "id": 1794547032318
       },
       {
         "title": "Structural, electronic and optical properties of complex lead-free ferroelectric Ba0.7Ca0.3TiO3 materials: A DFT study",
