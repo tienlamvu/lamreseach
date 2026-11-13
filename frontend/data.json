@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:32:28.332Z",
+  "exported_at": "2026-11-13T05:32:29.246Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -57,20 +57,6 @@
       }
     ],
     "publications": [
-      {
-        "title": "Structural, Magnetic, and Optical Properties of Complex Lead-Free Ferroelectric 0.97Bi0.5Na0.5TiO3 + 0.03AMnO3 (A = Mg, Ca, Sr, Ba) Materials",
-        "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Vu Tien Lam, Nguyen Huu Lam, Man Minh Hue, Nguyen Ngoc Trung, Duong Quoc Van",
-        "journal": "Lecture Notes in Mechanical Engineering",
-        "year": 2022,
-        "doi": "10.1007/978-3-030-99666-6_86",
-        "citations": 1,
-        "volume": "",
-        "issue": "",
-        "pages": "599-603",
-        "source": "ORCID",
-        "visibility": "Public",
-        "id": 1794547102134
-      },
       {
         "title": "Structural, optical, and magnetic properties of a new complex (1−x)Bi1/2Na1/2TiO3 + xMgNiO3−δ solid solution system",
         "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Quoc Dung, Nguyen Huu Lam, Pham Van Vinh, Vu Tien Lam, Pham Dinh Luong, Duong Quoc Van",
