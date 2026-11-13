@@ -1097,13 +1097,13 @@ body.visitor-mode .owner-only-btn {
   color: #fff;
 }
 
-@media (max-width: 1050px) {
+@media screen and (max-width: 1050px) {
   .grid-2, .grid-3 {
     grid-template-columns: 1fr;
   }
 }
 
-@media (max-width: 768px) {
+@media screen and (max-width: 768px) {
   /* Visibility Utilities */
   .mobile-only {
     display: block !important;
@@ -1510,7 +1510,7 @@ body.visitor-mode .owner-only-btn {
   }
 }
 
-@media (max-width: 480px) {
+@media screen and (max-width: 480px) {
   .finder-filter-grid-2,
   .finder-filter-grid-3 {
     grid-template-columns: 1fr !important;
@@ -1537,17 +1537,248 @@ body.visitor-mode .owner-only-btn {
   }
 }
 
+/* =========================================================================
+   Standard Academic & Scientific CV Print Styles (A4 PDF Vector Format)
+   ========================================================================= */
+
 @media print {
-  .top-app-header, .page-subheader, .no-print, #toast-container {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm 12mm 12mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 10pt !important;
+    line-height: 1.45 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Completely hide website headers, navigation, buttons, modals & non-printable elements */
+  .top-app-header,
+  .page-subheader,
+  .mobile-tab-nav-bar,
+  .no-print,
+  .owner-only-btn,
+  .admin-only,
+  .cv-action-btn,
+  .modal-backdrop,
+  #toast-container,
+  .turnitin-modal-overlay,
+  .public-mode-banner,
+  .scroll-top-btn,
+  .duplicate-alert-banner,
+  nav, header, footer,
+  .tab-pane:not(.active) {
     display: none !important;
   }
+
+  .main-workspace,
   .content-container {
     padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    background: #ffffff !important;
   }
+
+  /* Academic CV Document Container */
   .cv-paper-sheet {
     box-shadow: none !important;
     border: none !important;
-    padding: 10px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    background: #ffffff !important;
+  }
+
+  /* Scientific CV Header: Clean, balanced 3-column horizontal layout */
+  .cv-header-block {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start !important;
+    justify-content: space-between !important;
+    gap: 16px !important;
+    border-bottom: 2px solid #0f172a !important;
+    padding-bottom: 12px !important;
+    margin-bottom: 16px !important;
+    width: 100% !important;
+    text-align: left !important;
+  }
+
+  /* Left: Professional Profile Photo */
+  .cv-avatar-wrap {
+    width: auto !important;
+    flex: 0 0 100px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    text-align: left !important;
+  }
+
+  .cv-avatar-img {
+    width: 95px !important;
+    height: 122px !important;
+    object-fit: cover !important;
+    border-radius: 6px !important;
+    border: 1px solid #94a3b8 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    display: block !important;
+  }
+
+  /* Middle: Researcher Name, Academic Title, Affiliation & Metrics */
+  .cv-header-block > div:nth-child(2) {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    text-align: left !important;
+    padding: 0 4px !important;
+  }
+
+  .cv-name {
+    font-size: 21pt !important;
+    font-weight: 800 !important;
+    color: #0f172a !important;
+    letter-spacing: -0.3px !important;
+    line-height: 1.15 !important;
+    text-align: left !important;
+    margin-bottom: 2px !important;
+    width: auto !important;
+  }
+
+  .cv-role {
+    font-size: 11pt !important;
+    font-weight: 700 !important;
+    color: #b45309 !important;
+    text-align: left !important;
+    margin-bottom: 2px !important;
+    width: auto !important;
+  }
+
+  .cv-affil {
+    font-size: 9.5pt !important;
+    color: #334155 !important;
+    text-align: left !important;
+    margin-bottom: 6px !important;
+    width: auto !important;
+  }
+
+  .cv-header-block .badge {
+    font-size: 8.5pt !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    border: 1px solid #cbd5e1 !important;
+    background: #f8fafc !important;
+    color: #1e293b !important;
+    justify-content: flex-start !important;
+  }
+
+  .cv-header-block > div > div:last-child {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    justify-content: flex-start !important;
+    width: auto !important;
+  }
+
+  /* Right: Contact Information Box (Clean right-aligned format, no heavy gray box) */
+  .cv-contact-box {
+    flex: 0 0 215px !important;
+    width: 215px !important;
+    font-size: 8.5pt !important;
+    line-height: 1.5 !important;
+    color: #334155 !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    text-align: right !important;
+    box-shadow: none !important;
+  }
+
+  .cv-contact-box > div {
+    margin-bottom: 2px !important;
+    text-align: right !important;
+  }
+
+  /* CV Sections & Scientific Headings */
+  .cv-section {
+    margin-bottom: 14px !important;
+    page-break-inside: auto;
+  }
+
+  .cv-section-title {
+    font-size: 11pt !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    color: #0f172a !important;
+    border-bottom: 1.5px solid #0f172a !important;
+    padding-bottom: 3px !important;
+    margin: 12px 0 8px !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  /* Individual Entries: Avoid awkward page breaks splitting an entry */
+  .cv-entry {
+    margin-bottom: 8px !important;
+    padding-bottom: 6px !important;
+    border-bottom: 0.5px dashed #cbd5e1 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .cv-entry-head {
+    font-size: 10pt !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+  }
+
+  .cv-entry-sub {
+    font-size: 9pt !important;
+    color: #1d4ed8 !important;
+    font-weight: 600 !important;
+  }
+
+  .cv-entry-desc {
+    font-size: 9pt !important;
+    color: #475569 !important;
+    line-height: 1.4 !important;
+  }
+
+  /* Turnitin Plagiarism Print Support */
+  #plag-pdf-render-area,
+  #pdf-export-container {
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .turnitin-highlight {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .turnitin-tag {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  table {
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    page-break-after: auto;
   }
 }
 
@@ -2621,74 +2852,7 @@ body.is-admin .visitor-only {
   border-color: var(--primary-color);
 }
 
-@media print {
-  @page {
-    size: A4 portrait;
-    margin: 8mm 10mm 10mm 10mm;
-  }
 
-  body {
-    background: #ffffff !important;
-    color: #0f172a !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  /* Completely hide all website content when printing */
-  .top-app-header,
-  .page-subheader,
-  .main-workspace,
-  .modal-backdrop,
-  #toast-container,
-  .turnitin-modal-overlay,
-  .public-mode-banner,
-  nav, header, footer {
-    display: none !important;
-  }
-
-  /* Show ONLY the clean Academic PDF report container */
-  #plag-pdf-render-area {
-    display: block !important;
-    position: static !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    background: #ffffff !important;
-    box-shadow: none !important;
-  }
-
-  #pdf-export-container {
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    box-shadow: none !important;
-    border: none !important;
-    background: #ffffff !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  table {
-    page-break-inside: auto;
-  }
-
-  tr {
-    page-break-inside: avoid !important;
-    page-break-after: auto;
-  }
-
-  .turnitin-highlight {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-}
-  .turnitin-tag {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-}
 
 /* ========================================================================== */
 /* AUTHENTIC GOOGLE ACCOUNT SIGN-IN DIALOG (IDENTICAL TO GOOGLE / GMAIL LOGIN) */
