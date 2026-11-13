@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:16:34.531Z",
+  "exported_at": "2026-11-13T05:16:39.863Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -86,7 +86,7 @@
       },
       {
         "title": "Magnetic properties of new binary compounds lead-free ferroelectric (1-x)Ba(Zr0·2Ti0.8)O3+xFeTiO3 as solid solution",
-        "authors": "Dang Duc Dung, Nguyen Huu Lam, Luong Thi Kim Phuong, Dang Ba Tung, Jitendra Pal Singh, Nguyen Hoang Thoan, Vu Tien Lam, Duong Quoc Van",
+        "authors": "Dang Duc Dung; Nguyen Huu Lam; Luong Thi Kim Phuong; Dang Ba Tung; Jitendra Pal Singh; Nguyen Hoang Thoan; Vu Tien Lam; Duong Quoc Van",
         "journal": "Journal of Solid State Chemistry",
         "year": 2025,
         "doi": "10.1016/j.jssc.2025.125495",
@@ -95,7 +95,8 @@
         "issue": "",
         "pages": "125495",
         "source": "ORCID",
-        "visibility": "Public"
+        "visibility": "Public",
+        "id": 1794546999407
       },
       {
         "title": "Nature defect-mediated room temperature ferromagnetism in lead-free ferroelectric Ba(Zr0.2Ti0.8)O3: A first-principles study",
