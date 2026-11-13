@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:12:03.802Z",
+  "exported_at": "2026-11-13T05:12:05.619Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -57,58 +57,6 @@
       }
     ],
     "publications": [
-      {
-        "title": "Fabrication and optical properties of new (1-x)Bi1/2Na1/2TiO3+xHo1/2Na1/2TiO3 solid solution materials",
-        "authors": "Dung, D.D., Thoan, N.H., Lam, N.H., Tho, D.D., Lam, V.T., Van, D.Q.",
-        "journal": "Optical Materials",
-        "year": 2022,
-        "doi": "10.1016/j.optmat.2022.112750",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
-        "pages": "",
-        "source": "ORCID",
-        "visibility": "Public"
-      },
-      {
-        "title": "Magnetic Properties of a (1−x)Bi0.5Na0.5TiO3+xCaNiO3-δ Solid Solution System Prepared by Sol–Gel Technique",
-        "authors": "Dung, D.D., Thoan, N.H., Dung, N.Q., Vinh, P.V., Lam, N.H., Lam, V.T., Luong, P.D., Van, D.Q.",
-        "journal": "Journal of Electronic Materials",
-        "year": 2022,
-        "doi": "10.1007/s11664-022-09457-2",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
-        "pages": "",
-        "source": "ORCID",
-        "visibility": "Public"
-      },
-      {
-        "title": "Magnetic and Optical Properties of Transition Metal (Cr, Mn, Fe, Co, and Ni) Doped Lead-Free Ferroelectric Bi0.5Na0.5TiO3 Materials",
-        "authors": "Dung, D.D., Thoan, N.H., Lam, N.H., Lam, V.T., Trung, N.N., Linh, N.H., Van, D.Q.",
-        "journal": "Lecture Notes in Mechanical Engineering",
-        "year": 2022,
-        "doi": "10.1007/978-3-030-99666-6_88",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
-        "pages": "",
-        "source": "ORCID",
-        "visibility": "Public"
-      },
-      {
-        "title": "Magnetic properties of new (1−x)Bi1/2Na1/2TiO3+xBaNiO3−δ solid solution materials",
-        "authors": "Dung, D.D., Thoan, N.H., Van Vinh, P., Lam, N.H., Lam, V.T., Luong, P.D., Van, D.Q., Odkhuu, D.",
-        "journal": "Applied Physics A Materials Science and Processing",
-        "year": 2022,
-        "doi": "10.1007/s00339-022-05281-x",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
-        "pages": "",
-        "source": "ORCID",
-        "visibility": "Public"
-      },
       {
         "title": "Optical and Magnetic Properties of Lead-Free Ferroelectric (Bi0.5Na0.5)0.97A0.03Ti0.97Fe0.03O3 (A = Mg, Sr, Ca, Ba) Materials",
         "authors": "Dung, D.D., Lam, N.H., Thoan, N.H., Lam, V.T., Trung, N.N., Tuan, N.H., Van, D.Q.",
