@@ -585,15 +585,21 @@
                 <div>
                   <div class="card-title">📝 Input Manuscript Title &amp; Abstract</div>
                   <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
-                    AI semantic matching across Wiley, Springer Nature, Elsevier, ACS, APS &amp; RSC
+                    AI semantic scope matching across AAAS Science, Nature, Cell Press, Wiley, ACS, Elsevier, APS, RSC, AIP &amp; NAS
                   </div>
                 </div>
                 <div style="display:flex; gap:6px; flex-wrap:wrap;">
                   <button class="btn btn-outline btn-sm" onclick="loadSampleJournalAbstract(1)" title="Load 2D materials &amp; DFT electrocatalysis sample">
-                    📑 Sample 1
+                    📑 Sample 1 (2D/DFT)
                   </button>
                   <button class="btn btn-outline btn-sm" onclick="loadSampleJournalAbstract(2)" title="Load perovskite oxide defects &amp; ferroelectric sample">
-                    📑 Sample 2
+                    📑 Sample 2 (Perovskite)
+                  </button>
+                  <button class="btn btn-outline btn-sm" onclick="loadSampleJournalAbstract(3)" title="Load solid-state garnet battery electrolyte sample">
+                    🔋 Sample 3 (Battery LLZO)
+                  </button>
+                  <button class="btn btn-outline btn-sm" onclick="loadSampleJournalAbstract(4)" title="Load breakthrough multidisciplinary flagship sample (Science/Nature scope)">
+                    🌟 Sample 4 (Science Flagship)
                   </button>
                   <button class="btn btn-outline btn-sm" onclick="importFromPlagiarismTab()" title="Pull text from Plagiarism Check tab">
                     📋 Pull from Plag
@@ -624,13 +630,17 @@
                   <div>
                     <label style="font-size:11.5px; color:#64748b; font-weight:600; display:block; margin-bottom:3px;">Filter by Publisher</label>
                     <select id="finder-filter-publisher" onchange="applyJournalFilters()" style="width:100%; padding:6px 10px; border-radius:6px; border:1px solid #cbd5e1; font-size:12px; background:#fff; color:#1e293b; font-weight:500;">
-                      <option value="ALL">All Publishers (Wiley, Springer, Elsevier, ACS, APS, RSC, IOP)</option>
-                      <option value="ACS">ACS (American Chemical Society)</option>
-                      <option value="Wiley">Wiley-VCH</option>
+                      <option value="ALL">All Publishers (AAAS Science, Nature, Cell, Wiley, ACS, Elsevier, APS, RSC, AIP, NAS, IOP)</option>
+                      <option value="AAAS">AAAS (Science Family)</option>
                       <option value="Springer Nature">Springer Nature</option>
+                      <option value="Cell Press">Cell Press / Elsevier</option>
+                      <option value="Wiley">Wiley-VCH</option>
+                      <option value="ACS">ACS (American Chemical Society)</option>
                       <option value="Elsevier">Elsevier</option>
                       <option value="APS">APS (American Physical Society)</option>
                       <option value="RSC">RSC (Royal Society of Chemistry)</option>
+                      <option value="NAS">NAS (PNAS)</option>
+                      <option value="AIP">AIP (American Institute of Physics)</option>
                       <option value="IOP">IOP Publishing</option>
                     </select>
                   </div>
@@ -712,7 +722,7 @@
                   <span>📚</span> Recommended Journals Ranked by Semantic AI Match
                 </div>
                 <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
-                  Covering Wiley, Springer Nature, Elsevier, ACS, APS &amp; RSC. Click any journal to view official Aims &amp; Scope.
+                  Covering AAAS Science, Nature, Cell Press, Wiley, ACS, Elsevier, APS, RSC, AIP, NAS &amp; IOP. Click any journal to view official Aims &amp; Scope.
                 </div>
               </div>
               <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
