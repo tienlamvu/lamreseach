@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:17:03.627Z",
+  "exported_at": "2026-11-13T05:17:07.909Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -156,16 +156,17 @@
       },
       {
         "title": "Optical, Magnetic, and Electrical Properties of New Binary CoTiO3-Modified Ba(Zr0.2Ti0.8)O3 System as Solid Solution",
-        "authors": "Dang, L.H., Phuong, L.T.K., Lam, N.H., Van Thiet, D., Thoan, N.H., Lam, V.T., Van, D.Q., Dung, D.D.",
+        "authors": "Luong Hong Dang; Luong Thi Kim Phuong; Nguyen Huu Lam; Duong Van Thiet; Nguyen Hoang Thoan; Vu Tien Lam; Duong Quoc Van; Dang Duc Dung",
         "journal": "Journal of Electronic Materials",
         "year": 2024,
         "doi": "10.1007/s11664-024-11514-x",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
-        "pages": "",
+        "citations": 1,
+        "volume": "53",
+        "issue": "12",
+        "pages": "7819-7838",
         "source": "ORCID",
-        "visibility": "Public"
+        "visibility": "Public",
+        "id": 1794547027295
       },
       {
         "title": "Optical, magnetic and electrical properties of new binary MnTiO3-modified Ba(Zr,Ti)O3 materials as solid solution",
