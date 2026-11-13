@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T10:10:35.792Z",
+  "exported_at": "2026-11-13T10:10:43.777Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -37,9 +37,10 @@
       },
       {
         "degree": "Master of Science",
-        "institution": "Hanoi University of Science and Technology",
+        "institution": "Hanoi University of Science and Technology, Vietnam",
         "period": "2022 – 2024",
-        "details": "Faculty of Engineering Physics"
+        "details": "Faculty of Engineering Physics",
+        "visibility": "Public"
       }
     ],
     "experiences": [
