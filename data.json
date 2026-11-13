@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T10:43:49.085Z",
+  "exported_at": "2026-11-13T11:51:34.216Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -178,7 +178,7 @@
       },
       {
         "title": "Optical, magnetic and electrical properties of new binary MnTiO3-modified Ba(Zr,Ti)O3 materials as solid solution",
-        "authors": "Dung Dang Duc; Luong Thi Kim Phuong; Nguyen Huu Lam; Duong Van Thiet; Luong Hong Dang; Nguyen Hoang Thoan; Vu Tien Lam; Duong Quoc Van",
+        "authors": "Dang Duc Dung, Luong Thi Kim Phuong, Nguyen Huu Lam, Duong Van Thiet, Luong Hong Dang, Nguyen Hoang Thoan, Vu Tien Lam, Duong Quoc Van",
         "journal": "Physica B: Condensed Matter",
         "year": 2024,
         "doi": "10.1016/j.physb.2024.416444",
@@ -206,7 +206,7 @@
       },
       {
         "title": "Electronic Structure and Optical Properties of Cubic Perovskite BaXO3 (X=Ti, Sn): A First Principle Calculations",
-        "authors": "Vu Tien Lam; Nguyen Huu Lam; Van Duong Quoc; Nguyen Hoang Thoan; Dang Duc Dung",
+        "authors": "Vu Tien Lam, Nguyen Huu Lam, Duong Quoc Van, Nguyen Hoang Thoan, Dang Duc Dung",
         "journal": "Journal / Venue",
         "year": 2023,
         "doi": "10.2139/ssrn.4654244",
@@ -233,7 +233,7 @@
       },
       {
         "title": "Surface ferromagnetism of complex defects lead‐free ferroelectric Bi                    <sub>0.5</sub>                    Na                    <sub>0.5</sub>                    TiO                    <sub>3</sub>                    materials",
-        "authors": "Vu Tien Lam; Nguyen Hoang Thoan; Nguyen Ngoc Trung; Duong Quoc Van; Dang Duc Dung",
+        "authors": "Vu Tien Lam, Nguyen Hoang Thoan, Nguyen Ngoc Trung, Duong Quoc Van, Dang Duc Dung",
         "journal": "Surface and Interface Analysis",
         "year": 2022,
         "doi": "10.1002/sia.7184",
@@ -247,7 +247,7 @@
       },
       {
         "title": "Design and optical properties of a new binary Bi1/2Na1/2TiO3-Eu1/2Na1/2TiO3 solid solution system",
-        "authors": "Vu Tien Lam; Nguyen Hoang Thoan; Nguyen Huu Lam; Luong Thi Kim Phuong; Duong Quoc Van; Dang Duc Dung",
+        "authors": "Vu Tien Lam, Nguyen Hoang Thoan, Nguyen Huu Lam, Luong Thi Kim Phuong, Duong Quoc Van, Dang Duc Dung",
         "journal": "Optical Materials",
         "year": 2022,
         "doi": "10.1016/j.optmat.2022.113083",
@@ -274,7 +274,7 @@
       },
       {
         "title": "Fabrication and optical properties of new (1-x)Bi1/2Na1/2TiO3+xHo1/2Na1/2TiO3 solid solution materials",
-        "authors": "Dang Duc Dung; Nguyen Hoang Thoan; Nguyen Huu Lam; Do Duc Tho; Vu Tien Lam; Duong Quoc Van",
+        "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Huu Lam, Do Duc Tho, Vu Tien Lam, Duong Quoc Van",
         "journal": "Optical Materials",
         "year": 2022,
         "doi": "10.1016/j.optmat.2022.112750",
@@ -314,7 +314,7 @@
       },
       {
         "title": "Magnetic properties of new (1−x)Bi1/2Na1/2TiO3+xBaNiO3−δ solid solution materials",
-        "authors": "Dang Duc Dung; Nguyen Hoang Thoan; Phan Van Vinh; Nguyen Huu Lam; Vu Tien Lam; Pham Dinh Luong; Duong Quoc Van; Dorj Odkhuu",
+        "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Phan Van Vinh, Nguyen Huu Lam, Vu Tien Lam, Pham Dinh Luong, Duong Quoc Van, Dorj Odkhuu",
         "journal": "Applied Physics A",
         "year": 2022,
         "doi": "10.1007/s00339-022-05281-x",
@@ -420,8 +420,8 @@
     ],
     "skills": {
       "synthesis": "Solid-State Reaction & High-Temp Sintering (up to 1600 °C), Atomic Layer Deposition (ALD), Hydrothermal/Solvothermal, Sol-Gel, Ball Milling, Cold Isostatic Pressing (CIP), Ar-Glovebox Coin/Swagelok Cell Assembly",
-      "characterization": "Powder & Thin-Film XRD (Bruker D8, Rietveld Refinement via GSAS-II / FullProf), FE-SEM & EDS Mapping, HR-TEM & SAED, XPS Depth Profiling (CasaXPS), Raman & FTIR Spectroscopy, EIS / Cyclic Voltammetry (BioLogic EC-Lab), BET, TGA/DSC",
-      "computational": "Python (NumPy, SciPy, Matplotlib, Pymatgen), Density Functional Theory (VASP), VESTA 3D Crystal Visualization, OriginPro, ImageJ, LaTeX"
+      "characterization": "Powder & Thin-Film XRD, FE-SEM & EDS Mapping, HR-TEM & SAED, XPS Depth Profiling, Raman & FTIR Spectroscopy",
+      "computational": "Python (NumPy, SciPy, Matplotlib, Pymatgen), Density Functional Theory (VASP, CASTEP, Quantum ESPRESSO), VESTA 3D Crystal Visualization, OriginPro, ImageJ, LaTeX"
     },
     "awards": [
       {
