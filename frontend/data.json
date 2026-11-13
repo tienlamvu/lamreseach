@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:11:34.006Z",
+  "exported_at": "2026-11-13T05:11:35.200Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -57,33 +57,6 @@
       }
     ],
     "publications": [
-      {
-        "title": "Electronic Structure and Optical Properties of Cubic Perovskite Baxo3 (X=Ti, Sn): A First Principle Calculations",
-        "authors": "Vu Tien Lam; Nguyen Huu Lam; Van Duong Quoc; Nguyen Hoang Thoan; Dang Duc Dung",
-        "journal": "Ssrn",
-        "year": 2023,
-        "doi": "10.2139/ssrn.4654244",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
-        "pages": "",
-        "source": "ORCID",
-        "visibility": "Public",
-        "id": 1794546499402
-      },
-      {
-        "title": "Fabrication and Optical Properties of (1−x)Bi½Na½TiO3−xEr½Na½TiO3 Solid Solution System",
-        "authors": "Nguyen Hoang Thoan, Nguyen Huu Lam, Vu Tien Lam, Duong Quoc Van, Dang Duc Dung",
-        "journal": "Journal of Electronic Materials",
-        "year": 2023,
-        "doi": "10.1007/s11664-022-10134-7",
-        "citations": 2,
-        "volume": "52",
-        "issue": "2",
-        "pages": "1564-1574",
-        "source": "ORCID",
-        "visibility": "Public"
-      },
       {
         "title": "Surface ferromagnetism of complex defects lead-free ferroelectric Bi0.5Na0.5TiO3 materials",
         "authors": "Lam, V.T., Thoan, N.H., Trung, N.N., Van, D.Q., Dung, D.D.",
