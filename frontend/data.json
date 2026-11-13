@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T10:06:57.668Z",
+  "exported_at": "2026-11-13T10:07:26.659Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -400,7 +400,7 @@
         "type": "Poster Presentation",
         "year": 2026,
         "visibility": "Public",
-        "url": ""
+        "url": "https://ispsa.or.kr/glance"
       },
       {
         "title": "Intrinsic and Electrically Tunable Spin-Valley Splitting in Janus MoSSe Monolayers",
