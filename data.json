@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T10:10:08.501Z",
+  "exported_at": "2026-11-13T10:10:35.792Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -30,7 +30,7 @@
     "education": [
       {
         "degree": "Doctor",
-        "institution": "Sungkyunkwan University (SKKU)",
+        "institution": "Sungkyunkwan University, South Korea",
         "period": "2025 – Present",
         "visibility": "Public",
         "details": "Department of Energy Science"
