@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:15:19.805Z",
+  "exported_at": "2026-11-13T05:15:25.671Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -206,19 +206,6 @@
         "journal": "Journal of Electronic Materials",
         "year": 2022,
         "doi": "10.1007/s11664-022-09534-6",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
-        "pages": "",
-        "source": "ORCID",
-        "visibility": "Public"
-      },
-      {
-        "title": "First-principles calculation of the impact of interstitial point defects on the Bi<sub>0.5</sub>Na<sub>0.5</sub>TiO<sub>3</sub> (110) surface",
-        "authors": "Tien Lam Vu, Huu Lam Nguyen, Quoc Van Duong, Duc Dung Dang",
-        "journal": "Dalat University Journal of Science",
-        "year": 2026,
-        "doi": "10.37569/DalatUniversity.16.4S.1620(2026)",
         "citations": 0,
         "volume": "",
         "issue": "",
