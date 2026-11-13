@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:17:21.504Z",
+  "exported_at": "2026-11-13T05:17:29.521Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -212,16 +212,17 @@
       },
       {
         "title": "Fabrication and Optical Properties of (1−x)Bi½Na½TiO3−xEr½Na½TiO3 Solid Solution System",
-        "authors": "Thoan, N.H., Lam, N.H., Lam, V.T., Van, D.Q., Dung, D.D.",
+        "authors": "Nguyen Hoang Thoan; Nguyen Huu Lam; Vu Tien Lam; Duong Quoc Van; Dang Duc Dung",
         "journal": "Journal of Electronic Materials",
-        "year": 2023,
+        "year": 2022,
         "doi": "10.1007/s11664-022-10134-7",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
-        "pages": "",
+        "citations": 2,
+        "volume": "52",
+        "issue": "2",
+        "pages": "1564-1574",
         "source": "ORCID",
-        "visibility": "Public"
+        "visibility": "Public",
+        "id": 1794547049062
       },
       {
         "title": "Surface ferromagnetism of complex defects lead-free ferroelectric Bi0.5Na0.5TiO3 materials",
