@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T01:39:41.556Z",
+  "exported_at": "2026-11-13T01:39:43.298Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -57,50 +57,6 @@
       }
     ],
     "publications": [
-      {
-        "title": "Design and optical properties of a new binary Bi1/2Na1/2TiO3-Eu1/2Na1/2TiO3 solid solution system",
-        "authors": "Vu Tien Lam, Nguyen Hoang Thoan, Nguyen Huu Lam, Luong Thi Kim Phuong, Duong Quoc Van, Dang Duc Dung",
-        "journal": "Optical Materials",
-        "year": 2022,
-        "doi": "10.1016/j.optmat.2022.113083",
-        "citations": 0,
-        "source": "ORCID",
-        "volume": "134",
-        "pages": "113083"
-      },
-      {
-        "title": "Fabrication and Optical Properties of Rare-Earth-Sm-Doped Lead-Free Ferroelectric Bi0.5Na0.5TiO3 Materials",
-        "authors": "Duong Quoc Van, Nguyen Hoang Thoan, Nguyen Huu Lam, Vu Tien Lam, Nguyen Ngoc Trung, Ngo Duc Quan, Dang Duc Dung",
-        "journal": "Lecture Notes in Mechanical Engineering",
-        "year": 2022,
-        "doi": "10.1007/978-3-030-99666-6_85",
-        "citations": 0,
-        "source": "ORCID",
-        "pages": "592-598"
-      },
-      {
-        "title": "Fabrication and optical properties of new (1-x)Bi1/2Na1/2TiO3+xHo1/2Na1/2TiO3 solid solution materials",
-        "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Huu Lam, Do Duc Tho, Vu Tien Lam, Duong Quoc Van",
-        "journal": "Optical Materials",
-        "year": 2022,
-        "doi": "10.1016/j.optmat.2022.112750",
-        "citations": 0,
-        "source": "ORCID",
-        "volume": "132",
-        "pages": "112750"
-      },
-      {
-        "title": "Magnetic Properties of a (1−x)Bi0.5Na0.5TiO3+xCaNiO3-δ Solid Solution System Prepared by Sol–Gel Technique",
-        "authors": "D. D. Dung, N. H. Thoan, N. Q. Dung, P. V. Vinh, N. H. Lam, V. T. Lam, P. D. Luong, D. Q. Van",
-        "journal": "Journal of Electronic Materials",
-        "year": 2022,
-        "doi": "10.1007/s11664-022-09457-2",
-        "citations": 0,
-        "source": "ORCID",
-        "volume": "51",
-        "issue": "5",
-        "pages": "1905-1921"
-      },
       {
         "title": "Magnetic and Optical Properties of Transition Metal (Cr, Mn, Fe, Co, and Ni) Doped Lead-Free Ferroelectric Bi0.5Na0.5TiO3 Materials",
         "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Huu Lam, Vu Tien Lam, Nguyen Ngoc Trung, Nguyen Hoang Linh, Duong Quoc Van",
