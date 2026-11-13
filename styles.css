@@ -940,6 +940,10 @@ body.visitor-mode .owner-only-btn {
   display: flex;
 }
 
+#confirm-dialog-modal {
+  z-index: 999999 !important;
+}
+
 .modal-box {
   background: #fff;
   border-radius: 14px;
