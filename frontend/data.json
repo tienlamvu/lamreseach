@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T01:39:34.797Z",
+  "exported_at": "2026-11-13T01:39:37.564Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -57,41 +57,6 @@
       }
     ],
     "publications": [
-      {
-        "title": "Optical, Magnetic, and Electrical Properties of New Binary CoTiO3-Modified Ba(Zr0.2Ti0.8)O3 System as Solid Solution",
-        "authors": "Luong Hong Dang, Luong Thi Kim Phuong, Nguyen Huu Lam, Duong Van Thiet, Nguyen Hoang Thoan, Vu Tien Lam, Duong Quoc Van, Dang Duc Dung",
-        "journal": "Journal of Electronic Materials",
-        "year": 2024,
-        "doi": "10.1007/s11664-024-11514-x",
-        "citations": 0,
-        "source": "ORCID",
-        "volume": "53",
-        "issue": "12",
-        "pages": "7819-7838"
-      },
-      {
-        "title": "Optical, magnetic and electrical properties of new binary MnTiO3-modified Ba(Zr,Ti)O3 materials as solid solution",
-        "authors": "Dung Dang Duc, Luong Thi Kim Phuong, Nguyen Huu Lam, Duong Van Thiet, Luong Hong Dang, Nguyen Hoang Thoan, Vu Tien Lam, Duong Quoc Van",
-        "journal": "Physica B Condensed Matter",
-        "year": 2024,
-        "doi": "10.1016/j.physb.2024.416444",
-        "citations": 0,
-        "source": "ORCID",
-        "volume": "694",
-        "pages": "416444"
-      },
-      {
-        "title": "Structural, electronic and optical properties of complex lead-free ferroelectric Ba0.7Ca0.3TiO3 materials: A DFT study",
-        "authors": "Ngo Huyen Ngan, Vu Tien Lam, Nguyen Huu Lam, Pham Thi Huyen, Duong Quoc Van, Nguyen Hoang Thoan, Dang Duc Dung",
-        "journal": "MRS Communications",
-        "year": 2024,
-        "doi": "10.1557/s43579-024-00599-4",
-        "citations": 0,
-        "source": "ORCID",
-        "volume": "14",
-        "issue": "4",
-        "pages": "667-675"
-      },
       {
         "title": "Electronic Structure and Optical Properties of Cubic Perovskite Baxo3 (X=Ti, Sn): A First Principle Calculations",
         "authors": "Vu Tien Lam, Nguyen Huu Lam, Van Duong Quoc, Nguyen Hoang Thoan, Dang Duc Dung",
