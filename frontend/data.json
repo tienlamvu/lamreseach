@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T01:39:37.564Z",
+  "exported_at": "2026-11-13T01:39:41.556Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -57,39 +57,6 @@
       }
     ],
     "publications": [
-      {
-        "title": "Electronic Structure and Optical Properties of Cubic Perovskite Baxo3 (X=Ti, Sn): A First Principle Calculations",
-        "authors": "Vu Tien Lam, Nguyen Huu Lam, Van Duong Quoc, Nguyen Hoang Thoan, Dang Duc Dung",
-        "journal": "Ssrn",
-        "year": 2023,
-        "doi": "10.2139/ssrn.4654244",
-        "citations": 0,
-        "source": "ORCID"
-      },
-      {
-        "title": "Fabrication and Optical Properties of (1−x)Bi½Na½TiO3−xEr½Na½TiO3 Solid Solution System",
-        "authors": "Nguyen Hoang Thoan, Nguyen Huu Lam, Vu Tien Lam, Duong Quoc Van, Dang Duc Dung",
-        "journal": "Journal of Electronic Materials",
-        "year": 2023,
-        "doi": "10.1007/s11664-022-10134-7",
-        "citations": 0,
-        "source": "ORCID",
-        "volume": "52",
-        "issue": "2",
-        "pages": "1564-1574"
-      },
-      {
-        "title": "Surface ferromagnetism of complex defects lead-free ferroelectric Bi0.5Na0.5TiO3 materials",
-        "authors": "Vu Tien Lam, Nguyen Hoang Thoan, Nguyen Ngoc Trung, Duong Quoc Van, Dang Duc Dung",
-        "journal": "Surface and Interface Analysis",
-        "year": 2023,
-        "doi": "10.1002/sia.7184",
-        "citations": 0,
-        "source": "ORCID",
-        "volume": "55",
-        "issue": "4",
-        "pages": "243-255"
-      },
       {
         "title": "Design and optical properties of a new binary Bi1/2Na1/2TiO3-Eu1/2Na1/2TiO3 solid solution system",
         "authors": "Vu Tien Lam, Nguyen Hoang Thoan, Nguyen Huu Lam, Luong Thi Kim Phuong, Duong Quoc Van, Dang Duc Dung",
