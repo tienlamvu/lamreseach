@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:14:54.878Z",
+  "exported_at": "2026-11-13T05:14:56.160Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -57,19 +57,6 @@
       }
     ],
     "publications": [
-      {
-        "title": "Ultrafast switching and high-endurance nonvolatile memory enabled by intrinsic switchable polarization in semiconducting Janus monolayers",
-        "authors": "Ngoc Thanh Duong, Swathi Krishna, Minh Chien Nguyen, Hang Sik Kim, Vu Tien Lam, Hamza Zad Gul, Soo Ho Choi, Minjeong Kim, Daekwon Lee, Thi Uyen Tran, Vu Khac Dat, Van Dam Do, Van Huy Hoang, Heesuk Rho, Young-Min Kim, Woo Jong Yu, Ki Kang Kim, Seong Chu Lim",
-        "journal": "Nature Communications",
-        "year": 2026,
-        "doi": "10.1038/s41467-026-73279-7",
-        "citations": 0,
-        "volume": "17",
-        "issue": "1",
-        "pages": "",
-        "source": "ORCID",
-        "visibility": "Public"
-      },
       {
         "title": "Magnetic properties of new binary compounds lead-free ferroelectric (1-x)Ba(Zr0·2Ti0.8)O3+xFeTiO3 as solid solution",
         "authors": "Dang Duc Dung, Nguyen Huu Lam, Luong Thi Kim Phuong, Dang Ba Tung, Jitendra Pal Singh, Nguyen Hoang Thoan, Vu Tien Lam, Duong Quoc Van",
