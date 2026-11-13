@@ -3060,6 +3060,11 @@ body.is-admin .visitor-only {
   color: #a16207;
   border: 1.5px solid #fef08a;
 }
+.journal-match-score.score-poor {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1.5px solid #fecaca;
+}
 
 .journal-tag-chip {
   background: #f1f5f9;
