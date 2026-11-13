@@ -421,17 +421,36 @@ def sync_orcid_profile(raw_orcid: str) -> dict:
                         )
                         if cr_resp.status_code == 200:
                             cr_msg = cr_resp.json().get("message", {})
-                            if not author_names and cr_msg.get("author"):
+                            if cr_msg.get("author"):
                                 cr_authors = []
                                 for a in cr_msg.get("author", []):
-                                    given = a.get("given", "").strip()
-                                    family = a.get("family", "").strip()
+                                    given = (a.get("given") or "").strip()
+                                    family = (a.get("family") or "").strip()
                                     if given and family:
                                         cr_authors.append(f"{given} {family}")
                                     elif family:
                                         cr_authors.append(family)
                                 if cr_authors:
-                                    w_authors = ", ".join(cr_authors)
+                                    cr_str = ", ".join(cr_authors)
+                                    if not re.search(r'\b[A-Z]\.', cr_str):
+                                        w_authors = cr_str
+                                    else:
+                                        try:
+                                            oa_resp = requests.get(
+                                                f"https://api.openalex.org/works/https://doi.org/{requests.utils.quote(w_doi)}",
+                                                headers={"User-Agent": "mailto:lamvt@skku.edu"},
+                                                timeout=5
+                                            )
+                                            if oa_resp.status_code == 200:
+                                                oa_data = oa_resp.json()
+                                                oa_names = [ash.get("author", {}).get("display_name", "").strip() for ash in oa_data.get("authorships", [])]
+                                                oa_names = [n for n in oa_names if n]
+                                                if oa_names and not re.search(r'\b[A-Z]\.', ", ".join(oa_names)):
+                                                    w_authors = ", ".join(oa_names)
+                                                else:
+                                                    w_authors = cr_str
+                                        except Exception:
+                                            w_authors = cr_str
                             w_volume = str(cr_msg.get("volume") or "")
                             w_issue = str(cr_msg.get("issue") or "")
                             w_pages = str(cr_msg.get("page") or "")
