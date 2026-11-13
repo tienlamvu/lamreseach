@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:09:25.101Z",
+  "exported_at": "2026-11-13T05:11:28.798Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -17,7 +17,7 @@
     "bio": "Ph.D. researcher investigating ionic conductivity, grain boundary impedance, and phase stability of solid-state electrolytes and 2D functional nanomaterials.",
     "education_json": "[{\"degree\": \"Master of Science\", \"institution\": \"Hanoi University of Science and Technology\", \"period\": \"2022 \\u2013 2024\", \"details\": \"Faculty of Engineering Physics\"}]",
     "publications_json": "[{\"title\": \"First-principles calculation of the impact of interstitial point defects on the Bi<sub>0.5</sub>Na<sub>0.5</sub>TiO<sub>3</sub> (110) surface\", \"authors\": \"Tien Lam Vu, Huu Lam Nguyen, Quoc Van Duong, Duc Dung Dang\", \"journal\": \"Dalat University Journal of Science\", \"year\": 2026, \"doi\": \"10.37569/DalatUniversity.16.4S.1620(2026)\", \"citations\": 0, \"source\": \"ORCID\", \"pages\": \"1620\", \"volume\": \"16\", \"issue\": \"4S\"}, {\"title\": \"Ultrafast switching and high-endurance nonvolatile memory enabled by intrinsic switchable polarization in semiconducting Janus monolayers\", \"authors\": \"Ngoc Thanh Duong, Swathi Krishna, Minh Chien Nguyen, Hang Sik Kim, Vu Tien Lam, Hamza Zad Gul, Soo Ho Choi, Minjeong Kim, Daekwon Lee, Thi Uyen Tran, Vu Khac Dat, Van Dam Do, Van Huy Hoang, Heesuk Rho, Young-Min Kim, Woo Jong Yu, Ki Kang Kim, Seong Chu Lim\", \"journal\": \"Nature Communications\", \"year\": 2026, \"doi\": \"10.1038/s41467-026-73279-7\", \"citations\": 0, \"source\": \"ORCID\", \"volume\": \"17\", \"issue\": \"1\", \"pages\": \"6644\"}, {\"title\": \"Magnetic properties of new binary compounds lead-free ferroelectric (1-x)Ba(Zr<sub>0.2</sub>Ti<sub>0.8</sub>)O<sub>3</sub> + xFeTiO<sub>3</sub> as solid solution\", \"authors\": \"Dang Duc Dung, Nguyen Huu Lam, Luong Thi Kim Phuong, Dang Ba Tung, Jitendra Pal Singh, Nguyen Hoang Thoan, Vu Tien Lam, Duong Quoc Van\", \"journal\": \"Journal of Solid State Chemistry\", \"year\": 2025, \"doi\": \"10.1016/j.jssc.2025.125495\", \"citations\": 0, \"source\": \"ORCID\", \"volume\": \"350\", \"pages\": \"125495\"}, {\"title\": \"Nature defect-mediated room temperature ferromagnetism in lead-free ferroelectric Ba(Zr<sub>0.2</sub>Ti<sub>0.8</sub>)O<sub>3</sub>: A first-principles study\", \"authors\": \"Vu Tien Lam, Nguyen Huu Lam, Duong Quoc Van, Nguyen Thi Thu Trang, Jitendra Pal Singh, Nguyen Hoang Linh, Nguyen Hoang Thoan, Nguyen Ngoc Trung, Dang Duc Dung\", \"journal\": \"Next Materials\", \"year\": 2025, \"doi\": \"10.1016/j.nxmate.2025.100916\", \"citations\": 0, \"source\": \"ORCID\", \"volume\": \"8\", \"pages\": \"100916\", \"id\": 1794397736877, \"visibility\": \"Public\"}, {\"title\": \"Role of substitution Zr-site on the electronic structure and magnetic properties of BaTiO<sub>3</sub> materials: A first principles calculation\", \"authors\": \"Vu Tien Lam, Nguyen Huu Lam, Duong Quoc Van, Nguyen Hoang Thoan, Nguyen Ngoc Trung, Dang Duc Dung\", \"journal\": \"Computational and Theoretical Chemistry\", \"year\": 2025, \"doi\": \"10.1016/j.comptc.2024.114989\", \"citations\": 0, \"source\": \"ORCID\", \"volume\": \"1243\", \"pages\": \"114989\"}, {\"title\": \"Comparative electronic structure, magnetic and optical properties of cubic perovskite Ba<sub>X</sub>O<sub>3</sub> (X=Ti, Sn) with self-defects: A first-principles calculation\", \"authors\": \"Vu Tien Lam, Nguyen Huu Lam, Nguyen Hoang Thoan, Duong Quoc Van, Dang Duc Dung\", \"journal\": \"Materials Today Communications\", \"year\": 2024, \"doi\": \"10.1016/j.mtcomm.2024.109686\", \"citations\": 0, \"source\": \"ORCID\", \"volume\": \"40\", \"pages\": \"109686\"}, {\"title\": \"First-principles calculations of self-defects on the structural, electronic, and optical properties of Ba<sub>X</sub>O<sub>3</sub> (X = Ti, Zr, and Hf) perovskite oxide materials\", \"authors\": \"Vu Tien Lam, Nguyen Huu Lam, Duong Quoc Van, Nguyen Minh Quan, Nguyen Hoang Thoan, Dang Duc Dung\", \"journal\": \"Materials Today Communications\", \"year\": 2024, \"doi\": \"10.1016/j.mtcomm.2024.110641\", \"citations\": 0, \"source\": \"ORCID\", \"volume\": \"41\", \"pages\": \"110641\"}, {\"title\": \"Optical, Magnetic, and Electrical Properties of New Binary CoTiO<sub>3</sub>-Modified Ba(Zr<sub>0.2</sub>Ti<sub>0.8</sub>)O<sub>3</sub> System as Solid Solution\", \"authors\": \"Luong Hong Dang, Luong Thi Kim Phuong, Nguyen Huu Lam, Duong Van Thiet, Nguyen Hoang Thoan, Vu Tien Lam, Duong Quoc Van, Dang Duc Dung\", \"journal\": \"Journal of Electronic Materials\", \"year\": 2024, \"doi\": \"10.1007/s11664-024-11514-x\", \"citations\": 0, \"source\": \"ORCID\", \"volume\": \"53\", \"issue\": \"12\", \"pages\": \"7819-7838\"}, {\"title\": \"Optical, magnetic and electrical properties of new binary MnTiO<sub>3</sub>-modified Ba(Zr,Ti)O<sub>3</sub> materials as solid solution\", \"authors\": \"Dung Dang Duc, Luong Thi Kim Phuong, Nguyen Huu Lam, Duong Van Thiet, Luong Hong Dang, Nguyen Hoang Thoan, Vu Tien Lam, Duong Quoc Van\", \"journal\": \"Physica B Condensed Matter\", \"year\": 2024, \"doi\": \"10.1016/j.physb.2024.416444\", \"citations\": 0, \"source\": \"ORCID\", \"volume\": \"694\", \"pages\": \"416444\"}, {\"title\": \"Structural, electronic and optical properties of complex lead-free ferroelectric Ba<sub>0.7</sub>Ca<sub>0.3</sub>TiO<sub>3</sub> materials: A DFT study\", \"authors\": \"Ngo Huyen Ngan, Vu Tien Lam, Nguyen Huu Lam, Pham Thi Huyen, Duong Quoc Van, Nguyen Hoang Thoan, Dang Duc Dung\", \"journal\": \"MRS Communications\", \"year\": 2024, \"doi\": \"10.1557/s43579-024-00599-4\", \"citations\": 0, \"source\": \"ORCID\", \"volume\": \"14\", \"issue\": \"4\", \"pages\": \"667-675\"}, {\"title\": \"Electronic Structure and Optical Properties of Cubic Perovskite Baxo3 (X=Ti, Sn): A First Principle Calculations\", \"authors\": \"Vu Tien Lam, Nguyen Huu Lam, Van Duong Quoc, Nguyen Hoang Thoan, Dang Duc Dung\", \"journal\": \"Ssrn\", \"year\": 2023, \"doi\": \"10.2139/ssrn.4654244\", \"citations\": 0, \"source\": \"ORCID\"}, {\"title\": \"Fabrication and Optical Properties of (1\\u2212x)Bi<sub>\\u00bd</sub>Na<sub>\\u00bd</sub>TiO<sub>3</sub> \\u2212 xEr<sub>\\u00bd</sub>Na<sub>\\u00bd</sub>TiO<sub>3</sub> Solid Solution System\", \"authors\": \"Nguyen Hoang Thoan, Nguyen Huu Lam, Vu Tien Lam, Duong Quoc Van, Dang Duc Dung\", \"journal\": \"Journal of Electronic Materials\", \"year\": 2023, \"doi\": \"10.1007/s11664-022-10134-7\", \"citations\": 0, \"source\": \"ORCID\", \"volume\": \"52\", \"issue\": \"2\", \"pages\": \"1564-1574\"}, {\"title\": \"Surface ferromagnetism of complex defects lead-free ferroelectric Bi<sub>0.5</sub>Na<sub>0.5</sub>TiO<sub>3</sub> materials\", \"authors\": \"Vu Tien Lam, Nguyen Hoang Thoan, Nguyen Ngoc Trung, Duong Quoc Van, Dang Duc Dung\", \"journal\": \"Surface and Interface Analysis\", \"year\": 2023, \"doi\": \"10.1002/sia.7184\", \"citations\": 0, \"source\": \"ORCID\", \"volume\": \"55\", \"issue\": \"4\", \"pages\": \"243-255\"}, {\"title\": \"Design and optical properties of a new binary Bi<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub>-Eu<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub> solid solution system\", \"authors\": \"Vu Tien Lam, Nguyen Hoang Thoan, Nguyen Huu Lam, Luong Thi Kim Phuong, Duong Quoc Van, Dang Duc Dung\", \"journal\": \"Optical Materials\", \"year\": 2022, \"doi\": \"10.1016/j.optmat.2022.113083\", \"citations\": 0, \"source\": \"ORCID\", \"volume\": \"134\", \"pages\": \"113083\"}, {\"title\": \"Fabrication and Optical Properties of Rare-Earth-Sm-Doped Lead-Free Ferroelectric Bi<sub>0.5</sub>Na<sub>0.5</sub>TiO<sub>3</sub> Materials\", \"authors\": \"Duong Quoc Van, Nguyen Hoang Thoan, Nguyen Huu Lam, Vu Tien Lam, Nguyen Ngoc Trung, Ngo Duc Quan, Dang Duc Dung\", \"journal\": \"Lecture Notes in Mechanical Engineering\", \"year\": 2022, \"doi\": \"10.1007/978-3-030-99666-6_85\", \"citations\": 0, \"source\": \"ORCID\", \"pages\": \"592-598\"}, {\"title\": \"Fabrication and optical properties of new (1-x)Bi<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub> + xHo<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub> solid solution materials\", \"authors\": \"Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Huu Lam, Do Duc Tho, Vu Tien Lam, Duong Quoc Van\", \"journal\": \"Optical Materials\", \"year\": 2022, \"doi\": \"10.1016/j.optmat.2022.112750\", \"citations\": 0, \"source\": \"ORCID\", \"volume\": \"132\", \"pages\": \"112750\"}, {\"title\": \"Magnetic Properties of a (1\\u2212x)Bi<sub>0.5</sub>Na<sub>0.5</sub>TiO<sub>3</sub> + xCaNiO<sub>3-\\u03b4</sub> Solid Solution System Prepared by Sol\\u2013Gel Technique\", \"authors\": \"Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Quoc Dung, Pham Van Vinh, Nguyen Huu Lam, Vu Tien Lam, Pham Dinh Luong, Duong Quoc Van\", \"journal\": \"Journal of Electronic Materials\", \"year\": 2022, \"doi\": \"10.1007/s11664-022-09457-2\", \"citations\": 0, \"source\": \"ORCID\", \"volume\": \"51\", \"issue\": \"5\", \"pages\": \"1905-1921\"}, {\"title\": \"Magnetic and Optical Properties of Transition Metal (Cr, Mn, Fe, Co, and Ni) Doped Lead-Free Ferroelectric Bi<sub>0.5</sub>Na<sub>0.5</sub>TiO<sub>3</sub> Materials\", \"authors\": \"Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Huu Lam, Vu Tien Lam, Nguyen Ngoc Trung, Nguyen Hoang Linh, Duong Quoc Van\", \"journal\": \"Lecture Notes in Mechanical Engineering\", \"year\": 2022, \"doi\": \"10.1007/978-3-030-99666-6_88\", \"citations\": 0, \"source\": \"ORCID\", \"pages\": \"610-614\"}, {\"title\": \"Magnetic properties of new (1\\u2212x)Bi<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub> + xBaNiO<sub>3\\u2212\\u03b4</sub> solid solution materials\", \"authors\": \"Dang Duc Dung, Nguyen Hoang Thoan, Phan Van Vinh, Nguyen Huu Lam, Vu Tien Lam, Pham Dinh Luong, Duong Quoc Van, Dorj Odkhuu\", \"journal\": \"Applied Physics A Materials Science and Processing\", \"year\": 2022, \"doi\": \"10.1007/s00339-022-05281-x\", \"citations\": 0, \"source\": \"ORCID\", \"volume\": \"128\", \"issue\": \"2\", \"pages\": \"168\"}, {\"title\": \"Optical and Magnetic Properties of Lead-Free Ferroelectric (Bi<sub>0.5</sub>Na<sub>0.5</sub>)<sub>0.97</sub>A<sub>0.03</sub>Ti<sub>0.97</sub>Fe<sub>0.03</sub>O<sub>3</sub> (A = Mg, Sr, Ca, Ba) Materials\", \"authors\": \"Dang Duc Dung, Nguyen Huu Lam, Nguyen Hoang Thoan, Vu Tien Lam, Nguyen Ngoc Trung, Nguyen Hoang Tuan, Duong Quoc Van\", \"journal\": \"Lecture Notes in Mechanical Engineering\", \"year\": 2022, \"doi\": \"10.1007/978-3-030-99666-6_87\", \"citations\": 0, \"source\": \"ORCID\", \"pages\": \"604-609\"}, {\"title\": \"Optical properties of a new binary lead-free ferroelectric semiconductor Bi<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub>\\u2013Nd1/2Na1/2TiO<sub>3</sub> solid solution system\", \"authors\": \"Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Huu Lam, Do Duc Tho, Vu Tien Lam, Nguyen Thi Trang, Duong Quoc Van\", \"journal\": \"Applied Physics A Materials Science and Processing\", \"year\": 2022, \"doi\": \"10.1007/s00339-022-05910-5\", \"citations\": 0, \"source\": \"ORCID\", \"volume\": \"128\", \"issue\": \"9\", \"pages\": \"798\"}, {\"title\": \"Structural, Magnetic, and Optical Properties of Complex Lead-Free Ferroelectric 0.97Bi0.5Na0.5TiO<sub>3</sub> + 0.03AMnO<sub>3</sub> (A = Mg, Ca, Sr, Ba) Materials\", \"authors\": \"Dang Duc Dung, Nguyen Hoang Thoan, Vu Tien Lam, Nguyen Huu Lam, Man Minh Hue, Nguyen Ngoc Trung, Duong Quoc Van\", \"journal\": \"Lecture Notes in Mechanical Engineering\", \"year\": 2022, \"doi\": \"10.1007/978-3-030-99666-6_86\", \"citations\": 0, \"source\": \"ORCID\", \"pages\": \"599-603\"}, {\"title\": \"Structural, optical, and magnetic properties of a new complex (1\\u2212x)Bi<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub> + xMgNiO<sub>3\\u2212\\u03b4</sub> solid solution system\", \"authors\": \"Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Quoc Dung, Nguyen Huu Lam, Pham Van Vinh, Vu Tien Lam, Pham Dinh Luong, Duong Quoc Van\", \"journal\": \"Applied Physics A Materials Science and Processing\", \"year\": 2022, \"doi\": \"10.1007/s00339-021-05255-5\", \"citations\": 0, \"source\": \"ORCID\", \"volume\": \"128\", \"issue\": \"2\", \"pages\": \"129\"}, {\"title\": \"Synthesis and Characterization of (1\\u2212x)Bi<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub> + xSrNiO<sub>3-\\u03b4</sub> Solid Solution System\", \"authors\": \"Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Quoc Dung, Nguyen Huu Lam, Vu Tien Lam, Pham Van Vinh, Pham Dinh Luong, Duong Quoc Van\", \"journal\": \"Journal of Electronic Materials\", \"year\": 2022, \"doi\": \"10.1007/s11664-022-09534-6\", \"citations\": 0, \"source\": \"ORCID\", \"volume\": \"51\", \"issue\": \"6\", \"pages\": \"2716-2731\"}]",
-    "last_synced_at": "2026-11-13 05:08",
+    "last_synced_at": "2026-11-13 05:11",
     "phone": "+82-010-8117-0498",
     "website": "https://github.com/matsci-researcher",
     "location": "86680, N-center",
@@ -58,19 +58,6 @@
     ],
     "publications": [
       {
-        "title": "First-principles calculation of the impact of interstitial point defects on the Bi<sub>0.5</sub>Na<sub>0.5</sub>TiO<sub>3</sub> (110) surface",
-        "authors": "Tien Lam Vu, Huu Lam Nguyen, Quoc Van Duong, Duc Dung Dang",
-        "journal": "Dalat University Journal of Science",
-        "year": 2026,
-        "doi": "10.37569/DalatUniversity.16.4S.1620(2026)",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
-        "pages": "",
-        "source": "ORCID",
-        "visibility": "Public"
-      },
-      {
         "title": "Ultrafast switching and high-endurance nonvolatile memory enabled by intrinsic switchable polarization in semiconducting Janus monolayers",
         "authors": "Ngoc Thanh Duong, Swathi Krishna, Minh Chien Nguyen, Hang Sik Kim, Vu Tien Lam, Hamza Zad Gul, Soo Ho Choi, Minjeong Kim, Daekwon Lee, Thi Uyen Tran, Vu Khac Dat, Van Dam Do, Van Huy Hoang, Heesuk Rho, Young-Min Kim, Woo Jong Yu, Ki Kang Kim, Seong Chu Lim",
         "journal": "Nature Communications",
@@ -98,7 +85,7 @@
       },
       {
         "title": "Nature defect-mediated room temperature ferromagnetism in lead-free ferroelectric Ba(Zr0.2Ti0.8)O3: A first-principles study",
-        "authors": "V.T. Lam, N.H. Lam, D.Q. Van, N.T. Trang, J.P. Singh, N.H. Linh, N.H. Thoan, N.N. Trung, D.D. Dung",
+        "authors": "Lam, V.T., Lam, N.H., Van, D.Q., Trang, N.T., Singh, J.P., Linh, N.H., Thoan, N.H., Trung, N.N., Dung, D.D.",
         "journal": "Next Materials",
         "year": 2025,
         "doi": "10.1016/j.nxmate.2025.100916",
@@ -176,7 +163,7 @@
       },
       {
         "title": "Structural, electronic and optical properties of complex lead-free ferroelectric Ba0.7Ca0.3TiO3 materials: A DFT study",
-        "authors": "Ngo Huyen Ngan; Vu Tien Lam; Nguyen Huu Lam; Pham Thi Huyen; Duong Quoc Van; Nguyen Hoang Thoan; Dang Duc Dung",
+        "authors": "Ngo Huyen Ngan, Vu Tien Lam, Nguyen Huu Lam, Pham Thi Huyen, Duong Quoc Van, Nguyen Hoang Thoan, Dang Duc Dung",
         "journal": "MRS Communications",
         "year": 2024,
         "doi": "10.1557/s43579-024-00599-4",
@@ -191,7 +178,7 @@
       {
         "title": "Electronic Structure and Optical Properties of Cubic Perovskite Baxo3 (X=Ti, Sn): A First Principle Calculations",
         "authors": "Vu Tien Lam; Nguyen Huu Lam; Van Duong Quoc; Nguyen Hoang Thoan; Dang Duc Dung",
-        "journal": "Journal / Venue",
+        "journal": "Ssrn",
         "year": 2023,
         "doi": "10.2139/ssrn.4654244",
         "citations": 0,
@@ -204,14 +191,14 @@
       },
       {
         "title": "Fabrication and Optical Properties of (1−x)Bi½Na½TiO3−xEr½Na½TiO3 Solid Solution System",
-        "authors": "Thoan, N.H., Lam, N.H., Lam, V.T., Van, D.Q., Dung, D.D.",
+        "authors": "Nguyen Hoang Thoan, Nguyen Huu Lam, Vu Tien Lam, Duong Quoc Van, Dang Duc Dung",
         "journal": "Journal of Electronic Materials",
         "year": 2023,
         "doi": "10.1007/s11664-022-10134-7",
-        "citations": 0,
-        "volume": "",
-        "issue": "",
-        "pages": "",
+        "citations": 2,
+        "volume": "52",
+        "issue": "2",
+        "pages": "1564-1574",
         "source": "ORCID",
         "visibility": "Public"
       },
