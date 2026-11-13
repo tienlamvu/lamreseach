@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:17:44.551Z",
+  "exported_at": "2026-11-13T05:17:50.294Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -254,16 +254,17 @@
       },
       {
         "title": "Fabrication and Optical Properties of Rare-Earth-Sm-Doped Lead-Free Ferroelectric Bi0.5Na0.5TiO3 Materials",
-        "authors": "Van, D.Q., Thoan, N.H., Lam, N.H., Lam, V.T., Trung, N.N., Quan, N.D., Dung, D.D.",
+        "authors": "Duong Quoc Van; Nguyen Hoang Thoan; Nguyen Huu Lam; Vu Tien Lam; Nguyen Ngoc Trung; Ngo Duc Quan; Dang Duc Dung",
         "journal": "Lecture Notes in Mechanical Engineering",
         "year": 2022,
         "doi": "10.1007/978-3-030-99666-6_85",
-        "citations": 0,
+        "citations": 1,
         "volume": "",
         "issue": "",
-        "pages": "",
+        "pages": "592-598",
         "source": "ORCID",
-        "visibility": "Public"
+        "visibility": "Public",
+        "id": 1794547069830
       },
       {
         "title": "Fabrication and optical properties of new (1-x)Bi1/2Na1/2TiO3+xHo1/2Na1/2TiO3 solid solution materials",
