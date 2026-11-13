@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:56:42.105Z",
+  "exported_at": "2026-11-13T09:58:47.495Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -176,7 +176,7 @@
       },
       {
         "title": "Structural, electronic and optical properties of complex lead-free ferroelectric Ba0.7Ca0.3TiO3 materials: A DFT study",
-        "authors": "Ngo Huyen Ngan, Vu Tien Lam, Nguyen Huu Lam, Pham Thi Huyen, Duong Quoc Van, Nguyen Hoang Thoan, Dang Duc Dung",
+        "authors": "Ngo Huyen Ngan†, Vu Tien Lam†, Nguyen Huu Lam, Pham Thi Huyen, Duong Quoc Van, Nguyen Hoang Thoan, Dang Duc Dung",
         "journal": "MRS Communications",
         "year": 2024,
         "doi": "10.1557/s43579-024-00599-4",
@@ -185,7 +185,8 @@
         "issue": "4",
         "pages": "667-675",
         "source": "ORCID",
-        "visibility": "Public"
+        "visibility": "Public",
+        "id": 1794563926832
       },
       {
         "title": "Electronic Structure and Optical Properties of Cubic Perovskite Baxo3 (X=Ti, Sn): A First Principle Calculations",
@@ -769,7 +770,7 @@
       "start_time": "14:00",
       "end_time": "17:00",
       "priority": "High",
-      "status": "In Progress",
+      "status": "Completed",
       "sample_id": "LLZTO-2026-04-ALD",
       "description": "High-resolution scans of Li 1s, Al 2p, Zr 3d, La 3d, C 1s, and O 1s with Ar+ depth profiling.",
       "in_weekly_report": 1,
@@ -784,7 +785,7 @@
       "start_time": "15:00",
       "end_time": "16:30",
       "priority": "High",
-      "status": "Scheduled",
+      "status": "Completed",
       "sample_id": "",
       "description": "Present LLZTO-2026-04 XRD/EIS results and ALD interface optimization slides.",
       "in_weekly_report": 1,
@@ -799,11 +800,39 @@
       "start_time": "09:30",
       "end_time": "12:00",
       "priority": "Medium",
-      "status": "Scheduled",
+      "status": "Completed",
       "sample_id": "LLZTO-2026-04-ALD",
       "description": "Examine fracture cross-section grain size distribution and Al2O3 conformal coating.",
       "in_weekly_report": 1,
       "created_at": "2026-11-10 12:08:05"
+    },
+    {
+      "title": "Weekly Subgroup & PI Progress Meeting",
+      "event_type": "Group Meeting / PI Meeting",
+      "instrument_or_location": "SKKU Cluster / Office",
+      "start_date": "2026-11-13",
+      "start_time": "10:00",
+      "end_time": "12:00",
+      "priority": "High",
+      "status": "Scheduled",
+      "sample_id": "",
+      "description": "",
+      "in_weekly_report": 1,
+      "id": 1794551451690
+    },
+    {
+      "title": "Weekly Subgroup & PI Progress Meeting",
+      "event_type": "Group Meeting / PI Meeting",
+      "instrument_or_location": "SKKU Cluster / Office",
+      "start_date": "2026-11-20",
+      "start_time": "10:00",
+      "end_time": "12:00",
+      "priority": "High",
+      "status": "Scheduled",
+      "sample_id": "",
+      "description": "",
+      "in_weekly_report": 1,
+      "id": 1794551462746
     }
   ]
 }
