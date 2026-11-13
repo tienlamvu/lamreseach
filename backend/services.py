@@ -301,6 +301,476 @@ def fetch_doi_metadata(raw_doi: str) -> dict:
     }
 
 
+
+KNOWN_COAUTHORS_MAP = {
+    "D. Lee": "Daekwon Lee",
+    "Lee, D.": "Daekwon Lee",
+    "Lee Daekwon": "Daekwon Lee",
+    "Daekwon Lee": "Daekwon Lee",
+    "L. Daekwon": "Daekwon Lee",
+    "Daekwon, L.": "Daekwon Lee",
+    "Dang, B.T.": "Dang Ba Tung",
+    "Ba Tung Dang": "Dang Ba Tung",
+    "B. T. Dang": "Dang Ba Tung",
+    "D. B. Tung": "Dang Ba Tung",
+    "Tung, D. B.": "Dang Ba Tung",
+    "Tung, D.B.": "Dang Ba Tung",
+    "Dang Ba Tung": "Dang Ba Tung",
+    "Dang, B. T.": "Dang Ba Tung",
+    "D.B. Tung": "Dang Ba Tung",
+    "B.T. Dang": "Dang Ba Tung",
+    "Duc Dung Dang": "Dang Duc Dung",
+    "Dang, D. D.": "Dang Duc Dung",
+    "D. D. Dung": "Dang Duc Dung",
+    "D. D. Dang": "Dang Duc Dung",
+    "Dung, D.D.": "Dang Duc Dung",
+    "Dang Duc Dung": "Dang Duc Dung",
+    "D.D. Dang": "Dang Duc Dung",
+    "Dang, D.D.": "Dang Duc Dung",
+    "D.D. Dung": "Dang Duc Dung",
+    "Dung, D. D.": "Dang Duc Dung",
+    "D.T. Do": "Do Duc Tho",
+    "Tho, D. D.": "Do Duc Tho",
+    "Do Duc Tho": "Do Duc Tho",
+    "D. D. Tho": "Do Duc Tho",
+    "Duc Tho Do": "Do Duc Tho",
+    "D.D. Tho": "Do Duc Tho",
+    "Do, D. T.": "Do Duc Tho",
+    "D. T. Do": "Do Duc Tho",
+    "Tho, D.D.": "Do Duc Tho",
+    "Do, D.T.": "Do Duc Tho",
+    "Odkhuu Dorj": "Dorj Odkhuu",
+    "Dorj, O.": "Dorj Odkhuu",
+    "D. Odkhuu": "Dorj Odkhuu",
+    "Dorj Odkhuu": "Dorj Odkhuu",
+    "Odkhuu, D.": "Dorj Odkhuu",
+    "O. Dorj": "Dorj Odkhuu",
+    "Duc, D. D.": "Dang Duc Dung",
+    "Dung Dang Duc": "Dang Duc Dung",
+    "D. D. Duc": "Dang Duc Dung",
+    "D.D. Duc": "Dang Duc Dung",
+    "Duc, D.D.": "Dang Duc Dung",
+    "Duong, Q. V.": "Duong Quoc Van",
+    "Duong, Q.V.": "Duong Quoc Van",
+    "Duong Quoc Van": "Duong Quoc Van",
+    "D. Q. Van": "Duong Quoc Van",
+    "Quoc Van Duong": "Duong Quoc Van",
+    "D.Q. Van": "Duong Quoc Van",
+    "Q. V. Duong": "Duong Quoc Van",
+    "Q.V. Duong": "Duong Quoc Van",
+    "Van, D. Q.": "Duong Quoc Van",
+    "Van, D.Q.": "Duong Quoc Van",
+    "Thiet, D.V.": "Duong Van Thiet",
+    "Duong, V. T.": "Duong Van Thiet",
+    "D. V. Thiet": "Duong Van Thiet",
+    "V.T. Duong": "Duong Van Thiet",
+    "Van Thiet Duong": "Duong Van Thiet",
+    "D.V. Thiet": "Duong Van Thiet",
+    "V. T. Duong": "Duong Van Thiet",
+    "Duong Van Thiet": "Duong Van Thiet",
+    "Duong, V.T.": "Duong Van Thiet",
+    "Thiet, D. V.": "Duong Van Thiet",
+    "Gul, H. Z.": "Hamza Zad Gul",
+    "Z.G. Hamza": "Hamza Zad Gul",
+    "Zad Gul Hamza": "Hamza Zad Gul",
+    "H.Z. Gul": "Hamza Zad Gul",
+    "Hamza Zad Gul": "Hamza Zad Gul",
+    "H. Z. Gul": "Hamza Zad Gul",
+    "Gul, H.Z.": "Hamza Zad Gul",
+    "Hamza, Z. G.": "Hamza Zad Gul",
+    "Hamza, Z.G.": "Hamza Zad Gul",
+    "Z. G. Hamza": "Hamza Zad Gul",
+    "Sik Kim Hang": "Hang Sik Kim",
+    "S. K. Hang": "Hang Sik Kim",
+    "Kim, H. S.": "Hang Sik Kim",
+    "Hang, S. K.": "Hang Sik Kim",
+    "Hang, S.K.": "Hang Sik Kim",
+    "Kim, H.S.": "Hang Sik Kim",
+    "H.S. Kim": "Hang Sik Kim",
+    "H. S. Kim": "Hang Sik Kim",
+    "Hang Sik Kim": "Hang Sik Kim",
+    "S.K. Hang": "Hang Sik Kim",
+    "Rho Heesuk": "Heesuk Rho",
+    "Heesuk, R.": "Heesuk Rho",
+    "H. Rho": "Heesuk Rho",
+    "Rho, H.": "Heesuk Rho",
+    "R. Heesuk": "Heesuk Rho",
+    "Heesuk Rho": "Heesuk Rho",
+    "Nguyen, H. L.": "Nguyen Huu Lam",
+    "Lam Nguyen Huu": "Nguyen Huu Lam",
+    "Nguyen, H.L.": "Nguyen Huu Lam",
+    "Huu Lam Nguyen": "Nguyen Huu Lam",
+    "H.L. Nguyen": "Nguyen Huu Lam",
+    "L. N. Huu": "Nguyen Huu Lam",
+    "Huu, L.N.": "Nguyen Huu Lam",
+    "H. L. Nguyen": "Nguyen Huu Lam",
+    "Huu, L. N.": "Nguyen Huu Lam",
+    "L.N. Huu": "Nguyen Huu Lam",
+    "Pal Singh Jitendra": "Jitendra Pal Singh",
+    "Jitendra, P.S.": "Jitendra Pal Singh",
+    "J.P. Singh": "Jitendra Pal Singh",
+    "P. S. Jitendra": "Jitendra Pal Singh",
+    "J. P. Singh": "Jitendra Pal Singh",
+    "Singh, J.P.": "Jitendra Pal Singh",
+    "Jitendra, P. S.": "Jitendra Pal Singh",
+    "Jitendra Pal Singh": "Jitendra Pal Singh",
+    "P.S. Jitendra": "Jitendra Pal Singh",
+    "Singh, J. P.": "Jitendra Pal Singh",
+    "K. K. Ki": "Ki Kang Kim",
+    "Kim, K. K.": "Ki Kang Kim",
+    "K.K. Ki": "Ki Kang Kim",
+    "Kim, K.K.": "Ki Kang Kim",
+    "K.K. Kim": "Ki Kang Kim",
+    "Ki, K.K.": "Ki Kang Kim",
+    "Ki, K. K.": "Ki Kang Kim",
+    "Kang Kim Ki": "Ki Kang Kim",
+    "Ki Kang Kim": "Ki Kang Kim",
+    "K. K. Kim": "Ki Kang Kim",
+    "H. D. Luong": "Luong Hong Dang",
+    "Luong Hong Dang": "Luong Hong Dang",
+    "Dang, L.H.": "Luong Hong Dang",
+    "Dang, L. H.": "Luong Hong Dang",
+    "L.H. Dang": "Luong Hong Dang",
+    "Luong, H.D.": "Luong Hong Dang",
+    "H.D. Luong": "Luong Hong Dang",
+    "Luong, H. D.": "Luong Hong Dang",
+    "Hong Dang Luong": "Luong Hong Dang",
+    "L. H. Dang": "Luong Hong Dang",
+    "L. T. K. Phuong": "Luong Thi Kim Phuong",
+    "Phuong, L. T. K.": "Luong Thi Kim Phuong",
+    "Luong, T.K.P.": "Luong Thi Kim Phuong",
+    "Luong, T. K. P.": "Luong Thi Kim Phuong",
+    "Luong Thi Kim Phuong": "Luong Thi Kim Phuong",
+    "Phuong, L.T.K.": "Luong Thi Kim Phuong",
+    "L.T.K. Phuong": "Luong Thi Kim Phuong",
+    "T.K.P. Luong": "Luong Thi Kim Phuong",
+    "T. K. P. Luong": "Luong Thi Kim Phuong",
+    "Thi Kim Phuong Luong": "Luong Thi Kim Phuong",
+    "Hue, M.M.": "Man Minh Hue",
+    "Man Minh Hue": "Man Minh Hue",
+    "M. H. Man": "Man Minh Hue",
+    "M.M. Hue": "Man Minh Hue",
+    "Man, M. H.": "Man Minh Hue",
+    "Hue, M. M.": "Man Minh Hue",
+    "Minh Hue Man": "Man Minh Hue",
+    "M.H. Man": "Man Minh Hue",
+    "M. M. Hue": "Man Minh Hue",
+    "Man, M.H.": "Man Minh Hue",
+    "Nguyen, M.C.": "Minh Chien Nguyen",
+    "M. C. Nguyen": "Minh Chien Nguyen",
+    "Chien Nguyen Minh": "Minh Chien Nguyen",
+    "Nguyen, M. C.": "Minh Chien Nguyen",
+    "Minh, C. N.": "Minh Chien Nguyen",
+    "Minh Chien Nguyen": "Minh Chien Nguyen",
+    "Minh, C.N.": "Minh Chien Nguyen",
+    "M.C. Nguyen": "Minh Chien Nguyen",
+    "C. N. Minh": "Minh Chien Nguyen",
+    "C.N. Minh": "Minh Chien Nguyen",
+    "Kim Minjeong": "Minjeong Kim",
+    "M. Kim": "Minjeong Kim",
+    "Minjeong, K.": "Minjeong Kim",
+    "K. Minjeong": "Minjeong Kim",
+    "Kim, M.": "Minjeong Kim",
+    "Minjeong Kim": "Minjeong Kim",
+    "D.Q. Ngo": "Ngo Duc Quan",
+    "Duc Quan Ngo": "Ngo Duc Quan",
+    "Ngo Duc Quan": "Ngo Duc Quan",
+    "D. Q. Ngo": "Ngo Duc Quan",
+    "Quan, N. D.": "Ngo Duc Quan",
+    "Quan, N.D.": "Ngo Duc Quan",
+    "N.D. Quan": "Ngo Duc Quan",
+    "Ngo, D. Q.": "Ngo Duc Quan",
+    "N. D. Quan": "Ngo Duc Quan",
+    "Ngo, D.Q.": "Ngo Duc Quan",
+    "Ngan, N.H.": "Ngo Huyen Ngan",
+    "H. N. Ngo": "Ngo Huyen Ngan",
+    "N. H. Ngan": "Ngo Huyen Ngan",
+    "Ngo, H. N.": "Ngo Huyen Ngan",
+    "H.N. Ngo": "Ngo Huyen Ngan",
+    "Huyen Ngan Ngo": "Ngo Huyen Ngan",
+    "Ngo, H.N.": "Ngo Huyen Ngan",
+    "Ngo Huyen Ngan": "Ngo Huyen Ngan",
+    "Ngan, N. H.": "Ngo Huyen Ngan",
+    "N.H. Ngan": "Ngo Huyen Ngan",
+    "Ngoc, T. D.": "Ngoc Thanh Duong",
+    "T.D. Ngoc": "Ngoc Thanh Duong",
+    "T. D. Ngoc": "Ngoc Thanh Duong",
+    "Ngoc Thanh Duong": "Ngoc Thanh Duong",
+    "Ngoc, T.D.": "Ngoc Thanh Duong",
+    "Duong, N.T.": "Ngoc Thanh Duong",
+    "Duong, N. T.": "Ngoc Thanh Duong",
+    "N.T. Duong": "Ngoc Thanh Duong",
+    "Thanh Duong Ngoc": "Ngoc Thanh Duong",
+    "N. T. Duong": "Ngoc Thanh Duong",
+    "Linh, N.H.": "Nguyen Hoang Linh",
+    "N. H. Linh": "Nguyen Hoang Linh",
+    "Nguyen Hoang Linh": "Nguyen Hoang Linh",
+    "Hoang Linh Nguyen": "Nguyen Hoang Linh",
+    "N.H. Linh": "Nguyen Hoang Linh",
+    "Linh, N. H.": "Nguyen Hoang Linh",
+    "Nguyen, H. T.": "Nguyen Hoang Tuan",
+    "N. H. Thoan": "Nguyen Hoang Thoan",
+    "Hoang Thoan Nguyen": "Nguyen Hoang Thoan",
+    "Thoan, N.H.": "Nguyen Hoang Thoan",
+    "H. T. Nguyen": "Nguyen Hoang Tuan",
+    "N.H. Thoan": "Nguyen Hoang Thoan",
+    "Nguyen Hoang Thoan": "Nguyen Hoang Thoan",
+    "Thoan, N. H.": "Nguyen Hoang Thoan",
+    "Nguyen, H.T.": "Nguyen Hoang Tuan",
+    "H.T. Nguyen": "Nguyen Hoang Tuan",
+    "N. H. Tuan": "Nguyen Hoang Tuan",
+    "N.H. Tuan": "Nguyen Hoang Tuan",
+    "Nguyen Hoang Tuan": "Nguyen Hoang Tuan",
+    "Tuan, N. H.": "Nguyen Hoang Tuan",
+    "Tuan, N.H.": "Nguyen Hoang Tuan",
+    "Hoang Tuan Nguyen": "Nguyen Hoang Tuan",
+    "Lam, N.H.": "Nguyen Huu Lam",
+    "Nguyen Huu Lam": "Nguyen Huu Lam",
+    "Lam, N. H.": "Nguyen Huu Lam",
+    "N. H. Lam": "Nguyen Huu Lam",
+    "N.H. Lam": "Nguyen Huu Lam",
+    "Nguyen, M.Q.": "Nguyen Minh Quan",
+    "Minh Quan Nguyen": "Nguyen Minh Quan",
+    "N. M. Quan": "Nguyen Minh Quan",
+    "M. Q. Nguyen": "Nguyen Minh Quan",
+    "Quan, N. M.": "Nguyen Minh Quan",
+    "Nguyen, M. Q.": "Nguyen Minh Quan",
+    "Quan, N.M.": "Nguyen Minh Quan",
+    "N.M. Quan": "Nguyen Minh Quan",
+    "Nguyen Minh Quan": "Nguyen Minh Quan",
+    "M.Q. Nguyen": "Nguyen Minh Quan",
+    "Trung, N.N.": "Nguyen Ngoc Trung",
+    "Nguyen, N. T.": "Nguyen Ngoc Trung",
+    "N. T. Nguyen": "Nguyen Ngoc Trung",
+    "Trung, N. N.": "Nguyen Ngoc Trung",
+    "N.N. Trung": "Nguyen Ngoc Trung",
+    "N.T. Nguyen": "Nguyen Ngoc Trung",
+    "N. N. Trung": "Nguyen Ngoc Trung",
+    "Nguyen Ngoc Trung": "Nguyen Ngoc Trung",
+    "Nguyen, N.T.": "Nguyen Ngoc Trung",
+    "Ngoc Trung Nguyen": "Nguyen Ngoc Trung",
+    "Nguyen, Q.D.": "Nguyen Quoc Dung",
+    "Quoc Dung Nguyen": "Nguyen Quoc Dung",
+    "N.Q. Dung": "Nguyen Quoc Dung",
+    "Q.D. Nguyen": "Nguyen Quoc Dung",
+    "Dung, N. Q.": "Nguyen Quoc Dung",
+    "N. Q. Dung": "Nguyen Quoc Dung",
+    "Nguyen Quoc Dung": "Nguyen Quoc Dung",
+    "Nguyen, Q. D.": "Nguyen Quoc Dung",
+    "Dung, N.Q.": "Nguyen Quoc Dung",
+    "Q. D. Nguyen": "Nguyen Quoc Dung",
+    "Nguyen, T. T. T.": "Nguyen Thi Thu Trang",
+    "Trang, N.T.T.": "Nguyen Thi Thu Trang",
+    "N.T.T. Trang": "Nguyen Thi Thu Trang",
+    "T.T.T. Nguyen": "Nguyen Thi Thu Trang",
+    "N. T. T. Trang": "Nguyen Thi Thu Trang",
+    "Nguyen Thi Thu Trang": "Nguyen Thi Thu Trang",
+    "Nguyen, T.T.T.": "Nguyen Thi Thu Trang",
+    "Trang, N. T. T.": "Nguyen Thi Thu Trang",
+    "Thi Thu Trang Nguyen": "Nguyen Thi Thu Trang",
+    "T. T. T. Nguyen": "Nguyen Thi Thu Trang",
+    "Thi Trang Nguyen": "Nguyen Thi Trang",
+    "N.T. Trang": "Nguyen Thi Trang",
+    "Trang, N. T.": "Nguyen Thi Trang",
+    "Nguyen, T. T.": "Nguyen Thi Trang",
+    "Nguyen, T.T.": "Nguyen Thi Trang",
+    "Nguyen Thi Trang": "Nguyen Thi Trang",
+    "N. T. Trang": "Nguyen Thi Trang",
+    "Trang, N.T.": "Nguyen Thi Trang",
+    "T.T. Nguyen": "Nguyen Thi Trang",
+    "T. T. Nguyen": "Nguyen Thi Trang",
+    "Pham, D. L.": "Pham Dinh Luong",
+    "Luong, P. D.": "Pham Dinh Luong",
+    "D.L. Pham": "Pham Dinh Luong",
+    "P.D. Luong": "Pham Dinh Luong",
+    "Luong, P.D.": "Pham Dinh Luong",
+    "Pham Dinh Luong": "Pham Dinh Luong",
+    "Pham, D.L.": "Pham Dinh Luong",
+    "Dinh Luong Pham": "Pham Dinh Luong",
+    "P. D. Luong": "Pham Dinh Luong",
+    "D. L. Pham": "Pham Dinh Luong",
+    "Thi Huyen Pham": "Pham Thi Huyen",
+    "P. T. Huyen": "Pham Thi Huyen",
+    "Pham, T.H.": "Pham Thi Huyen",
+    "Huyen, P. T.": "Pham Thi Huyen",
+    "Huyen, P.T.": "Pham Thi Huyen",
+    "T. H. Pham": "Pham Thi Huyen",
+    "T.H. Pham": "Pham Thi Huyen",
+    "Pham Thi Huyen": "Pham Thi Huyen",
+    "P.T. Huyen": "Pham Thi Huyen",
+    "Pham, T. H.": "Pham Thi Huyen",
+    "V.V. Pham": "Pham Van Vinh",
+    "Van Vinh Pham": "Pham Van Vinh",
+    "Pham Van Vinh": "Pham Van Vinh",
+    "Vinh, P. V.": "Phan Van Vinh",
+    "V. V. Pham": "Pham Van Vinh",
+    "Vinh, P.V.": "Pham Van Vinh",
+    "P.V. Vinh": "Pham Van Vinh",
+    "P. V. Vinh": "Phan Van Vinh",
+    "Pham, V.V.": "Pham Van Vinh",
+    "Pham, V. V.": "Pham Van Vinh",
+    "V. V. Phan": "Phan Van Vinh",
+    "Phan, V. V.": "Phan Van Vinh",
+    "Van Vinh Phan": "Phan Van Vinh",
+    "Phan, V.V.": "Phan Van Vinh",
+    "V.V. Phan": "Phan Van Vinh",
+    "Phan Van Vinh": "Phan Van Vinh",
+    "Van Duong Quoc": "Duong Quoc Van",
+    "V. D. Quoc": "Duong Quoc Van",
+    "V.D. Quoc": "Duong Quoc Van",
+    "Quoc, V.D.": "Duong Quoc Van",
+    "Quoc, V. D.": "Duong Quoc Van",
+    "Lim, S.C.": "Seong Chu Lim",
+    "C.L. Seong": "Seong Chu Lim",
+    "C. L. Seong": "Seong Chu Lim",
+    "Seong Chu Lim": "Seong Chu Lim",
+    "Lim, S. C.": "Seong Chu Lim",
+    "S.C. Lim": "Seong Chu Lim",
+    "S. C. Lim": "Seong Chu Lim",
+    "Seong, C.L.": "Seong Chu Lim",
+    "Seong, C. L.": "Seong Chu Lim",
+    "Chu Lim Seong": "Seong Chu Lim",
+    "Soo, H.C.": "Soo Ho Choi",
+    "H. C. Soo": "Soo Ho Choi",
+    "S.H. Choi": "Soo Ho Choi",
+    "S. H. Choi": "Soo Ho Choi",
+    "H.C. Soo": "Soo Ho Choi",
+    "Choi, S. H.": "Soo Ho Choi",
+    "Choi, S.H.": "Soo Ho Choi",
+    "Soo Ho Choi": "Soo Ho Choi",
+    "Ho Choi Soo": "Soo Ho Choi",
+    "Soo, H. C.": "Soo Ho Choi",
+    "K. Swathi": "Swathi Krishna",
+    "Swathi, K.": "Swathi Krishna",
+    "Krishna Swathi": "Swathi Krishna",
+    "S. Krishna": "Swathi Krishna",
+    "Swathi Krishna": "Swathi Krishna",
+    "Krishna, S.": "Swathi Krishna",
+    "T. U. Tran": "Thi Uyen Tran",
+    "Thi, U.T.": "Thi Uyen Tran",
+    "Thi Uyen Tran": "Thi Uyen Tran",
+    "Tran, T.U.": "Thi Uyen Tran",
+    "U. T. Thi": "Thi Uyen Tran",
+    "T.U. Tran": "Thi Uyen Tran",
+    "U.T. Thi": "Thi Uyen Tran",
+    "Thi, U. T.": "Thi Uyen Tran",
+    "Uyen Tran Thi": "Thi Uyen Tran",
+    "Tran, T. U.": "Thi Uyen Tran",
+    "L.V. Tien": "Vu Tien Lam",
+    "Tien Lam Vu": "Vu Tien Lam",
+    "T. L. Vu": "Vu Tien Lam",
+    "T.L. Vu": "Vu Tien Lam",
+    "Lam Vu Tien": "Vu Tien Lam",
+    "Tien, L.V.": "Vu Tien Lam",
+    "Vu, T.L.": "Vu Tien Lam",
+    "Tien, L. V.": "Vu Tien Lam",
+    "L. V. Tien": "Vu Tien Lam",
+    "Vu, T. L.": "Vu Tien Lam",
+    "D.D. Van": "Van Dam Do",
+    "V. D. Do": "Van Dam Do",
+    "V.D. Do": "Van Dam Do",
+    "Do, V.D.": "Van Dam Do",
+    "Do, V. D.": "Van Dam Do",
+    "Van Dam Do": "Van Dam Do",
+    "Van, D. D.": "Van Dam Do",
+    "Dam Do Van": "Van Dam Do",
+    "D. D. Van": "Van Dam Do",
+    "Van, D.D.": "Van Dam Do",
+    "V.H. Hoang": "Van Huy Hoang",
+    "Van, H.H.": "Van Huy Hoang",
+    "Van Huy Hoang": "Van Huy Hoang",
+    "Huy Hoang Van": "Van Huy Hoang",
+    "Van, H. H.": "Van Huy Hoang",
+    "Hoang, V.H.": "Van Huy Hoang",
+    "V. H. Hoang": "Van Huy Hoang",
+    "H. H. Van": "Van Huy Hoang",
+    "Hoang, V. H.": "Van Huy Hoang",
+    "H.H. Van": "Van Huy Hoang",
+    "K.D. Vu": "Vu Khac Dat",
+    "Vu Khac Dat": "Vu Khac Dat",
+    "V. K. Dat": "Vu Khac Dat",
+    "Khac Dat Vu": "Vu Khac Dat",
+    "Dat, V.K.": "Vu Khac Dat",
+    "Vu, K.D.": "Vu Khac Dat",
+    "Vu, K. D.": "Vu Khac Dat",
+    "K. D. Vu": "Vu Khac Dat",
+    "V.K. Dat": "Vu Khac Dat",
+    "Dat, V. K.": "Vu Khac Dat",
+    "Lam, V.T.": "Vu Tien Lam",
+    "Lam, V. T.": "Vu Tien Lam",
+    "V.T. Lam": "Vu Tien Lam",
+    "V. T. Lam": "Vu Tien Lam",
+    "Vu Tien Lam": "Vu Tien Lam",
+    "J. Y. Woo": "Woo Jong Yu",
+    "Yu, W. J.": "Woo Jong Yu",
+    "W.J. Yu": "Woo Jong Yu",
+    "Woo, J.Y.": "Woo Jong Yu",
+    "Jong Yu Woo": "Woo Jong Yu",
+    "Woo Jong Yu": "Woo Jong Yu",
+    "Woo, J. Y.": "Woo Jong Yu",
+    "W. J. Yu": "Woo Jong Yu",
+    "J.Y. Woo": "Woo Jong Yu",
+    "Yu, W.J.": "Woo Jong Yu",
+    "Young-Min, K.": "Young-Min Kim",
+    "Young-Min Kim": "Young-Min Kim",
+    "K. Young-Min": "Young-Min Kim",
+    "Y. Kim": "Young-Min Kim",
+    "Kim Young-Min": "Young-Min Kim",
+    "Kim, Y.": "Young-Min Kim",
+    "D.U Lee": "Daekwon Lee",
+    "Kim, Y.-M.": "Young-Min Kim",
+    "Y.-M. Kim": "Young-Min Kim",
+    "Kim Phuong, L.T.": "Luong Thi Kim Phuong"
+}
+
+
+def is_initials_only(s: str) -> bool:
+    cleaned = re.sub(r'[\s\.\-]+', '', s or "")
+    return len(cleaned) <= 4 and cleaned.isupper()
+
+
+def expand_author_initials(raw_str: str) -> str:
+    if not raw_str:
+        return ""
+    raw_parts = [p.strip() for p in re.split(r'[,;]', raw_str) if p.strip()]
+    recombined = []
+    i = 0
+    while i < len(raw_parts):
+        curr = raw_parts[i]
+        if i + 1 < len(raw_parts) and is_initials_only(raw_parts[i + 1]):
+            recombined.append(f"{curr}, {raw_parts[i + 1]}")
+            i += 2
+        else:
+            recombined.append(curr)
+            i += 1
+
+    expanded = []
+    for p in recombined:
+        clean = re.sub(r'\s+', ' ', p).strip()
+        matched = KNOWN_COAUTHORS_MAP.get(clean)
+        if not matched:
+            clean2 = re.sub(r',\s*', ', ', clean)
+            matched = KNOWN_COAUTHORS_MAP.get(clean2)
+        if not matched:
+            matched = KNOWN_COAUTHORS_MAP.get(clean.replace('.', ''))
+        expanded.append(matched if matched else clean)
+    return ", ".join(expanded)
+
+
+def get_author_quality(s: str) -> int:
+    if not s or not s.strip():
+        return 0
+    score = 100
+    has_init = bool(re.search(r'[A-Z]\.', s) or re.search(r',\s*[A-Z]\.', s) or re.search(r'[A-Z]\s+[A-Z]', s))
+    if has_init:
+        score -= 60
+    parts = [p.strip() for p in re.split(r'[,;]', s) if p.strip()]
+    score += len(parts) * 3
+    words = [w for w in re.split(r'[\s,;]+', s) if len(w) > 2]
+    score += len(words)
+    return score
+
+
 def sync_orcid_profile(raw_orcid: str) -> dict:
     """Fetch researcher biography, education/affiliations, and works from ORCID Public API v3.0."""
     match = re.search(r"(\d{4}-\d{4}-\d{4}-\d{3}[\dX])", raw_orcid.upper())
@@ -411,46 +881,29 @@ def sync_orcid_profile(raw_orcid: str) -> dict:
                 w_pages = ""
                 w_citations = 0
 
-                # Crossref enrichment for DOIs
+                # Crossref & OpenAlex full metadata & author enrichment
+                w_authors = expand_author_initials(w_authors)
                 if w_doi:
+                    clean_doi = clean_doi_str = w_doi.replace("https://doi.org/", "").strip()
+                    cand_cr = ""
+                    cand_oa = ""
                     try:
                         cr_resp = requests.get(
-                            f"https://api.crossref.org/works/{requests.utils.quote(w_doi)}",
-                            headers={"User-Agent": "MatSciHub/1.0 (mailto:lamvt@skku.edu)"},
-                            timeout=5
+                            f"https://api.crossref.org/works/{requests.utils.quote(clean_doi)}?mailto=lamvt.skku@gmail.com",
+                            headers={"User-Agent": "MatSciNexus/1.0 (mailto:lamvt.skku@gmail.com)"},
+                            timeout=8
                         )
                         if cr_resp.status_code == 200:
                             cr_msg = cr_resp.json().get("message", {})
-                            if cr_msg.get("author"):
-                                cr_authors = []
-                                for a in cr_msg.get("author", []):
-                                    given = (a.get("given") or "").strip()
-                                    family = (a.get("family") or "").strip()
-                                    if given and family:
-                                        cr_authors.append(f"{given} {family}")
-                                    elif family:
-                                        cr_authors.append(family)
-                                if cr_authors:
-                                    cr_str = ", ".join(cr_authors)
-                                    if not re.search(r'\b[A-Z]\.', cr_str):
-                                        w_authors = cr_str
-                                    else:
-                                        try:
-                                            oa_resp = requests.get(
-                                                f"https://api.openalex.org/works/https://doi.org/{requests.utils.quote(w_doi)}",
-                                                headers={"User-Agent": "mailto:lamvt@skku.edu"},
-                                                timeout=5
-                                            )
-                                            if oa_resp.status_code == 200:
-                                                oa_data = oa_resp.json()
-                                                oa_names = [ash.get("author", {}).get("display_name", "").strip() for ash in oa_data.get("authorships", [])]
-                                                oa_names = [n for n in oa_names if n]
-                                                if oa_names and not re.search(r'\b[A-Z]\.', ", ".join(oa_names)):
-                                                    w_authors = ", ".join(oa_names)
-                                                else:
-                                                    w_authors = cr_str
-                                        except Exception:
-                                            w_authors = cr_str
+                            cr_authors = []
+                            for a in cr_msg.get("author", []):
+                                given = (a.get("given") or "").strip()
+                                family = (a.get("family") or "").strip()
+                                if given and family:
+                                    cr_authors.append(f"{given} {family}")
+                                elif family:
+                                    cr_authors.append(family)
+                            cand_cr = expand_author_initials(", ".join(cr_authors))
                             w_volume = str(cr_msg.get("volume") or "")
                             w_issue = str(cr_msg.get("issue") or "")
                             w_pages = str(cr_msg.get("page") or "")
@@ -461,6 +914,35 @@ def sync_orcid_profile(raw_orcid: str) -> dict:
                                     w_journal = ct[0]
                     except Exception:
                         pass
+
+                    try:
+                        oa_resp = requests.get(
+                            f"https://api.openalex.org/works/https://doi.org/{requests.utils.quote(clean_doi)}?mailto=lamvt.skku@gmail.com",
+                            headers={"User-Agent": "MatSciNexus/1.0 (mailto:lamvt.skku@gmail.com)"},
+                            timeout=8
+                        )
+                        if oa_resp.status_code == 200:
+                            oa_data = oa_resp.json()
+                            oa_names = [ash.get("author", {}).get("display_name", "").strip() for ash in oa_data.get("authorships", [])]
+                            cand_oa = expand_author_initials(", ".join(filter(None, oa_names)))
+                            if not w_volume:
+                                w_volume = str(oa_data.get("biblio", {}).get("volume") or "")
+                            if not w_issue:
+                                w_issue = str(oa_data.get("biblio", {}).get("issue") or "")
+                            if not w_pages:
+                                w_pages = str(oa_data.get("biblio", {}).get("first_page") or "")
+                            if not w_citations:
+                                w_citations = int(oa_data.get("cited_by_count") or 0)
+                            if not w_journal or w_journal == "Publication":
+                                w_journal = (oa_data.get("primary_location") or {}).get("source", {}).get("display_name", "")
+                    except Exception:
+                        pass
+
+                    candidates = [cand_cr, cand_oa, w_authors]
+                    candidates = [c for c in candidates if c]
+                    candidates.sort(key=get_author_quality, reverse=True)
+                    if candidates:
+                        w_authors = candidates[0]
 
                 pub_entry = {
                     "title": w_title,
