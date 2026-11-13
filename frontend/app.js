@@ -120,6 +120,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await loadAllData();
   await autofillReportFromDatabase(true);
+
+  const initialActive = document.querySelector(".tab-pane.active");
+  const initialTabId = initialActive ? initialActive.id.replace("tab-", "") : "dashboard";
+  updateMobileNavPill(initialTabId);
 });
 
 function showToast(msg, type = "info") {
@@ -132,6 +136,55 @@ function showToast(msg, type = "info") {
   setTimeout(() => {
     el.remove();
   }, 4500);
+}
+
+const TABS_ORDER = ["dashboard", "literature", "calendar", "structures", "weekly-report", "manuscript", "toolkit", "cv"];
+
+const TAB_META = {
+  "dashboard": ["📊", "Dashboard"],
+  "literature": ["📚", "References"],
+  "calendar": ["📅", "Calendar & GCal"],
+  "structures": ["💎", "Crystal Structures"],
+  "weekly-report": ["📽️", "Weekly Report"],
+  "manuscript": ["🎯", "Journal Finder & Plag"],
+  "toolkit": ["⚛️", "Periodic Table & Calc"],
+  "cv": ["📜", "Academic CV"]
+};
+
+function updateMobileNavPill(tabId) {
+  const mobileSelect = document.getElementById("mobile-tab-select");
+  if (mobileSelect && mobileSelect.value !== tabId) {
+    mobileSelect.value = tabId;
+  }
+  if (TAB_META[tabId]) {
+    const iconEl = document.getElementById("mobile-nav-icon");
+    const titleEl = document.getElementById("mobile-nav-title");
+    if (iconEl) iconEl.textContent = TAB_META[tabId][0];
+    if (titleEl) titleEl.textContent = TAB_META[tabId][1];
+  }
+}
+
+function stepMobileTab(direction) {
+  const activePane = document.querySelector(".tab-pane.active");
+  const currentTab = activePane ? activePane.id.replace("tab-", "") : "dashboard";
+  const isAdmin = document.body.classList.contains("is-admin");
+  const availableTabs = TABS_ORDER.filter(t => t !== "weekly-report" || isAdmin);
+  
+  let idx = availableTabs.indexOf(currentTab);
+  if (idx === -1) idx = 0;
+  let nextIdx = (idx + direction + availableTabs.length) % availableTabs.length;
+  switchTab(availableTabs[nextIdx]);
+}
+
+function toggleMobileHorizontalStrip() {
+  const navWrap = document.querySelector(".header-nav-wrapper");
+  const toggleIcon = document.getElementById("mobile-strip-toggle-icon");
+  if (navWrap) {
+    navWrap.classList.toggle("mobile-expanded");
+    if (toggleIcon) {
+      toggleIcon.textContent = navWrap.classList.contains("mobile-expanded") ? "✕" : "☰";
+    }
+  }
 }
 
 function switchTab(tabId, btnEl) {
@@ -150,6 +203,9 @@ function switchTab(tabId, btnEl) {
     }
   }
 
+  // Update mobile dropdown & active pill indicator
+  updateMobileNavPill(tabId);
+
   if (TAB_TITLES[tabId]) {
     document.getElementById("page-heading").textContent = TAB_TITLES[tabId][0];
     document.getElementById("page-subheading").textContent = TAB_TITLES[tabId][1];
@@ -163,6 +219,10 @@ function switchTab(tabId, btnEl) {
     if (typeof renderPeriodicTable === "function") renderPeriodicTable();
   }
 }
+
+window.stepMobileTab = stepMobileTab;
+window.toggleMobileHorizontalStrip = toggleMobileHorizontalStrip;
+window.updateMobileNavPill = updateMobileNavPill;
 
 function switchTabByName(tabId) {
   const matchedBtn = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
