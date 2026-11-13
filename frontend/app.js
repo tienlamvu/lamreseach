@@ -7349,6 +7349,12 @@ let currentDiffResults = null;
 // Multi-Tier Semantic Scope Matching, Word-Count Validation & Desk-Reject Risk
 // ============================================================================
 
+// ============================================================================
+// MATSCI NEXUS ADVANCED AI JOURNAL MATCHER & PUBLISHING RECOMMENDATION ENGINE
+// Modeled after Springer Nature Journal Suggester & Elsevier JournalFinder
+// Multi-Tier Semantic Scope Matching, Word-Count Validation & Desk-Reject Risk
+// ============================================================================
+
 let currentJournalResults = [];
 let currentJournalFiltered = [];
 
@@ -7365,29 +7371,28 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.2,
     "acceptanceRate": 6,
     "url": "https://www.science.org/journal/science",
-    "scope": "Flagship global science journal publishing original scientific research of broad significance and exceptional conceptual breakthroughs across physics, chemistry, materials science, condensed matter, and clean energy technologies.",
+    "scope": "The world's premier multidisciplinary research journal. Accepts transformative discoveries of outstanding importance across all scientific fields that fundamentally redefine concepts or open major new experimental frontiers.",
     "keywords": [
-      "multidisciplinary",
       "breakthrough",
-      "materials science",
-      "condensed matter",
-      "energy storage",
-      "superconductivity",
-      "2d materials",
-      "batteries",
-      "electrocatalysis",
-      "perovskite",
-      "ferroelectric",
-      "solid electrolyte",
-      "quantum materials",
-      "unprecedented",
-      "fundamental mechanism",
-      "room-temperature",
       "paradigm shift",
-      "atomic-scale"
+      "seminal discovery",
+      "transformative",
+      "unprecedented",
+      "room-temperature",
+      "high-temperature",
+      "quantum transport",
+      "dissipationless",
+      "topological",
+      "solid-state battery",
+      "broad scientific significance"
     ],
     "discipline": "multidisciplinary",
-    "editorialTier": "FLAGSHIP_ULTRA"
+    "editorialTier": "FLAGSHIP_ULTRA",
+    "secondaryDisciplines": [
+      "physics-condmat",
+      "2d-nano",
+      "energy-storage"
+    ]
   },
   {
     "id": "science-advances",
@@ -7401,26 +7406,27 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 5.0,
     "acceptanceRate": 12,
     "url": "https://www.science.org/journal/sciadv",
-    "scope": "Premier gold open-access journal of AAAS publishing transformative, high-impact multidisciplinary discoveries across materials chemistry, physical sciences, energy conversion, nanoscience, and applied physics.",
+    "scope": "High-impact open-access journal publishing groundbreaking research across all disciplines of materials science, physics, chemistry, and applied engineering.",
     "keywords": [
-      "open access",
-      "materials chemistry",
-      "energy materials",
+      "multidisciplinary",
+      "materials science",
+      "2d materials",
       "batteries",
-      "solid state",
+      "condensed matter",
+      "applied physics",
+      "nanotechnology",
       "dft",
-      "2d heterostructures",
-      "perovskites",
-      "electrocatalysis",
-      "mechanisms",
-      "ferroelectrics",
-      "nanomaterials",
-      "first-principles",
-      "garnet",
-      "mxene"
+      "heterostructures",
+      "perovskites"
     ],
     "discipline": "multidisciplinary",
-    "editorialTier": "SPECIALIZED_HIGH"
+    "editorialTier": "SPECIALIZED_HIGH",
+    "secondaryDisciplines": [
+      "physics-condmat",
+      "2d-nano",
+      "energy-storage",
+      "perovskite-oxides"
+    ]
   },
   {
     "id": "science-robotics",
@@ -7434,21 +7440,18 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 5.2,
     "acceptanceRate": 9,
     "url": "https://www.science.org/journal/scirobotics",
-    "scope": "Breakthrough advances in robotics, intelligent materials, artificial muscles, piezoelectric actuators, flexible tactile sensors, and biohybrid machine interfaces.",
+    "scope": "Frontier research in robotics, artificial intelligence, biomimetic mechanics, actuators, and robotic control.",
     "keywords": [
       "robotics",
       "actuators",
-      "smart materials",
-      "piezoelectric",
-      "sensors",
-      "artificial muscle",
-      "flexible electronics",
       "soft robotics",
-      "haptics",
-      "transducers"
+      "autonomous systems",
+      "bio-inspired",
+      "haptics"
     ],
     "discipline": "biomedical-robotics",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": []
   },
   {
     "id": "science-translational-med",
@@ -7462,20 +7465,17 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 5.4,
     "acceptanceRate": 10,
     "url": "https://www.science.org/journal/stm",
-    "scope": "Translational bioengineering, therapeutic biomaterials, drug delivery nanocarriers, implantable sensors, and biomedical microdevices bridging bench to bedside.",
+    "scope": "Translational research bridging basic biomedical discoveries and clinical medical therapies.",
     "keywords": [
-      "biomaterials",
-      "nanomedicine",
-      "drug delivery",
-      "bioelectronics",
-      "implants",
-      "tissue engineering",
-      "biosensors",
-      "biocompatible",
-      "hydrogels"
+      "translational medicine",
+      "clinical trials",
+      "therapeutics",
+      "biomedical",
+      "drug delivery"
     ],
     "discipline": "biomedical-robotics",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": []
   },
   {
     "id": "science-immunology",
@@ -7489,18 +7489,18 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 5.1,
     "acceptanceRate": 8,
     "url": "https://www.science.org/journal/sciimmunol",
-    "scope": "Fundamental and translational immunological discoveries, immune-interactive nanomaterials, targeted adjuvant nanoparticles, and immunotherapy bio-interfaces.",
+    "scope": "Fundamental and clinical discoveries in cellular and molecular immunology.",
     "keywords": [
       "immunology",
-      "biomaterials",
-      "immuno-engineering",
-      "nanoparticles",
-      "vaccine delivery",
-      "macrophages",
-      "immune response"
+      "immune response",
+      "antibodies",
+      "vaccines",
+      "cytokines",
+      "t-cell"
     ],
     "discipline": "biomedical-robotics",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": []
   },
   {
     "id": "science-signaling",
@@ -7514,17 +7514,17 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 5.8,
     "acceptanceRate": 14,
     "url": "https://www.science.org/journal/scisignal",
-    "scope": "Cellular regulatory mechanisms, transmembrane ion transport, biophysical signaling pathways, and molecular dynamics of membrane receptors.",
+    "scope": "Mechanisms of cellular communication, signal transduction networks, and regulatory circuits.",
     "keywords": [
       "signal transduction",
-      "molecular dynamics",
-      "biophysical",
-      "cellular mechanics",
-      "membrane transport",
-      "ion channels"
+      "cellular signaling",
+      "pathways",
+      "kinase",
+      "phosphorylation"
     ],
     "discipline": "biomedical-robotics",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": []
   },
   {
     "id": "pnas",
@@ -7538,22 +7538,26 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.5,
     "acceptanceRate": 14,
     "url": "https://www.pnas.org/",
-    "scope": "Proceedings of the National Academy of Sciences; premier broad multidisciplinary original research covering physical sciences, condensed matter physics, materials chemistry, energy systems, and chemical physics.",
+    "scope": "Prestige multidisciplinary journal from the US National Academy of Sciences, publishing significant research across physical sciences and materials.",
     "keywords": [
-      "multidisciplinary",
+      "materials science",
       "condensed matter",
       "physical sciences",
-      "energy storage",
-      "first-principles",
-      "phase transitions",
-      "materials chemistry",
-      "ferroelectric",
       "2d materials",
-      "solid electrolyte",
-      "catalysis"
+      "solid electrolytes",
+      "batteries",
+      "dft",
+      "first-principles",
+      "topological",
+      "perovskites"
     ],
     "discipline": "multidisciplinary",
-    "editorialTier": "SPECIALIZED_HIGH"
+    "editorialTier": "SPECIALIZED_HIGH",
+    "secondaryDisciplines": [
+      "physics-condmat",
+      "2d-nano",
+      "energy-storage"
+    ]
   },
   {
     "id": "pnas-nexus",
@@ -7567,18 +7571,20 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.0,
     "acceptanceRate": 22,
     "url": "https://academic.oup.com/pnasnexus",
-    "scope": "High-quality, open-access multidisciplinary research across the physical, chemical, engineering, and materials sciences from the National Academy of Sciences.",
+    "scope": "Broad-scope open access journal from NAS for high-quality multidisciplinary research.",
     "keywords": [
-      "open access",
+      "interdisciplinary",
       "materials science",
-      "engineering",
+      "physical chemistry",
       "applied physics",
-      "computational materials",
-      "nanotechnology",
-      "energy"
+      "nanomaterials"
     ],
     "discipline": "multidisciplinary",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": [
+      "physics-condmat",
+      "energy-storage"
+    ]
   },
   {
     "id": "joule",
@@ -7592,26 +7598,30 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.8,
     "acceptanceRate": 9,
     "url": "https://www.cell.com/joule/home",
-    "scope": "Cell Press flagship journal for groundbreaking energy research, spanning solid-state lithium batteries, sodium-ion storage, electrocatalytic water splitting, CO2 reduction, fuel cells, and next-generation photovoltaics.",
+    "scope": "Cell Press's flagship journal for outstanding energy research, breakthrough solid-state batteries, advanced electrolytes, and sustainable energy conversion.",
     "keywords": [
-      "energy conversion",
-      "energy storage",
+      "battery",
       "batteries",
-      "solid-state batteries",
+      "solid-state battery",
       "solid electrolyte",
-      "lithium metal",
-      "electrocatalysis",
-      "her",
-      "oer",
-      "co2 reduction",
-      "supercapacitors",
+      "all-solid-state",
       "garnet",
-      "ionic conductivity",
+      "lithium metal",
+      "anode",
       "cathode",
-      "anode"
+      "energy storage",
+      "ionic conductivity",
+      "dendrite",
+      "critical current density",
+      "electrocatalysis",
+      "water splitting",
+      "solar cells"
     ],
     "discipline": "energy-storage",
-    "editorialTier": "PREMIER_DISCIPLINE"
+    "editorialTier": "PREMIER_DISCIPLINE",
+    "secondaryDisciplines": [
+      "catalysis-chem"
+    ]
   },
   {
     "id": "matter",
@@ -7625,22 +7635,28 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.9,
     "acceptanceRate": 11,
     "url": "https://www.cell.com/matter/home",
-    "scope": "Cell Press flagship journal encompassing transformative materials science across all scales: 2D materials, biomaterials, smart responsive polymers, nanostructured energy materials, and hierarchical architecture.",
+    "scope": "Cell Press's flagship for transformative materials science, innovative 2D materials synthesis, nanoscale architecture, and functional materials design.",
     "keywords": [
-      "transformative materials",
+      "materials science",
       "2d materials",
-      "tmd",
-      "mxene",
       "heterostructures",
-      "energy materials",
+      "monolayers",
       "synthesis",
-      "characterization",
-      "smart materials",
-      "hierarchical",
-      "nanotechnology"
+      "cvd",
+      "doping",
+      "functional materials",
+      "nanomaterials",
+      "energy storage",
+      "devices",
+      "carrier mobility"
     ],
     "discipline": "2d-nano",
-    "editorialTier": "SPECIALIZED_HIGH"
+    "editorialTier": "SPECIALIZED_HIGH",
+    "secondaryDisciplines": [
+      "energy-storage",
+      "perovskite-oxides",
+      "multidisciplinary"
+    ]
   },
   {
     "id": "chem-cell",
@@ -7654,20 +7670,27 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.6,
     "acceptanceRate": 10,
     "url": "https://www.cell.com/chem/home",
-    "scope": "Cell Press flagship chemistry journal showcasing fundamental breakthroughs across synthetic chemistry, heterogeneous catalysis, materials chemistry, molecular machines, and electrochemical energy storage.",
+    "scope": "Cell Press's sister journal to Cell, publishing foundational advances across chemical sciences, homogeneous and heterogeneous electrocatalysis.",
     "keywords": [
-      "materials chemistry",
+      "chemistry",
       "catalysis",
       "electrocatalysis",
-      "organic chemistry",
-      "energy storage",
-      "molecular materials",
-      "dft",
-      "reaction mechanisms",
-      "synthesis"
+      "her",
+      "oer",
+      "co2rr",
+      "water splitting",
+      "inorganic chemistry",
+      "synthesis",
+      "mof",
+      "coordination",
+      "active site",
+      "overpotential"
     ],
     "discipline": "catalysis-chem",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "PREMIER_DISCIPLINE",
+    "secondaryDisciplines": [
+      "energy-storage"
+    ]
   },
   {
     "id": "cell-rep-phys-sci",
@@ -7681,20 +7704,25 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.2,
     "acceptanceRate": 18,
     "url": "https://www.cell.com/cell-reports-physical-science/home",
-    "scope": "High-impact gold open-access physical science research across materials science, solid-state chemistry, condensed matter physics, energy devices, and nanotechnology.",
+    "scope": "Broad-scope Cell Press open-access journal for cutting-edge physical sciences, materials chemistry, and applied physics.",
     "keywords": [
-      "open access",
-      "materials science",
-      "energy",
-      "chemistry",
-      "physics",
+      "physical science",
+      "materials",
       "2d materials",
       "batteries",
       "catalysis",
-      "thin films"
+      "heterostructures",
+      "synthesis",
+      "devices",
+      "nanotechnology"
     ],
     "discipline": "multidisciplinary",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": [
+      "energy-storage",
+      "2d-nano",
+      "catalysis-chem"
+    ]
   },
   {
     "id": "nano-energy",
@@ -7708,24 +7736,30 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.2,
     "acceptanceRate": 16,
     "url": "https://www.sciencedirect.com/journal/nano-energy",
-    "scope": "Nanomaterials and nanotechnology for clean energy harvesting, conversion, and storage; triboelectric and piezoelectric nanogenerators, solid-state lithium batteries, and electrocatalysis.",
+    "scope": "Cross-disciplinary journal focused on nanostructured materials for energy harvesting, solid-state batteries, supercapacitors, and 2D electrocatalysts.",
     "keywords": [
       "nano energy",
-      "nanogenerator",
       "batteries",
-      "supercapacitors",
-      "electrocatalysis",
-      "energy storage",
-      "piezoelectric",
+      "solid-state battery",
       "solid electrolyte",
-      "mxene",
       "2d materials",
-      "lithium",
+      "tmd",
+      "mos2",
+      "heterostructures",
+      "monolayers",
+      "electrocatalysis",
       "her",
-      "oer"
+      "supercapacitors",
+      "piezoelectric",
+      "nanogenerator",
+      "energy storage"
     ],
-    "discipline": "multidisciplinary",
-    "editorialTier": "SPECIALIZED_HIGH"
+    "discipline": "energy-storage",
+    "editorialTier": "SPECIALIZED_HIGH",
+    "secondaryDisciplines": [
+      "2d-nano",
+      "catalysis-chem"
+    ]
   },
   {
     "id": "energy-storage-mater",
@@ -7739,24 +7773,27 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.4,
     "acceptanceRate": 15,
     "url": "https://www.sciencedirect.com/journal/energy-storage-materials",
-    "scope": "Dedicated to advanced materials and chemistry for lithium metal, solid electrolytes, post-lithium batteries, supercapacitors, and battery interface engineering.",
+    "scope": "Leading journal exclusively devoted to advanced materials and structures for electrochemical energy storage, solid electrolytes, and lithium metal batteries.",
     "keywords": [
       "energy storage",
+      "battery",
       "batteries",
-      "solid-state batteries",
       "solid electrolyte",
+      "all-solid-state",
       "garnet",
       "llzo",
+      "llzto",
       "lithium dendrite",
+      "critical current density",
       "anode",
       "cathode",
-      "interface engineering",
-      "impedance",
-      "supercapacitors",
-      "cycling"
+      "supercapacitor",
+      "ionic conductivity",
+      "sei"
     ],
     "discipline": "energy-storage",
-    "editorialTier": "SPECIALIZED_HIGH"
+    "editorialTier": "SPECIALIZED_HIGH",
+    "secondaryDisciplines": []
   },
   {
     "id": "materials-today",
@@ -7770,19 +7807,25 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.5,
     "acceptanceRate": 12,
     "url": "https://www.sciencedirect.com/journal/materials-today",
-    "scope": "Premier journal covering innovative fundamental research and comprehensive reviews across physical materials science, functional nanomaterials, and biomaterials.",
+    "scope": "Flagship review and high-impact original research journal covering the entire spectrum of modern materials science.",
     "keywords": [
       "materials science",
-      "nanomaterials",
-      "energy materials",
       "2d materials",
+      "nanomaterials",
+      "energy storage",
+      "biomaterials",
       "perovskites",
       "functional materials",
-      "crystallography",
-      "synthesis"
+      "synthesis",
+      "heterostructures"
     ],
     "discipline": "multidisciplinary",
-    "editorialTier": "PREMIER_DISCIPLINE"
+    "editorialTier": "PREMIER_DISCIPLINE",
+    "secondaryDisciplines": [
+      "2d-nano",
+      "energy-storage",
+      "perovskite-oxides"
+    ]
   },
   {
     "id": "acta-materialia",
@@ -7796,21 +7839,26 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.2,
     "acceptanceRate": 21,
     "url": "https://www.sciencedirect.com/journal/acta-materialia",
-    "scope": "Premier journal in structural materials, metallurgy, thermodynamics, crystal defects, dislocations, phase transformations, and mechanical behavior of solids.",
+    "scope": "The premier international venue for fundamental relationships between processing, microstructure, grain boundaries, and physical properties of materials.",
     "keywords": [
       "metallurgy",
-      "thermodynamics",
+      "materials science",
       "phase transformation",
+      "microstructure",
+      "grain boundary",
+      "ferroelectric",
+      "piezoelectric",
       "dislocations",
-      "crystal defects",
-      "grain boundaries",
       "sintering",
-      "structural materials",
-      "creep",
-      "alloys"
+      "mechanical properties",
+      "thin films",
+      "crystallography"
     ],
     "discipline": "perovskite-oxides",
-    "editorialTier": "SPECIALIZED_HIGH"
+    "editorialTier": "SPECIALIZED_HIGH",
+    "secondaryDisciplines": [
+      "physics-condmat"
+    ]
   },
   {
     "id": "scripta-materialia",
@@ -7824,19 +7872,24 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 2.9,
     "acceptanceRate": 28,
     "url": "https://www.sciencedirect.com/journal/scripta-materialia",
-    "scope": "Rapid communications on functional and structural materials, microstructure-property relationships, defect mechanics, and grain boundary phenomena.",
+    "scope": "Rapid, short communications on structural, functional, and physical properties of materials, grain boundaries, and phase transformations.",
     "keywords": [
-      "rapid communication",
-      "structural materials",
-      "grain boundaries",
-      "defects",
+      "rapid letters",
       "microstructure",
-      "alloys",
-      "phase stability",
-      "sintering"
+      "grain boundary",
+      "sintering",
+      "phase transformation",
+      "ferroelectric",
+      "piezoelectric",
+      "thin films",
+      "defects",
+      "materials physics"
     ],
     "discipline": "perovskite-oxides",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": [
+      "physics-condmat"
+    ]
   },
   {
     "id": "applied-surface-sci",
@@ -7850,21 +7903,26 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.5,
     "acceptanceRate": 25,
     "url": "https://www.sciencedirect.com/journal/applied-surface-science",
-    "scope": "Applied surface engineering, XPS/UPS interfacial chemistry, thin films, 2D heterostructure interfaces, catalytic coatings, and surface defect states.",
+    "scope": "Applied aspects of surfaces and interfaces, thin-film deposition, XPS surface analysis, coatings, and interfacial phenomena.",
     "keywords": [
-      "surface chemistry",
-      "xps",
+      "surface science",
       "thin films",
+      "xps",
       "interfaces",
-      "work function",
-      "adsorption",
       "coatings",
-      "catalytic surface",
+      "heterostructures",
+      "adsorption",
+      "epitaxial",
+      "ferroelectric",
       "2d materials",
-      "heterostructures"
+      "synthesis"
     ],
     "discipline": "perovskite-oxides",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": [
+      "catalysis-chem",
+      "2d-nano"
+    ]
   },
   {
     "id": "carbon-journal",
@@ -7878,20 +7936,24 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.6,
     "acceptanceRate": 20,
     "url": "https://www.sciencedirect.com/journal/carbon",
-    "scope": "Physics, chemistry, and applications of carbonaceous materials: graphene, carbon nanotubes, MXenes, carbon electrodes, and composite supercapacitors.",
+    "scope": "Dedicated to the physics, chemistry, and technology of carbon materials, graphene, carbon nanotubes, and 2D carbon nanostructures.",
     "keywords": [
       "carbon",
       "graphene",
       "carbon nanotubes",
-      "mxene",
-      "supercapacitors",
-      "batteries",
-      "anodes",
+      "nanosheets",
+      "2d materials",
+      "diamond",
       "porous carbon",
-      "adsorption"
+      "supercapacitors",
+      "anode",
+      "mxene"
     ],
     "discipline": "2d-nano",
-    "editorialTier": "SPECIALIZED_HIGH"
+    "editorialTier": "SPECIALIZED_HIGH",
+    "secondaryDisciplines": [
+      "energy-storage"
+    ]
   },
   {
     "id": "j-power-sources",
@@ -7905,21 +7967,24 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.8,
     "acceptanceRate": 24,
     "url": "https://www.sciencedirect.com/journal/journal-of-power-sources",
-    "scope": "Primary source for research on electrochemical power systems: lithium batteries, solid-state electrolytes, fuel cells, supercapacitors, and battery management.",
+    "scope": "Key journal for all aspects of electrochemical energy systems, battery cycling performance, electrolyte degradation, and cell architecture.",
     "keywords": [
-      "power sources",
+      "battery",
       "batteries",
       "lithium-ion",
-      "solid-state batteries",
       "solid electrolyte",
-      "supercapacitors",
       "fuel cells",
-      "electrochemistry",
+      "supercapacitors",
+      "anode",
+      "cathode",
+      "c-rate",
+      "cycling stability",
       "impedance",
-      "cycling life"
+      "eis"
     ],
     "discipline": "energy-storage",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": []
   },
   {
     "id": "comp-mater-sci",
@@ -7933,21 +7998,24 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.2,
     "acceptanceRate": 32,
     "url": "https://www.sciencedirect.com/journal/computational-materials-science",
-    "scope": "First-principles calculations (DFT, VASP), molecular dynamics (MD), phase-field modeling, and machine learning potentials applied to materials discovery.",
+    "scope": "Computer simulation and modeling in materials science, DFT calculations, VASP, ab initio modeling, and defect energetics.",
     "keywords": [
       "computational materials",
       "dft",
+      "density functional theory",
       "vasp",
       "molecular dynamics",
-      "phase-field",
-      "machine learning potentials",
+      "monte carlo",
       "first-principles",
       "band structure",
       "phonon",
       "defect formation"
     ],
     "discipline": "physics-condmat",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ]
   },
   {
     "id": "solid-state-ionics",
@@ -7961,22 +8029,26 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.5,
     "acceptanceRate": 35,
     "url": "https://www.sciencedirect.com/journal/solid-state-ionics",
-    "scope": "Defect thermodynamics, ionic and electronic transport, solid electrolytes (garnet LLZO, NASICON, halides, sulfides), and solid-state electrochemical devices.",
+    "scope": "Definitive home for fundamental ionic and electronic transport, solid electrolytes, garnet materials, defect equilibrium, and ionic conduction mechanisms.",
     "keywords": [
       "solid state ionics",
       "ionic conductivity",
       "solid electrolyte",
       "garnet",
       "llzo",
+      "llzto",
       "nasicon",
-      "defect chemistry",
+      "lithium transport",
+      "activation energy",
       "impedance spectroscopy",
       "eis",
-      "activation energy",
-      "diffusion"
+      "defect chemistry"
     ],
     "discipline": "energy-storage",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": [
+      "perovskite-oxides"
+    ]
   },
   {
     "id": "j-alloys-compounds",
@@ -7990,19 +8062,23 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.6,
     "acceptanceRate": 30,
     "url": "https://www.sciencedirect.com/journal/journal-of-alloys-and-compounds",
-    "scope": "Solid-state chemistry, metallurgy, crystallography, magnetic materials, thermoelectric alloys, and functional intermetallics.",
+    "scope": "Interdisciplinary journal on materials science, phase equilibria, crystallography, and magnetic/electronic properties of alloys and compounds.",
     "keywords": [
       "alloys",
       "compounds",
-      "crystallography",
-      "magnetic properties",
+      "phase equilibria",
+      "crystal structure",
       "xrd",
-      "thermoelectrics",
-      "intermetallics",
-      "solid state"
+      "magnetic properties",
+      "perovskites",
+      "synthesis",
+      "intermetallics"
     ],
     "discipline": "perovskite-oxides",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": [
+      "catalysis-chem"
+    ]
   },
   {
     "id": "nature",
@@ -8016,22 +8092,28 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.0,
     "acceptanceRate": 7,
     "url": "https://www.nature.com/",
-    "scope": "World's foremost multidisciplinary science journal reporting seminal discoveries of profound scientific significance across all domains of physics, chemistry, materials, and technology.",
+    "scope": "The world's leading multidisciplinary science journal. Publishes seminal discoveries of profound scientific significance across physics, chemistry, materials, and technology.",
     "keywords": [
-      "multidisciplinary",
       "breakthrough",
-      "materials science",
-      "physics",
-      "chemistry",
-      "energy",
-      "superconductivity",
-      "2d materials",
-      "quantum",
+      "paradigm shift",
+      "seminal discovery",
+      "transformative",
       "unprecedented",
-      "nature"
+      "room-temperature",
+      "high-temperature",
+      "quantum transport",
+      "dissipationless",
+      "topological",
+      "broad scientific significance"
     ],
     "discipline": "multidisciplinary",
-    "editorialTier": "FLAGSHIP_ULTRA"
+    "editorialTier": "FLAGSHIP_ULTRA",
+    "secondaryDisciplines": [
+      "physics-condmat",
+      "2d-nano",
+      "energy-storage",
+      "perovskite-oxides"
+    ]
   },
   {
     "id": "nature-materials",
@@ -8045,21 +8127,27 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.2,
     "acceptanceRate": 8,
     "url": "https://www.nature.com/nmat/",
-    "scope": "Premier journal for the materials science community across synthesis, processing, properties, fundamental mechanisms, and groundbreaking device applications.",
+    "scope": "Premier journal covering cutting-edge physics, synthesis, and characterization of revolutionary materials across condensed matter and engineering.",
     "keywords": [
-      "materials science",
-      "synthesis",
-      "solid electrolyte",
-      "batteries",
+      "materials physics",
       "2d materials",
-      "perovskites",
-      "ferroelectrics",
-      "phase transitions",
-      "condensed matter",
-      "atomic scale"
+      "solid-state batteries",
+      "topological materials",
+      "ferroelectric",
+      "heterostructures",
+      "perovskite",
+      "superconductivity",
+      "quantum materials",
+      "breakthrough"
     ],
     "discipline": "multidisciplinary",
-    "editorialTier": "PREMIER_DISCIPLINE"
+    "editorialTier": "PREMIER_DISCIPLINE",
+    "secondaryDisciplines": [
+      "2d-nano",
+      "physics-condmat",
+      "energy-storage",
+      "perovskite-oxides"
+    ]
   },
   {
     "id": "nature-nanotech",
@@ -8073,19 +8161,29 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.1,
     "acceptanceRate": 8,
     "url": "https://www.nature.com/nnano/",
-    "scope": "Nanoscale science and technology, 2D quantum materials, single-atom catalysts, nanoelectronics, nanodevices, and nanoscale energy conversion.",
+    "scope": "The premier venue for fundamental nanoscience, revolutionary 2D nanomaterials, quantum nanoscale transport, and transformative nanoscale devices.",
     "keywords": [
       "nanotechnology",
       "nanoscale",
       "2d materials",
-      "quantum",
+      "tmd",
+      "mos2",
+      "ws2",
+      "wse2",
       "heterostructures",
-      "single-atom",
+      "monolayers",
+      "quantum transport",
       "nanoelectronics",
+      "spintronics",
+      "single-atom",
       "nanodevices"
     ],
     "discipline": "2d-nano",
-    "editorialTier": "PREMIER_DISCIPLINE"
+    "editorialTier": "PREMIER_DISCIPLINE",
+    "secondaryDisciplines": [
+      "physics-condmat",
+      "energy-storage"
+    ]
   },
   {
     "id": "nature-energy",
@@ -8099,21 +8197,27 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.0,
     "acceptanceRate": 7,
     "url": "https://www.nature.com/nenergy/",
-    "scope": "Top-tier journal covering all aspects of energy generation, energy storage, lithium metal and solid-state batteries, fuel cells, photovoltaics, and clean technologies.",
+    "scope": "The world's foremost journal for breakthrough energy generation, revolutionary solid-state batteries, advanced electrolytes, and energy policy.",
     "keywords": [
-      "energy",
+      "energy storage",
+      "battery",
       "batteries",
-      "solid-state batteries",
+      "solid-state battery",
       "solid electrolyte",
+      "all-solid-state",
       "garnet",
-      "lithium metal",
-      "photovoltaics",
-      "fuel cells",
+      "lithium dendrite",
+      "critical current density",
+      "anode",
+      "cathode",
       "electrocatalysis",
-      "energy storage"
+      "photovoltaics"
     ],
     "discipline": "energy-storage",
-    "editorialTier": "PREMIER_DISCIPLINE"
+    "editorialTier": "PREMIER_DISCIPLINE",
+    "secondaryDisciplines": [
+      "catalysis-chem"
+    ]
   },
   {
     "id": "nature-communications",
@@ -8127,21 +8231,29 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.8,
     "acceptanceRate": 15,
     "url": "https://www.nature.com/ncomms/",
-    "scope": "Premier multidisciplinary open-access research journal publishing high-quality papers in physical, chemical, materials, and engineering sciences.",
+    "scope": "High-impact open access journal covering significant advances across natural sciences, 2D physics, energy storage, and materials chemistry.",
     "keywords": [
-      "open access",
-      "materials science",
-      "condensed matter",
+      "high-impact",
+      "2d materials",
+      "tmd",
+      "heterostructures",
+      "batteries",
+      "solid electrolyte",
       "dft",
       "first-principles",
-      "2d materials",
-      "batteries",
-      "perovskites",
-      "electrocatalysis",
-      "ferroelectrics"
+      "topological",
+      "ferroelectric",
+      "cvd",
+      "multidisciplinary"
     ],
     "discipline": "multidisciplinary",
-    "editorialTier": "SPECIALIZED_HIGH"
+    "editorialTier": "SPECIALIZED_HIGH",
+    "secondaryDisciplines": [
+      "2d-nano",
+      "physics-condmat",
+      "energy-storage",
+      "perovskite-oxides"
+    ]
   },
   {
     "id": "nature-catalysis",
@@ -8155,21 +8267,24 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.1,
     "acceptanceRate": 8,
     "url": "https://www.nature.com/natcatal/",
-    "scope": "Fundamental and applied homogeneous, heterogeneous, and electro-catalysis, covering active site design, water splitting, CO2 reduction, and DFT microkinetics.",
+    "scope": "Foremost journal dedicated to homogeneous, heterogeneous, and electrochemical catalysis, fundamental reaction mechanisms, and active site engineering.",
     "keywords": [
       "catalysis",
       "electrocatalysis",
       "water splitting",
       "her",
       "oer",
-      "co2 reduction",
-      "active sites",
+      "co2rr",
+      "hydrogen evolution",
+      "active site",
+      "overpotential",
+      "tafel",
       "adsorption energy",
-      "dft",
-      "reaction mechanisms"
+      "homogeneous catalysis"
     ],
     "discipline": "catalysis-chem",
-    "editorialTier": "PREMIER_DISCIPLINE"
+    "editorialTier": "PREMIER_DISCIPLINE",
+    "secondaryDisciplines": []
   },
   {
     "id": "nature-electronics",
@@ -8183,20 +8298,41 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.3,
     "acceptanceRate": 9,
     "url": "https://www.nature.com/natelectron/",
-    "scope": "Electronic materials, 2D semiconductor transistors, ferroelectric memories, memristors, spintronics, optoelectronic devices, and neuromorphic circuits.",
+    "scope": "The premier journal for electronic materials, 2D semiconductor transistors, field-effect devices, mobility optimization, doping strategies, memristors, and 2D electronics.",
     "keywords": [
       "electronics",
+      "2d electronics",
       "semiconductors",
       "2d materials",
+      "tmd",
+      "tms",
+      "wse2",
+      "mos2",
+      "monolayer",
+      "heterostructure",
+      "cvd",
+      "doping",
+      "mobility",
+      "hole mobility",
+      "carrier mobility",
+      "on/off ratio",
+      "transistor",
+      "transistors",
+      "fet",
+      "field-effect",
+      "subthreshold",
+      "circuits",
       "ferroelectric",
       "memristor",
-      "transistors",
       "spintronics",
-      "optoelectronics",
-      "circuits"
+      "device fabrication"
     ],
-    "discipline": "multidisciplinary",
-    "editorialTier": "COMMUNITY_CORE"
+    "discipline": "2d-nano",
+    "editorialTier": "PREMIER_DISCIPLINE",
+    "secondaryDisciplines": [
+      "physics-condmat",
+      "multidisciplinary"
+    ]
   },
   {
     "id": "nature-physics",
@@ -8210,19 +8346,26 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.5,
     "acceptanceRate": 9,
     "url": "https://www.nature.com/nphys/",
-    "scope": "Premier physics journal in condensed matter physics, quantum phenomena, superconductivity, topological materials, and emergent electronic states.",
+    "scope": "The world's leading pure and applied physics journal, publishing landmark discoveries in condensed matter, quantum phenomena, and topological transport.",
     "keywords": [
       "physics",
       "condensed matter",
-      "quantum",
-      "superconductivity",
       "topological",
+      "quantum anomalous hall",
+      "chern insulator",
+      "spintronics",
       "ferromagnetism",
-      "band structure",
-      "spin-orbit coupling"
+      "stoner magnetism",
+      "berry phase",
+      "spin-orbit coupling",
+      "superconductivity",
+      "quantum transport"
     ],
     "discipline": "physics-condmat",
-    "editorialTier": "PREMIER_DISCIPLINE"
+    "editorialTier": "PREMIER_DISCIPLINE",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ]
   },
   {
     "id": "nature-chemistry",
@@ -8236,18 +8379,19 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.2,
     "acceptanceRate": 8,
     "url": "https://www.nature.com/nchem/",
-    "scope": "Seminal discoveries across all areas of fundamental and applied chemistry, inorganic synthesis, coordination materials, and catalytic mechanisms.",
+    "scope": "Flagship chemistry journal publishing seminal advances across chemical synthesis, physical organic chemistry, and molecular design.",
     "keywords": [
       "chemistry",
-      "inorganic",
-      "synthesis",
-      "catalysis",
-      "molecular materials",
+      "chemical synthesis",
+      "reaction mechanisms",
       "supramolecular",
-      "mechanisms"
+      "coordination chemistry",
+      "organometallics",
+      "catalysis"
     ],
-    "discipline": "multidisciplinary",
-    "editorialTier": "COMMUNITY_CORE"
+    "discipline": "catalysis-chem",
+    "editorialTier": "PREMIER_DISCIPLINE",
+    "secondaryDisciplines": []
   },
   {
     "id": "nature-sustainability",
@@ -8261,17 +8405,20 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.4,
     "acceptanceRate": 9,
     "url": "https://www.nature.com/natsustain/",
-    "scope": "Sustainable materials, circular economy, battery recycling, non-toxic critical raw material alternatives, and environmental technologies.",
+    "scope": "Original research on sustainability, environmental policy, clean technology, and resource conservation.",
     "keywords": [
       "sustainability",
-      "battery recycling",
       "clean energy",
-      "green chemistry",
-      "circular economy",
-      "lead-free"
+      "environmental",
+      "recycling",
+      "battery recycling",
+      "green chemistry"
     ],
     "discipline": "multidisciplinary",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": [
+      "energy-storage"
+    ]
   },
   {
     "id": "nature-comp-sci",
@@ -8285,18 +8432,18 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.5,
     "acceptanceRate": 14,
     "url": "https://www.nature.com/natcomputsci/",
-    "scope": "Advanced computational methods, machine learning in materials discovery, DFT simulation frameworks, and high-throughput materials informatics.",
+    "scope": "Multidisciplinary journal focused on development and use of computational techniques and mathematical modeling across disciplines.",
     "keywords": [
       "computational science",
+      "scientific computing",
       "machine learning",
       "dft",
-      "materials informatics",
       "algorithms",
-      "simulations",
-      "high-throughput"
+      "simulation"
     ],
     "discipline": "physics-condmat",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": []
   },
   {
     "id": "npj-2d-materials",
@@ -8310,21 +8457,60 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.8,
     "acceptanceRate": 22,
     "url": "https://www.nature.com/npj2dmaterials/",
-    "scope": "Two-dimensional crystals, TMDs, MXenes, graphene, Janus monolayers, van der Waals heterostructures, and their electronic/electrocatalytic devices.",
+    "scope": "Premier dedicated home for two-dimensional materials, TMDs, TMSs, MXenes, graphene, Janus monolayers, van der Waals heterostructures, CVD synthesis, atomic doping, electronic transport, field-effect transistors, and 2D electronics.",
     "keywords": [
       "2d materials",
+      "two-dimensional",
       "tmd",
+      "tmds",
+      "tms",
+      "tmss",
       "mos2",
       "ws2",
+      "wse2",
+      "mose2",
+      "mote2",
+      "janus",
+      "mosse",
       "mxene",
-      "heterostructures",
+      "graphene",
+      "monolayer",
       "monolayers",
+      "bilayer",
+      "few-layer",
+      "heterostructure",
+      "heterostructures",
+      "van der waals",
+      "cvd",
+      "chemical vapor deposition",
       "exfoliation",
+      "exfoliated",
+      "doping",
+      "mobility",
+      "carrier mobility",
+      "hole mobility",
+      "electron mobility",
+      "field-effect",
+      "transistor",
+      "fet",
+      "on/off ratio",
+      "2d electronics",
+      "valley hall",
+      "valleytronics",
+      "spintronics",
+      "ferromagnetism",
+      "bandgap",
+      "nanomaterials",
+      "thin films",
+      "synthesis",
       "electrocatalysis",
       "dft"
     ],
     "discipline": "2d-nano",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "SPECIALIZED_HIGH",
+    "secondaryDisciplines": [
+      "physics-condmat"
+    ]
   },
   {
     "id": "npj-comp-materials",
@@ -8338,18 +8524,25 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.0,
     "acceptanceRate": 18,
     "url": "https://www.nature.com/npjcompumats/",
-    "scope": "Materials design by computation, high-throughput DFT calculations, machine learning potentials, and multiscale materials modeling.",
+    "scope": "High-impact open access journal publishing high-throughput calculations, DFT modeling, and machine-learning accelerated materials design.",
     "keywords": [
       "computational materials",
       "dft",
-      "high-throughput",
-      "machine learning potentials",
-      "materials informatics",
+      "density functional theory",
       "vasp",
-      "phonons"
+      "high-throughput",
+      "machine learning",
+      "first-principles",
+      "band structure",
+      "phonon",
+      "defect energies"
     ],
     "discipline": "physics-condmat",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "SPECIALIZED_HIGH",
+    "secondaryDisciplines": [
+      "2d-nano",
+      "energy-storage"
+    ]
   },
   {
     "id": "comm-materials",
@@ -8363,18 +8556,22 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.2,
     "acceptanceRate": 24,
     "url": "https://www.nature.com/commsmat/",
-    "scope": "High quality open-access research across all domains of materials science and engineering from the Nature Portfolio.",
+    "scope": "Springer Nature open access journal for original research across all areas of materials science and applied materials physics.",
     "keywords": [
       "materials science",
-      "open access",
-      "solid state",
-      "characterization",
-      "energy materials",
-      "polymers",
-      "synthesis"
+      "2d materials",
+      "thin films",
+      "heterostructures",
+      "functional materials",
+      "synthesis",
+      "devices"
     ],
     "discipline": "multidisciplinary",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": [
+      "2d-nano",
+      "perovskite-oxides"
+    ]
   },
   {
     "id": "scientific-reports",
@@ -8388,19 +8585,25 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 5.2,
     "acceptanceRate": 48,
     "url": "https://www.nature.com/srep/",
-    "scope": "Broad multidisciplinary open-access research covering natural sciences, engineering, and materials, evaluated on rigorous scientific methodology.",
+    "scope": "Open access journal publishing technically sound research from all areas of natural sciences, materials, and engineering.",
     "keywords": [
       "multidisciplinary",
-      "open access",
       "materials science",
-      "engineering",
-      "applied physics",
+      "physics",
       "chemistry",
       "dft",
-      "xrd"
+      "synthesis",
+      "characterization",
+      "experimental"
     ],
     "discipline": "multidisciplinary",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": [
+      "2d-nano",
+      "physics-condmat",
+      "energy-storage",
+      "perovskite-oxides"
+    ]
   },
   {
     "id": "advanced-materials",
@@ -8414,21 +8617,30 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.2,
     "acceptanceRate": 13,
     "url": "https://onlinelibrary.wiley.com/journal/15214095",
-    "scope": "Top-tier international communications on materials chemistry, energy devices, physics, nanotechnology, solid electrolytes, and 2D functional materials.",
+    "scope": "Wiley's flagship journal for breakthrough materials science, 2D nanomaterials, high-performance solid electrolytes, functional devices, and cutting-edge nanostructures.",
     "keywords": [
       "advanced materials",
       "nanomaterials",
-      "energy storage",
-      "batteries",
-      "solid-state batteries",
       "2d materials",
+      "tmd",
+      "heterostructures",
+      "monolayers",
+      "cvd",
+      "solid-state batteries",
+      "solid electrolyte",
       "perovskites",
+      "ferroelectric",
+      "devices",
       "electrocatalysis",
-      "supercapacitors",
-      "smart materials"
+      "semiconductors"
     ],
     "discipline": "multidisciplinary",
-    "editorialTier": "PREMIER_DISCIPLINE"
+    "editorialTier": "PREMIER_DISCIPLINE",
+    "secondaryDisciplines": [
+      "2d-nano",
+      "energy-storage",
+      "perovskite-oxides"
+    ]
   },
   {
     "id": "advanced-energy-materials",
@@ -8442,22 +8654,32 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.1,
     "acceptanceRate": 14,
     "url": "https://onlinelibrary.wiley.com/journal/16146840",
-    "scope": "Premier international forum for research in all types of energy storage and conversion: solid electrolytes, lithium metal batteries, solar cells, and fuel cells.",
+    "scope": "Wiley's premier energy journal publishing revolutionary advances in solid electrolytes, lithium metal batteries, electrocatalytic water splitting, and energy conversion.",
     "keywords": [
       "energy storage",
+      "battery",
       "batteries",
-      "solid-state batteries",
+      "solid-state battery",
       "solid electrolyte",
+      "all-solid-state",
       "garnet",
+      "llzo",
+      "llzto",
       "lithium metal",
-      "electrocatalysis",
-      "photovoltaics",
-      "supercapacitors",
+      "critical current density",
+      "dendrite",
       "anode",
-      "cathode"
+      "cathode",
+      "supercapacitor",
+      "ionic conductivity",
+      "electrocatalysis",
+      "solar cells"
     ],
     "discipline": "energy-storage",
-    "editorialTier": "PREMIER_DISCIPLINE"
+    "editorialTier": "PREMIER_DISCIPLINE",
+    "secondaryDisciplines": [
+      "catalysis-chem"
+    ]
   },
   {
     "id": "advanced-functional-materials",
@@ -8471,20 +8693,30 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.4,
     "acceptanceRate": 16,
     "url": "https://onlinelibrary.wiley.com/journal/16163028",
-    "scope": "Functional properties of materials: optoelectronics, flexible electronics, ferroelectrics, energy systems, and bio-interfacial devices.",
+    "scope": "Premier journal covering high-performance functional materials, 2D devices, ferroelectrics, piezoelectrics, dielectrics, and applied optoelectronics.",
     "keywords": [
       "functional materials",
-      "optoelectronics",
+      "2d materials",
+      "tmd",
+      "heterostructures",
       "ferroelectric",
       "piezoelectric",
-      "energy storage",
-      "sensors",
-      "thin films",
       "dielectric",
-      "2d materials"
+      "perovskites",
+      "bnt",
+      "devices",
+      "transistors",
+      "thin films",
+      "optoelectronics",
+      "sensors"
     ],
     "discipline": "perovskite-oxides",
-    "editorialTier": "SPECIALIZED_HIGH"
+    "editorialTier": "SPECIALIZED_HIGH",
+    "secondaryDisciplines": [
+      "2d-nano",
+      "energy-storage",
+      "physics-condmat"
+    ]
   },
   {
     "id": "angewandte-chemie",
@@ -8498,19 +8730,25 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.0,
     "acceptanceRate": 15,
     "url": "https://onlinelibrary.wiley.com/journal/15213773",
-    "scope": "World-leading chemistry journal covering materials chemistry, catalytic mechanisms, synthetic breakthroughs, solid-state chemistry, and coordination networks.",
+    "scope": "World-renowned chemical society journal publishing outstanding communications across all areas of chemistry and chemical catalysis.",
     "keywords": [
       "chemistry",
-      "materials chemistry",
+      "inorganic chemistry",
       "catalysis",
       "electrocatalysis",
-      "synthesis",
-      "solid state",
-      "inorganic chemistry",
-      "reaction mechanisms"
+      "her",
+      "oer",
+      "water splitting",
+      "chemical synthesis",
+      "coordination",
+      "crystal structure",
+      "batteries"
     ],
     "discipline": "catalysis-chem",
-    "editorialTier": "PREMIER_DISCIPLINE"
+    "editorialTier": "PREMIER_DISCIPLINE",
+    "secondaryDisciplines": [
+      "energy-storage"
+    ]
   },
   {
     "id": "small",
@@ -8524,20 +8762,36 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.5,
     "acceptanceRate": 18,
     "url": "https://onlinelibrary.wiley.com/journal/16136829",
-    "scope": "Micro and nano structures, 2D heterostructures, nanodevices, MXenes, nanocomposites, and energy nanotechnology.",
+    "scope": "Premier multidisciplinary venue for micro- and nano-scale science, 2D materials, CVD growth, chemical doping, electronic transport, functional heterostructures, and device engineering.",
     "keywords": [
-      "nanotechnology",
-      "nanoscale",
+      "nanomaterials",
+      "micro",
       "2d materials",
+      "two-dimensional",
       "tmd",
-      "mxene",
+      "tms",
+      "wse2",
+      "mos2",
+      "ws2",
       "heterostructures",
-      "energy storage",
-      "electrocatalysis",
-      "sensors"
+      "monolayers",
+      "bilayer",
+      "cvd",
+      "synthesis",
+      "doping",
+      "carrier mobility",
+      "2d electronics",
+      "field-effect",
+      "devices",
+      "nanostructures",
+      "thin films"
     ],
     "discipline": "2d-nano",
-    "editorialTier": "SPECIALIZED_HIGH"
+    "editorialTier": "SPECIALIZED_HIGH",
+    "secondaryDisciplines": [
+      "catalysis-chem",
+      "energy-storage"
+    ]
   },
   {
     "id": "advanced-science",
@@ -8551,19 +8805,26 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.8,
     "acceptanceRate": 16,
     "url": "https://onlinelibrary.wiley.com/journal/21983844",
-    "scope": "High-impact open-access journal publishing outstanding research spanning materials science, physics, chemistry, energy, and life sciences.",
+    "scope": "High-impact open access journal publishing prominent research across materials science, physics, chemistry, and nanotechnology.",
     "keywords": [
-      "open access",
-      "materials science",
-      "physics",
-      "energy materials",
+      "advanced science",
+      "materials",
       "2d materials",
       "batteries",
-      "perovskites",
-      "electrocatalysis"
+      "solid electrolytes",
+      "condensed matter",
+      "nanotechnology",
+      "dft",
+      "devices",
+      "open access"
     ],
     "discipline": "multidisciplinary",
-    "editorialTier": "SPECIALIZED_HIGH"
+    "editorialTier": "SPECIALIZED_HIGH",
+    "secondaryDisciplines": [
+      "2d-nano",
+      "energy-storage",
+      "physics-condmat"
+    ]
   },
   {
     "id": "small-structures",
@@ -8577,19 +8838,22 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.6,
     "acceptanceRate": 17,
     "url": "https://onlinelibrary.wiley.com/journal/26884046",
-    "scope": "Sub-micron and nanostructured materials, crystallography, grain boundaries, interface hierarchy, and functional structure-property relationships.",
+    "scope": "Focuses on micro- and sub-micro-scale structural design, synthesis of 2D nanostructures, and structural-property relations.",
     "keywords": [
-      "structures",
-      "crystallography",
-      "hierarchy",
-      "interfaces",
+      "sub-micro",
       "nanostructures",
-      "grain boundaries",
-      "energy storage",
-      "materials science"
+      "2d materials",
+      "heterostructures",
+      "thin films",
+      "crystal growth",
+      "synthesis",
+      "microstructure"
     ],
-    "discipline": "perovskite-oxides",
-    "editorialTier": "COMMUNITY_CORE"
+    "discipline": "2d-nano",
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": [
+      "perovskite-oxides"
+    ]
   },
   {
     "id": "adv-electronic-mater",
@@ -8603,19 +8867,35 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.8,
     "acceptanceRate": 26,
     "url": "https://onlinelibrary.wiley.com/journal/2199160x",
-    "scope": "Physics and engineering of electronic and magnetic materials, 2D transistors, ferroelectric memories, spintronics, and dielectric breakdown.",
+    "scope": "Dedicated to physics, properties, and applications of electronic and magnetic materials, semiconductor transistors, 2D field-effect devices, mobility enhancement, thin-film electronics, and spintronic devices.",
     "keywords": [
       "electronic materials",
-      "ferroelectric",
+      "2d electronics",
+      "semiconductors",
+      "transistor",
+      "fet",
+      "field-effect",
+      "carrier mobility",
+      "hole mobility",
+      "on/off ratio",
       "2d materials",
-      "memristor",
-      "transistors",
+      "tmd",
+      "wse2",
+      "mos2",
+      "monolayers",
+      "heterostructures",
+      "cvd",
+      "doping",
+      "thin films",
       "spintronics",
-      "dielectric",
-      "magnetic materials"
+      "valley hall",
+      "device fabrication"
     ],
-    "discipline": "perovskite-oxides",
-    "editorialTier": "COMMUNITY_CORE"
+    "discipline": "2d-nano",
+    "editorialTier": "SPECIALIZED_HIGH",
+    "secondaryDisciplines": [
+      "physics-condmat"
+    ]
   },
   {
     "id": "batteries-supercaps",
@@ -8629,20 +8909,22 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.4,
     "acceptanceRate": 28,
     "url": "https://onlinelibrary.wiley.com/journal/25666223",
-    "scope": "Electrochemical energy storage, lithium/sodium-ion batteries, solid electrolytes, supercapacitors, and interfacial electrochemistry.",
+    "scope": "Wiley journal focusing on all aspects of electrochemical energy storage, battery chemistry, solid-state electrolytes, and supercapacitor devices.",
     "keywords": [
+      "battery",
       "batteries",
-      "supercapacitors",
+      "supercapacitor",
       "solid electrolyte",
-      "energy storage",
-      "lithium",
-      "sodium",
+      "lithium-ion",
+      "sodium-ion",
       "anode",
       "cathode",
-      "impedance"
+      "c-rate",
+      "cycling"
     ],
     "discipline": "energy-storage",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": []
   },
   {
     "id": "jacs",
@@ -8656,20 +8938,25 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.1,
     "acceptanceRate": 14,
     "url": "https://pubs.acs.org/journal/jacsat",
-    "scope": "Flagship journal of the American Chemical Society publishing essential fundamental research across all fields of chemistry, materials, and catalytic science.",
+    "scope": "Flagship journal of the American Chemical Society, publishing seminal discoveries across all fields of the chemical sciences.",
     "keywords": [
       "chemistry",
-      "materials chemistry",
+      "inorganic chemistry",
       "catalysis",
-      "synthesis",
       "electrocatalysis",
+      "her",
+      "oer",
+      "chemical synthesis",
+      "coordination complexes",
+      "crystal structure",
       "solid state",
-      "inorganic",
-      "mechanisms",
-      "dft"
+      "reaction mechanisms"
     ],
     "discipline": "catalysis-chem",
-    "editorialTier": "PREMIER_DISCIPLINE"
+    "editorialTier": "PREMIER_DISCIPLINE",
+    "secondaryDisciplines": [
+      "energy-storage"
+    ]
   },
   {
     "id": "acs-energy-letters",
@@ -8683,21 +8970,28 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 2.9,
     "acceptanceRate": 15,
     "url": "https://pubs.acs.org/journal/aelccp",
-    "scope": "High-impact rapid communications across all aspects of energy conversion, solid-state batteries, solid electrolytes, solar cells, and electrocatalysis.",
+    "scope": "Rapid high-impact communications on groundbreaking energy conversion and storage, solid-state batteries, lithium dendrites, and perovskites.",
     "keywords": [
-      "energy conversion",
+      "energy letters",
+      "battery",
       "batteries",
       "solid electrolyte",
+      "all-solid-state",
       "garnet",
+      "lithium metal",
+      "critical current density",
+      "dendrite",
+      "anode",
+      "cathode",
+      "fast publication",
       "electrocatalysis",
-      "her",
-      "oer",
-      "co2 reduction",
-      "perovskite",
-      "supercapacitors"
+      "perovskites"
     ],
     "discipline": "energy-storage",
-    "editorialTier": "SPECIALIZED_HIGH"
+    "editorialTier": "SPECIALIZED_HIGH",
+    "secondaryDisciplines": [
+      "catalysis-chem"
+    ]
   },
   {
     "id": "acs-nano",
@@ -8711,22 +9005,43 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.2,
     "acceptanceRate": 14,
     "url": "https://pubs.acs.org/journal/ancac3",
-    "scope": "Comprehensive original research in nanoscience, nanostructures, 2D nanomaterials, energy storage & conversion devices.",
+    "scope": "Comprehensive flagship research across nanoscience, nanostructures, 2D materials, TMD monolayers, heterostructures, CVD synthesis, doping, nanoelectronics, energy conversion, and nanomaterial devices.",
     "keywords": [
       "nanomaterials",
+      "nanotechnology",
       "2d materials",
+      "two-dimensional",
       "tmd",
+      "tmds",
+      "tms",
+      "tmss",
       "mos2",
       "ws2",
+      "wse2",
       "graphene",
       "heterostructures",
+      "monolayers",
+      "bilayer",
+      "cvd",
+      "chemical vapor deposition",
+      "doping",
+      "carrier mobility",
+      "hole mobility",
+      "2d electronics",
+      "synthesis",
       "electrocatalysis",
       "energy storage",
       "mxene",
-      "dft"
+      "dft",
+      "thin films",
+      "nanodevices"
     ],
     "discipline": "2d-nano",
-    "editorialTier": "SPECIALIZED_HIGH"
+    "editorialTier": "PREMIER_DISCIPLINE",
+    "secondaryDisciplines": [
+      "catalysis-chem",
+      "energy-storage"
+    ]
   },
   {
     "id": "nano-letters",
@@ -8740,20 +9055,39 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 2.8,
     "acceptanceRate": 18,
     "url": "https://pubs.acs.org/journal/nalefd",
-    "scope": "Rapid communications reporting fundamental breakthroughs in physical, chemical, and biological phenomena at the nanoscale.",
+    "scope": "Rapid high-impact letters reporting fundamental nanoscale phenomena, 2D crystal growth, monolayer doping, quantum transport, valley Hall effects, high-mobility nanodevices, and 2D electronics.",
     "keywords": [
-      "nanoscale",
+      "nano",
       "nanotechnology",
       "2d materials",
-      "quantum transport",
-      "nanoelectronics",
+      "tmd",
+      "tmds",
+      "tms",
+      "wse2",
+      "mos2",
+      "monolayers",
+      "bilayer",
       "heterostructures",
+      "janus",
+      "cvd",
+      "growth",
+      "doping",
+      "carrier mobility",
+      "hole mobility",
+      "field-effect",
+      "on/off ratio",
+      "2d electronics",
+      "valley hall",
       "spintronics",
-      "dft",
-      "strain engineering"
+      "quantum transport",
+      "synthesis",
+      "devices"
     ],
     "discipline": "2d-nano",
-    "editorialTier": "SPECIALIZED_HIGH"
+    "editorialTier": "SPECIALIZED_HIGH",
+    "secondaryDisciplines": [
+      "physics-condmat"
+    ]
   },
   {
     "id": "acs-catalysis",
@@ -8767,21 +9101,24 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.5,
     "acceptanceRate": 19,
     "url": "https://pubs.acs.org/journal/accacs",
-    "scope": "Fundamental and applied catalytic science, heterogeneous electrocatalysis, reaction mechanisms, DFT microkinetics, and active sites.",
+    "scope": "Premier venue for heterogeneous, homogeneous, and electrochemical catalysis, active site characterization, and reaction energetics.",
     "keywords": [
       "catalysis",
       "electrocatalysis",
-      "heterogeneous catalysis",
-      "reaction mechanisms",
-      "dft",
-      "first-principles",
-      "adsorption energy",
       "her",
       "oer",
-      "co2rr"
+      "co2rr",
+      "water splitting",
+      "hydrogen evolution",
+      "active site",
+      "overpotential",
+      "tafel",
+      "adsorption energy",
+      "reaction kinetics"
     ],
     "discipline": "catalysis-chem",
-    "editorialTier": "SPECIALIZED_HIGH"
+    "editorialTier": "SPECIALIZED_HIGH",
+    "secondaryDisciplines": []
   },
   {
     "id": "chem-mater",
@@ -8795,19 +9132,28 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.8,
     "acceptanceRate": 22,
     "url": "https://pubs.acs.org/journal/cmatex",
-    "scope": "Fundamental synthetic chemistry, crystal structure-property relationships, solid-state materials, and inorganic functional materials.",
+    "scope": "Fundamental research at the interface of chemistry, chemical engineering, and materials science, focusing on synthetic methods, crystal chemistry, and structural design.",
     "keywords": [
       "materials chemistry",
       "solid state",
       "crystal chemistry",
       "synthesis",
+      "cvd",
+      "2d materials",
       "perovskites",
       "phase transitions",
       "inorganic materials",
-      "xrd"
+      "xrd",
+      "thin films",
+      "doping"
     ],
     "discipline": "catalysis-chem",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": [
+      "2d-nano",
+      "perovskite-oxides",
+      "energy-storage"
+    ]
   },
   {
     "id": "acs-ami",
@@ -8821,21 +9167,27 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.4,
     "acceptanceRate": 26,
     "url": "https://pubs.acs.org/journal/aamick",
-    "scope": "Interdisciplinary applications of functional materials, surfaces, interfaces, thin films, sensors, and electrochemical devices.",
+    "scope": "Interdisciplinary research on how newly created materials and interfacial processes can be developed and used for specific applications.",
     "keywords": [
       "applied materials",
       "interfaces",
       "surfaces",
       "thin films",
       "coatings",
+      "2d materials",
       "energy storage",
-      "electrochemical",
-      "sensors",
+      "batteries",
       "devices",
-      "ferroelectric"
+      "ferroelectric",
+      "synthesis"
     ],
     "discipline": "multidisciplinary",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": [
+      "2d-nano",
+      "energy-storage",
+      "perovskite-oxides"
+    ]
   },
   {
     "id": "acs-materials-letters",
@@ -8849,19 +9201,22 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 2.7,
     "acceptanceRate": 18,
     "url": "https://pubs.acs.org/journal/amlceb",
-    "scope": "Rapid letters reporting urgent breakthroughs in materials chemistry, energy science, 2D systems, and advanced functional materials.",
+    "scope": "Urgent letters reporting major conceptual advances and emerging research across all aspects of materials research.",
     "keywords": [
       "materials letters",
-      "rapid communication",
-      "energy materials",
+      "rapid communications",
       "2d materials",
-      "batteries",
-      "solid state",
-      "electrocatalysis",
-      "perovskites"
+      "energy storage",
+      "functional materials",
+      "synthesis",
+      "nanomaterials"
     ],
     "discipline": "multidisciplinary",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": [
+      "2d-nano",
+      "energy-storage"
+    ]
   },
   {
     "id": "jpc-letters",
@@ -8875,19 +9230,22 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 2.6,
     "acceptanceRate": 25,
     "url": "https://pubs.acs.org/journal/jpclcd",
-    "scope": "Urgent letters on physical chemistry, spectroscopy, DFT simulations, electronic structure, and photophysical mechanisms.",
+    "scope": "Urgent communications on physical chemistry, ultrafast spectroscopy, theoretical modeling, and fundamental reaction dynamics.",
     "keywords": [
       "physical chemistry",
       "spectroscopy",
+      "kinetics",
       "dft",
-      "electronic structure",
-      "bandgap",
-      "excitons",
-      "first-principles",
-      "kinetics"
+      "ultrafast",
+      "charge transfer",
+      "catalysis",
+      "photophysics"
     ],
     "discipline": "catalysis-chem",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": [
+      "physics-condmat"
+    ]
   },
   {
     "id": "jpc-c",
@@ -8901,19 +9259,22 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.6,
     "acceptanceRate": 34,
     "url": "https://pubs.acs.org/journal/jpccck",
-    "scope": "Nanomaterials, interfaces, surfaces, spectroscopy, solid-state theory, and DFT investigations of physical chemistry.",
+    "scope": "Physical chemistry of nanoparticles, surfaces, interfaces, and electrochemical energy conversion systems.",
     "keywords": [
       "physical chemistry",
       "nanomaterials",
       "interfaces",
       "surfaces",
       "spectroscopy",
-      "dft",
-      "first-principles",
-      "catalysis"
+      "catalysis",
+      "energy conversion",
+      "dft"
     ],
     "discipline": "catalysis-chem",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": [
+      "energy-storage"
+    ]
   },
   {
     "id": "inorganic-chem",
@@ -8927,18 +9288,24 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.5,
     "acceptanceRate": 28,
     "url": "https://pubs.acs.org/journal/inocaj",
-    "scope": "Fundamental inorganic synthesis, crystal chemistry, coordination complexes, perovskites, and solid-state magnetism.",
+    "scope": "Fundamental inorganic chemistry, coordination complexes, organometallic mechanisms, single-crystal diffraction, and molecular inorganic materials.",
     "keywords": [
       "inorganic chemistry",
+      "coordination chemistry",
+      "organometallic",
       "crystal structure",
-      "coordination",
-      "perovskites",
-      "magnetism",
+      "coordination complexes",
+      "inorganic synthesis",
       "xrd",
-      "synthesis"
+      "single crystal",
+      "metal complexes",
+      "ligand",
+      "porphyrin",
+      "polyoxometalate"
     ],
     "discipline": "catalysis-chem",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": []
   },
   {
     "id": "prl",
@@ -8952,21 +9319,27 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.1,
     "acceptanceRate": 16,
     "url": "https://journals.aps.org/prl/",
-    "scope": "Premier letters journal in physics: fundamental condensed matter physics, quantum materials, phase transitions, and seminal theoretical/experimental advances.",
+    "scope": "APS flagship journal for short, pivotal, high-impact papers presenting seminal advances in fundamental physics across all fields.",
     "keywords": [
-      "condensed matter",
       "physics",
-      "quantum",
-      "superconductivity",
+      "condensed matter",
       "topological",
-      "band structure",
-      "ferroelectric",
+      "quantum anomalous hall",
+      "spintronics",
+      "ferromagnetism",
+      "stoner magnetism",
+      "berry phase",
       "spin-orbit coupling",
-      "phase transitions",
-      "dft"
+      "superconductivity",
+      "dft",
+      "quantum transport",
+      "rapid letters"
     ],
     "discipline": "physics-condmat",
-    "editorialTier": "PREMIER_DISCIPLINE"
+    "editorialTier": "PREMIER_DISCIPLINE",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ]
   },
   {
     "id": "prx",
@@ -8980,19 +9353,22 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 5.2,
     "acceptanceRate": 10,
     "url": "https://journals.aps.org/prx/",
-    "scope": "Highly selective open-access flagship covering seminal breakthroughs across all areas of pure, applied, and interdisciplinary physics.",
+    "scope": "Highly selective open access journal from APS, covering foundational and interdisciplinary physical discoveries with broad appeal.",
     "keywords": [
-      "open access",
       "physics",
       "condensed matter",
+      "topological phases",
       "quantum materials",
-      "topological",
       "superconductivity",
-      "materials physics",
-      "first-principles"
+      "spintronics",
+      "open access",
+      "fundamental physics"
     ],
     "discipline": "physics-condmat",
-    "editorialTier": "PREMIER_DISCIPLINE"
+    "editorialTier": "PREMIER_DISCIPLINE",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ]
   },
   {
     "id": "pr-materials",
@@ -9006,20 +9382,22 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.0,
     "acceptanceRate": 32,
     "url": "https://journals.aps.org/prmaterials/",
-    "scope": "Interdisciplinary materials physics, electronic structure, DFT, crystal defects, phase stability, and structure-property relationships.",
+    "scope": "Dedicated to the physics of materials, electronic and magnetic structure, crystal growth, and materials-driven condensed matter physics.",
     "keywords": [
       "materials physics",
-      "electronic structure",
+      "crystal growth",
+      "condensed matter",
       "dft",
-      "vasp",
-      "crystal defects",
-      "ferroelectric",
-      "2d materials",
       "phase stability",
-      "bandgap"
+      "electronic properties",
+      "ferroelectrics",
+      "magnetism"
     ],
     "discipline": "physics-condmat",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": [
+      "perovskite-oxides"
+    ]
   },
   {
     "id": "prb",
@@ -9033,21 +9411,31 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.9,
     "acceptanceRate": 36,
     "url": "https://journals.aps.org/prb/",
-    "scope": "Premier community journal for condensed matter and materials physics, electronic band structures, magnetism, superconductivity, and phonons.",
+    "scope": "The standard of excellence in condensed matter and materials physics, electronic structure, DFT theory, and solid-state magnetic properties.",
     "keywords": [
       "condensed matter",
       "electronic structure",
       "band structure",
       "dft",
       "vasp",
+      "quantum espresso",
       "magnetism",
+      "stoner magnetism",
+      "ferromagnetism",
       "phonons",
       "density of states",
       "spin-orbit coupling",
-      "ferroelectric"
+      "soc",
+      "topological",
+      "berry phase",
+      "ferroelectric",
+      "quantum anomalous hall"
     ],
     "discipline": "physics-condmat",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ]
   },
   {
     "id": "pr-applied",
@@ -9061,18 +9449,28 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.2,
     "acceptanceRate": 28,
     "url": "https://journals.aps.org/prapplied/",
-    "scope": "Intersection of physics and engineering, device physics, spintronics, functional materials, piezoelectric devices, and energy applications.",
+    "scope": "Bridging physics and engineering, covering electronic transport, spintronics, 2D materials, valleytronics, device physics, and applied condensed matter.",
     "keywords": [
       "applied physics",
-      "device physics",
+      "electronic transport",
+      "carrier mobility",
+      "2d materials",
+      "tmd",
+      "wse2",
+      "janus",
+      "valley hall",
       "spintronics",
-      "piezoelectric",
-      "sensors",
+      "magnetism",
+      "stoner magnetism",
+      "field-effect",
       "semiconductors",
-      "energy conversion"
+      "devices"
     ],
     "discipline": "physics-condmat",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ]
   },
   {
     "id": "ees",
@@ -9086,22 +9484,24 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.5,
     "acceptanceRate": 11,
     "url": "https://pubs.rsc.org/en/journals/journalissues/ee",
-    "scope": "Elite international journal for outstanding research on energy conversion and storage, alternative fuels, and environmental science.",
+    "scope": "RSC flagship journal for high-impact multidisciplinary research addressing energy conversion and storage, and environmental challenges.",
     "keywords": [
-      "energy storage",
-      "energy conversion",
+      "energy environmental science",
+      "battery",
       "batteries",
-      "solid-state batteries",
-      "electrocatalysis",
-      "fuel cells",
-      "solar cells",
-      "sustainability",
       "solid electrolyte",
-      "her",
-      "oer"
+      "all-solid-state",
+      "lithium metal",
+      "electrocatalysis",
+      "water splitting",
+      "solar cells",
+      "fuel cells"
     ],
     "discipline": "energy-storage",
-    "editorialTier": "PREMIER_DISCIPLINE"
+    "editorialTier": "PREMIER_DISCIPLINE",
+    "secondaryDisciplines": [
+      "catalysis-chem"
+    ]
   },
   {
     "id": "materials-horizons",
@@ -9115,18 +9515,22 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.4,
     "acceptanceRate": 15,
     "url": "https://pubs.rsc.org/en/journals/journalissues/mh",
-    "scope": "First reports of exceptional, conceptual breakthroughs across materials science, smart materials, and 2D functional systems.",
+    "scope": "RSC premier journal dedicated to publishing first reports of significant new concepts and innovative materials designs.",
     "keywords": [
-      "conceptual breakthrough",
-      "materials science",
+      "materials horizons",
+      "conceptual advance",
       "2d materials",
-      "smart materials",
-      "energy materials",
-      "nanomaterials",
-      "synthesis"
+      "heterostructures",
+      "energy storage",
+      "biomaterials",
+      "functional materials"
     ],
     "discipline": "multidisciplinary",
-    "editorialTier": "SPECIALIZED_HIGH"
+    "editorialTier": "SPECIALIZED_HIGH",
+    "secondaryDisciplines": [
+      "2d-nano",
+      "energy-storage"
+    ]
   },
   {
     "id": "chemical-science",
@@ -9140,19 +9544,22 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.8,
     "acceptanceRate": 19,
     "url": "https://pubs.rsc.org/en/journals/journalissues/sc",
-    "scope": "Diamond open-access flagship journal for fundamental research across chemical sciences, catalysis, and functional materials.",
+    "scope": "Flagship open access journal of the RSC, publishing research of exceptional significance across the whole of chemical sciences.",
     "keywords": [
-      "open access",
-      "chemical sciences",
+      "chemical science",
+      "chemistry",
       "catalysis",
-      "materials chemistry",
-      "synthesis",
       "electrocatalysis",
-      "dft",
-      "mechanisms"
+      "inorganic chemistry",
+      "synthesis",
+      "materials chemistry",
+      "diamond open access"
     ],
     "discipline": "catalysis-chem",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "SPECIALIZED_HIGH",
+    "secondaryDisciplines": [
+      "energy-storage"
+    ]
   },
   {
     "id": "jmca",
@@ -9166,21 +9573,28 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.4,
     "acceptanceRate": 22,
     "url": "https://pubs.rsc.org/en/journals/journalissues/ta",
-    "scope": "High-impact research on materials for energy harvesting, conversion, storage, solid electrolytes, batteries, and electrocatalysis.",
+    "scope": "Premier journal focused on materials for energy and sustainability, solid-state batteries, electrocatalysts, and porous nanomaterials.",
     "keywords": [
-      "materials chemistry",
+      "materials chemistry a",
       "energy storage",
+      "battery",
       "batteries",
       "solid electrolyte",
-      "electrocatalysis",
-      "perovskites",
-      "2d materials",
       "supercapacitors",
+      "electrocatalysis",
       "her",
-      "oer"
+      "oer",
+      "2d materials",
+      "mxene",
+      "tmd",
+      "water splitting"
     ],
     "discipline": "energy-storage",
-    "editorialTier": "SPECIALIZED_HIGH"
+    "editorialTier": "SPECIALIZED_HIGH",
+    "secondaryDisciplines": [
+      "catalysis-chem",
+      "2d-nano"
+    ]
   },
   {
     "id": "jmcc",
@@ -9194,18 +9608,23 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.6,
     "acceptanceRate": 25,
     "url": "https://pubs.rsc.org/en/journals/journalissues/tc",
-    "scope": "Materials for optical, magnetic, electronic, and displays applications, ferroelectrics, and semiconductor devices.",
+    "scope": "Materials for optical, magnetic, and electronic devices, ferroelectric ceramics, dielectrics, and thin-film devices.",
     "keywords": [
+      "materials chemistry c",
       "optical materials",
       "magnetic materials",
       "electronic materials",
       "ferroelectric",
-      "2d materials",
-      "luminescence",
-      "semiconductors"
+      "piezoelectric",
+      "perovskites",
+      "thin films",
+      "optoelectronics"
     ],
     "discipline": "perovskite-oxides",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ]
   },
   {
     "id": "nanoscale",
@@ -9219,19 +9638,24 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.3,
     "acceptanceRate": 24,
     "url": "https://pubs.rsc.org/en/journals/journalissues/nr",
-    "scope": "High-impact nanoscience and nanotechnology, 2D materials, MXenes, nanoscale devices, and nanoscale energy storage.",
+    "scope": "High-impact interdisciplinary journal publishing experimental and theoretical research in all aspects of nanoscience and nanotechnology.",
     "keywords": [
-      "nanotechnology",
       "nanoscale",
+      "nanomaterials",
       "2d materials",
-      "tmd",
-      "mxene",
       "heterostructures",
-      "energy storage",
+      "monolayers",
+      "synthesis",
+      "cvd",
+      "nanoparticles",
+      "nanodevices",
       "electrocatalysis"
     ],
     "discipline": "2d-nano",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": [
+      "catalysis-chem"
+    ]
   },
   {
     "id": "chemcomm",
@@ -9245,17 +9669,19 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 2.7,
     "acceptanceRate": 32,
     "url": "https://pubs.rsc.org/en/journals/journalissues/cc",
-    "scope": "Rapid urgent communications across all branches of chemical sciences, catalysis, and functional materials.",
+    "scope": "RSC's journal for urgent communications of significant findings across all areas of the chemical sciences.",
     "keywords": [
-      "rapid communication",
+      "communications",
       "chemistry",
-      "catalysis",
       "synthesis",
-      "materials chemistry",
-      "nanomaterials"
+      "catalysis",
+      "coordination",
+      "materials",
+      "urgent"
     ],
     "discipline": "catalysis-chem",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": []
   },
   {
     "id": "apl",
@@ -9269,19 +9695,34 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 2.8,
     "acceptanceRate": 29,
     "url": "https://pubs.aip.org/aip/apl",
-    "scope": "Urgent communications in applied physics: semiconductor devices, 2D electronics, ferroelectrics, photonics, and spintronics.",
+    "scope": "High-impact rapid letters on applied physical phenomena, 2D semiconductors, carrier transport, mobility, field-effect transistors, doping, thin films, and device physics.",
     "keywords": [
       "applied physics",
       "semiconductors",
       "2d materials",
-      "ferroelectric",
-      "thin films",
+      "tmd",
+      "wse2",
+      "mos2",
+      "monolayer",
+      "heterostructures",
+      "cvd",
+      "doping",
+      "carrier mobility",
+      "hole mobility",
+      "transistor",
+      "field-effect",
+      "electronic transport",
+      "valley hall",
+      "magnetism",
       "spintronics",
-      "device physics",
-      "piezoelectric"
+      "thin films",
+      "optoelectronics"
     ],
     "discipline": "physics-condmat",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ]
   },
   {
     "id": "apl-materials",
@@ -9295,18 +9736,24 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.4,
     "acceptanceRate": 24,
     "url": "https://pubs.aip.org/aip/apm",
-    "scope": "High-impact functional materials, multiferroics, topological insulators, 2D heterostructures, and energy conversion.",
+    "scope": "Open-access venue for significant research in materials physics, functional oxides, perovskite thin films, and interfacial electronics.",
     "keywords": [
       "materials physics",
-      "functional materials",
+      "thin films",
+      "perovskite",
       "ferroelectric",
-      "2d materials",
-      "topological",
-      "open access",
-      "thin films"
+      "piezoelectric",
+      "dielectric",
+      "epitaxial",
+      "functional oxides",
+      "interfaces",
+      "defect engineering"
     ],
     "discipline": "perovskite-oxides",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": [
+      "2d-nano"
+    ]
   },
   {
     "id": "jap",
@@ -9320,18 +9767,22 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.0,
     "acceptanceRate": 36,
     "url": "https://pubs.aip.org/aip/jap",
-    "scope": "Foundational applied physics, dielectric properties, magnetic materials, transport phenomena, and semiconductor physics.",
+    "scope": "Influential international journal publishing significant experimental and theoretical results in applied physics and device engineering.",
     "keywords": [
       "applied physics",
-      "dielectric",
-      "magnetism",
-      "semiconductors",
-      "transport",
+      "semiconductor physics",
+      "dielectrics",
+      "magnetic materials",
+      "electronic transport",
       "thin films",
-      "ferroelectric"
+      "devices",
+      "piezoelectric"
     ],
     "discipline": "physics-condmat",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": [
+      "perovskite-oxides"
+    ]
   },
   {
     "id": "apl-energy",
@@ -9345,17 +9796,19 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.6,
     "acceptanceRate": 22,
     "url": "https://pubs.aip.org/aip/ape",
-    "scope": "Emerging energy materials, solar conversion, battery science, and applied clean energy physics.",
+    "scope": "Open access journal addressing energy research across materials, physics, chemistry, and engineering.",
     "keywords": [
-      "energy",
+      "energy physics",
+      "battery",
       "batteries",
-      "solar cells",
-      "energy conversion",
-      "open access",
-      "materials"
+      "solid-state batteries",
+      "solar energy",
+      "fuel cells",
+      "energy storage"
     ],
     "discipline": "energy-storage",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": []
   },
   {
     "id": "2d-materials",
@@ -9369,22 +9822,45 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.8,
     "acceptanceRate": 28,
     "url": "https://iopscience.iop.org/journal/2053-1583",
-    "scope": "Dedicated to all aspects of two-dimensional materials including graphene, TMDs, MXenes, heterostructures, and their fundamental physics.",
+    "scope": "Dedicated journal covering all aspects of two-dimensional materials including graphene, TMDs, TMSs, MXenes, van der Waals heterostructures, CVD growth, doping, electronic mobility, valley transport, and fundamental 2D physics.",
     "keywords": [
       "2d materials",
+      "two-dimensional",
       "graphene",
       "tmd",
+      "tmds",
+      "tms",
+      "tmss",
       "mos2",
       "ws2",
+      "wse2",
+      "mose2",
+      "janus",
+      "mosse",
       "heterostructures",
       "monolayers",
+      "bilayer",
       "exfoliation",
+      "exfoliated",
+      "cvd",
+      "chemical vapor deposition",
+      "doping",
+      "carrier mobility",
+      "hole mobility",
+      "transistor",
+      "2d electronics",
       "band alignment",
       "strain engineering",
-      "mxene"
+      "mxene",
+      "valley hall",
+      "spintronics",
+      "synthesis"
     ],
     "discipline": "2d-nano",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "SPECIALIZED_HIGH",
+    "secondaryDisciplines": [
+      "physics-condmat"
+    ]
   },
   {
     "id": "j-phys-cond-mat",
@@ -9398,19 +9874,20 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 4.2,
     "acceptanceRate": 40,
     "url": "https://iopscience.iop.org/journal/0953-8984",
-    "scope": "Theoretical and experimental solid state physics, electronic structures, magnetism, superconductivity, and phonons.",
+    "scope": "Experimental and theoretical physics of condensed matter, electronic properties of materials, and phase transitions.",
     "keywords": [
       "condensed matter",
-      "physics",
       "electronic structure",
       "dft",
       "magnetism",
       "superconductivity",
-      "band structure",
-      "phonons"
+      "surfaces",
+      "liquids",
+      "phase transitions"
     ],
     "discipline": "physics-condmat",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": []
   },
   {
     "id": "mater-res-express",
@@ -9424,20 +9901,25 @@ const JOURNAL_DATABASE = [
     "reviewWeeks": 3.5,
     "acceptanceRate": 52,
     "url": "https://iopscience.iop.org/journal/2053-1591",
-    "scope": "Broad materials science and engineering, synthesis, characterization, and properties of all materials.",
+    "scope": "Broad-scope rapid-review open access journal for materials science and engineering research.",
     "keywords": [
-      "materials science",
+      "materials research",
+      "experimental",
       "synthesis",
       "characterization",
-      "xrd",
-      "sem",
       "properties",
-      "open access"
+      "engineering"
     ],
     "discipline": "multidisciplinary",
-    "editorialTier": "COMMUNITY_CORE"
+    "editorialTier": "COMMUNITY_CORE",
+    "secondaryDisciplines": []
   }
 ];
+
+// Helper: Escape Regex characters
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 // Sub-Tab Switcher
 function switchManuscriptSubTab(tab) {
@@ -9497,9 +9979,9 @@ function updateAbstractWordCount() {
 
   if (count === 0) {
     badge.innerHTML = `<span style="color:#64748b;">0 words (Paste full abstract)</span>`;
-  } else if (count < 40) {
+  } else if (count < 35) {
     badge.innerHTML = `<span style="color:#dc2626; font-weight:700;">⚠️ ${count} words — Too brief! Real journal matchers (Springer/Elsevier) require 100–300 words.</span>`;
-  } else if (count < 80) {
+  } else if (count < 70) {
     badge.innerHTML = `<span style="color:#d97706; font-weight:700;">🟡 ${count} words — Acceptable. Expanding with results/mechanisms improves matching.</span>`;
   } else {
     badge.innerHTML = `<span style="color:#059669; font-weight:700;">🟢 ${count} words — Optimal for deep semantic scope matching.</span>`;
@@ -9583,70 +10065,33 @@ function clearJournalFinderInputs() {
 
 // Concept Taxonomy for Semantic Profiling
 const CONCEPT_TAXONOMY = [
-  { id: "energy-storage", name: "Solid Electrolytes & Batteries", icon: "🔋", patterns: [/solid electrolyte/i, /garnet/i, /llzo/i, /llzto/i, /argyrodite/i, /nasicon/i, /ionic conductiv/i, /lithium dendrite/i, /critical current density/i, /all-solid-state/i, /solid-state batter/i, /battery/i, /supercapacitor/i, /anode/i, /cathode/i] },
-  { id: "2d-nano", name: "2D Materials & TMDs", icon: "🔬", patterns: [/2d material/i, /transition metal dichalcogenide/i, /\btmd\b/i, /\bmos2\b/i, /\bws2\b/i, /\bmose2\b/i, /\bwse2\b/i, /monolayer/i, /heterostructure/i, /\bmxene\b/i, /graphene/i, /nanosheet/i, /janus/i, /van der waals/i] },
-  { id: "physics-condmat", name: "Condensed Matter Physics & DFT", icon: "💻", patterns: [/density functional theory/i, /\bdft\b/i, /first-principles/i, /\bvasp\b/i, /quantum espresso/i, /gga-pbe/i, /\bpbe\b/i, /band structure/i, /density of states/i, /\bdos\b/i, /phonon/i, /ab initio/i, /spin-orbit/i, /topological/i, /ferromagnet/i, /curie temperature/i, /quantum anomalous hall/i] },
-  { id: "catalysis-chem", name: "Electrocatalysis & Chemistry", icon: "⚡", patterns: [/electrocataly/i, /\bher\b/i, /\boer\b/i, /\bco2rr\b/i, /hydrogen evolution/i, /water splitting/i, /adsorption energy/i, /gibbs free energy/i, /overpotential/i, /tafel/i, /active site/i, /catalysis/i] },
-  { id: "perovskite-oxides", name: "Perovskites & Ferroelectrics", icon: "💎", patterns: [/perovskite/i, /titanate/i, /oxide/i, /\bbnt\b/i, /bi0\.5na0\.5tio3/i, /\bbto\b/i, /batio3/i, /ferroelectric/i, /piezoelectric/i, /dielectric/i, /domain wall/i, /defect formation/i] },
-  { id: "characterization", name: "In-Situ & Advanced Surface Physics", icon: "🌐", patterns: [/xps/i, /stem/i, /haadf/i, /in-situ/i, /operando/i, /synchrotron/i, /impedance spectroscopy/i, /eis/i, /spectroscopy/i, /thin film/i, /epitaxial/i] }
+  { id: "2d-nano", name: "2D Materials & Nanotech", icon: "🔬", patterns: [/\b(2d|two-dimensional|tmd|tmds|tms|tmss|mos2|ws2|wse2|mose2|monolayer|monolayers|bilayer|heterostructure|heterostructures|janus|mosse|mxene|graphene|van der waals|cvd|nanosheet)\b/i] },
+  { id: "energy-storage", name: "Solid Electrolytes & Batteries", icon: "🔋", patterns: [/\b(solid electrolyte|battery|batteries|garnet|llzo|llzto|lithium metal|lithium dendrite|all-solid-state|anode|cathode|ionic conductivity|supercapacitor)\b/i] },
+  { id: "physics-condmat", name: "Condensed Matter Physics & DFT", icon: "💻", patterns: [/\b(dft|density functional theory|vasp|band structure|topological|ferromagnet|curie|quantum anomalous hall|spin-orbit|stoner magnetism|spintronics|superconductivity)\b/i] },
+  { id: "catalysis-chem", name: "Electrocatalysis & Chemistry", icon: "⚡", patterns: [/\b(electrocataly|her|oer|water splitting|hydrogen evolution|overpotential|co2rr|tafel|active site|catalysis)\b/i] },
+  { id: "perovskite-oxides", name: "Perovskites & Ferroelectrics", icon: "💎", patterns: [/\b(perovskite|ferroelectric|piezoelectric|dielectric|titanate|bnt|bi0\.5na0\.5tio3|domain wall|domain walls|oxide)\b/i] },
+  { id: "characterization", name: "In-Situ & Device Physics", icon: "🌐", patterns: [/\b(xps|stem|haadf|in-situ|operando|synchrotron|impedance spectroscopy|eis|transistor|carrier mobility|hole mobility|on\/off ratio|2d electronics)\b/i] }
 ];
 
-// Scientific Domain Stopwords
-const SCIENTIFIC_STOPWORDS = new Set([
-  "a", "about", "above", "after", "again", "against", "all", "am", "an", "and", "any", "are", "as", "at",
-  "be", "because", "been", "before", "being", "below", "between", "both", "but", "by", "can", "did", "do",
-  "does", "doing", "don", "down", "during", "each", "few", "for", "from", "further", "had", "has", "have",
-  "having", "he", "her", "here", "hers", "herself", "him", "himself", "his", "how", "i", "if", "in", "into",
-  "is", "it", "its", "itself", "just", "me", "more", "most", "my", "myself", "no", "nor", "not", "now", "of",
-  "off", "on", "once", "only", "or", "other", "our", "ours", "ourselves", "out", "over", "own", "s", "same",
-  "she", "should", "so", "some", "such", "t", "than", "that", "the", "their", "theirs", "them", "themselves",
-  "then", "there", "these", "they", "this", "those", "through", "to", "too", "under", "until", "up", "very",
-  "was", "we", "were", "what", "when", "where", "which", "while", "who", "whom", "why", "will", "with",
-  "work", "paper", "investigate", "investigated", "results", "demonstrate", "demonstrated", "show", "shows",
-  "study", "studies", "report", "reported", "herein", "furthermore", "moreover", "observed", "exhibit", "exhibits"
-]);
-
-// Tokenizer & N-gram Extractor for TF-IDF Cosine Similarity
-function extractScientificTokens(text) {
-  if (!text) return {};
-  const clean = text.toLowerCase().replace(/[^a-z0-9\s-]/g, " ");
-  const words = clean.split(/\s+/).filter(w => w.length > 2 && !SCIENTIFIC_STOPWORDS.has(w));
-  const tf = {};
-
-  // 1-grams
-  for (let i = 0; i < words.length; i++) {
-    const w = words[i];
-    tf[w] = (tf[w] || 0) + 1;
+// Helper for Robust Keyword Matching with Plural & Stem Variation
+function matchKeywordText(kw, text) {
+  if (!kw) return false;
+  const kwTrim = kw.trim().toLowerCase();
+  if (kwTrim.length <= 4) {
+    return new RegExp('\\b' + escapeRegExp(kwTrim) + '\\b', 'i').test(text);
   }
-  // 2-grams (captures scientific compound terms)
-  for (let i = 0; i < words.length - 1; i++) {
-    const bigram = words[i] + " " + words[i+1];
-    tf[bigram] = (tf[bigram] || 0) + 2.5;
+  let pat = escapeRegExp(kwTrim);
+  if (kwTrim.endsWith('s')) {
+    pat = escapeRegExp(kwTrim.slice(0, -1)) + 's?';
+  } else if (kwTrim.endsWith('ion')) {
+    pat = escapeRegExp(kwTrim.slice(0, -3)) + '(ion|iated|iating)?';
+  } else if (kwTrim.endsWith('ing')) {
+    pat = escapeRegExp(kwTrim.slice(0, -3)) + '(ing|ed|e)?';
   }
-  return tf;
+  return new RegExp('\\b' + pat, 'i').test(text);
 }
 
-// Cosine Similarity
-function computeCosineSimilarity(tfA, tfB) {
-  let dot = 0;
-  let normA = 0;
-  let normB = 0;
-
-  for (const k in tfA) {
-    normA += tfA[k] * tfA[k];
-    if (tfB[k]) {
-      dot += tfA[k] * tfB[k];
-    }
-  }
-  for (const k in tfB) {
-    normB += tfB[k] * tfB[k];
-  }
-
-  if (normA === 0 || normB === 0) return 0;
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
-}
-
-// Run Journal Finder Analysis (Springer Nature & Elsevier Professional Algorithm)
+// Run Journal Finder Analysis (Springer Nature & Elsevier Professional Model)
 function runJournalFinderAnalysis() {
   const titleInput = document.getElementById("finder-title-input");
   const abstractInput = document.getElementById("finder-abstract-input");
@@ -9678,156 +10123,145 @@ function runJournalFinderAnalysis() {
     }
   });
 
-  // Identify specific field flags
-  const isSolidElectrolyte = /solid electrolyte|garnet|llzo|llzto|all-solid-state|lithium dendrite|ionic conductiv/i.test(combinedText);
-  const isBatteryGeneral = isSolidElectrolyte || /batter|supercapacitor|lithium|anode|cathode|coin cell/i.test(combinedText);
-  const is2DMaterial = /2d material|transition metal dichalcogenide|tmd|mos2|ws2|mxene|graphene|heterostructure|monolayer|janus/i.test(combinedText);
-  const isDFTTheoretical = /density functional theory|first-principles|vasp|band structure|density of states|gga-pbe|quantum espresso/i.test(combinedText);
-  const isCondensedMatter = isDFTTheoretical || /topological|ferromagnet|curie temperature|quantum anomalous hall|spin-orbit|condensed matter|superconduct/i.test(combinedText);
-  const isExperimental = /xps|stem|haadf|in-situ|operando|synchrotron|impedance spectroscopy|sintering|calcination|fabricated|synthesized|transport measurement/i.test(combinedText);
-  const isCatalysisHER = /electrocataly|her|oer|co2rr|hydrogen evolution|water splitting|overpotential|tafel/i.test(combinedText);
-  const isPerovskiteFerro = /perovskite|ferroelectric|piezoelectric|titanate|bi0\.5na0\.5tio3|batio3|domain wall/i.test(combinedText);
-  
-  // Breakthrough signals required for Ultra-Flagships (Nature, Science)
-  const hasBreakthroughClaims = /unprecedented|paradigm shift|room-temperature|record[- ]high|seminal|first[- ]principles revelation|atomic[- ]scale engineering|unveils mechanism|high-temperature|dissipationless/i.test(combinedText);
-  const isBroadMultidisciplinary = (is2DMaterial && hasBreakthroughClaims && isExperimental) || (isBatteryGeneral && hasBreakthroughClaims && isExperimental);
+  // Specific Domain Flags
+  const is2D = /\b(2d|two-dimensional|tmd|tmds|tms|tmss|mos2|ws2|wse2|mose2|monolayer|monolayers|bilayer|heterostructure|heterostructures|janus|mosse|mxene|graphene|van der waals|cvd)\b/i.test(combinedText);
+  const isBattery = /\b(solid electrolyte|battery|batteries|garnet|llzo|llzto|lithium metal|lithium dendrite|all-solid-state|anode|cathode|ionic conductivity)\b/i.test(combinedText);
+  const isCondmat = /\b(dft|density functional theory|vasp|band structure|topological|ferromagnet|curie|quantum anomalous hall|spin-orbit|stoner magnetism|spintronics)\b/i.test(combinedText);
+  const isCatalysis = /\b(electrocataly|her|oer|water splitting|hydrogen evolution|overpotential|co2rr|tafel)\b/i.test(combinedText);
+  const isPerovskite = /\b(perovskite|ferroelectric|piezoelectric|dielectric|titanate|bnt|bi0\.5na0\.5tio3|domain wall|domain walls)\b/i.test(combinedText);
 
-  // 3. TF-IDF Tokenization of Input Manuscript
-  const titleTokens = extractScientificTokens(title);
-  const abstractTokens = extractScientificTokens(abstract);
-  const manuscriptTokens = { ...abstractTokens };
-  for (const k in titleTokens) {
-    manuscriptTokens[k] = (manuscriptTokens[k] || 0) + titleTokens[k] * 2.2;
-  }
+  // Cross-disciplinary breakthrough check for Ultra-Flagships (Nature, Science)
+  const hasBreakthrough = /\b(unprecedented|paradigm shift|room-temperature|record[- ]high|seminal|transformative|holy grail|dissipationless)\b/i.test(combinedText);
+  const isExperimental = /\b(sts|stem|haadf|xps|in-situ|synchrotron|transport measurement|sintering|spectroscopy|fabricated|cvd)\b/i.test(combinedText);
+  const qualifiesUltra = (!isTooShort) && (wordCount >= 80) && hasBreakthrough && isExperimental && (isCondmat || is2D || isBattery);
 
-  // 4. Multi-Factor Scoring for Every Journal in Database
+  // 3. Multi-Factor Scoring for Every Journal in Database
   const scoredJournals = JOURNAL_DATABASE.map(j => {
-    // Keyword overlap
     const matchedKeywords = [];
-    let kwDirectScore = 0;
+    const titleKeywords = [];
 
-    j.keywords.forEach(kw => {
-      const kwLower = kw.toLowerCase();
-      if (combinedText.includes(kwLower)) {
+    (j.keywords || []).forEach(kw => {
+      if (matchKeywordText(kw, combinedText)) {
         matchedKeywords.push(kw);
-        kwDirectScore += 1;
-        if (titleLower.includes(kwLower)) {
-          kwDirectScore += 2;
+        if (matchKeywordText(kw, titleLower)) {
+          titleKeywords.push(kw);
         }
       }
     });
 
-    // TF-IDF Cosine Similarity against Journal Scope
-    const journalText = (j.scope + " " + j.keywords.join(" ")).toLowerCase();
-    const journalTokens = extractScientificTokens(journalText);
-    const cosineSim = computeCosineSimilarity(manuscriptTokens, journalTokens);
-
-    // Discipline Alignment (Springer Nature / Elsevier taxonomy)
-    let disciplineScore = 0;
     const jDisc = j.discipline || "multidisciplinary";
+    const jSec = j.secondaryDisciplines || [];
 
-    if (isSolidElectrolyte || isBatteryGeneral) {
-      if (jDisc === "energy-storage") disciplineScore += 0.40;
+    // Discipline Alignment (Springer Nature / Elsevier Taxonomy)
+    let discScore = 0;
+    if (is2D && (jDisc === "2d-nano" || jSec.includes("2d-nano"))) {
+      discScore = Math.max(discScore, jDisc === "2d-nano" ? 30 : 22);
     }
-    if (is2DMaterial) {
-      if (jDisc === "2d-nano") disciplineScore += 0.35;
+    if (isBattery && (jDisc === "energy-storage" || jSec.includes("energy-storage"))) {
+      discScore = Math.max(discScore, jDisc === "energy-storage" ? 30 : 22);
     }
-    if (isCondensedMatter || isDFTTheoretical) {
-      if (jDisc === "physics-condmat") disciplineScore += 0.40;
+    if (isCondmat && (jDisc === "physics-condmat" || jSec.includes("physics-condmat"))) {
+      discScore = Math.max(discScore, jDisc === "physics-condmat" ? 28 : 20);
     }
-    if (isCatalysisHER) {
-      if (jDisc === "catalysis-chem") disciplineScore += 0.35;
+    if (isCatalysis && (jDisc === "catalysis-chem" || jSec.includes("catalysis-chem"))) {
+      discScore = Math.max(discScore, jDisc === "catalysis-chem" ? 28 : 20);
     }
-    if (isPerovskiteFerro) {
-      if (jDisc === "perovskite-oxides") disciplineScore += 0.35;
+    if (isPerovskite && (jDisc === "perovskite-oxides" || jSec.includes("perovskite-oxides"))) {
+      discScore = Math.max(discScore, jDisc === "perovskite-oxides" ? 30 : 22);
     }
     if (jDisc === "multidisciplinary") {
-      disciplineScore += 0.15;
+      discScore = Math.max(discScore, 16);
     }
 
-    // BASELINE CALCULATION (Real mathematical model, starting from 0%)
-    let baseScore = (cosineSim * 55) + (Math.min(matchedKeywords.length, 8) * 4) + (disciplineScore * 70);
+    // Keyword Overlap Score
+    const kwScore = Math.min(42, matchedKeywords.length * 3.6 + titleKeywords.length * 3.5);
 
-    // LENGTH PENALTY: Real journal finders degrade match heavily if abstract lacks detail
+    // Scope Text Overlap
+    const scopeLower = (j.scope || "").toLowerCase();
+    const scopeWords = ["2d", "cvd", "monolayer", "heterostructure", "battery", "electrolyte", "dft", "perovskite", "ferroelectric", "catalysis", "topological", "magnetism", "transport", "transistor", "mobility", "doping"];
+    let scopeMatches = 0;
+    scopeWords.forEach(w => {
+      if (combinedText.includes(w) && scopeLower.includes(w)) scopeMatches++;
+    });
+    const scopeScore = Math.min(18, scopeMatches * 3.2);
+
+    let baseScore = discScore + kwScore + scopeScore;
+
+    // Length Penalty for brief snippets
     if (isTooShort) {
-      baseScore *= 0.30; // Severe penalty for < 35 words
+      baseScore *= 0.28;
     } else if (isBrief) {
-      baseScore *= 0.65; // Moderate penalty for 35-70 words
+      baseScore *= 0.65;
     }
 
-    // EDITORIAL TIER GATEKEEPERS (Springer Nature & Nature Portfolio Rules)
+    // Editorial Tier Gatekeepers & Desk-Reject Risk Calibration
     const tier = j.editorialTier || "COMMUNITY_CORE";
     let deskRejectRisk = "MODERATE";
     let deskRejectPercent = 45;
     let rationale = "";
 
     if (tier === "FLAGSHIP_ULTRA") {
-      // NATURE & SCIENCE GATEKEEPER:
-      // Must have: Length >= 70 words, broad multidisciplinary scope, explicit breakthrough, multi-methodology
-      if (isTooShort || !isBroadMultidisciplinary || !hasBreakthroughClaims) {
-        // Harsh realistic filter: Nature / Science will immediate desk-reject!
-        baseScore = Math.min(15, baseScore * 0.20);
+      if (!qualifiesUltra) {
+        baseScore = Math.min(22, baseScore * 0.25);
         deskRejectRisk = "EXTREME";
         deskRejectPercent = 98;
-        rationale = `❌ Ultra-High Desk-Rejection Risk (98%): Nature and Science require transformative advances of broad significance across science. Manuscripts that are brief, single-technique, or specialized in ${jDisc} are screened out at editorial pre-check within 48h.`;
+        rationale = `❌ Extreme Desk-Rejection Risk (98%): ${j.name} requires transformative paradigm shifts of broad significance across all science. Single-technique, narrow synthesis, or non-cross-disciplinary manuscripts are screened out at editorial pre-check within 48h.`;
       } else {
         baseScore = Math.min(88, baseScore * 1.15);
         deskRejectRisk = "HIGH";
-        deskRejectPercent = 88;
-        rationale = `🌟 Seminal Multidisciplinary Fit: Strong conceptual alignment with ${j.name}'s criteria for transformative breakthroughs across disciplines. Rigorous experimental reproducibility and broad appeal will determine if it passes editorial screening.`;
+        deskRejectPercent = 85;
+        rationale = `🌟 Seminal Multidisciplinary Fit: Strong conceptual alignment with ${j.name}'s criteria for transformative breakthroughs across disciplines.`;
       }
     } else if (tier === "PREMIER_DISCIPLINE") {
-      // Joule, Nature Energy, Adv. Mater., JACS, PRL
       if (isTooShort) {
         baseScore = Math.min(25, baseScore * 0.35);
         deskRejectRisk = "HIGH";
         deskRejectPercent = 85;
-        rationale = `⚠️ High Desk-Reject Risk: ${j.name} (${j.publisher}, IF: ${j.impactFactor}) is an elite discipline flagship. The abstract lacks the methodological depth and quantitative data expected for peer review.`;
-      } else if (disciplineScore > 0.2) {
-        baseScore = Math.min(94, baseScore * 1.15);
+        rationale = `⚠️ High Desk-Reject Risk: Elite discipline flagship. Manuscript abstract lacks quantitative data and methodological depth.`;
+      } else if (discScore >= 20) {
+        baseScore = Math.min(92, baseScore * 1.05);
         deskRejectRisk = "LOW";
         deskRejectPercent = 25;
-        rationale = `🎯 Elite Discipline Match: Direct hit on ${j.name}'s editorial scope for ${matchedKeywords.slice(0, 3).join(", ")}. Matches acceptance criteria for high-impact advances in ${j.discipline}.`;
-      } else {
-        baseScore *= 0.6;
-        deskRejectRisk = "MODERATE";
-        deskRejectPercent = 60;
-        rationale = `Relevant premier platform, but manuscript focus lies outside the core primary scope of ${j.name}.`;
-      }
-    } else if (tier === "SPECIALIZED_HIGH") {
-      // ACS Energy Letters, Small, Matter, PRX, Nat. Comm.
-      if (disciplineScore > 0.15) {
-        baseScore = Math.min(92, baseScore * 1.1);
-        deskRejectRisk = isBrief ? "MODERATE" : "LOW";
-        deskRejectPercent = isBrief ? 50 : 20;
-        rationale = `✨ Strong Scope Alignment: Well-targeted for ${j.name}'s readership, capturing your findings on ${matchedKeywords.slice(0, 3).join(", ")}. High probability of editorial send-out for peer review.`;
+        rationale = `🎯 Elite Discipline Match: Direct hit on ${j.name}'s scope for ${matchedKeywords.slice(0, 3).join(", ")}. Matches high-impact criteria in ${j.discipline}.`;
       } else {
         baseScore *= 0.65;
         deskRejectRisk = "MODERATE";
-        deskRejectPercent = 55;
-        rationale = `Secondary thematic relevance in ${j.publisher} applied materials and physical sciences.`;
+        deskRejectPercent = 60;
+        rationale = `Premier journal, but manuscript focus lies outside the core primary scope of ${j.name}.`;
+      }
+    } else if (tier === "SPECIALIZED_HIGH") {
+      if (discScore >= 20) {
+        baseScore = Math.min(94, baseScore * 1.08);
+        deskRejectRisk = isBrief ? "MODERATE" : "LOW";
+        deskRejectPercent = isBrief ? 45 : 15;
+        rationale = `✨ Strong Scope Alignment: Tailor-made for ${j.name}'s readership, capturing your findings on ${matchedKeywords.slice(0, 3).join(", ")}. Very high chance of peer review send-out.`;
+      } else {
+        baseScore *= 0.70;
+        deskRejectRisk = "MODERATE";
+        deskRejectPercent = 50;
+        rationale = `Secondary thematic relevance in ${j.publisher} materials portfolio.`;
       }
     } else {
-      // COMMUNITY_CORE: PRB, Solid State Ionics, Comp. Mater. Sci., etc.
-      if (disciplineScore > 0.2) {
-        baseScore = Math.min(90, baseScore * 1.15);
+      if (discScore >= 20) {
+        baseScore = Math.min(85, baseScore * 1.05);
         deskRejectRisk = "LOW";
-        deskRejectPercent = 15;
-        rationale = `✅ Excellent Methodological Fit: ${j.name} provides a prestigious, focused home for rigorous ${isDFTTheoretical ? "DFT and condensed matter theory" : "materials and device research"}. Very low desk-rejection probability.`;
+        deskRejectPercent = 20;
+        rationale = `✅ Excellent Methodological Fit: ${j.name} provides a prestigious, focused home for rigorous research with very low desk-rejection risk.`;
       } else {
+        baseScore *= 0.75;
         deskRejectRisk = "MODERATE";
-        deskRejectPercent = 40;
-        rationale = `Standard disciplinary scope in ${j.publisher} solid state and materials engineering.`;
+        deskRejectPercent = 45;
+        rationale = `Standard disciplinary scope in ${j.publisher}.`;
       }
     }
 
-    // Final Normalized Match Percentage (0% to 96%)
-    const matchPct = Math.min(96, Math.max(0, Math.round(baseScore)));
+    const matchPct = Math.min(96, Math.max(5, Math.round(baseScore)));
 
     return {
       ...j,
       match: matchPct,
       matchedKeywords: matchedKeywords,
+      titleKeywords: titleKeywords,
       deskRejectRisk: deskRejectRisk,
       deskRejectPercent: deskRejectPercent,
       rationale: rationale
@@ -9836,7 +10270,7 @@ function runJournalFinderAnalysis() {
 
   currentJournalResults = scoredJournals;
 
-  // 5. Update Analysis Scorecard & KPI Cards
+  // 4. Update Analysis Scorecard & KPI Cards
   const initialStatus = document.getElementById("finder-status-initial");
   const analysisResult = document.getElementById("finder-analysis-result");
   const resultsContainer = document.getElementById("finder-results-container");
@@ -9864,11 +10298,13 @@ function runJournalFinderAnalysis() {
     }
   }
 
-  // Filter journals with match >= 40% for top KPIs
-  const validJournals = scoredJournals.filter(j => j.match >= 40);
+  // Adaptive threshold for valid matches
   const topMatch = scoredJournals.length > 0 ? Math.max(...scoredJournals.map(j => j.match)) : 0;
-  const maxIf = validJournals.length > 0 ? Math.max(...validJournals.map(j => j.impactFactor)) : (scoredJournals.length > 0 ? Math.max(...scoredJournals.map(j => j.impactFactor)) : 0);
-  const minWeeks = scoredJournals.length > 0 ? Math.min(...scoredJournals.map(j => j.reviewWeeks)) : 0;
+  const validThreshold = topMatch >= 50 ? 40 : (topMatch >= 30 ? Math.max(25, topMatch - 15) : 15);
+  const validJournals = scoredJournals.filter(j => j.match >= validThreshold);
+
+  const maxIf = validJournals.length > 0 ? Math.max(...validJournals.map(j => j.impactFactor)) : 0;
+  const minWeeks = validJournals.length > 0 ? Math.min(...validJournals.map(j => j.reviewWeeks)) : 0;
 
   if (kpiTopMatch) kpiTopMatch.textContent = topMatch + "%";
   if (kpiMaxIf) kpiMaxIf.textContent = maxIf > 0 ? maxIf.toFixed(1) : "--";
@@ -9893,7 +10329,7 @@ function runJournalFinderAnalysis() {
 
       editorialNote.innerHTML = `
         <strong>💡 Springer Nature &amp; Elsevier Scope Assessment:</strong> 
-        Based on semantic vector similarity and disciplinary profiling, 
+        Based on semantic domain profiling and keyword matching, 
         <strong>${escapeHtml(top1.name)}</strong> (${escapeHtml(top1.publisher)}, IF: ${top1.impactFactor}) 
         is your primary recommendation with <strong>${top1.match}% Scope Match</strong> (Desk Reject Risk: ${top1.deskRejectRisk}), 
         followed by <strong>${escapeHtml(top2.name)}</strong> (${top2.match}%). 
@@ -9902,7 +10338,7 @@ function runJournalFinderAnalysis() {
     }
   }
 
-  // 6. Apply Filters & Render
+  // 5. Apply Filters & Render
   applyJournalFilters();
 }
 
@@ -9927,14 +10363,20 @@ function applyJournalFilters() {
 
   let filtered = [...currentJournalResults];
 
-  // 1. Hide low matches (< 40%) by default (Prevents Nature showing up for trivial inputs!)
+  // 1. Hide low matches
   if (hideLow) {
-    filtered = filtered.filter(j => j.match >= 40);
+    const topMatch = currentJournalResults.length > 0 ? Math.max(...currentJournalResults.map(j => j.match)) : 0;
+    const threshold = topMatch >= 50 ? 40 : (topMatch >= 30 ? Math.max(25, topMatch - 15) : 15);
+    filtered = filtered.filter(j => j.match >= threshold);
   }
 
-  // 2. Discipline filter
+  // 2. Discipline filter (matches primary or secondary disciplines)
   if (discFilter !== "ALL") {
-    filtered = filtered.filter(j => (j.discipline || "") === discFilter || (discFilter === "multidisciplinary" && j.discipline === "multidisciplinary"));
+    filtered = filtered.filter(j => 
+      (j.discipline || "") === discFilter || 
+      ((j.secondaryDisciplines || []).includes(discFilter)) ||
+      (discFilter === "multidisciplinary" && j.discipline === "multidisciplinary")
+    );
   }
 
   // 3. Publisher filter
@@ -9950,7 +10392,7 @@ function applyJournalFilters() {
 
   // 4. Publishing model filter
   if (oaFilter !== "ALL") {
-    filtered = filtered.filter(j => j.oaType.toLowerCase().includes(oaFilter.toLowerCase()));
+    filtered = filtered.filter(j => (j.oaType || "").toLowerCase().includes(oaFilter.toLowerCase()));
   }
 
   // 5. Min IF filter
@@ -10048,10 +10490,17 @@ function sortAndRenderJournalResults() {
       riskBadgeHtml = `<span style="background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; font-size:11px; font-weight:700; padding:2px 8px; border-radius:4px;">🔴 High Desk-Reject Risk (${j.deskRejectPercent}%)</span>`;
     }
 
-    // Matched Tags
-    const matchedTagsHtml = j.matchedKeywords && j.matchedKeywords.length > 0
-      ? j.matchedKeywords.map(k => `<span class="journal-tag-chip matched">✓ ${escapeHtml(k)}</span>`).join("")
-      : `<span style="font-size:11px; color:#94a3b8;">General disciplinary alignment</span>`;
+    // Matched Tags (show up to 8 keywords, plus badge for remaining)
+    const kws = j.matchedKeywords || [];
+    const displayedKws = kws.slice(0, 8);
+    const extraCount = kws.length - displayedKws.length;
+    let matchedTagsHtml = displayedKws.map(k => `<span class="journal-tag-chip matched">✓ ${escapeHtml(k)}</span>`).join("");
+    if (extraCount > 0) {
+      matchedTagsHtml += `<span class="journal-tag-chip" style="background:#f1f5f9; color:#475569; font-weight:600;">+${extraCount} more</span>`;
+    }
+    if (!matchedTagsHtml) {
+      matchedTagsHtml = `<span style="font-size:11px; color:#94a3b8;">General disciplinary alignment</span>`;
+    }
 
     return `
       <div class="journal-card" style="border:1px solid #e2e8f0; border-radius:10px; background:#fff; padding:16px 20px; box-shadow:0 1px 3px rgba(0,0,0,0.04); transition:all 0.2s;">
@@ -10111,28 +10560,15 @@ function sortAndRenderJournalResults() {
           </div>
         </div>
 
-        <!-- Aligned Keywords & AI Editorial Rationale -->
-        <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;">
-          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-            <span style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">Matched Editorial Keywords:</span>
-            ${matchedTagsHtml}
-          </div>
-          <div style="background:${j.match < 40 ? '#fef2f2' : '#eff6ff'}; border-left:3.5px solid ${j.match < 40 ? '#ef4444' : '#3b82f6'}; padding:8px 12px; border-radius:6px; font-size:12px; color:${j.match < 40 ? '#991b1b' : '#1e40af'}; line-height:1.5;">
-            <strong>AI Scope Evaluation:</strong> ${escapeHtml(j.rationale)}
-          </div>
+        <!-- Matched Keywords Strip -->
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+          <span style="font-size:11px; font-weight:700; color:#64748b; margin-right:4px;">MATCHED KEYWORDS:</span>
+          ${matchedTagsHtml}
         </div>
 
-        <!-- Action Links & Copy -->
-        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed #e2e8f0; padding-top:8px; font-size:12px; flex-wrap:wrap; gap:8px;">
-          <span style="color:#64748b; font-size:11.5px;">Publisher: <strong>${escapeHtml(j.publisher)}</strong></span>
-          <div style="display:flex; gap:8px;">
-            <button class="btn btn-outline btn-sm" onclick="copyJournalCitation('${escapeHtml(j.name)}', '${j.impactFactor}', '${escapeHtml(j.publisher)}')" style="padding:3px 10px; font-size:11.5px;">
-              📋 Copy Info
-            </button>
-            <a href="${escapeHtml(j.url)}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" style="padding:3px 10px; font-size:11.5px; text-decoration:none; color:#1e40af; border-color:#93c5fd;">
-              🌐 Official Scope &amp; Submission ↗
-            </a>
-          </div>
+        <!-- Editorial Rationale Box -->
+        <div style="font-size:12px; color:#334155; background:#f1f5f9; padding:8px 12px; border-radius:6px; border-left:3px solid ${scoreColor}; line-height:1.45;">
+          <strong>AI Match Rationale:</strong> ${escapeHtml(j.rationale)}
         </div>
       </div>
     `;
@@ -10141,51 +10577,46 @@ function sortAndRenderJournalResults() {
 
 // Reset Journal Filters to Default
 function resetJournalFilters() {
-  if (document.getElementById("finder-filter-discipline")) document.getElementById("finder-filter-discipline").value = "ALL";
-  if (document.getElementById("finder-filter-publisher")) document.getElementById("finder-filter-publisher").value = "ALL";
-  if (document.getElementById("finder-filter-oa")) document.getElementById("finder-filter-oa").value = "ALL";
-  if (document.getElementById("finder-filter-min-if")) document.getElementById("finder-filter-min-if").value = "0";
-  if (document.getElementById("finder-filter-speed")) document.getElementById("finder-filter-speed").value = "0";
-  if (document.getElementById("finder-hide-low-matches")) document.getElementById("finder-hide-low-matches").checked = true;
+  const disc = document.getElementById("finder-filter-discipline");
+  const pub = document.getElementById("finder-filter-publisher");
+  const oa = document.getElementById("finder-filter-oa");
+  const minIf = document.getElementById("finder-filter-min-if");
+  const speed = document.getElementById("finder-filter-speed");
+  const hideLow = document.getElementById("finder-hide-low-matches");
+  const sortBy = document.getElementById("finder-sort-by");
+
+  if (disc) disc.value = "ALL";
+  if (pub) pub.value = "ALL";
+  if (oa) oa.value = "ALL";
+  if (minIf) minIf.value = "0";
+  if (speed) speed.value = "0";
+  if (hideLow) hideLow.checked = true;
+  if (sortBy) sortBy.value = "RELEVANCE";
+
   applyJournalFilters();
 }
 
-// Copy Journal Citation Info to Clipboard
-function copyJournalCitation(name, ifScore, publisher) {
-  const text = `${name} (${publisher}) | Clarivate IF: ${ifScore}`;
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(() => {
-      alert(`Copied to clipboard: "${text}"`);
-    }).catch(() => {
-      prompt("Copy journal info:", text);
-    });
-  } else {
-    prompt("Copy journal info:", text);
-  }
-}
-
-// Export Matched Journal List as CSV
-function exportJournalFinderList() {
+// Export Filtered Journal Recommendations as CSV
+function exportJournalRecommendationsCSV() {
   if (!currentJournalFiltered || currentJournalFiltered.length === 0) {
-    alert("No journals available to export. Run an analysis first.");
+    alert("No journal recommendations to export. Please run an analysis first.");
     return;
   }
 
-  const headers = ["Rank", "Journal Name", "Publisher", "Match Percentage", "Desk Rejection Risk", "Impact Factor (JCR)", "CiteScore", "Quartile", "Publishing Model", "Review Time (Weeks)", "Acceptance Rate (%)", "Discipline", "Matched Keywords", "Official URL"];
-  const rows = currentJournalFiltered.map((j, i) => [
-    i + 1,
-    `"${j.name.replace(/"/g, '""')}"`,
-    `"${j.publisher}"`,
-    `"${j.match}%"`,
-    `"${j.deskRejectRisk} (${j.deskRejectPercent}%)"`,
+  const headers = ["Rank", "Journal Name", "Publisher", "Match Score (%)", "Clarivate IF", "CiteScore", "Review Speed (Weeks)", "Acceptance Rate (%)", "Quartile", "Publishing Model", "Discipline", "Desk-Reject Risk", "URL"];
+  const rows = currentJournalFiltered.map((j, idx) => [
+    idx + 1,
+    `"${(j.name || "").replace(/"/g, '""')}"`,
+    `"${(j.publisher || "").replace(/"/g, '""')}"`,
+    j.match,
     j.impactFactor,
     j.citeScore,
+    j.reviewWeeks,
+    j.acceptanceRate,
     `"${j.quartile}"`,
     `"${j.oaType}"`,
-    j.reviewWeeks,
-    `${j.acceptanceRate}%`,
     `"${j.discipline || ''}"`,
-    `"${(j.matchedKeywords || []).join("; ").replace(/"/g, '""')}"`,
+    `"${j.deskRejectRisk} (${j.deskRejectPercent}%)"`,
     `"${j.url}"`
   ]);
 
@@ -10194,7 +10625,7 @@ function exportJournalFinderList() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `Springer_Grade_Matched_Journals_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `Springer_Elsevier_Journal_Recommendations_${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -10202,7 +10633,7 @@ function exportJournalFinderList() {
 }
 
 
-// Window Bindings
+// Window Bindings for HTML onclick/onchange handlers
 window.switchManuscriptSubTab = switchManuscriptSubTab;
 window.updateAbstractWordCount = updateAbstractWordCount;
 window.loadSampleJournalAbstract = loadSampleJournalAbstract;
@@ -10212,8 +10643,8 @@ window.runJournalFinderAnalysis = runJournalFinderAnalysis;
 window.applyJournalFilters = applyJournalFilters;
 window.sortAndRenderJournalResults = sortAndRenderJournalResults;
 window.resetJournalFilters = resetJournalFilters;
-window.copyJournalCitation = copyJournalCitation;
-window.exportJournalFinderList = exportJournalFinderList;
+window.exportJournalRecommendationsCSV = exportJournalRecommendationsCSV;
+window.exportJournalFinderList = exportJournalRecommendationsCSV;
 
 
 function initPlagDropZone() {
