@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T01:40:43.622Z",
+  "exported_at": "2026-11-13T01:42:29.250Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -238,7 +238,16 @@
         "source": "ORCID"
       }
     ],
-    "conferences": [],
+    "conferences": [
+      {
+        "title": "Intrinsic and Electrically Tunable Spin-Valley Splitting in Janus MoSSe Monolayers",
+        "event": "2025 KPS Fall Meeting, Gwangju, South Korea",
+        "type": "Poster Presentation",
+        "year": 2025,
+        "visibility": "Public",
+        "url": ""
+      }
+    ],
     "skills": {
       "synthesis": "Solid-State Reaction & High-Temp Sintering (up to 1600 °C), Atomic Layer Deposition (ALD), Hydrothermal/Solvothermal, Sol-Gel, Ball Milling, Cold Isostatic Pressing (CIP), Ar-Glovebox Coin/Swagelok Cell Assembly",
       "characterization": "Powder & Thin-Film XRD (Bruker D8, Rietveld Refinement via GSAS-II / FullProf), FE-SEM & EDS Mapping, HR-TEM & SAED, XPS Depth Profiling (CasaXPS), Raman & FTIR Spectroscopy, EIS / Cyclic Voltammetry (BioLogic EC-Lab), BET, TGA/DSC",
