@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:18:03.685Z",
+  "exported_at": "2026-11-13T05:18:07.015Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -296,16 +296,17 @@
       },
       {
         "title": "Magnetic and Optical Properties of Transition Metal (Cr, Mn, Fe, Co, and Ni) Doped Lead-Free Ferroelectric Bi0.5Na0.5TiO3 Materials",
-        "authors": "Dung, D.D., Thoan, N.H., Lam, N.H., Lam, V.T., Trung, N.N., Linh, N.H., Van, D.Q.",
+        "authors": "Dang Duc Dung; Nguyen Hoang Thoan; Nguyen Huu Lam; Vu Tien Lam; Nguyen Ngoc Trung; Nguyen Hoang Linh; Duong Quoc Van",
         "journal": "Lecture Notes in Mechanical Engineering",
         "year": 2022,
         "doi": "10.1007/978-3-030-99666-6_88",
-        "citations": 0,
+        "citations": 1,
         "volume": "",
         "issue": "",
-        "pages": "",
+        "pages": "610-614",
         "source": "ORCID",
-        "visibility": "Public"
+        "visibility": "Public",
+        "id": 1794547086534
       },
       {
         "title": "Magnetic properties of new (1−x)Bi1/2Na1/2TiO3+xBaNiO3−δ solid solution materials",
