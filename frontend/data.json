@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T01:52:37.880Z",
+  "exported_at": "2026-11-13T01:52:39.440Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -57,42 +57,6 @@
       }
     ],
     "publications": [
-      {
-        "title": "Magnetic properties of new binary compounds lead-free ferroelectric (1-x)Ba(Zr0·2Ti0.8)O3+xFeTiO3 as solid solution",
-        "authors": "Vu Tien Lam",
-        "journal": "Journal of Solid State Chemistry",
-        "year": 2025,
-        "doi": "",
-        "citations": 0,
-        "source": "ORCID"
-      },
-      {
-        "title": "Nature defect-mediated room temperature ferromagnetism in lead-free ferroelectric Ba(Zr0.2Ti0.8)O3: A first-principles study",
-        "authors": "Vu Tien Lam",
-        "journal": "Next Materials",
-        "year": 2025,
-        "doi": "",
-        "citations": 0,
-        "source": "ORCID"
-      },
-      {
-        "title": "Role of substitution Zr-site on the electronic structure and magnetic properties of BaTiO3 materials: A first principles calculation",
-        "authors": "Vu Tien Lam",
-        "journal": "Computational and Theoretical Chemistry",
-        "year": 2025,
-        "doi": "",
-        "citations": 0,
-        "source": "ORCID"
-      },
-      {
-        "title": "Comparative electronic structure, magnetic and optical properties of cubic perovskite BaXO3 (X=Ti, Sn) with self-defects: A first-principles calculation",
-        "authors": "Vu Tien Lam",
-        "journal": "Materials Today Communications",
-        "year": 2024,
-        "doi": "",
-        "citations": 0,
-        "source": "ORCID"
-      },
       {
         "title": "First-principles calculations of self-defects on the structural, electronic, and optical properties of BaXO3 (X = Ti, Zr, and Hf) perovskite oxide materials",
         "authors": "Vu Tien Lam",
