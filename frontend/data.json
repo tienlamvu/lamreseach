@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T05:33:33.042Z",
+  "exported_at": "2026-11-13T05:40:46.586Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -548,6 +548,69 @@
     }
   ],
   "structures": [
+    {
+      "name": "VSSe",
+      "formula": "VSSe",
+      "chemical_formula": "VSSe",
+      "crystal_system": "Triclinic",
+      "space_group": "P1 (1)",
+      "structure_type": "Bulk 3D",
+      "mp_id": "",
+      "materials_project_id": "",
+      "a": 3.2477,
+      "b": 3.2477,
+      "c": 17.9211,
+      "alpha": 90,
+      "beta": 90,
+      "gamma": 120,
+      "volume": 163.7,
+      "natoms": 3,
+      "dft_code": "VASP",
+      "functional": "PBE",
+      "dft_functional": "PBE",
+      "ecut": 520,
+      "cutoff_energy": 520,
+      "kpoints": "8x8x8",
+      "bandgap": 3.2,
+      "bandgap_ev": 3.2,
+      "bandgap_type": "Direct",
+      "energy_per_atom": -6.85,
+      "total_energy_per_atom": -6.85,
+      "magnetic_state": "NM",
+      "notes": "",
+      "raw_cif": "data_VSSe\n_audit_creation_date              2026-06-17\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.2477\n_cell_length_b                    3.2477\n_cell_length_c                    17.9211\n_cell_angle_alpha                 90.0000\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0000\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nV1     V     0.33333   0.66667   0.49159   0.00000  Uiso   1.00\nS1     Se    0.66667   0.33333   0.58281   0.00000  Uiso   1.00\nSe1    S     0.66667   0.33333   0.41250   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nV1     S1      2.488   .     S\nV1     S1      2.488   1_565 S\nV1     S1      2.488   1_455 S\nV1     Se1     2.350   .     S\nV1     Se1     2.350   1_565 S\nV1     Se1     2.350   1_455 S\nS1     V1      2.488   1_545 S\nS1     V1      2.488   1_655 S\nSe1    V1      2.350   1_545 S\nSe1    V1      2.350   1_655 S",
+      "cif_content": "data_VSSe\n_audit_creation_date              2026-06-17\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.2477\n_cell_length_b                    3.2477\n_cell_length_c                    17.9211\n_cell_angle_alpha                 90.0000\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0000\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nV1     V     0.33333   0.66667   0.49159   0.00000  Uiso   1.00\nS1     Se    0.66667   0.33333   0.58281   0.00000  Uiso   1.00\nSe1    S     0.66667   0.33333   0.41250   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nV1     S1      2.488   .     S\nV1     S1      2.488   1_565 S\nV1     S1      2.488   1_455 S\nV1     Se1     2.350   .     S\nV1     Se1     2.350   1_565 S\nV1     Se1     2.350   1_455 S\nS1     V1      2.488   1_545 S\nS1     V1      2.488   1_655 S\nSe1    V1      2.350   1_545 S\nSe1    V1      2.350   1_655 S",
+      "poscar_text": "VSSe Triclinic P1 (1)\n1.0\n       3.24770000     0.00000000     0.00000000\n      -1.62385000     2.81259070     0.00000000\n       0.00000000     0.00000000    17.92110000\n    V   Se    S\n    1    1    1\nDirect\n    0.33333000   0.66667000   0.49159000\n    0.66667000   0.33333000   0.58281000\n    0.66667000   0.33333000   0.41250000\n",
+      "poscar_content": "VSSe Triclinic P1 (1)\n1.0\n       3.24770000     0.00000000     0.00000000\n      -1.62385000     2.81259070     0.00000000\n       0.00000000     0.00000000    17.92110000\n    V   Se    S\n    1    1    1\nDirect\n    0.33333000   0.66667000   0.49159000\n    0.66667000   0.33333000   0.58281000\n    0.66667000   0.33333000   0.41250000\n",
+      "atoms": [
+        {
+          "element": "V",
+          "label": "V1",
+          "x": 0.33333,
+          "y": 0.66667,
+          "z": 0.49159,
+          "occupancy": 1
+        },
+        {
+          "element": "Se",
+          "label": "S1",
+          "x": 0.66667,
+          "y": 0.33333,
+          "z": 0.58281,
+          "occupancy": 1
+        },
+        {
+          "element": "S",
+          "label": "Se1",
+          "x": 0.66667,
+          "y": 0.33333,
+          "z": 0.4125,
+          "occupancy": 1
+        }
+      ],
+      "in_weekly_report": 0,
+      "id": 1794548439558
+    },
     {
       "id": 8,
       "name": "Barium Titanate (BaTiO3)",
