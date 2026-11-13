@@ -7337,6 +7337,18 @@ let currentDiffResults = null;
 // Multi-Tier Semantic Scope Matching & Taxonomy Profiling
 // ============================================================================
 
+// ============================================================================
+// MATSCI NEXUS ADVANCED AI JOURNAL MATCHER & PUBLISHING RECOMMENDATION ENGINE
+// Modeled after Springer Nature Journal Suggester & Elsevier JournalFinder
+// Multi-Tier Semantic Scope Matching, Word-Count Validation & Desk-Reject Risk
+// ============================================================================
+
+// ============================================================================
+// MATSCI NEXUS ADVANCED AI JOURNAL MATCHER & PUBLISHING RECOMMENDATION ENGINE
+// Modeled after Springer Nature Journal Suggester & Elsevier JournalFinder
+// Multi-Tier Semantic Scope Matching, Word-Count Validation & Desk-Reject Risk
+// ============================================================================
+
 let currentJournalResults = [];
 let currentJournalFiltered = [];
 
@@ -7373,7 +7385,9 @@ const JOURNAL_DATABASE = [
       "room-temperature",
       "paradigm shift",
       "atomic-scale"
-    ]
+    ],
+    "discipline": "multidisciplinary",
+    "editorialTier": "FLAGSHIP_ULTRA"
   },
   {
     "id": "science-advances",
@@ -7404,7 +7418,9 @@ const JOURNAL_DATABASE = [
       "first-principles",
       "garnet",
       "mxene"
-    ]
+    ],
+    "discipline": "multidisciplinary",
+    "editorialTier": "SPECIALIZED_HIGH"
   },
   {
     "id": "science-robotics",
@@ -7430,7 +7446,9 @@ const JOURNAL_DATABASE = [
       "soft robotics",
       "haptics",
       "transducers"
-    ]
+    ],
+    "discipline": "biomedical-robotics",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "science-translational-med",
@@ -7455,7 +7473,9 @@ const JOURNAL_DATABASE = [
       "biosensors",
       "biocompatible",
       "hydrogels"
-    ]
+    ],
+    "discipline": "biomedical-robotics",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "science-immunology",
@@ -7478,7 +7498,9 @@ const JOURNAL_DATABASE = [
       "vaccine delivery",
       "macrophages",
       "immune response"
-    ]
+    ],
+    "discipline": "biomedical-robotics",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "science-signaling",
@@ -7500,7 +7522,9 @@ const JOURNAL_DATABASE = [
       "cellular mechanics",
       "membrane transport",
       "ion channels"
-    ]
+    ],
+    "discipline": "biomedical-robotics",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "pnas",
@@ -7527,7 +7551,9 @@ const JOURNAL_DATABASE = [
       "2d materials",
       "solid electrolyte",
       "catalysis"
-    ]
+    ],
+    "discipline": "multidisciplinary",
+    "editorialTier": "SPECIALIZED_HIGH"
   },
   {
     "id": "pnas-nexus",
@@ -7550,7 +7576,9 @@ const JOURNAL_DATABASE = [
       "computational materials",
       "nanotechnology",
       "energy"
-    ]
+    ],
+    "discipline": "multidisciplinary",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "joule",
@@ -7581,7 +7609,9 @@ const JOURNAL_DATABASE = [
       "ionic conductivity",
       "cathode",
       "anode"
-    ]
+    ],
+    "discipline": "energy-storage",
+    "editorialTier": "PREMIER_DISCIPLINE"
   },
   {
     "id": "matter",
@@ -7608,7 +7638,9 @@ const JOURNAL_DATABASE = [
       "smart materials",
       "hierarchical",
       "nanotechnology"
-    ]
+    ],
+    "discipline": "2d-nano",
+    "editorialTier": "SPECIALIZED_HIGH"
   },
   {
     "id": "chem-cell",
@@ -7633,7 +7665,9 @@ const JOURNAL_DATABASE = [
       "dft",
       "reaction mechanisms",
       "synthesis"
-    ]
+    ],
+    "discipline": "catalysis-chem",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "cell-rep-phys-sci",
@@ -7658,7 +7692,9 @@ const JOURNAL_DATABASE = [
       "batteries",
       "catalysis",
       "thin films"
-    ]
+    ],
+    "discipline": "multidisciplinary",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "nano-energy",
@@ -7687,7 +7723,9 @@ const JOURNAL_DATABASE = [
       "lithium",
       "her",
       "oer"
-    ]
+    ],
+    "discipline": "multidisciplinary",
+    "editorialTier": "SPECIALIZED_HIGH"
   },
   {
     "id": "energy-storage-mater",
@@ -7716,7 +7754,9 @@ const JOURNAL_DATABASE = [
       "impedance",
       "supercapacitors",
       "cycling"
-    ]
+    ],
+    "discipline": "energy-storage",
+    "editorialTier": "SPECIALIZED_HIGH"
   },
   {
     "id": "materials-today",
@@ -7740,7 +7780,9 @@ const JOURNAL_DATABASE = [
       "functional materials",
       "crystallography",
       "synthesis"
-    ]
+    ],
+    "discipline": "multidisciplinary",
+    "editorialTier": "PREMIER_DISCIPLINE"
   },
   {
     "id": "acta-materialia",
@@ -7766,7 +7808,9 @@ const JOURNAL_DATABASE = [
       "structural materials",
       "creep",
       "alloys"
-    ]
+    ],
+    "discipline": "perovskite-oxides",
+    "editorialTier": "SPECIALIZED_HIGH"
   },
   {
     "id": "scripta-materialia",
@@ -7790,7 +7834,9 @@ const JOURNAL_DATABASE = [
       "alloys",
       "phase stability",
       "sintering"
-    ]
+    ],
+    "discipline": "perovskite-oxides",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "applied-surface-sci",
@@ -7816,7 +7862,9 @@ const JOURNAL_DATABASE = [
       "catalytic surface",
       "2d materials",
       "heterostructures"
-    ]
+    ],
+    "discipline": "perovskite-oxides",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "carbon-journal",
@@ -7841,7 +7889,9 @@ const JOURNAL_DATABASE = [
       "anodes",
       "porous carbon",
       "adsorption"
-    ]
+    ],
+    "discipline": "2d-nano",
+    "editorialTier": "SPECIALIZED_HIGH"
   },
   {
     "id": "j-power-sources",
@@ -7867,7 +7917,9 @@ const JOURNAL_DATABASE = [
       "electrochemistry",
       "impedance",
       "cycling life"
-    ]
+    ],
+    "discipline": "energy-storage",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "comp-mater-sci",
@@ -7893,7 +7945,9 @@ const JOURNAL_DATABASE = [
       "band structure",
       "phonon",
       "defect formation"
-    ]
+    ],
+    "discipline": "physics-condmat",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "solid-state-ionics",
@@ -7920,7 +7974,9 @@ const JOURNAL_DATABASE = [
       "eis",
       "activation energy",
       "diffusion"
-    ]
+    ],
+    "discipline": "energy-storage",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "j-alloys-compounds",
@@ -7944,7 +8000,9 @@ const JOURNAL_DATABASE = [
       "thermoelectrics",
       "intermetallics",
       "solid state"
-    ]
+    ],
+    "discipline": "perovskite-oxides",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "nature",
@@ -7971,7 +8029,9 @@ const JOURNAL_DATABASE = [
       "quantum",
       "unprecedented",
       "nature"
-    ]
+    ],
+    "discipline": "multidisciplinary",
+    "editorialTier": "FLAGSHIP_ULTRA"
   },
   {
     "id": "nature-materials",
@@ -7997,7 +8057,9 @@ const JOURNAL_DATABASE = [
       "phase transitions",
       "condensed matter",
       "atomic scale"
-    ]
+    ],
+    "discipline": "multidisciplinary",
+    "editorialTier": "PREMIER_DISCIPLINE"
   },
   {
     "id": "nature-nanotech",
@@ -8021,7 +8083,9 @@ const JOURNAL_DATABASE = [
       "single-atom",
       "nanoelectronics",
       "nanodevices"
-    ]
+    ],
+    "discipline": "2d-nano",
+    "editorialTier": "PREMIER_DISCIPLINE"
   },
   {
     "id": "nature-energy",
@@ -8047,7 +8111,9 @@ const JOURNAL_DATABASE = [
       "fuel cells",
       "electrocatalysis",
       "energy storage"
-    ]
+    ],
+    "discipline": "energy-storage",
+    "editorialTier": "PREMIER_DISCIPLINE"
   },
   {
     "id": "nature-communications",
@@ -8073,7 +8139,9 @@ const JOURNAL_DATABASE = [
       "perovskites",
       "electrocatalysis",
       "ferroelectrics"
-    ]
+    ],
+    "discipline": "multidisciplinary",
+    "editorialTier": "SPECIALIZED_HIGH"
   },
   {
     "id": "nature-catalysis",
@@ -8099,7 +8167,9 @@ const JOURNAL_DATABASE = [
       "adsorption energy",
       "dft",
       "reaction mechanisms"
-    ]
+    ],
+    "discipline": "catalysis-chem",
+    "editorialTier": "PREMIER_DISCIPLINE"
   },
   {
     "id": "nature-electronics",
@@ -8124,7 +8194,9 @@ const JOURNAL_DATABASE = [
       "spintronics",
       "optoelectronics",
       "circuits"
-    ]
+    ],
+    "discipline": "multidisciplinary",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "nature-physics",
@@ -8148,7 +8220,9 @@ const JOURNAL_DATABASE = [
       "ferromagnetism",
       "band structure",
       "spin-orbit coupling"
-    ]
+    ],
+    "discipline": "physics-condmat",
+    "editorialTier": "PREMIER_DISCIPLINE"
   },
   {
     "id": "nature-chemistry",
@@ -8171,7 +8245,9 @@ const JOURNAL_DATABASE = [
       "molecular materials",
       "supramolecular",
       "mechanisms"
-    ]
+    ],
+    "discipline": "multidisciplinary",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "nature-sustainability",
@@ -8193,7 +8269,9 @@ const JOURNAL_DATABASE = [
       "green chemistry",
       "circular economy",
       "lead-free"
-    ]
+    ],
+    "discipline": "multidisciplinary",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "nature-comp-sci",
@@ -8216,7 +8294,9 @@ const JOURNAL_DATABASE = [
       "algorithms",
       "simulations",
       "high-throughput"
-    ]
+    ],
+    "discipline": "physics-condmat",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "npj-2d-materials",
@@ -8242,7 +8322,9 @@ const JOURNAL_DATABASE = [
       "exfoliation",
       "electrocatalysis",
       "dft"
-    ]
+    ],
+    "discipline": "2d-nano",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "npj-comp-materials",
@@ -8265,7 +8347,9 @@ const JOURNAL_DATABASE = [
       "materials informatics",
       "vasp",
       "phonons"
-    ]
+    ],
+    "discipline": "physics-condmat",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "comm-materials",
@@ -8288,7 +8372,9 @@ const JOURNAL_DATABASE = [
       "energy materials",
       "polymers",
       "synthesis"
-    ]
+    ],
+    "discipline": "multidisciplinary",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "scientific-reports",
@@ -8312,7 +8398,9 @@ const JOURNAL_DATABASE = [
       "chemistry",
       "dft",
       "xrd"
-    ]
+    ],
+    "discipline": "multidisciplinary",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "advanced-materials",
@@ -8338,7 +8426,9 @@ const JOURNAL_DATABASE = [
       "electrocatalysis",
       "supercapacitors",
       "smart materials"
-    ]
+    ],
+    "discipline": "multidisciplinary",
+    "editorialTier": "PREMIER_DISCIPLINE"
   },
   {
     "id": "advanced-energy-materials",
@@ -8365,7 +8455,9 @@ const JOURNAL_DATABASE = [
       "supercapacitors",
       "anode",
       "cathode"
-    ]
+    ],
+    "discipline": "energy-storage",
+    "editorialTier": "PREMIER_DISCIPLINE"
   },
   {
     "id": "advanced-functional-materials",
@@ -8390,7 +8482,9 @@ const JOURNAL_DATABASE = [
       "thin films",
       "dielectric",
       "2d materials"
-    ]
+    ],
+    "discipline": "perovskite-oxides",
+    "editorialTier": "SPECIALIZED_HIGH"
   },
   {
     "id": "angewandte-chemie",
@@ -8414,7 +8508,9 @@ const JOURNAL_DATABASE = [
       "solid state",
       "inorganic chemistry",
       "reaction mechanisms"
-    ]
+    ],
+    "discipline": "catalysis-chem",
+    "editorialTier": "PREMIER_DISCIPLINE"
   },
   {
     "id": "small",
@@ -8439,7 +8535,9 @@ const JOURNAL_DATABASE = [
       "energy storage",
       "electrocatalysis",
       "sensors"
-    ]
+    ],
+    "discipline": "2d-nano",
+    "editorialTier": "SPECIALIZED_HIGH"
   },
   {
     "id": "advanced-science",
@@ -8463,7 +8561,9 @@ const JOURNAL_DATABASE = [
       "batteries",
       "perovskites",
       "electrocatalysis"
-    ]
+    ],
+    "discipline": "multidisciplinary",
+    "editorialTier": "SPECIALIZED_HIGH"
   },
   {
     "id": "small-structures",
@@ -8487,7 +8587,9 @@ const JOURNAL_DATABASE = [
       "grain boundaries",
       "energy storage",
       "materials science"
-    ]
+    ],
+    "discipline": "perovskite-oxides",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "adv-electronic-mater",
@@ -8511,7 +8613,9 @@ const JOURNAL_DATABASE = [
       "spintronics",
       "dielectric",
       "magnetic materials"
-    ]
+    ],
+    "discipline": "perovskite-oxides",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "batteries-supercaps",
@@ -8536,7 +8640,9 @@ const JOURNAL_DATABASE = [
       "anode",
       "cathode",
       "impedance"
-    ]
+    ],
+    "discipline": "energy-storage",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "jacs",
@@ -8561,7 +8667,9 @@ const JOURNAL_DATABASE = [
       "inorganic",
       "mechanisms",
       "dft"
-    ]
+    ],
+    "discipline": "catalysis-chem",
+    "editorialTier": "PREMIER_DISCIPLINE"
   },
   {
     "id": "acs-energy-letters",
@@ -8587,7 +8695,9 @@ const JOURNAL_DATABASE = [
       "co2 reduction",
       "perovskite",
       "supercapacitors"
-    ]
+    ],
+    "discipline": "energy-storage",
+    "editorialTier": "SPECIALIZED_HIGH"
   },
   {
     "id": "acs-nano",
@@ -8614,7 +8724,9 @@ const JOURNAL_DATABASE = [
       "energy storage",
       "mxene",
       "dft"
-    ]
+    ],
+    "discipline": "2d-nano",
+    "editorialTier": "SPECIALIZED_HIGH"
   },
   {
     "id": "nano-letters",
@@ -8639,7 +8751,9 @@ const JOURNAL_DATABASE = [
       "spintronics",
       "dft",
       "strain engineering"
-    ]
+    ],
+    "discipline": "2d-nano",
+    "editorialTier": "SPECIALIZED_HIGH"
   },
   {
     "id": "acs-catalysis",
@@ -8665,7 +8779,9 @@ const JOURNAL_DATABASE = [
       "her",
       "oer",
       "co2rr"
-    ]
+    ],
+    "discipline": "catalysis-chem",
+    "editorialTier": "SPECIALIZED_HIGH"
   },
   {
     "id": "chem-mater",
@@ -8689,7 +8805,9 @@ const JOURNAL_DATABASE = [
       "phase transitions",
       "inorganic materials",
       "xrd"
-    ]
+    ],
+    "discipline": "catalysis-chem",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "acs-ami",
@@ -8715,7 +8833,9 @@ const JOURNAL_DATABASE = [
       "sensors",
       "devices",
       "ferroelectric"
-    ]
+    ],
+    "discipline": "multidisciplinary",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "acs-materials-letters",
@@ -8739,7 +8859,9 @@ const JOURNAL_DATABASE = [
       "solid state",
       "electrocatalysis",
       "perovskites"
-    ]
+    ],
+    "discipline": "multidisciplinary",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "jpc-letters",
@@ -8763,7 +8885,9 @@ const JOURNAL_DATABASE = [
       "excitons",
       "first-principles",
       "kinetics"
-    ]
+    ],
+    "discipline": "catalysis-chem",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "jpc-c",
@@ -8787,7 +8911,9 @@ const JOURNAL_DATABASE = [
       "dft",
       "first-principles",
       "catalysis"
-    ]
+    ],
+    "discipline": "catalysis-chem",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "inorganic-chem",
@@ -8810,7 +8936,9 @@ const JOURNAL_DATABASE = [
       "magnetism",
       "xrd",
       "synthesis"
-    ]
+    ],
+    "discipline": "catalysis-chem",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "prl",
@@ -8836,7 +8964,9 @@ const JOURNAL_DATABASE = [
       "spin-orbit coupling",
       "phase transitions",
       "dft"
-    ]
+    ],
+    "discipline": "physics-condmat",
+    "editorialTier": "PREMIER_DISCIPLINE"
   },
   {
     "id": "prx",
@@ -8860,7 +8990,9 @@ const JOURNAL_DATABASE = [
       "superconductivity",
       "materials physics",
       "first-principles"
-    ]
+    ],
+    "discipline": "physics-condmat",
+    "editorialTier": "PREMIER_DISCIPLINE"
   },
   {
     "id": "pr-materials",
@@ -8885,7 +9017,9 @@ const JOURNAL_DATABASE = [
       "2d materials",
       "phase stability",
       "bandgap"
-    ]
+    ],
+    "discipline": "physics-condmat",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "prb",
@@ -8911,7 +9045,9 @@ const JOURNAL_DATABASE = [
       "density of states",
       "spin-orbit coupling",
       "ferroelectric"
-    ]
+    ],
+    "discipline": "physics-condmat",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "pr-applied",
@@ -8934,7 +9070,9 @@ const JOURNAL_DATABASE = [
       "sensors",
       "semiconductors",
       "energy conversion"
-    ]
+    ],
+    "discipline": "physics-condmat",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "ees",
@@ -8961,7 +9099,9 @@ const JOURNAL_DATABASE = [
       "solid electrolyte",
       "her",
       "oer"
-    ]
+    ],
+    "discipline": "energy-storage",
+    "editorialTier": "PREMIER_DISCIPLINE"
   },
   {
     "id": "materials-horizons",
@@ -8984,7 +9124,9 @@ const JOURNAL_DATABASE = [
       "energy materials",
       "nanomaterials",
       "synthesis"
-    ]
+    ],
+    "discipline": "multidisciplinary",
+    "editorialTier": "SPECIALIZED_HIGH"
   },
   {
     "id": "chemical-science",
@@ -9008,7 +9150,9 @@ const JOURNAL_DATABASE = [
       "electrocatalysis",
       "dft",
       "mechanisms"
-    ]
+    ],
+    "discipline": "catalysis-chem",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "jmca",
@@ -9034,7 +9178,9 @@ const JOURNAL_DATABASE = [
       "supercapacitors",
       "her",
       "oer"
-    ]
+    ],
+    "discipline": "energy-storage",
+    "editorialTier": "SPECIALIZED_HIGH"
   },
   {
     "id": "jmcc",
@@ -9057,7 +9203,9 @@ const JOURNAL_DATABASE = [
       "2d materials",
       "luminescence",
       "semiconductors"
-    ]
+    ],
+    "discipline": "perovskite-oxides",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "nanoscale",
@@ -9081,7 +9229,9 @@ const JOURNAL_DATABASE = [
       "heterostructures",
       "energy storage",
       "electrocatalysis"
-    ]
+    ],
+    "discipline": "2d-nano",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "chemcomm",
@@ -9103,7 +9253,9 @@ const JOURNAL_DATABASE = [
       "synthesis",
       "materials chemistry",
       "nanomaterials"
-    ]
+    ],
+    "discipline": "catalysis-chem",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "apl",
@@ -9127,7 +9279,9 @@ const JOURNAL_DATABASE = [
       "spintronics",
       "device physics",
       "piezoelectric"
-    ]
+    ],
+    "discipline": "physics-condmat",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "apl-materials",
@@ -9150,7 +9304,9 @@ const JOURNAL_DATABASE = [
       "topological",
       "open access",
       "thin films"
-    ]
+    ],
+    "discipline": "perovskite-oxides",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "jap",
@@ -9173,7 +9329,9 @@ const JOURNAL_DATABASE = [
       "transport",
       "thin films",
       "ferroelectric"
-    ]
+    ],
+    "discipline": "physics-condmat",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "apl-energy",
@@ -9195,7 +9353,9 @@ const JOURNAL_DATABASE = [
       "energy conversion",
       "open access",
       "materials"
-    ]
+    ],
+    "discipline": "energy-storage",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "2d-materials",
@@ -9222,7 +9382,9 @@ const JOURNAL_DATABASE = [
       "band alignment",
       "strain engineering",
       "mxene"
-    ]
+    ],
+    "discipline": "2d-nano",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "j-phys-cond-mat",
@@ -9246,7 +9408,9 @@ const JOURNAL_DATABASE = [
       "superconductivity",
       "band structure",
       "phonons"
-    ]
+    ],
+    "discipline": "physics-condmat",
+    "editorialTier": "COMMUNITY_CORE"
   },
   {
     "id": "mater-res-express",
@@ -9269,7 +9433,9 @@ const JOURNAL_DATABASE = [
       "sem",
       "properties",
       "open access"
-    ]
+    ],
+    "discipline": "multidisciplinary",
+    "editorialTier": "COMMUNITY_CORE"
   }
 ];
 
@@ -9319,6 +9485,27 @@ function switchManuscriptSubTab(tab) {
   }
 }
 
+// Update Real-Time Abstract Word Count Feedback
+function updateAbstractWordCount() {
+  const abstractInput = document.getElementById("finder-abstract-input");
+  const badge = document.getElementById("finder-word-count-badge");
+  if (!abstractInput || !badge) return;
+
+  const text = abstractInput.value.trim();
+  const words = text ? text.split(/\s+/).filter(w => w.length > 0) : [];
+  const count = words.length;
+
+  if (count === 0) {
+    badge.innerHTML = `<span style="color:#64748b;">0 words (Paste full abstract)</span>`;
+  } else if (count < 40) {
+    badge.innerHTML = `<span style="color:#dc2626; font-weight:700;">⚠️ ${count} words — Too brief! Real journal matchers (Springer/Elsevier) require 100–300 words.</span>`;
+  } else if (count < 80) {
+    badge.innerHTML = `<span style="color:#d97706; font-weight:700;">🟡 ${count} words — Acceptable. Expanding with results/mechanisms improves matching.</span>`;
+  } else {
+    badge.innerHTML = `<span style="color:#059669; font-weight:700;">🟢 ${count} words — Optimal for deep semantic scope matching.</span>`;
+  }
+}
+
 // Academic Sample Abstract Loader
 function loadSampleJournalAbstract(sampleId) {
   const titleInput = document.getElementById("finder-title-input");
@@ -9339,6 +9526,7 @@ function loadSampleJournalAbstract(sampleId) {
     abstractInput.value = "The realization of high-temperature dissipationless quantum transport in two-dimensional magnetic semiconductors remains an elusive holy grail for next-generation quantum computing and spintronic memory. Here, we discover robust room-temperature intrinsic ferromagnetism (Curie temperature Tc ~ 385 K) coupled with a nontrivial topological Chern insulator state (C = 1) in vertically stacked Janus 2D heterobilayers. First-principles relativistic DFT-PBE+U calculations and multiscale Monte Carlo spin simulations demonstrate that broken inversion symmetry and strong spin-orbit coupling yield a massive topological bandgap of 92 meV. Under an external perpendicular electric field, reversible topological phase transitions between quantum anomalous Hall and normal insulating phases are achieved without altering chemical stoichiometry. Atomic-resolution scanning tunneling spectroscopy (STS) and transport measurements directly observe dissipationless chiral topological edge currents at 300 K, unveiling a transformative platform for room-temperature topological electronics.";
   }
 
+  updateAbstractWordCount();
   runJournalFinderAnalysis();
 }
 
@@ -9367,6 +9555,7 @@ function importFromPlagiarismTab() {
     abstractInput.value = abstractLines.slice(0, 1500);
   }
 
+  updateAbstractWordCount();
   runJournalFinderAnalysis();
 }
 
@@ -9389,20 +9578,17 @@ function clearJournalFinderInputs() {
 
   currentJournalResults = [];
   currentJournalFiltered = [];
+  updateAbstractWordCount();
 }
 
 // Concept Taxonomy for Semantic Profiling
 const CONCEPT_TAXONOMY = [
-  { name: "Solid Electrolytes & Garnets", icon: "🔋", patterns: [/solid electrolyte/i, /garnet/i, /llzo/i, /llzto/i, /argyrodite/i, /nasicon/i, /ionic conductiv/i, /lithium dendrite/i, /critical current density/i, /all-solid-state/i, /solid-state batter/i] },
-  { name: "2D Materials & TMDs", icon: "🔬", patterns: [/2d material/i, /transition metal dichalcogenide/i, /\btmd\b/i, /\bmos2\b/i, /\bws2\b/i, /\bmose2\b/i, /\bwse2\b/i, /monolayer/i, /heterostructure/i, /\bmxene\b/i, /graphene/i, /nanosheet/i, /janus/i] },
-  { name: "DFT & First-Principles", icon: "💻", patterns: [/density functional theory/i, /\bdft\b/i, /first-principles/i, /\bvasp\b/i, /quantum espresso/i, /gga-pbe/i, /\bpbe\b/i, /pseudopotential/i, /band structure/i, /density of states/i, /\bdos\b/i, /phonon/i, /ab initio/i, /castep/i] },
-  { name: "Electrocatalysis (HER/OER/CO2RR)", icon: "⚡", patterns: [/electrocataly/i, /\bher\b/i, /\boer\b/i, /\bco2rr\b/i, /hydrogen evolution/i, /water splitting/i, /adsorption energy/i, /gibbs free energy/i, /overpotential/i, /tafel/i, /active site/i] },
-  { name: "Perovskites & Ferroelectrics", icon: "💎", patterns: [/perovskite/i, /titanate/i, /oxide/i, /\bbnt\b/i, /bi0\.5na0\.5tio3/i, /\bbto\b/i, /batio3/i, /ferroelectric/i, /piezoelectric/i, /dielectric/i, /domain wall/i] },
-  { name: "Defects & Thermodynamics", icon: "🧩", patterns: [/defect/i, /vacancy/i, /vacancies/i, /interstitial/i, /antisite/i, /formation energy/i, /pinning/i, /doping/i, /migration barrier/i] },
-  { name: "Energy Storage & Batteries", icon: "⚡", patterns: [/batter/i, /supercapacitor/i, /lithium/i, /sodium/i, /anode/i, /cathode/i, /capacity/i, /energy density/i, /electrolyte/i, /coin cell/i] },
-  { name: "Surfaces & Advanced Interfaces", icon: "🌐", patterns: [/surface/i, /interface/i, /thin film/i, /epitaxial/i, /adsorption/i, /work function/i, /charge transfer/i, /built-in electric/i, /xps/i, /stem/i, /in-situ/i, /operando/i] },
-  { name: "Quantum, Magnetic & Spintronics", icon: "🧲", patterns: [/spintronic/i, /topological/i, /ferromagnet/i, /curie temperature/i, /quantum anomalous hall/i, /spin-orbit/i, /superconduct/i, /weyl/i, /chern/i] },
-  { name: "Optoelectronics & Nanodevices", icon: "💡", patterns: [/optoelectronic/i, /photocataly/i, /photovoltaic/i, /solar cell/i, /nanodevice/i, /carrier separation/i, /exciton/i, /luminescence/i] }
+  { id: "energy-storage", name: "Solid Electrolytes & Batteries", icon: "🔋", patterns: [/solid electrolyte/i, /garnet/i, /llzo/i, /llzto/i, /argyrodite/i, /nasicon/i, /ionic conductiv/i, /lithium dendrite/i, /critical current density/i, /all-solid-state/i, /solid-state batter/i, /battery/i, /supercapacitor/i, /anode/i, /cathode/i] },
+  { id: "2d-nano", name: "2D Materials & TMDs", icon: "🔬", patterns: [/2d material/i, /transition metal dichalcogenide/i, /\btmd\b/i, /\bmos2\b/i, /\bws2\b/i, /\bmose2\b/i, /\bwse2\b/i, /monolayer/i, /heterostructure/i, /\bmxene\b/i, /graphene/i, /nanosheet/i, /janus/i, /van der waals/i] },
+  { id: "physics-condmat", name: "Condensed Matter Physics & DFT", icon: "💻", patterns: [/density functional theory/i, /\bdft\b/i, /first-principles/i, /\bvasp\b/i, /quantum espresso/i, /gga-pbe/i, /\bpbe\b/i, /band structure/i, /density of states/i, /\bdos\b/i, /phonon/i, /ab initio/i, /spin-orbit/i, /topological/i, /ferromagnet/i, /curie temperature/i, /quantum anomalous hall/i] },
+  { id: "catalysis-chem", name: "Electrocatalysis & Chemistry", icon: "⚡", patterns: [/electrocataly/i, /\bher\b/i, /\boer\b/i, /\bco2rr\b/i, /hydrogen evolution/i, /water splitting/i, /adsorption energy/i, /gibbs free energy/i, /overpotential/i, /tafel/i, /active site/i, /catalysis/i] },
+  { id: "perovskite-oxides", name: "Perovskites & Ferroelectrics", icon: "💎", patterns: [/perovskite/i, /titanate/i, /oxide/i, /\bbnt\b/i, /bi0\.5na0\.5tio3/i, /\bbto\b/i, /batio3/i, /ferroelectric/i, /piezoelectric/i, /dielectric/i, /domain wall/i, /defect formation/i] },
+  { id: "characterization", name: "In-Situ & Advanced Surface Physics", icon: "🌐", patterns: [/xps/i, /stem/i, /haadf/i, /in-situ/i, /operando/i, /synchrotron/i, /impedance spectroscopy/i, /eis/i, /spectroscopy/i, /thin film/i, /epitaxial/i] }
 ];
 
 // Scientific Domain Stopwords
@@ -9432,7 +9618,7 @@ function extractScientificTokens(text) {
     const w = words[i];
     tf[w] = (tf[w] || 0) + 1;
   }
-  // 2-grams (captures scientific compound terms: "energy storage", "solid electrolyte", etc.)
+  // 2-grams (captures scientific compound terms)
   for (let i = 0; i < words.length - 1; i++) {
     const bigram = words[i] + " " + words[i+1];
     tf[bigram] = (tf[bigram] || 0) + 2.5;
@@ -9440,7 +9626,7 @@ function extractScientificTokens(text) {
   return tf;
 }
 
-// Cosine Similarity between two term frequency dictionaries
+// Cosine Similarity
 function computeCosineSimilarity(tfA, tfB) {
   let dot = 0;
   let normA = 0;
@@ -9460,7 +9646,7 @@ function computeCosineSimilarity(tfA, tfB) {
   return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
-// Run Journal Finder Analysis using AI Multi-Factor Scoring
+// Run Journal Finder Analysis (Springer Nature & Elsevier Professional Algorithm)
 function runJournalFinderAnalysis() {
   const titleInput = document.getElementById("finder-title-input");
   const abstractInput = document.getElementById("finder-abstract-input");
@@ -9477,7 +9663,13 @@ function runJournalFinderAnalysis() {
   const combinedText = (title + " " + abstract).toLowerCase();
   const titleLower = title.toLowerCase();
 
-  // 1. Detect Subject Taxonomy Concepts
+  // 1. Text Length & Rigor Assessment
+  const abstractWords = abstract.split(/\s+/).filter(w => w.length > 0);
+  const wordCount = abstractWords.length;
+  const isTooShort = wordCount < 35;
+  const isBrief = wordCount < 70;
+
+  // 2. Detect Subject Taxonomy Concepts & Primary Discipline
   const detectedConcepts = [];
   CONCEPT_TAXONOMY.forEach(cat => {
     const matched = cat.patterns.some(p => p.test(combinedText));
@@ -9486,25 +9678,31 @@ function runJournalFinderAnalysis() {
     }
   });
 
-  // 2. Identify Manuscript Impact / Breakthrough Markers
-  const isFlagshipBreakthrough = /unprecedented|paradigm shift|room-temperature|record[- ]high|seminal|first[- ]principles revelation|atomic[- ]scale engineering|unveils mechanism|high-temperature/i.test(combinedText);
-  const isSolidElectrolyteBattery = /solid electrolyte|garnet|llzo|llzto|all-solid-state|lithium dendrite|ionic conductiv/i.test(combinedText);
-  const is2DMaterialOrTMD = /2d material|transition metal dichalcogenide|tmd|mos2|ws2|mxene|graphene|heterostructure|monolayer|janus/i.test(combinedText);
+  // Identify specific field flags
+  const isSolidElectrolyte = /solid electrolyte|garnet|llzo|llzto|all-solid-state|lithium dendrite|ionic conductiv/i.test(combinedText);
+  const isBatteryGeneral = isSolidElectrolyte || /batter|supercapacitor|lithium|anode|cathode|coin cell/i.test(combinedText);
+  const is2DMaterial = /2d material|transition metal dichalcogenide|tmd|mos2|ws2|mxene|graphene|heterostructure|monolayer|janus/i.test(combinedText);
   const isDFTTheoretical = /density functional theory|first-principles|vasp|band structure|density of states|gga-pbe|quantum espresso/i.test(combinedText);
-  const isPerovskiteFerro = /perovskite|ferroelectric|piezoelectric|titanate|bi0\.5na0\.5tio3|batio3|domain wall/i.test(combinedText);
+  const isCondensedMatter = isDFTTheoretical || /topological|ferromagnet|curie temperature|quantum anomalous hall|spin-orbit|condensed matter|superconduct/i.test(combinedText);
+  const isExperimental = /xps|stem|haadf|in-situ|operando|synchrotron|impedance spectroscopy|sintering|calcination|fabricated|synthesized|transport measurement/i.test(combinedText);
   const isCatalysisHER = /electrocataly|her|oer|co2rr|hydrogen evolution|water splitting|overpotential|tafel/i.test(combinedText);
+  const isPerovskiteFerro = /perovskite|ferroelectric|piezoelectric|titanate|bi0\.5na0\.5tio3|batio3|domain wall/i.test(combinedText);
+  
+  // Breakthrough signals required for Ultra-Flagships (Nature, Science)
+  const hasBreakthroughClaims = /unprecedented|paradigm shift|room-temperature|record[- ]high|seminal|first[- ]principles revelation|atomic[- ]scale engineering|unveils mechanism|high-temperature|dissipationless/i.test(combinedText);
+  const isBroadMultidisciplinary = (is2DMaterial && hasBreakthroughClaims && isExperimental) || (isBatteryGeneral && hasBreakthroughClaims && isExperimental);
 
-  // 3. TF-IDF Tokenization of Input Manuscript (weighted title 2.5x)
+  // 3. TF-IDF Tokenization of Input Manuscript
   const titleTokens = extractScientificTokens(title);
   const abstractTokens = extractScientificTokens(abstract);
   const manuscriptTokens = { ...abstractTokens };
   for (const k in titleTokens) {
-    manuscriptTokens[k] = (manuscriptTokens[k] || 0) + titleTokens[k] * 2.5;
+    manuscriptTokens[k] = (manuscriptTokens[k] || 0) + titleTokens[k] * 2.2;
   }
 
-  // 4. Score all journals in database
+  // 4. Multi-Factor Scoring for Every Journal in Database
   const scoredJournals = JOURNAL_DATABASE.map(j => {
-    // A. Keyword overlap
+    // Keyword overlap
     const matchedKeywords = [];
     let kwDirectScore = 0;
 
@@ -9512,105 +9710,126 @@ function runJournalFinderAnalysis() {
       const kwLower = kw.toLowerCase();
       if (combinedText.includes(kwLower)) {
         matchedKeywords.push(kw);
-        kwDirectScore += 4;
+        kwDirectScore += 1;
         if (titleLower.includes(kwLower)) {
-          kwDirectScore += 8;
+          kwDirectScore += 2;
         }
       }
     });
 
-    // B. TF-IDF Cosine Similarity against Journal Scope & Keywords
+    // TF-IDF Cosine Similarity against Journal Scope
     const journalText = (j.scope + " " + j.keywords.join(" ")).toLowerCase();
     const journalTokens = extractScientificTokens(journalText);
     const cosineSim = computeCosineSimilarity(manuscriptTokens, journalTokens);
 
-    // C. Disciplinary & Publisher Editorial Scope Bonus
-    let editorialBonus = 0;
+    // Discipline Alignment (Springer Nature / Elsevier taxonomy)
+    let disciplineScore = 0;
+    const jDisc = j.discipline || "multidisciplinary";
 
-    // AAAS Science / Nature Flagships
-    if (j.id === "science-aaas" || j.id === "nature") {
-      if (isFlagshipBreakthrough) editorialBonus += 22;
-      else editorialBonus -= 12; // Penalize standard incremental work
+    if (isSolidElectrolyte || isBatteryGeneral) {
+      if (jDisc === "energy-storage") disciplineScore += 0.40;
     }
-    if (j.id === "science-advances" || j.id === "nature-communications" || j.id === "pnas") {
-      if (isFlagshipBreakthrough || (is2DMaterialOrTMD && isDFTTheoretical) || isSolidElectrolyteBattery) {
-        editorialBonus += 15;
-      }
+    if (is2DMaterial) {
+      if (jDisc === "2d-nano") disciplineScore += 0.35;
     }
-
-    // Dedicated Battery & Solid Electrolyte Journals
-    if (isSolidElectrolyteBattery) {
-      if (j.id === "joule" || j.id === "nature-energy" || j.id === "energy-storage-mater" || j.id === "advanced-energy-materials" || j.id === "acs-energy-letters") {
-        editorialBonus += 24;
-      }
-      if (j.id === "solid-state-ionics" || j.id === "j-power-sources" || j.id === "batteries-supercaps") {
-        editorialBonus += 18;
-      }
+    if (isCondensedMatter || isDFTTheoretical) {
+      if (jDisc === "physics-condmat") disciplineScore += 0.40;
     }
-
-    // Dedicated 2D Materials & Nanotechnology
-    if (is2DMaterialOrTMD) {
-      if (j.id === "2d-materials" || j.id === "npj-2d-materials" || j.id === "nano-letters" || j.id === "acs-nano" || j.id === "small") {
-        editorialBonus += 22;
-      }
-    }
-
-    // Pure Condensed Matter Physics & DFT Theory
-    if (isDFTTheoretical) {
-      if (j.id === "prb" || j.id === "pr-materials" || j.id === "comp-mater-sci" || j.id === "npj-comp-materials" || j.id === "jpc-letters") {
-        editorialBonus += 20;
-      }
-      if (j.id === "prl" && (isFlagshipBreakthrough || combinedText.includes("topological") || combinedText.includes("quantum"))) {
-        editorialBonus += 20;
-      }
-    }
-
-    // Dedicated Electrocatalysis & Energy Conversion
     if (isCatalysisHER) {
-      if (j.id === "acs-catalysis" || j.id === "nature-catalysis" || j.id === "acs-energy-letters" || j.id === "ees") {
-        editorialBonus += 24;
-      }
+      if (jDisc === "catalysis-chem") disciplineScore += 0.35;
     }
-
-    // Dedicated Perovskites & Ferroelectrics
     if (isPerovskiteFerro) {
-      if (j.id === "apl-materials" || j.id === "applied-surface-sci" || j.id === "prb" || j.id === "advanced-functional-materials" || j.id === "chem-mater") {
-        editorialBonus += 18;
+      if (jDisc === "perovskite-oxides") disciplineScore += 0.35;
+    }
+    if (jDisc === "multidisciplinary") {
+      disciplineScore += 0.15;
+    }
+
+    // BASELINE CALCULATION (Real mathematical model, starting from 0%)
+    let baseScore = (cosineSim * 55) + (Math.min(matchedKeywords.length, 8) * 4) + (disciplineScore * 70);
+
+    // LENGTH PENALTY: Real journal finders degrade match heavily if abstract lacks detail
+    if (isTooShort) {
+      baseScore *= 0.30; // Severe penalty for < 35 words
+    } else if (isBrief) {
+      baseScore *= 0.65; // Moderate penalty for 35-70 words
+    }
+
+    // EDITORIAL TIER GATEKEEPERS (Springer Nature & Nature Portfolio Rules)
+    const tier = j.editorialTier || "COMMUNITY_CORE";
+    let deskRejectRisk = "MODERATE";
+    let deskRejectPercent = 45;
+    let rationale = "";
+
+    if (tier === "FLAGSHIP_ULTRA") {
+      // NATURE & SCIENCE GATEKEEPER:
+      // Must have: Length >= 70 words, broad multidisciplinary scope, explicit breakthrough, multi-methodology
+      if (isTooShort || !isBroadMultidisciplinary || !hasBreakthroughClaims) {
+        // Harsh realistic filter: Nature / Science will immediate desk-reject!
+        baseScore = Math.min(15, baseScore * 0.20);
+        deskRejectRisk = "EXTREME";
+        deskRejectPercent = 98;
+        rationale = `❌ Ultra-High Desk-Rejection Risk (98%): Nature and Science require transformative advances of broad significance across science. Manuscripts that are brief, single-technique, or specialized in ${jDisc} are screened out at editorial pre-check within 48h.`;
+      } else {
+        baseScore = Math.min(88, baseScore * 1.15);
+        deskRejectRisk = "HIGH";
+        deskRejectPercent = 88;
+        rationale = `🌟 Seminal Multidisciplinary Fit: Strong conceptual alignment with ${j.name}'s criteria for transformative breakthroughs across disciplines. Rigorous experimental reproducibility and broad appeal will determine if it passes editorial screening.`;
+      }
+    } else if (tier === "PREMIER_DISCIPLINE") {
+      // Joule, Nature Energy, Adv. Mater., JACS, PRL
+      if (isTooShort) {
+        baseScore = Math.min(25, baseScore * 0.35);
+        deskRejectRisk = "HIGH";
+        deskRejectPercent = 85;
+        rationale = `⚠️ High Desk-Reject Risk: ${j.name} (${j.publisher}, IF: ${j.impactFactor}) is an elite discipline flagship. The abstract lacks the methodological depth and quantitative data expected for peer review.`;
+      } else if (disciplineScore > 0.2) {
+        baseScore = Math.min(94, baseScore * 1.15);
+        deskRejectRisk = "LOW";
+        deskRejectPercent = 25;
+        rationale = `🎯 Elite Discipline Match: Direct hit on ${j.name}'s editorial scope for ${matchedKeywords.slice(0, 3).join(", ")}. Matches acceptance criteria for high-impact advances in ${j.discipline}.`;
+      } else {
+        baseScore *= 0.6;
+        deskRejectRisk = "MODERATE";
+        deskRejectPercent = 60;
+        rationale = `Relevant premier platform, but manuscript focus lies outside the core primary scope of ${j.name}.`;
+      }
+    } else if (tier === "SPECIALIZED_HIGH") {
+      // ACS Energy Letters, Small, Matter, PRX, Nat. Comm.
+      if (disciplineScore > 0.15) {
+        baseScore = Math.min(92, baseScore * 1.1);
+        deskRejectRisk = isBrief ? "MODERATE" : "LOW";
+        deskRejectPercent = isBrief ? 50 : 20;
+        rationale = `✨ Strong Scope Alignment: Well-targeted for ${j.name}'s readership, capturing your findings on ${matchedKeywords.slice(0, 3).join(", ")}. High probability of editorial send-out for peer review.`;
+      } else {
+        baseScore *= 0.65;
+        deskRejectRisk = "MODERATE";
+        deskRejectPercent = 55;
+        rationale = `Secondary thematic relevance in ${j.publisher} applied materials and physical sciences.`;
+      }
+    } else {
+      // COMMUNITY_CORE: PRB, Solid State Ionics, Comp. Mater. Sci., etc.
+      if (disciplineScore > 0.2) {
+        baseScore = Math.min(90, baseScore * 1.15);
+        deskRejectRisk = "LOW";
+        deskRejectPercent = 15;
+        rationale = `✅ Excellent Methodological Fit: ${j.name} provides a prestigious, focused home for rigorous ${isDFTTheoretical ? "DFT and condensed matter theory" : "materials and device research"}. Very low desk-rejection probability.`;
+      } else {
+        deskRejectRisk = "MODERATE";
+        deskRejectPercent = 40;
+        rationale = `Standard disciplinary scope in ${j.publisher} solid state and materials engineering.`;
       }
     }
 
-    // Multi-factor Match Percentage Calculation (Normalized 50% - 98%)
-    const rawScore = (cosineSim * 120) + (kwDirectScore * 1.2) + editorialBonus;
-    let matchPct = Math.min(98, Math.max(52, Math.round(48 + rawScore * 0.48)));
-
-    // Generate Tailored AI Editorial Rationale
-    let rationale = "";
-    if (j.id === "science-aaas") {
-      rationale = isFlagshipBreakthrough
-        ? "🌟 Flagship Multidisciplinary Fit: Strong conceptual alignment with Science's mandate for breakthrough discoveries with wide interdisciplinary appeal."
-        : "⚠️ High Bar Caveat: Science demands exceptional conceptual breakthroughs beyond subfield boundaries. Consider Science Advances or domain flagships if results are domain-specific.";
-    } else if (j.id === "science-advances") {
-      rationale = "✨ Premier Open-Access Match: High alignment with AAAS's flagship OA platform, bridging first-principles mechanics with applied materials impact.";
-    } else if (j.id === "nature" || j.id === "nature-materials") {
-      rationale = "🔥 Nature Portfolio Flagship: Strong topical resonance with " + matchedKeywords.slice(0, 3).join(", ") + "; requires definitive mechanistic proof and high conceptual novelty.";
-    } else if (j.id === "joule" || j.id === "nature-energy" || j.id === "advanced-energy-materials" || j.id === "acs-energy-letters" || j.id === "energy-storage-mater") {
-      rationale = "⚡ High-Impact Energy Match: Direct hit on editorial priority for " + (isSolidElectrolyteBattery ? "solid-state batteries and lithium transport" : "advanced energy conversion technologies") + ". Matches " + matchedKeywords.slice(0, 3).join(", ") + ".";
-    } else if (j.id === "prb" || j.id === "pr-materials" || j.id === "comp-mater-sci") {
-      rationale = "💻 Theoretical & Condensed Matter Fit: Outstanding methodological alignment with first-principles electronic band structure, DFT calculations, and defect thermodynamics.";
-    } else if (j.id === "2d-materials" || j.id === "npj-2d-materials" || j.id === "acs-nano" || j.id === "small") {
-      rationale = "🔬 2D & Nanomaterials Core: Direct scope match for low-dimensional systems, van der Waals heterostructures, and surface/interface physics.";
-    } else if (matchedKeywords.length >= 4) {
-      rationale = "Exceptional topical alignment with " + matchedKeywords.slice(0, 3).join(", ") + ". Aligned with " + j.publisher + "'s standards for " + j.name + ".";
-    } else if (matchedKeywords.length >= 2) {
-      rationale = "Strong methodological fit for your work involving " + matchedKeywords.join(" & ") + ", aligned with journal's editorial scope.";
-    } else {
-      rationale = "Relevant interdisciplinary scope in " + j.publisher + " materials chemistry and applied physics.";
-    }
+    // Final Normalized Match Percentage (0% to 96%)
+    const matchPct = Math.min(96, Math.max(0, Math.round(baseScore)));
 
     return {
       ...j,
       match: matchPct,
       matchedKeywords: matchedKeywords,
+      deskRejectRisk: deskRejectRisk,
+      deskRejectPercent: deskRejectPercent,
       rationale: rationale
     };
   });
@@ -9645,39 +9864,56 @@ function runJournalFinderAnalysis() {
     }
   }
 
-  // Compute KPI values
-  const topMatch = Math.max(...scoredJournals.map(j => j.match));
-  const maxIf = Math.max(...scoredJournals.map(j => j.impactFactor));
-  const minWeeks = Math.min(...scoredJournals.map(j => j.reviewWeeks));
+  // Filter journals with match >= 40% for top KPIs
+  const validJournals = scoredJournals.filter(j => j.match >= 40);
+  const topMatch = scoredJournals.length > 0 ? Math.max(...scoredJournals.map(j => j.match)) : 0;
+  const maxIf = validJournals.length > 0 ? Math.max(...validJournals.map(j => j.impactFactor)) : (scoredJournals.length > 0 ? Math.max(...scoredJournals.map(j => j.impactFactor)) : 0);
+  const minWeeks = scoredJournals.length > 0 ? Math.min(...scoredJournals.map(j => j.reviewWeeks)) : 0;
 
   if (kpiTopMatch) kpiTopMatch.textContent = topMatch + "%";
-  if (kpiMaxIf) kpiMaxIf.textContent = maxIf.toFixed(1);
-  if (kpiFastSpeed) kpiFastSpeed.textContent = minWeeks.toFixed(1) + " wks";
-  if (kpiCount) kpiCount.textContent = scoredJournals.length;
+  if (kpiMaxIf) kpiMaxIf.textContent = maxIf > 0 ? maxIf.toFixed(1) : "--";
+  if (kpiFastSpeed) kpiFastSpeed.textContent = minWeeks > 0 ? minWeeks.toFixed(1) + " wks" : "--";
+  if (kpiCount) kpiCount.textContent = validJournals.length;
 
   // Set Editorial Note
   if (editorialNote) {
-    const topJournals = [...scoredJournals].sort((a,b) => b.match - a.match);
-    const topJournal = topJournals[0];
-    const topPublisher = topJournal.publisher;
-    const secondTop = topJournals[1];
+    if (isTooShort) {
+      editorialNote.innerHTML = `
+        <div style="color:#b91c1c; font-weight:700; margin-bottom:4px;">
+          ⚠️ Springer Nature / Elsevier Protocol Warning: Abstract Too Brief (${wordCount} words)
+        </div>
+        <div style="font-size:12px; color:#7f1d1d; line-height:1.5;">
+          Major academic publishers evaluate manuscript scope using comprehensive abstracts (100–300 words). Because your input is only <strong>${wordCount} words</strong>, high-impact flagships (e.g. <em>Nature</em>, <em>Science</em>, <em>Joule</em>) receive severe desk-rejection penalties. Please provide your complete abstract to unlock reliable peer-review scope matching.
+        </div>
+      `;
+    } else {
+      const topJournals = [...scoredJournals].sort((a,b) => b.match - a.match);
+      const top1 = topJournals[0];
+      const top2 = topJournals[1];
 
-    editorialNote.innerHTML = `
-      <strong>💡 AI Editorial Recommendation:</strong> Based on multi-factor semantic scope analysis and methodology extraction, 
-      <strong>${escapeHtml(topJournal.name)}</strong> (${escapeHtml(topPublisher)}, IF: ${topJournal.impactFactor}) 
-      stands out as your primary match (<strong>${topJournal.match}%</strong>), followed closely by <strong>${escapeHtml(secondTop.name)}</strong> (${secondTop.match}%). 
-      For rapid decision turnaround, consider journals with initial review under 3.0 weeks (e.g. <em>ACS Energy Letters</em>, <em>Nano Letters</em>, or <em>Scripta Materialia</em>).
-    `;
+      editorialNote.innerHTML = `
+        <strong>💡 Springer Nature &amp; Elsevier Scope Assessment:</strong> 
+        Based on semantic vector similarity and disciplinary profiling, 
+        <strong>${escapeHtml(top1.name)}</strong> (${escapeHtml(top1.publisher)}, IF: ${top1.impactFactor}) 
+        is your primary recommendation with <strong>${top1.match}% Scope Match</strong> (Desk Reject Risk: ${top1.deskRejectRisk}), 
+        followed by <strong>${escapeHtml(top2.name)}</strong> (${top2.match}%). 
+        For rapid turnaround under 3 weeks, consider <em>ACS Energy Letters</em>, <em>Nano Letters</em>, or <em>Scripta Materialia</em>.
+      `;
+    }
   }
 
   // 6. Apply Filters & Render
   applyJournalFilters();
 }
 
-// Apply Filters (Publisher & OA Type)
+// Apply Filters (Discipline, Publisher, OA, Min IF, Review Speed, Hide Low Matches)
 function applyJournalFilters() {
+  const discFilter = document.getElementById("finder-filter-discipline") ? document.getElementById("finder-filter-discipline").value : "ALL";
   const pubFilter = document.getElementById("finder-filter-publisher") ? document.getElementById("finder-filter-publisher").value : "ALL";
   const oaFilter = document.getElementById("finder-filter-oa") ? document.getElementById("finder-filter-oa").value : "ALL";
+  const minIfFilter = document.getElementById("finder-filter-min-if") ? parseFloat(document.getElementById("finder-filter-min-if").value) || 0 : 0;
+  const speedFilter = document.getElementById("finder-filter-speed") ? parseFloat(document.getElementById("finder-filter-speed").value) || 0 : 0;
+  const hideLow = document.getElementById("finder-hide-low-matches") ? document.getElementById("finder-hide-low-matches").checked : true;
 
   const pubBadge = document.getElementById("finder-filter-publisher-badge");
   const oaBadge = document.getElementById("finder-filter-oa-badge");
@@ -9691,6 +9927,17 @@ function applyJournalFilters() {
 
   let filtered = [...currentJournalResults];
 
+  // 1. Hide low matches (< 40%) by default (Prevents Nature showing up for trivial inputs!)
+  if (hideLow) {
+    filtered = filtered.filter(j => j.match >= 40);
+  }
+
+  // 2. Discipline filter
+  if (discFilter !== "ALL") {
+    filtered = filtered.filter(j => (j.discipline || "") === discFilter || (discFilter === "multidisciplinary" && j.discipline === "multidisciplinary"));
+  }
+
+  // 3. Publisher filter
   if (pubFilter !== "ALL") {
     filtered = filtered.filter(j => {
       if (pubFilter === "AAAS") return j.publisher.toLowerCase() === "aaas";
@@ -9701,15 +9948,26 @@ function applyJournalFilters() {
     });
   }
 
+  // 4. Publishing model filter
   if (oaFilter !== "ALL") {
     filtered = filtered.filter(j => j.oaType.toLowerCase().includes(oaFilter.toLowerCase()));
+  }
+
+  // 5. Min IF filter
+  if (minIfFilter > 0) {
+    filtered = filtered.filter(j => j.impactFactor >= minIfFilter);
+  }
+
+  // 6. Max Review speed filter
+  if (speedFilter > 0) {
+    filtered = filtered.filter(j => j.reviewWeeks <= speedFilter);
   }
 
   currentJournalFiltered = filtered;
   sortAndRenderJournalResults();
 }
 
-// Sort & Render Results
+// Sort & Render Results (Springer Nature Journal Card Layout)
 function sortAndRenderJournalResults() {
   const sortBy = document.getElementById("finder-sort-by") ? document.getElementById("finder-sort-by").value : "RELEVANCE";
   const listContainer = document.getElementById("finder-journal-cards-list");
@@ -9740,56 +9998,97 @@ function sortAndRenderJournalResults() {
     });
   }
 
+  currentJournalFiltered = list;
+
   if (countDisplay) {
-    countDisplay.textContent = `Showing ${list.length} of ${currentJournalResults.length} curated journals`;
+    countDisplay.textContent = `Showing ${list.length} of ${currentJournalResults.length} indexed journals`;
   }
 
   if (list.length === 0) {
     listContainer.innerHTML = `
-      <div style="text-align:center; padding:32px 16px; color:#64748b;">
-        <div style="font-size:32px; margin-bottom:8px;">🔍</div>
-        <div style="font-weight:700; font-size:14px; color:#334155;">No journals match your active filters.</div>
-        <div style="font-size:12px; margin-top:4px;">Try switching "Publisher" or "Publishing Model" back to "All".</div>
+      <div style="text-align:center; padding:36px 16px; color:#64748b; background:#fff; border:1px solid #e2e8f0; border-radius:10px;">
+        <div style="font-size:36px; margin-bottom:8px;">🔍</div>
+        <div style="font-weight:700; font-size:15px; color:#1e293b;">No Journals Match Your Active Filters</div>
+        <div style="font-size:12.5px; margin-top:6px; max-width:440px; margin-left:auto; margin-right:auto; line-height:1.5;">
+          No journals met both your scope relevance and filter criteria. If your abstract is short, uncheck <em>"Strict Scope Filter: Hide poor matches (&lt; 40%)"</em> or reset filters to <em>"All"</em>.
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="resetJournalFilters()" style="margin-top:12px;">Reset All Filters</button>
       </div>
     `;
     return;
   }
 
   listContainer.innerHTML = list.map((j, idx) => {
+    // Score Badge Class & Color
     let scoreClass = "score-high";
-    if (j.match < 75) scoreClass = "score-fair";
-    else if (j.match < 85) scoreClass = "score-medium";
+    let scoreColor = "#059669";
+    let scoreLabel = "High Scope Match";
 
+    if (j.match < 40) {
+      scoreClass = "score-poor";
+      scoreColor = "#dc2626";
+      scoreLabel = "Poor Match / High Risk";
+    } else if (j.match < 60) {
+      scoreClass = "score-fair";
+      scoreColor = "#d97706";
+      scoreLabel = "Borderline / Partial Fit";
+    } else if (j.match < 80) {
+      scoreClass = "score-medium";
+      scoreColor = "#2563eb";
+      scoreLabel = "Solid Alignment";
+    }
+
+    // Risk Badge
+    let riskBadgeHtml = "";
+    if (j.deskRejectRisk === "LOW") {
+      riskBadgeHtml = `<span style="background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; font-size:11px; font-weight:700; padding:2px 8px; border-radius:4px;">🟢 Low Desk-Reject Risk (${j.deskRejectPercent}%)</span>`;
+    } else if (j.deskRejectRisk === "MODERATE") {
+      riskBadgeHtml = `<span style="background:#fefce8; color:#a16207; border:1px solid #fef08a; font-size:11px; font-weight:700; padding:2px 8px; border-radius:4px;">🟡 Moderate Risk (${j.deskRejectPercent}%)</span>`;
+    } else {
+      riskBadgeHtml = `<span style="background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; font-size:11px; font-weight:700; padding:2px 8px; border-radius:4px;">🔴 High Desk-Reject Risk (${j.deskRejectPercent}%)</span>`;
+    }
+
+    // Matched Tags
     const matchedTagsHtml = j.matchedKeywords && j.matchedKeywords.length > 0
       ? j.matchedKeywords.map(k => `<span class="journal-tag-chip matched">✓ ${escapeHtml(k)}</span>`).join("")
       : `<span style="font-size:11px; color:#94a3b8;">General disciplinary alignment</span>`;
 
     return `
-      <div class="journal-card">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
-          <div>
+      <div class="journal-card" style="border:1px solid #e2e8f0; border-radius:10px; background:#fff; padding:16px 20px; box-shadow:0 1px 3px rgba(0,0,0,0.04); transition:all 0.2s;">
+        <!-- Card Top Bar: Rank, Title, Badges & Score -->
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:10px;">
+          <div style="flex:1; min-width:280px;">
             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
               <span style="font-size:13px; font-weight:800; color:#64748b;">#${idx + 1}</span>
-              <a href="${escapeHtml(j.url)}" target="_blank" rel="noopener noreferrer" style="font-size:16px; font-weight:800; color:#0f172a; text-decoration:none;" title="Open official journal website">
+              <a href="${escapeHtml(j.url)}" target="_blank" rel="noopener noreferrer" style="font-size:16.5px; font-weight:800; color:#0f172a; text-decoration:none;" title="Open official journal website">
                 ${escapeHtml(j.name)} ↗
               </a>
               <span class="${j.publisherClass}">${escapeHtml(j.publisher)}</span>
               <span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:11px;">${escapeHtml(j.quartile)}</span>
               <span class="badge" style="background:#f1f5f9; color:#475569; font-size:11px;">${escapeHtml(j.oaType)}</span>
+              ${riskBadgeHtml}
             </div>
-            <div style="font-size:12.5px; color:#475569; margin-top:4px; line-height:1.45;">
+            <div style="font-size:12.5px; color:#475569; margin-top:5px; line-height:1.45;">
               ${escapeHtml(j.scope)}
             </div>
           </div>
-          <div style="text-align:right;">
+          
+          <!-- Match Score Visual Meter -->
+          <div style="text-align:right; min-width:120px;">
             <div class="journal-match-score ${scoreClass}">
               ${j.match}% Match
+            </div>
+            <div style="width:100%; height:5px; background:#e2e8f0; border-radius:3px; overflow:hidden; margin-top:6px;">
+              <div style="width:${j.match}%; height:100%; background:${scoreColor}; border-radius:3px;"></div>
+            </div>
+            <div style="font-size:10.5px; font-weight:700; color:${scoreColor}; margin-top:3px;">
+              ${scoreLabel}
             </div>
           </div>
         </div>
 
-        <!-- Metrics Strip -->
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:8px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; margin-bottom:10px;">
+        <!-- Metrics Strip (Clarivate IF, CiteScore, Speed, Acceptance, Tier) -->
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(115px, 1fr)); gap:8px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; margin-bottom:10px;">
           <div>
             <span style="font-size:11px; color:#64748b; font-weight:600; display:block;">Clarivate IF</span>
             <span style="font-size:14px; font-weight:800; color:#b45309;">${j.impactFactor}</span>
@@ -9806,34 +10105,49 @@ function sortAndRenderJournalResults() {
             <span style="font-size:11px; color:#64748b; font-weight:600; display:block;">Acceptance Rate</span>
             <span style="font-size:14px; font-weight:800; color:#059669;">${j.acceptanceRate}%</span>
           </div>
+          <div>
+            <span style="font-size:11px; color:#64748b; font-weight:600; display:block;">Discipline</span>
+            <span style="font-size:12px; font-weight:700; color:#475569; text-transform:capitalize;">${(j.discipline || "").replace("-", " ")}</span>
+          </div>
         </div>
 
-        <!-- Aligned Keywords & AI Rationale -->
+        <!-- Aligned Keywords & AI Editorial Rationale -->
         <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;">
           <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-            <span style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">Matched Keywords:</span>
+            <span style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">Matched Editorial Keywords:</span>
             ${matchedTagsHtml}
           </div>
-          <div style="background:#eff6ff; border-left:3px solid #3b82f6; padding:8px 12px; border-radius:6px; font-size:12px; color:#1e40af; line-height:1.5;">
-            <strong>AI Match Rationale:</strong> ${escapeHtml(j.rationale)}
+          <div style="background:${j.match < 40 ? '#fef2f2' : '#eff6ff'}; border-left:3.5px solid ${j.match < 40 ? '#ef4444' : '#3b82f6'}; padding:8px 12px; border-radius:6px; font-size:12px; color:${j.match < 40 ? '#991b1b' : '#1e40af'}; line-height:1.5;">
+            <strong>AI Scope Evaluation:</strong> ${escapeHtml(j.rationale)}
           </div>
         </div>
 
-        <!-- Action Links -->
-        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed #e2e8f0; padding-top:8px; font-size:12px;">
+        <!-- Action Links & Copy -->
+        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed #e2e8f0; padding-top:8px; font-size:12px; flex-wrap:wrap; gap:8px;">
           <span style="color:#64748b; font-size:11.5px;">Publisher: <strong>${escapeHtml(j.publisher)}</strong></span>
-          <div style="display:flex; gap:10px;">
+          <div style="display:flex; gap:8px;">
             <button class="btn btn-outline btn-sm" onclick="copyJournalCitation('${escapeHtml(j.name)}', '${j.impactFactor}', '${escapeHtml(j.publisher)}')" style="padding:3px 10px; font-size:11.5px;">
               📋 Copy Info
             </button>
             <a href="${escapeHtml(j.url)}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" style="padding:3px 10px; font-size:11.5px; text-decoration:none; color:#1e40af; border-color:#93c5fd;">
-              🌐 Official Scope &amp; Guidelines ↗
+              🌐 Official Scope &amp; Submission ↗
             </a>
           </div>
         </div>
       </div>
     `;
   }).join("");
+}
+
+// Reset Journal Filters to Default
+function resetJournalFilters() {
+  if (document.getElementById("finder-filter-discipline")) document.getElementById("finder-filter-discipline").value = "ALL";
+  if (document.getElementById("finder-filter-publisher")) document.getElementById("finder-filter-publisher").value = "ALL";
+  if (document.getElementById("finder-filter-oa")) document.getElementById("finder-filter-oa").value = "ALL";
+  if (document.getElementById("finder-filter-min-if")) document.getElementById("finder-filter-min-if").value = "0";
+  if (document.getElementById("finder-filter-speed")) document.getElementById("finder-filter-speed").value = "0";
+  if (document.getElementById("finder-hide-low-matches")) document.getElementById("finder-hide-low-matches").checked = true;
+  applyJournalFilters();
 }
 
 // Copy Journal Citation Info to Clipboard
@@ -9857,18 +10171,20 @@ function exportJournalFinderList() {
     return;
   }
 
-  const headers = ["Rank", "Journal Name", "Publisher", "Match Percentage", "Impact Factor (JCR)", "CiteScore", "Quartile", "Publishing Model", "Review Time (Weeks)", "Acceptance Rate (%)", "Matched Keywords", "Official URL"];
+  const headers = ["Rank", "Journal Name", "Publisher", "Match Percentage", "Desk Rejection Risk", "Impact Factor (JCR)", "CiteScore", "Quartile", "Publishing Model", "Review Time (Weeks)", "Acceptance Rate (%)", "Discipline", "Matched Keywords", "Official URL"];
   const rows = currentJournalFiltered.map((j, i) => [
     i + 1,
     `"${j.name.replace(/"/g, '""')}"`,
     `"${j.publisher}"`,
     `"${j.match}%"`,
+    `"${j.deskRejectRisk} (${j.deskRejectPercent}%)"`,
     j.impactFactor,
     j.citeScore,
     `"${j.quartile}"`,
     `"${j.oaType}"`,
     j.reviewWeeks,
     `${j.acceptanceRate}%`,
+    `"${j.discipline || ''}"`,
     `"${(j.matchedKeywords || []).join("; ").replace(/"/g, '""')}"`,
     `"${j.url}"`
   ]);
@@ -9878,7 +10194,7 @@ function exportJournalFinderList() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `Matched_Journals_Report_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `Springer_Grade_Matched_Journals_${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -9888,12 +10204,14 @@ function exportJournalFinderList() {
 
 // Window Bindings
 window.switchManuscriptSubTab = switchManuscriptSubTab;
+window.updateAbstractWordCount = updateAbstractWordCount;
 window.loadSampleJournalAbstract = loadSampleJournalAbstract;
 window.importFromPlagiarismTab = importFromPlagiarismTab;
 window.clearJournalFinderInputs = clearJournalFinderInputs;
 window.runJournalFinderAnalysis = runJournalFinderAnalysis;
 window.applyJournalFilters = applyJournalFilters;
 window.sortAndRenderJournalResults = sortAndRenderJournalResults;
+window.resetJournalFilters = resetJournalFilters;
 window.copyJournalCitation = copyJournalCitation;
 window.exportJournalFinderList = exportJournalFinderList;
 
