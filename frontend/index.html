@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261114_v57_cloud_visibility" onerror="this.href='/static/styles.css?v=20261114_v57_cloud_visibility'" />
+  <link rel="stylesheet" href="styles.css?v=20261114_v58_searchable_batch" onerror="this.href='/static/styles.css?v=20261114_v58_searchable_batch'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -282,21 +282,63 @@
             <button class="btn btn-outline btn-sm" onclick="exportAllBibtex()">📋 Copy All BibTeX</button>
           </div>
 
-          <!-- References Batch Action Toolbar (Admin Only) -->
-          <div class="batch-action-bar admin-only" id="paper-batch-bar" style="display:flex; align-items:center; justify-content:space-between; gap:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:9px 14px; margin-bottom:12px; font-size:13px;">
-            <div style="display:flex; align-items:center; gap:10px;">
-              <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; color:#334155; margin:0;">
-                <input type="checkbox" id="paper-select-all-cb" onchange="toggleSelectAllPapers(this.checked)" style="width:16px; height:16px; accent-color:var(--primary); cursor:pointer;" />
-                Select All
-              </label>
-              <span id="paper-batch-count-text" style="color:#64748b; font-size:12.5px;">• 0 selected</span>
+          <!-- References Batch Action Toolbar (Admin & Personal Users) -->
+          <div class="batch-action-bar admin-only" id="paper-batch-bar" style="display:flex; flex-direction:column; gap:10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 14px; margin-bottom:12px; font-size:13px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; width:100%;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-weight:700; color:#1e293b; margin:0;">
+                  <input type="checkbox" id="paper-select-all-cb" onchange="toggleSelectAllPapers(this.checked)" style="width:16px; height:16px; accent-color:var(--primary); cursor:pointer;" />
+                  Select All
+                </label>
+                <span id="paper-batch-count-text" style="color:#64748b; font-size:12.5px; font-weight:600;">• 0 selected</span>
+              </div>
+
+              <!-- Rich Batch Customization Controls (Visible when >=1 selected) -->
+              <div id="paper-batch-custom-controls" style="display:none; align-items:center; gap:8px; flex-wrap:wrap;">
+                <!-- 1. Batch Visibility (Strict Admin Only) -->
+                <div class="strict-admin-only" style="display:inline-flex; align-items:center; gap:5px; background:#eff6ff; border:1px solid #bfdbfe; padding:4px 8px; border-radius:7px;">
+                  <span style="font-size:11.5px; font-weight:700; color:#1e3a8a;">🛡️ Visibility:</span>
+                  <select id="batch-lit-visibility" onchange="handleVisibilitySelectChange('batch-lit')" style="padding:4px 8px; border-radius:5px; border:1px solid #93c5fd; font-size:12px; background:#fff; color:#0f172a; font-weight:600;">
+                    <option value="Public">🌍 Public</option>
+                    <option value="Users">👥 All Users</option>
+                    <option value="Specific">🎯 Specific User(s)...</option>
+                    <option value="Private">🔒 Private</option>
+                  </select>
+                  <button type="button" class="btn btn-primary btn-sm" style="padding:4px 9px; font-size:11.5px;" onclick="applyBatchPapersVisibility()">Apply</button>
+                </div>
+
+                <!-- 2. Batch Reading Status -->
+                <div style="display:inline-flex; align-items:center; gap:5px; background:#f1f5f9; border:1px solid #cbd5e1; padding:4px 8px; border-radius:7px;">
+                  <span style="font-size:11.5px; font-weight:700; color:#334155;">📖 Status:</span>
+                  <select id="batch-lit-status" style="padding:4px 8px; border-radius:5px; border:1px solid #cbd5e1; font-size:12px; background:#fff; color:#0f172a;">
+                    <option value="To Read">To Read</option>
+                    <option value="Reading">Reading</option>
+                    <option value="Read">Read</option>
+                    <option value="Key Reference">Key Reference</option>
+                    <option value="Cited in Thesis">Cited in Thesis</option>
+                  </select>
+                  <button type="button" class="btn btn-outline btn-sm" style="padding:4px 9px; font-size:11.5px; background:#fff;" onclick="applyBatchPapersField('status')">Apply</button>
+                </div>
+
+                <!-- 3. Batch Weekly Report Toggle -->
+                <div style="display:inline-flex; align-items:center; gap:5px; background:#f1f5f9; border:1px solid #cbd5e1; padding:4px 8px; border-radius:7px;">
+                  <span style="font-size:11.5px; font-weight:700; color:#334155;">📽️ Report:</span>
+                  <select id="batch-lit-report" style="padding:4px 8px; border-radius:5px; border:1px solid #cbd5e1; font-size:12px; background:#fff; color:#0f172a;">
+                    <option value="1">Include in Report</option>
+                    <option value="0">Remove from Report</option>
+                  </select>
+                  <button type="button" class="btn btn-outline btn-sm" style="padding:4px 9px; font-size:11.5px; background:#fff;" onclick="applyBatchPapersField('report')">Apply</button>
+                </div>
+
+                <button type="button" class="btn btn-outline btn-sm" style="padding:5px 10px; font-size:12px;" onclick="copySelectedPapersBibtex()">📋 Copy BibTeX</button>
+                <button type="button" class="btn btn-outline btn-sm" id="paper-batch-clear-btn" style="padding:5px 10px; font-size:12px;" onclick="clearSelectedPapers()">Clear Selection</button>
+                <button type="button" class="btn btn-danger btn-sm" id="paper-batch-delete-btn" style="font-weight:700; background:#dc2626; color:#ffffff; border:none; display:inline-flex; align-items:center; gap:4px; padding:5px 11px; font-size:12px;" onclick="deleteSelectedPapers()">
+                  🗑️ Delete Selected (<span id="paper-batch-delete-count">0</span>)
+                </button>
+              </div>
             </div>
-            <div style="display:flex; gap:8px;">
-              <button class="btn btn-outline btn-sm" id="paper-batch-clear-btn" style="display:none;" onclick="clearSelectedPapers()">Clear Selection</button>
-              <button class="btn btn-danger btn-sm" id="paper-batch-delete-btn" style="display:none; font-weight:700; background:#dc2626; color:#ffffff; border:none; display:inline-flex; align-items:center; gap:4px;" onclick="deleteSelectedPapers()">
-                🗑️ Delete Selected (<span id="paper-batch-delete-count">0</span>)
-              </button>
-            </div>
+            <!-- Compact Searchable Specific User Picker for Batch Visibility -->
+            <div id="batch-lit-specific-box" class="specific-users-picker-wrap strict-admin-only" style="display:none; width:100%;"></div>
           </div>
 
           <div id="papers-list-container"></div>
@@ -436,6 +478,72 @@
               <option value="Completed">Completed</option>
             </select>
           </div>
+
+          <!-- Calendar Events Batch Action Toolbar (Admin & Personal Users) -->
+          <div class="batch-action-bar admin-only" id="sched-batch-bar" style="display:flex; flex-direction:column; gap:10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 14px; margin-bottom:12px; font-size:13px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; width:100%;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-weight:700; color:#1e293b; margin:0;">
+                  <input type="checkbox" id="sched-select-all-cb" onchange="toggleSelectAllSchedule(this.checked)" style="width:16px; height:16px; accent-color:var(--primary); cursor:pointer;" />
+                  Select All Events
+                </label>
+                <span id="sched-batch-count-text" style="color:#64748b; font-size:12.5px; font-weight:600;">• 0 selected</span>
+              </div>
+
+              <div id="sched-batch-custom-controls" style="display:none; align-items:center; gap:8px; flex-wrap:wrap;">
+                <!-- 1. Batch Visibility (Strict Admin Only) -->
+                <div class="strict-admin-only" style="display:inline-flex; align-items:center; gap:5px; background:#eff6ff; border:1px solid #bfdbfe; padding:4px 8px; border-radius:7px;">
+                  <span style="font-size:11.5px; font-weight:700; color:#1e3a8a;">🛡️ Visibility:</span>
+                  <select id="batch-sched-visibility" onchange="handleVisibilitySelectChange('batch-sched')" style="padding:4px 8px; border-radius:5px; border:1px solid #93c5fd; font-size:12px; background:#fff; color:#0f172a; font-weight:600;">
+                    <option value="Public">🌍 Public</option>
+                    <option value="Users">👥 All Users</option>
+                    <option value="Specific">🎯 Specific User(s)...</option>
+                    <option value="Private">🔒 Private</option>
+                  </select>
+                  <button type="button" class="btn btn-primary btn-sm" style="padding:4px 9px; font-size:11.5px;" onclick="applyBatchScheduleVisibility()">Apply</button>
+                </div>
+
+                <!-- 2. Batch Status -->
+                <div style="display:inline-flex; align-items:center; gap:5px; background:#f1f5f9; border:1px solid #cbd5e1; padding:4px 8px; border-radius:7px;">
+                  <span style="font-size:11.5px; font-weight:700; color:#334155;">📌 Status:</span>
+                  <select id="batch-sched-status" style="padding:4px 8px; border-radius:5px; border:1px solid #cbd5e1; font-size:12px; background:#fff; color:#0f172a;">
+                    <option value="Scheduled">Scheduled</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                  </select>
+                  <button type="button" class="btn btn-outline btn-sm" style="padding:4px 9px; font-size:11.5px; background:#fff;" onclick="applyBatchScheduleField('status')">Apply</button>
+                </div>
+
+                <!-- 3. Batch Priority -->
+                <div style="display:inline-flex; align-items:center; gap:5px; background:#f1f5f9; border:1px solid #cbd5e1; padding:4px 8px; border-radius:7px;">
+                  <span style="font-size:11.5px; font-weight:700; color:#334155;">🔥 Priority:</span>
+                  <select id="batch-sched-priority" style="padding:4px 8px; border-radius:5px; border:1px solid #cbd5e1; font-size:12px; background:#fff; color:#0f172a;">
+                    <option value="High">High</option>
+                    <option value="Normal">Normal</option>
+                    <option value="Low">Low</option>
+                  </select>
+                  <button type="button" class="btn btn-outline btn-sm" style="padding:4px 9px; font-size:11.5px; background:#fff;" onclick="applyBatchScheduleField('priority')">Apply</button>
+                </div>
+
+                <!-- 4. Batch Weekly Report -->
+                <div style="display:inline-flex; align-items:center; gap:5px; background:#f1f5f9; border:1px solid #cbd5e1; padding:4px 8px; border-radius:7px;">
+                  <span style="font-size:11.5px; font-weight:700; color:#334155;">📽️ Report:</span>
+                  <select id="batch-sched-report" style="padding:4px 8px; border-radius:5px; border:1px solid #cbd5e1; font-size:12px; background:#fff; color:#0f172a;">
+                    <option value="1">Include in Report</option>
+                    <option value="0">Remove from Report</option>
+                  </select>
+                  <button type="button" class="btn btn-outline btn-sm" style="padding:4px 9px; font-size:11.5px; background:#fff;" onclick="applyBatchScheduleField('report')">Apply</button>
+                </div>
+
+                <button type="button" class="btn btn-outline btn-sm" style="padding:5px 10px; font-size:12px;" onclick="clearSelectedSchedule()">Clear Selection</button>
+                <button type="button" class="btn btn-danger btn-sm" style="font-weight:700; background:#dc2626; color:#ffffff; border:none; display:inline-flex; align-items:center; gap:4px; padding:5px 11px; font-size:12px;" onclick="deleteSelectedSchedule()">
+                  🗑️ Delete Selected (<span id="sched-batch-delete-count">0</span>)
+                </button>
+              </div>
+            </div>
+            <div id="batch-sched-specific-box" class="specific-users-picker-wrap strict-admin-only" style="display:none; width:100%;"></div>
+          </div>
+
           <div id="schedule-list-container"></div>
         </div>
       </section>
@@ -523,6 +631,64 @@
               </select>
             </div>
             <button class="btn btn-primary btn-sm admin-only" onclick="openStructureModal()">+ New Structure</button>
+          </div>
+
+          <!-- Crystal Structures Batch Action Toolbar (Admin & Personal Users) -->
+          <div class="batch-action-bar admin-only" id="struct-batch-bar" style="display:flex; flex-direction:column; gap:10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:13px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; width:100%;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-weight:700; color:#1e293b; margin:0;">
+                  <input type="checkbox" id="struct-select-all-cb" onchange="toggleSelectAllStructures(this.checked)" style="width:16px; height:16px; accent-color:var(--primary); cursor:pointer;" />
+                  Select All Structures
+                </label>
+                <span id="struct-batch-count-text" style="color:#64748b; font-size:12.5px; font-weight:600;">• 0 selected</span>
+              </div>
+
+              <div id="struct-batch-custom-controls" style="display:none; align-items:center; gap:8px; flex-wrap:wrap;">
+                <!-- 1. Batch Visibility (Strict Admin Only) -->
+                <div class="strict-admin-only" style="display:inline-flex; align-items:center; gap:5px; background:#eff6ff; border:1px solid #bfdbfe; padding:4px 8px; border-radius:7px;">
+                  <span style="font-size:11.5px; font-weight:700; color:#1e3a8a;">🛡️ Visibility:</span>
+                  <select id="batch-struct-visibility" onchange="handleVisibilitySelectChange('batch-struct')" style="padding:4px 8px; border-radius:5px; border:1px solid #93c5fd; font-size:12px; background:#fff; color:#0f172a; font-weight:600;">
+                    <option value="Public">🌍 Public</option>
+                    <option value="Users">👥 All Users</option>
+                    <option value="Specific">🎯 Specific User(s)...</option>
+                    <option value="Private">🔒 Private</option>
+                  </select>
+                  <button type="button" class="btn btn-primary btn-sm" style="padding:4px 9px; font-size:11.5px;" onclick="applyBatchStructuresVisibility()">Apply</button>
+                </div>
+
+                <!-- 2. Batch Structure Type -->
+                <div style="display:inline-flex; align-items:center; gap:5px; background:#f1f5f9; border:1px solid #cbd5e1; padding:4px 8px; border-radius:7px;">
+                  <span style="font-size:11.5px; font-weight:700; color:#334155;">🧊 Type:</span>
+                  <select id="batch-struct-type" style="padding:4px 8px; border-radius:5px; border:1px solid #cbd5e1; font-size:12px; background:#fff; color:#0f172a;">
+                    <option value="Bulk 3D">Bulk 3D</option>
+                    <option value="2D Monolayer">2D Monolayer</option>
+                    <option value="Surface Slab">Surface Slab</option>
+                    <option value="Defect Supercell">Defect Supercell</option>
+                  </select>
+                  <button type="button" class="btn btn-outline btn-sm" style="padding:4px 9px; font-size:11.5px; background:#fff;" onclick="applyBatchStructuresField('structure_type')">Apply</button>
+                </div>
+
+                <!-- 3. Batch DFT Functional -->
+                <div style="display:inline-flex; align-items:center; gap:5px; background:#f1f5f9; border:1px solid #cbd5e1; padding:4px 8px; border-radius:7px;">
+                  <span style="font-size:11.5px; font-weight:700; color:#334155;">⚡ Functional:</span>
+                  <select id="batch-struct-functional" style="padding:4px 8px; border-radius:5px; border:1px solid #cbd5e1; font-size:12px; background:#fff; color:#0f172a;">
+                    <option value="PBE">PBE</option>
+                    <option value="HSE06">HSE06</option>
+                    <option value="PBE+U">PBE+U</option>
+                    <option value="PBE + DFT-D3">PBE + DFT-D3</option>
+                    <option value="SCAN">SCAN</option>
+                  </select>
+                  <button type="button" class="btn btn-outline btn-sm" style="padding:4px 9px; font-size:11.5px; background:#fff;" onclick="applyBatchStructuresField('dft_functional')">Apply</button>
+                </div>
+
+                <button type="button" class="btn btn-outline btn-sm" style="padding:5px 10px; font-size:12px;" onclick="clearSelectedStructures()">Clear Selection</button>
+                <button type="button" class="btn btn-danger btn-sm" style="font-weight:700; background:#dc2626; color:#ffffff; border:none; display:inline-flex; align-items:center; gap:4px; padding:5px 11px; font-size:12px;" onclick="deleteSelectedStructures()">
+                  🗑️ Delete Selected (<span id="struct-batch-delete-count">0</span>)
+                </button>
+              </div>
+            </div>
+            <div id="batch-struct-specific-box" class="specific-users-picker-wrap strict-admin-only" style="display:none; width:100%;"></div>
           </div>
 
           <div id="structures-list-container" class="struct-grid"></div>
@@ -2686,7 +2852,7 @@
   <div id="toast-container"></div>
   <div id="plag-pdf-render-area" style="display:none;"></div>
 
-  <script src="matsci_tools.js?v=20261114_v57_cloud_visibility" onerror="this.src='/static/matsci_tools.js?v=20261114_v57_cloud_visibility'"></script>
-  <script src="app.js?v=20261114_v57_cloud_visibility" onerror="this.src='/static/app.js?v=20261114_v57_cloud_visibility'"></script>
+  <script src="matsci_tools.js?v=20261114_v58_searchable_batch" onerror="this.src='/static/matsci_tools.js?v=20261114_v58_searchable_batch'"></script>
+  <script src="app.js?v=20261114_v58_searchable_batch" onerror="this.src='/static/app.js?v=20261114_v58_searchable_batch'"></script>
 </body>
 </html>
