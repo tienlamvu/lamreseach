@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T12:02:52.721Z",
+  "exported_at": "2026-11-14T12:02:58.003Z",
   "profile": {
     "full_name": "Vu Tien Lam",
     "title_role": "Ph.D. Candidate in Computational Materials Science",
@@ -511,12 +511,9 @@
       "poscar_text": "BaTiO3 Cubic Pm-3m (221)\n1.0\n       4.00600000     0.00000000     0.00000000\n       0.00000000     4.00600000     0.00000000\n       0.00000000     0.00000000     4.00600000\n BaTiO3\n 1\nDirect\n   0.00000000   0.00000000   0.00000000\n",
       "poscar_content": "BaTiO3 Cubic Pm-3m (221)\n1.0\n       4.00600000     0.00000000     0.00000000\n       0.00000000     4.00600000     0.00000000\n       0.00000000     0.00000000     4.00600000\n BaTiO3\n 1\nDirect\n   0.00000000   0.00000000   0.00000000\n",
       "atoms": [],
-      "visibility": "Groups",
+      "visibility": "Specific",
       "allowed_users": [
-        "group:grp_skku_lab"
-      ],
-      "allowed_groups": [
-        "grp_skku_lab"
+        "las@gmail.com"
       ]
     },
     {
