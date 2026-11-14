@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T03:57:23.260Z",
+  "exported_at": "2026-11-14T03:57:33.462Z",
   "profile": {
     "full_name": "Vu Tien Lam",
     "title_role": "Ph.D. Candidate in Computational Materials Science",
@@ -302,7 +302,7 @@
       "total_energy_per_atom": -6.85,
       "magnetic_state": "NM",
       "notes": "Prototypical ferroelectric perovskite. Relaxed cell parameter a = 4.006 Å matches experimental XRD diffraction.",
-      "in_weekly_report": 1,
+      "in_weekly_report": 0,
       "formula": "BaTiO3",
       "materials_project_id": "mp-2998",
       "functional": "PBE",
@@ -313,7 +313,9 @@
       "cif_content": "",
       "poscar_text": "BaTiO3 Cubic Pm-3m (221)\n1.0\n       4.00600000     0.00000000     0.00000000\n       0.00000000     4.00600000     0.00000000\n       0.00000000     0.00000000     4.00600000\n BaTiO3\n 1\nDirect\n   0.00000000   0.00000000   0.00000000\n",
       "poscar_content": "BaTiO3 Cubic Pm-3m (221)\n1.0\n       4.00600000     0.00000000     0.00000000\n       0.00000000     4.00600000     0.00000000\n       0.00000000     0.00000000     4.00600000\n BaTiO3\n 1\nDirect\n   0.00000000   0.00000000   0.00000000\n",
-      "atoms": []
+      "atoms": [],
+      "visibility": "Public",
+      "allowed_users": []
     },
     {
       "id": 2,
