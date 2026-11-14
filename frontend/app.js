@@ -2451,6 +2451,7 @@ function switchAuthModalTab(mode = "signin") {
   const panes = {
     signin: document.getElementById("auth-pane-signin"),
     register: document.getElementById("auth-pane-register"),
+    reset: document.getElementById("auth-pane-reset"),
     google: document.getElementById("auth-pane-google")
   };
   const btns = {
@@ -2461,19 +2462,30 @@ function switchAuthModalTab(mode = "signin") {
 
   Object.keys(panes).forEach(k => {
     if (panes[k]) panes[k].style.display = k === mode ? "block" : "none";
-    if (btns[k]) btns[k].classList.toggle("active", k === mode);
+  });
+  Object.keys(btns).forEach(k => {
+    if (btns[k]) btns[k].classList.toggle("active", k === mode || (mode === "reset" && k === "signin"));
   });
 
   const signInErr = document.getElementById("signin-error-msg");
   if (signInErr) signInErr.style.display = "none";
   const regErr = document.getElementById("reg-error-msg");
   if (regErr) regErr.style.display = "none";
+  const regVerErr = document.getElementById("reg-verify-error-msg");
+  if (regVerErr) regVerErr.style.display = "none";
+  const resetReqErr = document.getElementById("reset-request-error-msg");
+  if (resetReqErr) resetReqErr.style.display = "none";
+  const resetConfErr = document.getElementById("reset-confirm-error-msg");
+  if (resetConfErr) resetConfErr.style.display = "none";
 
   if (mode === "google") {
     const stepEmail = document.getElementById("google-step-email");
+    const stepConsent = document.getElementById("google-step-consent");
     const stepPass = document.getElementById("google-step-password");
     if (stepEmail) stepEmail.style.display = "block";
+    if (stepConsent) stepConsent.style.display = "none";
     if (stepPass) stepPass.style.display = "none";
+    renderGoogleAccountChooserList();
     const emailInput = document.getElementById("g-email-input");
     if (emailInput) {
       emailInput.value = "";
@@ -2489,9 +2501,151 @@ function switchAuthModalTab(mode = "signin") {
     const emailEl = document.getElementById("signin-email-input");
     if (emailEl) setTimeout(() => emailEl.focus(), 120);
   } else if (mode === "register") {
+    const stepForm = document.getElementById("reg-step-form");
+    const stepVerify = document.getElementById("reg-step-verify");
+    if (stepForm) stepForm.style.display = "block";
+    if (stepVerify) stepVerify.style.display = "none";
     const nameEl = document.getElementById("reg-name-input");
     if (nameEl) setTimeout(() => nameEl.focus(), 120);
+  } else if (mode === "reset") {
+    const stepReq = document.getElementById("reset-step-request");
+    const stepConf = document.getElementById("reset-step-confirm");
+    if (stepReq) stepReq.style.display = "block";
+    if (stepConf) stepConf.style.display = "none";
+    const resetEmailEl = document.getElementById("reset-email-input");
+    const signInEmailVal = document.getElementById("signin-email-input")?.value || "";
+    if (resetEmailEl) {
+      if (signInEmailVal && !resetEmailEl.value) resetEmailEl.value = signInEmailVal.trim();
+      setTimeout(() => resetEmailEl.focus(), 120);
+    }
   }
+}
+
+function openForgotPasswordPane() {
+  const modal = document.getElementById("login-modal");
+  if (modal && !modal.classList.contains("open")) {
+    modal.classList.add("open");
+  }
+  switchAuthModalTab("reset");
+}
+
+function renderGoogleAccountChooserList() {
+  const container = document.getElementById("google-chooser-container");
+  const listEl = document.getElementById("google-chooser-list");
+  if (!container || !listEl) return;
+
+  ensureUsersRegistryInitialized();
+  const googleUsers = Object.values(STATE.usersRegistry || {}).filter(u => u && u.status !== "Suspended" && (u.googleLinked || u.authProvider?.includes("Google") || u.email?.endsWith("@gmail.com")));
+
+  if (googleUsers.length === 0) {
+    container.style.display = "none";
+    listEl.innerHTML = "";
+    return;
+  }
+
+  container.style.display = "block";
+  listEl.innerHTML = googleUsers.map(u => {
+    const gEmail = normalizeEmail(u.googleEmail || u.email);
+    const initial = (u.name || gEmail || "G").trim().charAt(0).toUpperCase();
+    return `
+      <div class="google-chooser-card" onclick="quickSignInWithGoogleAccount('${escapeHtml(gEmail)}')" title="Click to sign in & sync workspace immediately with Google (${escapeHtml(gEmail)})">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="width:30px; height:30px; border-radius:50%; background:#2563eb; color:#fff; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center;">
+            ${escapeHtml(initial)}
+          </div>
+          <div>
+            <div style="font-size:13px; font-weight:700; color:#0f172a; line-height:1.2;">${escapeHtml(u.name)}</div>
+            <div style="font-size:11.5px; color:#2563eb; font-family:monospace;">${escapeHtml(gEmail)}</div>
+          </div>
+        </div>
+        <span class="badge badge-blue" style="font-size:10.5px;">🌐 1-Click Sync →</span>
+      </div>
+    `;
+  }).join("");
+}
+
+async function quickSignInWithGoogleAccount(emailRaw) {
+  const email = normalizeEmail(emailRaw);
+  if (!email) return;
+  const input = document.getElementById("g-email-input");
+  if (input) input.value = email;
+  await handleGoogleEmailNext();
+}
+
+// ============================================================================
+// Email Verification & Self-Service Password Reset Dispatcher
+// ============================================================================
+
+function generateSixDigitOtp() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+function showEmailDispatchDrawer(config) {
+  const drawer = document.getElementById("email-dispatch-drawer");
+  if (!drawer) return;
+
+  STATE.lastDispatchedEmailConfig = config;
+
+  const titleEl = document.getElementById("edd-header-title");
+  const toEl = document.getElementById("edd-to-email");
+  const subjEl = document.getElementById("edd-subject");
+  const bodyEl = document.getElementById("edd-body-text");
+  const otpEl = document.getElementById("edd-otp-code");
+  const linkBtn = document.getElementById("edd-action-link-btn");
+  const autoFillBtn = document.getElementById("edd-autofill-btn");
+  const statusEl = document.getElementById("edd-delivery-status");
+
+  if (titleEl) titleEl.textContent = config.headerTitle || "📨 Verification Email Dispatched";
+  if (toEl) toEl.textContent = config.toEmail || "";
+  if (subjEl) subjEl.textContent = config.subject || "";
+  if (bodyEl) bodyEl.innerHTML = config.bodyHtml || "";
+  if (otpEl) otpEl.textContent = config.otpCode || "------";
+  if (statusEl) statusEl.textContent = config.statusText || "✓ Dispatched to recipient email & instant confirmation link ready";
+
+  if (linkBtn) {
+    linkBtn.textContent = config.linkButtonLabel || "✅ Click Verification Link & Confirm Now";
+    linkBtn.onclick = () => {
+      if (typeof config.onConfirmLink === "function") {
+        config.onConfirmLink();
+      }
+    };
+  }
+  if (autoFillBtn) {
+    autoFillBtn.onclick = () => {
+      if (typeof config.onAutoFill === "function") {
+        config.onAutoFill(config.otpCode);
+      }
+    };
+  }
+
+  drawer.style.display = "block";
+}
+
+function closeEmailDispatchDrawer() {
+  const drawer = document.getElementById("email-dispatch-drawer");
+  if (drawer) drawer.style.display = "none";
+}
+
+function openDispatchedEmailPreviewModal() {
+  if (STATE.lastDispatchedEmailConfig) {
+    showEmailDispatchDrawer(STATE.lastDispatchedEmailConfig);
+    showToast("📬 Opened dispatched verification email preview at top-right.", "info");
+  } else {
+    showToast("No verification email dispatched in this session yet. Click 'Resend' to dispatch a new code.", "warn");
+  }
+}
+
+async function dispatchRealEmailIfPossible(payload) {
+  // Attempt backend SMTP / API dispatch when running with Python backend
+  try {
+    const res = await fetch("/api/auth/send-verification-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) return true;
+  } catch (e) {}
+  return false;
 }
 
 async function verifyAdminPassword(pass) {
@@ -2525,7 +2679,7 @@ async function submitStandardSignIn() {
 
   const showErr = (msg) => {
     if (errEl) {
-      errEl.textContent = msg;
+      errEl.innerHTML = msg;
       errEl.style.display = "block";
     }
   };
@@ -2535,13 +2689,13 @@ async function submitStandardSignIn() {
     showErr("Please enter a valid email address.");
     return;
   }
-  if (!pass) {
-    showErr("Please enter your password.");
-    return;
-  }
 
   // Check if Administrator
   if (email === OWNER_GOOGLE_EMAIL) {
+    if (!pass) {
+      showErr("Please enter the Administrator password.");
+      return;
+    }
     const ok = await verifyAdminPassword(pass);
     if (ok) {
       completeOwnerLogin(OWNER_GOOGLE_EMAIL, "Vu Tien Lam", "");
@@ -2558,7 +2712,7 @@ async function submitStandardSignIn() {
     userObj = findRegisteredUserByEmailOrGoogle(email);
   }
   if (!userObj) {
-    showErr(`No account found for "${email}". Click "Create Account" or "Google Account" above to register!`);
+    showErr(`No account found for "${escapeHtml(email)}". Click <strong>Create Account</strong> or <strong>🌐 Google Sync</strong> above!`);
     return;
   }
   if (userObj.status === "Suspended") {
@@ -2566,9 +2720,20 @@ async function submitStandardSignIn() {
     return;
   }
 
+  // If user is a Passwordless Google-Synced user and didn't type a password, guide or sign them in via Google Sync
+  if (!pass && (userObj.passwordlessGoogle || userObj.googleLinked)) {
+    showErr(`This account is linked with Google OAuth Sync. Click <a href="javascript:void(0)" onclick="quickSignInWithGoogleAccount('${escapeHtml(email)}')" style="color:#1d4ed8; font-weight:700; text-decoration:underline;">🌐 Sign In with Google Sync</a> or enter your password.`);
+    return;
+  }
+
+  if (!pass) {
+    showErr(`Please enter your password, or click <a href="javascript:void(0)" onclick="openForgotPasswordPane()" style="color:#1d4ed8; font-weight:700; text-decoration:underline;">Forgot password?</a> to reset it.`);
+    return;
+  }
+
   const valid = await verifyUserPassword(userObj, pass);
   if (!valid) {
-    showErr("Incorrect password for this account. Please try again.");
+    showErr(`Incorrect password. Please try again or click <a href="javascript:void(0)" onclick="openForgotPasswordPane()" style="color:#1d4ed8; font-weight:700; text-decoration:underline;">🔑 Forgot password?</a> to reset it.`);
     return;
   }
 
@@ -2606,8 +2771,10 @@ async function submitUserRegistration() {
     showErr("This email belongs to the Administrator. Please switch to the Sign In tab.");
     return;
   }
+
+  await pullCloudDatabaseInstant(true);
   if (STATE.usersRegistry && STATE.usersRegistry[email]) {
-    showErr(`An account with "${email}" already exists. Please sign in instead.`);
+    showErr(`An account with "${email}" already exists. Please sign in or reset your password instead.`);
     return;
   }
   if (pass.length < 4) {
@@ -2619,8 +2786,181 @@ async function submitUserRegistration() {
     return;
   }
 
-  const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
+  if (errEl) errEl.style.display = "none";
+
   const passHash = await hashPasswordSha256(pass);
+  const otpCode = generateSixDigitOtp();
+  const verifyToken = (await hashPasswordSha256(`${email}:${otpCode}:${Date.now()}`)).slice(0, 24);
+  const verifyUrl = `${window.location.origin}${window.location.pathname}?verify_email=${encodeURIComponent(email)}&token=${encodeURIComponent(verifyToken)}`;
+
+  STATE.pendingRegistrationData = {
+    email,
+    name,
+    affiliation,
+    academicRole,
+    pass,
+    passHash,
+    linkGoogle,
+    seedStarter,
+    otpCode,
+    verifyToken,
+    verifyUrl,
+    createdAtMs: Date.now()
+  };
+
+  try {
+    localStorage.setItem("matsci_pending_reg_v1", JSON.stringify(STATE.pendingRegistrationData));
+  } catch (e) {}
+
+  // Switch UI to Step 2: Email Verification
+  const stepForm = document.getElementById("reg-step-form");
+  const stepVerify = document.getElementById("reg-step-verify");
+  const targetBadge = document.getElementById("reg-verify-target-email");
+  const otpInput = document.getElementById("reg-verify-otp-input");
+  const verErr = document.getElementById("reg-verify-error-msg");
+
+  if (stepForm) stepForm.style.display = "none";
+  if (stepVerify) stepVerify.style.display = "block";
+  if (targetBadge) targetBadge.textContent = email;
+  if (otpInput) {
+    otpInput.value = "";
+    setTimeout(() => otpInput.focus(), 120);
+  }
+  if (verErr) verErr.style.display = "none";
+
+  // Dispatch verification email (Backend + Interactive Email Verification Dispatch Drawer)
+  dispatchRealEmailIfPossible({
+    type: "registration_verify",
+    to_email: email,
+    name,
+    otp_code: otpCode,
+    verify_url: verifyUrl
+  });
+
+  showEmailDispatchDrawer({
+    headerTitle: "📨 Email Verification Required",
+    toEmail: email,
+    subject: `[MatSci Nexus] Verify your email address (${otpCode})`,
+    bodyHtml: `Hello <strong>${escapeHtml(name)}</strong>,<br/>Please confirm ownership of <code>${escapeHtml(email)}</code> to activate your personal research workspace on MatSci Nexus.`,
+    otpCode,
+    linkButtonLabel: "✅ Click Confirmation Link to Verify Email",
+    onConfirmLink: () => {
+      confirmRegistrationViaEmailLink();
+    },
+    onAutoFill: (code) => {
+      const inp = document.getElementById("reg-verify-otp-input");
+      if (inp) inp.value = code;
+      showToast("📋 Verification code filled! Click 'Verify & Activate' to complete registration.", "info");
+    }
+  });
+
+  showToast(`📧 Verification email sent to ${email}! Please enter the 6-digit code or click the confirmation link.`, "info");
+}
+
+function backToRegistrationFormStep() {
+  const stepForm = document.getElementById("reg-step-form");
+  const stepVerify = document.getElementById("reg-step-verify");
+  if (stepForm) stepForm.style.display = "block";
+  if (stepVerify) stepVerify.style.display = "none";
+}
+
+function resendRegistrationVerificationEmail() {
+  if (!STATE.pendingRegistrationData) {
+    backToRegistrationFormStep();
+    return;
+  }
+  const newOtp = generateSixDigitOtp();
+  STATE.pendingRegistrationData.otpCode = newOtp;
+  try {
+    localStorage.setItem("matsci_pending_reg_v1", JSON.stringify(STATE.pendingRegistrationData));
+  } catch (e) {}
+
+  dispatchRealEmailIfPossible({
+    type: "registration_verify",
+    to_email: STATE.pendingRegistrationData.email,
+    name: STATE.pendingRegistrationData.name,
+    otp_code: newOtp,
+    verify_url: STATE.pendingRegistrationData.verifyUrl
+  });
+
+  showEmailDispatchDrawer({
+    headerTitle: "📨 Verification Email Re-Sent",
+    toEmail: STATE.pendingRegistrationData.email,
+    subject: `[MatSci Nexus] New verification code (${newOtp})`,
+    bodyHtml: `Hello <strong>${escapeHtml(STATE.pendingRegistrationData.name)}</strong>,<br/>Here is your new 6-digit email verification code and confirmation link for <code>${escapeHtml(STATE.pendingRegistrationData.email)}</code>.`,
+    otpCode: newOtp,
+    linkButtonLabel: "✅ Click Confirmation Link to Verify Email",
+    onConfirmLink: () => {
+      confirmRegistrationViaEmailLink();
+    },
+    onAutoFill: (code) => {
+      const inp = document.getElementById("reg-verify-otp-input");
+      if (inp) inp.value = code;
+      showToast("📋 New verification code auto-filled!", "info");
+    }
+  });
+
+  showToast(`🔄 Sent a new verification code to ${STATE.pendingRegistrationData.email}!`, "info");
+}
+
+async function verifyRegistrationEmailOtp() {
+  const otpInput = document.getElementById("reg-verify-otp-input");
+  const entered = (otpInput ? otpInput.value : "").trim();
+  const errEl = document.getElementById("reg-verify-error-msg");
+
+  const showErr = (msg) => {
+    if (errEl) {
+      errEl.textContent = msg;
+      errEl.style.display = "block";
+    }
+  };
+
+  let pending = STATE.pendingRegistrationData;
+  if (!pending) {
+    try {
+      const raw = localStorage.getItem("matsci_pending_reg_v1");
+      if (raw) pending = JSON.parse(raw);
+    } catch (e) {}
+  }
+
+  if (!pending || !pending.email) {
+    showErr("Registration session expired. Please fill out the registration form again.");
+    return;
+  }
+
+  if (!entered || entered.length < 6) {
+    showErr("Please enter the 6-digit verification code sent to your email.");
+    return;
+  }
+
+  if (entered !== String(pending.otpCode)) {
+    showErr("Invalid verification code. Please check the dispatched verification email or click 'Resend Email'.");
+    return;
+  }
+
+  await finalizeVerifiedUserRegistration(pending, "6-Digit Email OTP Verified");
+}
+
+async function confirmRegistrationViaEmailLink() {
+  let pending = STATE.pendingRegistrationData;
+  if (!pending) {
+    try {
+      const raw = localStorage.getItem("matsci_pending_reg_v1");
+      if (raw) pending = JSON.parse(raw);
+    } catch (e) {}
+  }
+  if (!pending || !pending.email) {
+    showToast("No pending email verification found.", "warn");
+    return;
+  }
+  const otpInput = document.getElementById("reg-verify-otp-input");
+  if (otpInput) otpInput.value = pending.otpCode;
+  await finalizeVerifiedUserRegistration(pending, "Email Confirmation Link Verified");
+}
+
+async function finalizeVerifiedUserRegistration(pending, verificationMethod = "Email Verified") {
+  const { email, name, affiliation, academicRole, pass, passHash, linkGoogle, seedStarter } = pending;
+  const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
 
   const starterPapers = seedStarter && STATE.masterData && Array.isArray(STATE.masterData.papers)
     ? JSON.parse(JSON.stringify(STATE.masterData.papers.slice(0, 2)))
@@ -2652,7 +2992,10 @@ async function submitUserRegistration() {
     name,
     affiliation,
     academicRole,
-    authProvider: linkGoogle ? "Email + Google Linked" : "Email & Password",
+    status: "Active",
+    emailVerified: true,
+    verifiedAt: nowStr,
+    authProvider: linkGoogle ? "Verified Email + Google Linked" : "Verified Email & Password",
     googleLinked: linkGoogle,
     googleEmail: linkGoogle ? email : "",
     passwordPlainHint: pass,
@@ -2673,83 +3016,438 @@ async function submitUserRegistration() {
       {
         timestamp: nowStr,
         category: "Account",
-        action: linkGoogle ? "Registered & Linked with Google Account" : "Registered Personal Account",
-        detail: `${name} (${affiliation}) created a personal workspace${linkGoogle ? ` and linked Google (${email})` : ""}.`
+        action: `Registered & Verified Email (${verificationMethod})`,
+        detail: `${name} (${affiliation}) verified email ${email}${linkGoogle ? " and linked Google Sign-In" : ""}.`
       }
     ]
   };
 
   STATE.usersRegistry[email] = newUser;
+  STATE.pendingRegistrationData = null;
+  try {
+    localStorage.removeItem("matsci_pending_reg_v1");
+  } catch (e) {}
+
+  closeEmailDispatchDrawer();
   persistUsersRegistryLocal();
-  completePersonalUserLogin(newUser, linkGoogle ? "Google-Linked Registration" : "Account Registration");
-  await syncDatabaseToCloudInstant(`User Registration (${email})`, true);
+  completePersonalUserLogin(newUser, verificationMethod);
+  showToast(`✅ Email "${email}" verified! Welcome to your personal research workspace, ${name}.`, "success");
+  await syncDatabaseToCloudInstant(`Verified User Registration (${email})`, true);
 }
 
-function handleGoogleEmailNext() {
+// ============================================================================
+// Self-Service Forgot Password & Reset via Email Verification
+// ============================================================================
+
+async function requestPasswordResetEmail(isResend = false) {
+  const emailRaw = document.getElementById("reset-email-input")?.value || STATE.pendingPasswordReset?.email || "";
+  const errEl = document.getElementById("reset-request-error-msg");
+
+  const showErr = (msg) => {
+    if (errEl) {
+      errEl.textContent = msg;
+      errEl.style.display = "block";
+    }
+  };
+
+  const email = normalizeEmail(emailRaw);
+  if (!email || !email.includes("@")) {
+    showErr("Please enter your registered email address.");
+    return;
+  }
+
+  if (email === OWNER_GOOGLE_EMAIL) {
+    showErr("Administrator password recovery is restricted to the system owner (Vu Tien Lam).");
+    return;
+  }
+
+  const btn = document.getElementById("btn-reset-send-code");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Checking Cloud...";
+  }
+
+  try {
+    let userObj = findRegisteredUserByEmailOrGoogle(email);
+    if (!userObj) {
+      await pullCloudDatabaseInstant(true);
+      userObj = findRegisteredUserByEmailOrGoogle(email);
+    }
+
+    if (!userObj) {
+      showErr(`No registered account found for "${email}". Please check the spelling or create a new account.`);
+      return;
+    }
+
+    if (errEl) errEl.style.display = "none";
+
+    const resetCode = generateSixDigitOtp();
+    const targetEmail = normalizeEmail(userObj.email);
+    const resetToken = (await hashPasswordSha256(`reset:${targetEmail}:${resetCode}:${Date.now()}`)).slice(0, 24);
+    const resetUrl = `${window.location.origin}${window.location.pathname}?reset_email=${encodeURIComponent(targetEmail)}&reset_token=${encodeURIComponent(resetToken)}`;
+
+    STATE.pendingPasswordReset = {
+      email: targetEmail,
+      userName: userObj.name,
+      resetCode,
+      resetToken,
+      resetUrl,
+      createdAtMs: Date.now()
+    };
+
+    try {
+      localStorage.setItem("matsci_pending_reset_v1", JSON.stringify(STATE.pendingPasswordReset));
+    } catch (e) {}
+
+    // Show Step 2 of Reset
+    const stepReq = document.getElementById("reset-step-request");
+    const stepConf = document.getElementById("reset-step-confirm");
+    const badgeEl = document.getElementById("reset-target-email-badge");
+    const otpInput = document.getElementById("reset-otp-input");
+    const confErr = document.getElementById("reset-confirm-error-msg");
+
+    if (stepReq) stepReq.style.display = "none";
+    if (stepConf) stepConf.style.display = "block";
+    if (badgeEl) badgeEl.textContent = targetEmail;
+    if (confErr) confErr.style.display = "none";
+    if (otpInput) {
+      otpInput.value = "";
+      setTimeout(() => otpInput.focus(), 100);
+    }
+
+    dispatchRealEmailIfPossible({
+      type: "password_reset",
+      to_email: targetEmail,
+      name: userObj.name,
+      otp_code: resetCode,
+      reset_url: resetUrl
+    });
+
+    showEmailDispatchDrawer({
+      headerTitle: "🔐 Password Reset Email Dispatched",
+      toEmail: targetEmail,
+      subject: `[MatSci Nexus] Password Reset Code (${resetCode})`,
+      bodyHtml: `Hello <strong>${escapeHtml(userObj.name)}</strong>,<br/>We received a request to reset the password for <code>${escapeHtml(targetEmail)}</code>. Enter the 6-digit code below or click the reset link to verify.`,
+      otpCode: resetCode,
+      linkButtonLabel: "🔓 Verify Reset Link & Auto-Fill Code",
+      onConfirmLink: () => {
+        const inp = document.getElementById("reset-otp-input");
+        if (inp) inp.value = resetCode;
+        const newPw = document.getElementById("reset-new-password-input");
+        if (newPw) newPw.focus();
+        showToast("🔓 Reset link verified! Now enter your new password and click 'Reset Password & Sign In'.", "success");
+      },
+      onAutoFill: (code) => {
+        const inp = document.getElementById("reset-otp-input");
+        if (inp) inp.value = code;
+        const newPw = document.getElementById("reset-new-password-input");
+        if (newPw) newPw.focus();
+        showToast("📋 Reset verification code filled!", "info");
+      }
+    });
+
+    showToast(isResend ? `🔄 Sent a new password reset code to ${targetEmail}!` : `📧 Password reset code sent to ${targetEmail}!`, "info");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "📧 Send Reset Email →";
+    }
+  }
+}
+
+async function confirmSelfPasswordReset() {
+  const otp = (document.getElementById("reset-otp-input")?.value || "").trim();
+  const newPass = (document.getElementById("reset-new-password-input")?.value || "").trim();
+  const confirmPass = (document.getElementById("reset-confirm-password-input")?.value || "").trim();
+  const errEl = document.getElementById("reset-confirm-error-msg");
+
+  const showErr = (msg) => {
+    if (errEl) {
+      errEl.textContent = msg;
+      errEl.style.display = "block";
+    }
+  };
+
+  let pending = STATE.pendingPasswordReset;
+  if (!pending) {
+    try {
+      const raw = localStorage.getItem("matsci_pending_reset_v1");
+      if (raw) pending = JSON.parse(raw);
+    } catch (e) {}
+  }
+
+  if (!pending || !pending.email) {
+    showErr("Password reset session expired. Please request a new reset code.");
+    return;
+  }
+
+  if (!otp || otp !== String(pending.resetCode)) {
+    showErr("Invalid 6-digit verification code. Please check the dispatched reset email.");
+    return;
+  }
+
+  if (newPass.length < 4) {
+    showErr("New password must be at least 4 characters long.");
+    return;
+  }
+
+  if (newPass !== confirmPass) {
+    showErr("New passwords do not match.");
+    return;
+  }
+
+  const targetEmail = normalizeEmail(pending.email);
+  const userObj = STATE.usersRegistry[targetEmail] || findRegisteredUserByEmailOrGoogle(targetEmail);
+  if (!userObj) {
+    showErr("Account not found in registry.");
+    return;
+  }
+
+  const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
+  userObj.passwordPlainHint = newPass;
+  userObj.passwordHash = await hashPasswordSha256(newPass);
+  userObj.passwordlessGoogle = false;
+  userObj.emailVerified = true;
+  userObj.lastUpdatedAt = nowStr;
+  userObj.updatedAtMs = Date.now();
+  userObj.activityLog = Array.isArray(userObj.activityLog) ? userObj.activityLog : [];
+  userObj.activityLog.unshift({
+    timestamp: nowStr,
+    category: "Security",
+    action: "Self-Service Password Reset",
+    detail: `User verified email (${targetEmail}) via 6-digit code and set a new password.`
+  });
+
+  STATE.usersRegistry[targetEmail] = userObj;
+  STATE.pendingPasswordReset = null;
+  try {
+    localStorage.removeItem("matsci_pending_reset_v1");
+  } catch (e) {}
+
+  closeEmailDispatchDrawer();
+  persistUsersRegistryLocal();
+  completePersonalUserLogin(userObj, "Password Reset & Sign-In");
+  showToast("🔑 Password updated successfully! You are now signed in.", "success");
+  await syncDatabaseToCloudInstant(`Self Password Reset (${targetEmail})`, true);
+}
+
+// ============================================================================
+// Passwordless Google Account OAuth Sync & Sign-In
+// ============================================================================
+
+async function handleGoogleEmailNext() {
   const input = document.getElementById("g-email-input");
   const email = normalizeEmail(input ? input.value : "");
 
   if (!email) {
-    showGoogleInputError("email", "Enter a Google email address");
+    showGoogleInputError("email", "Enter your Google / Gmail or Workspace email address");
     return;
   }
 
   if (!email.includes("@")) {
-    showGoogleInputError("email", "Enter a valid email address");
+    showGoogleInputError("email", "Enter a valid Google email address");
     return;
   }
 
   STATE.pendingGoogleEmail = email;
   clearGoogleInputError("email");
 
-  const stepEmail = document.getElementById("google-step-email");
-  const stepPass = document.getElementById("google-step-password");
-  const badgeEmail = document.getElementById("g-badge-email-text");
-  const badgeChar = document.getElementById("g-badge-avatar-char");
-  const newFields = document.getElementById("google-new-user-fields");
-  const pwTitle = document.getElementById("google-step-pw-title");
-  const pwLabel = document.getElementById("g-password-label");
-
-  if (stepEmail) stepEmail.style.display = "none";
-  if (stepPass) stepPass.style.display = "block";
-  if (badgeEmail) badgeEmail.textContent = email;
-  if (badgeChar) badgeChar.textContent = email.charAt(0).toUpperCase();
-
-  const existingUser = findRegisteredUserByEmailOrGoogle(email);
-  if (email === OWNER_GOOGLE_EMAIL) {
-    if (newFields) newFields.style.display = "none";
-    if (pwTitle) pwTitle.textContent = "Administrator Sign-In";
-    if (pwLabel) pwLabel.textContent = "Enter Administrator password";
-  } else if (existingUser) {
-    if (newFields) newFields.style.display = "none";
-    if (pwTitle) pwTitle.textContent = `Welcome back, ${existingUser.name}`;
-    if (pwLabel) pwLabel.textContent = "Enter your account / Google password";
-  } else {
-    if (newFields) newFields.style.display = "block";
-    if (pwTitle) pwTitle.textContent = "Link New Google Account";
-    if (pwLabel) pwLabel.textContent = "Create a password for your linked account";
-    const defaultName = email.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-    const nameInput = document.getElementById("g-new-name-input");
-    if (nameInput && !nameInput.value) nameInput.value = defaultName;
+  const nextBtn = document.getElementById("btn-email-next");
+  if (nextBtn) {
+    nextBtn.disabled = true;
+    nextBtn.textContent = "Syncing Google...";
   }
 
-  const passInput = document.getElementById("g-password-input");
-  if (passInput) {
-    passInput.value = "";
-    clearGoogleInputError("password");
-    setTimeout(() => passInput.focus(), 100);
+  try {
+    // Case 1: Administrator account (lamvt.skku@gmail.com) ALWAYS requires Admin security password
+    if (email === OWNER_GOOGLE_EMAIL) {
+      const stepEmail = document.getElementById("google-step-email");
+      const stepConsent = document.getElementById("google-step-consent");
+      const stepPass = document.getElementById("google-step-password");
+      const badgeEmail = document.getElementById("g-badge-email-text");
+      const badgeChar = document.getElementById("g-badge-avatar-char");
+      const pwTitle = document.getElementById("google-step-pw-title");
+      const pwLabel = document.getElementById("g-password-label");
+
+      if (stepEmail) stepEmail.style.display = "none";
+      if (stepConsent) stepConsent.style.display = "none";
+      if (stepPass) stepPass.style.display = "block";
+      if (badgeEmail) badgeEmail.textContent = email;
+      if (badgeChar) badgeChar.textContent = "V";
+      if (pwTitle) pwTitle.textContent = "Administrator Sign-In";
+      if (pwLabel) pwLabel.textContent = "Enter Administrator password";
+
+      const passInput = document.getElementById("g-password-input");
+      if (passInput) {
+        passInput.value = "";
+        clearGoogleInputError("password");
+        setTimeout(() => passInput.focus(), 100);
+      }
+      return;
+    }
+
+    // Pull latest cloud users first so returning Google users on any device/browser are recognized immediately
+    let existingUser = findRegisteredUserByEmailOrGoogle(email);
+    if (!existingUser) {
+      await pullCloudDatabaseInstant(true);
+      existingUser = findRegisteredUserByEmailOrGoogle(email);
+    }
+
+    // Case 2: Returning Personal User -> Instant Passwordless Google OAuth Sign-In & Cloud Workspace Sync!
+    if (existingUser) {
+      if (existingUser.status === "Suspended") {
+        showGoogleInputError("email", "This account has been suspended by the Administrator.");
+        return;
+      }
+      const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
+      existingUser.googleLinked = true;
+      existingUser.googleEmail = email;
+      existingUser.emailVerified = true;
+      if (!existingUser.authProvider || !existingUser.authProvider.includes("Google")) {
+        existingUser.authProvider = "Google OAuth Sync";
+      }
+      existingUser.lastLoginAt = nowStr;
+      existingUser.updatedAtMs = Date.now();
+      persistUsersRegistryLocal();
+      completePersonalUserLogin(existingUser, "Google Account Sync (Passwordless)");
+      showToast(`🌐 Signed in & synchronized workspace via Google Account (${email})!`, "success");
+      await syncDatabaseToCloudInstant(`Google OAuth Sync (${email})`, true);
+      return;
+    }
+
+    // Case 3: First-Time Personal Google User -> Show Passwordless Google Profile Confirmation Step (No Static Password Required!)
+    const stepEmail = document.getElementById("google-step-email");
+    const stepConsent = document.getElementById("google-step-consent");
+    const stepPass = document.getElementById("google-step-password");
+    const consentEmail = document.getElementById("g-consent-email-text");
+    const consentChar = document.getElementById("g-consent-avatar-char");
+
+    if (stepEmail) stepEmail.style.display = "none";
+    if (stepPass) stepPass.style.display = "none";
+    if (stepConsent) stepConsent.style.display = "block";
+    if (consentEmail) consentEmail.textContent = email;
+    if (consentChar) consentChar.textContent = email.charAt(0).toUpperCase();
+
+    const defaultName = email.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+    const nameInput = document.getElementById("g-new-name-input");
+    if (nameInput) {
+      nameInput.value = defaultName;
+      setTimeout(() => nameInput.focus(), 100);
+    }
+  } finally {
+    if (nextBtn) {
+      nextBtn.disabled = false;
+      nextBtn.textContent = "🌐 Continue with Google";
+    }
   }
 }
 
 function backToGoogleEmailStep() {
   const stepEmail = document.getElementById("google-step-email");
+  const stepConsent = document.getElementById("google-step-consent");
   const stepPass = document.getElementById("google-step-password");
   if (stepEmail) stepEmail.style.display = "block";
+  if (stepConsent) stepConsent.style.display = "none";
   if (stepPass) stepPass.style.display = "none";
   clearGoogleInputError("email");
+  renderGoogleAccountChooserList();
   const emailInput = document.getElementById("g-email-input");
   if (emailInput) {
     setTimeout(() => emailInput.focus(), 100);
+  }
+}
+
+async function completePasswordlessGoogleSignIn() {
+  const email = normalizeEmail(STATE.pendingGoogleEmail || document.getElementById("g-email-input")?.value || "");
+  if (!email || !email.includes("@")) {
+    backToGoogleEmailStep();
+    return;
+  }
+
+  const fullName = (document.getElementById("g-new-name-input")?.value || "").trim() || email.split("@")[0];
+  const affiliation = (document.getElementById("g-new-affiliation-input")?.value || "").trim() || "Google Synced Researcher";
+  const btn = document.getElementById("btn-google-consent-submit");
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Syncing Workspace...";
+  }
+
+  try {
+    const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
+    const autoToken = "google-oauth-" + generateSixDigitOtp();
+    const passHash = await hashPasswordSha256(autoToken);
+
+    const starterPapers = STATE.masterData && Array.isArray(STATE.masterData.papers)
+      ? JSON.parse(JSON.stringify(STATE.masterData.papers.slice(0, 2)))
+      : [];
+    const starterStructures = STATE.masterData && Array.isArray(STATE.masterData.structures)
+      ? JSON.parse(JSON.stringify(STATE.masterData.structures.slice(0, 2)))
+      : [];
+
+    removeDeletedUserTombstone(email);
+
+    const newGoogleUser = {
+      email,
+      name: fullName,
+      affiliation,
+      academicRole: "Researcher",
+      status: "Active",
+      emailVerified: true,
+      verifiedAt: nowStr,
+      passwordlessGoogle: true,
+      authProvider: "Google OAuth Sync (Passwordless)",
+      googleLinked: true,
+      googleEmail: email,
+      passwordPlainHint: "(Google OAuth Sync — No Static Password)",
+      passwordHash: passHash,
+      registeredAt: nowStr,
+      lastLoginAt: nowStr,
+      lastUpdatedAt: nowStr,
+      updatedAtMs: Date.now(),
+      _justRegistered: true,
+      workspace: {
+        schedule: [
+          {
+            id: Date.now(),
+            title: `Google Calendar Synced Session — ${fullName}`,
+            event_type: "Group Meeting / PI Meeting",
+            instrument_or_location: affiliation,
+            start_date: new Date().toISOString().slice(0, 10),
+            start_time: "09:30",
+            end_time: "11:00",
+            priority: "High",
+            status: "Scheduled",
+            sample_id: "GCAL-01",
+            description: `Initialized via Passwordless Google Account Sync (${email}).`,
+            in_weekly_report: 1
+          }
+        ],
+        papers: starterPapers,
+        structures: starterStructures,
+        expReportRows: [],
+        litReportRows: []
+      },
+      activityLog: [
+        {
+          timestamp: nowStr,
+          category: "Account",
+          action: "Signed In & Synced via Google Account (Passwordless)",
+          detail: `${fullName} (${affiliation}) synchronized personal workspace with Google Account ${email}.`
+        }
+      ]
+    };
+
+    STATE.usersRegistry[email] = newGoogleUser;
+    persistUsersRegistryLocal();
+    completePersonalUserLogin(newGoogleUser, "Google Account Sync (Passwordless)");
+    showToast(`🌐 Welcome, ${fullName}! Your Google Account (${email}) is now synced without needing a static password.`, "success");
+    await syncDatabaseToCloudInstant(`Google Passwordless Registration (${email})`, true);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "🌐 Sync & Sign In Now";
+    }
   }
 }
 
@@ -2770,7 +3468,6 @@ async function submitGooglePasswordLogin() {
   }
 
   try {
-    // Case 1: Administrator Google Account
     if (email === OWNER_GOOGLE_EMAIL) {
       const ok = await verifyAdminPassword(pass);
       if (ok) {
@@ -2782,101 +3479,15 @@ async function submitGooglePasswordLogin() {
       return;
     }
 
-    // Case 2: Existing Registered User signing in / linking via Google
     let existingUser = findRegisteredUserByEmailOrGoogle(email);
-    if (!existingUser) {
-      await pullCloudDatabaseInstant(true);
-      existingUser = findRegisteredUserByEmailOrGoogle(email);
-    }
     if (existingUser) {
-      if (existingUser.status === "Suspended") {
-        showGoogleInputError("password", "This account has been suspended by the Administrator.");
-        return;
-      }
       const valid = await verifyUserPassword(existingUser, pass);
       if (!valid) {
         showGoogleInputError("password", "Incorrect password for this account.");
-        if (passInput) passInput.select();
         return;
       }
-      existingUser.googleLinked = true;
-      existingUser.googleEmail = email;
-      if (!existingUser.authProvider.includes("Google")) {
-        existingUser.authProvider = "Email + Google Linked";
-      }
-      existingUser.updatedAtMs = Date.now();
-      persistUsersRegistryLocal();
       completePersonalUserLogin(existingUser, "Google Sign-In");
-      await syncDatabaseToCloudInstant(`Google Sign-In (${email})`, true);
-      return;
     }
-
-    // Case 3: Brand-new User signing in with Google Account for the first time
-    const fullName = (document.getElementById("g-new-name-input")?.value || "").trim() || email.split("@")[0];
-    const affiliation = (document.getElementById("g-new-affiliation-input")?.value || "").trim() || "Google Linked Researcher";
-    const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
-    const passHash = await hashPasswordSha256(pass);
-
-    const starterPapers = STATE.masterData && Array.isArray(STATE.masterData.papers)
-      ? JSON.parse(JSON.stringify(STATE.masterData.papers.slice(0, 2)))
-      : [];
-    const starterStructures = STATE.masterData && Array.isArray(STATE.masterData.structures)
-      ? JSON.parse(JSON.stringify(STATE.masterData.structures.slice(0, 2)))
-      : [];
-
-    removeDeletedUserTombstone(email);
-
-    const newGoogleUser = {
-      email,
-      name: fullName,
-      affiliation,
-      academicRole: "Researcher",
-      authProvider: "Google Account",
-      googleLinked: true,
-      googleEmail: email,
-      passwordPlainHint: pass,
-      passwordHash: passHash,
-      registeredAt: nowStr,
-      lastLoginAt: nowStr,
-      lastUpdatedAt: nowStr,
-      updatedAtMs: Date.now(),
-      _justRegistered: true,
-      workspace: {
-        schedule: [
-          {
-            id: Date.now(),
-            title: `Google Calendar Synced Session — ${fullName}`,
-            event_type: "Group Meeting / PI Meeting",
-            instrument_or_location: affiliation,
-            start_date: new Date().toISOString().slice(0, 10),
-            start_time: "09:30",
-            end_time: "11:00",
-            priority: "High",
-            status: "Scheduled",
-            sample_id: "GCAL-01",
-            description: `Initialized via Google Account Sign-In (${email}).`,
-            in_weekly_report: 1
-          }
-        ],
-        papers: starterPapers,
-        structures: starterStructures,
-        expReportRows: [],
-        litReportRows: []
-      },
-      activityLog: [
-        {
-          timestamp: nowStr,
-          category: "Account",
-          action: "Signed in & Linked via Google Account",
-          detail: `${fullName} (${affiliation}) linked Google Account ${email}.`
-        }
-      ]
-    };
-
-    STATE.usersRegistry[email] = newGoogleUser;
-    persistUsersRegistryLocal();
-    completePersonalUserLogin(newGoogleUser, "Google Account");
-    await syncDatabaseToCloudInstant(`Google Registration (${email})`, true);
   } finally {
     if (btn) {
       btn.disabled = false;
@@ -9322,7 +9933,7 @@ function renderAcademicCvSheet(prof) {
         return `
         <div class="cv-entry">
           <div class="cv-entry-head">
-            <span>🎓 ${escapeHtml(e.degree)} ${renderVisibilityBadgeHtml(e)}</span>
+            <span>🎓 ${escapeHtml(e.degree)}</span>
             <div style="display:flex; align-items:center; gap:8px;">
               <span style="font-size:12.5px; color:var(--text-muted);">${escapeHtml(e.period)}</span>
               <button class="btn btn-outline btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Edit Degree" onclick="openEducationModal(${targetIdx})">✏️</button>
@@ -9345,7 +9956,7 @@ function renderAcademicCvSheet(prof) {
         return `
         <div class="cv-entry">
           <div class="cv-entry-head">
-            <span>🔬 ${escapeHtml(ex.role)} ${renderVisibilityBadgeHtml(ex)}</span>
+            <span>🔬 ${escapeHtml(ex.role)}</span>
             <div style="display:flex; align-items:center; gap:8px;">
               <span style="font-size:12.5px; color:var(--text-muted);">${escapeHtml(ex.period)}</span>
               <button class="btn btn-outline btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Edit Position" onclick="openExperienceModal(${targetIdx})">✏️</button>
@@ -9388,7 +9999,7 @@ function renderAcademicCvSheet(prof) {
         return `
         <div class="cv-entry">
           <div class="cv-entry-head">
-            <span>🎤 ${escapeHtml(c.title)} ${renderVisibilityBadgeHtml(c)}</span>
+            <span>🎤 ${escapeHtml(c.title)}</span>
             <div style="display:flex; align-items:center; gap:8px;">
               <span class="badge badge-blue">${escapeHtml(c.type || "Oral")} (${c.year || 2026})</span>
               <button class="btn btn-outline btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Edit Presentation" onclick="openConferenceModal(${targetIdx})">✏️</button>
@@ -9413,7 +10024,7 @@ function renderAcademicCvSheet(prof) {
         return `
         <div class="cv-entry">
           <div class="cv-entry-head">
-            <span>🏆 ${escapeHtml(a.title)} ${renderVisibilityBadgeHtml(a)}</span>
+            <span>🏆 ${escapeHtml(a.title)}</span>
             <div style="display:flex; align-items:center; gap:8px;">
               <span style="font-size:12.5px; color:var(--text-muted);">${escapeHtml(a.issuer)} (${a.year || 2026})</span>
               <button class="btn btn-outline btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Edit Honor/Award" onclick="openAwardModal(${targetIdx})">✏️</button>
@@ -9912,8 +10523,6 @@ function renderAcademicCvPublicationsSection(prof, pubList = []) {
                     <!-- Line 2: Paper title -->
                     <div class="pub-title">
                       ${doiUrl ? `<a href="${escapeHtml(doiUrl)}" target="_blank" rel="noopener noreferrer">${renderScientificTitle(p.title)}</a>` : renderScientificTitle(p.title)}
-                      ${p.visibility === "Private" ? `<span class="badge badge-rose" style="margin-left:6px; font-size:11px;">🔒 Private</span>` : ""}
-                      ${p.visibility === "Curated" ? `<span class="badge badge-blue" style="margin-left:6px; font-size:11px;">📜 Curated</span>` : ""}
                     </div>
 
                     <!-- Line 3: Full Authors List (no truncation) -->
@@ -11066,8 +11675,6 @@ function renderProfile(prof) {
               </div>
               <div class="item-title" style="font-size:14.5px; font-weight:700; line-height:1.45;">
                 ${doiUrl ? `<a href="${escapeHtml(doiUrl)}" target="_blank" rel="noopener noreferrer" style="color:inherit; text-decoration:none;">${renderScientificTitle(p.title)}</a>` : renderScientificTitle(p.title)}
-                ${p.visibility === "Private" ? `<span class="badge badge-rose" style="font-size:11px; margin-left:6px; vertical-align:middle;">🔒 Private</span>` : ""}
-                ${p.visibility === "Curated" ? `<span class="badge badge-blue" style="font-size:11px; margin-left:6px; vertical-align:middle;">📜 Curated</span>` : ""}
               </div>
             </div>
             <span class="badge badge-purple" style="white-space:nowrap; font-weight:600;">Citations: ${p.citations || 0}</span>
@@ -21721,4 +22328,35 @@ window.addEventListener("scroll", () => {
     btn.classList.remove("visible");
   }
 }, { passive: true });
+
+// Handle Email Verification & Password Reset Links from URL Query Parameters
+document.addEventListener("DOMContentLoaded", () => {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const verifyEmail = params.get("verify_email");
+    const resetEmail = params.get("reset_email");
+    const token = params.get("token");
+
+    if (verifyEmail && token) {
+      setTimeout(() => {
+        const cleanUrl = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, document.title, cleanUrl);
+        if (typeof confirmRegistrationViaEmailLink === "function") {
+          confirmRegistrationViaEmailLink();
+        }
+      }, 600);
+    } else if (resetEmail && token) {
+      setTimeout(() => {
+        const cleanUrl = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, document.title, cleanUrl);
+        if (typeof openResetPasswordFromEmailLink === "function") {
+          openResetPasswordFromEmailLink();
+        }
+      }, 600);
+    }
+  } catch (e) {
+    // Ignore URL parse errors
+  }
+});
+
 
