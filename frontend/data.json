@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T14:35:59.858Z",
+  "exported_at": "2026-11-14T14:36:16.211Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -1746,14 +1746,6 @@
       "color": "purple",
       "members": [],
       "updatedAtMs": 1700000000000
-    },
-    "grp_external_collab": {
-      "id": "grp_external_collab",
-      "name": "External Collaborators",
-      "description": "KAIST & Partner University Research Collaborators",
-      "color": "teal",
-      "members": [],
-      "updatedAtMs": 1700000000000
     }
   },
   "deleted_users": [
@@ -1764,5 +1756,7 @@
     "lamvt.sep@gmail.com",
     "lamvt@g.skku.edu"
   ],
-  "deleted_groups": []
+  "deleted_groups": [
+    "grp_external_collab"
+  ]
 }
