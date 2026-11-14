@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T12:45:17.864Z",
+  "exported_at": "2026-11-14T12:45:35.402Z",
   "profile": {
     "full_name": "Vu Tien Lam",
     "title_role": "Ph.D. Candidate in Computational Materials Science",
@@ -592,8 +592,8 @@
       "passwordPlainHint": "skku1234",
       "passwordHash": "441d52fbb490008fa860a41b38fe03e0b7f6fb06b56336922f7d7a95562f51dd",
       "registeredAt": "2026-11-10 09:15",
-      "lastLoginAt": "2026-11-14 10:20",
-      "lastUpdatedAt": "2026-11-14 07:57",
+      "lastLoginAt": "2026-11-14 12:45",
+      "lastUpdatedAt": "2026-11-14 12:45",
       "workspace": {
         "papers": [
           {
@@ -718,6 +718,12 @@
       },
       "activityLog": [
         {
+          "timestamp": "2026-11-14 12:45",
+          "category": "Session",
+          "action": "Signed In (Google Account Sync (Passwordless))",
+          "detail": "Authenticated as Dr. Ji-Hoon Park (jhpark.matsci@skku.edu)"
+        },
+        {
           "timestamp": "2026-11-14 06:53",
           "category": "Security",
           "action": "Password Reset by Administrator",
@@ -754,11 +760,12 @@
           "detail": "Linked Google Account jhpark.matsci@gmail.com"
         }
       ],
-      "updatedAtMs": 1794643040276,
+      "updatedAtMs": 1794660334951,
       "groups": [
         "grp_skku_lab",
         "grp_dft_team"
-      ]
+      ],
+      "emailVerified": true
     },
     "minseo.kim@gmail.com": {
       "email": "minseo.kim@gmail.com",
