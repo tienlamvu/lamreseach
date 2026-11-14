@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T04:08:21.160Z",
+  "exported_at": "2026-11-14T04:08:25.421Z",
   "profile": {
     "full_name": "Vu Tien Lam",
     "title_role": "Ph.D. Candidate in Computational Materials Science",
@@ -839,9 +839,9 @@
       "passwordPlainHint": "1234",
       "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
       "registeredAt": "2026-11-14 04:00",
-      "lastLoginAt": "2026-11-14 04:00",
-      "lastUpdatedAt": "2026-11-14 04:02",
-      "updatedAtMs": 1794628948871,
+      "lastLoginAt": "2026-11-14 04:08",
+      "lastUpdatedAt": "2026-11-14 04:08",
+      "updatedAtMs": 1794629304237,
       "workspace": {
         "papers": [],
         "structures": [
@@ -942,6 +942,12 @@
         "litReportRows": []
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-14 04:08",
+          "category": "Session",
+          "action": "Signed In (Email & Password)",
+          "detail": "Authenticated as No (las@gmail.com)"
+        },
         {
           "timestamp": "2026-11-14 04:01",
           "category": "Crystal Structures",
