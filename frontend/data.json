@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T03:52:55.084Z",
+  "exported_at": "2026-11-14T03:56:19.219Z",
   "profile": {
     "full_name": "Vu Tien Lam",
     "title_role": "Ph.D. Candidate in Computational Materials Science",
@@ -234,7 +234,9 @@
         "year": 2025,
         "details": "Doctoral research excellence fellowship."
       }
-    ]
+    ],
+    "weekly_report_visibility": "Public",
+    "weekly_report_allowed_users": []
   },
   "papers": [
     {
