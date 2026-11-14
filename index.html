@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261114_v58_searchable_batch" onerror="this.href='/static/styles.css?v=20261114_v58_searchable_batch'" />
+  <link rel="stylesheet" href="styles.css?v=20261114_v59_admin_users_groups" onerror="this.href='/static/styles.css?v=20261114_v59_admin_users_groups'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -146,12 +146,14 @@
         <div class="card strict-admin-only" style="border-left: 4px solid #2563eb; background: linear-gradient(90deg, #f8fafc 0%, #ffffff 100%); margin-bottom: 18px;">
           <div class="card-header" style="margin-bottom:10px; flex-wrap:wrap; gap:8px;">
             <div>
-              <div class="card-title" style="color:#1e3a8a;">👥 Registered Personal User Accounts &amp; Recent Content Updates (Admin View)</div>
-              <div style="font-size:12px; color:var(--text-muted);">Real-time cross-device &amp; incognito cloud sync • Monitor personal registrations, Google links, schedules, references &amp; structures</div>
+              <div class="card-title" style="color:#1e3a8a;">👥 Registered Personal User Accounts, Groups &amp; Content Updates (Admin View)</div>
+              <div style="font-size:12px; color:var(--text-muted);">Edit user profiles, change/reset passwords, organize users into Groups, and filter content visibility by Group or User</div>
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              <button class="btn btn-outline btn-sm" onclick="openAdminEditUserModal(null)" title="Create a new personal user account">➕ Add User</button>
+              <button class="btn btn-teal btn-sm" onclick="openAdminGroupsModal()" title="Create & manage user groups for visibility targeting">🏷️ Manage User Groups</button>
               <button class="btn btn-outline btn-sm" onclick="refreshCloudUsersNow(true)" title="Pull latest registered users & workspaces from Cloud">🔄 Refresh Live Cloud Users</button>
-              <button class="btn btn-primary btn-sm" onclick="openAdminUsersModal()">🔍 Inspect All User Accounts &amp; Content →</button>
+              <button class="btn btn-primary btn-sm" onclick="openAdminUsersModal()">🔍 Inspect All Users &amp; Manage →</button>
             </div>
           </div>
           <div id="dashboard-admin-users-summary"></div>
@@ -245,9 +247,11 @@
               <select id="lit-doi-visibility" onchange="handleVisibilitySelectChange('lit-doi')" style="padding:5px 10px; border-radius:6px; border:1px solid #475569; background:#1e293b; color:#f8fafc; font-size:12.5px; font-weight:600;">
                 <option value="Public">🌍 Public — Visible to Everyone</option>
                 <option value="Users">👥 All Logged-In Users — Registered Accounts Only</option>
-                <option value="Specific">🎯 Specific User(s) — Selected Personal Accounts</option>
+                <option value="Groups">🏷️ User Group(s) — Selected User Groups</option>
+                <option value="Specific">🎯 Specific User(s) / Group(s) — Custom Selection</option>
                 <option value="Private">🔒 Private — Administrator Only</option>
               </select>
+              <button type="button" class="btn btn-outline btn-sm" style="background:rgba(255,255,255,0.08); color:#bfdbfe; border-color:#475569; padding:3px 9px; font-size:11.5px;" onclick="openAdminGroupsModal()">🏷️ Manage Groups</button>
               <span style="font-size:11.5px; color:#94a3b8;">(You can also change visibility anytime via ✏️ Edit)</span>
             </div>
             <div id="lit-doi-specific-box" class="specific-users-picker-wrap" style="display:none; margin-top:8px;"></div>
@@ -278,6 +282,9 @@
                 <option value="Key Reference">Key Reference</option>
                 <option value="Cited in Thesis">Cited in Thesis</option>
               </select>
+              <select id="paper-audience-filter" class="strict-admin-only audience-group-filter-select" onchange="renderPapersList()" style="padding:8px 12px; border:1px solid #93c5fd; background:#eff6ff; color:#1e3a8a; font-weight:600; border-radius:8px; font-size:13px;" title="Filter displayed papers by Visibility Mode or Target User Group">
+                <option value="ALL">🛡️ All Audiences &amp; Groups</option>
+              </select>
             </div>
             <button class="btn btn-outline btn-sm" onclick="exportAllBibtex()">📋 Copy All BibTeX</button>
           </div>
@@ -301,7 +308,8 @@
                   <select id="batch-lit-visibility" onchange="handleVisibilitySelectChange('batch-lit')" style="padding:4px 8px; border-radius:5px; border:1px solid #93c5fd; font-size:12px; background:#fff; color:#0f172a; font-weight:600;">
                     <option value="Public">🌍 Public</option>
                     <option value="Users">👥 All Users</option>
-                    <option value="Specific">🎯 Specific User(s)...</option>
+                    <option value="Groups">🏷️ User Group(s)...</option>
+                    <option value="Specific">🎯 Specific User(s) / Group(s)...</option>
                     <option value="Private">🔒 Private</option>
                   </select>
                   <button type="button" class="btn btn-primary btn-sm" style="padding:4px 9px; font-size:11.5px;" onclick="applyBatchPapersVisibility()">Apply</button>
@@ -471,12 +479,17 @@
               <div class="card-title">📋 All Scheduled Events &amp; 1-Click Google Calendar Push</div>
               <div style="font-size:12px; color:var(--text-muted);">Click <strong>"📅 +Google Cal"</strong> on any event to add it directly to your Google Calendar</div>
             </div>
-            <select id="schedule-status-filter" onchange="renderScheduleList()" style="padding:7px 12px; border:1px solid var(--border-color); border-radius:8px; font-size:13px;">
-              <option value="ALL">All Statuses</option>
-              <option value="Scheduled">Scheduled</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Completed">Completed</option>
-            </select>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              <select id="schedule-status-filter" onchange="renderScheduleList()" style="padding:7px 12px; border:1px solid var(--border-color); border-radius:8px; font-size:13px;">
+                <option value="ALL">All Statuses</option>
+                <option value="Scheduled">Scheduled</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+              </select>
+              <select id="schedule-audience-filter" class="strict-admin-only audience-group-filter-select" onchange="renderScheduleList()" style="padding:7px 12px; border:1px solid #93c5fd; background:#eff6ff; color:#1e3a8a; font-weight:600; border-radius:8px; font-size:13px;" title="Filter displayed events by Visibility Mode or Target User Group">
+                <option value="ALL">🛡️ All Audiences &amp; Groups</option>
+              </select>
+            </div>
           </div>
 
           <!-- Calendar Events Batch Action Toolbar (Admin & Personal Users) -->
@@ -497,7 +510,8 @@
                   <select id="batch-sched-visibility" onchange="handleVisibilitySelectChange('batch-sched')" style="padding:4px 8px; border-radius:5px; border:1px solid #93c5fd; font-size:12px; background:#fff; color:#0f172a; font-weight:600;">
                     <option value="Public">🌍 Public</option>
                     <option value="Users">👥 All Users</option>
-                    <option value="Specific">🎯 Specific User(s)...</option>
+                    <option value="Groups">🏷️ User Group(s)...</option>
+                    <option value="Specific">🎯 Specific User(s) / Group(s)...</option>
                     <option value="Private">🔒 Private</option>
                   </select>
                   <button type="button" class="btn btn-primary btn-sm" style="padding:4px 9px; font-size:11.5px;" onclick="applyBatchScheduleVisibility()">Apply</button>
@@ -593,9 +607,11 @@
               <select id="cif-upload-visibility" onchange="handleVisibilitySelectChange('cif-upload')" style="padding:5px 10px; border-radius:6px; border:1px solid #475569; background:#1e293b; color:#f8fafc; font-size:12.5px; font-weight:600;">
                 <option value="Public">🌍 Public — Visible to Everyone</option>
                 <option value="Users">👥 All Logged-In Users — Registered Accounts Only</option>
-                <option value="Specific">🎯 Specific User(s) — Selected Personal Accounts</option>
+                <option value="Groups">🏷️ User Group(s) — Selected User Groups</option>
+                <option value="Specific">🎯 Specific User(s) / Group(s) — Custom Selection</option>
                 <option value="Private">🔒 Private — Administrator Only</option>
               </select>
+              <button type="button" class="btn btn-outline btn-sm" style="background:rgba(255,255,255,0.08); color:#bfdbfe; border-color:#475569; padding:3px 9px; font-size:11.5px;" onclick="openAdminGroupsModal()">🏷️ Manage Groups</button>
               <span style="font-size:11.5px; color:#94a3b8;">(Applies to drag-and-drop *.cif uploads; editable anytime)</span>
             </div>
             <div id="cif-upload-specific-box" class="specific-users-picker-wrap" style="display:none; margin-top:8px;"></div>
@@ -629,6 +645,9 @@
                 <option value="Surface Slab">Surface Slab</option>
                 <option value="Defect Supercell">Defect Supercell</option>
               </select>
+              <select id="struct-audience-filter" class="strict-admin-only audience-group-filter-select" onchange="renderStructuresList()" style="padding:8px 12px; border:1px solid #93c5fd; background:#eff6ff; color:#1e3a8a; font-weight:600; border-radius:8px; font-size:13px;" title="Filter displayed structures by Visibility Mode or Target User Group">
+                <option value="ALL">🛡️ All Audiences &amp; Groups</option>
+              </select>
             </div>
             <button class="btn btn-primary btn-sm admin-only" onclick="openStructureModal()">+ New Structure</button>
           </div>
@@ -651,7 +670,8 @@
                   <select id="batch-struct-visibility" onchange="handleVisibilitySelectChange('batch-struct')" style="padding:4px 8px; border-radius:5px; border:1px solid #93c5fd; font-size:12px; background:#fff; color:#0f172a; font-weight:600;">
                     <option value="Public">🌍 Public</option>
                     <option value="Users">👥 All Users</option>
-                    <option value="Specific">🎯 Specific User(s)...</option>
+                    <option value="Groups">🏷️ User Group(s)...</option>
+                    <option value="Specific">🎯 Specific User(s) / Group(s)...</option>
                     <option value="Private">🔒 Private</option>
                   </select>
                   <button type="button" class="btn btn-primary btn-sm" style="padding:4px 9px; font-size:11.5px;" onclick="applyBatchStructuresVisibility()">Apply</button>
@@ -781,7 +801,8 @@
                 <select id="rep-visibility" onchange="handleVisibilitySelectChange('rep'); updateSlidePreview();">
                   <option value="Public">🌍 Public — Visible to Everyone</option>
                   <option value="Users">👥 All Logged-In Users — Registered Accounts Only</option>
-                  <option value="Specific">🎯 Specific User(s) — Selected Personal Accounts</option>
+                  <option value="Groups">🏷️ User Group(s) — Selected User Groups</option>
+                  <option value="Specific">🎯 Specific User(s) / Group(s) — Custom Selection</option>
                   <option value="Private">🔒 Private — Administrator Only</option>
                 </select>
                 <div id="rep-specific-box" class="specific-users-picker-wrap" style="display:none; margin-top:8px;"></div>
@@ -1961,29 +1982,40 @@
   <!-- MODAL: ADMINISTRATOR USER ACCOUNTS DIRECTORY & CONTENT INSPECTOR     -->
   <!-- ==================================================================== -->
   <div id="admin-users-modal" class="modal-backdrop">
-    <div class="modal-box" style="max-width:1120px; width:96%;">
-      <div class="card-header" style="border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:16px;">
+    <div class="modal-box" style="max-width:1180px; width:96%;">
+      <div class="card-header" style="border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:14px;">
         <div>
-          <div class="card-title" style="font-size:18px; color:#0f172a;">👥 Registered Personal User Accounts &amp; Content Inspector (Administrator Exclusive)</div>
+          <div class="card-title" style="font-size:18px; color:#0f172a;">👥 Registered Personal User Accounts, Groups &amp; Content Inspector (Administrator Exclusive)</div>
           <div style="font-size:12.5px; color:var(--text-muted); margin-top:2px;">
-            View all registered &amp; Google-linked personal accounts, inspect each user's updated Calendar Events, Reference Papers, Crystal Structures, Weekly Reports, and Activity Logs, or preview their live workspace.
+            Edit user profiles, change or reset passwords, organize users into Groups for targeted visibility, and inspect each user's live workspace.
           </div>
         </div>
         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-          <button class="btn btn-primary btn-sm" onclick="refreshCloudUsersNow(true)">🔄 Refresh Live Cloud Users</button>
-          <button class="btn btn-outline btn-sm" onclick="syncOrExportDataJson()">☁️ Sync All Users to GitHub</button>
+          <button class="btn btn-primary btn-sm" onclick="openAdminEditUserModal(null)">➕ Add New User</button>
+          <button class="btn btn-teal btn-sm" onclick="openAdminGroupsModal()">🏷️ Manage User Groups</button>
+          <button class="btn btn-outline btn-sm" onclick="refreshCloudUsersNow(true)">🔄 Refresh Cloud Users</button>
+          <button class="btn btn-outline btn-sm" onclick="syncOrExportDataJson()">☁️ Sync All to GitHub</button>
           <button class="btn btn-outline btn-sm" onclick="closeModal('admin-users-modal')">✕ Close</button>
         </div>
       </div>
 
       <!-- KPI Bar for Admin User Inspector -->
-      <div id="admin-users-kpi-bar" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:16px;"></div>
+      <div id="admin-users-kpi-bar" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(175px, 1fr)); gap:10px; margin-bottom:12px;"></div>
+
+      <!-- User Groups Summary & Quick Filter Bar -->
+      <div id="admin-users-groups-bar" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 12px; margin-bottom:14px;"></div>
 
       <div class="admin-users-grid">
         <!-- Left Column: Registered Personal Accounts List -->
         <div>
-          <div style="margin-bottom:8px;">
-            <input type="text" id="admin-user-search-input" placeholder="Search users by name, email, or affiliation..." oninput="renderAdminUsersDirectory()" style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;" />
+          <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:8px;">
+            <input type="text" id="admin-user-search-input" placeholder="Search users by name, email, role, or affiliation..." oninput="renderAdminUsersDirectory()" style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;" />
+            <div style="display:flex; gap:6px; align-items:center;">
+              <select id="admin-user-group-filter" onchange="renderAdminUsersDirectory()" style="flex:1; padding:6px 10px; border:1px solid #cbd5e1; border-radius:8px; font-size:12.5px; background:#fff; color:#0f172a; font-weight:600;">
+                <option value="ALL">🏷️ All User Groups</option>
+              </select>
+              <button type="button" class="btn btn-outline btn-sm" style="padding:6px 10px; font-size:11.5px; white-space:nowrap;" onclick="openAdminGroupsModal()">⚙️ Groups</button>
+            </div>
           </div>
           <div class="admin-user-list-panel" id="admin-users-list-panel"></div>
         </div>
@@ -1991,7 +2023,192 @@
         <!-- Right Column: Selected User's Detailed Content & Activity Log -->
         <div class="admin-user-detail-panel" id="admin-user-detail-panel">
           <div style="text-align:center; color:#64748b; padding:60px 20px;">
-            Select a user account on the left to inspect their personal workspace content and activity history.
+            Select a user account on the left to inspect or edit their profile, reset their password, assign groups, or view their personal workspace content.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- MODAL: ADMIN CREATE / EDIT USER PROFILE, GROUPS & PASSWORD RESET     -->
+  <!-- ==================================================================== -->
+  <div id="admin-edit-user-modal" class="modal-backdrop">
+    <div class="modal-box" style="max-width:680px; width:95%;">
+      <div class="card-header" style="border-bottom:1px solid #e2e8f0; padding-bottom:10px; margin-bottom:14px;">
+        <div>
+          <div class="card-title" id="aeu-modal-title" style="font-size:17.5px; color:#0f172a;">✏️ Edit Personal User Account &amp; Password (Admin)</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+            Modify user profile details, assign User Groups, or change/reset their account password.
+          </div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('admin-edit-user-modal')">✕ Close</button>
+      </div>
+
+      <input type="hidden" id="aeu-original-email" />
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Full Name *</label>
+          <input type="text" id="aeu-name" placeholder="e.g. Dr. Ji-Hoon Park" />
+        </div>
+        <div class="form-group">
+          <label>Email Address (Login ID) *</label>
+          <input type="email" id="aeu-email" placeholder="e.g. jhpark.matsci@skku.edu" />
+        </div>
+        <div class="form-group">
+          <label>Affiliation / University / Lab</label>
+          <input type="text" id="aeu-affiliation" placeholder="e.g. Sungkyunkwan University (SKKU) — Energy Science" />
+        </div>
+        <div class="form-group">
+          <label>Academic Role / Position</label>
+          <input type="text" id="aeu-role" placeholder="e.g. Postdoctoral Researcher, Ph.D. Candidate" />
+        </div>
+        <div class="form-group">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-top:4px;">
+            <input type="checkbox" id="aeu-google-linked" style="width:16px; height:16px; accent-color:#2563eb;" />
+            🌐 Link with Google Account OAuth
+          </label>
+          <input type="email" id="aeu-google-email" placeholder="Linked Google Email (e.g. user@gmail.com)" style="margin-top:6px;" />
+        </div>
+        <div class="form-group">
+          <label>Account Status &amp; Auth Label</label>
+          <select id="aeu-status">
+            <option value="Active">🟢 Active Account (Full Workspace Access)</option>
+            <option value="Suspended">🔴 Suspended (Login Disabled)</option>
+          </select>
+        </div>
+
+        <!-- User Groups Assignment Section -->
+        <div class="form-group full" style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; padding:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+            <label style="margin:0; font-size:13px; font-weight:700; color:#1e3a8a;">🏷️ Assign User to Group(s) (Used for Group Visibility Filtering)</label>
+            <button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px;" onclick="openAdminGroupsModal()">⚙️ Open Full Group Manager</button>
+          </div>
+          <div id="aeu-groups-checklist" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;"></div>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <input type="text" id="aeu-quick-group-name" placeholder="Quick-create a new group (e.g. Battery DFT Team)..." style="flex:1; padding:6px 10px; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; color:#0f172a;" onkeydown="if(event.key==='Enter'){event.preventDefault(); quickCreateGroupFromUserModal();}" />
+            <button type="button" class="btn btn-teal btn-sm" style="padding:6px 12px; font-size:12px;" onclick="quickCreateGroupFromUserModal()">+ Create &amp; Assign Group</button>
+          </div>
+        </div>
+
+        <!-- Password Change / Reset Section -->
+        <div class="form-group full" id="aeu-password-section" style="background:#eff6ff; border:1px solid #93c5fd; border-radius:10px; padding:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+            <div>
+              <div style="font-size:13.5px; font-weight:800; color:#1e3a8a;">🔑 Change or Reset User Password</div>
+              <div style="font-size:11.5px; color:#475569;">Enter a new password below or generate/reset a temporary password for this user.</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px; background:#ffffff; border:1px solid #bfdbfe; border-radius:6px; padding:4px 8px; font-size:12px;">
+              <span style="color:#64748b;">Current Password:</span>
+              <code id="aeu-current-pw-display" style="font-weight:700; color:#0f172a;">—</code>
+              <button type="button" class="btn btn-outline btn-sm" style="padding:2px 6px; font-size:11px;" onclick="copyAdminUserCurrentPassword()">📋 Copy</button>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <div style="position:relative; flex:1; min-width:210px;">
+              <input type="text" id="aeu-new-password" placeholder="Leave blank to keep current password, or type new password..." style="width:100%; padding:8px 12px; border:1px solid #60a5fa; border-radius:7px; font-size:13px; background:#fff; color:#0f172a; font-family:monospace;" />
+            </div>
+            <button type="button" class="btn btn-outline btn-sm" style="background:#fff; color:#1e40af; border-color:#93c5fd; font-weight:600;" onclick="generateAdminTempPasswordForUser()">🎲 Generate Temp Password</button>
+            <button type="button" class="btn btn-outline btn-sm" style="background:#fff; color:#b45309; border-color:#fcd34d; font-weight:600;" onclick="resetAdminUserPasswordToDefault()">🔄 Reset to "skku1234"</button>
+          </div>
+          <div style="font-size:11px; color:#1e40af; margin-top:6px;">
+            💡 Tip: Any new password entered or generated above will take effect immediately upon clicking <strong>"💾 Save User &amp; Password"</strong> and automatically sync to Cloud.
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; padding-top:12px; border-top:1px solid #e2e8f0; flex-wrap:wrap; gap:8px;">
+        <button type="button" class="btn btn-danger btn-sm" id="aeu-delete-btn" onclick="deleteUserFromEditModal()">🗑️ Delete User Account</button>
+        <div style="display:flex; gap:8px; margin-left:auto;">
+          <button type="button" class="btn btn-outline" onclick="closeModal('admin-edit-user-modal')">Cancel</button>
+          <button type="button" class="btn btn-primary" onclick="saveAdminEditedUser()">💾 Save User &amp; Password</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- MODAL: ADMINISTRATOR USER GROUPS MANAGER & VISIBILITY FILTERING      -->
+  <!-- ==================================================================== -->
+  <div id="admin-groups-modal" class="modal-backdrop">
+    <div class="modal-box" style="max-width:980px; width:96%;">
+      <div class="card-header" style="border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:14px;">
+        <div>
+          <div class="card-title" style="font-size:18px; color:#0f172a;">🏷️ User Groups Management &amp; Group Visibility Control (Administrator)</div>
+          <div style="font-size:12.5px; color:var(--text-muted); margin-top:2px;">
+            Create and organize User Groups (e.g., Lab Teams, DFT Collaborators, Course Groups), assign members, and target or filter content visibility by Group.
+          </div>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button class="btn btn-primary btn-sm" onclick="startNewUserGroupInModal()">➕ Create New Group</button>
+          <button class="btn btn-outline btn-sm" onclick="closeModal('admin-groups-modal')">✕ Close</button>
+        </div>
+      </div>
+
+      <div class="admin-users-grid" style="grid-template-columns: 320px 1fr;">
+        <!-- Left Column: Existing User Groups List -->
+        <div>
+          <div style="font-size:12px; font-weight:700; color:#334155; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+            <span>🏷️ Configured User Groups</span>
+            <span id="agm-total-groups-badge" class="badge badge-blue">0 groups</span>
+          </div>
+          <div id="admin-groups-list-panel" class="admin-user-list-panel" style="max-height:460px;"></div>
+        </div>
+
+        <!-- Right Column: Create / Edit Group & Assign Members -->
+        <div class="admin-user-detail-panel" style="padding:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid #e2e8f0;">
+            <h3 id="agm-editor-title" style="font-size:16px; font-weight:800; color:#0f172a; margin:0;">🏷️ Create / Edit User Group</h3>
+            <div id="agm-group-filter-shortcut"></div>
+          </div>
+
+          <input type="hidden" id="agm-id" />
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Group Name *</label>
+              <input type="text" id="agm-name" placeholder="e.g. SKKU Energy Transport Lab" />
+            </div>
+            <div class="form-group">
+              <label>Badge Color Style</label>
+              <select id="agm-color">
+                <option value="blue">🔵 Royal Blue</option>
+                <option value="purple">🟣 Deep Purple</option>
+                <option value="teal">🟢 Emerald / Teal</option>
+                <option value="amber">🟠 Amber / Gold</option>
+                <option value="rose">🔴 Crimson / Rose</option>
+                <option value="slate">⚫ Slate Gray</option>
+              </select>
+            </div>
+            <div class="form-group full">
+              <label>Group Description / Research Scope</label>
+              <input type="text" id="agm-desc" placeholder="e.g. PhD & Postdoc members working on Solid-State Electrolytes & DFT modeling" />
+            </div>
+
+            <div class="form-group full">
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
+                <label style="margin:0; font-weight:700; color:#1e3a8a;">👥 Select Group Members (<span id="agm-member-count-label">0 selected</span>)</label>
+                <div style="display:flex; gap:6px; align-items:center;">
+                  <input type="text" id="agm-member-search" placeholder="Search users..." oninput="renderAdminGroupMembersChecklist()" style="padding:4px 8px; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; width:160px;" />
+                  <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="toggleAllGroupModalMembers(true)">Select All</button>
+                  <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="toggleAllGroupModalMembers(false)">Clear</button>
+                </div>
+              </div>
+              <div id="agm-members-checklist" style="max-height:220px; overflow-y:auto; border:1px solid #cbd5e1; border-radius:8px; padding:8px; background:#f8fafc; display:flex; flex-direction:column; gap:5px;"></div>
+            </div>
+          </div>
+
+          <!-- Group Content Visibility Summary & Quick Batch Action -->
+          <div id="agm-shared-stats-box" style="margin-top:12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:10px 12px; font-size:12px; color:#1e3a8a;"></div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; padding-top:12px; border-top:1px solid #e2e8f0;">
+            <button type="button" class="btn btn-danger btn-sm" id="agm-delete-btn" onclick="deleteCurrentGroupFromModal()" style="display:none;">🗑️ Delete Group</button>
+            <div style="display:flex; gap:8px; margin-left:auto;">
+              <button type="button" class="btn btn-outline" onclick="closeModal('admin-groups-modal')">Done</button>
+              <button type="button" class="btn btn-primary" onclick="saveUserGroupFromModal()">💾 Save User Group</button>
+            </div>
           </div>
         </div>
       </div>
@@ -2163,7 +2380,8 @@
           <select id="cm-visibility" onchange="handleVisibilitySelectChange('cm')">
             <option value="Public">🌍 Public — Visible to Everyone</option>
             <option value="Users">👥 All Logged-In Users — Registered Accounts Only</option>
-            <option value="Specific">🎯 Specific User(s) — Selected Personal Accounts</option>
+            <option value="Groups">🏷️ User Group(s) — Selected User Groups</option>
+            <option value="Specific">🎯 Specific User(s) / Group(s) — Custom Selection</option>
             <option value="Private">🔒 Private — Administrator Only</option>
           </select>
         </div>
@@ -2208,7 +2426,8 @@
           <select id="awm-visibility" onchange="handleVisibilitySelectChange('awm')">
             <option value="Public">🌍 Public — Visible to Everyone</option>
             <option value="Users">👥 All Logged-In Users — Registered Accounts Only</option>
-            <option value="Specific">🎯 Specific User(s) — Selected Personal Accounts</option>
+            <option value="Groups">🏷️ User Group(s) — Selected User Groups</option>
+            <option value="Specific">🎯 Specific User(s) / Group(s) — Custom Selection</option>
             <option value="Private">🔒 Private — Administrator Only</option>
           </select>
         </div>
@@ -2253,7 +2472,8 @@
           <select id="edu-visibility" onchange="handleVisibilitySelectChange('edu')">
             <option value="Public">🌍 Public — Visible to Everyone</option>
             <option value="Users">👥 All Logged-In Users — Registered Accounts Only</option>
-            <option value="Specific">🎯 Specific User(s) — Selected Personal Accounts</option>
+            <option value="Groups">🏷️ User Group(s) — Selected User Groups</option>
+            <option value="Specific">🎯 Specific User(s) / Group(s) — Custom Selection</option>
             <option value="Private">🔒 Private — Administrator Only</option>
           </select>
         </div>
@@ -2298,7 +2518,8 @@
           <select id="exp-visibility" onchange="handleVisibilitySelectChange('exp')">
             <option value="Public">🌍 Public — Visible to Everyone</option>
             <option value="Users">👥 All Logged-In Users — Registered Accounts Only</option>
-            <option value="Specific">🎯 Specific User(s) — Selected Personal Accounts</option>
+            <option value="Groups">🏷️ User Group(s) — Selected User Groups</option>
+            <option value="Specific">🎯 Specific User(s) / Group(s) — Custom Selection</option>
             <option value="Private">🔒 Private — Administrator Only</option>
           </select>
         </div>
@@ -2374,7 +2595,8 @@
           <select id="pm-visibility" onchange="handleVisibilitySelectChange('pm')">
             <option value="Public">🌍 Public — Visible to Everyone</option>
             <option value="Users">👥 All Logged-In Users — Registered Accounts Only</option>
-            <option value="Specific">🎯 Specific User(s) — Selected Personal Accounts</option>
+            <option value="Groups">🏷️ User Group(s) — Selected User Groups</option>
+            <option value="Specific">🎯 Specific User(s) / Group(s) — Custom Selection</option>
             <option value="Private">🔒 Private — Administrator Only</option>
           </select>
           <div id="pm-specific-box" class="specific-users-picker-wrap" style="display:none; margin-top:8px;"></div>
@@ -2598,7 +2820,8 @@
           <select id="struct-visibility" onchange="handleVisibilitySelectChange('struct')">
             <option value="Public">🌍 Public — Visible to Everyone</option>
             <option value="Users">👥 All Logged-In Users — Registered Accounts Only</option>
-            <option value="Specific">🎯 Specific User(s) — Selected Personal Accounts</option>
+            <option value="Groups">🏷️ User Group(s) — Selected User Groups</option>
+            <option value="Specific">🎯 Specific User(s) / Group(s) — Custom Selection</option>
             <option value="Private">🔒 Private — Administrator Only</option>
           </select>
           <div id="struct-specific-box" class="specific-users-picker-wrap" style="display:none; margin-top:8px;"></div>
@@ -2779,7 +3002,8 @@
           <select id="sm-visibility" onchange="handleVisibilitySelectChange('sm')">
             <option value="Public">🌍 Public — Visible to Everyone</option>
             <option value="Users">👥 All Logged-In Users — Registered Accounts Only</option>
-            <option value="Specific">🎯 Specific User(s) — Selected Personal Accounts</option>
+            <option value="Groups">🏷️ User Group(s) — Selected User Groups</option>
+            <option value="Specific">🎯 Specific User(s) / Group(s) — Custom Selection</option>
             <option value="Private">🔒 Private — Administrator Only</option>
           </select>
           <div id="sm-specific-box" class="specific-users-picker-wrap" style="display:none; margin-top:8px;"></div>
@@ -2852,7 +3076,7 @@
   <div id="toast-container"></div>
   <div id="plag-pdf-render-area" style="display:none;"></div>
 
-  <script src="matsci_tools.js?v=20261114_v58_searchable_batch" onerror="this.src='/static/matsci_tools.js?v=20261114_v58_searchable_batch'"></script>
-  <script src="app.js?v=20261114_v58_searchable_batch" onerror="this.src='/static/app.js?v=20261114_v58_searchable_batch'"></script>
+  <script src="matsci_tools.js?v=20261114_v59_admin_users_groups" onerror="this.src='/static/matsci_tools.js?v=20261114_v59_admin_users_groups'"></script>
+  <script src="app.js?v=20261114_v59_admin_users_groups" onerror="this.src='/static/app.js?v=20261114_v59_admin_users_groups'"></script>
 </body>
 </html>
