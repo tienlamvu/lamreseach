@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T14:36:20.090Z",
+  "exported_at": "2026-11-14T14:37:27.597Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -1727,19 +1727,27 @@
       "description": "",
       "in_weekly_report": 1,
       "id": 1794551462746
+    },
+    {
+      "title": "Weekly Subgroup & PI Progress Meeting",
+      "event_type": "Group Meeting / PI Meeting",
+      "instrument_or_location": "SKKU Cluster / Office",
+      "start_date": "2026-11-14",
+      "start_time": "10:00",
+      "end_time": "12:00",
+      "priority": "High",
+      "status": "Scheduled",
+      "sample_id": "",
+      "description": "",
+      "in_weekly_report": 1,
+      "visibility": "Public",
+      "allowed_users": [],
+      "allowed_groups": [],
+      "id": 1794667045339
     }
   ],
   "users_registry": {},
-  "user_groups": {
-    "grp_skku_lab": {
-      "id": "grp_skku_lab",
-      "name": "SKKU Energy Transport Lab",
-      "description": "Sungkyunkwan University Energy Science & Materials Modeling Members",
-      "color": "blue",
-      "members": [],
-      "updatedAtMs": 1700000000000
-    }
-  },
+  "user_groups": {},
   "deleted_users": [
     "jhpark.matsci@skku.edu",
     "minseo.kim@gmail.com",
@@ -1750,6 +1758,7 @@
   ],
   "deleted_groups": [
     "grp_external_collab",
-    "grp_dft_team"
+    "grp_dft_team",
+    "grp_skku_lab"
   ]
 }
