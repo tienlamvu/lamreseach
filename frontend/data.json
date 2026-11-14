@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T07:57:11.804Z",
+  "exported_at": "2026-11-14T07:57:21.404Z",
   "profile": {
     "full_name": "Vu Tien Lam",
     "title_role": "Ph.D. Candidate in Computational Materials Science",
@@ -474,7 +474,7 @@
       "passwordHash": "441d52fbb490008fa860a41b38fe03e0b7f6fb06b56336922f7d7a95562f51dd",
       "registeredAt": "2026-11-10 09:15",
       "lastLoginAt": "2026-11-14 10:20",
-      "lastUpdatedAt": "2026-11-14 06:53",
+      "lastUpdatedAt": "2026-11-14 07:57",
       "workspace": {
         "papers": [
           {
@@ -635,7 +635,7 @@
           "detail": "Linked Google Account jhpark.matsci@gmail.com"
         }
       ],
-      "updatedAtMs": 1794639204998,
+      "updatedAtMs": 1794643040276,
       "groups": [
         "grp_skku_lab",
         "grp_dft_team"
