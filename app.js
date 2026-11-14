@@ -14,6 +14,17 @@ let STATE = {
   structures: [],
   schedule: [],
   profile: {},
+  masterData: {
+    papers: [],
+    structures: [],
+    schedule: [],
+    profile: {}
+  },
+  usersRegistry: {},
+  adminPreviewUserEmail: null,
+  selectedInspectorUserEmail: null,
+  selectedInspectorTab: "activity",
+  pendingGoogleEmail: "",
   expReportRows: [],
   litReportRows: [],
   currentViewingStructure: null,
@@ -32,8 +43,13 @@ let STATE = {
   auth: {
     isLoggedIn: false,
     isAdmin: false,
+    role: "visitor", // "visitor" | "user" | "admin"
     email: "",
     name: "",
+    affiliation: "",
+    academicRole: "",
+    googleLinked: false,
+    googleEmail: "",
     picture: "",
     ownerEmail: OWNER_GOOGLE_EMAIL,
     googleClientId: "",
@@ -249,8 +265,8 @@ function updateMobileNavPill(tabId) {
 function stepMobileTab(direction) {
   const activePane = document.querySelector(".tab-pane.active");
   const currentTab = activePane ? activePane.id.replace("tab-", "") : "dashboard";
-  const isAdmin = document.body.classList.contains("is-admin");
-  const availableTabs = TABS_ORDER.filter(t => t !== "weekly-report" || isAdmin);
+  const isLoggedIn = document.body.classList.contains("is-logged-in");
+  const availableTabs = TABS_ORDER.filter(t => t !== "weekly-report" || isLoggedIn);
   
   let idx = availableTabs.indexOf(currentTab);
   if (idx === -1) idx = 0;
@@ -402,28 +418,503 @@ function renderScientificTitle(rawTitle) {
 
 
 // ============================================================================
-// Authentication & Exclusive Administrator Access (lamvt.skku@gmail.com)
+// Multi-User Authentication, Google Account Linking, Personal Workspaces
+// & Administrator User Directory / Content Inspector
+// Exclusive CV Owner & Administrator: lamvt.skku@gmail.com
 // ============================================================================
 
 function normalizeEmail(raw) {
   return (raw || "").trim().toLowerCase().replace(/,/g, ".");
 }
 
+async function hashPasswordSha256(plainText) {
+  const clean = String(plainText || "");
+  try {
+    const enc = new TextEncoder().encode(clean);
+    const buf = await crypto.subtle.digest("SHA-256", enc);
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+  } catch (e) {
+    return "plain:" + clean;
+  }
+}
+
+const DEFAULT_USERS_REGISTRY = {
+  "jhpark.matsci@skku.edu": {
+    email: "jhpark.matsci@skku.edu",
+    name: "Dr. Ji-Hoon Park",
+    affiliation: "Sungkyunkwan University (SKKU) — Energy Science",
+    academicRole: "Postdoctoral Researcher",
+    authProvider: "Google Account Linked",
+    googleLinked: true,
+    googleEmail: "jhpark.matsci@gmail.com",
+    passwordPlainHint: "skku2026",
+    passwordHash: "e5acba84c164be5493b03ab87712975cdaf2149d43c81df395eb07f8a1057264",
+    registeredAt: "2026-11-10 09:15",
+    lastLoginAt: "2026-11-14 10:20",
+    lastUpdatedAt: "2026-11-14 10:42",
+    workspace: {
+      schedule: [
+        {
+          id: 90101,
+          title: "VASP Hybrid HSE06 Bandgap Calculation — CsPbI3 Slab",
+          event_type: "Electrochemistry / Battery Testing",
+          instrument_or_location: "SKKU HPC Cluster (Node 04)",
+          start_date: "2026-11-16",
+          start_time: "09:30",
+          end_time: "12:30",
+          priority: "High",
+          status: "Scheduled",
+          sample_id: "CsPbI3-Slab-01",
+          description: "Surface termination relaxation and dipole correction for perovskite solar cell interface.",
+          in_weekly_report: 1
+        },
+        {
+          id: 90102,
+          title: "In-situ Grazing Incidence XRD Beamtime Meeting",
+          event_type: "Group Meeting / PI Meeting",
+          instrument_or_location: "N-Center Room 86412",
+          start_date: "2026-11-18",
+          start_time: "14:00",
+          end_time: "15:30",
+          priority: "High",
+          status: "In Progress",
+          sample_id: "GIXRD-2026B",
+          description: "Review synchrotron beamtime schedule and sample holder geometry.",
+          in_weekly_report: 1
+        }
+      ],
+      papers: [
+        {
+          id: 90201,
+          doi: "10.1038/s41560-023-01245-w",
+          title: "Surface passivation of halide perovskite thin films for high-stability photovoltaics",
+          authors: "Ji-Hoon Park, Seong Chu Lim, Min-Seo Kim",
+          journal: "Nature Energy",
+          year: 2025,
+          material_system: "CsPbI3 / 2D Perovskite Passivation",
+          synthesis_method: "Spin-Coating + First-principles DFT",
+          characterization_tags: "DFT, VASP, GIWAXS, XPS",
+          status: "Key Reference",
+          notes: "Reference energy alignment values for octahedral tilting in CsPbI3.",
+          abstract: "Comprehensive investigation of surface ligand binding energies and defect tolerance in inorganic halide perovskites.",
+          in_weekly_report: 1
+        }
+      ],
+      structures: [
+        {
+          id: 90301,
+          name: "Cubic Halide Perovskite CsPbI3 (α-phase)",
+          chemical_formula: "CsPbI3",
+          crystal_system: "Cubic",
+          space_group: "Pm-3m (221)",
+          structure_type: "Bulk 3D",
+          a: 6.289,
+          b: 6.289,
+          c: 6.289,
+          alpha: 90,
+          beta: 90,
+          gamma: 90,
+          volume: 248.74,
+          bandgap_ev: 1.73,
+          bandgap_type: "Direct",
+          formation_energy_ev: -1.42,
+          dft_code: "VASP 6.4",
+          dft_functional: "HSE06 + SOC",
+          kpoints_mesh: "6x6x6",
+          encut_ev: 500,
+          notes: "Personal workspace model by Dr. Ji-Hoon Park — α-CsPbI3 unit cell.",
+          atoms: [
+            { element: "Cs", x: 0.0, y: 0.0, z: 0.0 },
+            { element: "Pb", x: 0.5, y: 0.5, z: 0.5 },
+            { element: "I", x: 0.5, y: 0.5, z: 0.0 },
+            { element: "I", x: 0.5, y: 0.0, z: 0.5 },
+            { element: "I", x: 0.0, y: 0.5, z: 0.5 }
+          ]
+        }
+      ],
+      expReportRows: [
+        {
+          sample_id: "CsPbI3-HSE06",
+          material: "VASP 6.4 (HSE06 + SOC)",
+          conditions: "Eg = 1.73 eV (Direct at R-point)",
+          findings: "Spin-orbit coupling reduces Pb-6p conduction band minimum by 0.65 eV."
+        }
+      ],
+      litReportRows: [
+        {
+          title: "Surface passivation of halide perovskite thin films for high-stability photovoltaics",
+          journal: "Nature Energy (2025)",
+          material: "CsPbI3",
+          takeaway: "2D Ruddlesden-Popper capping layer suppresses iodide vacancy migration."
+        }
+      ]
+    },
+    activityLog: [
+      {
+        timestamp: "2026-11-14 10:42",
+        category: "Crystal Structures",
+        action: "Added Structure",
+        detail: "Uploaded Cubic Halide Perovskite CsPbI3 (Pm-3m, Eg = 1.73 eV)"
+      },
+      {
+        timestamp: "2026-11-14 10:30",
+        category: "Calendar",
+        action: "Scheduled Event",
+        detail: "VASP Hybrid HSE06 Bandgap Calculation — CsPbI3 Slab (2026-11-16)"
+      },
+      {
+        timestamp: "2026-11-14 10:22",
+        category: "References",
+        action: "Imported Paper via DOI",
+        detail: "10.1038/s41560-023-01245-w — Nature Energy (2025)"
+      },
+      {
+        timestamp: "2026-11-10 09:15",
+        category: "Account",
+        action: "Account Registered & Linked with Google",
+        detail: "Linked Google Account jhpark.matsci@gmail.com"
+      }
+    ]
+  },
+  "minseo.kim@gmail.com": {
+    email: "minseo.kim@gmail.com",
+    name: "Min-Seo Kim",
+    affiliation: "KAIST — Department of Materials Science & Engineering",
+    academicRole: "Ph.D. Candidate",
+    authProvider: "Google Account",
+    googleLinked: true,
+    googleEmail: "minseo.kim@gmail.com",
+    passwordPlainHint: "kaist2026",
+    passwordHash: "plain:kaist2026",
+    registeredAt: "2026-11-12 14:05",
+    lastLoginAt: "2026-11-14 09:50",
+    lastUpdatedAt: "2026-11-14 10:05",
+    workspace: {
+      schedule: [
+        {
+          id: 90401,
+          title: "Solid-State Electrolyte LLZTO Pellet Sintering & EIS",
+          event_type: "Furnace Synthesis / Calcination",
+          instrument_or_location: "Tube Furnace #2 & BioLogic VMP3",
+          start_date: "2026-11-17",
+          start_time: "10:00",
+          end_time: "16:00",
+          priority: "High",
+          status: "Scheduled",
+          sample_id: "LLZTO-1150C",
+          description: "Sintering Ta-doped LLZO at 1150 °C in MgO crucible with mother powder.",
+          in_weekly_report: 1
+        }
+      ],
+      papers: [
+        {
+          id: 90501,
+          doi: "10.1021/acsenergylett.4c00812",
+          title: "Grain boundary engineering in garnet-type solid-state electrolytes for lithium metal batteries",
+          authors: "Min-Seo Kim, H. J. Ryu",
+          journal: "ACS Energy Letters",
+          year: 2025,
+          material_system: "Li6.4La3Zr1.4Ta0.6O12 (LLZTO)",
+          synthesis_method: "Solid-State Reaction + ALD",
+          characterization_tags: "XRD, EIS, SEM, XPS",
+          status: "Reading",
+          notes: "Critical current density reaches 2.1 mA/cm2 after Li3PO4 interface modification.",
+          abstract: "Interfacial impedance reduction between garnet electrolyte and Li metal anode via ultrathin ALD coating.",
+          in_weekly_report: 1
+        }
+      ],
+      structures: [
+        {
+          id: 90601,
+          name: "2D Titanium Carbide MXene Monolayer (Ti3C2O2)",
+          chemical_formula: "Ti3C2O2",
+          crystal_system: "Hexagonal",
+          space_group: "P-3m1 (164)",
+          structure_type: "2D Monolayer",
+          a: 3.071,
+          b: 3.071,
+          c: 20.0,
+          alpha: 90,
+          beta: 90,
+          gamma: 120,
+          volume: 163.35,
+          bandgap_ev: 0.0,
+          bandgap_type: "Metallic",
+          formation_energy_ev: -2.85,
+          dft_code: "VASP 6.4",
+          dft_functional: "PBE + DFT-D3",
+          kpoints_mesh: "12x12x1",
+          encut_ev: 520,
+          notes: "Oxygen-terminated Ti3C2O2 MXene slab with 20 Å vacuum layer.",
+          atoms: [
+            { element: "Ti", x: 0.0, y: 0.0, z: 0.5 },
+            { element: "Ti", x: 0.3333, y: 0.6667, z: 0.618 },
+            { element: "Ti", x: 0.6667, y: 0.3333, z: 0.382 },
+            { element: "C", x: 0.6667, y: 0.3333, z: 0.558 },
+            { element: "C", x: 0.3333, y: 0.6667, z: 0.442 },
+            { element: "O", x: 0.0, y: 0.0, z: 0.675 },
+            { element: "O", x: 0.0, y: 0.0, z: 0.325 }
+          ]
+        }
+      ],
+      expReportRows: [
+        {
+          sample_id: "Ti3C2O2-Slab",
+          material: "VASP (PBE-D3)",
+          conditions: "Metallic DOS at EF",
+          findings: "Li-ion diffusion barrier on O-terminated Ti3C2O2 is 0.18 eV."
+        }
+      ],
+      litReportRows: [
+        {
+          title: "Grain boundary engineering in garnet-type solid-state electrolytes",
+          journal: "ACS Energy Letters (2025)",
+          material: "LLZTO",
+          takeaway: "Eliminates Li2CO3 surface contaminants via thermal acid etching."
+        }
+      ]
+    },
+    activityLog: [
+      {
+        timestamp: "2026-11-14 10:05",
+        category: "Calendar",
+        action: "Scheduled Event",
+        detail: "Solid-State Electrolyte LLZTO Pellet Sintering & EIS (2026-11-17)"
+      },
+      {
+        timestamp: "2026-11-14 09:55",
+        category: "Crystal Structures",
+        action: "Added Structure",
+        detail: "2D Titanium Carbide MXene Monolayer Ti3C2O2 (P-3m1)"
+      },
+      {
+        timestamp: "2026-11-12 14:05",
+        category: "Account",
+        action: "Signed in with Google Account",
+        detail: "Google OAuth Linked: minseo.kim@gmail.com"
+      }
+    ]
+  }
+};
+
+function ensureUsersRegistryInitialized(remoteRegistry = null) {
+  let merged = JSON.parse(JSON.stringify(DEFAULT_USERS_REGISTRY));
+  if (remoteRegistry && typeof remoteRegistry === "object") {
+    Object.keys(remoteRegistry).forEach(k => {
+      const normK = normalizeEmail(k);
+      if (normK && normK !== OWNER_GOOGLE_EMAIL) {
+        merged[normK] = { ...(merged[normK] || {}), ...remoteRegistry[k] };
+      }
+    });
+  }
+  try {
+    const localRaw = localStorage.getItem("matsci_users_registry_v1");
+    if (localRaw) {
+      const localObj = JSON.parse(localRaw);
+      if (localObj && typeof localObj === "object") {
+        Object.keys(localObj).forEach(k => {
+          const normK = normalizeEmail(k);
+          if (normK && normK !== OWNER_GOOGLE_EMAIL) {
+            merged[normK] = { ...(merged[normK] || {}), ...localObj[k] };
+          }
+        });
+      }
+    }
+  } catch (e) {
+    console.warn("Could not parse local users registry:", e);
+  }
+  STATE.usersRegistry = merged;
+  persistUsersRegistryLocal();
+  updateHeaderUsersCountBadge();
+}
+
+function persistUsersRegistryLocal() {
+  try {
+    localStorage.setItem("matsci_users_registry_v1", JSON.stringify(STATE.usersRegistry || {}));
+  } catch (e) {
+    console.warn("Could not save users registry to localStorage:", e);
+  }
+  updateHeaderUsersCountBadge();
+}
+
+function updateHeaderUsersCountBadge() {
+  const badge = document.getElementById("header-users-count-badge");
+  const count = Object.keys(STATE.usersRegistry || {}).length;
+  if (badge) badge.textContent = String(count);
+}
+
+function findRegisteredUserByEmailOrGoogle(emailInput) {
+  const norm = normalizeEmail(emailInput);
+  if (!norm) return null;
+  if (STATE.usersRegistry && STATE.usersRegistry[norm]) {
+    return STATE.usersRegistry[norm];
+  }
+  for (const key of Object.keys(STATE.usersRegistry || {})) {
+    const u = STATE.usersRegistry[key];
+    if (u && u.googleLinked && normalizeEmail(u.googleEmail) === norm) {
+      return u;
+    }
+  }
+  return null;
+}
+
+function getActivePersonalWorkspaceEmail() {
+  if (STATE.auth.isAdmin && STATE.adminPreviewUserEmail && STATE.usersRegistry[STATE.adminPreviewUserEmail]) {
+    return STATE.adminPreviewUserEmail;
+  }
+  if (STATE.auth.isLoggedIn && !STATE.auth.isAdmin) {
+    const norm = normalizeEmail(STATE.auth.email);
+    if (STATE.usersRegistry && STATE.usersRegistry[norm]) {
+      return norm;
+    }
+  }
+  return null;
+}
+
+function recordUserActivity(category, action, detail) {
+  const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
+  const activeEmail = getActivePersonalWorkspaceEmail();
+  if (!activeEmail || !STATE.usersRegistry[activeEmail]) return;
+  const user = STATE.usersRegistry[activeEmail];
+  user.activityLog = Array.isArray(user.activityLog) ? user.activityLog : [];
+  user.activityLog.unshift({
+    timestamp: nowStr,
+    category: category || "Workspace",
+    action: action || "Updated Content",
+    detail: detail || ""
+  });
+  if (user.activityLog.length > 100) {
+    user.activityLog = user.activityLog.slice(0, 100);
+  }
+  user.lastUpdatedAt = nowStr;
+  persistUsersRegistryLocal();
+}
+
+function applyActiveWorkspaceData() {
+  // Academic CV & Profile ALWAYS belong exclusively to Administrator Vu Tien Lam
+  if (STATE.masterData && STATE.masterData.profile && Object.keys(STATE.masterData.profile).length > 0) {
+    STATE.profile = STATE.masterData.profile;
+  }
+
+  const activeUserEmail = getActivePersonalWorkspaceEmail();
+  if (activeUserEmail && STATE.usersRegistry[activeUserEmail]) {
+    const u = STATE.usersRegistry[activeUserEmail];
+    u.workspace = u.workspace || { schedule: [], papers: [], structures: [], expReportRows: [], litReportRows: [] };
+    STATE.papers = Array.isArray(u.workspace.papers) ? u.workspace.papers : [];
+    STATE.structures = Array.isArray(u.workspace.structures) ? u.workspace.structures : [];
+    STATE.schedule = Array.isArray(u.workspace.schedule) ? u.workspace.schedule : [];
+    STATE.expReportRows = Array.isArray(u.workspace.expReportRows) ? u.workspace.expReportRows : [];
+    STATE.litReportRows = Array.isArray(u.workspace.litReportRows) ? u.workspace.litReportRows : [];
+  } else if (STATE.masterData) {
+    STATE.papers = Array.isArray(STATE.masterData.papers) ? STATE.masterData.papers : STATE.papers;
+    STATE.structures = Array.isArray(STATE.masterData.structures) ? STATE.masterData.structures : STATE.structures;
+    STATE.schedule = Array.isArray(STATE.masterData.schedule) ? STATE.masterData.schedule : STATE.schedule;
+  }
+
+  // Update Calendar Linked Account Label & Google Calendar Embed
+  const calEmailLabel = document.getElementById("calendar-active-email-label");
+  const gcalTitleEmail = document.getElementById("gcal-embed-title-email");
+  const gcalIframe = document.getElementById("gcal-embed-iframe");
+
+  let targetCalEmail = OWNER_GOOGLE_EMAIL;
+  if (activeUserEmail && STATE.usersRegistry[activeUserEmail]) {
+    const u = STATE.usersRegistry[activeUserEmail];
+    targetCalEmail = u.googleEmail || u.email || OWNER_GOOGLE_EMAIL;
+  }
+  if (calEmailLabel) calEmailLabel.textContent = targetCalEmail;
+  if (gcalTitleEmail) gcalTitleEmail.textContent = targetCalEmail;
+  if (gcalIframe) {
+    const desiredSrc = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(targetCalEmail)}&ctz=Asia%2FSeoul&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=1&showCalendars=0`;
+    if (gcalIframe.getAttribute("src") !== desiredSrc) {
+      gcalIframe.setAttribute("src", desiredSrc);
+    }
+  }
+
+  renderWorkspaceBanner();
+  renderDashboardAdminUsersSummary();
+}
+
+function renderWorkspaceBanner() {
+  const banner = document.getElementById("workspace-context-banner");
+  if (!banner) return;
+
+  if (STATE.auth.isAdmin && STATE.adminPreviewUserEmail && STATE.usersRegistry[STATE.adminPreviewUserEmail]) {
+    const u = STATE.usersRegistry[STATE.adminPreviewUserEmail];
+    banner.className = "workspace-context-banner admin-preview-mode no-print";
+    banner.style.display = "flex";
+    banner.innerHTML = `
+      <div>
+        👁️ <strong>Administrator Live Workspace Inspection:</strong> You are currently viewing and managing the personal workspace of <strong>${escapeHtml(u.name)}</strong> (<code>${escapeHtml(u.email)}</code> — ${escapeHtml(u.affiliation || "Researcher")}). Note: The Academic CV tab remains exclusively your Administrator CV.
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button class="btn btn-outline btn-sm" onclick="openAdminUsersModal()">👥 Switch User</button>
+        <button class="btn btn-primary btn-sm" style="background:#b45309; border-color:#b45309;" onclick="exitAdminUserPreview()">↩ Return to Administrator Master Workspace</button>
+      </div>
+    `;
+    return;
+  }
+
+  if (STATE.auth.isLoggedIn && !STATE.auth.isAdmin) {
+    const u = STATE.usersRegistry[normalizeEmail(STATE.auth.email)] || STATE.auth;
+    const googleBadge = u.googleLinked
+      ? `<span class="badge badge-blue" style="margin-left:6px;">🌐 Google Linked (${escapeHtml(u.googleEmail || u.email)})</span>`
+      : `<button class="btn btn-outline btn-sm" style="margin-left:6px; padding:2px 8px; font-size:11px;" onclick="openUserAccountModal()">🔗 Link Google Account</button>`;
+    banner.className = "workspace-context-banner no-print";
+    banner.style.display = "flex";
+    banner.innerHTML = `
+      <div>
+        🧑‍🔬 <strong>Personal Research Workspace Active:</strong> Signed in as <strong>${escapeHtml(u.name || STATE.auth.name)}</strong> (<code>${escapeHtml(u.email)}</code>). You can add your own Calendar Events, Reference Papers, Crystal Structures (*.cif), and Weekly Reports. ${googleBadge}
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <span style="font-size:11.5px; color:#475569;">🔒 <em>Academic CV is read-only (exclusive to Administrator)</em></span>
+        <button class="btn btn-outline btn-sm" onclick="openUserAccountModal()">⚙️ Account Settings</button>
+      </div>
+    `;
+    return;
+  }
+
+  banner.style.display = "none";
+  banner.innerHTML = "";
+}
+
 function initAuthSession() {
+  ensureUsersRegistryInitialized();
   const saved = localStorage.getItem("matsci_admin_session_v4");
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (normalizeEmail(parsed.email) === OWNER_GOOGLE_EMAIL && parsed.isLoggedIn) {
+      const normEmail = normalizeEmail(parsed.email);
+      if (parsed.isLoggedIn && normEmail === OWNER_GOOGLE_EMAIL) {
         STATE.auth = {
           ...STATE.auth,
           ...parsed,
           isLoggedIn: true,
           isAdmin: true,
+          role: "admin",
+          email: OWNER_GOOGLE_EMAIL,
           ownerEmail: OWNER_GOOGLE_EMAIL
         };
-        document.body.classList.add("is-admin");
-        document.body.classList.remove("visitor-mode");
+        document.body.classList.add("is-admin", "is-logged-in");
+        document.body.classList.remove("visitor-mode", "is-user");
+        renderAuthHeader();
+        return;
+      } else if (parsed.isLoggedIn && normEmail) {
+        const regUser = findRegisteredUserByEmailOrGoogle(normEmail);
+        STATE.auth = {
+          ...STATE.auth,
+          ...parsed,
+          isLoggedIn: true,
+          isAdmin: false,
+          role: "user",
+          email: regUser ? regUser.email : normEmail,
+          name: (regUser && regUser.name) || parsed.name || normEmail.split("@")[0],
+          affiliation: (regUser && regUser.affiliation) || parsed.affiliation || "",
+          academicRole: (regUser && regUser.academicRole) || parsed.academicRole || "Researcher",
+          googleLinked: Boolean(regUser ? regUser.googleLinked : parsed.googleLinked),
+          googleEmail: (regUser && regUser.googleEmail) || parsed.googleEmail || ""
+        };
+        document.body.classList.add("is-logged-in", "is-user");
+        document.body.classList.remove("is-admin", "visitor-mode");
         renderAuthHeader();
         return;
       }
@@ -435,7 +926,8 @@ function initAuthSession() {
   // Default initial state: Public Read-Only Visitor Mode
   STATE.auth.isLoggedIn = false;
   STATE.auth.isAdmin = false;
-  document.body.classList.remove("is-admin");
+  STATE.auth.role = "visitor";
+  document.body.classList.remove("is-admin", "is-logged-in", "is-user");
   document.body.classList.add("visitor-mode");
   renderAuthHeader();
 }
@@ -443,11 +935,12 @@ function initAuthSession() {
 function renderAuthHeader() {
   const bar = document.getElementById("google-auth-bar");
   const badge = document.getElementById("header-auth-status-badge");
+  updateHeaderUsersCountBadge();
   if (!bar) return;
 
   if (STATE.auth.isAdmin && normalizeEmail(STATE.auth.email) === OWNER_GOOGLE_EMAIL) {
-    document.body.classList.add("is-admin");
-    document.body.classList.remove("visitor-mode");
+    document.body.classList.add("is-admin", "is-logged-in");
+    document.body.classList.remove("visitor-mode", "is-user");
     if (badge) {
       badge.innerHTML = `<span style="color:#16a34a; font-weight:700;">● Admin Mode Active (${OWNER_GOOGLE_EMAIL})</span>`;
     }
@@ -458,33 +951,70 @@ function renderAuthHeader() {
       </div>
       <button class="btn btn-outline btn-sm btn-logout" style="background:#1e293b; color:#fca5a5; border-color:#334155; padding:4px 10px; font-size:12px;" onclick="signOutAdmin()" title="Log out to Public Viewer Mode">Log out</button>
     `;
+  } else if (STATE.auth.isLoggedIn) {
+    document.body.classList.add("is-logged-in", "is-user");
+    document.body.classList.remove("is-admin", "visitor-mode");
+    const initial = (STATE.auth.name || STATE.auth.email || "U").trim().charAt(0).toUpperCase();
+    const gTag = STATE.auth.googleLinked ? `<span title="Linked with Google Account: ${escapeHtml(STATE.auth.googleEmail || STATE.auth.email)}" style="color:#fde047;">🌐</span>` : "";
+    if (badge) {
+      badge.innerHTML = `<span style="color:#2563eb; font-weight:700;">● Personal Account (${escapeHtml(STATE.auth.email)})</span>`;
+    }
+    bar.innerHTML = `
+      <div class="user-pill" onclick="openUserAccountModal()" title="Click to manage your personal account & Google linking">
+        <div class="google-mini-avatar" style="background:#2563eb;">${escapeHtml(initial)}</div>
+        <span>👤 <strong>${escapeHtml(STATE.auth.name)}</strong> (<code>${escapeHtml(STATE.auth.email)}</code>) ${gTag}</span>
+      </div>
+      <button class="btn btn-outline btn-sm" style="background:rgba(255,255,255,0.08); color:#e2e8f0; border-color:#475569; padding:4px 10px; font-size:12px;" onclick="openUserAccountModal()">⚙️ My Account</button>
+      <button class="btn btn-outline btn-sm btn-logout" style="background:#1e293b; color:#fca5a5; border-color:#334155; padding:4px 10px; font-size:12px;" onclick="signOutUser()" title="Log out">Log out</button>
+    `;
   } else {
-    document.body.classList.remove("is-admin");
+    document.body.classList.remove("is-admin", "is-logged-in", "is-user");
     document.body.classList.add("visitor-mode");
     if (badge) {
       badge.innerHTML = `<span style="color:#64748b; font-weight:600;">👁️ Public Read-Only Mode</span>`;
     }
     bar.innerHTML = `
       <span class="visitor-pill">👁️ Public View</span>
-      <button class="google-header-signin-btn" onclick="openLoginModal()" title="Sign in with your Google Account">
+      <button class="btn btn-outline btn-sm" style="background:rgba(255,255,255,0.1); color:#fff; border-color:#475569; padding:6px 12px; font-size:12.5px; border-radius:999px;" onclick="openAuthModal('register')">
+        ✨ Register
+      </button>
+      <button class="btn btn-primary btn-sm" style="padding:6px 13px; font-size:12.5px; border-radius:999px;" onclick="openAuthModal('signin')">
+        🔑 Sign In
+      </button>
+      <button class="google-header-signin-btn" onclick="openAuthModal('google')" title="Sign in or link with your Google Account">
         <svg width="18" height="18" viewBox="0 0 48 48">
           <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
           <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
           <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
           <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
         </svg>
-        Sign in with Google
+        Google Sign-In
       </button>
     `;
   }
 }
 
+// Workspace-level permission check: allows Administrator OR any logged-in Personal User
 function requireAdminAuth() {
+  if (STATE.auth.isLoggedIn) {
+    return true;
+  }
+  showToast("🔑 Please sign in or create a personal account (or sign in with Google) to use this feature.", "warn");
+  openAuthModal("signin");
+  return false;
+}
+
+// Strict Administrator-only check: exclusively for Academic CV & Owner Profile Settings
+function requireStrictAdminAuth() {
   if (STATE.auth.isAdmin && normalizeEmail(STATE.auth.email) === OWNER_GOOGLE_EMAIL) {
     return true;
   }
-  showToast("🔒 Administrator login required! Please sign in with your Google Account.", "warn");
-  openLoginModal();
+  if (STATE.auth.isLoggedIn) {
+    showToast("🔒 The Academic CV belongs exclusively to the Administrator (Vu Tien Lam) and is read-only for personal accounts.", "warn");
+    return false;
+  }
+  showToast("🔒 Administrator login (lamvt.skku@gmail.com) is required to edit the Academic CV.", "warn");
+  openAuthModal("google");
   return false;
 }
 
@@ -493,29 +1023,240 @@ function requireOwnerAuth() {
   return requireAdminAuth();
 }
 
-function openLoginModal() {
+function openAuthModal(defaultTab = "signin") {
   const modal = document.getElementById("login-modal");
   if (!modal) return;
-
-  // Reset to Step 1 (Email entry, clean empty input for Incognito visitors)
-  const stepEmail = document.getElementById("google-step-email");
-  const stepPass = document.getElementById("google-step-password");
-  if (stepEmail) stepEmail.style.display = "block";
-  if (stepPass) stepPass.style.display = "none";
-
-  const emailInput = document.getElementById("g-email-input");
-  if (emailInput) {
-    emailInput.value = ""; // Empty on Incognito!
-    clearGoogleInputError("email");
-    setTimeout(() => emailInput.focus(), 150);
-  }
-  const passInput = document.getElementById("g-password-input");
-  if (passInput) {
-    passInput.value = "";
-    clearGoogleInputError("password");
-  }
-
+  switchAuthModalTab(defaultTab);
   modal.classList.add("open");
+}
+
+function openLoginModal() {
+  openAuthModal("signin");
+}
+
+function switchAuthModalTab(mode = "signin") {
+  const panes = {
+    signin: document.getElementById("auth-pane-signin"),
+    register: document.getElementById("auth-pane-register"),
+    google: document.getElementById("auth-pane-google")
+  };
+  const btns = {
+    signin: document.getElementById("auth-tab-btn-signin"),
+    register: document.getElementById("auth-tab-btn-register"),
+    google: document.getElementById("auth-tab-btn-google")
+  };
+
+  Object.keys(panes).forEach(k => {
+    if (panes[k]) panes[k].style.display = k === mode ? "block" : "none";
+    if (btns[k]) btns[k].classList.toggle("active", k === mode);
+  });
+
+  const signInErr = document.getElementById("signin-error-msg");
+  if (signInErr) signInErr.style.display = "none";
+  const regErr = document.getElementById("reg-error-msg");
+  if (regErr) regErr.style.display = "none";
+
+  if (mode === "google") {
+    const stepEmail = document.getElementById("google-step-email");
+    const stepPass = document.getElementById("google-step-password");
+    if (stepEmail) stepEmail.style.display = "block";
+    if (stepPass) stepPass.style.display = "none";
+    const emailInput = document.getElementById("g-email-input");
+    if (emailInput) {
+      emailInput.value = "";
+      clearGoogleInputError("email");
+      setTimeout(() => emailInput.focus(), 120);
+    }
+    const passInput = document.getElementById("g-password-input");
+    if (passInput) {
+      passInput.value = "";
+      clearGoogleInputError("password");
+    }
+  } else if (mode === "signin") {
+    const emailEl = document.getElementById("signin-email-input");
+    if (emailEl) setTimeout(() => emailEl.focus(), 120);
+  } else if (mode === "register") {
+    const nameEl = document.getElementById("reg-name-input");
+    if (nameEl) setTimeout(() => nameEl.focus(), 120);
+  }
+}
+
+async function verifyAdminPassword(pass) {
+  let backendOk = false;
+  try {
+    const res = await fetch("/api/auth/google-verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: OWNER_GOOGLE_EMAIL, passcode: pass })
+    });
+    if (res.ok) backendOk = true;
+  } catch (e) {}
+
+  const ADMIN_SHA256 = "e5acba84c164be5493b03ab87712975cdaf2149d43c81df395eb07f8a1057264";
+  const hashed = await hashPasswordSha256(pass);
+  return backendOk || hashed === ADMIN_SHA256 || pass === "skku2026";
+}
+
+async function verifyUserPassword(userObj, pass) {
+  if (!userObj || !pass) return false;
+  if (userObj.passwordPlainHint && pass === userObj.passwordPlainHint) return true;
+  if (userObj.passwordHash === "plain:" + pass) return true;
+  const hashed = await hashPasswordSha256(pass);
+  return userObj.passwordHash === hashed;
+}
+
+async function submitStandardSignIn() {
+  const emailRaw = document.getElementById("signin-email-input")?.value || "";
+  const pass = (document.getElementById("signin-password-input")?.value || "").trim();
+  const errEl = document.getElementById("signin-error-msg");
+
+  const showErr = (msg) => {
+    if (errEl) {
+      errEl.textContent = msg;
+      errEl.style.display = "block";
+    }
+  };
+
+  const email = normalizeEmail(emailRaw);
+  if (!email || !email.includes("@")) {
+    showErr("Please enter a valid email address.");
+    return;
+  }
+  if (!pass) {
+    showErr("Please enter your password.");
+    return;
+  }
+
+  // Check if Administrator
+  if (email === OWNER_GOOGLE_EMAIL) {
+    const ok = await verifyAdminPassword(pass);
+    if (ok) {
+      completeOwnerLogin(OWNER_GOOGLE_EMAIL, "Vu Tien Lam", "");
+    } else {
+      showErr("Invalid Administrator password.");
+    }
+    return;
+  }
+
+  // Check Registered Personal Users
+  const userObj = findRegisteredUserByEmailOrGoogle(email);
+  if (!userObj) {
+    showErr(`No account found for "${email}". Click "Create Account" or "Google Account" above to register!`);
+    return;
+  }
+
+  const valid = await verifyUserPassword(userObj, pass);
+  if (!valid) {
+    showErr("Incorrect password for this account. Please try again.");
+    return;
+  }
+
+  completePersonalUserLogin(userObj, "Email & Password");
+}
+
+async function submitUserRegistration() {
+  const name = (document.getElementById("reg-name-input")?.value || "").trim();
+  const emailRaw = (document.getElementById("reg-email-input")?.value || "").trim();
+  const affiliation = (document.getElementById("reg-affiliation-input")?.value || "").trim() || "Independent Researcher";
+  const academicRole = (document.getElementById("reg-role-input")?.value || "").trim() || "Researcher";
+  const pass = (document.getElementById("reg-password-input")?.value || "").trim();
+  const confirmPass = (document.getElementById("reg-confirm-input")?.value || "").trim();
+  const linkGoogle = Boolean(document.getElementById("reg-link-google-chk")?.checked);
+  const seedStarter = Boolean(document.getElementById("reg-seed-starter-chk")?.checked);
+  const errEl = document.getElementById("reg-error-msg");
+
+  const showErr = (msg) => {
+    if (errEl) {
+      errEl.textContent = msg;
+      errEl.style.display = "block";
+    }
+  };
+
+  const email = normalizeEmail(emailRaw);
+  if (!name) {
+    showErr("Please enter your Full Name.");
+    return;
+  }
+  if (!email || !email.includes("@")) {
+    showErr("Please enter a valid email address.");
+    return;
+  }
+  if (email === OWNER_GOOGLE_EMAIL) {
+    showErr("This email belongs to the Administrator. Please switch to the Sign In tab.");
+    return;
+  }
+  if (STATE.usersRegistry && STATE.usersRegistry[email]) {
+    showErr(`An account with "${email}" already exists. Please sign in instead.`);
+    return;
+  }
+  if (pass.length < 4) {
+    showErr("Password must be at least 4 characters long.");
+    return;
+  }
+  if (pass !== confirmPass) {
+    showErr("Passwords do not match.");
+    return;
+  }
+
+  const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
+  const passHash = await hashPasswordSha256(pass);
+
+  const starterPapers = seedStarter && STATE.masterData && Array.isArray(STATE.masterData.papers)
+    ? JSON.parse(JSON.stringify(STATE.masterData.papers.slice(0, 2)))
+    : [];
+  const starterStructures = seedStarter && STATE.masterData && Array.isArray(STATE.masterData.structures)
+    ? JSON.parse(JSON.stringify(STATE.masterData.structures.slice(0, 2)))
+    : [];
+  const starterSchedule = [
+    {
+      id: Date.now(),
+      title: `Welcome Research Session — ${name}'s Workspace`,
+      event_type: "Group Meeting / PI Meeting",
+      instrument_or_location: affiliation,
+      start_date: new Date().toISOString().slice(0, 10),
+      start_time: "10:00",
+      end_time: "11:30",
+      priority: "High",
+      status: "Scheduled",
+      sample_id: "INIT-01",
+      description: `Personal schedule initialized for ${name} (${email}).`,
+      in_weekly_report: 1
+    }
+  ];
+
+  const newUser = {
+    email,
+    name,
+    affiliation,
+    academicRole,
+    authProvider: linkGoogle ? "Email + Google Linked" : "Email & Password",
+    googleLinked: linkGoogle,
+    googleEmail: linkGoogle ? email : "",
+    passwordPlainHint: pass,
+    passwordHash: passHash,
+    registeredAt: nowStr,
+    lastLoginAt: nowStr,
+    lastUpdatedAt: nowStr,
+    workspace: {
+      schedule: starterSchedule,
+      papers: starterPapers,
+      structures: starterStructures,
+      expReportRows: [],
+      litReportRows: []
+    },
+    activityLog: [
+      {
+        timestamp: nowStr,
+        category: "Account",
+        action: linkGoogle ? "Registered & Linked with Google Account" : "Registered Personal Account",
+        detail: `${name} (${affiliation}) created a personal workspace${linkGoogle ? ` and linked Google (${email})` : ""}.`
+      }
+    ]
+  };
+
+  STATE.usersRegistry[email] = newUser;
+  persistUsersRegistryLocal();
+  completePersonalUserLogin(newUser, linkGoogle ? "Google-Linked Registration" : "Account Registration");
 }
 
 function handleGoogleEmailNext() {
@@ -523,7 +1264,7 @@ function handleGoogleEmailNext() {
   const email = normalizeEmail(input ? input.value : "");
 
   if (!email) {
-    showGoogleInputError("email", "Enter an email or phone number");
+    showGoogleInputError("email", "Enter a Google email address");
     return;
   }
 
@@ -532,20 +1273,39 @@ function handleGoogleEmailNext() {
     return;
   }
 
-  if (email !== OWNER_GOOGLE_EMAIL) {
-    showGoogleInputError("email", `Couldn't find an authorized Google Account for '${email}'. Access to management is restricted to workspace owner.`);
-    return;
-  }
-
-  // Authorized owner email confirmed! Transition to Step 2 (Password)
+  STATE.pendingGoogleEmail = email;
   clearGoogleInputError("email");
+
   const stepEmail = document.getElementById("google-step-email");
   const stepPass = document.getElementById("google-step-password");
   const badgeEmail = document.getElementById("g-badge-email-text");
+  const badgeChar = document.getElementById("g-badge-avatar-char");
+  const newFields = document.getElementById("google-new-user-fields");
+  const pwTitle = document.getElementById("google-step-pw-title");
+  const pwLabel = document.getElementById("g-password-label");
 
   if (stepEmail) stepEmail.style.display = "none";
   if (stepPass) stepPass.style.display = "block";
-  if (badgeEmail) badgeEmail.textContent = OWNER_GOOGLE_EMAIL;
+  if (badgeEmail) badgeEmail.textContent = email;
+  if (badgeChar) badgeChar.textContent = email.charAt(0).toUpperCase();
+
+  const existingUser = findRegisteredUserByEmailOrGoogle(email);
+  if (email === OWNER_GOOGLE_EMAIL) {
+    if (newFields) newFields.style.display = "none";
+    if (pwTitle) pwTitle.textContent = "Administrator Sign-In";
+    if (pwLabel) pwLabel.textContent = "Enter Administrator password";
+  } else if (existingUser) {
+    if (newFields) newFields.style.display = "none";
+    if (pwTitle) pwTitle.textContent = `Welcome back, ${existingUser.name}`;
+    if (pwLabel) pwLabel.textContent = "Enter your account / Google password";
+  } else {
+    if (newFields) newFields.style.display = "block";
+    if (pwTitle) pwTitle.textContent = "Link New Google Account";
+    if (pwLabel) pwLabel.textContent = "Create a password for your linked account";
+    const defaultName = email.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+    const nameInput = document.getElementById("g-new-name-input");
+    if (nameInput && !nameInput.value) nameInput.value = defaultName;
+  }
 
   const passInput = document.getElementById("g-password-input");
   if (passInput) {
@@ -568,12 +1328,13 @@ function backToGoogleEmailStep() {
 }
 
 async function submitGooglePasswordLogin() {
+  const email = normalizeEmail(STATE.pendingGoogleEmail || document.getElementById("g-email-input")?.value || "");
   const passInput = document.getElementById("g-password-input");
   const pass = passInput ? passInput.value.trim() : "";
   const btn = document.getElementById("btn-password-submit");
 
   if (!pass) {
-    showGoogleInputError("password", "Enter a password");
+    showGoogleInputError("password", "Please enter your password to continue");
     return;
   }
 
@@ -582,43 +1343,104 @@ async function submitGooglePasswordLogin() {
     btn.textContent = "Verifying...";
   }
 
-  let backendOk = false;
   try {
-    const res = await fetch("/api/auth/google-verify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: OWNER_GOOGLE_EMAIL, passcode: pass })
-    });
-    if (res.ok) backendOk = true;
-  } catch (e) {
-    // Backend unreachable (e.g. static on GitHub Pages)
-  }
+    // Case 1: Administrator Google Account
+    if (email === OWNER_GOOGLE_EMAIL) {
+      const ok = await verifyAdminPassword(pass);
+      if (ok) {
+        completeOwnerLogin(OWNER_GOOGLE_EMAIL, "Vu Tien Lam", "");
+      } else {
+        showGoogleInputError("password", "Wrong Administrator password. Try again.");
+        if (passInput) passInput.select();
+      }
+      return;
+    }
 
-  // SHA-256 hash verification for static GitHub Pages host
-  const PASS_SHA256 = "e5acba84c164be5493b03ab87712975cdaf2149d43c81df395eb07f8a1057264";
-  let hashMatch = false;
-  try {
-    const enc = new TextEncoder().encode(pass);
-    const buf = await crypto.subtle.digest("SHA-256", enc);
-    const hex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
-    if (hex === PASS_SHA256) hashMatch = true;
-  } catch (e) {
-    if (pass === "skku2026") hashMatch = true;
-  }
+    // Case 2: Existing Registered User signing in / linking via Google
+    const existingUser = findRegisteredUserByEmailOrGoogle(email);
+    if (existingUser) {
+      const valid = await verifyUserPassword(existingUser, pass);
+      if (!valid) {
+        showGoogleInputError("password", "Incorrect password for this account.");
+        if (passInput) passInput.select();
+        return;
+      }
+      existingUser.googleLinked = true;
+      existingUser.googleEmail = email;
+      if (!existingUser.authProvider.includes("Google")) {
+        existingUser.authProvider = "Email + Google Linked";
+      }
+      persistUsersRegistryLocal();
+      completePersonalUserLogin(existingUser, "Google Sign-In");
+      return;
+    }
 
-  if (backendOk || hashMatch || pass === "skku2026") {
-    completeOwnerLogin(OWNER_GOOGLE_EMAIL, "Vu Tien Lam", "");
+    // Case 3: Brand-new User signing in with Google Account for the first time
+    const fullName = (document.getElementById("g-new-name-input")?.value || "").trim() || email.split("@")[0];
+    const affiliation = (document.getElementById("g-new-affiliation-input")?.value || "").trim() || "Google Linked Researcher";
+    const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
+    const passHash = await hashPasswordSha256(pass);
+
+    const starterPapers = STATE.masterData && Array.isArray(STATE.masterData.papers)
+      ? JSON.parse(JSON.stringify(STATE.masterData.papers.slice(0, 2)))
+      : [];
+    const starterStructures = STATE.masterData && Array.isArray(STATE.masterData.structures)
+      ? JSON.parse(JSON.stringify(STATE.masterData.structures.slice(0, 2)))
+      : [];
+
+    const newGoogleUser = {
+      email,
+      name: fullName,
+      affiliation,
+      academicRole: "Researcher",
+      authProvider: "Google Account",
+      googleLinked: true,
+      googleEmail: email,
+      passwordPlainHint: pass,
+      passwordHash: passHash,
+      registeredAt: nowStr,
+      lastLoginAt: nowStr,
+      lastUpdatedAt: nowStr,
+      workspace: {
+        schedule: [
+          {
+            id: Date.now(),
+            title: `Google Calendar Synced Session — ${fullName}`,
+            event_type: "Group Meeting / PI Meeting",
+            instrument_or_location: affiliation,
+            start_date: new Date().toISOString().slice(0, 10),
+            start_time: "09:30",
+            end_time: "11:00",
+            priority: "High",
+            status: "Scheduled",
+            sample_id: "GCAL-01",
+            description: `Initialized via Google Account Sign-In (${email}).`,
+            in_weekly_report: 1
+          }
+        ],
+        papers: starterPapers,
+        structures: starterStructures,
+        expReportRows: [],
+        litReportRows: []
+      },
+      activityLog: [
+        {
+          timestamp: nowStr,
+          category: "Account",
+          action: "Signed in & Linked via Google Account",
+          detail: `${fullName} (${affiliation}) linked Google Account ${email}.`
+        }
+      ]
+    };
+
+    STATE.usersRegistry[email] = newGoogleUser;
+    persistUsersRegistryLocal();
+    completePersonalUserLogin(newGoogleUser, "Google Account");
+  } finally {
     if (btn) {
       btn.disabled = false;
-      btn.textContent = "Next";
+      btn.textContent = "Continue";
     }
-  } else {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = "Next";
-    }
-    showGoogleInputError("password", "Wrong password. Try again or click 'Forgot password?' to recover your account.");
-    if (passInput) passInput.select();
   }
 }
 
@@ -660,17 +1482,16 @@ function showPasswordHint() {
   window.open("https://accounts.google.com/signin/recovery", "_blank");
 }
 
-// Backward compatibility handlers
 function handleContinueWithGoogle() {
-  openLoginModal();
+  openAuthModal("google");
 }
 
 function handleContinueWithApple() {
-  showToast("Apple Sign-In is reserved for visitors. Please sign in with your Google Account.", "warn");
+  showToast("Please sign in with Email or Google Account.", "warn");
 }
 
 function handleContinueWithPhone() {
-  showToast("Phone sign-in is not configured. Please sign in with your Google Account.", "warn");
+  showToast("Please sign in with Email or Google Account.", "warn");
 }
 
 function submitEmailLogin() {
@@ -678,45 +1499,645 @@ function submitEmailLogin() {
 }
 
 function completeOwnerLogin(email, name, picture) {
+  STATE.adminPreviewUserEmail = null;
   STATE.auth = {
     ...STATE.auth,
     isLoggedIn: true,
     isAdmin: true,
+    role: "admin",
     email: OWNER_GOOGLE_EMAIL,
     name: name || "Vu Tien Lam",
     picture: picture || "",
     ownerEmail: OWNER_GOOGLE_EMAIL
   };
   localStorage.setItem("matsci_admin_session_v4", JSON.stringify(STATE.auth));
-  document.body.classList.add("is-admin");
-  document.body.classList.remove("visitor-mode");
+  document.body.classList.add("is-admin", "is-logged-in");
+  document.body.classList.remove("visitor-mode", "is-user");
   renderAuthHeader();
   closeModal("login-modal");
-  showToast(`🔓 Welcome back, ${name || "Vu Tien Lam"}! Signed in with Google Account (${OWNER_GOOGLE_EMAIL}). Full research management unlocked!`, "success");
 
-  // Refresh lists to display admin action buttons
-  renderStructuresList();
-  renderPapersList();
-  renderScheduleList();
+  applyActiveWorkspaceData();
+  refreshAllWorkspaceViews();
+  showToast(`🔓 Welcome back, Administrator ${name || "Vu Tien Lam"} (${OWNER_GOOGLE_EMAIL})! Full system & CV management unlocked.`, "success");
+}
+
+function completePersonalUserLogin(userObj, loginMethod = "Account") {
+  const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
+  const normEmail = normalizeEmail(userObj.email);
+  userObj.lastLoginAt = nowStr;
+  userObj.activityLog = Array.isArray(userObj.activityLog) ? userObj.activityLog : [];
+  userObj.activityLog.unshift({
+    timestamp: nowStr,
+    category: "Session",
+    action: `Signed In (${loginMethod})`,
+    detail: `Authenticated as ${userObj.name} (${userObj.email})`
+  });
+  STATE.usersRegistry[normEmail] = userObj;
+  persistUsersRegistryLocal();
+
+  STATE.adminPreviewUserEmail = null;
+  STATE.auth = {
+    ...STATE.auth,
+    isLoggedIn: true,
+    isAdmin: false,
+    role: "user",
+    email: normEmail,
+    name: userObj.name,
+    affiliation: userObj.affiliation || "",
+    academicRole: userObj.academicRole || "Researcher",
+    googleLinked: Boolean(userObj.googleLinked),
+    googleEmail: userObj.googleEmail || "",
+    picture: "",
+    ownerEmail: OWNER_GOOGLE_EMAIL
+  };
+  localStorage.setItem("matsci_admin_session_v4", JSON.stringify(STATE.auth));
+  document.body.classList.add("is-logged-in", "is-user");
+  document.body.classList.remove("is-admin", "visitor-mode");
+
+  renderAuthHeader();
+  closeModal("login-modal");
+
+  applyActiveWorkspaceData();
+  saveStaticDb();
+  refreshAllWorkspaceViews();
+  autofillReportFromDatabase(true);
+
+  showToast(`🎉 Welcome, ${userObj.name}! Your personal research workspace is now active.`, "success");
+}
+
+function signOutUser() {
+  localStorage.removeItem("matsci_admin_session_v4");
+  STATE.adminPreviewUserEmail = null;
+  STATE.auth = {
+    ...STATE.auth,
+    isLoggedIn: false,
+    isAdmin: false,
+    role: "visitor",
+    email: "",
+    name: "",
+    affiliation: "",
+    academicRole: "",
+    googleLinked: false,
+    googleEmail: ""
+  };
+  document.body.classList.remove("is-admin", "is-logged-in", "is-user");
+  document.body.classList.add("visitor-mode");
+  renderAuthHeader();
+
+  applyActiveWorkspaceData();
+  refreshAllWorkspaceViews();
+  showToast("Logged out. Switched to Public Read-Only Mode.");
+}
+
+function signOutAdmin() {
+  signOutUser();
+}
+
+function refreshAllWorkspaceViews() {
+  const dashData = {
+    stats: {
+      total_papers: STATE.papers.length,
+      papers_read: STATE.papers.filter(p => ["Read", "Key Reference", "Cited in Thesis"].includes(p.status)).length,
+      total_structures: STATE.structures.length,
+      upcoming_tasks: STATE.schedule.filter(s => s.status !== "Completed").length,
+      completed_tasks: STATE.schedule.filter(s => s.status === "Completed").length,
+      total_citations: STATE.profile.total_citations || 0,
+      h_index: STATE.profile.h_index || 0
+    },
+    recent_papers: STATE.papers.slice(0, 4),
+    recent_structures: STATE.structures.slice(0, 4),
+    upcoming_schedule: STATE.schedule.slice(0, 6),
+    profile: STATE.profile
+  };
+  if (typeof renderDashboard === "function") renderDashboard(dashData);
+  if (typeof renderStructuresList === "function") renderStructuresList();
+  if (typeof renderPapersList === "function") renderPapersList();
+  if (typeof renderScheduleList === "function") renderScheduleList();
+  if (typeof renderMonthlyCalendar === "function") renderMonthlyCalendar();
   if (typeof renderProfile === "function") renderProfile(STATE.profile);
   if (typeof renderAcademicCvSheet === "function") renderAcademicCvSheet(STATE.profile);
 }
 
-function signOutAdmin() {
-  localStorage.removeItem("matsci_admin_session_v4");
-  STATE.auth.isLoggedIn = false;
-  STATE.auth.isAdmin = false;
-  document.body.classList.remove("is-admin");
-  document.body.classList.add("visitor-mode");
-  renderAuthHeader();
-  showToast("Logged out. Switched to Public Read-Only Mode.");
+// ============================================================================
+// Personal User Account Settings & Google Account Linking Modal
+// ============================================================================
 
-  // Refresh lists to hide admin buttons
-  renderStructuresList();
-  renderPapersList();
-  renderScheduleList();
-  if (typeof renderProfile === "function") renderProfile(STATE.profile);
-  if (typeof renderAcademicCvSheet === "function") renderAcademicCvSheet(STATE.profile);
+function openUserAccountModal() {
+  if (!STATE.auth.isLoggedIn || STATE.auth.isAdmin) return;
+  const email = normalizeEmail(STATE.auth.email);
+  const u = STATE.usersRegistry[email];
+  if (!u) return;
+
+  document.getElementById("ua-name-input").value = u.name || "";
+  document.getElementById("ua-email-input").value = u.email || "";
+  document.getElementById("ua-affiliation-input").value = u.affiliation || "";
+  document.getElementById("ua-role-input").value = u.academicRole || "Researcher";
+  document.getElementById("ua-new-password-input").value = "";
+  document.getElementById("ua-google-email-input").value = u.googleEmail || u.email || "";
+
+  const statusBadge = document.getElementById("ua-google-status-badge");
+  if (statusBadge) {
+    if (u.googleLinked) {
+      statusBadge.className = "badge badge-green";
+      statusBadge.textContent = `✓ Linked (${u.googleEmail || u.email})`;
+    } else {
+      statusBadge.className = "badge badge-amber";
+      statusBadge.textContent = "Not Linked";
+    }
+  }
+
+  document.getElementById("user-account-modal")?.classList.add("open");
+}
+
+async function saveUserAccountSettings() {
+  if (!STATE.auth.isLoggedIn || STATE.auth.isAdmin) return;
+  const email = normalizeEmail(STATE.auth.email);
+  const u = STATE.usersRegistry[email];
+  if (!u) return;
+
+  const newName = (document.getElementById("ua-name-input")?.value || "").trim();
+  const newAff = (document.getElementById("ua-affiliation-input")?.value || "").trim();
+  const newRole = (document.getElementById("ua-role-input")?.value || "").trim();
+  const newPass = (document.getElementById("ua-new-password-input")?.value || "").trim();
+
+  if (!newName) {
+    showToast("Full Name cannot be empty.", "warn");
+    return;
+  }
+
+  u.name = newName;
+  u.affiliation = newAff;
+  u.academicRole = newRole;
+  if (newPass) {
+    u.passwordPlainHint = newPass;
+    u.passwordHash = await hashPasswordSha256(newPass);
+  }
+
+  STATE.auth.name = newName;
+  STATE.auth.affiliation = newAff;
+  STATE.auth.academicRole = newRole;
+  localStorage.setItem("matsci_admin_session_v4", JSON.stringify(STATE.auth));
+
+  recordUserActivity("Account", "Updated Profile Settings", `Name: ${newName}, Affiliation: ${newAff}`);
+  saveStaticDb();
+  renderAuthHeader();
+  renderWorkspaceBanner();
+  closeModal("user-account-modal");
+  showToast("Personal account settings updated!", "success");
+}
+
+function saveUserGoogleLink() {
+  if (!STATE.auth.isLoggedIn || STATE.auth.isAdmin) return;
+  const email = normalizeEmail(STATE.auth.email);
+  const u = STATE.usersRegistry[email];
+  if (!u) return;
+
+  const gEmail = normalizeEmail(document.getElementById("ua-google-email-input")?.value || "");
+  if (!gEmail || !gEmail.includes("@")) {
+    showToast("Please enter a valid Google / Gmail address to link.", "warn");
+    return;
+  }
+
+  u.googleLinked = true;
+  u.googleEmail = gEmail;
+  u.authProvider = "Email + Google Linked";
+  STATE.auth.googleLinked = true;
+  STATE.auth.googleEmail = gEmail;
+  localStorage.setItem("matsci_admin_session_v4", JSON.stringify(STATE.auth));
+
+  recordUserActivity("Account", "Linked Google Account", `Linked Google Account: ${gEmail}`);
+  saveStaticDb();
+  renderAuthHeader();
+  applyActiveWorkspaceData();
+
+  const statusBadge = document.getElementById("ua-google-status-badge");
+  if (statusBadge) {
+    statusBadge.className = "badge badge-green";
+    statusBadge.textContent = `✓ Linked (${gEmail})`;
+  }
+  showToast(`🔗 Successfully linked Google Account (${gEmail})!`, "success");
+}
+
+function importPublicStarterDataToUser() {
+  if (!STATE.auth.isLoggedIn || STATE.auth.isAdmin) return;
+  const masterPapers = (STATE.masterData && STATE.masterData.papers) || [];
+  const masterStructs = (STATE.masterData && STATE.masterData.structures) || [];
+
+  const existingDois = new Set(STATE.papers.map(p => normalizeDoiClient(p.doi)));
+  let addedP = 0;
+  masterPapers.slice(0, 4).forEach((p, idx) => {
+    if (!existingDois.has(normalizeDoiClient(p.doi))) {
+      STATE.papers.push({ ...JSON.parse(JSON.stringify(p)), id: Date.now() + idx });
+      addedP++;
+    }
+  });
+
+  const existingFormulas = new Set(STATE.structures.map(s => s.chemical_formula));
+  let addedS = 0;
+  masterStructs.slice(0, 4).forEach((s, idx) => {
+    if (!existingFormulas.has(s.chemical_formula)) {
+      STATE.structures.push({ ...JSON.parse(JSON.stringify(s)), id: Date.now() + 100 + idx });
+      addedS++;
+    }
+  });
+
+  recordUserActivity("Workspace", "Imported Sample Library", `Imported ${addedP} reference papers and ${addedS} crystal structures.`);
+  saveStaticDb();
+  refreshAllWorkspaceViews();
+  showToast(`📥 Imported ${addedP} papers and ${addedS} crystal structures into your personal workspace!`, "success");
+}
+
+// ============================================================================
+// Administrator User Directory & User Content Inspector
+// ============================================================================
+
+function renderDashboardAdminUsersSummary() {
+  const container = document.getElementById("dashboard-admin-users-summary");
+  updateHeaderUsersCountBadge();
+  if (!container) return;
+
+  const usersList = Object.values(STATE.usersRegistry || {});
+  if (usersList.length === 0) {
+    container.innerHTML = `<div style="padding:12px; color:var(--text-muted); font-size:13px;">No personal user accounts registered yet.</div>`;
+    return;
+  }
+
+  let totalEvents = 0;
+  let totalPapers = 0;
+  let totalStructs = 0;
+  let googleLinkedCount = 0;
+
+  usersList.forEach(u => {
+    if (u.googleLinked) googleLinkedCount++;
+    const ws = u.workspace || {};
+    totalEvents += (ws.schedule || []).length;
+    totalPapers += (ws.papers || []).length;
+    totalStructs += (ws.structures || []).length;
+  });
+
+  container.innerHTML = `
+    <div style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:12px; font-size:12.5px;">
+      <span class="badge badge-blue">👥 Registered Users: <strong>${usersList.length}</strong></span>
+      <span class="badge badge-green">🌐 Google Account Linked: <strong>${googleLinkedCount}</strong></span>
+      <span class="badge badge-purple">📅 User Calendar Events: <strong>${totalEvents}</strong></span>
+      <span class="badge badge-amber">📚 User Reference Papers: <strong>${totalPapers}</strong></span>
+      <span class="badge badge-slate">💎 User Crystal Structures: <strong>${totalStructs}</strong></span>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:10px;">
+      ${usersList.map(u => {
+        const ws = u.workspace || {};
+        const evCount = (ws.schedule || []).length;
+        const pCount = (ws.papers || []).length;
+        const sCount = (ws.structures || []).length;
+        const latestAct = (u.activityLog && u.activityLog[0])
+          ? `${u.activityLog[0].action}: ${u.activityLog[0].detail}`
+          : "Workspace active";
+        const isPreviewing = STATE.adminPreviewUserEmail === normalizeEmail(u.email);
+        return `
+          <div style="background:#ffffff; border:1px solid ${isPreviewing ? '#f59e0b' : '#e2e8f0'}; border-radius:10px; padding:12px; display:flex; flex-direction:column; justify-content:space-between; gap:8px;">
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:6px;">
+                <div style="font-weight:700; font-size:13.5px; color:#0f172a;">👤 ${escapeHtml(u.name)}</div>
+                ${u.googleLinked ? `<span class="badge badge-blue" style="font-size:10.5px;">🌐 Google Linked</span>` : `<span class="badge badge-slate" style="font-size:10.5px;">Email Auth</span>`}
+              </div>
+              <div style="font-size:12px; color:#2563eb; font-family:monospace;">${escapeHtml(u.email)}</div>
+              <div style="font-size:11.5px; color:#64748b; margin-top:2px;">🏛️ ${escapeHtml(u.affiliation || "Researcher")} (${escapeHtml(u.academicRole || "Member")})</div>
+              <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; font-size:11px;">
+                <span class="badge badge-slate">📅 ${evCount} Events</span>
+                <span class="badge badge-slate">📚 ${pCount} Papers</span>
+                <span class="badge badge-slate">💎 ${sCount} CIFs</span>
+              </div>
+              <div style="font-size:11.5px; color:#475569; background:#f8fafc; padding:6px 8px; border-radius:6px; margin-top:8px; border-left:3px solid #3b82f6;">
+                <strong>Latest Update (${escapeHtml(u.lastUpdatedAt || u.lastLoginAt || "")}):</strong><br/>
+                ${escapeHtml(latestAct.slice(0, 90))}${latestAct.length > 90 ? "..." : ""}
+              </div>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:4px;">
+              <button class="btn btn-outline btn-sm" style="font-size:11.5px; padding:4px 9px;" onclick="openAdminUsersModal('${escapeHtml(normalizeEmail(u.email))}')">🔍 Inspect Content</button>
+              <button class="btn btn-primary btn-sm" style="font-size:11.5px; padding:4px 9px;" onclick="startAdminUserPreview('${escapeHtml(normalizeEmail(u.email))}')">👁️ Live Workspace</button>
+            </div>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function openAdminUsersModal(selectEmail = null) {
+  if (!requireStrictAdminAuth()) return;
+  const usersKeys = Object.keys(STATE.usersRegistry || {});
+  if (selectEmail && STATE.usersRegistry[normalizeEmail(selectEmail)]) {
+    STATE.selectedInspectorUserEmail = normalizeEmail(selectEmail);
+  } else if (!STATE.selectedInspectorUserEmail || !STATE.usersRegistry[STATE.selectedInspectorUserEmail]) {
+    STATE.selectedInspectorUserEmail = usersKeys[0] || null;
+  }
+  STATE.selectedInspectorTab = STATE.selectedInspectorTab || "activity";
+  renderAdminUsersDirectory();
+  document.getElementById("admin-users-modal")?.classList.add("open");
+}
+
+function renderAdminUsersDirectory() {
+  const kpiBar = document.getElementById("admin-users-kpi-bar");
+  const listPanel = document.getElementById("admin-users-list-panel");
+  const query = (document.getElementById("admin-user-search-input")?.value || "").toLowerCase().trim();
+
+  const allUsers = Object.values(STATE.usersRegistry || {});
+  let totalEvents = 0;
+  let totalPapers = 0;
+  let totalStructs = 0;
+  let googleLinked = 0;
+
+  allUsers.forEach(u => {
+    if (u.googleLinked) googleLinked++;
+    const ws = u.workspace || {};
+    totalEvents += (ws.schedule || []).length;
+    totalPapers += (ws.papers || []).length;
+    totalStructs += (ws.structures || []).length;
+  });
+
+  if (kpiBar) {
+    kpiBar.innerHTML = `
+      <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:10px 14px;">
+        <div style="font-size:11.5px; color:#1e40af; font-weight:600;">Registered Personal Accounts</div>
+        <div style="font-size:22px; font-weight:800; color:#1e3a8a;">${allUsers.length}</div>
+        <div style="font-size:11px; color:#3b82f6;">${googleLinked} Linked with Google OAuth</div>
+      </div>
+      <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:10px 14px;">
+        <div style="font-size:11.5px; color:#166534; font-weight:600;">Personal Calendar Events</div>
+        <div style="font-size:22px; font-weight:800; color:#14532d;">${totalEvents}</div>
+        <div style="font-size:11px; color:#16a34a;">Across all user schedules</div>
+      </div>
+      <div style="background:#fefce8; border:1px solid #fef08a; border-radius:10px; padding:10px 14px;">
+        <div style="font-size:11.5px; color:#854d0e; font-weight:600;">Personal Reference Papers</div>
+        <div style="font-size:22px; font-weight:800; color:#713f12;">${totalPapers}</div>
+        <div style="font-size:11px; color:#ca8a04;">DOI-imported &amp; annotated</div>
+      </div>
+      <div style="background:#f5f3ff; border:1px solid #ddd6fe; border-radius:10px; padding:10px 14px;">
+        <div style="font-size:11.5px; color:#5b21b6; font-weight:600;">Personal Crystal Structures</div>
+        <div style="font-size:22px; font-weight:800; color:#4c1d95;">${totalStructs}</div>
+        <div style="font-size:11px; color:#7c3aed;">Uploaded *.cif &amp; DFT models</div>
+      </div>
+    `;
+  }
+
+  const filtered = allUsers.filter(u => {
+    if (!query) return true;
+    const hay = `${u.name} ${u.email} ${u.googleEmail} ${u.affiliation} ${u.academicRole}`.toLowerCase();
+    return hay.includes(query);
+  });
+
+  if (listPanel) {
+    if (filtered.length === 0) {
+      listPanel.innerHTML = `<div style="padding:20px; text-align:center; color:#64748b; font-size:13px;">No matching user accounts found.</div>`;
+    } else {
+      listPanel.innerHTML = filtered.map(u => {
+        const normEmail = normalizeEmail(u.email);
+        const isActive = STATE.selectedInspectorUserEmail === normEmail;
+        const ws = u.workspace || {};
+        return `
+          <div class="admin-user-card ${isActive ? 'active' : ''}" onclick="selectAdminInspectorUser('${escapeHtml(normEmail)}')">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:6px;">
+              <div style="font-weight:700; font-size:13.5px; color:#0f172a;">👤 ${escapeHtml(u.name)}</div>
+              ${u.googleLinked ? `<span class="badge badge-blue" style="font-size:10px;">🌐 Google</span>` : `<span class="badge badge-slate" style="font-size:10px;">Email</span>`}
+            </div>
+            <div style="font-size:12px; color:#2563eb; font-family:monospace; margin-top:2px;">${escapeHtml(u.email)}</div>
+            <div style="font-size:11.5px; color:#475569; margin-top:2px;">${escapeHtml(u.affiliation || "Researcher")}</div>
+            <div style="display:flex; gap:5px; flex-wrap:wrap; margin-top:6px; font-size:10.5px;">
+              <span class="badge badge-slate">📅 ${(ws.schedule || []).length}</span>
+              <span class="badge badge-slate">📚 ${(ws.papers || []).length}</span>
+              <span class="badge badge-slate">💎 ${(ws.structures || []).length}</span>
+              <span class="badge badge-slate">🕒 ${(u.activityLog || []).length} logs</span>
+            </div>
+            <div style="font-size:10.5px; color:#64748b; margin-top:5px;">
+              Last active: <strong>${escapeHtml(u.lastUpdatedAt || u.lastLoginAt || "N/A")}</strong>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+  }
+
+  renderAdminInspectorContent();
+}
+
+function selectAdminInspectorUser(email) {
+  STATE.selectedInspectorUserEmail = normalizeEmail(email);
+  renderAdminUsersDirectory();
+}
+
+function switchAdminInspectorTab(tab) {
+  STATE.selectedInspectorTab = tab;
+  renderAdminInspectorContent();
+}
+
+function renderAdminInspectorContent() {
+  const detailPanel = document.getElementById("admin-user-detail-panel");
+  if (!detailPanel) return;
+
+  const email = STATE.selectedInspectorUserEmail;
+  const u = email ? STATE.usersRegistry[email] : null;
+  if (!u) {
+    detailPanel.innerHTML = `<div style="text-align:center; color:#64748b; padding:60px 20px;">Select a user account on the left to inspect their personal workspace content and activity history.</div>`;
+    return;
+  }
+
+  const ws = u.workspace || {};
+  const schedList = ws.schedule || [];
+  const papersList = ws.papers || [];
+  const structsList = ws.structures || [];
+  const expRows = ws.expReportRows || [];
+  const litRows = ws.litReportRows || [];
+  const logs = u.activityLog || [];
+  const tab = STATE.selectedInspectorTab || "activity";
+
+  let tabBodyHtml = "";
+  if (tab === "activity") {
+    if (logs.length === 0) {
+      tabBodyHtml = `<div style="padding:20px; text-align:center; color:#64748b;">No activity recorded yet for this user.</div>`;
+    } else {
+      tabBodyHtml = logs.map(item => `
+        <div style="padding:10px 12px; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+          <div>
+            <span class="badge badge-blue" style="font-size:10.5px; margin-right:6px;">${escapeHtml(item.category)}</span>
+            <strong style="font-size:13px; color:#0f172a;">${escapeHtml(item.action)}</strong>
+            <div style="font-size:12.5px; color:#475569; margin-top:3px;">${escapeHtml(item.detail)}</div>
+          </div>
+          <div style="font-size:11.5px; color:#64748b; white-space:nowrap; font-family:monospace;">${escapeHtml(item.timestamp)}</div>
+        </div>
+      `).join("");
+    }
+  } else if (tab === "schedule") {
+    if (schedList.length === 0) {
+      tabBodyHtml = `<div style="padding:20px; text-align:center; color:#64748b;">No calendar events added by this user yet.</div>`;
+    } else {
+      tabBodyHtml = schedList.map(ev => `
+        <div class="item-card" style="margin-bottom:8px; padding:10px 12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+            <div>
+              <span class="badge badge-blue">${escapeHtml(ev.status || "Scheduled")}</span>
+              <span class="badge badge-slate">${escapeHtml(ev.event_type || "Event")}</span>
+              <strong style="font-size:13.5px; margin-left:6px;">${escapeHtml(ev.title)}</strong>
+            </div>
+            <div style="font-size:12px; color:#1e40af; font-weight:600;">📅 ${escapeHtml(ev.start_date)} (${escapeHtml(ev.start_time || "09:00")} – ${escapeHtml(ev.end_time || "10:00")})</div>
+          </div>
+          <div style="font-size:12px; color:#475569; margin-top:4px;">📍 ${escapeHtml(ev.instrument_or_location || "Lab")} ${ev.sample_id ? `| Sample: <code>${escapeHtml(ev.sample_id)}</code>` : ""}</div>
+          ${ev.description ? `<div style="font-size:12px; color:#64748b; margin-top:3px;">${escapeHtml(ev.description)}</div>` : ""}
+        </div>
+      `).join("");
+    }
+  } else if (tab === "papers") {
+    if (papersList.length === 0) {
+      tabBodyHtml = `<div style="padding:20px; text-align:center; color:#64748b;">No reference papers in this user's library yet.</div>`;
+    } else {
+      tabBodyHtml = papersList.map(p => `
+        <div class="item-card" style="margin-bottom:8px; padding:10px 12px;">
+          <div style="font-weight:700; font-size:13.5px; color:#0f172a;">${renderScientificTitle(p.title)}</div>
+          <div style="font-size:12px; color:#475569; margin-top:3px;">
+            ${escapeHtml(p.authors)} — <strong>${escapeHtml(p.journal)}</strong> (${p.year})
+            ${p.doi ? ` | DOI: <a href="https://doi.org/${encodeURI(p.doi)}" target="_blank">${escapeHtml(p.doi)}</a>` : ""}
+          </div>
+          ${p.notes ? `<div style="font-size:12px; color:#1e3a8a; background:#eff6ff; padding:6px 8px; border-radius:6px; margin-top:5px;"><strong>User Note:</strong> ${escapeHtml(p.notes)}</div>` : ""}
+        </div>
+      `).join("");
+    }
+  } else if (tab === "structures") {
+    if (structsList.length === 0) {
+      tabBodyHtml = `<div style="padding:20px; text-align:center; color:#64748b;">No crystal structures uploaded by this user yet.</div>`;
+    } else {
+      tabBodyHtml = structsList.map(s => `
+        <div class="item-card" style="margin-bottom:8px; padding:10px 12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <span class="badge badge-purple">${escapeHtml(s.chemical_formula)}</span>
+              <strong style="font-size:13.5px; margin-left:6px;">${escapeHtml(s.name)}</strong>
+            </div>
+            <span class="badge badge-teal">${escapeHtml(s.crystal_system)} | ${escapeHtml(s.space_group)}</span>
+          </div>
+          <div style="font-size:12px; color:#475569; margin-top:4px;">
+            Lattice: a=${s.a} Å, b=${s.b} Å, c=${s.c} Å | Bandgap: <strong>${s.bandgap_ev} eV</strong> (${escapeHtml(s.dft_code || "VASP")} / ${escapeHtml(s.dft_functional || "PBE")})
+          </div>
+          ${s.notes ? `<div style="font-size:12px; color:#64748b; margin-top:3px;">${escapeHtml(s.notes)}</div>` : ""}
+        </div>
+      `).join("");
+    }
+  } else if (tab === "report") {
+    tabBodyHtml = `
+      <div style="margin-bottom:12px;">
+        <div style="font-weight:700; font-size:13px; color:#0f172a; margin-bottom:6px;">🧪 Simulation / Experimental Rows (${expRows.length})</div>
+        ${expRows.length === 0 ? `<div style="font-size:12px; color:#64748b;">No simulation report rows added.</div>` : expRows.map(r => `
+          <div style="font-size:12px; background:#f8fafc; border:1px solid #e2e8f0; padding:8px 10px; border-radius:6px; margin-bottom:6px;">
+            <strong>${escapeHtml(r.sample_id)}</strong> — ${escapeHtml(r.material)} (${escapeHtml(r.conditions)}): ${escapeHtml(r.findings)}
+          </div>
+        `).join("")}
+      </div>
+      <div>
+        <div style="font-weight:700; font-size:13px; color:#0f172a; margin-bottom:6px;">📚 Literature Review Rows (${litRows.length})</div>
+        ${litRows.length === 0 ? `<div style="font-size:12px; color:#64748b;">No literature report rows added.</div>` : litRows.map(r => `
+          <div style="font-size:12px; background:#f8fafc; border:1px solid #e2e8f0; padding:8px 10px; border-radius:6px; margin-bottom:6px;">
+            <strong>${escapeHtml(r.title)}</strong> (${escapeHtml(r.journal)}): ${escapeHtml(r.takeaway)}
+          </div>
+        `).join("")}
+      </div>
+    `;
+  }
+
+  detailPanel.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:14px; margin-bottom:14px;">
+      <div>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <h3 style="font-size:17px; font-weight:800; color:#0f172a; margin:0;">👤 ${escapeHtml(u.name)}</h3>
+          <span class="badge badge-blue">${escapeHtml(u.academicRole || "Researcher")}</span>
+          ${u.googleLinked ? `<span class="badge badge-green">🌐 Google Account Linked (${escapeHtml(u.googleEmail || u.email)})</span>` : `<span class="badge badge-slate">Standard Email Account</span>`}
+        </div>
+        <div style="font-size:12.5px; color:#2563eb; font-family:monospace; margin-top:4px;">
+          Primary Email: ${escapeHtml(u.email)} | Auth Method: ${escapeHtml(u.authProvider || "Email")}
+        </div>
+        <div style="font-size:12px; color:#475569; margin-top:2px;">
+          🏛️ Affiliation: <strong>${escapeHtml(u.affiliation || "Not specified")}</strong>
+        </div>
+        <div style="font-size:11.5px; color:#64748b; margin-top:4px;">
+          Registered: <strong>${escapeHtml(u.registeredAt || "N/A")}</strong> &nbsp;|&nbsp; Last Sign-In: <strong>${escapeHtml(u.lastLoginAt || "N/A")}</strong> &nbsp;|&nbsp; Last Content Update: <strong>${escapeHtml(u.lastUpdatedAt || "N/A")}</strong>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" onclick="startAdminUserPreview('${escapeHtml(email)}')">
+          👁️ Switch to ${escapeHtml(u.name)}'s Live Workspace
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="deleteUserAccountByAdmin('${escapeHtml(email)}')">
+          🗑️ Delete User
+        </button>
+      </div>
+    </div>
+
+    <div class="inspector-subtabs">
+      <button class="inspector-subtab-btn ${tab === 'activity' ? 'active' : ''}" onclick="switchAdminInspectorTab('activity')">
+        🕒 Activity &amp; Updates Log (${logs.length})
+      </button>
+      <button class="inspector-subtab-btn ${tab === 'schedule' ? 'active' : ''}" onclick="switchAdminInspectorTab('schedule')">
+        📅 Calendar Events (${schedList.length})
+      </button>
+      <button class="inspector-subtab-btn ${tab === 'papers' ? 'active' : ''}" onclick="switchAdminInspectorTab('papers')">
+        📚 Reference Papers (${papersList.length})
+      </button>
+      <button class="inspector-subtab-btn ${tab === 'structures' ? 'active' : ''}" onclick="switchAdminInspectorTab('structures')">
+        💎 Crystal Structures (${structsList.length})
+      </button>
+      <button class="inspector-subtab-btn ${tab === 'report' ? 'active' : ''}" onclick="switchAdminInspectorTab('report')">
+        📽️ Weekly Report (${expRows.length + litRows.length})
+      </button>
+    </div>
+
+    <div>${tabBodyHtml}</div>
+  `;
+}
+
+function startAdminUserPreview(email) {
+  if (!requireStrictAdminAuth()) return;
+  const norm = normalizeEmail(email);
+  const u = STATE.usersRegistry[norm];
+  if (!u) return;
+
+  STATE.adminPreviewUserEmail = norm;
+  applyActiveWorkspaceData();
+  refreshAllWorkspaceViews();
+  autofillReportFromDatabase(true);
+  closeModal("admin-users-modal");
+  showToast(`👁️ Now inspecting ${u.name}'s live workspace (${u.email}). Click "Return to Administrator Master Workspace" in the top banner when finished.`, "info");
+}
+
+function exitAdminUserPreview() {
+  STATE.adminPreviewUserEmail = null;
+  applyActiveWorkspaceData();
+  refreshAllWorkspaceViews();
+  autofillReportFromDatabase(true);
+  showToast("Returned to Administrator Master Workspace.", "success");
+}
+
+async function deleteUserAccountByAdmin(email) {
+  if (!requireStrictAdminAuth()) return;
+  const norm = normalizeEmail(email);
+  const u = STATE.usersRegistry[norm];
+  if (!u) return;
+
+  const ok = await confirmAction(
+    "Are you sure you want to permanently delete this personal user account and all of its workspace data?",
+    `${u.name} (${u.email}) — ${u.affiliation || "Researcher"}`
+  );
+  if (!ok) return;
+
+  delete STATE.usersRegistry[norm];
+  if (STATE.adminPreviewUserEmail === norm) {
+    STATE.adminPreviewUserEmail = null;
+  }
+  if (STATE.selectedInspectorUserEmail === norm) {
+    STATE.selectedInspectorUserEmail = Object.keys(STATE.usersRegistry)[0] || null;
+  }
+  persistUsersRegistryLocal();
+  saveStaticDb();
+  applyActiveWorkspaceData();
+  refreshAllWorkspaceViews();
+  renderAdminUsersDirectory();
+  showToast(`Deleted user account ${u.email}.`, "info");
 }
 
 // ============================================================================
@@ -1296,6 +2717,7 @@ async function importPaperByDoiCommon(rawDoiInput) {
       in_weekly_report: 1
     };
     STATE.papers.unshift(newPaper);
+    recordUserActivity("References", "Imported Paper via DOI", `${cleaned} — ${title.slice(0, 75)}`);
     saveStaticDb();
     showToast(`✅ Added paper: "${title.slice(0, 60)}..."`);
     loadStaticFallbackData();
@@ -1475,6 +2897,7 @@ async function deleteSelectedPapers() {
   } else {
     STATE.papers = STATE.papers.filter(p => !idsToDelete.has(Number(p.id)));
     STATE.selectedPaperIds.clear();
+    recordUserActivity("References", "Batch Deleted Papers", `Removed ${count} reference paper(s) from library.`);
     saveStaticDb();
     loadStaticFallbackData();
   }
@@ -1576,8 +2999,10 @@ async function savePaperFromModal() {
     if (id) {
       const idx = STATE.papers.findIndex(x => x.id === Number(id));
       if (idx >= 0) STATE.papers[idx] = { ...STATE.papers[idx], ...payload };
+      recordUserActivity("References", "Updated Paper", `${payload.title.slice(0, 75)} (${payload.journal || "Journal"})`);
     } else {
       STATE.papers.unshift({ ...payload, id: Date.now() });
+      recordUserActivity("References", "Added Paper", `${payload.title.slice(0, 75)} (${payload.journal || "Journal"})`);
     }
     saveStaticDb();
     closeModal("paper-modal");
@@ -1602,6 +3027,7 @@ async function deletePaperItem(id) {
     await loadAllData();
   } else {
     STATE.papers = STATE.papers.filter(x => x.id !== id);
+    recordUserActivity("References", "Deleted Paper", pTitle.slice(0, 75));
     saveStaticDb();
     loadStaticFallbackData();
   }
@@ -2601,8 +4027,10 @@ async function saveStructureFromModal() {
   if (id) {
     const idx = STATE.structures.findIndex(x => x.id === Number(id));
     if (idx >= 0) STATE.structures[idx] = { ...STATE.structures[idx], ...payload };
+    recordUserActivity("Crystal Structures", "Updated Structure", `${formula} — ${payload.name} (${payload.space_group})`);
   } else {
     STATE.structures.unshift({ ...payload, id: Date.now() });
+    recordUserActivity("Crystal Structures", "Added Structure", `${formula} — ${payload.name} (${payload.space_group})`);
   }
   saveStaticDb();
   closeModal("structure-modal");
@@ -2634,6 +4062,7 @@ async function deleteStructureItem(id) {
     }
   }
   STATE.structures = STATE.structures.filter(x => x.id !== id);
+  recordUserActivity("Crystal Structures", "Deleted Structure", sName);
   saveStaticDb();
   loadStaticFallbackData();
   showToast("Deleted crystal structure.");
@@ -3853,8 +5282,10 @@ async function saveScheduleFromModal() {
     if (id) {
       const idx = STATE.schedule.findIndex(x => x.id === Number(id));
       if (idx >= 0) STATE.schedule[idx] = { ...STATE.schedule[idx], ...payload };
+      recordUserActivity("Calendar", "Updated Event", `${payload.title} (${payload.start_date})`);
     } else {
       STATE.schedule.push({ ...payload, id: Date.now() });
+      recordUserActivity("Calendar", "Scheduled Event", `${payload.title} (${payload.start_date} ${payload.start_time}–${payload.end_time})`);
     }
     saveStaticDb();
     closeModal("schedule-modal");
@@ -3882,6 +5313,7 @@ async function cycleScheduleStatus(id) {
     await loadAllData();
   } else {
     s.status = nextStatus;
+    recordUserActivity("Calendar", `Marked Event as ${nextStatus}`, `${s.title} (${s.start_date})`);
     saveStaticDb();
     loadStaticFallbackData();
   }
@@ -3900,6 +5332,7 @@ async function deleteScheduleItem(id) {
     await loadAllData();
   } else {
     STATE.schedule = STATE.schedule.filter(x => x.id !== id);
+    recordUserActivity("Calendar", "Deleted Event", sTitle);
     saveStaticDb();
     loadStaticFallbackData();
   }
@@ -3949,11 +5382,19 @@ async function loadStaticFallbackData() {
     const dataResp = await fetch(`data.json?v=${Date.now()}`);
     if (dataResp.ok) {
       const remoteData = await dataResp.json();
+      if (remoteData && remoteData.users_registry) {
+        ensureUsersRegistryInitialized(remoteData.users_registry);
+      } else {
+        ensureUsersRegistryInitialized();
+      }
       if (remoteData && (remoteData.papers || remoteData.profile || remoteData.structures)) {
         const saved = localStorage.getItem("matsci_static_db_v4");
         if (saved) {
           try {
             const parsed = JSON.parse(saved);
+            if (parsed && parsed.users_registry) {
+              ensureUsersRegistryInitialized(parsed.users_registry);
+            }
             const localTime = parsed && parsed.updated_at ? new Date(parsed.updated_at).getTime() : 0;
             const remoteExportedStr = (remoteData.exported_at || "").replace("20.", "20");
             const remoteTime = remoteExportedStr ? new Date(remoteExportedStr).getTime() : 0;
@@ -4502,6 +5943,22 @@ async function loadStaticFallbackData() {
   }
 }
 
+  // Store the loaded master database (Admin's papers, structures, schedule, and exclusive Academic CV profile)
+  if (!STATE.masterData || !Array.isArray(STATE.masterData.papers) || STATE.masterData.papers.length === 0 || !getActivePersonalWorkspaceEmail()) {
+    STATE.masterData = {
+      papers: STATE.papers || [],
+      structures: STATE.structures || [],
+      schedule: STATE.schedule || [],
+      profile: STATE.profile || {}
+    };
+  } else {
+    STATE.masterData.profile = STATE.profile || STATE.masterData.profile || {};
+  }
+
+  // Switch active STATE.papers / structures / schedule to the logged-in personal user's workspace (if applicable),
+  // while keeping STATE.profile strictly locked to the Administrator's Academic CV
+  applyActiveWorkspaceData();
+
   const dashData = {
     stats: {
       total_papers: STATE.papers.length,
@@ -4528,23 +5985,52 @@ async function loadStaticFallbackData() {
 }
 
 function saveStaticDb() {
+  const activePersonalEmail = getActivePersonalWorkspaceEmail();
+  if (activePersonalEmail && STATE.usersRegistry && STATE.usersRegistry[activePersonalEmail]) {
+    const u = STATE.usersRegistry[activePersonalEmail];
+    u.workspace = {
+      papers: STATE.papers || [],
+      structures: STATE.structures || [],
+      schedule: STATE.schedule || [],
+      expReportRows: STATE.expReportRows || [],
+      litReportRows: STATE.litReportRows || []
+    };
+    u.lastUpdatedAt = new Date().toISOString().replace("T", " ").slice(0, 16);
+    persistUsersRegistryLocal();
+  } else {
+    STATE.masterData = {
+      papers: STATE.papers || [],
+      structures: STATE.structures || [],
+      schedule: STATE.schedule || [],
+      profile: STATE.profile || {}
+    };
+  }
+
+  if (STATE.masterData) {
+    STATE.masterData.profile = STATE.profile || STATE.masterData.profile || {};
+  }
+
   localStorage.setItem("matsci_static_db_v4", JSON.stringify({
-    papers: STATE.papers,
-    structures: STATE.structures,
-    schedule: STATE.schedule,
-    profile: STATE.profile,
+    papers: (STATE.masterData && STATE.masterData.papers) || STATE.papers,
+    structures: (STATE.masterData && STATE.masterData.structures) || STATE.structures,
+    schedule: (STATE.masterData && STATE.masterData.schedule) || STATE.schedule,
+    profile: (STATE.masterData && STATE.masterData.profile) || STATE.profile,
+    users_registry: STATE.usersRegistry || {},
     updated_at: new Date().toISOString()
   }));
+
+  renderDashboardAdminUsersSummary();
 }
 
 function exportDataJson() {
   const exportObj = {
     version: "4.0",
     exported_at: new Date().toISOString(),
-    profile: STATE.profile,
-    papers: STATE.papers,
-    structures: STATE.structures,
-    schedule: STATE.schedule
+    profile: (STATE.masterData && STATE.masterData.profile) || STATE.profile,
+    papers: (STATE.masterData && STATE.masterData.papers) || STATE.papers,
+    structures: (STATE.masterData && STATE.masterData.structures) || STATE.structures,
+    schedule: (STATE.masterData && STATE.masterData.schedule) || STATE.schedule,
+    users_registry: STATE.usersRegistry || {}
   };
   const jsonStr = JSON.stringify(exportObj, null, 2);
   const blob = new Blob([jsonStr], { type: "application/json" });
@@ -4601,10 +6087,11 @@ async function commitDataJsonToGitHub(options = {}) {
     const exportObj = {
       version: "4.0",
       exported_at: new Date().toISOString(),
-      profile: STATE.profile,
-      papers: STATE.papers,
-      structures: STATE.structures,
-      schedule: STATE.schedule
+      profile: (STATE.masterData && STATE.masterData.profile) || STATE.profile,
+      papers: (STATE.masterData && STATE.masterData.papers) || STATE.papers,
+      structures: (STATE.masterData && STATE.masterData.structures) || STATE.structures,
+      schedule: (STATE.masterData && STATE.masterData.schedule) || STATE.schedule,
+      users_registry: STATE.usersRegistry || {}
     };
 
     const contentUtf8 = JSON.stringify(exportObj, null, 2);
@@ -5096,7 +6583,7 @@ function clearSelectedPubs() {
 }
 
 async function deleteSelectedPublications() {
-  if (!requireAdminAuth()) return;
+  if (!requireStrictAdminAuth()) return;
   if (!STATE.selectedPubKeys || STATE.selectedPubKeys.size === 0) {
     showToast("No publications selected to delete.", "warn");
     return;
@@ -5449,7 +6936,7 @@ async function removeOwnPubById(idOrIdx, doi = "", title = "", e = null) {
     if (e.stopPropagation) e.stopPropagation();
     if (e.preventDefault) e.preventDefault();
   }
-  if (!requireAdminAuth()) return;
+  if (!requireStrictAdminAuth()) return;
   const pubs = STATE.profile.publications || [];
   let targetIdx = -1;
 
@@ -5501,7 +6988,7 @@ async function removeOwnPubById(idOrIdx, doi = "", title = "", e = null) {
 // ============================================================================
 
 function openOwnPublicationModal(idx = null) {
-  if (!requireAdminAuth()) return;
+  if (!requireStrictAdminAuth()) return;
   const modal = document.getElementById("own-pub-modal");
   if (!modal) return;
 
@@ -5661,7 +7148,7 @@ async function handleOwnPubDoiFetch() {
 }
 
 async function saveOwnPublicationFromModal() {
-  if (!requireAdminAuth()) return;
+  if (!requireStrictAdminAuth()) return;
 
   const idVal = document.getElementById("opm-id")?.value;
   const title = document.getElementById("opm-title")?.value.trim();
@@ -5752,7 +7239,7 @@ async function saveOwnPublicationFromModal() {
 }
 
 function openConferenceModal(idx = null) {
-  if (!requireAdminAuth()) return;
+  if (!requireStrictAdminAuth()) return;
   const modal = document.getElementById("conference-modal");
   if (!modal) return;
 
@@ -5791,7 +7278,7 @@ function openConferenceModal(idx = null) {
 }
 
 async function saveConferenceFromModal() {
-  if (!requireAdminAuth()) return;
+  if (!requireStrictAdminAuth()) return;
   const idVal = document.getElementById("cm-id")?.value;
   const title = document.getElementById("cm-title")?.value.trim();
   const event = document.getElementById("cm-event")?.value.trim() || "Conference";
@@ -5827,7 +7314,7 @@ async function saveConferenceFromModal() {
 }
 
 function openAwardModal(idx = null) {
-  if (!requireAdminAuth()) return;
+  if (!requireStrictAdminAuth()) return;
   const modal = document.getElementById("award-modal");
   if (!modal) return;
 
@@ -5863,7 +7350,7 @@ function openAwardModal(idx = null) {
 }
 
 async function saveAwardFromModal() {
-  if (!requireAdminAuth()) return;
+  if (!requireStrictAdminAuth()) return;
   const idVal = document.getElementById("awm-id")?.value;
   const title = document.getElementById("awm-title")?.value.trim();
   const issuer = document.getElementById("awm-issuer")?.value.trim() || "Granting Organization";
@@ -5898,7 +7385,7 @@ async function saveAwardFromModal() {
 }
 
 function openEducationModal(idx = null) {
-  if (!requireAdminAuth()) return;
+  if (!requireStrictAdminAuth()) return;
   const modal = document.getElementById("education-modal");
   if (!modal) return;
 
@@ -5934,7 +7421,7 @@ function openEducationModal(idx = null) {
 }
 
 async function saveEducationFromModal() {
-  if (!requireAdminAuth()) return;
+  if (!requireStrictAdminAuth()) return;
   const idVal = document.getElementById("edu-id")?.value;
   const degree = document.getElementById("edu-degree")?.value.trim();
   const institution = document.getElementById("edu-inst")?.value.trim() || "University";
@@ -5969,7 +7456,7 @@ async function saveEducationFromModal() {
 }
 
 function openExperienceModal(idx = null) {
-  if (!requireAdminAuth()) return;
+  if (!requireStrictAdminAuth()) return;
   const modal = document.getElementById("experience-modal");
   if (!modal) return;
 
@@ -6005,7 +7492,7 @@ function openExperienceModal(idx = null) {
 }
 
 async function saveExperienceFromModal() {
-  if (!requireAdminAuth()) return;
+  if (!requireStrictAdminAuth()) return;
   const idVal = document.getElementById("exp-id")?.value;
   const role = document.getElementById("exp-role")?.value.trim();
   const organization = document.getElementById("exp-org")?.value.trim() || "Organization";
@@ -6049,7 +7536,7 @@ async function removeCvItem(listKey, idx, e) {
     if (e.stopPropagation) e.stopPropagation();
     if (e.preventDefault) e.preventDefault();
   }
-  if (!requireAdminAuth()) return;
+  if (!requireStrictAdminAuth()) return;
   if (!Array.isArray(STATE.profile[listKey])) return;
   if (idx < 0 || idx >= STATE.profile[listKey].length) return;
 
@@ -6076,7 +7563,7 @@ async function removeCvItem(listKey, idx, e) {
 }
 
 function openCvSkillsModal() {
-  if (!requireAdminAuth()) return;
+  if (!requireStrictAdminAuth()) return;
   const skills = STATE.profile.skills || {};
   document.getElementById("cv-skill-synth").value = skills.synthesis || "";
   document.getElementById("cv-skill-char").value = skills.characterization || "";
@@ -6085,7 +7572,7 @@ function openCvSkillsModal() {
 }
 
 async function saveCvSkillsModal() {
-  if (!requireAdminAuth()) return;
+  if (!requireStrictAdminAuth()) return;
   STATE.profile.skills = {
     synthesis: document.getElementById("cv-skill-synth").value.trim(),
     characterization: document.getElementById("cv-skill-char").value.trim(),
@@ -6108,33 +7595,48 @@ async function autofillReportFromDatabase(silent = false) {
       populateReportForm(data);
     } else {
       const today = new Date().toISOString().split("T")[0];
+      const activeUserEmail = getActivePersonalWorkspaceEmail();
+      const activeUser = activeUserEmail ? STATE.usersRegistry[activeUserEmail] : null;
+      const presenterName = activeUser ? activeUser.name : (STATE.profile.full_name || "Vu Tien Lam");
+      const labName = activeUser ? (activeUser.affiliation || "Research Laboratory") : (STATE.profile.affiliation || "Sungkyunkwan University (SKKU)");
+
+      const expRows = (activeUser && activeUser.workspace && Array.isArray(activeUser.workspace.expReportRows) && activeUser.workspace.expReportRows.length > 0 && silent)
+        ? activeUser.workspace.expReportRows
+        : STATE.structures.map(s => ({
+            sample_id: s.chemical_formula,
+            material: `${s.dft_code} (${s.dft_functional})`,
+            conditions: `Eg = ${s.bandgap_ev} eV (${s.bandgap_type})`,
+            findings: s.notes || `a=${s.a} Å, Vol=${s.volume} Å³`
+          }));
+
+      const litRows = (activeUser && activeUser.workspace && Array.isArray(activeUser.workspace.litReportRows) && activeUser.workspace.litReportRows.length > 0 && silent)
+        ? activeUser.workspace.litReportRows
+        : STATE.papers.map(p => ({
+            title: p.title,
+            journal: `${p.journal} (${p.year}) | DOI: ${p.doi}`,
+            material: p.material_system,
+            takeaway: p.notes || p.abstract?.slice(0, 120) || ""
+          }));
+
       const data = {
         title: "Weekly Research Progress Report",
         week_start: today,
         week_end: today,
-        presenter_name: STATE.profile.full_name || "Vu Tien Lam",
+        presenter_name: presenterName,
         advisor_name: STATE.profile.advisor || "Prof. Advisor",
-        lab_name: STATE.profile.affiliation || "Sungkyunkwan University (SKKU)",
+        lab_name: labName,
         university: "Computational Materials Science Laboratory",
         summary_achievements: STATE.structures.map(s => `• [${s.chemical_formula}] ${s.dft_code} (${s.dft_functional}): Eg = ${s.bandgap_ev} eV. ${s.notes || ""}`).join("\n") || "• Ran electronic structure calculations.",
-        experimental_results: STATE.structures.map(s => ({
-          sample_id: s.chemical_formula,
-          material: `${s.dft_code} (${s.dft_functional})`,
-          conditions: `Eg = ${s.bandgap_ev} eV (${s.bandgap_type})`,
-          findings: s.notes || `a=${s.a} Å, Vol=${s.volume} Å³`
-        })),
-        literature_review: STATE.papers.map(p => ({
-          title: p.title,
-          journal: `${p.journal} (${p.year}) | DOI: ${p.doi}`,
-          material: p.material_system,
-          takeaway: p.notes || p.abstract?.slice(0, 120) || ""
-        })),
+        experimental_results: expRows,
+        literature_review: litRows,
         blockers_troubleshooting: "• High cutoff energy convergence tested for transition metal pseudopotentials.",
         next_week_plan: "• Complete hybrid HSE06 DOS calculation for defect supercells and surface slabs."
       };
       populateReportForm(data);
+      saveStaticDb();
     }
     if (!silent) {
+      recordUserActivity("Weekly Report", "Auto-Filled Weekly Report", "Compiled structures, schedule & literature into 16:9 slide deck.");
       showToast("Compiled this week's simulation structures, calendar tasks & papers into report!");
     }
   } catch (err) {
@@ -6166,6 +7668,7 @@ function removeExpReportRow(idx) {
   STATE.expReportRows.splice(idx, 1);
   renderExpReportRows();
   updateSlidePreview();
+  saveStaticDb();
 }
 
 function renderExpReportRows() {
@@ -6173,10 +7676,10 @@ function renderExpReportRows() {
   if (!container) return;
   container.innerHTML = STATE.expReportRows.map((r, idx) => `
     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:6px; background:#f8fafc; padding:8px; border-radius:8px; border:1px solid var(--border-color);">
-      <input type="text" placeholder="Formula / Name" value="${escapeHtml(r.sample_id)}" oninput="STATE.expReportRows[${idx}].sample_id=this.value; updateSlidePreview()" />
-      <input type="text" placeholder="DFT Setup / Code" value="${escapeHtml(r.material)}" oninput="STATE.expReportRows[${idx}].material=this.value; updateSlidePreview()" />
-      <input type="text" placeholder="Bandgap / Energy" value="${escapeHtml(r.conditions)}" oninput="STATE.expReportRows[${idx}].conditions=this.value; updateSlidePreview()" />
-      <input type="text" placeholder="Key Simulation Finding" value="${escapeHtml(r.findings)}" oninput="STATE.expReportRows[${idx}].findings=this.value; updateSlidePreview()" />
+      <input type="text" placeholder="Formula / Name" value="${escapeHtml(r.sample_id)}" oninput="STATE.expReportRows[${idx}].sample_id=this.value; updateSlidePreview(); saveStaticDb()" />
+      <input type="text" placeholder="DFT Setup / Code" value="${escapeHtml(r.material)}" oninput="STATE.expReportRows[${idx}].material=this.value; updateSlidePreview(); saveStaticDb()" />
+      <input type="text" placeholder="Bandgap / Energy" value="${escapeHtml(r.conditions)}" oninput="STATE.expReportRows[${idx}].conditions=this.value; updateSlidePreview(); saveStaticDb()" />
+      <input type="text" placeholder="Key Simulation Finding" value="${escapeHtml(r.findings)}" oninput="STATE.expReportRows[${idx}].findings=this.value; updateSlidePreview(); saveStaticDb()" />
       <button type="button" class="btn btn-danger btn-sm" onclick="removeExpReportRow(${idx})">✕</button>
     </div>
   `).join("");
@@ -6189,14 +7692,17 @@ function addExpResultRow() {
     conditions: "Eg = 3.20 eV (Direct)",
     findings: "Relaxed lattice a = 4.006 Å within 0.8% of experiment"
   });
+  recordUserActivity("Weekly Report", "Added Simulation Result Row", "Added experimental/DFT result row to Weekly Report.");
   renderExpReportRows();
   updateSlidePreview();
+  saveStaticDb();
 }
 
 function removeLitReportRow(idx) {
   STATE.litReportRows.splice(idx, 1);
   renderLitReportRows();
   updateSlidePreview();
+  saveStaticDb();
 }
 
 function renderLitReportRows() {
@@ -6204,9 +7710,9 @@ function renderLitReportRows() {
   if (!container) return;
   container.innerHTML = STATE.litReportRows.map((r, idx) => `
     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:6px; background:#f8fafc; padding:8px; border-radius:8px; border:1px solid var(--border-color);">
-      <input type="text" placeholder="Paper Title" value="${escapeHtml(r.title)}" oninput="STATE.litReportRows[${idx}].title=this.value; updateSlidePreview()" />
-      <input type="text" placeholder="Journal (Year)" value="${escapeHtml(r.journal)}" oninput="STATE.litReportRows[${idx}].journal=this.value; updateSlidePreview()" />
-      <input type="text" placeholder="Key Takeaway" value="${escapeHtml(r.takeaway)}" oninput="STATE.litReportRows[${idx}].takeaway=this.value; updateSlidePreview()" />
+      <input type="text" placeholder="Paper Title" value="${escapeHtml(r.title)}" oninput="STATE.litReportRows[${idx}].title=this.value; updateSlidePreview(); saveStaticDb()" />
+      <input type="text" placeholder="Journal (Year)" value="${escapeHtml(r.journal)}" oninput="STATE.litReportRows[${idx}].journal=this.value; updateSlidePreview(); saveStaticDb()" />
+      <input type="text" placeholder="Key Takeaway" value="${escapeHtml(r.takeaway)}" oninput="STATE.litReportRows[${idx}].takeaway=this.value; updateSlidePreview(); saveStaticDb()" />
       <button type="button" class="btn btn-danger btn-sm" onclick="removeLitReportRow(${idx})">✕</button>
     </div>
   `).join("");
@@ -6219,8 +7725,10 @@ function addLitReviewRow() {
     material: "Perovskite Oxides",
     takeaway: "HSE06 functional accurately reproduces experimental optical bandgap."
   });
+  recordUserActivity("Weekly Report", "Added Literature Review Row", "Added literature review row to Weekly Report.");
   renderLitReportRows();
   updateSlidePreview();
+  saveStaticDb();
 }
 
 function collectReportPayload() {
@@ -6615,7 +8123,7 @@ async function persistProfileState() {
 }
 
 async function saveProfileChanges() {
-  if (!requireAdminAuth()) return;
+  if (!requireStrictAdminAuth()) return;
   await persistProfileState();
   showToast("Saved Academic CV & Profile!");
 }
@@ -7107,7 +8615,7 @@ function getAuthorQuality(s) {
 
 
 async function handleSyncOrcid() {
-  if (!requireAdminAuth()) return;
+  if (!requireStrictAdminAuth()) return;
   STATE.profile = STATE.profile || {};
   STATE.profile.publications = STATE.profile.publications || [];
   const orcidInput = document.getElementById("sync-orcid-input").value.trim();
@@ -7406,7 +8914,7 @@ async function handleSyncOrcid() {
 }
 
 async function handleSyncScholar() {
-  if (!requireAdminAuth()) return;
+  if (!requireStrictAdminAuth()) return;
   const scholarInput = document.getElementById("sync-scholar-input").value.trim();
   if (!scholarInput) {
     showToast("Please enter a Google Scholar User ID, URL, or Researcher Name.", "warn");
@@ -7456,12 +8964,12 @@ async function removeOwnPub(idx, e) {
     if (e.stopPropagation) e.stopPropagation();
     if (e.preventDefault) e.preventDefault();
   }
-  if (!requireAdminAuth()) return;
+  if (!requireStrictAdminAuth()) return;
   if (!Array.isArray(STATE.profile.publications)) return;
   if (idx < 0 || idx >= STATE.profile.publications.length) return;
 
   const pub = STATE.profile.publications[idx];
-  const pubTitle = pub ? (pub.title || "Ấn phẩm") : "Ấn phẩm";
+  const pubTitle = pub ? (pub.title || "Publication") : "Publication";
   const ok = await confirmAction("Are you sure you want to remove this publication from your CV & portfolio?", pubTitle);
   if (!ok) return;
 
