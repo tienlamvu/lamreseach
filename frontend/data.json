@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T04:02:19.326Z",
+  "exported_at": "2026-11-14T04:02:29.317Z",
   "profile": {
     "full_name": "Vu Tien Lam",
     "title_role": "Ph.D. Candidate in Computational Materials Science",
@@ -836,8 +836,8 @@
       "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
       "registeredAt": "2026-11-14 04:00",
       "lastLoginAt": "2026-11-14 04:00",
-      "lastUpdatedAt": "2026-11-14 04:01",
-      "updatedAtMs": 1794628908666,
+      "lastUpdatedAt": "2026-11-14 04:02",
+      "updatedAtMs": 1794628948871,
       "workspace": {
         "papers": [],
         "structures": [
@@ -921,7 +921,20 @@
             "in_weekly_report": 1
           }
         ],
-        "expReportRows": [],
+        "expReportRows": [
+          {
+            "sample_id": "BaTiO3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Prototypical ferroelectric perovskite. Relaxed cell parameter a = 4.006 Å matches experimental XRD diffraction."
+          },
+          {
+            "sample_id": "MoS2",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "a=3.215 Å, Vol=163.91 Å³"
+          }
+        ],
         "litReportRows": []
       },
       "activityLog": [
