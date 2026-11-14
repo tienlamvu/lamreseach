@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T03:47:30.050Z",
+  "exported_at": "2026-11-14T03:47:50.739Z",
   "profile": {
     "full_name": "Vu Tien Lam",
     "title_role": "Ph.D. Candidate in Computational Materials Science",
@@ -418,6 +418,20 @@
       "sample_id": "MoS2-Monolayer",
       "description": "Finite-displacement phonon stability check.",
       "in_weekly_report": 1
+    },
+    {
+      "title": "Saturday Study",
+      "event_type": "Group Meeting / PI Meeting",
+      "instrument_or_location": "SKKU Cluster / Office",
+      "start_date": "2026-11-14",
+      "start_time": "10:00",
+      "end_time": "12:00",
+      "priority": "High",
+      "status": "Scheduled",
+      "sample_id": "",
+      "description": "",
+      "in_weekly_report": 1,
+      "id": 1794628069167
     }
   ],
   "users_registry": {
