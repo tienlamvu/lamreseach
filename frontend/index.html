@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261114_v61_oauth2_popup" onerror="this.href='/static/styles.css?v=20261114_v61_oauth2_popup'" />
+  <link rel="stylesheet" href="styles.css?v=20261114_v62_real_google_oauth2" onerror="this.href='/static/styles.css?v=20261114_v62_real_google_oauth2'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -1641,6 +1641,13 @@
                 </div>
               </div>
               <div class="form-group full">
+                <label style="display:flex; justify-content:space-between; align-items:center;">
+                  <span>Google OAuth 2.0 Client ID (Google Sign-In)</span>
+                  <button type="button" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:11px;" onclick="openGoogleOAuthConfigModal()">⚙️ Setup Helper</button>
+                </label>
+                <input type="text" id="prof-google-client-id" placeholder="e.g. 123456789012-xxxx.apps.googleusercontent.com" style="font-family:monospace; font-size:12.5px;" />
+              </div>
+              <div class="form-group full">
                 <label>Biography / Research Statement</label>
                 <textarea id="prof-bio" rows="3"></textarea>
               </div>
@@ -3158,7 +3165,51 @@
   <div id="toast-container"></div>
   <div id="plag-pdf-render-area" style="display:none;"></div>
 
-  <script src="matsci_tools.js?v=20261114_v61_oauth2_popup" onerror="this.src='/static/matsci_tools.js?v=20261114_v61_oauth2_popup'"></script>
-  <script src="app.js?v=20261114_v61_oauth2_popup" onerror="this.src='/static/app.js?v=20261114_v61_oauth2_popup'"></script>
+  <!-- Google OAuth 2.0 Client ID Setup Modal (shown only when Client ID is not yet configured) -->
+  <div id="google-oauth-config-modal" class="modal-backdrop">
+    <div class="modal google-auth-modal" style="max-width:540px; padding:26px 28px;">
+      <button class="google-modal-close" onclick="closeModal('google-oauth-config-modal')" title="Close">✕</button>
+      <div style="text-align:center; margin-bottom:14px;">
+        <svg viewBox="0 0 24 24" width="32" height="32" style="display:inline-block; vertical-align:middle;"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24z"/><path fill="#FBBC05" d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96z"/></svg>
+        <h3 style="margin:8px 0 4px; font-size:20px; color:#1f2937;">Configure Google OAuth 2.0 Client ID</h3>
+        <p style="margin:0; font-size:13px; color:#4b5563;">
+          Connect a real Google Cloud OAuth 2.0 Client ID (<code>*.apps.googleusercontent.com</code>) so users sign in via Google's official <strong>accounts.google.com</strong> window with scopes <code>openid email profile</code>.
+        </p>
+      </div>
+
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:14px; font-size:12px; color:#334155;">
+        <div style="font-weight:700; margin-bottom:8px; color:#0f172a;">Google Cloud Console Values for This Site:</div>
+        <div style="margin-bottom:8px;">
+          <label style="display:block; font-weight:600; margin-bottom:3px;">Authorized JavaScript origin</label>
+          <div style="display:flex; gap:6px;">
+            <input type="text" id="oauth-origin-preview" readonly class="form-control" style="flex:1; font-family:monospace; font-size:12px; background:#ffffff;" />
+            <button type="button" class="btn btn-outline btn-sm" onclick="copyOAuthSetupField('oauth-origin-preview', 'JavaScript Origin')">Copy</button>
+          </div>
+        </div>
+        <div>
+          <label style="display:block; font-weight:600; margin-bottom:3px;">Authorized redirect URI</label>
+          <div style="display:flex; gap:6px;">
+            <input type="text" id="oauth-redirect-preview" readonly class="form-control" style="flex:1; font-family:monospace; font-size:12px; background:#ffffff;" />
+            <button type="button" class="btn btn-outline btn-sm" onclick="copyOAuthSetupField('oauth-redirect-preview', 'Redirect URI')">Copy</button>
+          </div>
+        </div>
+      </div>
+
+      <form onsubmit="submitGoogleOAuthConfigModal(event, true)">
+        <div class="g-field-group" style="margin-bottom:10px;">
+          <label for="oauth-client-id-input" style="font-weight:600; font-size:13px; color:#1e293b;">Google OAuth 2.0 Client ID (Web Application)</label>
+          <input type="text" id="oauth-client-id-input" class="g-input" placeholder="e.g. 123456789012-abcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com" required />
+        </div>
+        <div id="oauth-config-error" class="auth-error-msg" style="display:none; margin-bottom:10px;"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:14px;">
+          <button type="button" class="g-text-btn" onclick="closeModal('google-oauth-config-modal')">Cancel</button>
+          <button type="submit" class="g-btn-primary" style="flex:1;">Save Client ID &amp; Sign in with Google</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="matsci_tools.js?v=20261114_v62_real_google_oauth2" onerror="this.src='/static/matsci_tools.js?v=20261114_v62_real_google_oauth2'"></script>
+  <script src="app.js?v=20261114_v62_real_google_oauth2" onerror="this.src='/static/app.js?v=20261114_v62_real_google_oauth2'"></script>
 </body>
 </html>
