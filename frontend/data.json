@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T04:07:12.263Z",
+  "exported_at": "2026-11-14T14:03:26.945Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -734,8 +734,8 @@
         {
           "element": "Mo",
           "label": "Mo1",
-          "x": -1e-05,
-          "y": -2e-05,
+          "x": -0.00001,
+          "y": -0.00002,
           "z": 0.5,
           "occupancy": 1
         },
@@ -1736,11 +1736,11 @@
       "authProvider": "Google Account Linked",
       "googleLinked": true,
       "googleEmail": "jhpark.matsci@gmail.com",
-      "passwordPlainHint": "skku2026",
-      "passwordHash": "e5acba84c164be5493b03ab87712975cdaf2149d43c81df395eb07f8a1057264",
+      "passwordPlainHint": "skku1234",
+      "passwordHash": "441d52fbb490008fa860a41b38fe03e0b7f6fb06b56336922f7d7a95562f51dd",
       "registeredAt": "2026-11-10 09:15",
       "lastLoginAt": "2026-11-14 10:20",
-      "lastUpdatedAt": "2026-11-14 03:48",
+      "lastUpdatedAt": "2026-11-14 07:57",
       "workspace": {
         "papers": [
           {
@@ -1865,6 +1865,18 @@
       },
       "activityLog": [
         {
+          "timestamp": "2026-11-14 06:53",
+          "category": "Security",
+          "action": "Password Reset by Administrator",
+          "detail": "Administrator reset password to default (\"skku1234\") for jhpark.matsci@skku.edu."
+        },
+        {
+          "timestamp": "2026-11-14 06:53",
+          "category": "Security",
+          "action": "Password Reset by Administrator",
+          "detail": "Administrator reset password to default (\"skku1234\") for jhpark.matsci@skku.edu."
+        },
+        {
           "timestamp": "2026-11-14 10:42",
           "category": "Crystal Structures",
           "action": "Added Structure",
@@ -1889,7 +1901,11 @@
           "detail": "Linked Google Account jhpark.matsci@gmail.com"
         }
       ],
-      "updatedAtMs": 1794628139779
+      "updatedAtMs": 1794643040276,
+      "groups": [
+        "grp_skku_lab",
+        "grp_dft_team"
+      ]
     },
     "minseo.kim@gmail.com": {
       "email": "minseo.kim@gmail.com",
@@ -1903,7 +1919,7 @@
       "passwordHash": "plain:kaist2026",
       "registeredAt": "2026-11-12 14:05",
       "lastLoginAt": "2026-11-14 09:50",
-      "lastUpdatedAt": "2026-11-14 03:52",
+      "lastUpdatedAt": "2026-11-14 06:44",
       "workspace": {
         "papers": [
           {
@@ -2044,7 +2060,10 @@
           "detail": "Google OAuth Linked: minseo.kim@gmail.com"
         }
       ],
-      "updatedAtMs": 1794628337146
+      "updatedAtMs": 1794638664134,
+      "groups": [
+        "grp_external_collab"
+      ]
     },
     "ssk@gmail.com": {
       "email": "ssk@gmail.com",
@@ -2058,7 +2077,7 @@
       "passwordHash": "e5acba84c164be5493b03ab87712975cdaf2149d43c81df395eb07f8a1057264",
       "registeredAt": "2026-11-14 03:14",
       "lastLoginAt": "2026-11-14 03:14",
-      "lastUpdatedAt": "2026-11-14 03:57",
+      "lastUpdatedAt": "2026-11-14 06:44",
       "workspace": {
         "papers": [],
         "structures": [],
@@ -2095,22 +2114,25 @@
           "detail": "Seojeong Rho (SKKU) created a personal workspace."
         }
       ],
-      "updatedAtMs": 1794628658326
+      "updatedAtMs": 1794638692590,
+      "groups": [
+        "grp_skku_lab"
+      ]
     },
     "las@gmail.com": {
       "email": "las@gmail.com",
       "name": "No",
       "affiliation": "Independent Researcher",
       "academicRole": "Researcher",
-      "authProvider": "Email & Password",
-      "googleLinked": false,
-      "googleEmail": "",
-      "passwordPlainHint": "1234",
-      "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
+      "authProvider": "Email + Google Linked",
+      "googleLinked": true,
+      "googleEmail": "las@gmail.com",
+      "passwordPlainHint": "skku1234",
+      "passwordHash": "441d52fbb490008fa860a41b38fe03e0b7f6fb06b56336922f7d7a95562f51dd",
       "registeredAt": "2026-11-14 04:00",
-      "lastLoginAt": "2026-11-14 04:00",
-      "lastUpdatedAt": "2026-11-14 04:02",
-      "updatedAtMs": 1794628948871,
+      "lastLoginAt": "2026-11-14 06:49",
+      "lastUpdatedAt": "2026-11-14 07:51",
+      "updatedAtMs": 1794642711908,
       "workspace": {
         "papers": [],
         "structures": [
@@ -2212,6 +2234,54 @@
       },
       "activityLog": [
         {
+          "timestamp": "2026-11-14 06:49",
+          "category": "Session",
+          "action": "Signed In (Email & Password)",
+          "detail": "Authenticated as No (las@gmail.com)"
+        },
+        {
+          "timestamp": "2026-11-14 06:49",
+          "category": "Security",
+          "action": "Password Reset by Administrator",
+          "detail": "Administrator reset password to default (\"skku1234\") for las@gmail.com."
+        },
+        {
+          "timestamp": "2026-11-14 06:28",
+          "category": "Account",
+          "action": "Linked Google Account",
+          "detail": "Linked Google Account: las@gmail.com"
+        },
+        {
+          "timestamp": "2026-11-14 06:28",
+          "category": "Session",
+          "action": "Signed In (Email & Password)",
+          "detail": "Authenticated as No (las@gmail.com)"
+        },
+        {
+          "timestamp": "2026-11-14 06:27",
+          "category": "Session",
+          "action": "Signed In (Email & Password)",
+          "detail": "Authenticated as No (las@gmail.com)"
+        },
+        {
+          "timestamp": "2026-11-14 06:22",
+          "category": "Session",
+          "action": "Signed In (Email & Password)",
+          "detail": "Authenticated as No (las@gmail.com)"
+        },
+        {
+          "timestamp": "2026-11-14 06:20",
+          "category": "Session",
+          "action": "Signed In (Email & Password)",
+          "detail": "Authenticated as No (las@gmail.com)"
+        },
+        {
+          "timestamp": "2026-11-14 05:29",
+          "category": "Session",
+          "action": "Signed In (Email & Password)",
+          "detail": "Authenticated as No (las@gmail.com)"
+        },
+        {
           "timestamp": "2026-11-14 04:01",
           "category": "Crystal Structures",
           "action": "Added Structure",
@@ -2229,8 +2299,46 @@
           "action": "Registered Personal Account",
           "detail": "No (Independent Researcher) created a personal workspace."
         }
+      ],
+      "groups": [
+        "grp_dft_team"
       ]
     }
   },
-  "deleted_users": []
+  "user_groups": {
+    "grp_skku_lab": {
+      "id": "grp_skku_lab",
+      "name": "SKKU Energy Transport Lab",
+      "description": "Sungkyunkwan University Energy Science & Materials Modeling Members",
+      "color": "blue",
+      "members": [
+        "jhpark.matsci@skku.edu",
+        "ssk@gmail.com"
+      ],
+      "updatedAtMs": 1700000000000
+    },
+    "grp_dft_team": {
+      "id": "grp_dft_team",
+      "name": "DFT & Computational Team",
+      "description": "VASP, Quantum ESPRESSO & First-Principles Simulation Group",
+      "color": "purple",
+      "members": [
+        "jhpark.matsci@skku.edu",
+        "las@gmail.com"
+      ],
+      "updatedAtMs": 1700000000000
+    },
+    "grp_external_collab": {
+      "id": "grp_external_collab",
+      "name": "External Collaborators",
+      "description": "KAIST & Partner University Research Collaborators",
+      "color": "teal",
+      "members": [
+        "minseo.kim@gmail.com"
+      ],
+      "updatedAtMs": 1700000000000
+    }
+  },
+  "deleted_users": [],
+  "deleted_groups": []
 }
