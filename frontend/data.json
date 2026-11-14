@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T06:44:25.167Z",
+  "exported_at": "2026-11-14T06:44:59.786Z",
   "profile": {
     "full_name": "Vu Tien Lam",
     "title_role": "Ph.D. Candidate in Computational Materials Science",
@@ -796,7 +796,7 @@
       "passwordHash": "e5acba84c164be5493b03ab87712975cdaf2149d43c81df395eb07f8a1057264",
       "registeredAt": "2026-11-14 03:14",
       "lastLoginAt": "2026-11-14 03:14",
-      "lastUpdatedAt": "2026-11-14 03:57",
+      "lastUpdatedAt": "2026-11-14 06:44",
       "workspace": {
         "papers": [],
         "structures": [],
@@ -833,7 +833,7 @@
           "detail": "Seojeong Rho (SKKU) created a personal workspace."
         }
       ],
-      "updatedAtMs": 1794628658326,
+      "updatedAtMs": 1794638692590,
       "groups": [
         "grp_skku_lab"
       ]
