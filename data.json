@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T13:41:27.992Z",
+  "exported_at": "2026-11-14T13:44:15.500Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -1907,11 +1907,11 @@
           "detail": "Linked Google Account jhpark.matsci@gmail.com"
         }
       ],
-      "updatedAtMs": 1794660334951,
       "groups": [
         "grp_skku_lab",
         "grp_dft_team"
       ],
+      "updatedAtMs": 1794660334951,
       "emailVerified": true
     },
     "minseo.kim@gmail.com": {
@@ -2067,10 +2067,10 @@
           "detail": "Google OAuth Linked: minseo.kim@gmail.com"
         }
       ],
-      "updatedAtMs": 1794638664134,
       "groups": [
         "grp_external_collab"
-      ]
+      ],
+      "updatedAtMs": 1794638664134
     },
     "ssk@gmail.com": {
       "email": "ssk@gmail.com",
