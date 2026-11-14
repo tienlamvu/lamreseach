@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T03:59:48.050Z",
+  "exported_at": "2026-11-14T04:00:14.644Z",
   "profile": {
     "full_name": "Vu Tien Lam",
     "title_role": "Ph.D. Candidate in Computational Materials Science",
@@ -821,6 +821,57 @@
         }
       ],
       "updatedAtMs": 1794628658326
+    },
+    "las@gmail.com": {
+      "email": "las@gmail.com",
+      "name": "No",
+      "affiliation": "Independent Researcher",
+      "academicRole": "Researcher",
+      "authProvider": "Email & Password",
+      "googleLinked": false,
+      "googleEmail": "",
+      "passwordPlainHint": "1234",
+      "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
+      "registeredAt": "2026-11-14 04:00",
+      "lastLoginAt": "2026-11-14 04:00",
+      "lastUpdatedAt": "2026-11-14 04:00",
+      "updatedAtMs": 1794628814011,
+      "workspace": {
+        "papers": [],
+        "structures": [],
+        "schedule": [
+          {
+            "id": 1794628813997,
+            "title": "Welcome Research Session — No's Workspace",
+            "event_type": "Group Meeting / PI Meeting",
+            "instrument_or_location": "Independent Researcher",
+            "start_date": "2026-11-14",
+            "start_time": "10:00",
+            "end_time": "11:30",
+            "priority": "High",
+            "status": "Scheduled",
+            "sample_id": "INIT-01",
+            "description": "Personal schedule initialized for No (las@gmail.com).",
+            "in_weekly_report": 1
+          }
+        ],
+        "expReportRows": [],
+        "litReportRows": []
+      },
+      "activityLog": [
+        {
+          "timestamp": "2026-11-14 04:00",
+          "category": "Session",
+          "action": "Signed In (Account Registration)",
+          "detail": "Authenticated as No (las@gmail.com)"
+        },
+        {
+          "timestamp": "2026-11-14 04:00",
+          "category": "Account",
+          "action": "Registered Personal Account",
+          "detail": "No (Independent Researcher) created a personal workspace."
+        }
+      ]
     }
   },
   "deleted_users": []
