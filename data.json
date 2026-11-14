@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T14:39:49.151Z",
+  "exported_at": "2026-11-14T14:40:08.689Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -1755,15 +1755,15 @@
       "status": "Active",
       "emailVerified": true,
       "verifiedAt": "2026-11-14 14:39",
-      "authProvider": "Verified Email + Google Linked",
+      "authProvider": "Email + Google Linked",
       "googleLinked": true,
       "googleEmail": "lamvt.sep@gmail.com",
       "passwordPlainHint": "123456",
       "passwordHash": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
       "registeredAt": "2026-11-14 14:39",
       "lastLoginAt": "2026-11-14 14:39",
-      "lastUpdatedAt": "2026-11-14 14:39",
-      "updatedAtMs": 1794667184465,
+      "lastUpdatedAt": "2026-11-14 14:40",
+      "updatedAtMs": 1794667207171,
       "workspace": {
         "papers": [
           {
@@ -2041,6 +2041,12 @@
         ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-14 14:40",
+          "category": "Account",
+          "action": "Linked Google Account",
+          "detail": "Linked Google Account: lamvt.sep@gmail.com"
+        },
         {
           "timestamp": "2026-11-14 14:39",
           "category": "Session",
