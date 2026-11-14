@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T06:44:20.482Z",
+  "exported_at": "2026-11-14T06:44:25.167Z",
   "profile": {
     "full_name": "Vu Tien Lam",
     "title_role": "Ph.D. Candidate in Computational Materials Science",
@@ -779,7 +779,7 @@
           "detail": "Google OAuth Linked: minseo.kim@gmail.com"
         }
       ],
-      "updatedAtMs": 1794638659456,
+      "updatedAtMs": 1794638664134,
       "groups": [
         "grp_external_collab"
       ]
