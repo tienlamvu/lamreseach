@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-13T12:20:35.623Z",
+  "exported_at": "2026-11-14T03:26:00.357Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -61,7 +61,7 @@
       {
         "id": 1794564001047,
         "title": "Influence of complex antisite defects in structural distortion, electrical and optical properties of Bi0.5Na0.5TiO3(110) surface: A DFT investigation",
-        "authors": "Tien Lam Vu; Huu Lam Nguyen; Hoang Linh Nguyen; Quoc Van Duong; Dang Duc Dung",
+        "authors": "Vu Tien Lam, Nguyen Huu Lam, Nguyen Hoang Linh, Duong Quoc Van, Dang Duc Dung",
         "journal": "Communications in Physics",
         "year": 2026,
         "volume": "",
@@ -449,34 +449,16 @@
   },
   "papers": [
     {
-      "id": 1794572247854,
-      "doi": "10.1016/j.ijhydene.2022.01.236",
-      "title": "Y-decorated MoS2 monolayer for promising hydrogen storage: A DFT study",
-      "authors": "Hongying Liu, Shulin Yang, Gu Lei, Miaojing Xu, Huoxi Xu",
-      "journal": "International Journal of Hydrogen Energy",
-      "year": 2022,
-      "volume": "47",
-      "pages": "12096-12106",
+      "id": 1794577813121,
+      "doi": "10.1038/s41560-020-00748-8",
+      "title": "Post-lithium-ion battery cell production and its compatibility with lithium-ion cell production infrastructure",
+      "authors": "Fabian Duffner, Niklas Kronemeyer, Jens Tübke, Jens Leker, Martin Winter",
+      "journal": "Nature Energy",
+      "year": 2021,
+      "volume": "6",
+      "pages": "123-134",
       "abstract": "",
-      "citation_count": 53,
-      "material_system": "Perovskite / 2D Material",
-      "synthesis_method": "First-principles DFT",
-      "characterization_tags": "DFT, VASP, XRD",
-      "status": "To Read",
-      "notes": "",
-      "in_weekly_report": 1
-    },
-    {
-      "id": 1794572106086,
-      "doi": "10.1038/s41467-026-71890-2",
-      "title": "Stabilization of sliding ferroelectricity through exciton condensation",
-      "authors": "Matteo D’Alessio, Daniele Varsano, Elisa Molinari, Massimo Rontani",
-      "journal": "Nature Communications",
-      "year": 2026,
-      "volume": "17",
-      "pages": "",
-      "abstract": "",
-      "citation_count": 0,
+      "citation_count": 1345,
       "material_system": "Perovskite / 2D Material",
       "synthesis_method": "First-principles DFT",
       "characterization_tags": "DFT, VASP, XRD",
@@ -1726,5 +1708,323 @@
       "in_weekly_report": 1,
       "id": 1794551462746
     }
-  ]
+  ],
+  "users_registry": {
+    "jhpark.matsci@skku.edu": {
+      "email": "jhpark.matsci@skku.edu",
+      "name": "Dr. Ji-Hoon Park",
+      "affiliation": "Sungkyunkwan University (SKKU) — Energy Science",
+      "academicRole": "Postdoctoral Researcher",
+      "authProvider": "Google Account Linked",
+      "googleLinked": true,
+      "googleEmail": "jhpark.matsci@gmail.com",
+      "passwordPlainHint": "skku2026",
+      "passwordHash": "e5acba84c164be5493b03ab87712975cdaf2149d43c81df395eb07f8a1057264",
+      "registeredAt": "2026-11-10 09:15",
+      "lastLoginAt": "2026-11-14 10:20",
+      "lastUpdatedAt": "2026-11-14 03:21",
+      "workspace": {
+        "papers": [
+          {
+            "id": 90201,
+            "doi": "10.1038/s41560-023-01245-w",
+            "title": "Surface passivation of halide perovskite thin films for high-stability photovoltaics",
+            "authors": "Ji-Hoon Park, Seong Chu Lim, Min-Seo Kim",
+            "journal": "Nature Energy",
+            "year": 2025,
+            "material_system": "CsPbI3 / 2D Perovskite Passivation",
+            "synthesis_method": "Spin-Coating + First-principles DFT",
+            "characterization_tags": "DFT, VASP, GIWAXS, XPS",
+            "status": "Key Reference",
+            "notes": "Reference energy alignment values for octahedral tilting in CsPbI3.",
+            "abstract": "Comprehensive investigation of surface ligand binding energies and defect tolerance in inorganic halide perovskites.",
+            "in_weekly_report": 1
+          }
+        ],
+        "structures": [
+          {
+            "id": 90301,
+            "name": "Cubic Halide Perovskite CsPbI3 (α-phase)",
+            "chemical_formula": "CsPbI3",
+            "crystal_system": "Cubic",
+            "space_group": "Pm-3m (221)",
+            "structure_type": "Bulk 3D",
+            "a": 6.289,
+            "b": 6.289,
+            "c": 6.289,
+            "alpha": 90,
+            "beta": 90,
+            "gamma": 90,
+            "volume": 248.74,
+            "bandgap_ev": 1.73,
+            "bandgap_type": "Direct",
+            "formation_energy_ev": -1.42,
+            "dft_code": "VASP 6.4",
+            "dft_functional": "HSE06 + SOC",
+            "kpoints_mesh": "6x6x6",
+            "encut_ev": 500,
+            "notes": "Personal workspace model by Dr. Ji-Hoon Park — α-CsPbI3 unit cell.",
+            "atoms": [
+              {
+                "element": "Cs",
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              {
+                "element": "Pb",
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5
+              },
+              {
+                "element": "I",
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0
+              },
+              {
+                "element": "I",
+                "x": 0.5,
+                "y": 0,
+                "z": 0.5
+              },
+              {
+                "element": "I",
+                "x": 0,
+                "y": 0.5,
+                "z": 0.5
+              }
+            ]
+          }
+        ],
+        "schedule": [
+          {
+            "id": 90101,
+            "title": "VASP Hybrid HSE06 Bandgap Calculation — CsPbI3 Slab",
+            "event_type": "Electrochemistry / Battery Testing",
+            "instrument_or_location": "SKKU HPC Cluster (Node 04)",
+            "start_date": "2026-11-16",
+            "start_time": "09:30",
+            "end_time": "12:30",
+            "priority": "High",
+            "status": "Scheduled",
+            "sample_id": "CsPbI3-Slab-01",
+            "description": "Surface termination relaxation and dipole correction for perovskite solar cell interface.",
+            "in_weekly_report": 1
+          },
+          {
+            "id": 90102,
+            "title": "In-situ Grazing Incidence XRD Beamtime Meeting",
+            "event_type": "Group Meeting / PI Meeting",
+            "instrument_or_location": "N-Center Room 86412",
+            "start_date": "2026-11-18",
+            "start_time": "14:00",
+            "end_time": "15:30",
+            "priority": "High",
+            "status": "In Progress",
+            "sample_id": "GIXRD-2026B",
+            "description": "Review synchrotron beamtime schedule and sample holder geometry.",
+            "in_weekly_report": 1
+          }
+        ],
+        "expReportRows": [
+          {
+            "sample_id": "CsPbI3-HSE06",
+            "material": "VASP 6.4 (HSE06 + SOC)",
+            "conditions": "Eg = 1.73 eV (Direct at R-point)",
+            "findings": "Spin-orbit coupling reduces Pb-6p conduction band minimum by 0.65 eV."
+          }
+        ],
+        "litReportRows": [
+          {
+            "title": "Surface passivation of halide perovskite thin films for high-stability photovoltaics",
+            "journal": "Nature Energy (2025)",
+            "material": "CsPbI3",
+            "takeaway": "2D Ruddlesden-Popper capping layer suppresses iodide vacancy migration."
+          }
+        ]
+      },
+      "activityLog": [
+        {
+          "timestamp": "2026-11-14 10:42",
+          "category": "Crystal Structures",
+          "action": "Added Structure",
+          "detail": "Uploaded Cubic Halide Perovskite CsPbI3 (Pm-3m, Eg = 1.73 eV)"
+        },
+        {
+          "timestamp": "2026-11-14 10:30",
+          "category": "Calendar",
+          "action": "Scheduled Event",
+          "detail": "VASP Hybrid HSE06 Bandgap Calculation — CsPbI3 Slab (2026-11-16)"
+        },
+        {
+          "timestamp": "2026-11-14 10:22",
+          "category": "References",
+          "action": "Imported Paper via DOI",
+          "detail": "10.1038/s41560-023-01245-w — Nature Energy (2025)"
+        },
+        {
+          "timestamp": "2026-11-10 09:15",
+          "category": "Account",
+          "action": "Account Registered & Linked with Google",
+          "detail": "Linked Google Account jhpark.matsci@gmail.com"
+        }
+      ]
+    },
+    "minseo.kim@gmail.com": {
+      "email": "minseo.kim@gmail.com",
+      "name": "Min-Seo Kim",
+      "affiliation": "KAIST — Department of Materials Science & Engineering",
+      "academicRole": "Ph.D. Candidate",
+      "authProvider": "Google Account",
+      "googleLinked": true,
+      "googleEmail": "minseo.kim@gmail.com",
+      "passwordPlainHint": "kaist2026",
+      "passwordHash": "plain:kaist2026",
+      "registeredAt": "2026-11-12 14:05",
+      "lastLoginAt": "2026-11-14 09:50",
+      "lastUpdatedAt": "2026-11-14 03:21",
+      "workspace": {
+        "papers": [
+          {
+            "id": 90501,
+            "doi": "10.1021/acsenergylett.4c00812",
+            "title": "Grain boundary engineering in garnet-type solid-state electrolytes for lithium metal batteries",
+            "authors": "Min-Seo Kim, H. J. Ryu",
+            "journal": "ACS Energy Letters",
+            "year": 2025,
+            "material_system": "Li6.4La3Zr1.4Ta0.6O12 (LLZTO)",
+            "synthesis_method": "Solid-State Reaction + ALD",
+            "characterization_tags": "XRD, EIS, SEM, XPS",
+            "status": "Reading",
+            "notes": "Critical current density reaches 2.1 mA/cm2 after Li3PO4 interface modification.",
+            "abstract": "Interfacial impedance reduction between garnet electrolyte and Li metal anode via ultrathin ALD coating.",
+            "in_weekly_report": 1
+          }
+        ],
+        "structures": [
+          {
+            "id": 90601,
+            "name": "2D Titanium Carbide MXene Monolayer (Ti3C2O2)",
+            "chemical_formula": "Ti3C2O2",
+            "crystal_system": "Hexagonal",
+            "space_group": "P-3m1 (164)",
+            "structure_type": "2D Monolayer",
+            "a": 3.071,
+            "b": 3.071,
+            "c": 20,
+            "alpha": 90,
+            "beta": 90,
+            "gamma": 120,
+            "volume": 163.35,
+            "bandgap_ev": 0,
+            "bandgap_type": "Metallic",
+            "formation_energy_ev": -2.85,
+            "dft_code": "VASP 6.4",
+            "dft_functional": "PBE + DFT-D3",
+            "kpoints_mesh": "12x12x1",
+            "encut_ev": 520,
+            "notes": "Oxygen-terminated Ti3C2O2 MXene slab with 20 Å vacuum layer.",
+            "atoms": [
+              {
+                "element": "Ti",
+                "x": 0,
+                "y": 0,
+                "z": 0.5
+              },
+              {
+                "element": "Ti",
+                "x": 0.3333,
+                "y": 0.6667,
+                "z": 0.618
+              },
+              {
+                "element": "Ti",
+                "x": 0.6667,
+                "y": 0.3333,
+                "z": 0.382
+              },
+              {
+                "element": "C",
+                "x": 0.6667,
+                "y": 0.3333,
+                "z": 0.558
+              },
+              {
+                "element": "C",
+                "x": 0.3333,
+                "y": 0.6667,
+                "z": 0.442
+              },
+              {
+                "element": "O",
+                "x": 0,
+                "y": 0,
+                "z": 0.675
+              },
+              {
+                "element": "O",
+                "x": 0,
+                "y": 0,
+                "z": 0.325
+              }
+            ]
+          }
+        ],
+        "schedule": [
+          {
+            "id": 90401,
+            "title": "Solid-State Electrolyte LLZTO Pellet Sintering & EIS",
+            "event_type": "Furnace Synthesis / Calcination",
+            "instrument_or_location": "Tube Furnace #2 & BioLogic VMP3",
+            "start_date": "2026-11-17",
+            "start_time": "10:00",
+            "end_time": "16:00",
+            "priority": "High",
+            "status": "Scheduled",
+            "sample_id": "LLZTO-1150C",
+            "description": "Sintering Ta-doped LLZO at 1150 °C in MgO crucible with mother powder.",
+            "in_weekly_report": 1
+          }
+        ],
+        "expReportRows": [
+          {
+            "sample_id": "Ti3C2O2-Slab",
+            "material": "VASP (PBE-D3)",
+            "conditions": "Metallic DOS at EF",
+            "findings": "Li-ion diffusion barrier on O-terminated Ti3C2O2 is 0.18 eV."
+          }
+        ],
+        "litReportRows": [
+          {
+            "title": "Grain boundary engineering in garnet-type solid-state electrolytes",
+            "journal": "ACS Energy Letters (2025)",
+            "material": "LLZTO",
+            "takeaway": "Eliminates Li2CO3 surface contaminants via thermal acid etching."
+          }
+        ]
+      },
+      "activityLog": [
+        {
+          "timestamp": "2026-11-14 10:05",
+          "category": "Calendar",
+          "action": "Scheduled Event",
+          "detail": "Solid-State Electrolyte LLZTO Pellet Sintering & EIS (2026-11-17)"
+        },
+        {
+          "timestamp": "2026-11-14 09:55",
+          "category": "Crystal Structures",
+          "action": "Added Structure",
+          "detail": "2D Titanium Carbide MXene Monolayer Ti3C2O2 (P-3m1)"
+        },
+        {
+          "timestamp": "2026-11-12 14:05",
+          "category": "Account",
+          "action": "Signed in with Google Account",
+          "detail": "Google OAuth Linked: minseo.kim@gmail.com"
+        }
+      ]
+    }
+  }
 }
