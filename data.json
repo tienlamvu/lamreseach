@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T14:42:37.461Z",
+  "exported_at": "2026-11-14T14:45:08.674Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -2079,7 +2079,8 @@
         }
       ],
       "groups": [],
-      "picture": "https://lh3.googleusercontent.com/a/ACg8ocJ5aVyRlpWSljVC2OJusM1rb39s2jSKUTJqGBroVnc79VyzoEsF=s96-c"
+      "picture": "https://lh3.googleusercontent.com/a/ACg8ocJ5aVyRlpWSljVC2OJusM1rb39s2jSKUTJqGBroVnc79VyzoEsF=s96-c",
+      "passwordlessGoogle": false
     }
   },
   "user_groups": {},
