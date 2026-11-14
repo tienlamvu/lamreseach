@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T06:49:25.363Z",
+  "exported_at": "2026-11-14T06:49:49.049Z",
   "profile": {
     "full_name": "Vu Tien Lam",
     "title_role": "Ph.D. Candidate in Computational Materials Science",
@@ -1021,40 +1021,5 @@
       ]
     }
   },
-  "user_groups": {
-    "grp_skku_lab": {
-      "id": "grp_skku_lab",
-      "name": "SKKU Energy Transport Lab",
-      "description": "Sungkyunkwan University Energy Science & Materials Modeling Members",
-      "color": "blue",
-      "members": [
-        "jhpark.matsci@skku.edu",
-        "ssk@gmail.com"
-      ],
-      "updatedAtMs": 1700000000000
-    },
-    "grp_dft_team": {
-      "id": "grp_dft_team",
-      "name": "DFT & Computational Team",
-      "description": "VASP, Quantum ESPRESSO & First-Principles Simulation Group",
-      "color": "purple",
-      "members": [
-        "jhpark.matsci@skku.edu",
-        "las@gmail.com"
-      ],
-      "updatedAtMs": 1700000000000
-    },
-    "grp_external_collab": {
-      "id": "grp_external_collab",
-      "name": "External Collaborators",
-      "description": "KAIST & Partner University Research Collaborators",
-      "color": "teal",
-      "members": [
-        "minseo.kim@gmail.com"
-      ],
-      "updatedAtMs": 1700000000000
-    }
-  },
-  "deleted_users": [],
-  "deleted_groups": []
+  "deleted_users": []
 }
