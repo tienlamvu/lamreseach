@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T12:46:19.611Z",
+  "exported_at": "2026-11-14T12:47:06.071Z",
   "profile": {
     "full_name": "Vu Tien Lam",
     "title_role": "Ph.D. Candidate in Computational Materials Science",
@@ -1173,15 +1173,15 @@
       "emailVerified": true,
       "verifiedAt": "2026-11-14 12:46",
       "passwordlessGoogle": true,
-      "authProvider": "Google OAuth Sync (Passwordless)",
+      "authProvider": "Email + Google Linked",
       "googleLinked": true,
       "googleEmail": "lamvt.sep@gmail.com",
       "passwordPlainHint": "(Google OAuth Sync — No Static Password)",
       "passwordHash": "57b9dcfb18de2aea63286d81da1c78fda1f68aae56417c9a5caf09bbed487997",
       "registeredAt": "2026-11-14 12:46",
       "lastLoginAt": "2026-11-14 12:46",
-      "lastUpdatedAt": "2026-11-14 12:46",
-      "updatedAtMs": 1794660375843,
+      "lastUpdatedAt": "2026-11-14 12:47",
+      "updatedAtMs": 1794660425010,
       "workspace": {
         "papers": [
           {
@@ -1341,6 +1341,12 @@
         ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-14 12:47",
+          "category": "Account",
+          "action": "Linked Google Account",
+          "detail": "Linked Google Account: lamvt.sep@gmail.com"
+        },
         {
           "timestamp": "2026-11-14 12:46",
           "category": "Session",
