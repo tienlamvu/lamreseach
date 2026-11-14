@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T14:40:54.682Z",
+  "exported_at": "2026-11-14T14:41:58.956Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -1749,21 +1749,21 @@
   "users_registry": {
     "lamvt.sep@gmail.com": {
       "email": "lamvt.sep@gmail.com",
-      "name": "Seojeong Ro",
+      "name": "Vu Tien Lam",
       "affiliation": "SKKU-STEM Laboratory",
       "academicRole": "Researcher",
       "status": "Active",
       "emailVerified": true,
       "verifiedAt": "2026-11-14 14:39",
-      "authProvider": "Email + Google Linked",
+      "authProvider": "Google OAuth 2.0",
       "googleLinked": true,
       "googleEmail": "lamvt.sep@gmail.com",
       "passwordPlainHint": "123456",
       "passwordHash": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
       "registeredAt": "2026-11-14 14:39",
-      "lastLoginAt": "2026-11-14 14:39",
-      "lastUpdatedAt": "2026-11-14 14:40",
-      "updatedAtMs": 1794667254164,
+      "lastLoginAt": "2026-11-14 14:41",
+      "lastUpdatedAt": "2026-11-14 14:41",
+      "updatedAtMs": 1794667318747,
       "workspace": {
         "papers": [
           {
@@ -2042,6 +2042,12 @@
       },
       "activityLog": [
         {
+          "timestamp": "2026-11-14 14:41",
+          "category": "Session",
+          "action": "Signed In (Google OAuth 2.0)",
+          "detail": "Authenticated as Vu Tien Lam (lamvt.sep@gmail.com)"
+        },
+        {
           "timestamp": "2026-11-14 14:40",
           "category": "Profile",
           "action": "Profile & Groups Updated by Administrator",
@@ -2072,7 +2078,8 @@
           "detail": "Seojeong Ro (SKKU-STEM Laboratory) verified email lamvt.sep@gmail.com and linked Google Sign-In."
         }
       ],
-      "groups": []
+      "groups": [],
+      "picture": "https://lh3.googleusercontent.com/a/ACg8ocJ5aVyRlpWSljVC2OJusM1rb39s2jSKUTJqGBroVnc79VyzoEsF=s96-c"
     }
   },
   "user_groups": {},
