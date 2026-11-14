@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T04:03:01.670Z",
+  "exported_at": "2026-11-14T04:07:12.263Z",
   "profile": {
     "full_name": "Vu Tien Lam",
     "title_role": "Ph.D. Candidate in Computational Materials Science",
@@ -37,15 +37,14 @@
     "publications": [
       {
         "title": "Optical, magnetic and electrical properties of new binary MnTiO<sub>3</sub>-modified Ba(Zr,Ti)O<sub>3</sub> materials as solid solution",
-        "authors": "Dang Duc Dung, Luong Thi Kim Phuong, Nguyen Huu Lam, Duong Van Thiet, Luong Hong Dang, Nguyen Hoang Thoan, Vu Tien Lam, Duong Quoc Van",
+        "authors": "Dung Dang Duc, Luong Thi Kim Phuong, Nguyen Huu Lam, Duong Van Thiet, Luong Hong Dang, Nguyen Hoang Thoan, Vu Tien Lam, Duong Quoc Van",
         "journal": "Physica B Condensed Matter",
         "year": 2024,
         "doi": "10.1016/j.physb.2024.416444",
         "citations": 0,
         "source": "ORCID",
         "volume": "694",
-        "pages": "416444",
-        "issue": ""
+        "pages": "416444"
       },
       {
         "title": "Structural, electronic and optical properties of complex lead-free ferroelectric Ba<sub>0.7</sub>Ca<sub>0.3</sub>TiO<sub>3</sub> materials: A DFT study",
@@ -61,15 +60,12 @@
       },
       {
         "title": "Electronic Structure and Optical Properties of Cubic Perovskite Baxo3 (X=Ti, Sn): A First Principle Calculations",
-        "authors": "Vu Tien Lam, Nguyen Huu Lam, Duong Quoc Van, Nguyen Hoang Thoan, Dang Duc Dung",
+        "authors": "Vu Tien Lam, Nguyen Huu Lam, Van Duong Quoc, Nguyen Hoang Thoan, Dang Duc Dung",
         "journal": "Ssrn",
         "year": 2023,
         "doi": "10.2139/ssrn.4654244",
         "citations": 0,
-        "source": "ORCID",
-        "volume": "",
-        "issue": "",
-        "pages": ""
+        "source": "ORCID"
       },
       {
         "title": "Fabrication and Optical Properties of (1−x)Bi<sub>½</sub>Na<sub>½</sub>TiO<sub>3</sub> − xEr<sub>½</sub>Na<sub>½</sub>TiO<sub>3</sub> Solid Solution System",
@@ -104,8 +100,7 @@
         "citations": 0,
         "source": "ORCID",
         "volume": "134",
-        "pages": "113083",
-        "issue": ""
+        "pages": "113083"
       },
       {
         "title": "Fabrication and Optical Properties of Rare-Earth-Sm-Doped Lead-Free Ferroelectric Bi<sub>0.5</sub>Na<sub>0.5</sub>TiO<sub>3</sub> Materials",
@@ -115,9 +110,7 @@
         "doi": "10.1007/978-3-030-99666-6_85",
         "citations": 0,
         "source": "ORCID",
-        "pages": "592-598",
-        "volume": "",
-        "issue": ""
+        "pages": "592-598"
       },
       {
         "title": "Fabrication and optical properties of new (1-x)Bi<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub> + xHo<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub> solid solution materials",
@@ -128,8 +121,7 @@
         "citations": 0,
         "source": "ORCID",
         "volume": "132",
-        "pages": "112750",
-        "issue": ""
+        "pages": "112750"
       },
       {
         "title": "Magnetic Properties of a (1−x)Bi<sub>0.5</sub>Na<sub>0.5</sub>TiO<sub>3</sub> + xCaNiO<sub>3-δ</sub> Solid Solution System Prepared by Sol–Gel Technique",
@@ -151,9 +143,7 @@
         "doi": "10.1007/978-3-030-99666-6_88",
         "citations": 0,
         "source": "ORCID",
-        "pages": "610-614",
-        "volume": "",
-        "issue": ""
+        "pages": "610-614"
       },
       {
         "title": "Magnetic properties of new (1−x)Bi<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub> + xBaNiO<sub>3−δ</sub> solid solution materials",
@@ -175,13 +165,11 @@
         "doi": "10.1007/978-3-030-99666-6_87",
         "citations": 0,
         "source": "ORCID",
-        "pages": "604-609",
-        "volume": "",
-        "issue": ""
+        "pages": "604-609"
       },
       {
         "title": "Optical properties of a new binary lead-free ferroelectric semiconductor Bi<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub>–Nd1/2Na1/2TiO<sub>3</sub> solid solution system",
-        "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Huu Lam, Do Duc Tho, Vu Tien Lam, Nguyen Thi Thu Trang, Duong Quoc Van",
+        "authors": "Dang Duc Dung, Nguyen Hoang Thoan, Nguyen Huu Lam, Do Duc Tho, Vu Tien Lam, Nguyen Thi Trang, Duong Quoc Van",
         "journal": "Applied Physics A Materials Science and Processing",
         "year": 2022,
         "doi": "10.1007/s00339-022-05910-5",
@@ -199,9 +187,7 @@
         "doi": "10.1007/978-3-030-99666-6_86",
         "citations": 0,
         "source": "ORCID",
-        "pages": "599-603",
-        "volume": "",
-        "issue": ""
+        "pages": "599-603"
       },
       {
         "title": "Structural, optical, and magnetic properties of a new complex (1−x)Bi<sub>1/2</sub>Na<sub>1/2</sub>TiO<sub>3</sub> + xMgNiO<sub>3−δ</sub> solid solution system",
@@ -328,10 +314,8 @@
       "poscar_text": "BaTiO3 Cubic Pm-3m (221)\n1.0\n       4.00600000     0.00000000     0.00000000\n       0.00000000     4.00600000     0.00000000\n       0.00000000     0.00000000     4.00600000\n BaTiO3\n 1\nDirect\n   0.00000000   0.00000000   0.00000000\n",
       "poscar_content": "BaTiO3 Cubic Pm-3m (221)\n1.0\n       4.00600000     0.00000000     0.00000000\n       0.00000000     4.00600000     0.00000000\n       0.00000000     0.00000000     4.00600000\n BaTiO3\n 1\nDirect\n   0.00000000   0.00000000   0.00000000\n",
       "atoms": [],
-      "visibility": "Specific",
-      "allowed_users": [
-        "las@gmail.com"
-      ]
+      "visibility": "Public",
+      "allowed_users": []
     },
     {
       "id": 2,
@@ -451,11 +435,7 @@
       "sample_id": "",
       "description": "",
       "in_weekly_report": 1,
-      "id": 1794628069167,
-      "visibility": "Specific",
-      "allowed_users": [
-        "las@gmail.com"
-      ]
+      "id": 1794628069167
     }
   ],
   "users_registry": {
