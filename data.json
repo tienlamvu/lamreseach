@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T14:35:46.933Z",
+  "exported_at": "2026-11-14T14:35:49.214Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -1730,164 +1730,6 @@
     }
   ],
   "users_registry": {
-    "minseo.kim@gmail.com": {
-      "email": "minseo.kim@gmail.com",
-      "name": "Min-Seo Kim",
-      "affiliation": "KAIST — Department of Materials Science & Engineering",
-      "academicRole": "Ph.D. Candidate",
-      "authProvider": "Google Account",
-      "googleLinked": true,
-      "googleEmail": "minseo.kim@gmail.com",
-      "passwordPlainHint": "kaist2026",
-      "passwordHash": "plain:kaist2026",
-      "registeredAt": "2026-11-12 14:05",
-      "lastLoginAt": "2026-11-14 09:50",
-      "lastUpdatedAt": "2026-11-14 06:44",
-      "workspace": {
-        "papers": [
-          {
-            "id": 90501,
-            "doi": "10.1021/acsenergylett.4c00812",
-            "title": "Grain boundary engineering in garnet-type solid-state electrolytes for lithium metal batteries",
-            "authors": "Min-Seo Kim, H. J. Ryu",
-            "journal": "ACS Energy Letters",
-            "year": 2025,
-            "material_system": "Li6.4La3Zr1.4Ta0.6O12 (LLZTO)",
-            "synthesis_method": "Solid-State Reaction + ALD",
-            "characterization_tags": "XRD, EIS, SEM, XPS",
-            "status": "Reading",
-            "notes": "Critical current density reaches 2.1 mA/cm2 after Li3PO4 interface modification.",
-            "abstract": "Interfacial impedance reduction between garnet electrolyte and Li metal anode via ultrathin ALD coating.",
-            "in_weekly_report": 1
-          }
-        ],
-        "structures": [
-          {
-            "id": 90601,
-            "name": "2D Titanium Carbide MXene Monolayer (Ti3C2O2)",
-            "chemical_formula": "Ti3C2O2",
-            "crystal_system": "Hexagonal",
-            "space_group": "P-3m1 (164)",
-            "structure_type": "2D Monolayer",
-            "a": 3.071,
-            "b": 3.071,
-            "c": 20,
-            "alpha": 90,
-            "beta": 90,
-            "gamma": 120,
-            "volume": 163.35,
-            "bandgap_ev": 0,
-            "bandgap_type": "Metallic",
-            "formation_energy_ev": -2.85,
-            "dft_code": "VASP 6.4",
-            "dft_functional": "PBE + DFT-D3",
-            "kpoints_mesh": "12x12x1",
-            "encut_ev": 520,
-            "notes": "Oxygen-terminated Ti3C2O2 MXene slab with 20 Å vacuum layer.",
-            "atoms": [
-              {
-                "element": "Ti",
-                "x": 0,
-                "y": 0,
-                "z": 0.5
-              },
-              {
-                "element": "Ti",
-                "x": 0.3333,
-                "y": 0.6667,
-                "z": 0.618
-              },
-              {
-                "element": "Ti",
-                "x": 0.6667,
-                "y": 0.3333,
-                "z": 0.382
-              },
-              {
-                "element": "C",
-                "x": 0.6667,
-                "y": 0.3333,
-                "z": 0.558
-              },
-              {
-                "element": "C",
-                "x": 0.3333,
-                "y": 0.6667,
-                "z": 0.442
-              },
-              {
-                "element": "O",
-                "x": 0,
-                "y": 0,
-                "z": 0.675
-              },
-              {
-                "element": "O",
-                "x": 0,
-                "y": 0,
-                "z": 0.325
-              }
-            ]
-          }
-        ],
-        "schedule": [
-          {
-            "id": 90401,
-            "title": "Solid-State Electrolyte LLZTO Pellet Sintering & EIS",
-            "event_type": "Furnace Synthesis / Calcination",
-            "instrument_or_location": "Tube Furnace #2 & BioLogic VMP3",
-            "start_date": "2026-11-17",
-            "start_time": "10:00",
-            "end_time": "16:00",
-            "priority": "High",
-            "status": "Scheduled",
-            "sample_id": "LLZTO-1150C",
-            "description": "Sintering Ta-doped LLZO at 1150 °C in MgO crucible with mother powder.",
-            "in_weekly_report": 1
-          }
-        ],
-        "expReportRows": [
-          {
-            "sample_id": "Ti3C2O2-Slab",
-            "material": "VASP (PBE-D3)",
-            "conditions": "Metallic DOS at EF",
-            "findings": "Li-ion diffusion barrier on O-terminated Ti3C2O2 is 0.18 eV."
-          }
-        ],
-        "litReportRows": [
-          {
-            "title": "Grain boundary engineering in garnet-type solid-state electrolytes",
-            "journal": "ACS Energy Letters (2025)",
-            "material": "LLZTO",
-            "takeaway": "Eliminates Li2CO3 surface contaminants via thermal acid etching."
-          }
-        ]
-      },
-      "activityLog": [
-        {
-          "timestamp": "2026-11-14 10:05",
-          "category": "Calendar",
-          "action": "Scheduled Event",
-          "detail": "Solid-State Electrolyte LLZTO Pellet Sintering & EIS (2026-11-17)"
-        },
-        {
-          "timestamp": "2026-11-14 09:55",
-          "category": "Crystal Structures",
-          "action": "Added Structure",
-          "detail": "2D Titanium Carbide MXene Monolayer Ti3C2O2 (P-3m1)"
-        },
-        {
-          "timestamp": "2026-11-12 14:05",
-          "category": "Account",
-          "action": "Signed in with Google Account",
-          "detail": "Google OAuth Linked: minseo.kim@gmail.com"
-        }
-      ],
-      "updatedAtMs": 1794638664134,
-      "groups": [
-        "grp_external_collab"
-      ]
-    },
     "ssk@gmail.com": {
       "email": "ssk@gmail.com",
       "name": "Seojeong Rho",
@@ -2688,14 +2530,13 @@
       "name": "External Collaborators",
       "description": "KAIST & Partner University Research Collaborators",
       "color": "teal",
-      "members": [
-        "minseo.kim@gmail.com"
-      ],
+      "members": [],
       "updatedAtMs": 1700000000000
     }
   },
   "deleted_users": [
-    "jhpark.matsci@skku.edu"
+    "jhpark.matsci@skku.edu",
+    "minseo.kim@gmail.com"
   ],
   "deleted_groups": []
 }
