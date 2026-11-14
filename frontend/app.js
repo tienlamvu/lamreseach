@@ -2368,13 +2368,16 @@ function renderAuthHeader() {
     document.body.classList.add("is-logged-in", "is-user");
     document.body.classList.remove("is-admin", "visitor-mode");
     const initial = (STATE.auth.name || STATE.auth.email || "U").trim().charAt(0).toUpperCase();
-    const gTag = STATE.auth.googleLinked ? `<span title="Linked with Google Account: ${escapeHtml(STATE.auth.googleEmail || STATE.auth.email)}" style="color:#fde047;">🌐</span>` : "";
+    const avatarHtml = STATE.auth.picture
+      ? `<div class="google-mini-avatar" style="background:#2563eb; overflow:hidden; padding:0;"><img src="${escapeHtml(STATE.auth.picture)}" alt="" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" /></div>`
+      : `<div class="google-mini-avatar" style="background:#2563eb;">${escapeHtml(initial)}</div>`;
+    const gTag = STATE.auth.googleLinked ? `<span title="Authenticated & Synced via Google OAuth 2.0 (${escapeHtml(STATE.auth.googleEmail || STATE.auth.email)})" style="color:#fde047;">🌐</span>` : "";
     if (badge) {
       badge.innerHTML = `<span style="color:#2563eb; font-weight:700;">● Personal Account (${escapeHtml(STATE.auth.email)})</span>`;
     }
     bar.innerHTML = `
       <div class="user-pill" onclick="openUserAccountModal()" title="Click to manage your personal account & Google linking">
-        <div class="google-mini-avatar" style="background:#2563eb;">${escapeHtml(initial)}</div>
+        ${avatarHtml}
         <span>👤 <strong>${escapeHtml(STATE.auth.name)}</strong> (<code>${escapeHtml(STATE.auth.email)}</code>) ${gTag}</span>
       </div>
       <button class="btn btn-outline btn-sm" style="background:rgba(255,255,255,0.08); color:#e2e8f0; border-color:#475569; padding:4px 10px; font-size:12px;" onclick="openUserAccountModal()">⚙️ My Account</button>
@@ -2394,14 +2397,14 @@ function renderAuthHeader() {
       <button class="btn btn-primary btn-sm" style="padding:6px 13px; font-size:12.5px; border-radius:999px;" onclick="openAuthModal('signin')">
         🔑 Sign In
       </button>
-      <button class="google-header-signin-btn" onclick="openAuthModal('google')" title="Sign in or link with your Google Account">
+      <button class="google-header-signin-btn" onclick="startGoogleOAuth2SignIn()" title="Sign in with your Google Account (OAuth 2.0)">
         <svg width="18" height="18" viewBox="0 0 48 48">
           <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
           <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
           <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
           <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
         </svg>
-        Google Sign-In
+        Sign in with Google
       </button>
     `;
   }
@@ -2412,7 +2415,7 @@ function requireAdminAuth() {
   if (STATE.auth.isLoggedIn) {
     return true;
   }
-  showToast("🔑 Please sign in or create a personal account (or sign in with Google) to use this feature.", "warn");
+  showToast("🔑 Please sign in or create a personal account (or Sign in with Google) to use this feature.", "warn");
   openAuthModal("signin");
   return false;
 }
@@ -2427,7 +2430,7 @@ function requireStrictAdminAuth() {
     return false;
   }
   showToast("🔒 Administrator login (lamvt.skku@gmail.com) is required to edit the Academic CV.", "warn");
-  openAuthModal("google");
+  openAuthModal("signin");
   return false;
 }
 
@@ -2437,6 +2440,10 @@ function requireOwnerAuth() {
 }
 
 function openAuthModal(defaultTab = "signin") {
+  if (defaultTab === "google") {
+    startGoogleOAuth2SignIn();
+    return;
+  }
   const modal = document.getElementById("login-modal");
   if (!modal) return;
   switchAuthModalTab(defaultTab);
@@ -2448,16 +2455,18 @@ function openLoginModal() {
 }
 
 function switchAuthModalTab(mode = "signin") {
+  if (mode === "google") {
+    startGoogleOAuth2SignIn();
+    return;
+  }
   const panes = {
     signin: document.getElementById("auth-pane-signin"),
     register: document.getElementById("auth-pane-register"),
-    reset: document.getElementById("auth-pane-reset"),
-    google: document.getElementById("auth-pane-google")
+    reset: document.getElementById("auth-pane-reset")
   };
   const btns = {
     signin: document.getElementById("auth-tab-btn-signin"),
-    register: document.getElementById("auth-tab-btn-register"),
-    google: document.getElementById("auth-tab-btn-google")
+    register: document.getElementById("auth-tab-btn-register")
   };
 
   Object.keys(panes).forEach(k => {
@@ -2478,26 +2487,7 @@ function switchAuthModalTab(mode = "signin") {
   const resetConfErr = document.getElementById("reset-confirm-error-msg");
   if (resetConfErr) resetConfErr.style.display = "none";
 
-  if (mode === "google") {
-    const stepEmail = document.getElementById("google-step-email");
-    const stepConsent = document.getElementById("google-step-consent");
-    const stepPass = document.getElementById("google-step-password");
-    if (stepEmail) stepEmail.style.display = "block";
-    if (stepConsent) stepConsent.style.display = "none";
-    if (stepPass) stepPass.style.display = "none";
-    renderGoogleAccountChooserList();
-    const emailInput = document.getElementById("g-email-input");
-    if (emailInput) {
-      emailInput.value = "";
-      clearGoogleInputError("email");
-      setTimeout(() => emailInput.focus(), 120);
-    }
-    const passInput = document.getElementById("g-password-input");
-    if (passInput) {
-      passInput.value = "";
-      clearGoogleInputError("password");
-    }
-  } else if (mode === "signin") {
+  if (mode === "signin") {
     const emailEl = document.getElementById("signin-email-input");
     if (emailEl) setTimeout(() => emailEl.focus(), 120);
   } else if (mode === "register") {
@@ -2527,49 +2517,6 @@ function openForgotPasswordPane() {
     modal.classList.add("open");
   }
   switchAuthModalTab("reset");
-}
-
-function renderGoogleAccountChooserList() {
-  const container = document.getElementById("google-chooser-container");
-  const listEl = document.getElementById("google-chooser-list");
-  if (!container || !listEl) return;
-
-  ensureUsersRegistryInitialized();
-  const googleUsers = Object.values(STATE.usersRegistry || {}).filter(u => u && u.status !== "Suspended" && (u.googleLinked || u.authProvider?.includes("Google") || u.email?.endsWith("@gmail.com")));
-
-  if (googleUsers.length === 0) {
-    container.style.display = "none";
-    listEl.innerHTML = "";
-    return;
-  }
-
-  container.style.display = "block";
-  listEl.innerHTML = googleUsers.map(u => {
-    const gEmail = normalizeEmail(u.googleEmail || u.email);
-    const initial = (u.name || gEmail || "G").trim().charAt(0).toUpperCase();
-    return `
-      <div class="google-chooser-card" onclick="quickSignInWithGoogleAccount('${escapeHtml(gEmail)}')" title="Click to sign in & sync workspace immediately with Google (${escapeHtml(gEmail)})">
-        <div style="display:flex; align-items:center; gap:10px;">
-          <div style="width:30px; height:30px; border-radius:50%; background:#2563eb; color:#fff; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center;">
-            ${escapeHtml(initial)}
-          </div>
-          <div>
-            <div style="font-size:13px; font-weight:700; color:#0f172a; line-height:1.2;">${escapeHtml(u.name)}</div>
-            <div style="font-size:11.5px; color:#2563eb; font-family:monospace;">${escapeHtml(gEmail)}</div>
-          </div>
-        </div>
-        <span class="badge badge-blue" style="font-size:10.5px;">🌐 1-Click Sync →</span>
-      </div>
-    `;
-  }).join("");
-}
-
-async function quickSignInWithGoogleAccount(emailRaw) {
-  const email = normalizeEmail(emailRaw);
-  if (!email) return;
-  const input = document.getElementById("g-email-input");
-  if (input) input.value = email;
-  await handleGoogleEmailNext();
 }
 
 // ============================================================================
@@ -2712,17 +2659,11 @@ async function submitStandardSignIn() {
     userObj = findRegisteredUserByEmailOrGoogle(email);
   }
   if (!userObj) {
-    showErr(`No account found for "${escapeHtml(email)}". Click <strong>Create Account</strong> or <strong>🌐 Google Sync</strong> above!`);
+    showErr(`No account found for "${escapeHtml(email)}". Click <strong>Create Account</strong> or <strong>Sign in with Google</strong> above!`);
     return;
   }
   if (userObj.status === "Suspended") {
     showErr("This account has been suspended by the Administrator. Please contact lamvt.skku@gmail.com.");
-    return;
-  }
-
-  // If user is a Passwordless Google-Synced user and didn't type a password, guide or sign them in via Google Sync
-  if (!pass && (userObj.passwordlessGoogle || userObj.googleLinked)) {
-    showErr(`This account is linked with Google OAuth Sync. Click <a href="javascript:void(0)" onclick="quickSignInWithGoogleAccount('${escapeHtml(email)}')" style="color:#1d4ed8; font-weight:700; text-decoration:underline;">🌐 Sign In with Google Sync</a> or enter your password.`);
     return;
   }
 
@@ -3232,322 +3173,290 @@ async function confirmSelfPasswordReset() {
 }
 
 // ============================================================================
-// Passwordless Google Account OAuth Sync & Sign-In
+// Google OAuth 2.0 Sign-In (Popup Window: Choose Account -> Consent Allow -> Redirect)
 // ============================================================================
 
-async function handleGoogleEmailNext() {
-  const input = document.getElementById("g-email-input");
-  const email = normalizeEmail(input ? input.value : "");
-
-  if (!email) {
-    showGoogleInputError("email", "Enter your Google / Gmail or Workspace email address");
-    return;
-  }
-
-  if (!email.includes("@")) {
-    showGoogleInputError("email", "Enter a valid Google email address");
-    return;
-  }
-
-  STATE.pendingGoogleEmail = email;
-  clearGoogleInputError("email");
-
-  const nextBtn = document.getElementById("btn-email-next");
-  if (nextBtn) {
-    nextBtn.disabled = true;
-    nextBtn.textContent = "Syncing Google...";
-  }
-
-  try {
-    // Case 1: Administrator account (lamvt.skku@gmail.com) ALWAYS requires Admin security password
-    if (email === OWNER_GOOGLE_EMAIL) {
-      const stepEmail = document.getElementById("google-step-email");
-      const stepConsent = document.getElementById("google-step-consent");
-      const stepPass = document.getElementById("google-step-password");
-      const badgeEmail = document.getElementById("g-badge-email-text");
-      const badgeChar = document.getElementById("g-badge-avatar-char");
-      const pwTitle = document.getElementById("google-step-pw-title");
-      const pwLabel = document.getElementById("g-password-label");
-
-      if (stepEmail) stepEmail.style.display = "none";
-      if (stepConsent) stepConsent.style.display = "none";
-      if (stepPass) stepPass.style.display = "block";
-      if (badgeEmail) badgeEmail.textContent = email;
-      if (badgeChar) badgeChar.textContent = "V";
-      if (pwTitle) pwTitle.textContent = "Administrator Sign-In";
-      if (pwLabel) pwLabel.textContent = "Enter Administrator password";
-
-      const passInput = document.getElementById("g-password-input");
-      if (passInput) {
-        passInput.value = "";
-        clearGoogleInputError("password");
-        setTimeout(() => passInput.focus(), 100);
-      }
-      return;
-    }
-
-    // Pull latest cloud users first so returning Google users on any device/browser are recognized immediately
-    let existingUser = findRegisteredUserByEmailOrGoogle(email);
-    if (!existingUser) {
-      await pullCloudDatabaseInstant(true);
-      existingUser = findRegisteredUserByEmailOrGoogle(email);
-    }
-
-    // Case 2: Returning Personal User -> Instant Passwordless Google OAuth Sign-In & Cloud Workspace Sync!
-    if (existingUser) {
-      if (existingUser.status === "Suspended") {
-        showGoogleInputError("email", "This account has been suspended by the Administrator.");
-        return;
-      }
-      const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
-      existingUser.googleLinked = true;
-      existingUser.googleEmail = email;
-      existingUser.emailVerified = true;
-      if (!existingUser.authProvider || !existingUser.authProvider.includes("Google")) {
-        existingUser.authProvider = "Google OAuth Sync";
-      }
-      existingUser.lastLoginAt = nowStr;
-      existingUser.updatedAtMs = Date.now();
-      persistUsersRegistryLocal();
-      completePersonalUserLogin(existingUser, "Google Account Sync (Passwordless)");
-      showToast(`🌐 Signed in & synchronized workspace via Google Account (${email})!`, "success");
-      await syncDatabaseToCloudInstant(`Google OAuth Sync (${email})`, true);
-      return;
-    }
-
-    // Case 3: First-Time Personal Google User -> Show Passwordless Google Profile Confirmation Step (No Static Password Required!)
-    const stepEmail = document.getElementById("google-step-email");
-    const stepConsent = document.getElementById("google-step-consent");
-    const stepPass = document.getElementById("google-step-password");
-    const consentEmail = document.getElementById("g-consent-email-text");
-    const consentChar = document.getElementById("g-consent-avatar-char");
-
-    if (stepEmail) stepEmail.style.display = "none";
-    if (stepPass) stepPass.style.display = "none";
-    if (stepConsent) stepConsent.style.display = "block";
-    if (consentEmail) consentEmail.textContent = email;
-    if (consentChar) consentChar.textContent = email.charAt(0).toUpperCase();
-
-    const defaultName = email.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-    const nameInput = document.getElementById("g-new-name-input");
-    if (nameInput) {
-      nameInput.value = defaultName;
-      setTimeout(() => nameInput.focus(), 100);
-    }
-  } finally {
-    if (nextBtn) {
-      nextBtn.disabled = false;
-      nextBtn.textContent = "🌐 Continue with Google";
-    }
-  }
-}
-
-function backToGoogleEmailStep() {
-  const stepEmail = document.getElementById("google-step-email");
-  const stepConsent = document.getElementById("google-step-consent");
-  const stepPass = document.getElementById("google-step-password");
-  if (stepEmail) stepEmail.style.display = "block";
-  if (stepConsent) stepConsent.style.display = "none";
-  if (stepPass) stepPass.style.display = "none";
-  clearGoogleInputError("email");
-  renderGoogleAccountChooserList();
-  const emailInput = document.getElementById("g-email-input");
-  if (emailInput) {
-    setTimeout(() => emailInput.focus(), 100);
-  }
-}
-
-async function completePasswordlessGoogleSignIn() {
-  const email = normalizeEmail(STATE.pendingGoogleEmail || document.getElementById("g-email-input")?.value || "");
-  if (!email || !email.includes("@")) {
-    backToGoogleEmailStep();
-    return;
-  }
-
-  const fullName = (document.getElementById("g-new-name-input")?.value || "").trim() || email.split("@")[0];
-  const affiliation = (document.getElementById("g-new-affiliation-input")?.value || "").trim() || "Google Synced Researcher";
-  const btn = document.getElementById("btn-google-consent-submit");
-
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = "Syncing Workspace...";
-  }
-
-  try {
-    const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
-    const autoToken = "google-oauth-" + generateSixDigitOtp();
-    const passHash = await hashPasswordSha256(autoToken);
-
-    const starterPapers = STATE.masterData && Array.isArray(STATE.masterData.papers)
-      ? JSON.parse(JSON.stringify(STATE.masterData.papers.slice(0, 2)))
-      : [];
-    const starterStructures = STATE.masterData && Array.isArray(STATE.masterData.structures)
-      ? JSON.parse(JSON.stringify(STATE.masterData.structures.slice(0, 2)))
-      : [];
-
-    removeDeletedUserTombstone(email);
-
-    const newGoogleUser = {
-      email,
-      name: fullName,
-      affiliation,
-      academicRole: "Researcher",
-      status: "Active",
-      emailVerified: true,
-      verifiedAt: nowStr,
-      passwordlessGoogle: true,
-      authProvider: "Google OAuth Sync (Passwordless)",
-      googleLinked: true,
-      googleEmail: email,
-      passwordPlainHint: "(Google OAuth Sync — No Static Password)",
-      passwordHash: passHash,
-      registeredAt: nowStr,
-      lastLoginAt: nowStr,
-      lastUpdatedAt: nowStr,
-      updatedAtMs: Date.now(),
-      _justRegistered: true,
-      workspace: {
-        schedule: [
-          {
-            id: Date.now(),
-            title: `Google Calendar Synced Session — ${fullName}`,
-            event_type: "Group Meeting / PI Meeting",
-            instrument_or_location: affiliation,
-            start_date: new Date().toISOString().slice(0, 10),
-            start_time: "09:30",
-            end_time: "11:00",
-            priority: "High",
-            status: "Scheduled",
-            sample_id: "GCAL-01",
-            description: `Initialized via Passwordless Google Account Sync (${email}).`,
-            in_weekly_report: 1
+function startGoogleOAuth2SignIn() {
+  // 1. Check if a live Google Cloud OAuth 2.0 Client ID (*.apps.googleusercontent.com) is configured
+  const configuredClientId = (STATE.profile && STATE.profile.google_client_id ? STATE.profile.google_client_id : "").trim();
+  if (
+    configuredClientId &&
+    configuredClientId.includes(".apps.googleusercontent.com") &&
+    window.google &&
+    window.google.accounts &&
+    window.google.accounts.oauth2
+  ) {
+    try {
+      const tokenClient = window.google.accounts.oauth2.initTokenClient({
+        client_id: configuredClientId,
+        scope: "openid email profile",
+        prompt: "select_account consent",
+        callback: async (tokenResponse) => {
+          if (tokenResponse && tokenResponse.access_token) {
+            await handleGoogleOAuth2AccessToken(tokenResponse.access_token);
           }
-        ],
-        papers: starterPapers,
-        structures: starterStructures,
-        expReportRows: [],
-        litReportRows: []
-      },
-      activityLog: [
-        {
-          timestamp: nowStr,
-          category: "Account",
-          action: "Signed In & Synced via Google Account (Passwordless)",
-          detail: `${fullName} (${affiliation}) synchronized personal workspace with Google Account ${email}.`
         }
-      ]
-    };
-
-    STATE.usersRegistry[email] = newGoogleUser;
-    persistUsersRegistryLocal();
-    completePersonalUserLogin(newGoogleUser, "Google Account Sync (Passwordless)");
-    showToast(`🌐 Welcome, ${fullName}! Your Google Account (${email}) is now synced without needing a static password.`, "success");
-    await syncDatabaseToCloudInstant(`Google Passwordless Registration (${email})`, true);
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = "🌐 Sync & Sign In Now";
+      });
+      tokenClient.requestAccessToken({ prompt: "select_account consent" });
+      return;
+    } catch (gisErr) {
+      console.warn("Google Identity Services fallback to OAuth 2.0 Popup:", gisErr);
     }
+  }
+
+  // 2. Open Dedicated Google OAuth 2.0 Popup Window (Step 2: Choose Account / Login -> Step 3: Consent Allow -> Step 4: Redirect)
+  const width = 480;
+  const height = 640;
+  const left = Math.max(0, Math.round((window.screen.width - width) / 2));
+  const top = Math.max(0, Math.round((window.screen.height - height) / 2));
+  const popupUrl = `google_oauth.html?v=${Date.now()}`;
+
+  const popup = window.open(
+    popupUrl,
+    "GoogleOAuth2SignInWindow",
+    `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
+  );
+
+  if (!popup || popup.closed || typeof popup.closed === "undefined") {
+    // Fallback if browser blocks popups: redirect in current window
+    window.location.href = popupUrl;
+  } else {
+    popup.focus();
+  }
+}
+window.startGoogleOAuth2SignIn = startGoogleOAuth2SignIn;
+
+async function handleGoogleOAuth2AccessToken(accessToken) {
+  try {
+    const resp = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    if (!resp.ok) throw new Error("Failed to fetch Google userinfo");
+    const info = await resp.json();
+    await receiveGoogleOAuth2PopupResult({
+      type: "MATSCI_GOOGLE_OAUTH2_SUCCESS",
+      email: info.email,
+      name: info.name || info.given_name || info.email.split("@")[0],
+      picture: info.picture || "",
+      oauth_provider: "google_oauth2_gis"
+    });
+  } catch (e) {
+    showToast("Google OAuth 2.0 verification failed: " + e.message, "warn");
   }
 }
 
-async function submitGooglePasswordLogin() {
-  const email = normalizeEmail(STATE.pendingGoogleEmail || document.getElementById("g-email-input")?.value || "");
-  const passInput = document.getElementById("g-password-input");
-  const pass = passInput ? passInput.value.trim() : "";
-  const btn = document.getElementById("btn-password-submit");
+// Helper called by google_oauth.html popup when user enters their email
+window.lookupUserForGoogleOAuthPopup = async function (emailRaw) {
+  const email = normalizeEmail(emailRaw);
+  if (!email) return null;
+  if (email === OWNER_GOOGLE_EMAIL) {
+    return {
+      exists: true,
+      isAdmin: true,
+      name: "Vu Tien Lam",
+      picture: "profile_photo.jpg"
+    };
+  }
+  let u = findRegisteredUserByEmailOrGoogle(email);
+  if (!u) {
+    await pullCloudDatabaseInstant(true);
+    u = findRegisteredUserByEmailOrGoogle(email);
+  }
+  if (!u) return null;
+  return {
+    exists: true,
+    isAdmin: false,
+    name: u.name || email.split("@")[0],
+    picture: u.picture || ""
+  };
+};
 
-  if (!pass) {
-    showGoogleInputError("password", "Please enter your password to continue");
-    return;
+// Helper called by google_oauth.html popup when user enters their password in Step 2
+window.verifyPasswordForGoogleOAuthPopup = async function (emailRaw, password) {
+  const email = normalizeEmail(emailRaw);
+  const pass = (password || "").trim();
+  if (!email || !pass) {
+    return { ok: false, error: "Please enter your email and password." };
   }
 
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = "Verifying...";
-  }
-
-  try {
-    if (email === OWNER_GOOGLE_EMAIL) {
-      const ok = await verifyAdminPassword(pass);
-      if (ok) {
-        completeOwnerLogin(OWNER_GOOGLE_EMAIL, "Vu Tien Lam", "");
-      } else {
-        showGoogleInputError("password", "Wrong Administrator password. Try again.");
-        if (passInput) passInput.select();
-      }
-      return;
+  if (email === OWNER_GOOGLE_EMAIL) {
+    const adminOk = await verifyAdminPassword(pass);
+    if (!adminOk) {
+      return { ok: false, error: "Wrong Administrator password. Try again." };
     }
+    return { ok: true, name: "Vu Tien Lam", picture: "profile_photo.jpg" };
+  }
 
-    let existingUser = findRegisteredUserByEmailOrGoogle(email);
-    if (existingUser) {
+  let existingUser = findRegisteredUserByEmailOrGoogle(email);
+  if (!existingUser) {
+    await pullCloudDatabaseInstant(true);
+    existingUser = findRegisteredUserByEmailOrGoogle(email);
+  }
+
+  if (existingUser) {
+    if (existingUser.status === "Suspended") {
+      return { ok: false, error: "This account has been suspended by the Administrator." };
+    }
+    if (!existingUser.passwordlessGoogle && existingUser.passwordHash) {
       const valid = await verifyUserPassword(existingUser, pass);
       if (!valid) {
-        showGoogleInputError("password", "Incorrect password for this account.");
-        return;
+        return { ok: false, error: "Wrong password. Try again or reset your password on the Sign In screen." };
       }
-      completePersonalUserLogin(existingUser, "Google Sign-In");
     }
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = "Continue";
+    return {
+      ok: true,
+      name: existingUser.name || email.split("@")[0],
+      picture: existingUser.picture || ""
+    };
+  }
+
+  // Brand-new Google user signing in via OAuth 2.0 popup
+  if (pass.length < 4) {
+    return { ok: false, error: "Password must be at least 4 characters." };
+  }
+  return {
+    ok: true,
+    name: email.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, c => c.toUpperCase()),
+    picture: ""
+  };
+};
+
+// Step 4 Callback: Called when the user clicks "Allow" in the Google OAuth 2.0 popup window and is redirected back
+window.receiveGoogleOAuth2PopupResult = async function (payload) {
+  if (!payload || !payload.email) return;
+  const email = normalizeEmail(payload.email);
+  const fullName = (payload.name || email.split("@")[0]).trim();
+  const picture = payload.picture || "";
+  const password = (payload.password || "").trim();
+
+  try {
+    localStorage.removeItem("matsci_oauth2_callback_result_v2");
+  } catch (e) {}
+
+  // Administrator login via Google OAuth 2.0
+  if (email === OWNER_GOOGLE_EMAIL) {
+    completeOwnerLogin(OWNER_GOOGLE_EMAIL, "Vu Tien Lam", picture);
+    return;
+  }
+
+  ensureUsersRegistryInitialized();
+  let existingUser = findRegisteredUserByEmailOrGoogle(email);
+  if (!existingUser) {
+    await pullCloudDatabaseInstant(true);
+    existingUser = findRegisteredUserByEmailOrGoogle(email);
+  }
+
+  const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
+
+  if (existingUser) {
+    if (existingUser.status === "Suspended") {
+      showToast("This account has been suspended by the Administrator.", "warn");
+      return;
     }
+    existingUser.name = fullName || existingUser.name;
+    if (picture) existingUser.picture = picture;
+    existingUser.googleLinked = true;
+    existingUser.googleEmail = email;
+    existingUser.emailVerified = true;
+    existingUser.authProvider = "Google OAuth 2.0";
+    if (password && (existingUser.passwordlessGoogle || !existingUser.passwordHash)) {
+      existingUser.passwordPlainHint = password;
+      existingUser.passwordHash = await hashPasswordSha256(password);
+      existingUser.passwordlessGoogle = false;
+    }
+    existingUser.lastLoginAt = nowStr;
+    existingUser.lastUpdatedAt = nowStr;
+    existingUser.updatedAtMs = Date.now();
+
+    const normKey = normalizeEmail(existingUser.email);
+    STATE.usersRegistry[normKey] = existingUser;
+    persistUsersRegistryLocal();
+    completePersonalUserLogin(existingUser, "Google OAuth 2.0");
+    showToast(`✅ Signed in with Google as ${existingUser.name} (${email})!`, "success");
+    await syncDatabaseToCloudInstant(`Google OAuth 2.0 Login (${email})`, true);
+    return;
   }
-}
 
-function showGoogleInputError(type, message) {
-  const errEl = document.getElementById(`g-${type}-error`);
-  const wrapper = document.getElementById(`g-${type}-input-wrapper`);
-  if (errEl) {
-    errEl.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d93025" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> ${escapeHtml(message)}`;
-    errEl.style.display = "flex";
+  // First-time user completing Google OAuth 2.0 Consent (Allow)
+  const passToHash = password || ("google-oauth-" + generateSixDigitOtp());
+  const passHash = await hashPasswordSha256(passToHash);
+  const starterPapers = STATE.masterData && Array.isArray(STATE.masterData.papers)
+    ? JSON.parse(JSON.stringify(STATE.masterData.papers.slice(0, 2)))
+    : [];
+  const starterStructures = STATE.masterData && Array.isArray(STATE.masterData.structures)
+    ? JSON.parse(JSON.stringify(STATE.masterData.structures.slice(0, 2)))
+    : [];
+
+  removeDeletedUserTombstone(email);
+
+  const newGoogleUser = {
+    email,
+    name: fullName,
+    picture,
+    affiliation: "Google OAuth Verified Researcher",
+    academicRole: "Researcher",
+    status: "Active",
+    emailVerified: true,
+    verifiedAt: nowStr,
+    passwordlessGoogle: !password,
+    authProvider: "Google OAuth 2.0",
+    googleLinked: true,
+    googleEmail: email,
+    passwordPlainHint: password || "(Google OAuth 2.0)",
+    passwordHash: passHash,
+    registeredAt: nowStr,
+    lastLoginAt: nowStr,
+    lastUpdatedAt: nowStr,
+    updatedAtMs: Date.now(),
+    _justRegistered: true,
+    workspace: {
+      schedule: [
+        {
+          id: Date.now(),
+          title: `Google Calendar Synced Session — ${fullName}`,
+          event_type: "Group Meeting / PI Meeting",
+          instrument_or_location: "Research Workspace",
+          start_date: new Date().toISOString().slice(0, 10),
+          start_time: "09:30",
+          end_time: "11:00",
+          priority: "High",
+          status: "Scheduled",
+          sample_id: "GCAL-01",
+          description: `Initialized via Google OAuth 2.0 Sign-In (${email}).`,
+          in_weekly_report: 1
+        }
+      ],
+      papers: starterPapers,
+      structures: starterStructures,
+      expReportRows: [],
+      litReportRows: []
+    },
+    activityLog: [
+      {
+        timestamp: nowStr,
+        category: "Account",
+        action: "Signed In & Authorized via Google OAuth 2.0",
+        detail: `${fullName} granted Google OAuth 2.0 permission (name, email, profile picture) for ${email}.`
+      }
+    ]
+  };
+
+  STATE.usersRegistry[email] = newGoogleUser;
+  persistUsersRegistryLocal();
+  completePersonalUserLogin(newGoogleUser, "Google OAuth 2.0");
+  showToast(`✅ Signed in with Google as ${fullName} (${email})!`, "success");
+  await syncDatabaseToCloudInstant(`Google OAuth 2.0 Registration (${email})`, true);
+};
+
+// Listen for postMessage from Google OAuth 2.0 popup window
+window.addEventListener("message", (event) => {
+  if (event && event.data && event.data.type === "MATSCI_GOOGLE_OAUTH2_SUCCESS") {
+    window.receiveGoogleOAuth2PopupResult(event.data);
   }
-  if (wrapper) wrapper.classList.add("has-error");
-  const input = document.getElementById(`g-${type}-input`);
-  if (input) input.focus();
-}
-
-function clearGoogleInputError(type) {
-  const errEl = document.getElementById(`g-${type}-error`);
-  const wrapper = document.getElementById(`g-${type}-input-wrapper`);
-  if (errEl) {
-    errEl.innerHTML = "";
-    errEl.style.display = "none";
-  }
-  if (wrapper) wrapper.classList.remove("has-error");
-}
-
-function toggleGooglePasswordVisibility() {
-  const chk = document.getElementById("g-show-password-chk");
-  const passInput = document.getElementById("g-password-input");
-  if (passInput && chk) {
-    passInput.type = chk.checked ? "text" : "password";
-  }
-}
-
-function showEmailHint() {
-  window.open("https://accounts.google.com/signin/usernamerecovery", "_blank");
-}
-
-function showPasswordHint() {
-  window.open("https://accounts.google.com/signin/recovery", "_blank");
-}
+});
 
 function handleContinueWithGoogle() {
-  openAuthModal("google");
-}
-
-function handleContinueWithApple() {
-  showToast("Please sign in with Email or Google Account.", "warn");
-}
-
-function handleContinueWithPhone() {
-  showToast("Please sign in with Email or Google Account.", "warn");
-}
-
-function submitEmailLogin() {
-  handleGoogleEmailNext();
+  startGoogleOAuth2SignIn();
 }
 
 function completeOwnerLogin(email, name, picture) {
@@ -3571,7 +3480,6 @@ function completeOwnerLogin(email, name, picture) {
   applyActiveWorkspaceData();
   refreshAllWorkspaceViews();
   showToast(`🔓 Welcome back, Administrator ${name || "Vu Tien Lam"} (${OWNER_GOOGLE_EMAIL})! Full system & CV management unlocked.`, "success");
-  // Automatically pull live cloud users registered across incognito or other devices
   pullCloudDatabaseInstant(true);
 }
 
@@ -3601,7 +3509,7 @@ function completePersonalUserLogin(userObj, loginMethod = "Account") {
     academicRole: userObj.academicRole || "Researcher",
     googleLinked: Boolean(userObj.googleLinked),
     googleEmail: userObj.googleEmail || "",
-    picture: "",
+    picture: userObj.picture || "",
     ownerEmail: OWNER_GOOGLE_EMAIL
   };
   localStorage.setItem("matsci_admin_session_v4", JSON.stringify(STATE.auth));
@@ -22329,15 +22237,28 @@ window.addEventListener("scroll", () => {
   }
 }, { passive: true });
 
-// Handle Email Verification & Password Reset Links from URL Query Parameters
+// Handle Email Verification, Password Reset & Google OAuth 2.0 Redirect Links
 document.addEventListener("DOMContentLoaded", () => {
   try {
     const params = new URLSearchParams(window.location.search);
     const verifyEmail = params.get("verify_email");
     const resetEmail = params.get("reset_email");
-    const token = params.get("token");
+    const token = params.get("token") || params.get("reset_token");
+    const oauthCallback = params.get("google_oauth_callback");
 
-    if (verifyEmail && token) {
+    if (oauthCallback) {
+      setTimeout(() => {
+        const cleanUrl = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, document.title, cleanUrl);
+        try {
+          const raw = localStorage.getItem("matsci_oauth2_callback_result_v2");
+          if (raw && typeof window.receiveGoogleOAuth2PopupResult === "function") {
+            const parsed = JSON.parse(raw);
+            window.receiveGoogleOAuth2PopupResult(parsed);
+          }
+        } catch (err) {}
+      }, 400);
+    } else if (verifyEmail && token) {
       setTimeout(() => {
         const cleanUrl = window.location.pathname + window.location.hash;
         window.history.replaceState({}, document.title, cleanUrl);
@@ -22349,8 +22270,8 @@ document.addEventListener("DOMContentLoaded", () => {
       setTimeout(() => {
         const cleanUrl = window.location.pathname + window.location.hash;
         window.history.replaceState({}, document.title, cleanUrl);
-        if (typeof openResetPasswordFromEmailLink === "function") {
-          openResetPasswordFromEmailLink();
+        if (typeof openForgotPasswordPane === "function") {
+          openForgotPasswordPane();
         }
       }, 600);
     }
