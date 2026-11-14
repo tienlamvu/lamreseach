@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T04:07:12.263Z",
+  "exported_at": "2026-11-14T05:28:47.429Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -734,8 +734,8 @@
         {
           "element": "Mo",
           "label": "Mo1",
-          "x": -1e-05,
-          "y": -2e-05,
+          "x": -0.00001,
+          "y": -0.00002,
           "z": 0.5,
           "occupancy": 1
         },
