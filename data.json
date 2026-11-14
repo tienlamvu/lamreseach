@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T06:28:11.168Z",
+  "exported_at": "2026-11-14T06:28:16.064Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -1162,5 +1162,6 @@
         }
       ]
     }
-  }
+  },
+  "deleted_users": []
 }
