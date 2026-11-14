@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T14:40:08.689Z",
+  "exported_at": "2026-11-14T14:40:20.463Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -1763,7 +1763,7 @@
       "registeredAt": "2026-11-14 14:39",
       "lastLoginAt": "2026-11-14 14:39",
       "lastUpdatedAt": "2026-11-14 14:40",
-      "updatedAtMs": 1794667207171,
+      "updatedAtMs": 1794667219363,
       "workspace": {
         "papers": [
           {
@@ -2041,6 +2041,12 @@
         ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-14 14:40",
+          "category": "Account",
+          "action": "Updated Profile Settings",
+          "detail": "Name: Seojeong Ro, Affiliation: SKKU-STEM Laboratory"
+        },
         {
           "timestamp": "2026-11-14 14:40",
           "category": "Account",
