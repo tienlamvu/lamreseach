@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261114_v56_multi_user" onerror="this.href='/static/styles.css?v=20261114_v56_multi_user'" />
+  <link rel="stylesheet" href="styles.css?v=20261114_v57_cloud_visibility" onerror="this.href='/static/styles.css?v=20261114_v57_cloud_visibility'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -144,12 +144,15 @@
 
         <!-- Admin Exclusive Overview: Registered Personal User Accounts & Activity -->
         <div class="card strict-admin-only" style="border-left: 4px solid #2563eb; background: linear-gradient(90deg, #f8fafc 0%, #ffffff 100%); margin-bottom: 18px;">
-          <div class="card-header" style="margin-bottom:10px;">
+          <div class="card-header" style="margin-bottom:10px; flex-wrap:wrap; gap:8px;">
             <div>
               <div class="card-title" style="color:#1e3a8a;">👥 Registered Personal User Accounts &amp; Recent Content Updates (Admin View)</div>
-              <div style="font-size:12px; color:var(--text-muted);">Monitor personal user registrations, Google account links, personal schedules, references, structures, and weekly reports</div>
+              <div style="font-size:12px; color:var(--text-muted);">Real-time cross-device &amp; incognito cloud sync • Monitor personal registrations, Google links, schedules, references &amp; structures</div>
             </div>
-            <button class="btn btn-primary btn-sm" onclick="openAdminUsersModal()">🔍 Inspect All User Accounts &amp; Content →</button>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              <button class="btn btn-outline btn-sm" onclick="refreshCloudUsersNow(true)" title="Pull latest registered users & workspaces from Cloud">🔄 Refresh Live Cloud Users</button>
+              <button class="btn btn-primary btn-sm" onclick="openAdminUsersModal()">🔍 Inspect All User Accounts &amp; Content →</button>
+            </div>
           </div>
           <div id="dashboard-admin-users-summary"></div>
         </div>
@@ -234,6 +237,20 @@
             <button class="btn btn-outline owner-only-btn" style="background:rgba(255,255,255,0.1); color:#fff; border-color:#475569;" onclick="openPaperModal()">
               + Manual Entry
             </button>
+          </div>
+          <!-- Admin Visibility / Audience Control for DOI Auto-Import -->
+          <div class="strict-admin-only" style="margin-top:10px; background:rgba(15,23,42,0.65); border:1px solid #334155; border-radius:8px; padding:9px 12px;">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <span style="font-size:12px; font-weight:700; color:#93c5fd;">🛡️ Admin Visibility for Imported Paper:</span>
+              <select id="lit-doi-visibility" onchange="handleVisibilitySelectChange('lit-doi')" style="padding:5px 10px; border-radius:6px; border:1px solid #475569; background:#1e293b; color:#f8fafc; font-size:12.5px; font-weight:600;">
+                <option value="Public">🌍 Public — Visible to Everyone</option>
+                <option value="Users">👥 All Logged-In Users — Registered Accounts Only</option>
+                <option value="Specific">🎯 Specific User(s) — Selected Personal Accounts</option>
+                <option value="Private">🔒 Private — Administrator Only</option>
+              </select>
+              <span style="font-size:11.5px; color:#94a3b8;">(You can also change visibility anytime via ✏️ Edit)</span>
+            </div>
+            <div id="lit-doi-specific-box" class="specific-users-picker-wrap" style="display:none; margin-top:8px;"></div>
           </div>
           <div style="margin-top:10px; font-size:12px; color:#94a3b8; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
             <span>Test DOIs:</span>
@@ -460,6 +477,21 @@
             <div style="font-weight:700; font-size:14px; color:#f1f5f9;">Drop your *.cif structure file here, or click to browse</div>
             <div style="font-size:12px; color:#94a3b8; margin-top:4px;">Supported: Full CIF format (Materials Project, ICSD, COD, VESTA export)</div>
           </div>
+
+          <!-- Admin Visibility / Audience Control for Direct CIF Upload -->
+          <div class="strict-admin-only" style="margin-top:10px; background:rgba(15,23,42,0.65); border:1px solid #334155; border-radius:8px; padding:9px 12px;">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <span style="font-size:12px; font-weight:700; color:#93c5fd;">🛡️ Admin Visibility for Uploaded *.cif Structure:</span>
+              <select id="cif-upload-visibility" onchange="handleVisibilitySelectChange('cif-upload')" style="padding:5px 10px; border-radius:6px; border:1px solid #475569; background:#1e293b; color:#f8fafc; font-size:12.5px; font-weight:600;">
+                <option value="Public">🌍 Public — Visible to Everyone</option>
+                <option value="Users">👥 All Logged-In Users — Registered Accounts Only</option>
+                <option value="Specific">🎯 Specific User(s) — Selected Personal Accounts</option>
+                <option value="Private">🔒 Private — Administrator Only</option>
+              </select>
+              <span style="font-size:11.5px; color:#94a3b8;">(Applies to drag-and-drop *.cif uploads; editable anytime)</span>
+            </div>
+            <div id="cif-upload-specific-box" class="specific-users-picker-wrap" style="display:none; margin-top:8px;"></div>
+          </div>
         </div>
 
         <!-- Structures List & Filters -->
@@ -575,6 +607,18 @@
               <div class="form-group">
                 <label>Department / University</label>
                 <input type="text" id="rep-uni" value="Sungkyunkwan University (SKKU)" oninput="updateSlidePreview()" />
+              </div>
+
+              <!-- Admin Visibility Control for Weekly Report -->
+              <div class="form-group full strict-admin-only visibility-control-box">
+                <label style="color:#1e3a8a; font-weight:700;">🛡️ Administrator Visibility / Audience Access Control (Weekly Report)</label>
+                <select id="rep-visibility" onchange="handleVisibilitySelectChange('rep'); updateSlidePreview();">
+                  <option value="Public">🌍 Public — Visible to Everyone</option>
+                  <option value="Users">👥 All Logged-In Users — Registered Accounts Only</option>
+                  <option value="Specific">🎯 Specific User(s) — Selected Personal Accounts</option>
+                  <option value="Private">🔒 Private — Administrator Only</option>
+                </select>
+                <div id="rep-specific-box" class="specific-users-picker-wrap" style="display:none; margin-top:8px;"></div>
               </div>
 
               <div class="form-group full">
@@ -1759,7 +1803,8 @@
             View all registered &amp; Google-linked personal accounts, inspect each user's updated Calendar Events, Reference Papers, Crystal Structures, Weekly Reports, and Activity Logs, or preview their live workspace.
           </div>
         </div>
-        <div style="display:flex; gap:8px; align-items:center;">
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" onclick="refreshCloudUsersNow(true)">🔄 Refresh Live Cloud Users</button>
           <button class="btn btn-outline btn-sm" onclick="syncOrExportDataJson()">☁️ Sync All Users to GitHub</button>
           <button class="btn btn-outline btn-sm" onclick="closeModal('admin-users-modal')">✕ Close</button>
         </div>
@@ -1949,15 +1994,18 @@
         </div>
         <div class="form-group">
           <label>Visibility / Display Mode *</label>
-          <select id="cm-visibility">
-            <option value="Public">🌐 Public (Visible to Everyone)</option>
-            <option value="Private">🔒 Private (Admin Only)</option>
+          <select id="cm-visibility" onchange="handleVisibilitySelectChange('cm')">
+            <option value="Public">🌍 Public — Visible to Everyone</option>
+            <option value="Users">👥 All Logged-In Users — Registered Accounts Only</option>
+            <option value="Specific">🎯 Specific User(s) — Selected Personal Accounts</option>
+            <option value="Private">🔒 Private — Administrator Only</option>
           </select>
         </div>
         <div class="form-group">
           <label>Abstract / Program Link (Optional)</label>
           <input type="text" id="cm-url" placeholder="https://..." />
         </div>
+        <div class="form-group full" id="cm-specific-box" style="display:none;"></div>
       </div>
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px;">
         <button type="button" class="btn btn-outline" onclick="closeModal('conference-modal')">Cancel</button>
@@ -1991,11 +2039,14 @@
         </div>
         <div class="form-group">
           <label>Visibility / Display Mode *</label>
-          <select id="awm-visibility">
-            <option value="Public">🌐 Public (Visible to Everyone)</option>
-            <option value="Private">🔒 Private (Admin Only)</option>
+          <select id="awm-visibility" onchange="handleVisibilitySelectChange('awm')">
+            <option value="Public">🌍 Public — Visible to Everyone</option>
+            <option value="Users">👥 All Logged-In Users — Registered Accounts Only</option>
+            <option value="Specific">🎯 Specific User(s) — Selected Personal Accounts</option>
+            <option value="Private">🔒 Private — Administrator Only</option>
           </select>
         </div>
+        <div class="form-group full" id="awm-specific-box" style="display:none;"></div>
         <div class="form-group full">
           <label>Award Details / Description</label>
           <textarea id="awm-details" rows="2" placeholder="e.g. Competitive doctoral fellowship awarded for excellence in first-principles calculations."></textarea>
@@ -2032,12 +2083,15 @@
           <input type="text" id="edu-period" placeholder="e.g. 2024 – Present" value="2024 – Present" />
         </div>
         <div class="form-group">
-          <label>Visibility *</label>
-          <select id="edu-visibility">
-            <option value="Public">🌐 Public (Visible to Everyone)</option>
-            <option value="Private">🔒 Private (Admin Only)</option>
+          <label>Visibility / Display Mode *</label>
+          <select id="edu-visibility" onchange="handleVisibilitySelectChange('edu')">
+            <option value="Public">🌍 Public — Visible to Everyone</option>
+            <option value="Users">👥 All Logged-In Users — Registered Accounts Only</option>
+            <option value="Specific">🎯 Specific User(s) — Selected Personal Accounts</option>
+            <option value="Private">🔒 Private — Administrator Only</option>
           </select>
         </div>
+        <div class="form-group full" id="edu-specific-box" style="display:none;"></div>
         <div class="form-group full">
           <label>Details / Advisor Info</label>
           <input type="text" id="edu-details" placeholder="Advisor, lab, dissertation topic..." />
@@ -2074,12 +2128,15 @@
           <input type="text" id="exp-period" placeholder="e.g. 2024 – Present" value="2024 – Present" />
         </div>
         <div class="form-group">
-          <label>Visibility *</label>
-          <select id="exp-visibility">
-            <option value="Public">🌐 Public (Visible to Everyone)</option>
-            <option value="Private">🔒 Private (Admin Only)</option>
+          <label>Visibility / Display Mode *</label>
+          <select id="exp-visibility" onchange="handleVisibilitySelectChange('exp')">
+            <option value="Public">🌍 Public — Visible to Everyone</option>
+            <option value="Users">👥 All Logged-In Users — Registered Accounts Only</option>
+            <option value="Specific">🎯 Specific User(s) — Selected Personal Accounts</option>
+            <option value="Private">🔒 Private — Administrator Only</option>
           </select>
         </div>
+        <div class="form-group full" id="exp-specific-box" style="display:none;"></div>
         <div class="form-group full">
           <label>Description &amp; Key Responsibilities</label>
           <textarea id="exp-desc" rows="2" placeholder="Key responsibilities, DFT simulation projects..."></textarea>
@@ -2144,6 +2201,17 @@
             <option value="Key Reference">Key Reference</option>
             <option value="Cited in Thesis">Cited in Thesis</option>
           </select>
+        </div>
+        <!-- Administrator Visibility / Audience Access Control -->
+        <div class="form-group full strict-admin-only visibility-control-box">
+          <label style="color:#1e3a8a; font-weight:700;">🛡️ Administrator Visibility / Audience Access Control *</label>
+          <select id="pm-visibility" onchange="handleVisibilitySelectChange('pm')">
+            <option value="Public">🌍 Public — Visible to Everyone</option>
+            <option value="Users">👥 All Logged-In Users — Registered Accounts Only</option>
+            <option value="Specific">🎯 Specific User(s) — Selected Personal Accounts</option>
+            <option value="Private">🔒 Private — Administrator Only</option>
+          </select>
+          <div id="pm-specific-box" class="specific-users-picker-wrap" style="display:none; margin-top:8px;"></div>
         </div>
         <div class="form-group full">
           <label>Personal Research Notes &amp; Key Takeaway (Used in Weekly Report)</label>
@@ -2358,6 +2426,17 @@
             Include this structure &amp; simulation in the next Group Meeting Weekly Report
           </label>
         </div>
+        <!-- Administrator Visibility / Audience Access Control -->
+        <div class="form-group full strict-admin-only visibility-control-box">
+          <label style="color:#1e3a8a; font-weight:700;">🛡️ Administrator Visibility / Audience Access Control *</label>
+          <select id="struct-visibility" onchange="handleVisibilitySelectChange('struct')">
+            <option value="Public">🌍 Public — Visible to Everyone</option>
+            <option value="Users">👥 All Logged-In Users — Registered Accounts Only</option>
+            <option value="Specific">🎯 Specific User(s) — Selected Personal Accounts</option>
+            <option value="Private">🔒 Private — Administrator Only</option>
+          </select>
+          <div id="struct-specific-box" class="specific-users-picker-wrap" style="display:none; margin-top:8px;"></div>
+        </div>
       </div>
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px;">
         <button class="btn btn-outline" onclick="closeModal('structure-modal')">Cancel</button>
@@ -2528,6 +2607,17 @@
           <label>Experimental Protocol / Notes</label>
           <textarea id="sm-desc" rows="2"></textarea>
         </div>
+        <!-- Administrator Visibility / Audience Access Control -->
+        <div class="form-group full strict-admin-only visibility-control-box">
+          <label style="color:#1e3a8a; font-weight:700;">🛡️ Administrator Visibility / Audience Access Control *</label>
+          <select id="sm-visibility" onchange="handleVisibilitySelectChange('sm')">
+            <option value="Public">🌍 Public — Visible to Everyone</option>
+            <option value="Users">👥 All Logged-In Users — Registered Accounts Only</option>
+            <option value="Specific">🎯 Specific User(s) — Selected Personal Accounts</option>
+            <option value="Private">🔒 Private — Administrator Only</option>
+          </select>
+          <div id="sm-specific-box" class="specific-users-picker-wrap" style="display:none; margin-top:8px;"></div>
+        </div>
         <div class="form-group full">
           <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; color:#1e3a8a;">
             <input type="checkbox" id="sm-open-gcal" checked />
@@ -2596,7 +2686,7 @@
   <div id="toast-container"></div>
   <div id="plag-pdf-render-area" style="display:none;"></div>
 
-  <script src="matsci_tools.js?v=20261114_v56_multi_user" onerror="this.src='/static/matsci_tools.js?v=20261114_v56_multi_user'"></script>
-  <script src="app.js?v=20261114_v56_multi_user" onerror="this.src='/static/app.js?v=20261114_v56_multi_user'"></script>
+  <script src="matsci_tools.js?v=20261114_v57_cloud_visibility" onerror="this.src='/static/matsci_tools.js?v=20261114_v57_cloud_visibility'"></script>
+  <script src="app.js?v=20261114_v57_cloud_visibility" onerror="this.src='/static/app.js?v=20261114_v57_cloud_visibility'"></script>
 </body>
 </html>
