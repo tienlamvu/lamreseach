@@ -4325,3 +4325,38 @@ body.is-admin #cv-exclusive-owner-notice {
   border: 1px solid #fda4af;
 }
 
+/* Never display visibility badges (Public, Private, Users, etc.) inside Academic CV or Print PDF */
+#tab-cv .vis-badge,
+.cv-paper-sheet .vis-badge,
+#prof-publications-list .vis-badge {
+  display: none !important;
+}
+
+@media print {
+  .vis-badge,
+  .visibility-control-box,
+  #email-dispatch-drawer {
+    display: none !important;
+  }
+}
+
+.google-chooser-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.google-chooser-card:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12);
+}
+
+
