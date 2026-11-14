@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T04:07:12.263Z",
+  "exported_at": "2026-11-14T13:07:21.850Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -734,8 +734,8 @@
         {
           "element": "Mo",
           "label": "Mo1",
-          "x": -1e-05,
-          "y": -2e-05,
+          "x": -0.00001,
+          "y": -0.00002,
           "z": 0.5,
           "occupancy": 1
         },
@@ -1736,11 +1736,11 @@
       "authProvider": "Google Account Linked",
       "googleLinked": true,
       "googleEmail": "jhpark.matsci@gmail.com",
-      "passwordPlainHint": "skku2026",
-      "passwordHash": "e5acba84c164be5493b03ab87712975cdaf2149d43c81df395eb07f8a1057264",
+      "passwordPlainHint": "skku1234",
+      "passwordHash": "441d52fbb490008fa860a41b38fe03e0b7f6fb06b56336922f7d7a95562f51dd",
       "registeredAt": "2026-11-10 09:15",
-      "lastLoginAt": "2026-11-14 10:20",
-      "lastUpdatedAt": "2026-11-14 03:48",
+      "lastLoginAt": "2026-11-14 12:45",
+      "lastUpdatedAt": "2026-11-14 12:45",
       "workspace": {
         "papers": [
           {
@@ -1865,6 +1865,24 @@
       },
       "activityLog": [
         {
+          "timestamp": "2026-11-14 12:45",
+          "category": "Session",
+          "action": "Signed In (Google Account Sync (Passwordless))",
+          "detail": "Authenticated as Dr. Ji-Hoon Park (jhpark.matsci@skku.edu)"
+        },
+        {
+          "timestamp": "2026-11-14 06:53",
+          "category": "Security",
+          "action": "Password Reset by Administrator",
+          "detail": "Administrator reset password to default (\"skku1234\") for jhpark.matsci@skku.edu."
+        },
+        {
+          "timestamp": "2026-11-14 06:53",
+          "category": "Security",
+          "action": "Password Reset by Administrator",
+          "detail": "Administrator reset password to default (\"skku1234\") for jhpark.matsci@skku.edu."
+        },
+        {
           "timestamp": "2026-11-14 10:42",
           "category": "Crystal Structures",
           "action": "Added Structure",
@@ -1889,7 +1907,12 @@
           "detail": "Linked Google Account jhpark.matsci@gmail.com"
         }
       ],
-      "updatedAtMs": 1794628139779
+      "updatedAtMs": 1794660334951,
+      "groups": [
+        "grp_skku_lab",
+        "grp_dft_team"
+      ],
+      "emailVerified": true
     },
     "minseo.kim@gmail.com": {
       "email": "minseo.kim@gmail.com",
@@ -1903,7 +1926,7 @@
       "passwordHash": "plain:kaist2026",
       "registeredAt": "2026-11-12 14:05",
       "lastLoginAt": "2026-11-14 09:50",
-      "lastUpdatedAt": "2026-11-14 03:52",
+      "lastUpdatedAt": "2026-11-14 06:44",
       "workspace": {
         "papers": [
           {
@@ -2044,7 +2067,10 @@
           "detail": "Google OAuth Linked: minseo.kim@gmail.com"
         }
       ],
-      "updatedAtMs": 1794628337146
+      "updatedAtMs": 1794638664134,
+      "groups": [
+        "grp_external_collab"
+      ]
     },
     "ssk@gmail.com": {
       "email": "ssk@gmail.com",
@@ -2058,7 +2084,7 @@
       "passwordHash": "e5acba84c164be5493b03ab87712975cdaf2149d43c81df395eb07f8a1057264",
       "registeredAt": "2026-11-14 03:14",
       "lastLoginAt": "2026-11-14 03:14",
-      "lastUpdatedAt": "2026-11-14 03:57",
+      "lastUpdatedAt": "2026-11-14 06:44",
       "workspace": {
         "papers": [],
         "structures": [],
@@ -2095,22 +2121,25 @@
           "detail": "Seojeong Rho (SKKU) created a personal workspace."
         }
       ],
-      "updatedAtMs": 1794628658326
+      "updatedAtMs": 1794638692590,
+      "groups": [
+        "grp_skku_lab"
+      ]
     },
     "las@gmail.com": {
       "email": "las@gmail.com",
       "name": "No",
       "affiliation": "Independent Researcher",
       "academicRole": "Researcher",
-      "authProvider": "Email & Password",
-      "googleLinked": false,
-      "googleEmail": "",
-      "passwordPlainHint": "1234",
-      "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
+      "authProvider": "Email + Google Linked",
+      "googleLinked": true,
+      "googleEmail": "las@gmail.com",
+      "passwordPlainHint": "skku1234",
+      "passwordHash": "441d52fbb490008fa860a41b38fe03e0b7f6fb06b56336922f7d7a95562f51dd",
       "registeredAt": "2026-11-14 04:00",
-      "lastLoginAt": "2026-11-14 04:00",
-      "lastUpdatedAt": "2026-11-14 04:02",
-      "updatedAtMs": 1794628948871,
+      "lastLoginAt": "2026-11-14 06:49",
+      "lastUpdatedAt": "2026-11-14 07:51",
+      "updatedAtMs": 1794642711908,
       "workspace": {
         "papers": [],
         "structures": [
@@ -2212,6 +2241,54 @@
       },
       "activityLog": [
         {
+          "timestamp": "2026-11-14 06:49",
+          "category": "Session",
+          "action": "Signed In (Email & Password)",
+          "detail": "Authenticated as No (las@gmail.com)"
+        },
+        {
+          "timestamp": "2026-11-14 06:49",
+          "category": "Security",
+          "action": "Password Reset by Administrator",
+          "detail": "Administrator reset password to default (\"skku1234\") for las@gmail.com."
+        },
+        {
+          "timestamp": "2026-11-14 06:28",
+          "category": "Account",
+          "action": "Linked Google Account",
+          "detail": "Linked Google Account: las@gmail.com"
+        },
+        {
+          "timestamp": "2026-11-14 06:28",
+          "category": "Session",
+          "action": "Signed In (Email & Password)",
+          "detail": "Authenticated as No (las@gmail.com)"
+        },
+        {
+          "timestamp": "2026-11-14 06:27",
+          "category": "Session",
+          "action": "Signed In (Email & Password)",
+          "detail": "Authenticated as No (las@gmail.com)"
+        },
+        {
+          "timestamp": "2026-11-14 06:22",
+          "category": "Session",
+          "action": "Signed In (Email & Password)",
+          "detail": "Authenticated as No (las@gmail.com)"
+        },
+        {
+          "timestamp": "2026-11-14 06:20",
+          "category": "Session",
+          "action": "Signed In (Email & Password)",
+          "detail": "Authenticated as No (las@gmail.com)"
+        },
+        {
+          "timestamp": "2026-11-14 05:29",
+          "category": "Session",
+          "action": "Signed In (Email & Password)",
+          "detail": "Authenticated as No (las@gmail.com)"
+        },
+        {
           "timestamp": "2026-11-14 04:01",
           "category": "Crystal Structures",
           "action": "Added Structure",
@@ -2229,8 +2306,250 @@
           "action": "Registered Personal Account",
           "detail": "No (Independent Researcher) created a personal workspace."
         }
+      ],
+      "groups": [
+        "grp_dft_team"
       ]
+    },
+    "lamvt.sep@gmail.com": {
+      "email": "lamvt.sep@gmail.com",
+      "name": "Lamvt Sep",
+      "affiliation": "SKKU",
+      "academicRole": "Researcher",
+      "status": "Active",
+      "emailVerified": true,
+      "verifiedAt": "2026-11-14 12:46",
+      "passwordlessGoogle": true,
+      "authProvider": "Email + Google Linked",
+      "googleLinked": true,
+      "googleEmail": "lamvt.sep@gmail.com",
+      "passwordPlainHint": "(Google OAuth Sync — No Static Password)",
+      "passwordHash": "57b9dcfb18de2aea63286d81da1c78fda1f68aae56417c9a5caf09bbed487997",
+      "registeredAt": "2026-11-14 12:46",
+      "lastLoginAt": "2026-11-14 12:58",
+      "lastUpdatedAt": "2026-11-14 12:58",
+      "updatedAtMs": 1794661093183,
+      "workspace": {
+        "papers": [
+          {
+            "id": 1,
+            "doi": "10.1038/s41563-019-0431-3",
+            "title": "Fundamentals of inorganic solid-state electrolytes for batteries",
+            "authors": "Jun Soo Kim, Yoon Seok Jung, Gerbrand Ceder et al.",
+            "journal": "Nature Materials",
+            "year": 2019,
+            "volume": "18",
+            "pages": "1278-1291",
+            "abstract": "Solid-state electrolytes are key components for next-generation all-solid-state batteries with high energy density and safety.",
+            "citation_count": 1420,
+            "material_system": "Li7La3Zr2O12 (LLZO)",
+            "synthesis_method": "First-principles DFT",
+            "characterization_tags": "DFT, VASP, XRD",
+            "status": "Key Reference",
+            "notes": "Benchmark for activation energy (Ea ~ 0.30 eV) of cubic garnet vs tetragonal phases.",
+            "in_weekly_report": 1
+          },
+          {
+            "id": 2,
+            "doi": "10.1021/acs.chemmater.0c04125",
+            "title": "Ta-Doped Li7La3Zr2O12 Garnet Solid Electrolytes: Role of Excess Li and Sintering Atmosphere",
+            "authors": "M. Balaish, J. L. M. Rupp et al.",
+            "journal": "Chemistry of Materials",
+            "year": 2021,
+            "volume": "33",
+            "pages": "2104-2118",
+            "abstract": "Systematic investigation of Li6.4La3Zr1.4Ta0.6O12 sintered under flowing O2 vs Ar.",
+            "citation_count": 215,
+            "material_system": "Li6.4La3Zr1.4Ta0.6O12 (LLZTO)",
+            "synthesis_method": "Solid-State Sintering",
+            "characterization_tags": "XRD, SEM, Raman, EIS",
+            "status": "Read",
+            "notes": "Suppression of La2Zr2O7 impurity at 1140 °C.",
+            "in_weekly_report": 1
+          }
+        ],
+        "structures": [
+          {
+            "id": 1,
+            "name": "BaTiO3 (Cubic Perovskite)",
+            "chemical_formula": "BaTiO3",
+            "crystal_system": "Cubic",
+            "space_group": "Pm-3m (221)",
+            "structure_type": "Bulk 3D",
+            "mp_id": "mp-2998",
+            "a": 4.006,
+            "b": 4.006,
+            "c": 4.006,
+            "alpha": 90,
+            "beta": 90,
+            "gamma": 90,
+            "volume": 64.29,
+            "natoms": 5,
+            "dft_code": "VASP",
+            "dft_functional": "PBE",
+            "cutoff_energy": 520,
+            "kpoints": "8x8x8",
+            "bandgap_ev": 3.2,
+            "bandgap_type": "Direct",
+            "total_energy_per_atom": -6.85,
+            "magnetic_state": "NM",
+            "notes": "Prototypical ferroelectric perovskite. Relaxed cell parameter a = 4.006 Å matches experimental XRD diffraction.",
+            "in_weekly_report": 0,
+            "formula": "BaTiO3",
+            "materials_project_id": "mp-2998",
+            "functional": "PBE",
+            "ecut": 520,
+            "bandgap": 3.2,
+            "energy_per_atom": -6.85,
+            "raw_cif": "",
+            "cif_content": "",
+            "poscar_text": "BaTiO3 Cubic Pm-3m (221)\n1.0\n       4.00600000     0.00000000     0.00000000\n       0.00000000     4.00600000     0.00000000\n       0.00000000     0.00000000     4.00600000\n BaTiO3\n 1\nDirect\n   0.00000000   0.00000000   0.00000000\n",
+            "poscar_content": "BaTiO3 Cubic Pm-3m (221)\n1.0\n       4.00600000     0.00000000     0.00000000\n       0.00000000     4.00600000     0.00000000\n       0.00000000     0.00000000     4.00600000\n BaTiO3\n 1\nDirect\n   0.00000000   0.00000000   0.00000000\n",
+            "atoms": [],
+            "visibility": "Groups",
+            "allowed_users": [
+              "group:grp_skku_lab"
+            ],
+            "allowed_groups": [
+              "grp_skku_lab"
+            ]
+          },
+          {
+            "id": 2,
+            "name": "BaSnO3 (Transparent Conducting Oxide)",
+            "chemical_formula": "BaSnO3",
+            "crystal_system": "Cubic",
+            "space_group": "Pm-3m (221)",
+            "structure_type": "Bulk 3D",
+            "mp_id": "mp-2176",
+            "a": 4.116,
+            "b": 4.116,
+            "c": 4.116,
+            "alpha": 90,
+            "beta": 90,
+            "gamma": 90,
+            "volume": 69.73,
+            "natoms": 5,
+            "dft_code": "VASP",
+            "dft_functional": "HSE06",
+            "cutoff_energy": 550,
+            "kpoints": "6x6x6",
+            "bandgap_ev": 3.1,
+            "bandgap_type": "Direct",
+            "total_energy_per_atom": -7.12,
+            "magnetic_state": "NM",
+            "notes": "High-mobility transparent perovskite conductor. HSE06 optical bandgap Eg = 3.10 eV at Gamma point.",
+            "in_weekly_report": 1
+          }
+        ],
+        "schedule": [
+          {
+            "id": 1794660375814,
+            "title": "Google Calendar Synced Session — Lamvt Sep",
+            "event_type": "Group Meeting / PI Meeting",
+            "instrument_or_location": "SKKU",
+            "start_date": "2026-11-14",
+            "start_time": "09:30",
+            "end_time": "11:00",
+            "priority": "High",
+            "status": "Scheduled",
+            "sample_id": "GCAL-01",
+            "description": "Initialized via Passwordless Google Account Sync (lamvt.sep@gmail.com).",
+            "in_weekly_report": 1
+          }
+        ],
+        "expReportRows": [
+          {
+            "sample_id": "BaTiO3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Prototypical ferroelectric perovskite. Relaxed cell parameter a = 4.006 Å matches experimental XRD diffraction."
+          },
+          {
+            "sample_id": "BaSnO3",
+            "material": "VASP (HSE06)",
+            "conditions": "Eg = 3.1 eV (Direct)",
+            "findings": "High-mobility transparent perovskite conductor. HSE06 optical bandgap Eg = 3.10 eV at Gamma point."
+          }
+        ],
+        "litReportRows": [
+          {
+            "title": "Fundamentals of inorganic solid-state electrolytes for batteries",
+            "journal": "Nature Materials (2019) | DOI: 10.1038/s41563-019-0431-3",
+            "material": "Li7La3Zr2O12 (LLZO)",
+            "takeaway": "Benchmark for activation energy (Ea ~ 0.30 eV) of cubic garnet vs tetragonal phases."
+          },
+          {
+            "title": "Ta-Doped Li7La3Zr2O12 Garnet Solid Electrolytes: Role of Excess Li and Sintering Atmosphere",
+            "journal": "Chemistry of Materials (2021) | DOI: 10.1021/acs.chemmater.0c04125",
+            "material": "Li6.4La3Zr1.4Ta0.6O12 (LLZTO)",
+            "takeaway": "Suppression of La2Zr2O7 impurity at 1140 °C."
+          }
+        ]
+      },
+      "activityLog": [
+        {
+          "timestamp": "2026-11-14 12:58",
+          "category": "Session",
+          "action": "Signed In (Google Account Sync (Passwordless))",
+          "detail": "Authenticated as Lamvt Sep (lamvt.sep@gmail.com)"
+        },
+        {
+          "timestamp": "2026-11-14 12:47",
+          "category": "Account",
+          "action": "Linked Google Account",
+          "detail": "Linked Google Account: lamvt.sep@gmail.com"
+        },
+        {
+          "timestamp": "2026-11-14 12:46",
+          "category": "Session",
+          "action": "Signed In (Google Account Sync (Passwordless))",
+          "detail": "Authenticated as Lamvt Sep (lamvt.sep@gmail.com)"
+        },
+        {
+          "timestamp": "2026-11-14 12:46",
+          "category": "Account",
+          "action": "Signed In & Synced via Google Account (Passwordless)",
+          "detail": "Lamvt Sep (SKKU) synchronized personal workspace with Google Account lamvt.sep@gmail.com."
+        }
+      ],
+      "groups": []
     }
   },
-  "deleted_users": []
+  "user_groups": {
+    "grp_skku_lab": {
+      "id": "grp_skku_lab",
+      "name": "SKKU Energy Transport Lab",
+      "description": "Sungkyunkwan University Energy Science & Materials Modeling Members",
+      "color": "blue",
+      "members": [
+        "jhpark.matsci@skku.edu",
+        "ssk@gmail.com"
+      ],
+      "updatedAtMs": 1700000000000
+    },
+    "grp_dft_team": {
+      "id": "grp_dft_team",
+      "name": "DFT & Computational Team",
+      "description": "VASP, Quantum ESPRESSO & First-Principles Simulation Group",
+      "color": "purple",
+      "members": [
+        "jhpark.matsci@skku.edu",
+        "las@gmail.com"
+      ],
+      "updatedAtMs": 1700000000000
+    },
+    "grp_external_collab": {
+      "id": "grp_external_collab",
+      "name": "External Collaborators",
+      "description": "KAIST & Partner University Research Collaborators",
+      "color": "teal",
+      "members": [
+        "minseo.kim@gmail.com"
+      ],
+      "updatedAtMs": 1700000000000
+    }
+  },
+  "deleted_users": [],
+  "deleted_groups": []
 }
