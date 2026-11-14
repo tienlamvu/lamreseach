@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T14:35:49.214Z",
+  "exported_at": "2026-11-14T14:35:54.263Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -1730,245 +1730,6 @@
     }
   ],
   "users_registry": {
-    "ssk@gmail.com": {
-      "email": "ssk@gmail.com",
-      "name": "Seojeong Rho",
-      "affiliation": "SKKU",
-      "academicRole": "Researcher",
-      "authProvider": "Email & Password",
-      "googleLinked": false,
-      "googleEmail": "",
-      "passwordPlainHint": "skku2026",
-      "passwordHash": "e5acba84c164be5493b03ab87712975cdaf2149d43c81df395eb07f8a1057264",
-      "registeredAt": "2026-11-14 03:14",
-      "lastLoginAt": "2026-11-14 03:14",
-      "lastUpdatedAt": "2026-11-14 06:44",
-      "workspace": {
-        "papers": [],
-        "structures": [],
-        "schedule": [
-          {
-            "id": 1794626079780,
-            "title": "Welcome Research Session — Seojeong Rho's Workspace",
-            "event_type": "Group Meeting / PI Meeting",
-            "instrument_or_location": "SKKU",
-            "start_date": "2026-11-14",
-            "start_time": "10:00",
-            "end_time": "11:30",
-            "priority": "High",
-            "status": "Scheduled",
-            "sample_id": "INIT-01",
-            "description": "Personal schedule initialized for Seojeong Rho (ssk@gmail.com).",
-            "in_weekly_report": 1
-          }
-        ],
-        "expReportRows": [],
-        "litReportRows": []
-      },
-      "activityLog": [
-        {
-          "timestamp": "2026-11-14 03:14",
-          "category": "Session",
-          "action": "Signed In (Account Registration)",
-          "detail": "Authenticated as Seojeong Rho (ssk@gmail.com)"
-        },
-        {
-          "timestamp": "2026-11-14 03:14",
-          "category": "Account",
-          "action": "Registered Personal Account",
-          "detail": "Seojeong Rho (SKKU) created a personal workspace."
-        }
-      ],
-      "updatedAtMs": 1794638692590,
-      "groups": [
-        "grp_skku_lab"
-      ]
-    },
-    "las@gmail.com": {
-      "email": "las@gmail.com",
-      "name": "No",
-      "affiliation": "Independent Researcher",
-      "academicRole": "Researcher",
-      "authProvider": "Email + Google Linked",
-      "googleLinked": true,
-      "googleEmail": "las@gmail.com",
-      "passwordPlainHint": "skku1234",
-      "passwordHash": "441d52fbb490008fa860a41b38fe03e0b7f6fb06b56336922f7d7a95562f51dd",
-      "registeredAt": "2026-11-14 04:00",
-      "lastLoginAt": "2026-11-14 06:49",
-      "lastUpdatedAt": "2026-11-14 07:51",
-      "updatedAtMs": 1794642711908,
-      "workspace": {
-        "papers": [],
-        "structures": [
-          {
-            "name": "MoS2 0.1",
-            "formula": "MoS2",
-            "chemical_formula": "MoS2",
-            "crystal_system": "Triclinic",
-            "space_group": "P1 (1)",
-            "structure_type": "Bulk 3D",
-            "mp_id": "",
-            "materials_project_id": "",
-            "a": 3.215,
-            "b": 3.215,
-            "c": 18.3106,
-            "alpha": 90,
-            "beta": 90,
-            "gamma": 120,
-            "volume": 163.91,
-            "natoms": 3,
-            "dft_code": "VASP",
-            "functional": "PBE",
-            "dft_functional": "PBE",
-            "ecut": 520,
-            "cutoff_energy": 520,
-            "kpoints": "8x8x8",
-            "bandgap": 3.2,
-            "bandgap_ev": 3.2,
-            "bandgap_type": "Direct",
-            "energy_per_atom": -6.85,
-            "total_energy_per_atom": -6.85,
-            "magnetic_state": "NM",
-            "notes": "",
-            "raw_cif": "data_MoS2\\0.1\n_audit_creation_date              2026-05-15\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.2150\n_cell_length_b                    3.2150\n_cell_length_c                    18.3106\n_cell_angle_alpha                 90.0000\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0000\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo    0.00000   0.00000   0.49999   0.00000  Uiso   1.00\nS2     S     0.33333   0.66667   0.41400   0.00000  Uiso   1.00\nS3     S     0.33333   0.66667   0.58600   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    S3      2.434   .     S\nMo1    S3      2.434   1_445 S\nMo1    S3      2.434   1_545 S\nMo1    S2      2.434   .     S\nMo1    S2      2.434   1_445 S\nMo1    S2      2.434   1_545 S\nS2     Mo1     2.434   1_665 S\nS2     Mo1     2.434   1_565 S\nS3     Mo1     2.434   1_665 S\nS3     Mo1     2.434   1_565 S",
-            "cif_content": "data_MoS2\\0.1\n_audit_creation_date              2026-05-15\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.2150\n_cell_length_b                    3.2150\n_cell_length_c                    18.3106\n_cell_angle_alpha                 90.0000\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0000\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo    0.00000   0.00000   0.49999   0.00000  Uiso   1.00\nS2     S     0.33333   0.66667   0.41400   0.00000  Uiso   1.00\nS3     S     0.33333   0.66667   0.58600   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    S3      2.434   .     S\nMo1    S3      2.434   1_445 S\nMo1    S3      2.434   1_545 S\nMo1    S2      2.434   .     S\nMo1    S2      2.434   1_445 S\nMo1    S2      2.434   1_545 S\nS2     Mo1     2.434   1_665 S\nS2     Mo1     2.434   1_565 S\nS3     Mo1     2.434   1_665 S\nS3     Mo1     2.434   1_565 S",
-            "poscar_text": "MoS2 Triclinic P1 (1)\n1.0\n       3.21500000     0.00000000     0.00000000\n      -1.60750000     2.78427167     0.00000000\n       0.00000000     0.00000000    18.31060000\n   Mo    S\n    1    2\nDirect\n    0.00000000   0.00000000   0.49999000\n    0.33333000   0.66667000   0.41400000\n    0.33333000   0.66667000   0.58600000\n",
-            "poscar_content": "MoS2 Triclinic P1 (1)\n1.0\n       3.21500000     0.00000000     0.00000000\n      -1.60750000     2.78427167     0.00000000\n       0.00000000     0.00000000    18.31060000\n   Mo    S\n    1    2\nDirect\n    0.00000000   0.00000000   0.49999000\n    0.33333000   0.66667000   0.41400000\n    0.33333000   0.66667000   0.58600000\n",
-            "atoms": [
-              {
-                "element": "Mo",
-                "label": "Mo1",
-                "x": 0,
-                "y": 0,
-                "z": 0.49999,
-                "occupancy": 1
-              },
-              {
-                "element": "S",
-                "label": "S2",
-                "x": 0.33333,
-                "y": 0.66667,
-                "z": 0.414,
-                "occupancy": 1
-              },
-              {
-                "element": "S",
-                "label": "S3",
-                "x": 0.33333,
-                "y": 0.66667,
-                "z": 0.586,
-                "occupancy": 1
-              }
-            ],
-            "in_weekly_report": 1,
-            "id": 1794628908666
-          }
-        ],
-        "schedule": [
-          {
-            "id": 1794628813997,
-            "title": "Welcome Research Session — No's Workspace",
-            "event_type": "Group Meeting / PI Meeting",
-            "instrument_or_location": "Independent Researcher",
-            "start_date": "2026-11-14",
-            "start_time": "10:00",
-            "end_time": "11:30",
-            "priority": "High",
-            "status": "Scheduled",
-            "sample_id": "INIT-01",
-            "description": "Personal schedule initialized for No (las@gmail.com).",
-            "in_weekly_report": 1
-          }
-        ],
-        "expReportRows": [
-          {
-            "sample_id": "BaTiO3",
-            "material": "VASP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "Prototypical ferroelectric perovskite. Relaxed cell parameter a = 4.006 Å matches experimental XRD diffraction."
-          },
-          {
-            "sample_id": "MoS2",
-            "material": "VASP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "a=3.215 Å, Vol=163.91 Å³"
-          }
-        ],
-        "litReportRows": []
-      },
-      "activityLog": [
-        {
-          "timestamp": "2026-11-14 06:49",
-          "category": "Session",
-          "action": "Signed In (Email & Password)",
-          "detail": "Authenticated as No (las@gmail.com)"
-        },
-        {
-          "timestamp": "2026-11-14 06:49",
-          "category": "Security",
-          "action": "Password Reset by Administrator",
-          "detail": "Administrator reset password to default (\"skku1234\") for las@gmail.com."
-        },
-        {
-          "timestamp": "2026-11-14 06:28",
-          "category": "Account",
-          "action": "Linked Google Account",
-          "detail": "Linked Google Account: las@gmail.com"
-        },
-        {
-          "timestamp": "2026-11-14 06:28",
-          "category": "Session",
-          "action": "Signed In (Email & Password)",
-          "detail": "Authenticated as No (las@gmail.com)"
-        },
-        {
-          "timestamp": "2026-11-14 06:27",
-          "category": "Session",
-          "action": "Signed In (Email & Password)",
-          "detail": "Authenticated as No (las@gmail.com)"
-        },
-        {
-          "timestamp": "2026-11-14 06:22",
-          "category": "Session",
-          "action": "Signed In (Email & Password)",
-          "detail": "Authenticated as No (las@gmail.com)"
-        },
-        {
-          "timestamp": "2026-11-14 06:20",
-          "category": "Session",
-          "action": "Signed In (Email & Password)",
-          "detail": "Authenticated as No (las@gmail.com)"
-        },
-        {
-          "timestamp": "2026-11-14 05:29",
-          "category": "Session",
-          "action": "Signed In (Email & Password)",
-          "detail": "Authenticated as No (las@gmail.com)"
-        },
-        {
-          "timestamp": "2026-11-14 04:01",
-          "category": "Crystal Structures",
-          "action": "Added Structure",
-          "detail": "MoS2 — MoS2 0.1 (P1 (1))"
-        },
-        {
-          "timestamp": "2026-11-14 04:00",
-          "category": "Session",
-          "action": "Signed In (Account Registration)",
-          "detail": "Authenticated as No (las@gmail.com)"
-        },
-        {
-          "timestamp": "2026-11-14 04:00",
-          "category": "Account",
-          "action": "Registered Personal Account",
-          "detail": "No (Independent Researcher) created a personal workspace."
-        }
-      ],
-      "groups": [
-        "grp_dft_team"
-      ]
-    },
     "lamvt.sep@gmail.com": {
       "email": "lamvt.sep@gmail.com",
       "name": "Vu Tien Lam",
@@ -2510,9 +2271,7 @@
       "name": "SKKU Energy Transport Lab",
       "description": "Sungkyunkwan University Energy Science & Materials Modeling Members",
       "color": "blue",
-      "members": [
-        "ssk@gmail.com"
-      ],
+      "members": [],
       "updatedAtMs": 1700000000000
     },
     "grp_dft_team": {
@@ -2520,9 +2279,7 @@
       "name": "DFT & Computational Team",
       "description": "VASP, Quantum ESPRESSO & First-Principles Simulation Group",
       "color": "purple",
-      "members": [
-        "las@gmail.com"
-      ],
+      "members": [],
       "updatedAtMs": 1700000000000
     },
     "grp_external_collab": {
@@ -2536,7 +2293,9 @@
   },
   "deleted_users": [
     "jhpark.matsci@skku.edu",
-    "minseo.kim@gmail.com"
+    "minseo.kim@gmail.com",
+    "ssk@gmail.com",
+    "las@gmail.com"
   ],
   "deleted_groups": []
 }
