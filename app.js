@@ -698,6 +698,326 @@ const DEFAULT_USERS_REGISTRY = {
 };
 
 // ============================================================================
+// Default User Groups Registry & Cloud Sync Engine
+// ============================================================================
+
+const DEFAULT_USER_GROUPS = {
+  "grp_skku_lab": {
+    id: "grp_skku_lab",
+    name: "SKKU Energy Transport Lab",
+    description: "Sungkyunkwan University Energy Science & Materials Modeling Members",
+    color: "blue",
+    members: ["jhpark.matsci@skku.edu", "ssk@gmail.com"],
+    updatedAtMs: 1700000000000
+  },
+  "grp_dft_team": {
+    id: "grp_dft_team",
+    name: "DFT & Computational Team",
+    description: "VASP, Quantum ESPRESSO & First-Principles Simulation Group",
+    color: "purple",
+    members: ["jhpark.matsci@skku.edu", "las@gmail.com"],
+    updatedAtMs: 1700000000000
+  },
+  "grp_external_collab": {
+    id: "grp_external_collab",
+    name: "External Collaborators",
+    description: "KAIST & Partner University Research Collaborators",
+    color: "teal",
+    members: ["minseo.kim@gmail.com"],
+    updatedAtMs: 1700000000000
+  }
+};
+
+function getDeletedGroupsSet() {
+  try {
+    const raw = localStorage.getItem("matsci_deleted_groups_v1");
+    const arr = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(arr) ? arr.map(s => String(s).trim()) : []);
+  } catch (e) {
+    return new Set();
+  }
+}
+
+function addDeletedGroupTombstone(gid) {
+  const id = String(gid || "").trim();
+  if (!id) return;
+  const s = getDeletedGroupsSet();
+  s.add(id);
+  try {
+    localStorage.setItem("matsci_deleted_groups_v1", JSON.stringify(Array.from(s)));
+  } catch (e) {}
+}
+
+function removeDeletedGroupTombstone(gid) {
+  const id = String(gid || "").trim();
+  if (!id) return;
+  const s = getDeletedGroupsSet();
+  if (s.has(id)) {
+    s.delete(id);
+    try {
+      localStorage.setItem("matsci_deleted_groups_v1", JSON.stringify(Array.from(s)));
+    } catch (e) {}
+  }
+}
+
+function persistUserGroupsLocal() {
+  try {
+    localStorage.setItem("matsci_user_groups_v1", JSON.stringify(STATE.userGroups || {}));
+  } catch (e) {}
+}
+
+function syncUserAndGroupMemberships() {
+  if (!STATE.userGroups || typeof STATE.userGroups !== "object") {
+    STATE.userGroups = {};
+  }
+  const usersMap = STATE.usersRegistry || {};
+  // Ensure every group's members array is normalized and synced with user.groups
+  Object.values(STATE.userGroups).forEach(g => {
+    if (!g || !g.id) return;
+    const cleanMembers = new Set();
+    (Array.isArray(g.members) ? g.members : []).forEach(em => {
+      const norm = normalizeEmail(em);
+      if (norm && usersMap[norm]) cleanMembers.add(norm);
+    });
+    // Also check if any user lists this group in user.groups
+    Object.keys(usersMap).forEach(em => {
+      const u = usersMap[em];
+      if (u && Array.isArray(u.groups) && u.groups.includes(g.id)) {
+        cleanMembers.add(normalizeEmail(em));
+      }
+    });
+    g.members = Array.from(cleanMembers);
+  });
+
+  // Now set user.groups on each user based on STATE.userGroups
+  Object.keys(usersMap).forEach(em => {
+    const norm = normalizeEmail(em);
+    const u = usersMap[em];
+    if (!u) return;
+    const gids = [];
+    Object.values(STATE.userGroups).forEach(g => {
+      if (g && g.id && Array.isArray(g.members) && g.members.includes(norm)) {
+        gids.push(g.id);
+      }
+    });
+    u.groups = gids;
+  });
+}
+
+function ensureUserGroupsInitialized(remoteGroups = null, remoteDeletedGroups = null) {
+  const deletedSet = getDeletedGroupsSet();
+  if (Array.isArray(remoteDeletedGroups)) {
+    remoteDeletedGroups.forEach(gid => {
+      if (gid) deletedSet.add(String(gid).trim());
+    });
+    try {
+      localStorage.setItem("matsci_deleted_groups_v1", JSON.stringify(Array.from(deletedSet)));
+    } catch (e) {}
+  }
+
+  let merged = JSON.parse(JSON.stringify(DEFAULT_USER_GROUPS));
+  Object.keys(merged).forEach(gid => {
+    if (deletedSet.has(gid)) delete merged[gid];
+  });
+
+  const mergeGroupObj = (existingG, incomingG) => {
+    if (!existingG) return incomingG;
+    if (!incomingG) return existingG;
+    const t1 = existingG.updatedAtMs || 0;
+    const t2 = incomingG.updatedAtMs || 0;
+    return t2 >= t1 ? { ...existingG, ...incomingG } : { ...incomingG, ...existingG };
+  };
+
+  if (remoteGroups && typeof remoteGroups === "object") {
+    Object.keys(remoteGroups).forEach(gid => {
+      if (gid && !deletedSet.has(gid)) {
+        merged[gid] = mergeGroupObj(merged[gid], remoteGroups[gid]);
+      }
+    });
+  }
+
+  try {
+    const localRaw = localStorage.getItem("matsci_user_groups_v1");
+    if (localRaw) {
+      const localObj = JSON.parse(localRaw);
+      if (localObj && typeof localObj === "object") {
+        Object.keys(localObj).forEach(gid => {
+          if (gid && !deletedSet.has(gid)) {
+            merged[gid] = mergeGroupObj(merged[gid], localObj[gid]);
+          }
+        });
+      }
+    }
+  } catch (e) {}
+
+  if (STATE.userGroups && typeof STATE.userGroups === "object") {
+    Object.keys(STATE.userGroups).forEach(gid => {
+      if (gid && !deletedSet.has(gid)) {
+        merged[gid] = mergeGroupObj(merged[gid], STATE.userGroups[gid]);
+      }
+    });
+  }
+
+  STATE.userGroups = merged;
+  syncUserAndGroupMemberships();
+  persistUserGroupsLocal();
+  refreshAudienceFilterDropdowns();
+}
+
+function getGroupsForUserEmail(emailRaw) {
+  const norm = normalizeEmail(emailRaw);
+  if (!norm) return [];
+  const u = STATE.usersRegistry ? STATE.usersRegistry[norm] : null;
+  const gEmail = u && u.googleEmail ? normalizeEmail(u.googleEmail) : "";
+  const groups = Object.values(STATE.userGroups || {});
+  return groups.filter(g => {
+    if (!g || !Array.isArray(g.members)) return false;
+    const mems = g.members.map(normalizeEmail);
+    return mems.includes(norm) || (gEmail && mems.includes(gEmail));
+  });
+}
+
+function renderUserGroupBadgesHtml(emailRaw, compact = false) {
+  const groups = getGroupsForUserEmail(emailRaw);
+  if (groups.length === 0) {
+    return compact ? "" : `<span class="badge badge-slate" style="font-size:10px; opacity:0.75;">No Group</span>`;
+  }
+  return groups.map(g => {
+    const colorClass = `badge-${g.color || "blue"}`;
+    return `<span class="badge ${escapeHtml(colorClass)}" style="font-size:${compact ? '10px' : '11px'}; padding:${compact ? '1px 6px' : '2px 7px'};" title="User Group: ${escapeHtml(g.name)}${g.description ? ' — ' + escapeHtml(g.description) : ''}">🏷️ ${escapeHtml(g.name)}</span>`;
+  }).join(" ");
+}
+
+function refreshAudienceFilterDropdowns() {
+  const groupsList = Object.values(STATE.userGroups || {});
+  const filterIds = ["paper-audience-filter", "struct-audience-filter", "schedule-audience-filter"];
+  filterIds.forEach(fid => {
+    const sel = document.getElementById(fid);
+    if (!sel) return;
+    const prevVal = sel.value || "ALL";
+    let html = `
+      <option value="ALL">🛡️ All Visibility Modes &amp; Groups</option>
+      <optgroup label="── Filter by Visibility Mode ──">
+        <option value="VIS:Public">🌍 Public Only (Everyone)</option>
+        <option value="VIS:Users">👥 All Logged-In Users</option>
+        <option value="VIS:Groups">🏷️ Targeted to User Group(s)</option>
+        <option value="VIS:Specific">🎯 Specific User(s) / Group(s)</option>
+        <option value="VIS:Private">🔒 Private (Admin Only)</option>
+      </optgroup>
+    `;
+    if (groupsList.length > 0) {
+      html += `<optgroup label="── Filter by User Group (Assigned to Group) ──">`;
+      groupsList.forEach(g => {
+        const mCount = Array.isArray(g.members) ? g.members.length : 0;
+        html += `<option value="GROUP_ASSIGNED:${escapeHtml(g.id)}">🏷️ Group Target: ${escapeHtml(g.name)} (${mCount} members)</option>`;
+      });
+      html += `</optgroup>`;
+      html += `<optgroup label="── Preview What Group Members Can See ──">`;
+      groupsList.forEach(g => {
+        html += `<option value="GROUP_VIEW:${escapeHtml(g.id)}">👁️ Viewable by Group: ${escapeHtml(g.name)}</option>`;
+      });
+      html += `</optgroup>`;
+    }
+    sel.innerHTML = html;
+    if (Array.from(sel.options).some(o => o.value === prevVal)) {
+      sel.value = prevVal;
+    } else {
+      sel.value = "ALL";
+    }
+  });
+
+  // Also populate #admin-user-group-filter inside #admin-users-modal
+  const adminGrpSel = document.getElementById("admin-user-group-filter");
+  if (adminGrpSel) {
+    const prevGrp = adminGrpSel.value || "ALL";
+    const allUsers = Object.values(STATE.usersRegistry || {});
+    const ungroupedCount = allUsers.filter(u => getGroupsForUserEmail(u.email).length === 0).length;
+    let gHtml = `<option value="ALL">🏷️ All User Groups (${allUsers.length} users)</option>`;
+    groupsList.forEach(g => {
+      const mCount = Array.isArray(g.members) ? g.members.length : 0;
+      gHtml += `<option value="${escapeHtml(g.id)}">🏷️ ${escapeHtml(g.name)} (${mCount})</option>`;
+    });
+    gHtml += `<option value="UNGROUPED">⚪ Ungrouped Users (${ungroupedCount})</option>`;
+    adminGrpSel.innerHTML = gHtml;
+    if (Array.from(adminGrpSel.options).some(o => o.value === prevGrp)) {
+      adminGrpSel.value = prevGrp;
+    } else {
+      adminGrpSel.value = "ALL";
+    }
+  }
+}
+
+function doesItemMatchAudienceFilter(item, filterVal) {
+  if (!filterVal || filterVal === "ALL") return true;
+  if (!item) return false;
+  const vis = normalizeVisibilityMode(item.visibility);
+  const rawAllowed = Array.isArray(item.allowed_users) ? item.allowed_users.map(s => String(s || "").trim().toLowerCase()) : [];
+  const rawGroups = Array.isArray(item.allowed_groups) ? item.allowed_groups.map(s => String(s || "").trim()) : [];
+  const itemGroupIds = new Set(rawGroups);
+  rawAllowed.forEach(entry => {
+    if (entry.startsWith("group:")) {
+      itemGroupIds.add(entry.slice(6).trim());
+    }
+  });
+
+  if (filterVal.startsWith("VIS:")) {
+    const targetVis = filterVal.slice(4);
+    if (targetVis === "Groups") {
+      return vis === "Groups" || itemGroupIds.size > 0;
+    }
+    if (targetVis === "Specific") {
+      return vis === "Specific" || vis === "Groups";
+    }
+    return vis === targetVis;
+  }
+
+  if (filterVal.startsWith("GROUP_ASSIGNED:")) {
+    const gid = filterVal.slice("GROUP_ASSIGNED:".length);
+    if (itemGroupIds.has(gid)) return true;
+    // Also match if any member of this group is explicitly listed in allowed_users
+    const grp = STATE.userGroups && STATE.userGroups[gid];
+    if (grp && Array.isArray(grp.members) && (vis === "Specific" || vis === "Groups")) {
+      return grp.members.some(m => rawAllowed.includes(normalizeEmail(m)));
+    }
+    return false;
+  }
+
+  if (filterVal.startsWith("GROUP_VIEW:")) {
+    const gid = filterVal.slice("GROUP_VIEW:".length);
+    if (vis === "Public" || vis === "Users") return true;
+    if (vis === "Private") return false;
+    if (itemGroupIds.has(gid)) return true;
+    const grp = STATE.userGroups && STATE.userGroups[gid];
+    if (grp && Array.isArray(grp.members)) {
+      return grp.members.some(m => rawAllowed.includes(normalizeEmail(m)));
+    }
+    return false;
+  }
+
+  return true;
+}
+
+function filterWebsiteByUserGroup(gid, mode = "GROUP_ASSIGNED") {
+  const grp = STATE.userGroups && STATE.userGroups[gid];
+  if (!grp) return;
+  const val = `${mode}:${gid}`;
+  ["paper-audience-filter", "struct-audience-filter", "schedule-audience-filter"].forEach(fid => {
+    const sel = document.getElementById(fid);
+    if (sel) {
+      refreshAudienceFilterDropdowns();
+      sel.value = val;
+    }
+  });
+  renderPapersList();
+  renderStructuresList();
+  renderScheduleList();
+  closeModal("admin-groups-modal");
+  closeModal("admin-users-modal");
+  switchTabByName("literature");
+  showToast(`🏷️ Filtered References, Structures & Calendar by Group: "${grp.name}"`, "info");
+}
+
+// ============================================================================
 // Real-Time Cross-Session / Incognito / Cross-Device Cloud Sync Engine
 // & Administrator Content Visibility / Audience Access Control
 // ============================================================================
@@ -778,7 +1098,7 @@ function mergeTwoUserRecords(existingU, incomingU) {
   return { ...incomingU, ...existingU };
 }
 
-function ensureUsersRegistryInitialized(remoteRegistry = null, remoteDeleted = null) {
+function ensureUsersRegistryInitialized(remoteRegistry = null, remoteDeleted = null, remoteGroups = null, remoteDeletedGroups = null) {
   const deletedSet = getDeletedUsersSet();
   if (Array.isArray(remoteDeleted)) {
     remoteDeleted.forEach(em => {
@@ -828,6 +1148,7 @@ function ensureUsersRegistryInitialized(remoteRegistry = null, remoteDeleted = n
     });
   }
   STATE.usersRegistry = merged;
+  ensureUserGroupsInitialized(remoteGroups, remoteDeletedGroups);
   persistUsersRegistryLocal();
   updateHeaderUsersCountBadge();
 }
@@ -854,8 +1175,13 @@ async function pullCloudDatabaseInstant(silent = true) {
 
     _LAST_CLOUD_PULL_MS = Date.now();
 
-    // Merge deleted users tombstones & users_registry
-    ensureUsersRegistryInitialized(cloudDb.users_registry || {}, cloudDb.deleted_users || []);
+    // Merge deleted users tombstones, users_registry, and user_groups
+    ensureUsersRegistryInitialized(
+      cloudDb.users_registry || {},
+      cloudDb.deleted_users || [],
+      cloudDb.user_groups || null,
+      cloudDb.deleted_groups || []
+    );
 
     // Also check if cloud masterData is newer than local masterData
     const localSavedRaw = localStorage.getItem("matsci_static_db_v4");
@@ -890,7 +1216,8 @@ async function pullCloudDatabaseInstant(silent = true) {
 
     if (!silent) {
       const count = Object.keys(STATE.usersRegistry || {}).length;
-      showToast(`🔄 Synced live cloud database! (${count} registered personal user accounts)`, "success");
+      const gCount = Object.keys(STATE.userGroups || {}).length;
+      showToast(`🔄 Synced live cloud database! (${count} users, ${gCount} groups)`, "success");
     }
     return true;
   } catch (err) {
@@ -935,7 +1262,7 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
       }
     }
 
-    // 2. Merge remote users_registry & deleted_users with local STATE.usersRegistry so no incognito/other-browser user is ever lost
+    // 2. Merge remote users_registry, deleted_users & user_groups with local state
     const deletedSet = getDeletedUsersSet();
     if (remoteDb && Array.isArray(remoteDb.deleted_users)) {
       remoteDb.deleted_users.forEach(em => {
@@ -953,11 +1280,17 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
         }
       });
     }
+    if (remoteDb && remoteDb.user_groups) {
+      ensureUserGroupsInitialized(remoteDb.user_groups, remoteDb.deleted_groups || []);
+    } else {
+      syncUserAndGroupMemberships();
+    }
     // Clean temporary flag
     Object.keys(STATE.usersRegistry || {}).forEach(k => {
       if (STATE.usersRegistry[k]) delete STATE.usersRegistry[k]._justRegistered;
     });
     persistUsersRegistryLocal();
+    persistUserGroupsLocal();
 
     // 3. Determine master data (Admin's CV, papers, structures, schedule)
     const isStrictAdmin = STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail;
@@ -982,7 +1315,9 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
       structures: masterStructures,
       schedule: masterSchedule,
       users_registry: STATE.usersRegistry || {},
-      deleted_users: Array.from(deletedSet)
+      user_groups: STATE.userGroups || {},
+      deleted_users: Array.from(deletedSet),
+      deleted_groups: Array.from(getDeletedGroupsSet())
     };
 
     const base64Content = encodeUtf8Base64(JSON.stringify(exportObj, null, 2));
@@ -1045,7 +1380,7 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
 
 async function refreshCloudUsersNow(showToastMsg = true) {
   if (showToastMsg) {
-    showToast("🔄 Fetching latest registered accounts & workspaces from Cloud...", "info");
+    showToast("🔄 Fetching latest registered accounts, groups & workspaces from Cloud...", "info");
   }
   await pullCloudDatabaseInstant(!showToastMsg);
 }
@@ -1059,8 +1394,8 @@ window.addEventListener("focus", () => {
 
 // ============================================================================
 // Administrator Content Visibility & Audience Access Control Helpers
-// Modes: "Public" | "Users" | "Specific" | "Private"
-// Compact Searchable Dropdown Combobox + Selected User Chips
+// Modes: "Public" | "Users" | "Groups" | "Specific" | "Private"
+// Compact Searchable Dropdown Combobox + Selected Group & User Chips
 // ============================================================================
 
 const _SPECIFIC_SELECTED_MAP = {};
@@ -1071,6 +1406,7 @@ function normalizeVisibilityMode(rawVis) {
   const s = String(rawVis || "Public").trim().toLowerCase();
   if (s === "private") return "Private";
   if (s === "users" || s === "all_users" || s === "registered") return "Users";
+  if (s === "groups" || s === "group" || s === "user_groups") return "Groups";
   if (s === "specific" || s === "specific_users" || s === "selected") return "Specific";
   return "Public";
 }
@@ -1085,23 +1421,40 @@ function getSpecificSelectedSet(prefix) {
 function buildSpecificChipsHtml(prefix) {
   const normSelected = getSpecificSelectedSet(prefix);
   const usersList = Object.values(STATE.usersRegistry || {});
+  const groupsMap = STATE.userGroups || {};
   const emailToUser = {};
   usersList.forEach(u => {
     if (u.email) emailToUser[normalizeEmail(u.email)] = u;
     if (u.googleEmail) emailToUser[normalizeEmail(u.googleEmail)] = u;
   });
 
-  // Deduplicate display chips so a user with both email and googleEmail in normSelected shows as 1 chip
   const displayedUserKeys = new Set();
-  const chips = [];
+  const groupChips = [];
+  const userChips = [];
 
-  Array.from(normSelected).forEach(em => {
+  Array.from(normSelected).forEach(entry => {
+    const clean = String(entry || "").trim();
+    if (!clean) return;
+    if (clean.toLowerCase().startsWith("group:")) {
+      const gid = clean.slice(6).trim();
+      const g = groupsMap[gid];
+      const label = g ? g.name : gid;
+      const mCount = g && Array.isArray(g.members) ? g.members.length : 0;
+      groupChips.push({
+        gid,
+        rawToken: `group:${gid}`,
+        label,
+        mCount
+      });
+      return;
+    }
+    const em = normalizeEmail(clean);
     const u = emailToUser[em];
     if (u) {
       const primaryKey = normalizeEmail(u.email);
       if (displayedUserKeys.has(primaryKey)) return;
       displayedUserKeys.add(primaryKey);
-      chips.push({
+      userChips.push({
         primaryEmail: primaryKey,
         googleEmail: normalizeEmail(u.googleEmail || ""),
         label: u.name || primaryKey,
@@ -1110,7 +1463,7 @@ function buildSpecificChipsHtml(prefix) {
     } else if (em) {
       if (displayedUserKeys.has(em)) return;
       displayedUserKeys.add(em);
-      chips.push({
+      userChips.push({
         primaryEmail: em,
         googleEmail: "",
         label: em,
@@ -1119,28 +1472,47 @@ function buildSpecificChipsHtml(prefix) {
     }
   });
 
-  if (chips.length === 0) {
-    return `<span class="specific-empty-hint">No specific user selected yet — click the search box or "▾ Browse Users" below</span>`;
+  if (groupChips.length === 0 && userChips.length === 0) {
+    return `<span class="specific-chips-empty">No group or user selected yet — click a Group pill above or search in the dropdown below</span>`;
   }
 
-  return chips.map(c => `
-    <span class="specific-user-chip" title="${escapeHtml(c.sub || c.label)}">
-      <span class="chip-avatar">👤</span>
-      <strong class="chip-name">${escapeHtml(c.label)}</strong>
-      ${c.sub && c.sub !== c.label ? `<code class="chip-email">${escapeHtml(c.sub)}</code>` : ""}
-      <button type="button" class="chip-remove-btn" title="Remove user" onclick="removeSpecificUserChip('${escapeHtml(prefix)}', '${escapeHtml(c.primaryEmail)}', '${escapeHtml(c.googleEmail)}', event)">✕</button>
+  const groupHtml = groupChips.map(gc => `
+    <span class="specific-user-chip" style="background:#f5f3ff; border-color:#c4b5fd; color:#5b21b6 !important;" title="User Group: ${escapeHtml(gc.label)} (${gc.mCount} members)">
+      <span>🏷️</span>
+      <strong class="specific-chip-name" style="color:#5b21b6 !important;">Group: ${escapeHtml(gc.label)}</strong>
+      <span class="specific-chip-sub">(${gc.mCount})</span>
+      <button type="button" class="specific-chip-remove" title="Remove group" onclick="removeSpecificGroupChip('${escapeHtml(prefix)}', '${escapeHtml(gc.gid)}', event)">✕</button>
     </span>
   `).join("");
+
+  const userHtml = userChips.map(c => `
+    <span class="specific-user-chip" title="${escapeHtml(c.sub || c.label)}">
+      <span>👤</span>
+      <strong class="specific-chip-name">${escapeHtml(c.label)}</strong>
+      ${c.sub && c.sub !== c.label ? `<code class="specific-chip-sub">${escapeHtml(c.sub)}</code>` : ""}
+      <button type="button" class="specific-chip-remove" title="Remove user" onclick="removeSpecificUserChip('${escapeHtml(prefix)}', '${escapeHtml(c.primaryEmail)}', '${escapeHtml(c.googleEmail)}', event)">✕</button>
+    </span>
+  `).join("");
+
+  return `${groupHtml}${userHtml}`;
 }
 
 function buildSpecificDropdownMenuItemsHtml(prefix, queryRaw = "") {
   const query = String(queryRaw || "").trim().toLowerCase();
   const normSelected = getSpecificSelectedSet(prefix);
   const usersList = Object.values(STATE.usersRegistry || {});
+  const groupsList = Object.values(STATE.userGroups || {});
 
-  const filtered = usersList.filter(u => {
+  const filteredGroups = groupsList.filter(g => {
     if (!query) return true;
-    const hay = `${u.name || ""} ${u.email || ""} ${u.googleEmail || ""} ${u.affiliation || ""} ${u.academicRole || ""}`.toLowerCase();
+    const hay = `${g.name || ""} ${g.description || ""} ${g.id || ""}`.toLowerCase();
+    return hay.includes(query);
+  });
+
+  const filteredUsers = usersList.filter(u => {
+    if (!query) return true;
+    const uGrps = getGroupsForUserEmail(u.email).map(g => g.name).join(" ");
+    const hay = `${u.name || ""} ${u.email || ""} ${u.googleEmail || ""} ${u.affiliation || ""} ${u.academicRole || ""} ${uGrps}`.toLowerCase();
     return hay.includes(query);
   });
 
@@ -1158,43 +1530,125 @@ function buildSpecificDropdownMenuItemsHtml(prefix, queryRaw = "") {
     }
   }
 
-  if (filtered.length === 0) {
+  if (filteredGroups.length === 0 && filteredUsers.length === 0) {
     return `
       ${customAddHtml}
       <div class="specific-dropdown-empty">
-        No registered user matches "<strong>${escapeHtml(queryRaw)}</strong>".
+        No user group or registered user matches "<strong>${escapeHtml(queryRaw)}</strong>".
         ${!customAddHtml ? `<div style="margin-top:4px; font-size:11px; color:#64748b;">Tip: Type a full email address (e.g. <code>user@skku.edu</code>) and press <strong>Enter</strong> to grant access by email.</div>` : ""}
       </div>
     `;
   }
 
-  const rowsHtml = filtered.map(u => {
+  let groupsSectionHtml = "";
+  if (filteredGroups.length > 0) {
+    groupsSectionHtml = `
+      <div style="font-size:10.5px; font-weight:800; color:#5b21b6; text-transform:uppercase; letter-spacing:0.4px; padding:4px 8px 2px;">🏷️ User Groups (${filteredGroups.length})</div>
+      ${filteredGroups.map(g => {
+        const token = `group:${g.id}`;
+        const isChecked = normSelected.has(token);
+        const mCount = Array.isArray(g.members) ? g.members.length : 0;
+        return `
+          <label class="specific-user-check-item ${isChecked ? 'is-selected' : ''}" style="background:${isChecked ? '#f5f3ff !important' : '#ffffff !important'}; border-color:${isChecked ? '#a78bfa' : '#e2e8f0'};" onclick="event.stopPropagation();">
+            <input
+              type="checkbox"
+              ${isChecked ? "checked" : ""}
+              onchange="toggleSpecificGroupOption('${escapeHtml(prefix)}', '${escapeHtml(g.id)}', this.checked)"
+            />
+            <div class="specific-user-item-info">
+              <strong class="specific-user-item-name" style="color:#4c1d95 !important;">🏷️ Group: ${escapeHtml(g.name)}</strong>
+              <span class="badge badge-purple" style="font-size:10px; padding:1px 6px;">${mCount} member${mCount === 1 ? "" : "s"}</span>
+              ${g.description ? `<span class="specific-user-item-affil">• ${escapeHtml(g.description)}</span>` : ""}
+            </div>
+          </label>
+        `;
+      }).join("")}
+    `;
+  }
+
+  let usersSectionHtml = "";
+  if (filteredUsers.length > 0) {
+    usersSectionHtml = `
+      <div style="font-size:10.5px; font-weight:800; color:#1e40af; text-transform:uppercase; letter-spacing:0.4px; padding:6px 8px 2px;">👤 Individual Registered Users (${filteredUsers.length})</div>
+      ${filteredUsers.map(u => {
+        const em = normalizeEmail(u.email);
+        const gEm = normalizeEmail(u.googleEmail);
+        const isChecked = normSelected.has(em) || (gEm && normSelected.has(gEm));
+        const grpBadges = renderUserGroupBadgesHtml(em, true);
+        return `
+          <label class="specific-user-check-item ${isChecked ? 'is-selected' : ''}" onclick="event.stopPropagation();">
+            <input
+              type="checkbox"
+              class="specific-user-cb-${escapeHtml(prefix)}"
+              value="${escapeHtml(em)}"
+              data-google-email="${escapeHtml(gEm)}"
+              ${isChecked ? "checked" : ""}
+              onchange="toggleSpecificUserOption('${escapeHtml(prefix)}', '${escapeHtml(em)}', '${escapeHtml(gEm)}', this.checked)"
+            />
+            <div class="specific-user-item-info">
+              <strong class="specific-user-item-name">${escapeHtml(u.name || em)}</strong>
+              <code class="specific-user-item-email">${escapeHtml(em)}</code>
+              ${u.googleLinked ? `<span class="badge badge-green" style="font-size:10px; padding:1px 6px;">Google</span>` : ""}
+              ${grpBadges}
+              ${u.affiliation ? `<span class="specific-user-item-affil">🏛️ ${escapeHtml(u.affiliation)}${u.academicRole ? ` • ${escapeHtml(u.academicRole)}` : ""}</span>` : ""}
+            </div>
+          </label>
+        `;
+      }).join("")}
+    `;
+  }
+
+  return `${customAddHtml}${groupsSectionHtml}${usersSectionHtml}`;
+}
+
+function buildSpecificQuickGroupsBarHtml(prefix) {
+  const groupsList = Object.values(STATE.userGroups || {});
+  const normSelected = getSpecificSelectedSet(prefix);
+  if (groupsList.length === 0) return "";
+  return `
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:7px; padding-bottom:6px; border-bottom:1px dashed #cbd5e1;">
+      <span style="font-size:11px; font-weight:700; color:#4c1d95;">🏷️ Quick Select Group:</span>
+      ${groupsList.map(g => {
+        const isSel = normSelected.has(`group:${g.id}`);
+        const mCount = Array.isArray(g.members) ? g.members.length : 0;
+        return `
+          <button
+            type="button"
+            onclick="toggleSpecificGroupOption('${escapeHtml(prefix)}', '${escapeHtml(g.id)}', ${!isSel}, event)"
+            style="padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid ${isSel ? '#7c3aed' : '#cbd5e1'}; background:${isSel ? '#ede9fe' : '#ffffff'}; color:${isSel ? '#5b21b6' : '#334155'}; display:inline-flex; align-items:center; gap:4px;"
+            title="${escapeHtml(g.description || g.name)} (${mCount} members)"
+          >
+            ${isSel ? "✓" : "+"} 🏷️ ${escapeHtml(g.name)} (${mCount})
+          </button>
+        `;
+      }).join("")}
+      <button type="button" class="specific-picker-btn" style="margin-left:auto;" onclick="openAdminGroupsModal()">⚙️ Manage Groups</button>
+    </div>
+  `;
+}
+
+function countSpecificSelectedItems(prefix) {
+  const normSelected = getSpecificSelectedSet(prefix);
+  const usersList = Object.values(STATE.usersRegistry || {});
+  let groupCount = 0;
+  const seenUsers = new Set();
+  normSelected.forEach(entry => {
+    if (String(entry).toLowerCase().startsWith("group:")) {
+      groupCount++;
+    }
+  });
+  usersList.forEach(u => {
     const em = normalizeEmail(u.email);
     const gEm = normalizeEmail(u.googleEmail);
-    const isChecked = normSelected.has(em) || (gEm && normSelected.has(gEm));
-    return `
-      <label class="specific-user-check-item ${isChecked ? 'is-selected' : ''}" onclick="event.stopPropagation();">
-        <input
-          type="checkbox"
-          class="specific-user-cb-${escapeHtml(prefix)}"
-          value="${escapeHtml(em)}"
-          data-google-email="${escapeHtml(gEm)}"
-          ${isChecked ? "checked" : ""}
-          onchange="toggleSpecificUserOption('${escapeHtml(prefix)}', '${escapeHtml(em)}', '${escapeHtml(gEm)}', this.checked)"
-        />
-        <div class="specific-user-item-info">
-          <div class="specific-user-item-top">
-            <strong class="specific-user-item-name">${escapeHtml(u.name || em)}</strong>
-            <code class="specific-user-item-email">${escapeHtml(em)}</code>
-            ${u.googleLinked ? `<span class="badge badge-green" style="font-size:10px; padding:1px 6px;">Google</span>` : ""}
-          </div>
-          ${u.affiliation ? `<div class="specific-user-item-affil">🏛️ ${escapeHtml(u.affiliation)}${u.academicRole ? ` • ${escapeHtml(u.academicRole)}` : ""}</div>` : ""}
-        </div>
-      </label>
-    `;
-  }).join("");
-
-  return `${customAddHtml}${rowsHtml}`;
+    if (normSelected.has(em) || (gEm && normSelected.has(gEm))) seenUsers.add(em);
+  });
+  normSelected.forEach(entry => {
+    if (String(entry).toLowerCase().startsWith("group:")) return;
+    const em = normalizeEmail(entry);
+    const matchesUser = usersList.some(u => normalizeEmail(u.email) === em || normalizeEmail(u.googleEmail) === em);
+    if (!matchesUser && em) seenUsers.add(em);
+  });
+  return { groupCount, userCount: seenUsers.size, total: groupCount + seenUsers.size };
 }
 
 function renderSpecificUsersPicker(prefix, selectedEmails = null) {
@@ -1204,46 +1658,40 @@ function renderSpecificUsersPicker(prefix, selectedEmails = null) {
   if (selectedEmails !== null && selectedEmails !== undefined) {
     _SPECIFIC_SELECTED_MAP[prefix] = new Set(
       (Array.isArray(selectedEmails) ? selectedEmails : [])
-        .map(normalizeEmail)
+        .map(s => {
+          const str = String(s || "").trim();
+          return str.toLowerCase().startsWith("group:") ? `group:${str.slice(6).trim()}` : normalizeEmail(str);
+        })
         .filter(Boolean)
     );
   }
 
-  const normSelected = getSpecificSelectedSet(prefix);
   const usersList = Object.values(STATE.usersRegistry || {});
+  const groupsList = Object.values(STATE.userGroups || {});
   const isOpen = Boolean(_SPECIFIC_DROPDOWN_OPEN[prefix]);
   const query = _SPECIFIC_SEARCH_QUERY[prefix] || "";
-
-  // Count distinct selected users/emails
-  const chipCount = (() => {
-    const seen = new Set();
-    usersList.forEach(u => {
-      const em = normalizeEmail(u.email);
-      const gEm = normalizeEmail(u.googleEmail);
-      if (normSelected.has(em) || (gEm && normSelected.has(gEm))) seen.add(em);
-    });
-    normSelected.forEach(em => {
-      const matchesUser = usersList.some(u => normalizeEmail(u.email) === em || normalizeEmail(u.googleEmail) === em);
-      if (!matchesUser) seen.add(em);
-    });
-    return seen.size;
-  })();
+  const counts = countSpecificSelectedItems(prefix);
 
   box.innerHTML = `
     <div class="specific-users-picker" onclick="event.stopPropagation();">
       <!-- Top Row: Selected Chips Bar + Select All / Clear -->
       <div class="specific-picker-header">
         <div class="specific-picker-title">
-          <span>🎯 Allowed Specific User(s)</span>
-          <span class="specific-count-pill" id="${escapeHtml(prefix)}-selected-count-pill">${chipCount} selected</span>
+          <span>🎯 Target User Group(s) &amp; Specific User(s)</span>
+          <span class="badge badge-blue" id="${escapeHtml(prefix)}-selected-count-pill" style="margin-left:6px; font-size:10.5px;">${counts.groupCount} group(s), ${counts.userCount} user(s)</span>
         </div>
-        <div style="display:flex; gap:6px; align-items:center;">
-          <button type="button" class="specific-mini-btn" onclick="toggleAllSpecificUsers('${escapeHtml(prefix)}', true, event)">Select All (${usersList.length})</button>
-          <button type="button" class="specific-mini-btn" onclick="toggleAllSpecificUsers('${escapeHtml(prefix)}', false, event)">Clear All</button>
+        <div class="specific-picker-actions">
+          <button type="button" class="specific-picker-btn" onclick="toggleAllSpecificUsers('${escapeHtml(prefix)}', true, event)">Select All Users (${usersList.length})</button>
+          <button type="button" class="specific-picker-btn" onclick="toggleAllSpecificUsers('${escapeHtml(prefix)}', false, event)">Clear All</button>
         </div>
       </div>
 
-      <!-- Selected User Chips Container -->
+      <!-- Quick User Groups Bar -->
+      <div id="${escapeHtml(prefix)}-quick-groups-bar">
+        ${buildSpecificQuickGroupsBarHtml(prefix)}
+      </div>
+
+      <!-- Selected Group & User Chips Container -->
       <div class="specific-chips-container" id="${escapeHtml(prefix)}-chips-row">
         ${buildSpecificChipsHtml(prefix)}
       </div>
@@ -1251,27 +1699,24 @@ function renderSpecificUsersPicker(prefix, selectedEmails = null) {
       <!-- Searchable Combobox & Dropdown Trigger -->
       <div class="specific-combobox-wrap" id="${escapeHtml(prefix)}-combobox-wrap">
         <div class="specific-search-bar-row">
-          <div class="specific-search-input-wrap">
-            <span class="specific-search-icon">🔍</span>
-            <input
-              type="text"
-              id="${escapeHtml(prefix)}-user-search-input"
-              class="specific-user-search-input"
-              value="${escapeHtml(query)}"
-              placeholder="Search user by name, email, or affiliation (or type email & press Enter)..."
-              autocomplete="off"
-              onfocus="openSpecificUsersDropdown('${escapeHtml(prefix)}')"
-              oninput="filterSpecificUsersDropdown('${escapeHtml(prefix)}', this.value)"
-              onkeydown="handleSpecificSearchKeydown(event, '${escapeHtml(prefix)}')"
-            />
-          </div>
+          <input
+            type="text"
+            id="${escapeHtml(prefix)}-user-search-input"
+            class="specific-user-search-input"
+            value="${escapeHtml(query)}"
+            placeholder="🔍 Search group name, user name, email, or affiliation (or type email & press Enter)..."
+            autocomplete="off"
+            onfocus="openSpecificUsersDropdown('${escapeHtml(prefix)}')"
+            oninput="filterSpecificUsersDropdown('${escapeHtml(prefix)}', this.value)"
+            onkeydown="handleSpecificSearchKeydown(event, '${escapeHtml(prefix)}')"
+          />
           <button type="button" class="specific-dropdown-toggle-btn" id="${escapeHtml(prefix)}-dropdown-btn" onclick="toggleSpecificUsersDropdown('${escapeHtml(prefix)}', event)">
-            ${isOpen ? "▴ Hide List" : `▾ Browse Users (${usersList.length})`}
+            ${isOpen ? "▴ Hide List" : `▾ Browse (${groupsList.length} Groups, ${usersList.length} Users)`}
           </button>
         </div>
 
         <!-- Floating / Collapsible Searchable Dropdown List -->
-        <div id="${escapeHtml(prefix)}-dropdown-menu" class="specific-users-dropdown-menu" style="display:${isOpen ? 'block' : 'none'};">
+        <div id="${escapeHtml(prefix)}-dropdown-menu" class="specific-users-dropdown-menu" style="display:${isOpen ? 'flex' : 'none'};">
           ${buildSpecificDropdownMenuItemsHtml(prefix, query)}
         </div>
       </div>
@@ -1284,6 +1729,10 @@ function refreshSpecificPickerUiWithoutLosingFocus(prefix) {
   if (chipsRow) {
     chipsRow.innerHTML = buildSpecificChipsHtml(prefix);
   }
+  const quickGroups = document.getElementById(`${prefix}-quick-groups-bar`);
+  if (quickGroups) {
+    quickGroups.innerHTML = buildSpecificQuickGroupsBarHtml(prefix);
+  }
   const menu = document.getElementById(`${prefix}-dropdown-menu`);
   const query = _SPECIFIC_SEARCH_QUERY[prefix] || "";
   if (menu) {
@@ -1291,19 +1740,8 @@ function refreshSpecificPickerUiWithoutLosingFocus(prefix) {
   }
   const pill = document.getElementById(`${prefix}-selected-count-pill`);
   if (pill) {
-    const normSelected = getSpecificSelectedSet(prefix);
-    const usersList = Object.values(STATE.usersRegistry || {});
-    const seen = new Set();
-    usersList.forEach(u => {
-      const em = normalizeEmail(u.email);
-      const gEm = normalizeEmail(u.googleEmail);
-      if (normSelected.has(em) || (gEm && normSelected.has(gEm))) seen.add(em);
-    });
-    normSelected.forEach(em => {
-      const matchesUser = usersList.some(u => normalizeEmail(u.email) === em || normalizeEmail(u.googleEmail) === em);
-      if (!matchesUser) seen.add(em);
-    });
-    pill.textContent = `${seen.size} selected`;
+    const counts = countSpecificSelectedItems(prefix);
+    pill.textContent = `${counts.groupCount} group(s), ${counts.userCount} user(s)`;
   }
 }
 
@@ -1311,7 +1749,7 @@ function openSpecificUsersDropdown(prefix) {
   _SPECIFIC_DROPDOWN_OPEN[prefix] = true;
   const menu = document.getElementById(`${prefix}-dropdown-menu`);
   if (menu) {
-    menu.style.display = "block";
+    menu.style.display = "flex";
     menu.innerHTML = buildSpecificDropdownMenuItemsHtml(prefix, _SPECIFIC_SEARCH_QUERY[prefix] || "");
   }
   const btn = document.getElementById(`${prefix}-dropdown-btn`);
@@ -1326,8 +1764,9 @@ function closeSpecificUsersDropdown(prefix) {
   if (menu) menu.style.display = "none";
   const btn = document.getElementById(`${prefix}-dropdown-btn`);
   if (btn) {
-    const count = Object.keys(STATE.usersRegistry || {}).length;
-    btn.textContent = `▾ Browse Users (${count})`;
+    const uCount = Object.keys(STATE.usersRegistry || {}).length;
+    const gCount = Object.keys(STATE.userGroups || {}).length;
+    btn.textContent = `▾ Browse (${gCount} Groups, ${uCount} Users)`;
   }
 }
 
@@ -1350,7 +1789,7 @@ function filterSpecificUsersDropdown(prefix, val) {
   _SPECIFIC_DROPDOWN_OPEN[prefix] = true;
   const menu = document.getElementById(`${prefix}-dropdown-menu`);
   if (menu) {
-    menu.style.display = "block";
+    menu.style.display = "flex";
     menu.innerHTML = buildSpecificDropdownMenuItemsHtml(prefix, _SPECIFIC_SEARCH_QUERY[prefix]);
   }
   const btn = document.getElementById(`${prefix}-dropdown-btn`);
@@ -1366,14 +1805,22 @@ function handleSpecificSearchKeydown(event, prefix) {
     if (!raw) return;
 
     const norm = normalizeEmail(raw);
+    const groupsList = Object.values(STATE.userGroups || {});
     const usersList = Object.values(STATE.usersRegistry || {});
     const q = raw.toLowerCase();
-    const matches = usersList.filter(u =>
+
+    const grpMatches = groupsList.filter(g => `${g.name || ""} ${g.id || ""}`.toLowerCase().includes(q));
+    const userMatches = usersList.filter(u =>
       `${u.name || ""} ${u.email || ""} ${u.googleEmail || ""} ${u.affiliation || ""}`.toLowerCase().includes(q)
     );
 
-    if (matches.length === 1) {
-      const u = matches[0];
+    if (grpMatches.length === 1 && userMatches.length === 0) {
+      toggleSpecificGroupOption(prefix, grpMatches[0].id, true);
+      _SPECIFIC_SEARCH_QUERY[prefix] = "";
+      if (input) input.value = "";
+      refreshSpecificPickerUiWithoutLosingFocus(prefix);
+    } else if (userMatches.length === 1) {
+      const u = userMatches[0];
       toggleSpecificUserOption(prefix, normalizeEmail(u.email), normalizeEmail(u.googleEmail), true);
       _SPECIFIC_SEARCH_QUERY[prefix] = "";
       if (input) input.value = "";
@@ -1384,6 +1831,31 @@ function handleSpecificSearchKeydown(event, prefix) {
   } else if (event.key === "Escape") {
     closeSpecificUsersDropdown(prefix);
   }
+}
+
+function toggleSpecificGroupOption(prefix, gid, checked, event = null) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  const set = getSpecificSelectedSet(prefix);
+  const token = `group:${String(gid || "").trim()}`;
+  if (checked) {
+    set.add(token);
+  } else {
+    set.delete(token);
+  }
+  refreshSpecificPickerUiWithoutLosingFocus(prefix);
+}
+
+function removeSpecificGroupChip(prefix, gid, event) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  const set = getSpecificSelectedSet(prefix);
+  set.delete(`group:${String(gid || "").trim()}`);
+  refreshSpecificPickerUiWithoutLosingFocus(prefix);
 }
 
 function toggleSpecificUserOption(prefix, em, gEm, checked) {
@@ -1459,7 +1931,7 @@ function handleVisibilitySelectChange(prefix, existingAllowedUsers = null) {
   const box = document.getElementById(`${prefix}-specific-box`);
   if (!sel || !box) return;
   const mode = normalizeVisibilityMode(sel.value);
-  if (mode === "Specific") {
+  if (mode === "Specific" || mode === "Groups") {
     box.style.display = "block";
     if (existingAllowedUsers !== null) {
       renderSpecificUsersPicker(prefix, existingAllowedUsers);
@@ -1480,7 +1952,7 @@ function setVisibilityControlValues(prefix, visibility = "Public", allowedUsers 
   _SPECIFIC_SEARCH_QUERY[prefix] = "";
   _SPECIFIC_DROPDOWN_OPEN[prefix] = false;
   if (box) {
-    if (normVis === "Specific") {
+    if (normVis === "Specific" || normVis === "Groups") {
       box.style.display = "block";
       renderSpecificUsersPicker(prefix, Array.isArray(allowedUsers) ? allowedUsers : []);
     } else {
@@ -1494,11 +1966,23 @@ function getVisibilityControlValues(prefix) {
   const sel = document.getElementById(`${prefix}-visibility`);
   const visibility = normalizeVisibilityMode(sel ? sel.value : "Public");
   const allowedSet = new Set();
+  const allowedGroupsSet = new Set();
 
-  if (visibility === "Specific") {
+  if (visibility === "Specific" || visibility === "Groups") {
     const mapSet = getSpecificSelectedSet(prefix);
-    mapSet.forEach(em => {
-      if (em) allowedSet.add(normalizeEmail(em));
+    mapSet.forEach(entry => {
+      const str = String(entry || "").trim();
+      if (!str) return;
+      if (str.toLowerCase().startsWith("group:")) {
+        const gid = str.slice(6).trim();
+        if (gid) {
+          allowedSet.add(`group:${gid}`);
+          allowedGroupsSet.add(gid);
+        }
+      } else {
+        const norm = normalizeEmail(str);
+        if (norm) allowedSet.add(norm);
+      }
     });
     // Also check if user typed an email in the search input without pressing Enter yet
     const searchInput = document.getElementById(`${prefix}-user-search-input`);
@@ -1512,7 +1996,8 @@ function getVisibilityControlValues(prefix) {
 
   return {
     visibility,
-    allowed_users: Array.from(allowedSet)
+    allowed_users: Array.from(allowedSet),
+    allowed_groups: Array.from(allowedGroupsSet)
   };
 }
 
@@ -1531,7 +2016,7 @@ function canCurrentViewerSeeItem(item) {
   const activePersonalEmail = getActivePersonalWorkspaceEmail();
   const isPersonalUserSession = Boolean(activePersonalEmail) || Boolean(STATE.auth && STATE.auth.isLoggedIn && !STATE.auth.isAdmin);
   if (!isPersonalUserSession) {
-    // Public visitor (not logged in) cannot see "Users" or "Specific" items
+    // Public visitor (not logged in) cannot see "Users", "Groups", or "Specific" items
     return false;
   }
 
@@ -1539,12 +2024,33 @@ function canCurrentViewerSeeItem(item) {
     return true;
   }
 
-  if (vis === "Specific") {
-    const allowed = Array.isArray(item.allowed_users) ? item.allowed_users.map(normalizeEmail) : [];
+  if (vis === "Specific" || vis === "Groups") {
+    const rawAllowed = Array.isArray(item.allowed_users) ? item.allowed_users : [];
+    const allowedEmails = rawAllowed.filter(x => !String(x).toLowerCase().startsWith("group:")).map(normalizeEmail);
+    const allowedGroupIds = new Set(Array.isArray(item.allowed_groups) ? item.allowed_groups : []);
+    rawAllowed.forEach(x => {
+      const s = String(x || "").trim();
+      if (s.toLowerCase().startsWith("group:")) {
+        allowedGroupIds.add(s.slice(6).trim());
+      }
+    });
+
     const viewerEmail = normalizeEmail(activePersonalEmail || STATE.auth.email || "");
     const uObj = viewerEmail && STATE.usersRegistry ? STATE.usersRegistry[viewerEmail] : null;
     const viewerGoogle = normalizeEmail((uObj && uObj.googleEmail) || STATE.auth.googleEmail || "");
-    return Boolean((viewerEmail && allowed.includes(viewerEmail)) || (viewerGoogle && allowed.includes(viewerGoogle)));
+
+    if ((viewerEmail && allowedEmails.includes(viewerEmail)) || (viewerGoogle && allowedEmails.includes(viewerGoogle))) {
+      return true;
+    }
+
+    if (allowedGroupIds.size > 0 && viewerEmail) {
+      const viewerGroups = getGroupsForUserEmail(viewerEmail);
+      if (viewerGroups.some(g => allowedGroupIds.has(g.id))) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   return true;
@@ -1554,7 +2060,7 @@ function renderVisibilityBadgeHtml(item) {
   if (!item) return "";
   const isStrictAdmin = Boolean(STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail);
   const vis = normalizeVisibilityMode(item.visibility);
-  const allowed = Array.isArray(item.allowed_users) ? item.allowed_users : [];
+  const rawAllowed = Array.isArray(item.allowed_users) ? item.allowed_users : [];
 
   // Show visibility badge to Administrator on all items, or to Personal Users when an item is shared with them
   if (!isStrictAdmin && !item._sharedFromAdmin && vis === "Public") {
@@ -1567,13 +2073,35 @@ function renderVisibilityBadgeHtml(item) {
   if (vis === "Users") {
     return `<span class="badge vis-badge-users" title="Visible to All Logged-In Registered Users">👥 All Users</span>`;
   }
-  if (vis === "Specific") {
-    const label = allowed.length === 0
-      ? "Specific Users"
-      : allowed.length === 1
-        ? `Specific: ${allowed[0]}`
-        : `Specific (${allowed.length} users)`;
-    return `<span class="badge vis-badge-specific" title="Visible to Specific User(s): ${escapeHtml(allowed.join(', '))}">🎯 ${escapeHtml(label)}</span>`;
+  if (vis === "Specific" || vis === "Groups") {
+    const groupNames = [];
+    const userEmails = [];
+    const seenGids = new Set(Array.isArray(item.allowed_groups) ? item.allowed_groups : []);
+    rawAllowed.forEach(x => {
+      const s = String(x || "").trim();
+      if (s.toLowerCase().startsWith("group:")) {
+        seenGids.add(s.slice(6).trim());
+      } else if (s) {
+        userEmails.push(s);
+      }
+    });
+    seenGids.forEach(gid => {
+      const g = STATE.userGroups && STATE.userGroups[gid];
+      groupNames.push(g ? g.name : gid);
+    });
+
+    const parts = [];
+    if (groupNames.length === 1) parts.push(`🏷️ ${groupNames[0]}`);
+    else if (groupNames.length > 1) parts.push(`🏷️ ${groupNames.length} Groups`);
+
+    if (userEmails.length === 1 && groupNames.length === 0) parts.push(`🎯 ${userEmails[0]}`);
+    else if (userEmails.length >= 1) parts.push(`👤 ${userEmails.length} User${userEmails.length > 1 ? "s" : ""}`);
+
+    const label = parts.length > 0 ? parts.join(" + ") : (vis === "Groups" ? "🏷️ User Groups" : "🎯 Specific Users");
+    const tooltipParts = [];
+    if (groupNames.length > 0) tooltipParts.push(`Groups: ${groupNames.join(", ")}`);
+    if (userEmails.length > 0) tooltipParts.push(`Users: ${userEmails.join(", ")}`);
+    return `<span class="badge vis-badge-specific" title="Target Audience — ${escapeHtml(tooltipParts.join(' | ') || label)}">${escapeHtml(label)}</span>`;
   }
   if (isStrictAdmin) {
     return `<span class="badge vis-badge-public" title="Public — Visible to Everyone">🌍 Public</span>`;
@@ -1658,24 +2186,24 @@ function applyActiveWorkspaceData() {
     const ownStructures = (Array.isArray(u.workspace.structures) ? u.workspace.structures : []).filter(x => !x._sharedFromAdmin);
     const ownSchedule = (Array.isArray(u.workspace.schedule) ? u.workspace.schedule : []).filter(x => !x._sharedFromAdmin);
 
-    // Also include Admin Master items specifically shared with Registered Users ("Users") or this Specific User ("Specific")
+    // Also include Admin Master items specifically shared with Registered Users ("Users"), User Groups ("Groups"), or Specific Users/Groups ("Specific")
     const sharedMasterPapers = ((STATE.masterData && STATE.masterData.papers) || []).filter(mp => {
       const vis = normalizeVisibilityMode(mp.visibility);
-      if (vis !== "Users" && vis !== "Specific") return false;
+      if (vis !== "Users" && vis !== "Specific" && vis !== "Groups") return false;
       if (!canCurrentViewerSeeItem(mp)) return false;
       return !ownPapers.some(op => op.id === mp.id || (op.doi && mp.doi && normalizeDoiClient(op.doi) === normalizeDoiClient(mp.doi)));
     }).map(mp => ({ ...mp, _sharedFromAdmin: true }));
 
     const sharedMasterStructures = ((STATE.masterData && STATE.masterData.structures) || []).filter(ms => {
       const vis = normalizeVisibilityMode(ms.visibility);
-      if (vis !== "Users" && vis !== "Specific") return false;
+      if (vis !== "Users" && vis !== "Specific" && vis !== "Groups") return false;
       if (!canCurrentViewerSeeItem(ms)) return false;
       return !ownStructures.some(os => os.id === ms.id);
     }).map(ms => ({ ...ms, _sharedFromAdmin: true }));
 
     const sharedMasterSchedule = ((STATE.masterData && STATE.masterData.schedule) || []).filter(mev => {
       const vis = normalizeVisibilityMode(mev.visibility);
-      if (vis !== "Users" && vis !== "Specific") return false;
+      if (vis !== "Users" && vis !== "Specific" && vis !== "Groups") return false;
       if (!canCurrentViewerSeeItem(mev)) return false;
       return !ownSchedule.some(oev => oev.id === mev.id);
     }).map(mev => ({ ...mev, _sharedFromAdmin: true }));
@@ -2033,6 +2561,10 @@ async function submitStandardSignIn() {
     showErr(`No account found for "${email}". Click "Create Account" or "Google Account" above to register!`);
     return;
   }
+  if (userObj.status === "Suspended") {
+    showErr("This account has been suspended by the Administrator. Please contact lamvt.skku@gmail.com.");
+    return;
+  }
 
   const valid = await verifyUserPassword(userObj, pass);
   if (!valid) {
@@ -2257,6 +2789,10 @@ async function submitGooglePasswordLogin() {
       existingUser = findRegisteredUserByEmailOrGoogle(email);
     }
     if (existingUser) {
+      if (existingUser.status === "Suspended") {
+        showGoogleInputError("password", "This account has been suspended by the Administrator.");
+        return;
+      }
       const valid = await verifyUserPassword(existingUser, pass);
       if (!valid) {
         showGoogleInputError("password", "Incorrect password for this account.");
@@ -2655,7 +3191,7 @@ function importPublicStarterDataToUser() {
 }
 
 // ============================================================================
-// Administrator User Directory & User Content Inspector
+// Administrator User Directory, Profile/Password Editor & User Groups Manager
 // ============================================================================
 
 function renderDashboardAdminUsersSummary() {
@@ -2663,7 +3199,9 @@ function renderDashboardAdminUsersSummary() {
   updateHeaderUsersCountBadge();
   if (!container) return;
 
+  ensureUserGroupsInitialized();
   const usersList = Object.values(STATE.usersRegistry || {});
+  const groupsList = Object.values(STATE.userGroups || {});
   if (usersList.length === 0) {
     container.innerHTML = `<div style="padding:12px; color:var(--text-muted); font-size:13px;">No personal user accounts registered yet.</div>`;
     return;
@@ -2683,15 +3221,17 @@ function renderDashboardAdminUsersSummary() {
   });
 
   container.innerHTML = `
-    <div style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:12px; font-size:12.5px;">
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; font-size:12.5px; align-items:center;">
       <span class="badge badge-blue">👥 Registered Users: <strong>${usersList.length}</strong></span>
+      <span class="badge badge-purple" style="cursor:pointer;" onclick="openAdminGroupsModal()" title="Click to manage User Groups">🏷️ User Groups: <strong>${groupsList.length}</strong></span>
       <span class="badge badge-green">🌐 Google Account Linked: <strong>${googleLinkedCount}</strong></span>
-      <span class="badge badge-purple">📅 User Calendar Events: <strong>${totalEvents}</strong></span>
+      <span class="badge badge-teal">📅 User Calendar Events: <strong>${totalEvents}</strong></span>
       <span class="badge badge-amber">📚 User Reference Papers: <strong>${totalPapers}</strong></span>
       <span class="badge badge-slate">💎 User Crystal Structures: <strong>${totalStructs}</strong></span>
     </div>
-    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:10px;">
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(290px, 1fr)); gap:10px;">
       ${usersList.map(u => {
+        const normEmail = normalizeEmail(u.email);
         const ws = u.workspace || {};
         const evCount = (ws.schedule || []).length;
         const pCount = (ws.papers || []).length;
@@ -2699,17 +3239,24 @@ function renderDashboardAdminUsersSummary() {
         const latestAct = (u.activityLog && u.activityLog[0])
           ? `${u.activityLog[0].action}: ${u.activityLog[0].detail}`
           : "Workspace active";
-        const isPreviewing = STATE.adminPreviewUserEmail === normalizeEmail(u.email);
+        const isPreviewing = STATE.adminPreviewUserEmail === normEmail;
+        const isSuspended = u.status === "Suspended";
         return `
-          <div style="background:#ffffff; border:1px solid ${isPreviewing ? '#f59e0b' : '#e2e8f0'}; border-radius:10px; padding:12px; display:flex; flex-direction:column; justify-content:space-between; gap:8px;">
+          <div style="background:#ffffff; border:1px solid ${isPreviewing ? '#f59e0b' : (isSuspended ? '#fca5a5' : '#e2e8f0')}; border-radius:10px; padding:12px; display:flex; flex-direction:column; justify-content:space-between; gap:8px;">
             <div>
               <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:6px;">
-                <div style="font-weight:700; font-size:13.5px; color:#0f172a;">👤 ${escapeHtml(u.name)}</div>
+                <div style="font-weight:700; font-size:13.5px; color:#0f172a;">
+                  👤 ${escapeHtml(u.name)}
+                  ${isSuspended ? `<span class="badge badge-rose" style="font-size:10px; margin-left:4px;">Suspended</span>` : ""}
+                </div>
                 ${u.googleLinked ? `<span class="badge badge-blue" style="font-size:10.5px;">🌐 Google Linked</span>` : `<span class="badge badge-slate" style="font-size:10.5px;">Email Auth</span>`}
               </div>
               <div style="font-size:12px; color:#2563eb; font-family:monospace;">${escapeHtml(u.email)}</div>
               <div style="font-size:11.5px; color:#64748b; margin-top:2px;">🏛️ ${escapeHtml(u.affiliation || "Researcher")} (${escapeHtml(u.academicRole || "Member")})</div>
-              <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; font-size:11px;">
+              <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:6px;">
+                ${renderUserGroupBadgesHtml(normEmail)}
+              </div>
+              <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; font-size:11px;">
                 <span class="badge badge-slate">📅 ${evCount} Events</span>
                 <span class="badge badge-slate">📚 ${pCount} Papers</span>
                 <span class="badge badge-slate">💎 ${sCount} CIFs</span>
@@ -2719,9 +3266,10 @@ function renderDashboardAdminUsersSummary() {
                 ${escapeHtml(latestAct.slice(0, 90))}${latestAct.length > 90 ? "..." : ""}
               </div>
             </div>
-            <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:4px;">
-              <button class="btn btn-outline btn-sm" style="font-size:11.5px; padding:4px 9px;" onclick="openAdminUsersModal('${escapeHtml(normalizeEmail(u.email))}')">🔍 Inspect Content</button>
-              <button class="btn btn-primary btn-sm" style="font-size:11.5px; padding:4px 9px;" onclick="startAdminUserPreview('${escapeHtml(normalizeEmail(u.email))}')">👁️ Live Workspace</button>
+            <div style="display:flex; justify-content:flex-end; gap:5px; margin-top:4px; flex-wrap:wrap;">
+              <button class="btn btn-outline btn-sm" style="font-size:11px; padding:4px 8px;" onclick="openAdminEditUserModal('${escapeHtml(normEmail)}')">✏️ Edit / Password</button>
+              <button class="btn btn-outline btn-sm" style="font-size:11px; padding:4px 8px;" onclick="openAdminUsersModal('${escapeHtml(normEmail)}')">🔍 Inspect</button>
+              <button class="btn btn-primary btn-sm" style="font-size:11px; padding:4px 8px;" onclick="startAdminUserPreview('${escapeHtml(normEmail)}')">👁️ Workspace</button>
             </div>
           </div>
         `;
@@ -2732,6 +3280,7 @@ function renderDashboardAdminUsersSummary() {
 
 function openAdminUsersModal(selectEmail = null) {
   if (!requireStrictAdminAuth()) return;
+  ensureUserGroupsInitialized();
   const usersKeys = Object.keys(STATE.usersRegistry || {});
   if (selectEmail && STATE.usersRegistry[normalizeEmail(selectEmail)]) {
     STATE.selectedInspectorUserEmail = normalizeEmail(selectEmail);
@@ -2745,12 +3294,24 @@ function openAdminUsersModal(selectEmail = null) {
   pullCloudDatabaseInstant(true);
 }
 
+function filterAdminUsersByGroupPill(groupVal) {
+  const sel = document.getElementById("admin-user-group-filter");
+  if (sel) {
+    sel.value = groupVal;
+  }
+  renderAdminUsersDirectory();
+}
+
 function renderAdminUsersDirectory() {
+  ensureUserGroupsInitialized();
   const kpiBar = document.getElementById("admin-users-kpi-bar");
+  const groupsBar = document.getElementById("admin-users-groups-bar");
+  const groupFilterSel = document.getElementById("admin-user-group-filter");
   const listPanel = document.getElementById("admin-users-list-panel");
   const query = (document.getElementById("admin-user-search-input")?.value || "").toLowerCase().trim();
 
   const allUsers = Object.values(STATE.usersRegistry || {});
+  const allGroups = Object.values(STATE.userGroups || {});
   let totalEvents = 0;
   let totalPapers = 0;
   let totalStructs = 0;
@@ -2764,6 +3325,22 @@ function renderAdminUsersDirectory() {
     totalStructs += (ws.structures || []).length;
   });
 
+  if (groupFilterSel) {
+    const prevVal = groupFilterSel.value || "ALL";
+    let optsHtml = `<option value="ALL">🏷️ All User Groups (${allUsers.length} users)</option>`;
+    allGroups.forEach(g => {
+      const mCount = Array.isArray(g.members) ? g.members.length : 0;
+      optsHtml += `<option value="${escapeHtml(g.id)}">🏷️ ${escapeHtml(g.name)} (${mCount})</option>`;
+    });
+    optsHtml += `<option value="UNGROUPED">⚪ Ungrouped Users</option>`;
+    groupFilterSel.innerHTML = optsHtml;
+    if ([...groupFilterSel.options].some(o => o.value === prevVal)) {
+      groupFilterSel.value = prevVal;
+    }
+  }
+
+  const activeGroupFilter = groupFilterSel ? groupFilterSel.value : "ALL";
+
   if (kpiBar) {
     kpiBar.innerHTML = `
       <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:10px 14px;">
@@ -2771,54 +3348,96 @@ function renderAdminUsersDirectory() {
         <div style="font-size:22px; font-weight:800; color:#1e3a8a;">${allUsers.length}</div>
         <div style="font-size:11px; color:#3b82f6;">${googleLinked} Linked with Google OAuth</div>
       </div>
+      <div style="background:#faf5ff; border:1px solid #e9d5ff; border-radius:10px; padding:10px 14px; cursor:pointer;" onclick="openAdminGroupsModal()" title="Click to manage User Groups">
+        <div style="font-size:11.5px; color:#6b21a8; font-weight:600;">Configured User Groups</div>
+        <div style="font-size:22px; font-weight:800; color:#581c87;">${allGroups.length}</div>
+        <div style="font-size:11px; color:#7e22ce;">Click to manage groups &amp; members →</div>
+      </div>
       <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:10px 14px;">
         <div style="font-size:11.5px; color:#166534; font-weight:600;">Personal Calendar Events</div>
         <div style="font-size:22px; font-weight:800; color:#14532d;">${totalEvents}</div>
         <div style="font-size:11px; color:#16a34a;">Across all user schedules</div>
       </div>
       <div style="background:#fefce8; border:1px solid #fef08a; border-radius:10px; padding:10px 14px;">
-        <div style="font-size:11.5px; color:#854d0e; font-weight:600;">Personal Reference Papers</div>
-        <div style="font-size:22px; font-weight:800; color:#713f12;">${totalPapers}</div>
-        <div style="font-size:11px; color:#ca8a04;">DOI-imported &amp; annotated</div>
+        <div style="font-size:11.5px; color:#854d0e; font-weight:600;">Personal Papers &amp; CIFs</div>
+        <div style="font-size:22px; font-weight:800; color:#713f12;">${totalPapers} / ${totalStructs}</div>
+        <div style="font-size:11px; color:#ca8a04;">Papers / Crystal Structures</div>
       </div>
-      <div style="background:#f5f3ff; border:1px solid #ddd6fe; border-radius:10px; padding:10px 14px;">
-        <div style="font-size:11.5px; color:#5b21b6; font-weight:600;">Personal Crystal Structures</div>
-        <div style="font-size:22px; font-weight:800; color:#4c1d95;">${totalStructs}</div>
-        <div style="font-size:11px; color:#7c3aed;">Uploaded *.cif &amp; DFT models</div>
+    `;
+  }
+
+  if (groupsBar) {
+    groupsBar.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <span style="font-size:12px; font-weight:700; color:#334155; margin-right:4px;">🏷️ Filter by User Group:</span>
+          <button type="button" class="btn btn-sm ${activeGroupFilter === 'ALL' ? 'btn-primary' : 'btn-outline'}" style="padding:3px 10px; font-size:11.5px; border-radius:999px;" onclick="filterAdminUsersByGroupPill('ALL')">
+            All Users (${allUsers.length})
+          </button>
+          ${allGroups.map(g => {
+            const mCount = Array.isArray(g.members) ? g.members.length : 0;
+            const isSel = activeGroupFilter === g.id;
+            return `
+              <button type="button" class="btn btn-sm ${isSel ? 'btn-primary' : 'btn-outline'}" style="padding:3px 10px; font-size:11.5px; border-radius:999px;" onclick="filterAdminUsersByGroupPill('${escapeHtml(g.id)}')">
+                🏷️ ${escapeHtml(g.name)} (${mCount})
+              </button>
+            `;
+          }).join("")}
+          <button type="button" class="btn btn-sm ${activeGroupFilter === 'UNGROUPED' ? 'btn-primary' : 'btn-outline'}" style="padding:3px 10px; font-size:11.5px; border-radius:999px;" onclick="filterAdminUsersByGroupPill('UNGROUPED')">
+            ⚪ Ungrouped
+          </button>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px;" onclick="openAdminGroupsModal()">⚙️ Create / Edit Groups</button>
+        </div>
       </div>
     `;
   }
 
   const filtered = allUsers.filter(u => {
+    const normEmail = normalizeEmail(u.email);
+    const userGroups = getGroupsForUserEmail(normEmail);
+    if (activeGroupFilter === "UNGROUPED") {
+      if (userGroups.length > 0) return false;
+    } else if (activeGroupFilter && activeGroupFilter !== "ALL") {
+      if (!userGroups.some(g => g.id === activeGroupFilter)) return false;
+    }
     if (!query) return true;
-    const hay = `${u.name} ${u.email} ${u.googleEmail} ${u.affiliation} ${u.academicRole}`.toLowerCase();
+    const groupNames = userGroups.map(g => g.name).join(" ");
+    const hay = `${u.name} ${u.email} ${u.googleEmail} ${u.affiliation} ${u.academicRole} ${groupNames}`.toLowerCase();
     return hay.includes(query);
   });
 
   if (listPanel) {
     if (filtered.length === 0) {
-      listPanel.innerHTML = `<div style="padding:20px; text-align:center; color:#64748b; font-size:13px;">No matching user accounts found.</div>`;
+      listPanel.innerHTML = `<div style="padding:20px; text-align:center; color:#64748b; font-size:13px;">No matching user accounts found for this filter.</div>`;
     } else {
       listPanel.innerHTML = filtered.map(u => {
         const normEmail = normalizeEmail(u.email);
         const isActive = STATE.selectedInspectorUserEmail === normEmail;
+        const isSuspended = u.status === "Suspended";
         const ws = u.workspace || {};
         return `
           <div class="admin-user-card ${isActive ? 'active' : ''}" onclick="selectAdminInspectorUser('${escapeHtml(normEmail)}')">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:6px;">
-              <div style="font-weight:700; font-size:13.5px; color:#0f172a;">👤 ${escapeHtml(u.name)}</div>
+              <div style="font-weight:700; font-size:13.5px; color:#0f172a;">
+                👤 ${escapeHtml(u.name)}
+                ${isSuspended ? `<span class="badge badge-rose" style="font-size:9.5px;">Suspended</span>` : ""}
+              </div>
               ${u.googleLinked ? `<span class="badge badge-blue" style="font-size:10px;">🌐 Google</span>` : `<span class="badge badge-slate" style="font-size:10px;">Email</span>`}
             </div>
             <div style="font-size:12px; color:#2563eb; font-family:monospace; margin-top:2px;">${escapeHtml(u.email)}</div>
             <div style="font-size:11.5px; color:#475569; margin-top:2px;">${escapeHtml(u.affiliation || "Researcher")}</div>
-            <div style="display:flex; gap:5px; flex-wrap:wrap; margin-top:6px; font-size:10.5px;">
-              <span class="badge badge-slate">📅 ${(ws.schedule || []).length}</span>
-              <span class="badge badge-slate">📚 ${(ws.papers || []).length}</span>
-              <span class="badge badge-slate">💎 ${(ws.structures || []).length}</span>
-              <span class="badge badge-slate">🕒 ${(u.activityLog || []).length} logs</span>
+            <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:5px;">
+              ${renderUserGroupBadgesHtml(normEmail)}
             </div>
-            <div style="font-size:10.5px; color:#64748b; margin-top:5px;">
-              Last active: <strong>${escapeHtml(u.lastUpdatedAt || u.lastLoginAt || "N/A")}</strong>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:7px; padding-top:6px; border-top:1px dashed #e2e8f0;">
+              <div style="display:flex; gap:4px; font-size:10.5px;">
+                <span class="badge badge-slate">📅 ${(ws.schedule || []).length}</span>
+                <span class="badge badge-slate">📚 ${(ws.papers || []).length}</span>
+                <span class="badge badge-slate">💎 ${(ws.structures || []).length}</span>
+              </div>
+              <button type="button" class="btn btn-outline btn-sm" style="padding:2px 7px; font-size:10.5px;" onclick="event.stopPropagation(); openAdminEditUserModal('${escapeHtml(normEmail)}')">✏️ Edit / Pass</button>
             </div>
           </div>
         `;
@@ -2846,7 +3465,7 @@ function renderAdminInspectorContent() {
   const email = STATE.selectedInspectorUserEmail;
   const u = email ? STATE.usersRegistry[email] : null;
   if (!u) {
-    detailPanel.innerHTML = `<div style="text-align:center; color:#64748b; padding:60px 20px;">Select a user account on the left to inspect their personal workspace content and activity history.</div>`;
+    detailPanel.innerHTML = `<div style="text-align:center; color:#64748b; padding:60px 20px;">Select a user account on the left to inspect or edit their profile, reset their password, assign groups, or view their personal workspace content.</div>`;
     return;
   }
 
@@ -2858,6 +3477,8 @@ function renderAdminInspectorContent() {
   const litRows = ws.litReportRows || [];
   const logs = u.activityLog || [];
   const tab = STATE.selectedInspectorTab || "activity";
+  const isSuspended = u.status === "Suspended";
+  const currentPw = u.passwordPlainHint || "skku1234";
 
   let tabBodyHtml = "";
   if (tab === "activity") {
@@ -2951,30 +3572,58 @@ function renderAdminInspectorContent() {
   }
 
   detailPanel.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:14px; margin-bottom:14px;">
-      <div>
-        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-          <h3 style="font-size:17px; font-weight:800; color:#0f172a; margin:0;">👤 ${escapeHtml(u.name)}</h3>
-          <span class="badge badge-blue">${escapeHtml(u.academicRole || "Researcher")}</span>
-          ${u.googleLinked ? `<span class="badge badge-green">🌐 Google Account Linked (${escapeHtml(u.googleEmail || u.email)})</span>` : `<span class="badge badge-slate">Standard Email Account</span>`}
+    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:14px; margin-bottom:14px;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+        <div>
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <h3 style="font-size:17px; font-weight:800; color:#0f172a; margin:0;">👤 ${escapeHtml(u.name)}</h3>
+            <span class="badge badge-blue">${escapeHtml(u.academicRole || "Researcher")}</span>
+            ${isSuspended ? `<span class="badge badge-rose">🔴 Suspended</span>` : `<span class="badge badge-green">🟢 Active</span>`}
+            ${u.googleLinked ? `<span class="badge badge-blue">🌐 Google Linked (${escapeHtml(u.googleEmail || u.email)})</span>` : `<span class="badge badge-slate">Standard Email Account</span>`}
+          </div>
+          <div style="font-size:12.5px; color:#2563eb; font-family:monospace; margin-top:4px;">
+            Login Email: <strong>${escapeHtml(u.email)}</strong> | Auth Method: ${escapeHtml(u.authProvider || "Email")}
+          </div>
+          <div style="font-size:12px; color:#475569; margin-top:2px;">
+            🏛️ Affiliation: <strong>${escapeHtml(u.affiliation || "Not specified")}</strong>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:6px;">
+            <span style="font-size:11.5px; font-weight:700; color:#334155;">🏷️ Assigned Groups:</span>
+            ${renderUserGroupBadgesHtml(email)}
+            <button type="button" class="btn btn-outline btn-sm" style="padding:2px 7px; font-size:10.5px;" onclick="openAdminEditUserModal('${escapeHtml(email)}')">+ Assign / Edit Groups</button>
+          </div>
+          <div style="font-size:11.5px; color:#64748b; margin-top:6px;">
+            Registered: <strong>${escapeHtml(u.registeredAt || "N/A")}</strong> &nbsp;|&nbsp; Last Sign-In: <strong>${escapeHtml(u.lastLoginAt || "N/A")}</strong> &nbsp;|&nbsp; Last Update: <strong>${escapeHtml(u.lastUpdatedAt || "N/A")}</strong>
+          </div>
         </div>
-        <div style="font-size:12.5px; color:#2563eb; font-family:monospace; margin-top:4px;">
-          Primary Email: ${escapeHtml(u.email)} | Auth Method: ${escapeHtml(u.authProvider || "Email")}
-        </div>
-        <div style="font-size:12px; color:#475569; margin-top:2px;">
-          🏛️ Affiliation: <strong>${escapeHtml(u.affiliation || "Not specified")}</strong>
-        </div>
-        <div style="font-size:11.5px; color:#64748b; margin-top:4px;">
-          Registered: <strong>${escapeHtml(u.registeredAt || "N/A")}</strong> &nbsp;|&nbsp; Last Sign-In: <strong>${escapeHtml(u.lastLoginAt || "N/A")}</strong> &nbsp;|&nbsp; Last Content Update: <strong>${escapeHtml(u.lastUpdatedAt || "N/A")}</strong>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button class="btn btn-outline btn-sm" style="border-color:#2563eb; color:#1d4ed8; font-weight:700;" onclick="openAdminEditUserModal('${escapeHtml(email)}')">
+            ✏️ Edit Profile &amp; Groups
+          </button>
+          <button class="btn btn-outline btn-sm" style="border-color:#d97706; color:#b45309; font-weight:700;" onclick="openAdminEditUserModal('${escapeHtml(email)}', true)">
+            🔑 Change / Reset Password
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="startAdminUserPreview('${escapeHtml(email)}')">
+            👁️ Live Workspace
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="deleteUserAccountByAdmin('${escapeHtml(email)}')">
+            🗑️ Delete
+          </button>
         </div>
       </div>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <button class="btn btn-primary btn-sm" onclick="startAdminUserPreview('${escapeHtml(email)}')">
-          👁️ Switch to ${escapeHtml(u.name)}'s Live Workspace
-        </button>
-        <button class="btn btn-danger btn-sm" onclick="deleteUserAccountByAdmin('${escapeHtml(email)}')">
-          🗑️ Delete User
-        </button>
+
+      <!-- Quick Admin Password & Credentials Bar -->
+      <div style="margin-top:10px; padding-top:10px; border-top:1px dashed #cbd5e1; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; font-size:12px;">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span style="font-weight:700; color:#1e3a8a;">🔑 Account Password:</span>
+          <code style="background:#fff; border:1px solid #cbd5e1; padding:3px 8px; border-radius:6px; font-weight:700; color:#0f172a;">${escapeHtml(currentPw)}</code>
+          <button type="button" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:11px;" onclick="navigator.clipboard?.writeText('${escapeHtml(currentPw)}'); showToast('Copied user password to clipboard!', 'info');">📋 Copy</button>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <input type="text" id="inspector-quick-pw-input" placeholder="Enter new password..." style="padding:4px 8px; font-size:12px; border:1px solid #93c5fd; border-radius:6px; width:165px; background:#fff; font-family:monospace;" onkeydown="if(event.key==='Enter'){event.preventDefault(); quickSetUserPasswordFromInspector('${escapeHtml(email)}');}" />
+          <button type="button" class="btn btn-primary btn-sm" style="padding:4px 10px; font-size:11.5px;" onclick="quickSetUserPasswordFromInspector('${escapeHtml(email)}')">💾 Set Password</button>
+          <button type="button" class="btn btn-outline btn-sm" style="padding:4px 9px; font-size:11.5px; color:#b45309; border-color:#fcd34d;" onclick="quickResetUserPasswordFromInspector('${escapeHtml(email)}')">🔄 Reset to "skku1234"</button>
+        </div>
       </div>
     </div>
 
@@ -2998,6 +3647,735 @@ function renderAdminInspectorContent() {
 
     <div>${tabBodyHtml}</div>
   `;
+}
+
+async function quickSetUserPasswordFromInspector(email) {
+  if (!requireStrictAdminAuth()) return;
+  const norm = normalizeEmail(email);
+  const u = STATE.usersRegistry[norm];
+  if (!u) return;
+
+  const input = document.getElementById("inspector-quick-pw-input");
+  const newPass = (input ? input.value : "").trim();
+  if (!newPass || newPass.length < 4) {
+    showToast("Please enter a new password of at least 4 characters.", "warn");
+    if (input) input.focus();
+    return;
+  }
+
+  const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
+  u.passwordPlainHint = newPass;
+  u.passwordHash = await hashPasswordSha256(newPass);
+  u.lastUpdatedAt = nowStr;
+  u.updatedAtMs = Date.now();
+  u.activityLog = u.activityLog || [];
+  u.activityLog.unshift({
+    timestamp: nowStr,
+    category: "Security",
+    action: "Password Changed by Administrator",
+    detail: `Administrator updated account password for ${u.email}.`
+  });
+
+  persistUsersRegistryLocal();
+  saveStaticDb({ skipCloudPush: true });
+  renderAdminUsersDirectory();
+  showToast(`🔑 Updated password for ${u.name} (${u.email})!`, "success");
+  await syncDatabaseToCloudInstant(`Admin updated password for ${u.email}`, true);
+}
+
+async function quickResetUserPasswordFromInspector(email) {
+  if (!requireStrictAdminAuth()) return;
+  const norm = normalizeEmail(email);
+  const u = STATE.usersRegistry[norm];
+  if (!u) return;
+
+  const defaultPass = "skku1234";
+  const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
+  u.passwordPlainHint = defaultPass;
+  u.passwordHash = await hashPasswordSha256(defaultPass);
+  u.lastUpdatedAt = nowStr;
+  u.updatedAtMs = Date.now();
+  u.activityLog = u.activityLog || [];
+  u.activityLog.unshift({
+    timestamp: nowStr,
+    category: "Security",
+    action: "Password Reset by Administrator",
+    detail: `Administrator reset password to default ("${defaultPass}") for ${u.email}.`
+  });
+
+  try { navigator.clipboard?.writeText(defaultPass); } catch (e) {}
+  persistUsersRegistryLocal();
+  saveStaticDb({ skipCloudPush: true });
+  renderAdminUsersDirectory();
+  showToast(`🔄 Password for ${u.name} reset to "${defaultPass}" (copied to clipboard)!`, "success");
+  await syncDatabaseToCloudInstant(`Admin reset password for ${u.email}`, true);
+}
+
+// ============================================================================
+// Admin Create / Edit User Profile, Groups & Password Modal (#admin-edit-user-modal)
+// ============================================================================
+
+let _aeuSelectedGroupsSet = new Set();
+
+function openAdminEditUserModal(email = null, focusPassword = false) {
+  if (!requireStrictAdminAuth()) return;
+  ensureUserGroupsInitialized();
+
+  const norm = email ? normalizeEmail(email) : "";
+  const u = norm ? STATE.usersRegistry[norm] : null;
+
+  const titleEl = document.getElementById("aeu-modal-title");
+  const origEmailEl = document.getElementById("aeu-original-email");
+  const nameEl = document.getElementById("aeu-name");
+  const emailEl = document.getElementById("aeu-email");
+  const affilEl = document.getElementById("aeu-affiliation");
+  const roleEl = document.getElementById("aeu-role");
+  const gLinkedEl = document.getElementById("aeu-google-linked");
+  const gEmailEl = document.getElementById("aeu-google-email");
+  const statusEl = document.getElementById("aeu-status");
+  const curPwEl = document.getElementById("aeu-current-pw-display");
+  const newPwEl = document.getElementById("aeu-new-password");
+  const delBtn = document.getElementById("aeu-delete-btn");
+
+  if (u) {
+    if (titleEl) titleEl.textContent = `✏️ Edit User Profile, Groups & Password — ${u.name}`;
+    if (origEmailEl) origEmailEl.value = norm;
+    if (nameEl) nameEl.value = u.name || "";
+    if (emailEl) emailEl.value = u.email || norm;
+    if (affilEl) affilEl.value = u.affiliation || "";
+    if (roleEl) roleEl.value = u.academicRole || "Researcher";
+    if (gLinkedEl) gLinkedEl.checked = Boolean(u.googleLinked);
+    if (gEmailEl) gEmailEl.value = u.googleEmail || (u.googleLinked ? u.email : "");
+    if (statusEl) statusEl.value = u.status === "Suspended" ? "Suspended" : "Active";
+    if (curPwEl) curPwEl.textContent = u.passwordPlainHint || "skku1234";
+    if (newPwEl) {
+      newPwEl.value = "";
+      newPwEl.placeholder = "Leave blank to keep current password, or type new password...";
+    }
+    if (delBtn) delBtn.style.display = "inline-flex";
+
+    const memberGroupIds = getGroupsForUserEmail(norm).map(g => g.id);
+    _aeuSelectedGroupsSet = new Set(memberGroupIds);
+  } else {
+    if (titleEl) titleEl.textContent = "➕ Create New Personal User Account (Admin)";
+    if (origEmailEl) origEmailEl.value = "";
+    if (nameEl) nameEl.value = "";
+    if (emailEl) emailEl.value = "";
+    if (affilEl) affilEl.value = "Sungkyunkwan University (SKKU)";
+    if (roleEl) roleEl.value = "Researcher";
+    if (gLinkedEl) gLinkedEl.checked = true;
+    if (gEmailEl) gEmailEl.value = "";
+    if (statusEl) statusEl.value = "Active";
+    if (curPwEl) curPwEl.textContent = "skku1234 (default)";
+    if (newPwEl) {
+      newPwEl.value = "skku1234";
+      newPwEl.placeholder = "Enter initial password for new user...";
+    }
+    if (delBtn) delBtn.style.display = "none";
+    _aeuSelectedGroupsSet = new Set(["grp_skku_lab"]);
+  }
+
+  renderAdminEditUserGroupsChecklist();
+  document.getElementById("admin-edit-user-modal")?.classList.add("open");
+
+  if (focusPassword && newPwEl) {
+    setTimeout(() => newPwEl.focus(), 120);
+  } else if (nameEl) {
+    setTimeout(() => nameEl.focus(), 120);
+  }
+}
+
+function renderAdminEditUserGroupsChecklist() {
+  const container = document.getElementById("aeu-groups-checklist");
+  if (!container) return;
+  ensureUserGroupsInitialized();
+  const groups = Object.values(STATE.userGroups || {});
+  if (groups.length === 0) {
+    container.innerHTML = `<span style="font-size:12px; color:#64748b;">No User Groups created yet. Use the box below to create one.</span>`;
+    return;
+  }
+
+  container.innerHTML = groups.map(g => {
+    const checked = _aeuSelectedGroupsSet.has(g.id);
+    return `
+      <label style="display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:999px; border:1px solid ${checked ? '#2563eb' : '#cbd5e1'}; background:${checked ? '#eff6ff' : '#ffffff'}; color:${checked ? '#1e3a8a' : '#334155'}; font-size:12px; font-weight:600; cursor:pointer; user-select:none;">
+        <input type="checkbox" ${checked ? "checked" : ""} onchange="toggleAeuGroupSelection('${escapeHtml(g.id)}', this.checked)" style="width:14px; height:14px; accent-color:#2563eb;" />
+        <span>🏷️ ${escapeHtml(g.name)}</span>
+      </label>
+    `;
+  }).join("");
+}
+
+function toggleAeuGroupSelection(gid, checked) {
+  if (checked) {
+    _aeuSelectedGroupsSet.add(gid);
+  } else {
+    _aeuSelectedGroupsSet.delete(gid);
+  }
+  renderAdminEditUserGroupsChecklist();
+}
+
+function quickCreateGroupFromUserModal() {
+  const input = document.getElementById("aeu-quick-group-name");
+  const name = (input ? input.value : "").trim();
+  if (!name) {
+    showToast("Please enter a name for the new User Group.", "warn");
+    return;
+  }
+  ensureUserGroupsInitialized();
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 24) || "group";
+  const gid = `grp_${slug}_${Date.now().toString(36).slice(-4)}`;
+  removeDeletedGroupTombstone(gid);
+  STATE.userGroups[gid] = {
+    id: gid,
+    name,
+    color: "blue",
+    description: `User group created by Administrator`,
+    members: [],
+    updatedAtMs: Date.now()
+  };
+  _aeuSelectedGroupsSet.add(gid);
+  if (input) input.value = "";
+  persistUserGroupsLocal();
+  refreshAudienceFilterDropdowns();
+  renderAdminEditUserGroupsChecklist();
+  showToast(`🏷️ Created group "${name}" and selected it for this user!`, "success");
+}
+
+function copyAdminUserCurrentPassword() {
+  const curPwEl = document.getElementById("aeu-current-pw-display");
+  const pw = (curPwEl ? curPwEl.textContent : "").trim();
+  if (!pw || pw === "—") return;
+  try {
+    navigator.clipboard?.writeText(pw);
+    showToast(`📋 Copied password "${pw}" to clipboard!`, "info");
+  } catch (e) {}
+}
+
+function generateAdminTempPasswordForUser() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+  let suffix = "";
+  for (let i = 0; i < 4; i++) {
+    suffix += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  const tempPass = `skku-${suffix}`;
+  const newPwEl = document.getElementById("aeu-new-password");
+  if (newPwEl) {
+    newPwEl.value = tempPass;
+    newPwEl.focus();
+    newPwEl.select();
+  }
+  try { navigator.clipboard?.writeText(tempPass); } catch (e) {}
+  showToast(`🎲 Generated temporary password "${tempPass}" (copied to clipboard). Click Save to apply!`, "info");
+}
+
+function resetAdminUserPasswordToDefault() {
+  const defaultPass = "skku1234";
+  const newPwEl = document.getElementById("aeu-new-password");
+  if (newPwEl) {
+    newPwEl.value = defaultPass;
+    newPwEl.focus();
+  }
+  try { navigator.clipboard?.writeText(defaultPass); } catch (e) {}
+  showToast(`🔄 Set password field to "${defaultPass}" (copied to clipboard). Click Save to apply!`, "info");
+}
+
+async function saveAdminEditedUser() {
+  if (!requireStrictAdminAuth()) return;
+  ensureUserGroupsInitialized();
+
+  const origEmail = normalizeEmail(document.getElementById("aeu-original-email")?.value || "");
+  const name = (document.getElementById("aeu-name")?.value || "").trim();
+  const newEmail = normalizeEmail(document.getElementById("aeu-email")?.value || "");
+  const affiliation = (document.getElementById("aeu-affiliation")?.value || "").trim() || "Researcher";
+  const academicRole = (document.getElementById("aeu-role")?.value || "").trim() || "Researcher";
+  const googleLinked = Boolean(document.getElementById("aeu-google-linked")?.checked);
+  const googleEmailRaw = normalizeEmail(document.getElementById("aeu-google-email")?.value || "");
+  const status = document.getElementById("aeu-status")?.value || "Active";
+  const newPass = (document.getElementById("aeu-new-password")?.value || "").trim();
+
+  if (!name) {
+    showToast("Please enter the user's Full Name.", "warn");
+    return;
+  }
+  if (!newEmail || !newEmail.includes("@")) {
+    showToast("Please enter a valid Email Address.", "warn");
+    return;
+  }
+  if (newEmail === OWNER_GOOGLE_EMAIL) {
+    showToast("Cannot use the Administrator email for a personal user account.", "warn");
+    return;
+  }
+  if (origEmail && newEmail !== origEmail && STATE.usersRegistry[newEmail]) {
+    showToast(`Another user account with email "${newEmail}" already exists.`, "warn");
+    return;
+  }
+  if (!origEmail && STATE.usersRegistry[newEmail]) {
+    showToast(`A user account with email "${newEmail}" already exists. Editing existing account instead.`, "warn");
+  }
+
+  const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
+  removeDeletedUserTombstone(newEmail);
+
+  let userObj = origEmail ? STATE.usersRegistry[origEmail] : STATE.usersRegistry[newEmail];
+  const isNewUser = !userObj;
+
+  if (isNewUser) {
+    const initialPass = newPass || "skku1234";
+    const passHash = await hashPasswordSha256(initialPass);
+    userObj = {
+      email: newEmail,
+      name,
+      affiliation,
+      academicRole,
+      status,
+      authProvider: googleLinked ? "Email + Google Linked" : "Email & Password",
+      googleLinked,
+      googleEmail: googleLinked ? (googleEmailRaw || newEmail) : "",
+      passwordPlainHint: initialPass,
+      passwordHash: passHash,
+      groups: Array.from(_aeuSelectedGroupsSet),
+      registeredAt: nowStr,
+      lastLoginAt: nowStr,
+      lastUpdatedAt: nowStr,
+      updatedAtMs: Date.now(),
+      workspace: {
+        schedule: [],
+        papers: [],
+        structures: [],
+        expReportRows: [],
+        litReportRows: []
+      },
+      activityLog: [
+        {
+          timestamp: nowStr,
+          category: "Account",
+          action: "Created by Administrator",
+          detail: `Administrator created personal account for ${name} (${newEmail}).`
+        }
+      ]
+    };
+    STATE.usersRegistry[newEmail] = userObj;
+  } else {
+    // Handle email migration if Administrator changed the user's login email
+    if (origEmail && origEmail !== newEmail) {
+      addDeletedUserTombstone(origEmail);
+      delete STATE.usersRegistry[origEmail];
+      STATE.usersRegistry[newEmail] = userObj;
+      // Update any group memberships referencing origEmail
+      Object.values(STATE.userGroups || {}).forEach(g => {
+        if (Array.isArray(g.members)) {
+          g.members = g.members.map(m => normalizeEmail(m) === origEmail ? newEmail : normalizeEmail(m));
+        }
+      });
+      if (STATE.selectedInspectorUserEmail === origEmail) {
+        STATE.selectedInspectorUserEmail = newEmail;
+      }
+      if (STATE.adminPreviewUserEmail === origEmail) {
+        STATE.adminPreviewUserEmail = newEmail;
+      }
+    }
+
+    userObj.email = newEmail;
+    userObj.name = name;
+    userObj.affiliation = affiliation;
+    userObj.academicRole = academicRole;
+    userObj.status = status;
+    userObj.googleLinked = googleLinked;
+    userObj.googleEmail = googleLinked ? (googleEmailRaw || newEmail) : "";
+    userObj.authProvider = googleLinked ? "Email + Google Linked" : "Email & Password";
+    userObj.lastUpdatedAt = nowStr;
+    userObj.updatedAtMs = Date.now();
+    userObj.activityLog = userObj.activityLog || [];
+
+    if (newPass) {
+      if (newPass.length < 4) {
+        showToast("New password must be at least 4 characters long.", "warn");
+        return;
+      }
+      userObj.passwordPlainHint = newPass;
+      userObj.passwordHash = await hashPasswordSha256(newPass);
+      userObj.activityLog.unshift({
+        timestamp: nowStr,
+        category: "Security",
+        action: "Password Changed / Reset by Administrator",
+        detail: `Administrator updated password & profile for ${name} (${newEmail}).`
+      });
+    } else {
+      userObj.activityLog.unshift({
+        timestamp: nowStr,
+        category: "Profile",
+        action: "Profile & Groups Updated by Administrator",
+        detail: `Updated profile (${affiliation} — ${academicRole}) and group assignments.`
+      });
+    }
+  }
+
+  // Update group memberships for this user across all groups
+  Object.values(STATE.userGroups || {}).forEach(g => {
+    g.members = Array.isArray(g.members) ? g.members.map(normalizeEmail) : [];
+    const shouldBeMember = _aeuSelectedGroupsSet.has(g.id);
+    const idx = g.members.indexOf(newEmail);
+    if (shouldBeMember && idx === -1) {
+      g.members.push(newEmail);
+      g.updatedAtMs = Date.now();
+    } else if (!shouldBeMember && idx !== -1) {
+      g.members.splice(idx, 1);
+      g.updatedAtMs = Date.now();
+    }
+  });
+  userObj.groups = Array.from(_aeuSelectedGroupsSet);
+
+  syncUserAndGroupMemberships();
+  persistUsersRegistryLocal();
+  persistUserGroupsLocal();
+  saveStaticDb({ skipCloudPush: true });
+
+  STATE.selectedInspectorUserEmail = newEmail;
+  closeModal("admin-edit-user-modal");
+  applyActiveWorkspaceData();
+  refreshAllWorkspaceViews();
+  renderAdminUsersDirectory();
+
+  showToast(`✅ Saved user profile${newPass ? " & new password" : ""} for ${name} (${newEmail})!`, "success");
+  await syncDatabaseToCloudInstant(`Admin updated user (${newEmail})`, true);
+}
+
+async function deleteUserFromEditModal() {
+  const origEmail = normalizeEmail(document.getElementById("aeu-original-email")?.value || "");
+  if (!origEmail) return;
+  closeModal("admin-edit-user-modal");
+  await deleteUserAccountByAdmin(origEmail);
+}
+
+// ============================================================================
+// Admin User Groups Management Modal (#admin-groups-modal)
+// ============================================================================
+
+let _agmSelectedMembersSet = new Set();
+
+function openAdminGroupsModal(selectGroupId = null) {
+  if (!requireStrictAdminAuth()) return;
+  ensureUserGroupsInitialized();
+
+  const groupIds = Object.keys(STATE.userGroups || {});
+  if (selectGroupId && STATE.userGroups[selectGroupId]) {
+    STATE.selectedAdminGroupId = selectGroupId;
+  } else if (!STATE.selectedAdminGroupId || !STATE.userGroups[STATE.selectedAdminGroupId]) {
+    STATE.selectedAdminGroupId = groupIds[0] || null;
+  }
+
+  renderAdminGroupsModalList();
+  if (STATE.selectedAdminGroupId && STATE.userGroups[STATE.selectedAdminGroupId]) {
+    selectGroupInAdminModal(STATE.selectedAdminGroupId);
+  } else {
+    startNewUserGroupInModal();
+  }
+
+  document.getElementById("admin-groups-modal")?.classList.add("open");
+}
+
+function countItemsSharedWithGroup(gid) {
+  const token = `group:${gid}`;
+  const checkItem = (item) => {
+    if (!item) return false;
+    const vis = normalizeVisibilityMode(item.visibility);
+    if (vis !== "Groups" && vis !== "Specific") return false;
+    const allowedUsers = Array.isArray(item.allowed_users) ? item.allowed_users : [];
+    const allowedGroups = Array.isArray(item.allowed_groups) ? item.allowed_groups : [];
+    return allowedGroups.includes(gid) || allowedUsers.includes(token);
+  };
+  const papers = ((STATE.masterData && STATE.masterData.papers) || STATE.papers || []).filter(checkItem).length;
+  const structures = ((STATE.masterData && STATE.masterData.structures) || STATE.structures || []).filter(checkItem).length;
+  const schedule = ((STATE.masterData && STATE.masterData.schedule) || STATE.schedule || []).filter(checkItem).length;
+  return { papers, structures, schedule, total: papers + structures + schedule };
+}
+
+function renderAdminGroupsModalList() {
+  ensureUserGroupsInitialized();
+  const listEl = document.getElementById("admin-groups-list-panel");
+  const totalBadge = document.getElementById("agm-total-groups-badge");
+  const groups = Object.values(STATE.userGroups || {});
+
+  if (totalBadge) {
+    totalBadge.textContent = `${groups.length} group${groups.length === 1 ? "" : "s"}`;
+  }
+  if (!listEl) return;
+
+  if (groups.length === 0) {
+    listEl.innerHTML = `<div style="padding:20px; text-align:center; color:#64748b; font-size:12.5px;">No user groups configured yet. Click "+ Create New Group" above.</div>`;
+    return;
+  }
+
+  listEl.innerHTML = groups.map(g => {
+    const isAct = STATE.selectedAdminGroupId === g.id;
+    const mCount = Array.isArray(g.members) ? g.members.length : 0;
+    const shared = countItemsSharedWithGroup(g.id);
+    const badgeClass = `badge-${g.color || "blue"}`;
+    return `
+      <div class="admin-user-card ${isAct ? "active" : ""}" onclick="selectGroupInAdminModal('${escapeHtml(g.id)}')">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
+          <span class="badge ${badgeClass}" style="font-size:11.5px;">🏷️ ${escapeHtml(g.name)}</span>
+          <span style="font-size:11px; font-weight:700; color:#475569;">👥 ${mCount} member${mCount === 1 ? "" : "s"}</span>
+        </div>
+        <div style="font-size:11.5px; color:#64748b; margin-top:5px;">
+          ${escapeHtml(g.description || "No description")}
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; padding-top:5px; border-top:1px dashed #e2e8f0; font-size:10.5px; color:#1e40af;">
+          <span>🔒 Shared items: <strong>${shared.total}</strong> (${shared.papers}P, ${shared.structures}S, ${shared.schedule}E)</span>
+          <span style="font-family:monospace; color:#94a3b8;">${escapeHtml(g.id)}</span>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function selectGroupInAdminModal(gid) {
+  ensureUserGroupsInitialized();
+  const g = STATE.userGroups[gid];
+  if (!g) return;
+  STATE.selectedAdminGroupId = gid;
+
+  const titleEl = document.getElementById("agm-editor-title");
+  const idEl = document.getElementById("agm-id");
+  const nameEl = document.getElementById("agm-name");
+  const colorEl = document.getElementById("agm-color");
+  const descEl = document.getElementById("agm-desc");
+  const delBtn = document.getElementById("agm-delete-btn");
+  const shortcutEl = document.getElementById("agm-group-filter-shortcut");
+
+  if (titleEl) titleEl.textContent = `🏷️ Edit User Group — ${g.name}`;
+  if (idEl) idEl.value = g.id;
+  if (nameEl) nameEl.value = g.name || "";
+  if (colorEl) colorEl.value = g.color || "blue";
+  if (descEl) descEl.value = g.description || "";
+  if (delBtn) delBtn.style.display = "inline-flex";
+  if (shortcutEl) {
+    shortcutEl.innerHTML = `
+      <button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11px;" onclick="filterWebsiteByUserGroup('${escapeHtml(g.id)}', 'GROUP_VIEW')">
+        👁️ Preview Content Viewable by Group
+      </button>
+    `;
+  }
+
+  _agmSelectedMembersSet = new Set((g.members || []).map(normalizeEmail));
+  renderAdminGroupsModalList();
+  renderAdminGroupMembersChecklist();
+  renderGroupSharedStatsBox(g.id);
+}
+
+function startNewUserGroupInModal() {
+  STATE.selectedAdminGroupId = null;
+  const titleEl = document.getElementById("agm-editor-title");
+  const idEl = document.getElementById("agm-id");
+  const nameEl = document.getElementById("agm-name");
+  const colorEl = document.getElementById("agm-color");
+  const descEl = document.getElementById("agm-desc");
+  const delBtn = document.getElementById("agm-delete-btn");
+  const shortcutEl = document.getElementById("agm-group-filter-shortcut");
+  const statsBox = document.getElementById("agm-shared-stats-box");
+
+  if (titleEl) titleEl.textContent = "➕ Create New User Group";
+  if (idEl) idEl.value = "";
+  if (nameEl) {
+    nameEl.value = "";
+    setTimeout(() => nameEl.focus(), 100);
+  }
+  if (colorEl) colorEl.value = "blue";
+  if (descEl) descEl.value = "";
+  if (delBtn) delBtn.style.display = "none";
+  if (shortcutEl) shortcutEl.innerHTML = "";
+  if (statsBox) {
+    statsBox.innerHTML = `💡 Fill in the group name and select members above, then click <strong>"💾 Save User Group"</strong>. Once saved, you can target this group in any Visibility dropdown or filter the website by this group.`;
+  }
+
+  _agmSelectedMembersSet = new Set();
+  renderAdminGroupsModalList();
+  renderAdminGroupMembersChecklist();
+}
+
+function renderAdminGroupMembersChecklist() {
+  const container = document.getElementById("agm-members-checklist");
+  const countLabel = document.getElementById("agm-member-count-label");
+  const query = (document.getElementById("agm-member-search")?.value || "").toLowerCase().trim();
+
+  if (countLabel) {
+    countLabel.textContent = `${_agmSelectedMembersSet.size} selected`;
+  }
+  if (!container) return;
+
+  const users = Object.values(STATE.usersRegistry || {});
+  const filtered = users.filter(u => {
+    if (!query) return true;
+    const hay = `${u.name} ${u.email} ${u.affiliation} ${u.academicRole}`.toLowerCase();
+    return hay.includes(query);
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div style="padding:12px; text-align:center; color:#64748b; font-size:12px;">No matching users found.</div>`;
+    return;
+  }
+
+  container.innerHTML = filtered.map(u => {
+    const normEmail = normalizeEmail(u.email);
+    const checked = _agmSelectedMembersSet.has(normEmail);
+    return `
+      <label style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; border-radius:7px; border:1px solid ${checked ? '#3b82f6' : '#e2e8f0'}; background:${checked ? '#eff6ff' : '#ffffff'}; cursor:pointer; font-size:12.5px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="checkbox" ${checked ? "checked" : ""} onchange="toggleGroupMemberInModal('${escapeHtml(normEmail)}', this.checked)" style="width:15px; height:15px; accent-color:#2563eb;" />
+          <div>
+            <strong style="color:#0f172a;">👤 ${escapeHtml(u.name)}</strong>
+            <span style="font-family:monospace; color:#2563eb; font-size:11.5px; margin-left:6px;">${escapeHtml(u.email)}</span>
+            <div style="font-size:11px; color:#64748b;">${escapeHtml(u.affiliation || "Researcher")} (${escapeHtml(u.academicRole || "Member")})</div>
+          </div>
+        </div>
+        ${checked ? `<span class="badge badge-blue" style="font-size:10px;">Member</span>` : ""}
+      </label>
+    `;
+  }).join("");
+}
+
+function toggleGroupMemberInModal(email, checked) {
+  const norm = normalizeEmail(email);
+  if (checked) {
+    _agmSelectedMembersSet.add(norm);
+  } else {
+    _agmSelectedMembersSet.delete(norm);
+  }
+  renderAdminGroupMembersChecklist();
+}
+
+function toggleAllGroupModalMembers(selectAll) {
+  const users = Object.values(STATE.usersRegistry || {});
+  if (selectAll) {
+    users.forEach(u => _agmSelectedMembersSet.add(normalizeEmail(u.email)));
+  } else {
+    _agmSelectedMembersSet.clear();
+  }
+  renderAdminGroupMembersChecklist();
+}
+
+function renderGroupSharedStatsBox(gid) {
+  const box = document.getElementById("agm-shared-stats-box");
+  if (!box || !gid || !STATE.userGroups[gid]) return;
+  const g = STATE.userGroups[gid];
+  const stats = countItemsSharedWithGroup(gid);
+  box.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+      <div>
+        <strong>🔒 Content Targeted to "${escapeHtml(g.name)}":</strong>
+        <span style="margin-left:6px;">📚 <strong>${stats.papers}</strong> Papers &nbsp;|&nbsp; 💎 <strong>${stats.structures}</strong> Structures &nbsp;|&nbsp; 📅 <strong>${stats.schedule}</strong> Events</span>
+      </div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px; background:#fff;" onclick="filterWebsiteByUserGroup('${escapeHtml(gid)}', 'GROUP_ASSIGNED')">
+          🎯 Filter Assigned Items
+        </button>
+        <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px; background:#fff;" onclick="filterWebsiteByUserGroup('${escapeHtml(gid)}', 'GROUP_VIEW')">
+          👁️ Filter All Viewable by Group
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+async function saveUserGroupFromModal() {
+  if (!requireStrictAdminAuth()) return;
+  ensureUserGroupsInitialized();
+
+  let gid = (document.getElementById("agm-id")?.value || "").trim();
+  const name = (document.getElementById("agm-name")?.value || "").trim();
+  const color = document.getElementById("agm-color")?.value || "blue";
+  const description = (document.getElementById("agm-desc")?.value || "").trim();
+
+  if (!name) {
+    showToast("Please enter a Group Name.", "warn");
+    return;
+  }
+
+  if (!gid) {
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 24) || "group";
+    gid = `grp_${slug}_${Date.now().toString(36).slice(-4)}`;
+  }
+
+  removeDeletedGroupTombstone(gid);
+  STATE.userGroups[gid] = {
+    id: gid,
+    name,
+    color,
+    description,
+    members: Array.from(_agmSelectedMembersSet),
+    updatedAtMs: Date.now()
+  };
+
+  // Sync each user's .groups array with group memberships
+  Object.values(STATE.usersRegistry || {}).forEach(u => {
+    const normEmail = normalizeEmail(u.email);
+    u.groups = Array.isArray(u.groups) ? u.groups : [];
+    const hasGid = u.groups.includes(gid);
+    const shouldHave = _agmSelectedMembersSet.has(normEmail);
+    if (shouldHave && !hasGid) {
+      u.groups.push(gid);
+    } else if (!shouldHave && hasGid) {
+      u.groups = u.groups.filter(x => x !== gid);
+    }
+  });
+
+  syncUserAndGroupMemberships();
+  persistUserGroupsLocal();
+  persistUsersRegistryLocal();
+  saveStaticDb({ skipCloudPush: true });
+
+  STATE.selectedAdminGroupId = gid;
+  refreshAudienceFilterDropdowns();
+  renderAdminGroupsModalList();
+  selectGroupInAdminModal(gid);
+  renderAdminUsersDirectory();
+  renderDashboardAdminUsersSummary();
+
+  showToast(`🏷️ Saved User Group "${name}" (${_agmSelectedMembersSet.size} members)!`, "success");
+  await syncDatabaseToCloudInstant(`Saved User Group (${name})`, true);
+}
+
+async function deleteCurrentGroupFromModal() {
+  if (!requireStrictAdminAuth()) return;
+  const gid = (document.getElementById("agm-id")?.value || "").trim();
+  if (!gid || !STATE.userGroups[gid]) return;
+  const g = STATE.userGroups[gid];
+
+  const ok = await confirmAction(
+    "Are you sure you want to delete this User Group? Users in this group will not be deleted, only the group tag itself.",
+    `Group: ${g.name} (${(g.members || []).length} members)`
+  );
+  if (!ok) return;
+
+  addDeletedGroupTombstone(gid);
+  delete STATE.userGroups[gid];
+
+  Object.values(STATE.usersRegistry || {}).forEach(u => {
+    if (Array.isArray(u.groups)) {
+      u.groups = u.groups.filter(x => x !== gid);
+    }
+  });
+
+  syncUserAndGroupMemberships();
+  persistUserGroupsLocal();
+  persistUsersRegistryLocal();
+  saveStaticDb({ skipCloudPush: true });
+
+  const remainingIds = Object.keys(STATE.userGroups || {});
+  STATE.selectedAdminGroupId = remainingIds[0] || null;
+  refreshAudienceFilterDropdowns();
+  renderAdminGroupsModalList();
+  if (STATE.selectedAdminGroupId) {
+    selectGroupInAdminModal(STATE.selectedAdminGroupId);
+  } else {
+    startNewUserGroupInModal();
+  }
+  renderAdminUsersDirectory();
+  renderDashboardAdminUsersSummary();
+
+  showToast(`Deleted User Group "${g.name}".`, "info");
+  await syncDatabaseToCloudInstant(`Deleted User Group (${g.name})`, true);
 }
 
 function startAdminUserPreview(email) {
@@ -3036,6 +4414,11 @@ async function deleteUserAccountByAdmin(email) {
 
   addDeletedUserTombstone(norm);
   delete STATE.usersRegistry[norm];
+  Object.values(STATE.userGroups || {}).forEach(g => {
+    if (Array.isArray(g.members)) {
+      g.members = g.members.filter(m => normalizeEmail(m) !== norm);
+    }
+  });
   if (STATE.adminPreviewUserEmail === norm) {
     STATE.adminPreviewUserEmail = null;
   }
@@ -3043,6 +4426,7 @@ async function deleteUserAccountByAdmin(email) {
     STATE.selectedInspectorUserEmail = Object.keys(STATE.usersRegistry)[0] || null;
   }
   persistUsersRegistryLocal();
+  persistUserGroupsLocal();
   saveStaticDb({ skipCloudPush: true });
   applyActiveWorkspaceData();
   refreshAllWorkspaceViews();
@@ -3643,9 +5027,11 @@ async function importPaperByDoiCommon(rawDoiInput) {
 function renderPapersList() {
   const query = (document.getElementById("paper-search")?.value || "").toLowerCase();
   const statusFilter = document.getElementById("paper-status-filter")?.value || "ALL";
+  const audienceFilter = document.getElementById("paper-audience-filter")?.value || "ALL";
 
   const filtered = STATE.papers.filter(p => {
     if (statusFilter !== "ALL" && p.status !== statusFilter) return false;
+    if (!doesItemMatchAudienceFilter(p, audienceFilter)) return false;
     if (!query) return true;
     const hay = `${p.title} ${p.authors} ${p.journal} ${p.doi} ${p.material_system} ${p.characterization_tags} ${p.notes}`.toLowerCase();
     return hay.includes(query);
@@ -3729,7 +5115,8 @@ function updatePaperBatchBar(filtered = null) {
     customControls.style.display = count > 0 ? "flex" : "none";
   }
   if (specBox) {
-    if (count > 0 && visSel && normalizeVisibilityMode(visSel.value) === "Specific") {
+    const m = visSel ? normalizeVisibilityMode(visSel.value) : "Public";
+    if (count > 0 && (m === "Specific" || m === "Groups")) {
       specBox.style.display = "block";
     } else {
       specBox.style.display = "none";
@@ -3757,8 +5144,8 @@ async function applyBatchPapersVisibility() {
     return;
   }
   const visMeta = getVisibilityControlValues("batch-lit");
-  if (visMeta.visibility === "Specific" && (!visMeta.allowed_users || visMeta.allowed_users.length === 0)) {
-    showToast("Please select at least one specific user from the dropdown.", "warn");
+  if ((visMeta.visibility === "Specific" || visMeta.visibility === "Groups") && (!visMeta.allowed_users || visMeta.allowed_users.length === 0)) {
+    showToast("Please select at least one specific user or user group from the dropdown.", "warn");
     return;
   }
   const ids = new Set(Array.from(STATE.selectedPaperIds).map(Number));
@@ -3768,6 +5155,7 @@ async function applyBatchPapersVisibility() {
     if (ids.has(Number(p.id))) {
       p.visibility = visMeta.visibility;
       p.allowed_users = visMeta.allowed_users;
+      p.allowed_groups = visMeta.allowed_groups;
       updatedCount++;
     }
   });
@@ -3776,6 +5164,7 @@ async function applyBatchPapersVisibility() {
       if (ids.has(Number(p.id))) {
         p.visibility = visMeta.visibility;
         p.allowed_users = visMeta.allowed_users;
+        p.allowed_groups = visMeta.allowed_groups;
       }
     });
   }
@@ -3871,9 +5260,11 @@ function toggleSelectAllPapers(isChecked) {
   if (!STATE.selectedPaperIds) STATE.selectedPaperIds = new Set();
   const query = (document.getElementById("paper-search")?.value || "").toLowerCase();
   const statusFilter = document.getElementById("paper-status-filter")?.value || "ALL";
+  const audienceFilter = document.getElementById("paper-audience-filter")?.value || "ALL";
 
   const filtered = STATE.papers.filter(p => {
     if (statusFilter !== "ALL" && p.status !== statusFilter) return false;
+    if (!doesItemMatchAudienceFilter(p, audienceFilter)) return false;
     if (!query) return true;
     const hay = `${p.title} ${p.authors} ${p.journal} ${p.doi} ${p.material_system} ${p.characterization_tags} ${p.notes}`.toLowerCase();
     return hay.includes(query);
@@ -4794,10 +6185,12 @@ function renderStructuresList() {
   const query = (document.getElementById("struct-search")?.value || "").toLowerCase();
   const systemFilter = document.getElementById("struct-system-filter")?.value || "ALL";
   const typeFilter = document.getElementById("struct-type-filter")?.value || "ALL";
+  const audienceFilter = document.getElementById("struct-audience-filter")?.value || "ALL";
 
   const filtered = STATE.structures.filter(s => {
     if (systemFilter !== "ALL" && s.crystal_system !== systemFilter) return false;
     if (typeFilter !== "ALL" && s.structure_type !== typeFilter) return false;
+    if (!doesItemMatchAudienceFilter(s, audienceFilter)) return false;
     if (!query) return true;
     const hay = `${s.name} ${s.chemical_formula} ${s.space_group} ${s.mp_id} ${s.dft_code} ${s.dft_functional} ${s.notes}`.toLowerCase();
     return hay.includes(query);
@@ -4919,7 +6312,8 @@ function updateStructBatchBar(filtered = null) {
   if (customControls) customControls.style.display = count > 0 ? "flex" : "none";
 
   if (specBox) {
-    if (count > 0 && visSel && normalizeVisibilityMode(visSel.value) === "Specific") {
+    const m = visSel ? normalizeVisibilityMode(visSel.value) : "Public";
+    if (count > 0 && (m === "Specific" || m === "Groups")) {
       specBox.style.display = "block";
     } else {
       specBox.style.display = "none";
@@ -4968,10 +6362,12 @@ function toggleSelectAllStructures(isChecked) {
   const query = (document.getElementById("struct-search")?.value || "").toLowerCase();
   const systemFilter = document.getElementById("struct-system-filter")?.value || "ALL";
   const typeFilter = document.getElementById("struct-type-filter")?.value || "ALL";
+  const audienceFilter = document.getElementById("struct-audience-filter")?.value || "ALL";
 
   const filtered = STATE.structures.filter(s => {
     if (systemFilter !== "ALL" && s.crystal_system !== systemFilter) return false;
     if (typeFilter !== "ALL" && s.structure_type !== typeFilter) return false;
+    if (!doesItemMatchAudienceFilter(s, audienceFilter)) return false;
     if (!query) return true;
     const hay = `${s.name} ${s.chemical_formula} ${s.space_group} ${s.mp_id} ${s.dft_code} ${s.dft_functional} ${s.notes}`.toLowerCase();
     return hay.includes(query);
@@ -4997,8 +6393,8 @@ async function applyBatchStructuresVisibility() {
     return;
   }
   const visMeta = getVisibilityControlValues("batch-struct");
-  if (visMeta.visibility === "Specific" && (!visMeta.allowed_users || visMeta.allowed_users.length === 0)) {
-    showToast("Please select at least one specific user from the dropdown.", "warn");
+  if ((visMeta.visibility === "Specific" || visMeta.visibility === "Groups") && (!visMeta.allowed_users || visMeta.allowed_users.length === 0)) {
+    showToast("Please select at least one specific user or user group from the dropdown.", "warn");
     return;
   }
   const ids = new Set(Array.from(STATE.selectedStructureIds).map(Number));
@@ -5008,6 +6404,7 @@ async function applyBatchStructuresVisibility() {
     if (ids.has(Number(s.id))) {
       s.visibility = visMeta.visibility;
       s.allowed_users = visMeta.allowed_users;
+      s.allowed_groups = visMeta.allowed_groups;
       updatedCount++;
     }
   });
@@ -5016,6 +6413,7 @@ async function applyBatchStructuresVisibility() {
       if (ids.has(Number(s.id))) {
         s.visibility = visMeta.visibility;
         s.allowed_users = visMeta.allowed_users;
+        s.allowed_groups = visMeta.allowed_groups;
       }
     });
   }
@@ -6422,7 +7820,12 @@ function downloadPoscarById(id) {
 function renderScheduleList() {
   if (!STATE.selectedScheduleIds) STATE.selectedScheduleIds = new Set();
   const statusFilter = document.getElementById("schedule-status-filter")?.value || "ALL";
-  const filtered = STATE.schedule.filter(s => statusFilter === "ALL" || s.status === statusFilter);
+  const audienceFilter = document.getElementById("schedule-audience-filter")?.value || "ALL";
+  const filtered = STATE.schedule.filter(s => {
+    if (statusFilter !== "ALL" && s.status !== statusFilter) return false;
+    if (!doesItemMatchAudienceFilter(s, audienceFilter)) return false;
+    return true;
+  });
 
   const container = document.getElementById("schedule-list-container");
   if (!container) return;
@@ -6548,7 +7951,12 @@ function toggleSelectSchedule(id, isChecked) {
 function toggleSelectAllSchedule(isChecked) {
   if (!STATE.selectedScheduleIds) STATE.selectedScheduleIds = new Set();
   const statusFilter = document.getElementById("schedule-status-filter")?.value || "ALL";
-  const filtered = (STATE.schedule || []).filter(s => statusFilter === "ALL" || s.status === statusFilter);
+  const audienceFilter = document.getElementById("schedule-audience-filter")?.value || "ALL";
+  const filtered = (STATE.schedule || []).filter(s => {
+    if (statusFilter !== "ALL" && s.status !== statusFilter) return false;
+    if (!doesItemMatchAudienceFilter(s, audienceFilter)) return false;
+    return true;
+  });
   filtered.forEach(s => {
     const canModifyItem = Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin;
     if (!canModifyItem) return;
@@ -6573,8 +7981,8 @@ async function applyBatchScheduleVisibility() {
     return;
   }
   const visData = getVisibilityControlValues("batch-sched");
-  if (visData.visibility === "Specific" && (!visData.allowed_users || visData.allowed_users.length === 0)) {
-    showToast("Please select at least 1 specific user (or type an email) for Specific User(s) visibility.", "warn");
+  if ((visData.visibility === "Specific" || visData.visibility === "Groups") && (!visData.allowed_users || visData.allowed_users.length === 0)) {
+    showToast("Please select at least 1 specific user or user group from the dropdown.", "warn");
     return;
   }
   const ids = Array.from(STATE.selectedScheduleIds);
@@ -6584,15 +7992,26 @@ async function applyBatchScheduleVisibility() {
     if (s && (Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin)) {
       s.visibility = visData.visibility;
       s.allowed_users = visData.allowed_users;
+      s.allowed_groups = visData.allowed_groups;
       updatedCount++;
     }
   });
-  saveStaticState();
-  renderScheduleList();
-  renderCalendarGrid();
+  if (STATE.masterData && Array.isArray(STATE.masterData.schedule)) {
+    ids.forEach(id => {
+      const s = STATE.masterData.schedule.find(x => x.id === id);
+      if (s) {
+        s.visibility = visData.visibility;
+        s.allowed_users = visData.allowed_users;
+        s.allowed_groups = visData.allowed_groups;
+      }
+    });
+  }
+  saveStaticDb();
+  applyActiveWorkspaceData();
+  refreshAllWorkspaceViews();
   const specBox = document.getElementById("batch-sched-specific-box");
-  if (specBox && visData.visibility !== "Specific") specBox.style.display = "none";
-  showToast(`Updated visibility to "${visData.visibility}" for ${updatedCount} selected event(s)!`, "success");
+  if (specBox && visData.visibility !== "Specific" && visData.visibility !== "Groups") specBox.style.display = "none";
+  showToast(`🛡️ Updated visibility to "${visData.visibility}" for ${updatedCount} selected event(s)!`, "success");
 }
 
 async function applyBatchScheduleField(fieldType) {
@@ -6616,9 +8035,9 @@ async function applyBatchScheduleField(fieldType) {
         updatedCount++;
       }
     });
-    saveStaticState();
+    saveStaticDb();
     renderScheduleList();
-    renderCalendarGrid();
+    renderMonthlyCalendar();
     showToast(`Updated Status to "${val}" for ${updatedCount} event(s)!`, "success");
   } else if (fieldType === "priority") {
     const val = document.getElementById("batch-sched-priority")?.value;
@@ -6633,7 +8052,7 @@ async function applyBatchScheduleField(fieldType) {
         updatedCount++;
       }
     });
-    saveStaticState();
+    saveStaticDb();
     renderScheduleList();
     showToast(`Updated Priority to "${val}" for ${updatedCount} event(s)!`, "success");
   } else if (fieldType === "report") {
@@ -6650,7 +8069,7 @@ async function applyBatchScheduleField(fieldType) {
         updatedCount++;
       }
     });
-    saveStaticState();
+    saveStaticDb();
     renderScheduleList();
     showToast(`${numVal ? "Included" : "Removed"} ${updatedCount} event(s) ${numVal ? "in" : "from"} Weekly Report!`, "success");
   }
@@ -6680,11 +8099,11 @@ async function deleteSelectedSchedule() {
       } catch (e) {}
     }
   } else {
-    saveStaticState();
+    saveStaticDb();
   }
   STATE.selectedScheduleIds.clear();
   renderScheduleList();
-  renderCalendarGrid();
+  renderMonthlyCalendar();
   loadDashboard();
   showToast(`Deleted ${count} selected event(s).`, "info");
 }
@@ -6881,6 +8300,11 @@ async function loadStaticFallbackData() {
       } else {
         ensureUsersRegistryInitialized();
       }
+      if (remoteData && remoteData.user_groups) {
+        ensureUserGroupsInitialized(remoteData.user_groups);
+      } else {
+        ensureUserGroupsInitialized();
+      }
       if (remoteData && (remoteData.papers || remoteData.profile || remoteData.structures)) {
         const saved = localStorage.getItem("matsci_static_db_v4");
         if (saved) {
@@ -6888,6 +8312,9 @@ async function loadStaticFallbackData() {
             const parsed = JSON.parse(saved);
             if (parsed && parsed.users_registry) {
               ensureUsersRegistryInitialized(parsed.users_registry);
+            }
+            if (parsed && parsed.user_groups) {
+              ensureUserGroupsInitialized(parsed.user_groups);
             }
             const localTime = parsed && parsed.updated_at ? new Date(parsed.updated_at).getTime() : 0;
             const remoteExportedStr = (remoteData.exported_at || "").replace("20.", "20");
@@ -7458,7 +8885,9 @@ async function loadStaticFallbackData() {
 
   // Switch active STATE.papers / structures / schedule to the logged-in personal user's workspace (if applicable),
   // while keeping STATE.profile strictly locked to the Administrator's Academic CV
+  ensureUserGroupsInitialized();
   applyActiveWorkspaceData();
+  refreshAudienceFilterDropdowns();
 
   const dashData = {
     stats: {
@@ -7533,7 +8962,9 @@ function saveStaticDb(options = {}) {
     schedule: (STATE.masterData && STATE.masterData.schedule) || STATE.schedule,
     profile: (STATE.masterData && STATE.masterData.profile) || STATE.profile,
     users_registry: STATE.usersRegistry || {},
-    deleted_users: getDeletedUsersSet(),
+    user_groups: STATE.userGroups || {},
+    deleted_users: Array.from(getDeletedUsersSet()),
+    deleted_groups: Array.from(getDeletedGroupsSet()),
     updated_at: new Date().toISOString()
   }));
 
@@ -7556,7 +8987,9 @@ function exportDataJson() {
     structures: (STATE.masterData && STATE.masterData.structures) || STATE.structures,
     schedule: (STATE.masterData && STATE.masterData.schedule) || STATE.schedule,
     users_registry: STATE.usersRegistry || {},
-    deleted_users: getDeletedUsersSet()
+    user_groups: STATE.userGroups || {},
+    deleted_users: Array.from(getDeletedUsersSet()),
+    deleted_groups: Array.from(getDeletedGroupsSet())
   };
   const jsonStr = JSON.stringify(exportObj, null, 2);
   const blob = new Blob([jsonStr], { type: "application/json" });
@@ -7617,7 +9050,10 @@ async function commitDataJsonToGitHub(options = {}) {
       papers: (STATE.masterData && STATE.masterData.papers) || STATE.papers,
       structures: (STATE.masterData && STATE.masterData.structures) || STATE.structures,
       schedule: (STATE.masterData && STATE.masterData.schedule) || STATE.schedule,
-      users_registry: STATE.usersRegistry || {}
+      users_registry: STATE.usersRegistry || {},
+      user_groups: STATE.userGroups || {},
+      deleted_users: Array.from(getDeletedUsersSet()),
+      deleted_groups: Array.from(getDeletedGroupsSet())
     };
 
     const contentUtf8 = JSON.stringify(exportObj, null, 2);
