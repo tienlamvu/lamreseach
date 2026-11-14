@@ -545,19 +545,16 @@ def verify_google_login(req: GoogleVerifyRequest):
     else:
         raise HTTPException(
             status_code=401,
-            detail="Authentication failed: Genuine Google Sign-In (OAuth token) or Administrator Security Passcode is required to unlock administrator privileges.",
+            detail="Authentication failed: Genuine Google Sign-In (OAuth 2.0 token) or Administrator Security Passcode is required.",
         )
 
-    if email != PRIMARY_OWNER_EMAIL:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Access Denied: '{email}' is not authorized. Only the owner Google account ({PRIMARY_OWNER_EMAIL}) can manage this workspace.",
-        )
+    is_owner = (email.lower() == PRIMARY_OWNER_EMAIL.lower())
 
     return {
         "authenticated": True,
-        "is_owner": True,
-        "email": PRIMARY_OWNER_EMAIL,
+        "is_owner": is_owner,
+        "role": "admin" if is_owner else "user",
+        "email": email,
         "name": name,
         "picture": picture,
         "owner_email": PRIMARY_OWNER_EMAIL,
