@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261114_v59_admin_users_groups" onerror="this.href='/static/styles.css?v=20261114_v59_admin_users_groups'" />
+  <link rel="stylesheet" href="styles.css?v=20261114_v60_email_verify_google_sso" onerror="this.href='/static/styles.css?v=20261114_v60_email_verify_google_sso'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -1672,14 +1672,14 @@
   <!-- MODAL: UNIFIED MULTI-USER AUTHENTICATION (SIGN IN, REGISTER, GOOGLE) -->
   <!-- ==================================================================== -->
   <div id="login-modal" class="modal-backdrop">
-    <div class="google-auth-card" style="max-width:460px;">
+    <div class="google-auth-card" style="max-width:480px;">
       <button class="google-modal-close" onclick="closeModal('login-modal')" title="Close">✕</button>
 
       <!-- Mode Switcher Tabs -->
       <div class="auth-mode-tabs" id="auth-mode-tabs-bar">
         <button type="button" class="auth-mode-tab-btn active" id="auth-tab-btn-signin" onclick="switchAuthModalTab('signin')">🔑 Sign In</button>
         <button type="button" class="auth-mode-tab-btn" id="auth-tab-btn-register" onclick="switchAuthModalTab('register')">✨ Create Account</button>
-        <button type="button" class="auth-mode-tab-btn" id="auth-tab-btn-google" onclick="switchAuthModalTab('google')">🌐 Google Account</button>
+        <button type="button" class="auth-mode-tab-btn" id="auth-tab-btn-google" onclick="switchAuthModalTab('google')">🌐 Google Sync</button>
       </div>
 
       <!-- ================================================================ -->
@@ -1689,20 +1689,23 @@
         <h2 class="google-auth-title" style="font-size:22px;">Welcome to MatSci Nexus</h2>
         <p class="google-auth-subtitle">Sign in to access your personal research workspace, schedule events, and manage references &amp; structures</p>
 
-        <div style="margin-top:18px;">
-          <button type="button" class="auth-sso-btn" style="width:100%; margin-bottom:14px;" onclick="switchAuthModalTab('google')">
+        <div style="margin-top:16px;">
+          <button type="button" class="auth-sso-btn" style="width:100%; margin-bottom:8px; background:#f8fafc; border:1.5px solid #93c5fd; padding:11px 14px;" onclick="switchAuthModalTab('google')">
             <svg width="20" height="20" viewBox="0 0 48 48">
               <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
               <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
               <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
               <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
             </svg>
-            <span>Continue with Google Account</span>
+            <div style="text-align:left; line-height:1.25;">
+              <div style="font-weight:700; color:#1e3a8a; font-size:13.5px;">Sign In &amp; Sync with Google Account</div>
+              <div style="font-size:11px; color:#475569; font-weight:500;">Instant workspace sync — no static username or password needed</div>
+            </div>
           </button>
 
-          <div style="display:flex; align-items:center; gap:10px; margin:12px 0; color:#9ca3af; font-size:12px;">
+          <div style="display:flex; align-items:center; gap:10px; margin:12px 0; color:#9ca3af; font-size:11.5px; font-weight:600;">
             <div style="flex:1; height:1px; background:#e5e7eb;"></div>
-            <span>OR SIGN IN WITH EMAIL</span>
+            <span>OR SIGN IN WITH EMAIL &amp; PASSWORD</span>
             <div style="flex:1; height:1px; background:#e5e7eb;"></div>
           </div>
 
@@ -1712,7 +1715,10 @@
           </div>
 
           <div class="form-group" style="margin-bottom:10px; text-align:left;">
-            <label style="font-size:12.5px; font-weight:600; color:#374151;">Password</label>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <label style="font-size:12.5px; font-weight:600; color:#374151; margin:0;">Password</label>
+              <a href="javascript:void(0)" class="g-link-btn" style="font-size:12px; font-weight:600;" onclick="openForgotPasswordPane()">🔑 Forgot password?</a>
+            </div>
             <input type="password" id="signin-password-input" placeholder="Enter your password" style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:13.5px;" onkeydown="if(event.key==='Enter') submitStandardSignIn()" />
           </div>
 
@@ -1734,71 +1740,225 @@
       </div>
 
       <!-- ================================================================ -->
-      <!-- PANE 2: REGISTER NEW PERSONAL ACCOUNT                            -->
+      <!-- PANE 2: REGISTER NEW PERSONAL ACCOUNT (WITH EMAIL VERIFICATION)  -->
       <!-- ================================================================ -->
       <div id="auth-pane-register" style="display:none;">
-        <h2 class="google-auth-title" style="font-size:21px;">Create Personal Account</h2>
-        <p class="google-auth-subtitle">Register your personal research workspace (Academic CV remains exclusive to the Administrator)</p>
+        <!-- STEP 1: REGISTRATION FORM -->
+        <div id="reg-step-form">
+          <h2 class="google-auth-title" style="font-size:21px;">Create Personal Account</h2>
+          <p class="google-auth-subtitle">Register with email verification or sign in directly with your Google Account</p>
 
-        <div style="margin-top:14px; text-align:left;">
-          <div class="form-group" style="margin-bottom:10px;">
-            <label style="font-size:12px; font-weight:600; color:#374151;">Full Name *</label>
-            <input type="text" id="reg-name-input" placeholder="e.g., Dr. Ji-Hoon Park" style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:13.5px;" />
+          <!-- Instant Google Sync Option for users who don't want static username/password -->
+          <div style="margin-top:12px; margin-bottom:12px;">
+            <button type="button" class="auth-sso-btn" style="width:100%; background:#eff6ff; border:1px solid #93c5fd; padding:9px 12px;" onclick="switchAuthModalTab('google')">
+              <svg width="18" height="18" viewBox="0 0 48 48">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+              </svg>
+              <span style="font-size:12.5px; color:#1e40af; font-weight:700;">Use Google Account Sync Instead (No Static Password) →</span>
+            </button>
           </div>
 
-          <div class="form-group" style="margin-bottom:10px;">
-            <label style="font-size:12px; font-weight:600; color:#374151;">Email Address (or Google Account Email) *</label>
-            <input type="email" id="reg-email-input" placeholder="e.g., jhpark@skku.edu or yourname@gmail.com" style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:13.5px;" />
+          <div style="text-align:left;">
+            <div class="form-group" style="margin-bottom:9px;">
+              <label style="font-size:12px; font-weight:600; color:#374151;">Full Name *</label>
+              <input type="text" id="reg-name-input" placeholder="e.g., Dr. Ji-Hoon Park" style="width:100%; padding:8px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:13.5px;" />
+            </div>
+
+            <div class="form-group" style="margin-bottom:9px;">
+              <label style="font-size:12px; font-weight:600; color:#374151;">Email Address (Requires Verification Code / Link) *</label>
+              <input type="email" id="reg-email-input" placeholder="e.g., jhpark@skku.edu or yourname@gmail.com" style="width:100%; padding:8px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:13.5px;" />
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:9px;">
+              <div class="form-group" style="margin-bottom:0;">
+                <label style="font-size:12px; font-weight:600; color:#374151;">Institution / Lab</label>
+                <input type="text" id="reg-affiliation-input" placeholder="e.g., SKKU Energy Science" style="width:100%; padding:8px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:13px;" />
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label style="font-size:12px; font-weight:600; color:#374151;">Academic Role</label>
+                <input type="text" id="reg-role-input" placeholder="e.g., Ph.D. Researcher" style="width:100%; padding:8px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:13px;" />
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:9px;">
+              <div class="form-group" style="margin-bottom:0;">
+                <label style="font-size:12px; font-weight:600; color:#374151;">Password *</label>
+                <input type="password" id="reg-password-input" placeholder="At least 4 characters" style="width:100%; padding:8px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:13px;" />
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label style="font-size:12px; font-weight:600; color:#374151;">Confirm Password *</label>
+                <input type="password" id="reg-confirm-input" placeholder="Repeat password" style="width:100%; padding:8px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:13px;" onkeydown="if(event.key==='Enter') submitUserRegistration()" />
+              </div>
+            </div>
+
+            <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#1e40af; background:#eff6ff; border:1px solid #bfdbfe; padding:7px 10px; border-radius:8px; margin-bottom:8px; cursor:pointer;">
+              <input type="checkbox" id="reg-link-google-chk" checked style="accent-color:#2563eb; width:15px; height:15px;" />
+              <span>🔗 <strong>Also link this email with Google Sign-In &amp; Google Calendar</strong></span>
+            </label>
+
+            <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#475569; margin-bottom:8px; cursor:pointer;">
+              <input type="checkbox" id="reg-seed-starter-chk" checked style="accent-color:#2563eb; width:15px; height:15px;" />
+              <span>📚 Pre-load starter sample references &amp; crystal structures</span>
+            </label>
+
+            <div id="reg-error-msg" class="g-error-text" style="display:none; margin-bottom:10px;"></div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+              <button type="button" class="g-text-btn" onclick="switchAuthModalTab('signin')">← Back to Sign In</button>
+              <button type="button" class="g-primary-btn" id="btn-reg-send-verify" onclick="submitUserRegistration()">📧 Send Verification Email →</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 2: EMAIL VERIFICATION (6-DIGIT CODE OR CONFIRMATION LINK) -->
+        <div id="reg-step-verify" style="display:none; text-align:left;">
+          <div style="text-align:center; margin-bottom:14px;">
+            <div style="width:48px; height:48px; border-radius:50%; background:#dbeafe; color:#1d4ed8; display:inline-flex; align-items:center; justify-content:center; font-size:24px; margin-bottom:8px;">✉️</div>
+            <h2 class="google-auth-title" style="font-size:20px;">Verify Your Email Address</h2>
+            <p class="google-auth-subtitle" style="font-size:13px;">
+              We sent a verification email with a <strong>6-digit confirmation code</strong> and verification link to:
+            </p>
+            <div style="margin-top:6px;">
+              <span id="reg-verify-target-email" class="badge badge-blue" style="font-size:13px; padding:4px 12px; font-family:monospace;">user@university.edu</span>
+            </div>
           </div>
 
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
-            <div class="form-group" style="margin-bottom:0;">
-              <label style="font-size:12px; font-weight:600; color:#374151;">Institution / Lab</label>
-              <input type="text" id="reg-affiliation-input" placeholder="e.g., SKKU Energy Science" style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:13px;" />
+          <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; padding:14px; margin-bottom:12px;">
+            <label style="font-size:12.5px; font-weight:700; color:#0f172a; display:block; margin-bottom:6px;">
+              🔢 Enter 6-Digit Email Verification Code *
+            </label>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input
+                type="text"
+                id="reg-verify-otp-input"
+                maxlength="6"
+                placeholder="e.g. 849204"
+                style="flex:1; padding:10px 14px; font-size:18px; font-weight:800; letter-spacing:4px; text-align:center; font-family:monospace; border:1.5px solid #3b82f6; border-radius:8px; background:#fff; color:#0f172a;"
+                onkeydown="if(event.key==='Enter') verifyRegistrationEmailOtp()"
+              />
+              <button type="button" class="btn btn-primary" style="padding:10px 16px; font-weight:700;" onclick="verifyRegistrationEmailOtp()">
+                ✅ Verify &amp; Activate
+              </button>
             </div>
-            <div class="form-group" style="margin-bottom:0;">
-              <label style="font-size:12px; font-weight:600; color:#374151;">Academic Role</label>
-              <input type="text" id="reg-role-input" placeholder="e.g., Ph.D. Researcher" style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:13px;" />
+            <div style="font-size:11.5px; color:#475569; margin-top:8px; line-height:1.45;">
+              💡 Check the dispatched verification email banner at the top-right of your screen (or your email inbox). You can either type the 6-digit code above or click the <strong>Confirmation Link</strong> inside the email.
             </div>
           </div>
 
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
-            <div class="form-group" style="margin-bottom:0;">
-              <label style="font-size:12px; font-weight:600; color:#374151;">Password *</label>
-              <input type="password" id="reg-password-input" placeholder="At least 6 characters" style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:13px;" />
-            </div>
-            <div class="form-group" style="margin-bottom:0;">
-              <label style="font-size:12px; font-weight:600; color:#374151;">Confirm Password *</label>
-              <input type="password" id="reg-confirm-input" placeholder="Repeat password" style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:13px;" onkeydown="if(event.key==='Enter') submitUserRegistration()" />
-            </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+            <button type="button" class="btn btn-outline btn-sm" style="flex:1; justify-content:center; border-color:#93c5fd; color:#1d4ed8; background:#eff6ff;" onclick="openDispatchedEmailPreviewModal()">
+              📬 View Verification Email &amp; Link
+            </button>
+            <button type="button" class="btn btn-outline btn-sm" style="justify-content:center;" onclick="resendRegistrationVerificationEmail()">
+              🔄 Resend Email
+            </button>
           </div>
 
-          <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; color:#1e40af; background:#eff6ff; border:1px solid #bfdbfe; padding:8px 10px; border-radius:8px; margin-bottom:10px; cursor:pointer;">
-            <input type="checkbox" id="reg-link-google-chk" checked style="accent-color:#2563eb; width:15px; height:15px;" />
-            <span>🔗 <strong>Link this account with Google Sign-In &amp; Google Calendar</strong></span>
-          </label>
+          <div id="reg-verify-error-msg" class="g-error-text" style="display:none; margin-bottom:10px;"></div>
 
-          <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#475569; margin-bottom:10px; cursor:pointer;">
-            <input type="checkbox" id="reg-seed-starter-chk" checked style="accent-color:#2563eb; width:15px; height:15px;" />
-            <span>📚 Pre-load starter sample references &amp; crystal structures into my workspace</span>
-          </label>
-
-          <div id="reg-error-msg" class="g-error-text" style="display:none; margin-bottom:10px;"></div>
-
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
-            <button type="button" class="g-text-btn" onclick="switchAuthModalTab('signin')">← Back to Sign In</button>
-            <button type="button" class="g-primary-btn" onclick="submitUserRegistration()">✨ Create Account &amp; Sign In</button>
+          <div style="display:flex; justify-content:space-between; align-items:center; padding-top:8px; border-top:1px solid #e2e8f0;">
+            <button type="button" class="g-text-btn" onclick="backToRegistrationFormStep()">← Edit Email / Details</button>
+            <button type="button" class="btn btn-teal btn-sm" onclick="confirmRegistrationViaEmailLink()">🔗 Click Confirmation Link Directly</button>
           </div>
         </div>
       </div>
 
       <!-- ================================================================ -->
-      <!-- PANE 3: GOOGLE ACCOUNT SIGN-IN & LINKING FLOW                    -->
+      <!-- PANE 3: SELF-SERVICE FORGOT PASSWORD / PASSWORD RESET            -->
+      <!-- ================================================================ -->
+      <div id="auth-pane-reset" style="display:none; text-align:left;">
+        <!-- STEP 1: REQUEST PASSWORD RESET EMAIL -->
+        <div id="reset-step-request">
+          <div style="text-align:center; margin-bottom:14px;">
+            <div style="width:46px; height:46px; border-radius:50%; background:#fef3c7; color:#b45309; display:inline-flex; align-items:center; justify-content:center; font-size:22px; margin-bottom:6px;">🔐</div>
+            <h2 class="google-auth-title" style="font-size:21px;">Reset Your Password</h2>
+            <p class="google-auth-subtitle" style="font-size:13px;">
+              Enter your registered email address. We will send a 6-digit verification code and password reset link to your email.
+            </p>
+          </div>
+
+          <div class="form-group" style="margin-bottom:12px;">
+            <label style="font-size:12.5px; font-weight:600; color:#374151;">Registered Account Email *</label>
+            <input
+              type="email"
+              id="reset-email-input"
+              placeholder="Enter your registered email (e.g., researcher@skku.edu)"
+              style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:13.5px;"
+              onkeydown="if(event.key==='Enter') requestPasswordResetEmail()"
+            />
+          </div>
+
+          <div id="reset-request-error-msg" class="g-error-text" style="display:none; margin-bottom:10px;"></div>
+
+          <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:10px 12px; font-size:12px; color:#1e40af; margin-bottom:14px;">
+            💡 <strong>Tip:</strong> If your account is linked with Google, you can also sign in immediately without a password using the <a href="javascript:void(0)" onclick="switchAuthModalTab('google')" style="color:#1d4ed8; font-weight:700; text-decoration:underline;">🌐 Google Sync</a> tab!
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <button type="button" class="g-text-btn" onclick="switchAuthModalTab('signin')">← Back to Sign In</button>
+            <button type="button" class="g-primary-btn" id="btn-reset-send-code" onclick="requestPasswordResetEmail()">📧 Send Reset Email →</button>
+          </div>
+        </div>
+
+        <!-- STEP 2: ENTER RESET CODE & NEW PASSWORD -->
+        <div id="reset-step-confirm" style="display:none;">
+          <div style="text-align:center; margin-bottom:12px;">
+            <h2 class="google-auth-title" style="font-size:20px;">Set New Account Password</h2>
+            <p class="google-auth-subtitle" style="font-size:12.5px;">
+              Password reset verification email sent to <strong id="reset-target-email-badge" style="color:#1d4ed8;"></strong>
+            </p>
+          </div>
+
+          <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <button type="button" class="btn btn-outline btn-sm" style="flex:1; justify-content:center; background:#eff6ff; border-color:#93c5fd; color:#1d4ed8;" onclick="openDispatchedEmailPreviewModal()">
+              📬 Open Reset Email &amp; Code
+            </button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="requestPasswordResetEmail(true)">
+              🔄 Resend Code
+            </button>
+          </div>
+
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:12px; font-weight:700; color:#1e3a8a;">🔢 6-Digit Verification Code from Email *</label>
+            <input
+              type="text"
+              id="reset-otp-input"
+              maxlength="6"
+              placeholder="Enter 6-digit code"
+              style="width:100%; padding:9px 12px; font-size:16px; font-weight:800; letter-spacing:3px; text-align:center; font-family:monospace; border:1.5px solid #60a5fa; border-radius:8px;"
+            />
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label style="font-size:12px; font-weight:600; color:#374151;">New Password *</label>
+              <input type="password" id="reset-new-password-input" placeholder="At least 4 chars" style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:13px;" />
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label style="font-size:12px; font-weight:600; color:#374151;">Confirm New Password *</label>
+              <input type="password" id="reset-confirm-password-input" placeholder="Repeat password" style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:13px;" onkeydown="if(event.key==='Enter') confirmSelfPasswordReset()" />
+            </div>
+          </div>
+
+          <div id="reset-confirm-error-msg" class="g-error-text" style="display:none; margin-bottom:10px;"></div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
+            <button type="button" class="g-text-btn" onclick="openForgotPasswordPane()">← Change Email</button>
+            <button type="button" class="g-primary-btn" onclick="confirmSelfPasswordReset()">🔑 Reset Password &amp; Sign In</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- PANE 4: PASSWORDLESS GOOGLE ACCOUNT SYNC & OAUTH SIGN-IN         -->
       <!-- ================================================================ -->
       <div id="auth-pane-google" style="display:none;">
         <!-- Google Brand Header -->
-        <div class="google-auth-header">
-          <svg class="google-logo" width="40" height="40" viewBox="0 0 48 48">
+        <div class="google-auth-header" style="margin-bottom:14px;">
+          <svg class="google-logo" width="38" height="38" viewBox="0 0 48 48">
             <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
             <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
             <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
@@ -1806,12 +1966,20 @@
           </svg>
         </div>
 
-        <!-- STEP 1: ENTER GOOGLE ACCOUNT EMAIL -->
+        <!-- STEP 1: CHOOSE OR ENTER GOOGLE ACCOUNT (PASSWORDLESS FOR USERS) -->
         <div id="google-step-email">
-          <h2 class="google-auth-title">Sign in with Google</h2>
-          <p class="google-auth-subtitle">Enter any Google / Gmail or Workspace account to sign in or link with <strong>MatSci Nexus</strong></p>
+          <h2 class="google-auth-title" style="font-size:21px;">Sign in &amp; Sync with Google</h2>
+          <p class="google-auth-subtitle" style="font-size:13px;">
+            Sign in with your Google Account to synchronize your personal workspace across devices — <strong>no static username or password required</strong>
+          </p>
 
-          <div style="margin-top:22px;">
+          <!-- Quick 1-Click Synced Google Accounts Chooser -->
+          <div id="google-chooser-container" style="margin-top:14px; text-align:left; display:none;">
+            <div style="font-size:11.5px; font-weight:700; color:#475569; margin-bottom:6px;">⚡ Choose a Linked Google Account (1-Click Instant Sync):</div>
+            <div id="google-chooser-list" style="display:flex; flex-direction:column; gap:6px; max-height:135px; overflow-y:auto; margin-bottom:12px;"></div>
+          </div>
+
+          <div style="margin-top:14px;">
             <div class="g-input-wrapper" id="g-email-input-wrapper">
               <input
                 type="email"
@@ -1822,45 +1990,63 @@
                 onkeydown="if(event.key==='Enter') handleGoogleEmailNext()"
                 oninput="clearGoogleInputError('email')"
               />
-              <label class="g-input-label">Google email address</label>
+              <label class="g-input-label">Enter your Google / Gmail or Workspace email</label>
             </div>
             <div id="g-email-error" class="g-error-text" style="display:none;"></div>
 
-            <div style="margin-top:16px; font-size:12px; color:#5f6368; line-height:1.45; background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
-              💡 <strong>Multi-User Google Sign-In:</strong> Sign in with your personal Google account to create or access your own research workspace, or sign in with <code>lamvt.skku@gmail.com</code> for Administrator mode.
+            <div style="margin-top:12px; font-size:11.5px; color:#1e40af; line-height:1.45; background:#eff6ff; padding:9px 12px; border-radius:8px; border:1px solid #bfdbfe; text-align:left;">
+              🌐 <strong>Passwordless Google Account Sync:</strong> Personal users are authenticated and synced directly via their Google Account without needing a static password. (Signing in as Administrator <code>lamvt.skku@gmail.com</code> requires the Admin security key).
             </div>
 
-            <div class="g-action-row">
-              <button type="button" class="g-text-btn" onclick="switchAuthModalTab('signin')">← Other Sign-In Options</button>
-              <button type="button" class="g-primary-btn" id="btn-email-next" onclick="handleGoogleEmailNext()">Next</button>
+            <div class="g-action-row" style="margin-top:18px;">
+              <button type="button" class="g-text-btn" onclick="switchAuthModalTab('signin')">← Other Options</button>
+              <button type="button" class="g-primary-btn" id="btn-email-next" onclick="handleGoogleEmailNext()">🌐 Continue with Google</button>
             </div>
           </div>
         </div>
 
-        <!-- STEP 2: ENTER PASSWORD / COMPLETE GOOGLE LINKING -->
+        <!-- STEP 2A: PASSWORDLESS FIRST-TIME GOOGLE PROFILE CONFIRMATION -->
+        <div id="google-step-consent" style="display:none; text-align:left;">
+          <div style="text-align:center; margin-bottom:12px;">
+            <h2 class="google-auth-title" style="font-size:20px;">Complete Google Account Sync</h2>
+            <div class="g-user-badge" onclick="backToGoogleEmailStep()" title="Switch Google account" style="margin-top:6px;">
+              <div class="g-badge-avatar" id="g-consent-avatar-char">G</div>
+              <span id="g-consent-email-text"></span>
+              <span class="badge badge-green" style="font-size:10px; margin-left:4px;">✓ Google Verified</span>
+            </div>
+          </div>
+
+          <div style="background:#eff6ff; border:1px solid #bfdbfe; padding:14px; border-radius:10px; margin-bottom:14px;">
+            <div style="font-size:12px; font-weight:700; color:#1e40af; margin-bottom:10px;">
+              ✨ Confirm your display profile for your Google-synced workspace (No static password needed):
+            </div>
+            <div class="form-group" style="margin-bottom:10px;">
+              <label style="font-size:12px; font-weight:600; color:#1e3a8a;">Your Display Name *</label>
+              <input type="text" id="g-new-name-input" placeholder="e.g., Min-Seo Kim" style="width:100%; padding:9px 12px; border:1px solid #93c5fd; border-radius:7px; font-size:13.5px; background:#fff;" onkeydown="if(event.key==='Enter') completePasswordlessGoogleSignIn()" />
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label style="font-size:12px; font-weight:600; color:#1e3a8a;">Affiliation / University / Lab (Optional)</label>
+              <input type="text" id="g-new-affiliation-input" placeholder="e.g., Sungkyunkwan University (SKKU)" style="width:100%; padding:9px 12px; border:1px solid #93c5fd; border-radius:7px; font-size:13px; background:#fff;" onkeydown="if(event.key==='Enter') completePasswordlessGoogleSignIn()" />
+            </div>
+          </div>
+
+          <div class="g-action-row" style="margin-top:14px;">
+            <button type="button" class="g-text-btn" onclick="backToGoogleEmailStep()">← Back</button>
+            <button type="button" class="g-primary-btn" id="btn-google-consent-submit" onclick="completePasswordlessGoogleSignIn()">🌐 Sync &amp; Sign In Now</button>
+          </div>
+        </div>
+
+        <!-- STEP 2B: ADMINISTRATOR SECURITY PASSWORD VERIFICATION -->
         <div id="google-step-password" style="display:none;">
-          <h2 class="google-auth-title" id="google-step-pw-title">Welcome</h2>
+          <h2 class="google-auth-title" id="google-step-pw-title">Administrator Sign-In</h2>
           
           <!-- User Account Chip with switcher -->
           <div class="g-user-badge" onclick="backToGoogleEmailStep()" title="Switch Google account">
-            <div class="g-badge-avatar" id="g-badge-avatar-char">G</div>
+            <div class="g-badge-avatar" id="g-badge-avatar-char">V</div>
             <span id="g-badge-email-text"></span>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5f6368" stroke-width="2">
               <polyline points="6 9 12 15 18 9"></polyline>
             </svg>
-          </div>
-
-          <!-- Extra Profile Fields shown only when linking a brand-new Google Account -->
-          <div id="google-new-user-fields" style="display:none; margin-top:14px; text-align:left; background:#eff6ff; border:1px solid #bfdbfe; padding:12px; border-radius:10px;">
-            <div style="font-size:12px; font-weight:700; color:#1e40af; margin-bottom:8px;">✨ First-Time Google Account Linking — Complete Your Researcher Profile:</div>
-            <div class="form-group" style="margin-bottom:8px;">
-              <label style="font-size:11.5px; font-weight:600; color:#1e3a8a;">Your Full Name *</label>
-              <input type="text" id="g-new-name-input" placeholder="e.g., Min-Seo Kim" style="width:100%; padding:8px 10px; border:1px solid #93c5fd; border-radius:6px; font-size:13px; background:#fff;" />
-            </div>
-            <div class="form-group" style="margin-bottom:0;">
-              <label style="font-size:11.5px; font-weight:600; color:#1e3a8a;">Affiliation / Laboratory</label>
-              <input type="text" id="g-new-affiliation-input" placeholder="e.g., Sungkyunkwan University" style="width:100%; padding:8px 10px; border:1px solid #93c5fd; border-radius:6px; font-size:13px; background:#fff;" />
-            </div>
           </div>
 
           <div style="margin-top:18px;">
@@ -1874,7 +2060,7 @@
                 onkeydown="if(event.key==='Enter') submitGooglePasswordLogin()"
                 oninput="clearGoogleInputError('password')"
               />
-              <label class="g-input-label" id="g-password-label">Enter your password</label>
+              <label class="g-input-label" id="g-password-label">Enter Administrator password</label>
             </div>
             <div id="g-password-error" class="g-error-text" style="display:none;"></div>
 
@@ -1883,7 +2069,7 @@
                 <input type="checkbox" id="g-show-password-chk" onchange="toggleGooglePasswordVisibility()" />
                 <span>Show password</span>
               </label>
-              <a href="https://accounts.google.com/signin/recovery" target="_blank" rel="noopener" class="g-link-btn">Forgot password?</a>
+              <a href="javascript:void(0)" onclick="openForgotPasswordPane()" class="g-link-btn">Forgot password?</a>
             </div>
 
             <div class="g-action-row">
@@ -1895,7 +2081,7 @@
       </div>
 
       <!-- Footer Language & Links -->
-      <div class="google-auth-bottom-bar" style="margin-top:24px;">
+      <div class="google-auth-bottom-bar" style="margin-top:20px;">
         <span>English (United States)</span>
         <div class="google-auth-links">
           <a href="javascript:void(0)" onclick="showToast('MatSci Nexus Multi-User Account Help')">Help</a>
@@ -3073,10 +3259,41 @@
     </div>
   </div>
 
+  <!-- ==================================================================== -->
+  <!-- INTERACTIVE EMAIL VERIFICATION & PASSWORD RESET DISPATCH DRAWER      -->
+  <!-- ==================================================================== -->
+  <div id="email-dispatch-drawer" class="no-print" style="display:none; position:fixed; top:18px; right:18px; width:410px; max-width:calc(100vw - 32px); background:#ffffff; border:2px solid #2563eb; border-radius:14px; box-shadow:0 20px 50px rgba(15,23,42,0.32); z-index:20000; overflow:hidden; font-family:system-ui,-apple-system,sans-serif;">
+    <div style="background:linear-gradient(90deg,#1e3a8a,#2563eb); color:#fff; padding:10px 14px; display:flex; justify-content:space-between; align-items:center;">
+      <div style="display:flex; align-items:center; gap:8px; font-weight:700; font-size:13px;">
+        <span>📨</span>
+        <span id="edd-header-title">Verification Email Dispatched</span>
+      </div>
+      <button type="button" onclick="closeEmailDispatchDrawer()" style="background:rgba(255,255,255,0.18); border:none; color:#fff; border-radius:6px; padding:2px 8px; cursor:pointer; font-size:12px;">✕</button>
+    </div>
+    <div style="padding:14px; font-size:12.5px; color:#1e293b;">
+      <div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid #e2e8f0; line-height:1.45;">
+        <div><strong style="color:#64748b;">To:</strong> <code id="edd-to-email" style="color:#1d4ed8; font-weight:700;"></code></div>
+        <div><strong style="color:#64748b;">Subject:</strong> <span id="edd-subject" style="font-weight:700; color:#0f172a;"></span></div>
+      </div>
+      <div id="edd-body-text" style="color:#334155; line-height:1.5; margin-bottom:10px;"></div>
+      <div style="background:#eff6ff; border:1.5px dashed #3b82f6; border-radius:10px; padding:10px 12px; text-align:center; margin-bottom:10px;">
+        <div style="font-size:11px; color:#1e40af; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">6-Digit Verification Code</div>
+        <div id="edd-otp-code" style="font-size:24px; font-weight:900; color:#1e3a8a; letter-spacing:5px; font-family:monospace; margin:4px 0;">000000</div>
+        <div style="display:flex; gap:6px; justify-content:center; margin-top:6px;">
+          <button type="button" class="btn btn-primary btn-sm" id="edd-action-link-btn" style="font-weight:700;">✅ Click Verification Link &amp; Confirm Now</button>
+          <button type="button" class="btn btn-outline btn-sm" id="edd-autofill-btn">📋 Auto-Fill Code</button>
+        </div>
+      </div>
+      <div style="font-size:11px; color:#64748b; display:flex; justify-content:space-between; align-items:center;">
+        <span id="edd-delivery-status">✓ Dispatched via Email Relay &amp; Instant Verification Link</span>
+      </div>
+    </div>
+  </div>
+
   <div id="toast-container"></div>
   <div id="plag-pdf-render-area" style="display:none;"></div>
 
-  <script src="matsci_tools.js?v=20261114_v59_admin_users_groups" onerror="this.src='/static/matsci_tools.js?v=20261114_v59_admin_users_groups'"></script>
-  <script src="app.js?v=20261114_v59_admin_users_groups" onerror="this.src='/static/app.js?v=20261114_v59_admin_users_groups'"></script>
+  <script src="matsci_tools.js?v=20261114_v60_email_verify_google_sso" onerror="this.src='/static/matsci_tools.js?v=20261114_v60_email_verify_google_sso'"></script>
+  <script src="app.js?v=20261114_v60_email_verify_google_sso" onerror="this.src='/static/app.js?v=20261114_v60_email_verify_google_sso'"></script>
 </body>
 </html>
