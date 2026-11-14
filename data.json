@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T03:47:50.739Z",
+  "exported_at": "2026-11-14T03:47:57.184Z",
   "profile": {
     "full_name": "Vu Tien Lam",
     "title_role": "Ph.D. Candidate in Computational Materials Science",
@@ -609,24 +609,8 @@
       "passwordHash": "plain:kaist2026",
       "registeredAt": "2026-11-12 14:05",
       "lastLoginAt": "2026-11-14 09:50",
-      "lastUpdatedAt": "2026-11-14 10:05",
+      "lastUpdatedAt": "2026-11-14 03:47",
       "workspace": {
-        "schedule": [
-          {
-            "id": 90401,
-            "title": "Solid-State Electrolyte LLZTO Pellet Sintering & EIS",
-            "event_type": "Furnace Synthesis / Calcination",
-            "instrument_or_location": "Tube Furnace #2 & BioLogic VMP3",
-            "start_date": "2026-11-17",
-            "start_time": "10:00",
-            "end_time": "16:00",
-            "priority": "High",
-            "status": "Scheduled",
-            "sample_id": "LLZTO-1150C",
-            "description": "Sintering Ta-doped LLZO at 1150 °C in MgO crucible with mother powder.",
-            "in_weekly_report": 1
-          }
-        ],
         "papers": [
           {
             "id": 90501,
@@ -713,6 +697,22 @@
             ]
           }
         ],
+        "schedule": [
+          {
+            "id": 90401,
+            "title": "Solid-State Electrolyte LLZTO Pellet Sintering & EIS",
+            "event_type": "Furnace Synthesis / Calcination",
+            "instrument_or_location": "Tube Furnace #2 & BioLogic VMP3",
+            "start_date": "2026-11-17",
+            "start_time": "10:00",
+            "end_time": "16:00",
+            "priority": "High",
+            "status": "Scheduled",
+            "sample_id": "LLZTO-1150C",
+            "description": "Sintering Ta-doped LLZO at 1150 °C in MgO crucible with mother powder.",
+            "in_weekly_report": 1
+          }
+        ],
         "expReportRows": [
           {
             "sample_id": "Ti3C2O2-Slab",
@@ -749,7 +749,8 @@
           "action": "Signed in with Google Account",
           "detail": "Google OAuth Linked: minseo.kim@gmail.com"
         }
-      ]
+      ],
+      "updatedAtMs": 1794628076148
     },
     "ssk@gmail.com": {
       "email": "ssk@gmail.com",
