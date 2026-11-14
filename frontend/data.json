@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T06:49:49.049Z",
+  "exported_at": "2026-11-14T06:49:58.248Z",
   "profile": {
     "full_name": "Vu Tien Lam",
     "title_role": "Ph.D. Candidate in Computational Materials Science",
@@ -852,9 +852,9 @@
       "passwordPlainHint": "skku1234",
       "passwordHash": "441d52fbb490008fa860a41b38fe03e0b7f6fb06b56336922f7d7a95562f51dd",
       "registeredAt": "2026-11-14 04:00",
-      "lastLoginAt": "2026-11-14 06:28",
+      "lastLoginAt": "2026-11-14 06:49",
       "lastUpdatedAt": "2026-11-14 06:49",
-      "updatedAtMs": 1794638964952,
+      "updatedAtMs": 1794638997187,
       "workspace": {
         "papers": [],
         "structures": [
@@ -955,6 +955,12 @@
         "litReportRows": []
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-14 06:49",
+          "category": "Session",
+          "action": "Signed In (Email & Password)",
+          "detail": "Authenticated as No (las@gmail.com)"
+        },
         {
           "timestamp": "2026-11-14 06:49",
           "category": "Security",
