@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign in - Google Accounts</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: #ffffff;
+      color: #202124;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .oauth-top-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 24px;
+      border-bottom: 1px solid #dadce0;
+      font-size: 14px;
+      color: #5f6368;
+      font-weight: 500;
+    }
+    .oauth-container {
+      flex: 1;
+      max-width: 440px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 28px 32px 24px;
+    }
+    .oauth-title {
+      font-size: 24px;
+      font-weight: 500;
+      color: #202124;
+      line-height: 1.3;
+      margin-bottom: 8px;
+    }
+    .oauth-subtitle {
+      font-size: 15px;
+      color: #202124;
+      margin-bottom: 24px;
+      line-height: 1.45;
+    }
+    .oauth-app-link {
+      color: #1a73e8;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    /* Account Chooser List (Browser-Local Google Sessions Only) */
+    .account-list {
+      border-top: 1px solid #dadce0;
+      margin-top: 8px;
+    }
+    .account-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 8px;
+      border-bottom: 1px solid #dadce0;
+      cursor: pointer;
+      transition: background 0.15s;
+      border-radius: 4px;
+    }
+    .account-item:hover {
+      background: #f8f9fa;
+    }
+    .account-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #1a73e8;
+      color: #fff;
+      font-weight: 600;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .account-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .account-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .account-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #3c4043;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .account-email {
+      font-size: 12.5px;
+      color: #5f6368;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    /* Material Floating Input */
+    .g-field {
+      position: relative;
+      margin-bottom: 16px;
+    }
+    .g-input {
+      width: 100%;
+      padding: 15px 14px;
+      font-size: 15px;
+      color: #202124;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      outline: none;
+      transition: border-color 0.15s;
+      background: #fff;
+    }
+    .g-input:focus {
+      border-color: #1a73e8;
+      border-width: 2px;
+      padding: 14px 13px;
+    }
+    .g-input.error {
+      border-color: #d93025;
+    }
+    .g-label {
+      display: block;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: #3c4043;
+      margin-bottom: 6px;
+    }
+    .g-error {
+      display: none;
+      align-items: flex-start;
+      gap: 6px;
+      color: #d93025;
+      font-size: 12.5px;
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+    /* User Email Chip on Password & Consent Screens */
+    .user-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 12px 4px 5px;
+      border: 1px solid #dadce0;
+      border-radius: 999px;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: #3c4043;
+      cursor: pointer;
+      margin-bottom: 22px;
+      transition: background 0.15s;
+    }
+    .user-chip:hover {
+      background: #f8f9fa;
+    }
+    .user-chip-avatar {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #1a73e8;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .user-chip-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    /* Buttons */
+    .oauth-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 28px;
+      gap: 12px;
+    }
+    .btn-text {
+      background: transparent;
+      border: none;
+      color: #1a73e8;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 9px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn-text:hover {
+      background: #f4f8fe;
+    }
+    .btn-primary {
+      background: #1a73e8;
+      color: #ffffff;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px 24px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.15s, box-shadow 0.15s;
+    }
+    .btn-primary:hover {
+      background: #1557b0;
+      box-shadow: 0 1px 3px rgba(60,64,67,0.3);
+    }
+    .btn-primary:disabled {
+      opacity: 0.65;
+      cursor: default;
+    }
+    .btn-outline {
+      background: #ffffff;
+      color: #1a73e8;
+      border: 1px solid #dadce0;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 9px 22px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn-outline:hover {
+      background: #f8f9fa;
+      border-color: #d2e3fc;
+    }
+    /* Consent Permissions Box */
+    .consent-card {
+      background: #f8f9fa;
+      border: 1px solid #dadce0;
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+    }
+    .consent-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid #e8eaed;
+    }
+    .consent-item:last-child {
+      border-bottom: none;
+      padding-bottom: 2px;
+    }
+    .consent-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #e8f0fe;
+      color: #1a73e8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .oauth-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 24px;
+      border-top: 1px solid #f1f3f4;
+      font-size: 12px;
+      color: #5f6368;
+    }
+    .oauth-footer-links a {
+      color: #5f6368;
+      text-decoration: none;
+      margin-left: 16px;
+    }
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid #e8f0fe;
+      border-top-color: #1a73e8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Official Google OAuth 2.0 Top Header -->
+  <div class="oauth-top-bar">
+    <svg width="20" height="20" viewBox="0 0 48 48">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+    </svg>
+    <span>Sign in with Google</span>
+  </div>
+
+  <div class="oauth-container">
+    <!-- ================================================================== -->
+    <!-- STEP 2A: CHOOSE AN ACCOUNT (ONLY ACCOUNTS SIGNED IN ON THIS BROWSER) -->
+    <!-- ================================================================== -->
+    <div id="step-choose-account" style="display:none;">
+      <h1 class="oauth-title">Choose an account</h1>
+      <p class="oauth-subtitle">to continue to <span class="oauth-app-link">Computational Database</span></p>
+
+      <div class="account-list" id="browser-accounts-list"></div>
+
+      <div class="account-item" onclick="showStepEmailLogin()" style="border-bottom:1px solid #dadce0;">
+        <div class="account-avatar" style="background:#f1f3f4; color:#5f6368;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </div>
+        <div class="account-info">
+          <div class="account-name">Use another account</div>
+        </div>
+      </div>
+
+      <p style="font-size:12px; color:#5f6368; margin-top:20px; line-height:1.5;">
+        To continue, Google will share your name, email address, language preference, and profile picture with Computational Database.
+      </p>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- STEP 2B-1: ENTER GOOGLE EMAIL (WHEN NOT SIGNED IN ON BROWSER)      -->
+    <!-- ================================================================== -->
+    <div id="step-enter-email" style="display:none;">
+      <h1 class="oauth-title">Sign in</h1>
+      <p class="oauth-subtitle">Use your Google Account to continue to <span class="oauth-app-link">Computational Database</span></p>
+
+      <div class="g-field">
+        <label class="g-label" for="oauth-email-input">Email or Google Account</label>
+        <input
+          type="email"
+          id="oauth-email-input"
+          class="g-input"
+          placeholder="yourname@gmail.com or university email"
+          autocomplete="username"
+          onkeydown="if(event.key==='Enter') handleEmailNext()"
+          oninput="clearFieldError('email')"
+        />
+        <div id="oauth-email-error" class="g-error"></div>
+      </div>
+
+      <p style="font-size:12.5px; color:#5f6368; line-height:1.5; margin-top:14px;">
+        To continue, Google will share your name, email address, and profile picture with Computational Database.
+      </p>
+
+      <div class="oauth-actions">
+        <button type="button" class="btn-text" id="btn-back-to-chooser" style="display:none;" onclick="initOAuthWindow()">← Choose account</button>
+        <button type="button" class="btn-text" id="btn-cancel-email" onclick="cancelOAuthFlow()">Cancel</button>
+        <button type="button" class="btn-primary" id="btn-email-next" onclick="handleEmailNext()">Next</button>
+      </div>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- STEP 2B-2: ENTER GOOGLE PASSWORD                                   -->
+    <!-- ================================================================== -->
+    <div id="step-enter-password" style="display:none;">
+      <h1 class="oauth-title">Welcome</h1>
+      <div class="user-chip" onclick="showStepEmailLogin()" title="Switch Google account">
+        <div class="user-chip-avatar" id="pw-chip-avatar">G</div>
+        <span id="pw-chip-email">user@gmail.com</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5f6368" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </div>
+
+      <div class="g-field">
+        <label class="g-label" for="oauth-password-input">Enter your Google password</label>
+        <input
+          type="password"
+          id="oauth-password-input"
+          class="g-input"
+          placeholder="Enter your password"
+          autocomplete="current-password"
+          onkeydown="if(event.key==='Enter') handlePasswordNext()"
+          oninput="clearFieldError('password')"
+        />
+        <div id="oauth-password-error" class="g-error"></div>
+      </div>
+
+      <label style="display:inline-flex; align-items:center; gap:8px; font-size:13.5px; color:#3c4043; cursor:pointer; user-select:none; margin-top:2px;">
+        <input type="checkbox" id="oauth-show-pw" onchange="document.getElementById('oauth-password-input').type = this.checked ? 'text' : 'password'" style="width:16px; height:16px; accent-color:#1a73e8;" />
+        <span>Show password</span>
+      </label>
+
+      <div class="oauth-actions">
+        <button type="button" class="btn-text" onclick="showStepEmailLogin()">← Back</button>
+        <button type="button" class="btn-primary" id="btn-pw-next" onclick="handlePasswordNext()">Next</button>
+      </div>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- STEP 3: OAUTH 2.0 CONSENT SCREEN (ALLOW SHARING NAME, EMAIL, AVATAR)-->
+    <!-- ================================================================== -->
+    <div id="step-consent" style="display:none;">
+      <h1 class="oauth-title" style="font-size:21px;">Sign in to Computational Database</h1>
+      <div class="user-chip" onclick="showStepEmailLogin()" title="Switch Google account" style="margin-top:6px; margin-bottom:16px;">
+        <div class="user-chip-avatar" id="consent-chip-avatar">G</div>
+        <span id="consent-chip-email">user@gmail.com</span>
+      </div>
+
+      <p style="font-size:13.5px; color:#202124; margin-bottom:12px; line-height:1.45;">
+        By continuing, Google will share your basic profile information with <strong>Computational Database</strong> (<span style="color:#1a73e8;">tienlamvu.github.io</span>):
+      </p>
+
+      <div class="consent-card">
+        <div class="consent-item">
+          <div class="consent-icon">👤</div>
+          <div style="flex:1;">
+            <div style="font-size:13px; font-weight:600; color:#202124; margin-bottom:4px;">Your Name (Display Profile)</div>
+            <input
+              type="text"
+              id="consent-name-input"
+              style="width:100%; padding:7px 10px; border:1px solid #dadce0; border-radius:4px; font-size:13.5px; color:#202124; background:#fff;"
+              placeholder="Your full name"
+            />
+          </div>
+        </div>
+
+        <div class="consent-item">
+          <div class="consent-icon">📧</div>
+          <div style="flex:1;">
+            <div style="font-size:13px; font-weight:600; color:#202124;">Your Email Address</div>
+            <div id="consent-email-display" style="font-size:12.5px; color:#5f6368; margin-top:2px;">user@gmail.com</div>
+          </div>
+        </div>
+
+        <div class="consent-item">
+          <div class="consent-icon">🖼️</div>
+          <div style="flex:1; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+            <div>
+              <div style="font-size:13px; font-weight:600; color:#202124;">Your Profile Picture</div>
+              <div style="font-size:12px; color:#5f6368; margin-top:2px;">Shared with your research workspace</div>
+            </div>
+            <div class="account-avatar" id="consent-avatar-preview" style="width:38px; height:38px;">G</div>
+          </div>
+        </div>
+      </div>
+
+      <p style="font-size:11.5px; color:#5f6368; line-height:1.5;">
+        See Computational Database's Privacy Policy and Terms of Service. You can manage or revoke access in your Google Account settings at any time.
+      </p>
+
+      <div class="oauth-actions" style="margin-top:22px;">
+        <button type="button" class="btn-outline" onclick="cancelOAuthFlow()">Cancel</button>
+        <button type="button" class="btn-primary" id="btn-consent-allow" onclick="handleConsentAllow()">Allow</button>
+      </div>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- STEP 4: REDIRECTING BACK TO WEBSITE                                -->
+    <!-- ================================================================== -->
+    <div id="step-redirecting" style="display:none; text-align:center; padding:48px 16px;">
+      <div class="spinner"></div>
+      <h2 style="font-size:18px; font-weight:600; color:#202124; margin-bottom:8px;">Signing you in...</h2>
+      <p style="font-size:13.5px; color:#5f6368;">Redirecting back to <strong>Computational Database</strong></p>
+    </div>
+  </div>
+
+  <div class="oauth-footer">
+    <span>English (United States)</span>
+    <div class="oauth-footer-links">
+      <a href="https://support.google.com/accounts" target="_blank" rel="noopener">Help</a>
+      <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy</a>
+      <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Terms</a>
+    </div>
+  </div>
+
+  <script>
+    const BROWSER_GOOGLE_ACCOUNTS_KEY = "matsci_browser_google_accounts_v2";
+    const OAUTH_PENDING_RESULT_KEY = "matsci_oauth2_callback_result_v2";
+
+    let currentEmail = "";
+    let currentName = "";
+    let currentPicture = "";
+    let currentPassword = "";
+    let currentExistingUser = null;
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function generateAvatarDataUrl(nameOrEmail) {
+      const initial = String(nameOrEmail || "G").trim().charAt(0).toUpperCase() || "G";
+      const colors = ["#1a73e8", "#0d9488", "#7c3aed", "#db2777", "#ea580c", "#16a34a"];
+      let hash = 0;
+      const s = String(nameOrEmail || "");
+      for (let i = 0; i < s.length; i++) hash = s.charCodeAt(i) + ((hash << 5) - hash);
+      const bg = colors[Math.abs(hash) % colors.length];
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96"><rect width="96" height="96" rx="48" fill="${bg}"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="600">${initial}</text></svg>`;
+      return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+    }
+
+    function getBrowserSignedInGoogleAccounts() {
+      try {
+        const raw = localStorage.getItem(BROWSER_GOOGLE_ACCOUNTS_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed.filter(a => a && a.email) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveBrowserSignedInGoogleAccount(acct) {
+      try {
+        const list = getBrowserSignedInGoogleAccounts().filter(a => a.email.toLowerCase() !== acct.email.toLowerCase());
+        list.unshift(acct);
+        localStorage.setItem(BROWSER_GOOGLE_ACCOUNTS_KEY, JSON.stringify(list.slice(0, 8)));
+      } catch (e) {}
+    }
+
+    function showOnlyStep(stepId) {
+      ["step-choose-account", "step-enter-email", "step-enter-password", "step-consent", "step-redirecting"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = id === stepId ? "block" : "none";
+      });
+    }
+
+    function showFieldError(type, msg) {
+      const errEl = document.getElementById(`oauth-${type}-error`);
+      const inpEl = document.getElementById(`oauth-${type}-input`);
+      if (errEl) {
+        errEl.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#d93025" stroke-width="2.2" style="flex-shrink:0; margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>${escapeHtml(msg)}</span>`;
+        errEl.style.display = "flex";
+      }
+      if (inpEl) {
+        inpEl.classList.add("error");
+        inpEl.focus();
+      }
+    }
+
+    function clearFieldError(type) {
+      const errEl = document.getElementById(`oauth-${type}-error`);
+      const inpEl = document.getElementById(`oauth-${type}-input`);
+      if (errEl) errEl.style.display = "none";
+      if (inpEl) inpEl.classList.remove("error");
+    }
+
+    function initOAuthWindow() {
+      const browserAccounts = getBrowserSignedInGoogleAccounts();
+      const backBtn = document.getElementById("btn-back-to-chooser");
+      if (backBtn) backBtn.style.display = browserAccounts.length > 0 ? "inline-block" : "none";
+
+      // Only show account chooser if THIS browser already has authenticated Google session(s)
+      if (browserAccounts.length > 0) {
+        const listEl = document.getElementById("browser-accounts-list");
+        listEl.innerHTML = browserAccounts.map((a, idx) => {
+          const pic = a.picture || generateAvatarDataUrl(a.name || a.email);
+          return `
+            <div class="account-item" onclick="selectBrowserGoogleAccount(${idx})">
+              <div class="account-avatar"><img src="${pic}" alt="" /></div>
+              <div class="account-info">
+                <div class="account-name">${escapeHtml(a.name || a.email.split("@")[0])}</div>
+                <div class="account-email">${escapeHtml(a.email)}</div>
+              </div>
+            </div>
+          `;
+        }).join("");
+        showOnlyStep("step-choose-account");
+      } else {
+        showStepEmailLogin();
+      }
+    }
+
+    function selectBrowserGoogleAccount(idx) {
+      const accounts = getBrowserSignedInGoogleAccounts();
+      const acct = accounts[idx];
+      if (!acct) return;
+      currentEmail = acct.email.toLowerCase().trim();
+      currentName = acct.name || currentEmail.split("@")[0];
+      currentPicture = acct.picture || generateAvatarDataUrl(currentName);
+      currentPassword = acct.passwordToken || "";
+
+      // If this account already granted consent on this browser, still check or proceed to consent/redirect
+      if (acct.consentedToApp) {
+        finalizeAndRedirectBack();
+      } else {
+        openConsentScreen();
+      }
+    }
+
+    function showStepEmailLogin() {
+      showOnlyStep("step-enter-email");
+      clearFieldError("email");
+      const inp = document.getElementById("oauth-email-input");
+      if (inp) setTimeout(() => inp.focus(), 80);
+    }
+
+    async function handleEmailNext() {
+      const inp = document.getElementById("oauth-email-input");
+      const raw = (inp ? inp.value : "").trim().toLowerCase();
+      if (!raw) {
+        showFieldError("email", "Enter an email address");
+        return;
+      }
+      if (!raw.includes("@") || !raw.includes(".")) {
+        showFieldError("email", "Enter a valid Google or university email address");
+        return;
+      }
+
+      const btn = document.getElementById("btn-email-next");
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Checking...";
+      }
+
+      try {
+        currentEmail = raw;
+        currentExistingUser = null;
+
+        if (window.opener && typeof window.opener.lookupUserForGoogleOAuthPopup === "function") {
+          currentExistingUser = await window.opener.lookupUserForGoogleOAuthPopup(currentEmail);
+        }
+
+        if (currentExistingUser && currentExistingUser.name) {
+          currentName = currentExistingUser.name;
+          currentPicture = currentExistingUser.picture || generateAvatarDataUrl(currentName);
+        } else {
+          currentName = currentEmail.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+          currentPicture = generateAvatarDataUrl(currentName);
+        }
+
+        const chipEmail = document.getElementById("pw-chip-email");
+        const chipAvatar = document.getElementById("pw-chip-avatar");
+        if (chipEmail) chipEmail.textContent = currentEmail;
+        if (chipAvatar) chipAvatar.innerHTML = `<img src="${currentPicture}" alt="" />`;
+
+        const pwInp = document.getElementById("oauth-password-input");
+        if (pwInp) pwInp.value = "";
+        clearFieldError("password");
+        showOnlyStep("step-enter-password");
+        if (pwInp) setTimeout(() => pwInp.focus(), 80);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Next";
+        }
+      }
+    }
+
+    async function handlePasswordNext() {
+      const pwInp = document.getElementById("oauth-password-input");
+      const pass = (pwInp ? pwInp.value : "").trim();
+      if (!pass) {
+        showFieldError("password", "Enter a password");
+        return;
+      }
+      if (pass.length < 4) {
+        showFieldError("password", "Wrong password. Try again.");
+        return;
+      }
+
+      const btn = document.getElementById("btn-pw-next");
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Verifying...";
+      }
+
+      try {
+        if (window.opener && typeof window.opener.verifyPasswordForGoogleOAuthPopup === "function") {
+          const check = await window.opener.verifyPasswordForGoogleOAuthPopup(currentEmail, pass);
+          if (!check || !check.ok) {
+            showFieldError("password", (check && check.error) || "Wrong password. Try again.");
+            return;
+          }
+          if (check.name) currentName = check.name;
+          if (check.picture) currentPicture = check.picture;
+        }
+
+        currentPassword = pass;
+        openConsentScreen();
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Next";
+        }
+      }
+    }
+
+    function openConsentScreen() {
+      const chipEmail = document.getElementById("consent-chip-email");
+      const chipAvatar = document.getElementById("consent-chip-avatar");
+      const nameInp = document.getElementById("consent-name-input");
+      const emailDisp = document.getElementById("consent-email-display");
+      const avatarPrev = document.getElementById("consent-avatar-preview");
+
+      if (chipEmail) chipEmail.textContent = currentEmail;
+      if (chipAvatar) chipAvatar.innerHTML = `<img src="${currentPicture}" alt="" />`;
+      if (nameInp) nameInp.value = currentName;
+      if (emailDisp) emailDisp.textContent = currentEmail;
+      if (avatarPrev) avatarPrev.innerHTML = `<img src="${currentPicture}" alt="" />`;
+
+      showOnlyStep("step-consent");
+    }
+
+    function handleConsentAllow() {
+      const nameInp = document.getElementById("consent-name-input");
+      if (nameInp && nameInp.value.trim()) {
+        currentName = nameInp.value.trim();
+        currentPicture = generateAvatarDataUrl(currentName);
+      }
+
+      // Save authenticated & consented session to THIS browser's local storage
+      saveBrowserSignedInGoogleAccount({
+        email: currentEmail,
+        name: currentName,
+        picture: currentPicture,
+        consentedToApp: true,
+        lastSignedInAt: new Date().toISOString()
+      });
+
+      finalizeAndRedirectBack();
+    }
+
+    async function finalizeAndRedirectBack() {
+      showOnlyStep("step-redirecting");
+
+      const oauthPayload = {
+        type: "MATSCI_GOOGLE_OAUTH2_SUCCESS",
+        email: currentEmail,
+        name: currentName,
+        picture: currentPicture,
+        password: currentPassword,
+        oauth_provider: "google_oauth2",
+        timestamp: Date.now()
+      };
+
+      try {
+        localStorage.setItem(OAUTH_PENDING_RESULT_KEY, JSON.stringify(oauthPayload));
+      } catch (e) {}
+
+      if (window.opener && !window.opener.closed) {
+        try {
+          if (typeof window.opener.receiveGoogleOAuth2PopupResult === "function") {
+            await window.opener.receiveGoogleOAuth2PopupResult(oauthPayload);
+          } else {
+            window.opener.postMessage(oauthPayload, window.location.origin);
+          }
+        } catch (e) {
+          window.opener.postMessage(oauthPayload, "*");
+        }
+        setTimeout(() => {
+          window.close();
+        }, 350);
+      } else {
+        setTimeout(() => {
+          window.location.href = "index.html?google_oauth_callback=1";
+        }, 400);
+      }
+    }
+
+    function cancelOAuthFlow() {
+      if (window.opener && !window.opener.closed) {
+        window.close();
+      } else {
+        window.location.href = "index.html";
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", initOAuthWindow);
+  </script>
+</body>
+</html>
