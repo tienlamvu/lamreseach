@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T14:55:07.732Z",
+  "exported_at": "2026-11-14T23:24:52.963Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -2083,7 +2083,16 @@
       "passwordlessGoogle": false
     }
   },
-  "user_groups": {},
+  "user_groups": {
+    "grp_dft_team_gun1": {
+      "id": "grp_dft_team_gun1",
+      "name": "DFT Team",
+      "color": "blue",
+      "description": "User group created by Administrator",
+      "members": [],
+      "updatedAtMs": 1794668802589
+    }
+  },
   "deleted_users": [
     "jhpark.matsci@skku.edu",
     "minseo.kim@gmail.com",
