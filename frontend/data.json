@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T14:35:49.214Z",
+  "exported_at": "2026-11-14T14:35:52.028Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -1730,60 +1730,6 @@
     }
   ],
   "users_registry": {
-    "ssk@gmail.com": {
-      "email": "ssk@gmail.com",
-      "name": "Seojeong Rho",
-      "affiliation": "SKKU",
-      "academicRole": "Researcher",
-      "authProvider": "Email & Password",
-      "googleLinked": false,
-      "googleEmail": "",
-      "passwordPlainHint": "skku2026",
-      "passwordHash": "e5acba84c164be5493b03ab87712975cdaf2149d43c81df395eb07f8a1057264",
-      "registeredAt": "2026-11-14 03:14",
-      "lastLoginAt": "2026-11-14 03:14",
-      "lastUpdatedAt": "2026-11-14 06:44",
-      "workspace": {
-        "papers": [],
-        "structures": [],
-        "schedule": [
-          {
-            "id": 1794626079780,
-            "title": "Welcome Research Session — Seojeong Rho's Workspace",
-            "event_type": "Group Meeting / PI Meeting",
-            "instrument_or_location": "SKKU",
-            "start_date": "2026-11-14",
-            "start_time": "10:00",
-            "end_time": "11:30",
-            "priority": "High",
-            "status": "Scheduled",
-            "sample_id": "INIT-01",
-            "description": "Personal schedule initialized for Seojeong Rho (ssk@gmail.com).",
-            "in_weekly_report": 1
-          }
-        ],
-        "expReportRows": [],
-        "litReportRows": []
-      },
-      "activityLog": [
-        {
-          "timestamp": "2026-11-14 03:14",
-          "category": "Session",
-          "action": "Signed In (Account Registration)",
-          "detail": "Authenticated as Seojeong Rho (ssk@gmail.com)"
-        },
-        {
-          "timestamp": "2026-11-14 03:14",
-          "category": "Account",
-          "action": "Registered Personal Account",
-          "detail": "Seojeong Rho (SKKU) created a personal workspace."
-        }
-      ],
-      "updatedAtMs": 1794638692590,
-      "groups": [
-        "grp_skku_lab"
-      ]
-    },
     "las@gmail.com": {
       "email": "las@gmail.com",
       "name": "No",
@@ -2510,9 +2456,7 @@
       "name": "SKKU Energy Transport Lab",
       "description": "Sungkyunkwan University Energy Science & Materials Modeling Members",
       "color": "blue",
-      "members": [
-        "ssk@gmail.com"
-      ],
+      "members": [],
       "updatedAtMs": 1700000000000
     },
     "grp_dft_team": {
@@ -2536,7 +2480,8 @@
   },
   "deleted_users": [
     "jhpark.matsci@skku.edu",
-    "minseo.kim@gmail.com"
+    "minseo.kim@gmail.com",
+    "ssk@gmail.com"
   ],
   "deleted_groups": []
 }
