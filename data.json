@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T14:35:41.904Z",
+  "exported_at": "2026-11-14T14:35:46.933Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -1730,192 +1730,6 @@
     }
   ],
   "users_registry": {
-    "jhpark.matsci@skku.edu": {
-      "email": "jhpark.matsci@skku.edu",
-      "name": "Dr. Ji-Hoon Park",
-      "affiliation": "Sungkyunkwan University (SKKU) — Energy Science",
-      "academicRole": "Postdoctoral Researcher",
-      "authProvider": "Google Account Linked",
-      "googleLinked": true,
-      "googleEmail": "jhpark.matsci@gmail.com",
-      "passwordPlainHint": "skku1234",
-      "passwordHash": "441d52fbb490008fa860a41b38fe03e0b7f6fb06b56336922f7d7a95562f51dd",
-      "registeredAt": "2026-11-10 09:15",
-      "lastLoginAt": "2026-11-14 12:45",
-      "lastUpdatedAt": "2026-11-14 12:45",
-      "workspace": {
-        "papers": [
-          {
-            "id": 90201,
-            "doi": "10.1038/s41560-023-01245-w",
-            "title": "Surface passivation of halide perovskite thin films for high-stability photovoltaics",
-            "authors": "Ji-Hoon Park, Seong Chu Lim, Min-Seo Kim",
-            "journal": "Nature Energy",
-            "year": 2025,
-            "material_system": "CsPbI3 / 2D Perovskite Passivation",
-            "synthesis_method": "Spin-Coating + First-principles DFT",
-            "characterization_tags": "DFT, VASP, GIWAXS, XPS",
-            "status": "Key Reference",
-            "notes": "Reference energy alignment values for octahedral tilting in CsPbI3.",
-            "abstract": "Comprehensive investigation of surface ligand binding energies and defect tolerance in inorganic halide perovskites.",
-            "in_weekly_report": 1
-          }
-        ],
-        "structures": [
-          {
-            "id": 90301,
-            "name": "Cubic Halide Perovskite CsPbI3 (α-phase)",
-            "chemical_formula": "CsPbI3",
-            "crystal_system": "Cubic",
-            "space_group": "Pm-3m (221)",
-            "structure_type": "Bulk 3D",
-            "a": 6.289,
-            "b": 6.289,
-            "c": 6.289,
-            "alpha": 90,
-            "beta": 90,
-            "gamma": 90,
-            "volume": 248.74,
-            "bandgap_ev": 1.73,
-            "bandgap_type": "Direct",
-            "formation_energy_ev": -1.42,
-            "dft_code": "VASP 6.4",
-            "dft_functional": "HSE06 + SOC",
-            "kpoints_mesh": "6x6x6",
-            "encut_ev": 500,
-            "notes": "Personal workspace model by Dr. Ji-Hoon Park — α-CsPbI3 unit cell.",
-            "atoms": [
-              {
-                "element": "Cs",
-                "x": 0,
-                "y": 0,
-                "z": 0
-              },
-              {
-                "element": "Pb",
-                "x": 0.5,
-                "y": 0.5,
-                "z": 0.5
-              },
-              {
-                "element": "I",
-                "x": 0.5,
-                "y": 0.5,
-                "z": 0
-              },
-              {
-                "element": "I",
-                "x": 0.5,
-                "y": 0,
-                "z": 0.5
-              },
-              {
-                "element": "I",
-                "x": 0,
-                "y": 0.5,
-                "z": 0.5
-              }
-            ]
-          }
-        ],
-        "schedule": [
-          {
-            "id": 90101,
-            "title": "VASP Hybrid HSE06 Bandgap Calculation — CsPbI3 Slab",
-            "event_type": "Electrochemistry / Battery Testing",
-            "instrument_or_location": "SKKU HPC Cluster (Node 04)",
-            "start_date": "2026-11-16",
-            "start_time": "09:30",
-            "end_time": "12:30",
-            "priority": "High",
-            "status": "Scheduled",
-            "sample_id": "CsPbI3-Slab-01",
-            "description": "Surface termination relaxation and dipole correction for perovskite solar cell interface.",
-            "in_weekly_report": 1
-          },
-          {
-            "id": 90102,
-            "title": "In-situ Grazing Incidence XRD Beamtime Meeting",
-            "event_type": "Group Meeting / PI Meeting",
-            "instrument_or_location": "N-Center Room 86412",
-            "start_date": "2026-11-18",
-            "start_time": "14:00",
-            "end_time": "15:30",
-            "priority": "High",
-            "status": "In Progress",
-            "sample_id": "GIXRD-2026B",
-            "description": "Review synchrotron beamtime schedule and sample holder geometry.",
-            "in_weekly_report": 1
-          }
-        ],
-        "expReportRows": [
-          {
-            "sample_id": "CsPbI3-HSE06",
-            "material": "VASP 6.4 (HSE06 + SOC)",
-            "conditions": "Eg = 1.73 eV (Direct at R-point)",
-            "findings": "Spin-orbit coupling reduces Pb-6p conduction band minimum by 0.65 eV."
-          }
-        ],
-        "litReportRows": [
-          {
-            "title": "Surface passivation of halide perovskite thin films for high-stability photovoltaics",
-            "journal": "Nature Energy (2025)",
-            "material": "CsPbI3",
-            "takeaway": "2D Ruddlesden-Popper capping layer suppresses iodide vacancy migration."
-          }
-        ]
-      },
-      "activityLog": [
-        {
-          "timestamp": "2026-11-14 12:45",
-          "category": "Session",
-          "action": "Signed In (Google Account Sync (Passwordless))",
-          "detail": "Authenticated as Dr. Ji-Hoon Park (jhpark.matsci@skku.edu)"
-        },
-        {
-          "timestamp": "2026-11-14 06:53",
-          "category": "Security",
-          "action": "Password Reset by Administrator",
-          "detail": "Administrator reset password to default (\"skku1234\") for jhpark.matsci@skku.edu."
-        },
-        {
-          "timestamp": "2026-11-14 06:53",
-          "category": "Security",
-          "action": "Password Reset by Administrator",
-          "detail": "Administrator reset password to default (\"skku1234\") for jhpark.matsci@skku.edu."
-        },
-        {
-          "timestamp": "2026-11-14 10:42",
-          "category": "Crystal Structures",
-          "action": "Added Structure",
-          "detail": "Uploaded Cubic Halide Perovskite CsPbI3 (Pm-3m, Eg = 1.73 eV)"
-        },
-        {
-          "timestamp": "2026-11-14 10:30",
-          "category": "Calendar",
-          "action": "Scheduled Event",
-          "detail": "VASP Hybrid HSE06 Bandgap Calculation — CsPbI3 Slab (2026-11-16)"
-        },
-        {
-          "timestamp": "2026-11-14 10:22",
-          "category": "References",
-          "action": "Imported Paper via DOI",
-          "detail": "10.1038/s41560-023-01245-w — Nature Energy (2025)"
-        },
-        {
-          "timestamp": "2026-11-10 09:15",
-          "category": "Account",
-          "action": "Account Registered & Linked with Google",
-          "detail": "Linked Google Account jhpark.matsci@gmail.com"
-        }
-      ],
-      "updatedAtMs": 1794660334951,
-      "groups": [
-        "grp_skku_lab",
-        "grp_dft_team"
-      ],
-      "emailVerified": true
-    },
     "minseo.kim@gmail.com": {
       "email": "minseo.kim@gmail.com",
       "name": "Min-Seo Kim",
@@ -2855,7 +2669,6 @@
       "description": "Sungkyunkwan University Energy Science & Materials Modeling Members",
       "color": "blue",
       "members": [
-        "jhpark.matsci@skku.edu",
         "ssk@gmail.com"
       ],
       "updatedAtMs": 1700000000000
@@ -2866,7 +2679,6 @@
       "description": "VASP, Quantum ESPRESSO & First-Principles Simulation Group",
       "color": "purple",
       "members": [
-        "jhpark.matsci@skku.edu",
         "las@gmail.com"
       ],
       "updatedAtMs": 1700000000000
@@ -2882,6 +2694,8 @@
       "updatedAtMs": 1700000000000
     }
   },
-  "deleted_users": [],
+  "deleted_users": [
+    "jhpark.matsci@skku.edu"
+  ],
   "deleted_groups": []
 }
