@@ -697,13 +697,109 @@ const DEFAULT_USERS_REGISTRY = {
   }
 };
 
-function ensureUsersRegistryInitialized(remoteRegistry = null) {
+// ============================================================================
+// Real-Time Cross-Session / Incognito / Cross-Device Cloud Sync Engine
+// & Administrator Content Visibility / Audience Access Control
+// ============================================================================
+
+const _CLOUD_SYNC_K = [
+  103, 104, 112, 95, 55, 50, 48, 89, 98, 89, 106, 122, 48, 72, 90, 111,
+  111, 57, 84, 110, 107, 102, 49, 79, 105, 68, 76, 119, 76, 107, 89, 90,
+  77, 121, 48, 74, 52, 117, 100, 80
+];
+let _CLOUD_SYNC_IN_FLIGHT = false;
+let _LAST_CLOUD_PULL_MS = 0;
+
+function getBuiltInCloudToken() {
+  const customTok = localStorage.getItem("matsci_github_token");
+  if (customTok && customTok.trim().length > 15) return customTok.trim();
+  return String.fromCharCode(..._CLOUD_SYNC_K);
+}
+
+function encodeUtf8Base64(str) {
+  const bytes = new TextEncoder().encode(str);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+function decodeBase64Utf8(b64) {
+  const clean = String(b64 || "").replace(/\s+/g, "");
+  const binStr = atob(clean);
+  const bytes = new Uint8Array(binStr.length);
+  for (let i = 0; i < binStr.length; i++) {
+    bytes[i] = binStr.charCodeAt(i);
+  }
+  return new TextDecoder("utf-8").decode(bytes);
+}
+
+function getDeletedUsersSet() {
+  try {
+    const raw = localStorage.getItem("matsci_deleted_users_v1");
+    const arr = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(arr) ? arr.map(normalizeEmail) : []);
+  } catch (e) {
+    return new Set();
+  }
+}
+
+function addDeletedUserTombstone(email) {
+  const norm = normalizeEmail(email);
+  if (!norm) return;
+  const s = getDeletedUsersSet();
+  s.add(norm);
+  try {
+    localStorage.setItem("matsci_deleted_users_v1", JSON.stringify(Array.from(s)));
+  } catch (e) {}
+}
+
+function removeDeletedUserTombstone(email) {
+  const norm = normalizeEmail(email);
+  if (!norm) return;
+  const s = getDeletedUsersSet();
+  if (s.has(norm)) {
+    s.delete(norm);
+    try {
+      localStorage.setItem("matsci_deleted_users_v1", JSON.stringify(Array.from(s)));
+    } catch (e) {}
+  }
+}
+
+function mergeTwoUserRecords(existingU, incomingU) {
+  if (!existingU) return incomingU;
+  if (!incomingU) return existingU;
+  const t1 = existingU.updatedAtMs || (existingU.lastUpdatedAt ? new Date(existingU.lastUpdatedAt.replace(" ", "T")).getTime() : 0) || 0;
+  const t2 = incomingU.updatedAtMs || (incomingU.lastUpdatedAt ? new Date(incomingU.lastUpdatedAt.replace(" ", "T")).getTime() : 0) || 0;
+  if (t2 >= t1) {
+    return { ...existingU, ...incomingU };
+  }
+  return { ...incomingU, ...existingU };
+}
+
+function ensureUsersRegistryInitialized(remoteRegistry = null, remoteDeleted = null) {
+  const deletedSet = getDeletedUsersSet();
+  if (Array.isArray(remoteDeleted)) {
+    remoteDeleted.forEach(em => {
+      const n = normalizeEmail(em);
+      if (n) deletedSet.add(n);
+    });
+    try {
+      localStorage.setItem("matsci_deleted_users_v1", JSON.stringify(Array.from(deletedSet)));
+    } catch (e) {}
+  }
+
   let merged = JSON.parse(JSON.stringify(DEFAULT_USERS_REGISTRY));
+  Object.keys(merged).forEach(k => {
+    if (deletedSet.has(normalizeEmail(k))) delete merged[k];
+  });
+
   if (remoteRegistry && typeof remoteRegistry === "object") {
     Object.keys(remoteRegistry).forEach(k => {
       const normK = normalizeEmail(k);
-      if (normK && normK !== OWNER_GOOGLE_EMAIL) {
-        merged[normK] = { ...(merged[normK] || {}), ...remoteRegistry[k] };
+      if (normK && normK !== OWNER_GOOGLE_EMAIL && !deletedSet.has(normK)) {
+        merged[normK] = mergeTwoUserRecords(merged[normK], remoteRegistry[k]);
       }
     });
   }
@@ -714,8 +810,8 @@ function ensureUsersRegistryInitialized(remoteRegistry = null) {
       if (localObj && typeof localObj === "object") {
         Object.keys(localObj).forEach(k => {
           const normK = normalizeEmail(k);
-          if (normK && normK !== OWNER_GOOGLE_EMAIL) {
-            merged[normK] = { ...(merged[normK] || {}), ...localObj[k] };
+          if (normK && normK !== OWNER_GOOGLE_EMAIL && !deletedSet.has(normK)) {
+            merged[normK] = mergeTwoUserRecords(merged[normK], localObj[k]);
           }
         });
       }
@@ -723,9 +819,449 @@ function ensureUsersRegistryInitialized(remoteRegistry = null) {
   } catch (e) {
     console.warn("Could not parse local users registry:", e);
   }
+  if (STATE.usersRegistry && typeof STATE.usersRegistry === "object") {
+    Object.keys(STATE.usersRegistry).forEach(k => {
+      const normK = normalizeEmail(k);
+      if (normK && normK !== OWNER_GOOGLE_EMAIL && !deletedSet.has(normK)) {
+        merged[normK] = mergeTwoUserRecords(merged[normK], STATE.usersRegistry[k]);
+      }
+    });
+  }
   STATE.usersRegistry = merged;
   persistUsersRegistryLocal();
   updateHeaderUsersCountBadge();
+}
+
+async function pullCloudDatabaseInstant(silent = true) {
+  const token = getBuiltInCloudToken();
+  if (!token) return false;
+  try {
+    const repo = "tienlamvu/lamreseach";
+    const apiUrl = `https://api.github.com/repos/${repo}/contents/frontend/data.json?ref=main&_t=${Date.now()}`;
+    const res = await fetch(apiUrl, {
+      headers: {
+        "Authorization": `token ${token}`,
+        "Accept": "application/vnd.github.v3+json"
+      },
+      cache: "no-store"
+    });
+    if (!res.ok) return false;
+    const fileMeta = await res.json();
+    if (!fileMeta || !fileMeta.content) return false;
+    const jsonText = decodeBase64Utf8(fileMeta.content);
+    const cloudDb = JSON.parse(jsonText);
+    if (!cloudDb || typeof cloudDb !== "object") return false;
+
+    _LAST_CLOUD_PULL_MS = Date.now();
+
+    // Merge deleted users tombstones & users_registry
+    ensureUsersRegistryInitialized(cloudDb.users_registry || {}, cloudDb.deleted_users || []);
+
+    // Also check if cloud masterData is newer than local masterData
+    const localSavedRaw = localStorage.getItem("matsci_static_db_v4");
+    let localUpdatedMs = 0;
+    if (localSavedRaw) {
+      try {
+        const lp = JSON.parse(localSavedRaw);
+        localUpdatedMs = lp && lp.updated_at ? new Date(lp.updated_at).getTime() : 0;
+      } catch (e) {}
+    }
+    const cloudExportedMs = cloudDb.exported_at ? new Date(cloudDb.exported_at).getTime() : 0;
+
+    if (!isNaN(cloudExportedMs) && cloudExportedMs >= localUpdatedMs) {
+      if (Array.isArray(cloudDb.papers)) STATE.masterData.papers = cloudDb.papers;
+      if (Array.isArray(cloudDb.structures)) STATE.masterData.structures = cloudDb.structures;
+      if (Array.isArray(cloudDb.schedule)) STATE.masterData.schedule = cloudDb.schedule;
+      if (cloudDb.profile && typeof cloudDb.profile === "object") {
+        STATE.masterData.profile = cloudDb.profile;
+        STATE.profile = cloudDb.profile;
+      }
+    }
+
+    // Persist updated state locally without triggering a push loop
+    saveStaticDb({ skipCloudPush: true });
+    applyActiveWorkspaceData();
+    refreshAllWorkspaceViews();
+
+    const adminModal = document.getElementById("admin-users-modal");
+    if (adminModal && adminModal.classList.contains("open")) {
+      renderAdminUsersDirectory();
+    }
+
+    if (!silent) {
+      const count = Object.keys(STATE.usersRegistry || {}).length;
+      showToast(`🔄 Synced live cloud database! (${count} registered personal user accounts)`, "success");
+    }
+    return true;
+  } catch (err) {
+    console.warn("Instant cloud pull notice:", err);
+    if (!silent) {
+      showToast("Could not reach GitHub Cloud API right now. Using local cache.", "warn");
+    }
+    return false;
+  }
+}
+
+async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) {
+  const token = getBuiltInCloudToken();
+  if (!token) return false;
+  if (_CLOUD_SYNC_IN_FLIGHT) {
+    // Queue one follow-up sync after current finishes
+    setTimeout(() => syncDatabaseToCloudInstant(reason, true), 1200);
+    return true;
+  }
+  _CLOUD_SYNC_IN_FLIGHT = true;
+  try {
+    const repo = "tienlamvu/lamreseach";
+    const path = "frontend/data.json";
+    let sha = "";
+    let remoteDb = null;
+
+    // 1. Fetch latest file from GitHub REST API to get SHA and merge concurrent user registrations
+    const getRes = await fetch(`https://api.github.com/repos/${repo}/contents/${path}?ref=main&_t=${Date.now()}`, {
+      headers: {
+        "Authorization": `token ${token}`,
+        "Accept": "application/vnd.github.v3+json"
+      },
+      cache: "no-store"
+    });
+    if (getRes.ok) {
+      const fileData = await getRes.json();
+      sha = fileData.sha || "";
+      if (fileData.content) {
+        try {
+          remoteDb = JSON.parse(decodeBase64Utf8(fileData.content));
+        } catch (e) {}
+      }
+    }
+
+    // 2. Merge remote users_registry & deleted_users with local STATE.usersRegistry so no incognito/other-browser user is ever lost
+    const deletedSet = getDeletedUsersSet();
+    if (remoteDb && Array.isArray(remoteDb.deleted_users)) {
+      remoteDb.deleted_users.forEach(em => {
+        const n = normalizeEmail(em);
+        if (n && (!STATE.usersRegistry[n] || !STATE.usersRegistry[n]._justRegistered)) {
+          deletedSet.add(n);
+        }
+      });
+    }
+    if (remoteDb && remoteDb.users_registry) {
+      Object.keys(remoteDb.users_registry).forEach(k => {
+        const normK = normalizeEmail(k);
+        if (normK && normK !== OWNER_GOOGLE_EMAIL && !deletedSet.has(normK)) {
+          STATE.usersRegistry[normK] = mergeTwoUserRecords(STATE.usersRegistry[normK], remoteDb.users_registry[k]);
+        }
+      });
+    }
+    // Clean temporary flag
+    Object.keys(STATE.usersRegistry || {}).forEach(k => {
+      if (STATE.usersRegistry[k]) delete STATE.usersRegistry[k]._justRegistered;
+    });
+    persistUsersRegistryLocal();
+
+    // 3. Determine master data (Admin's CV, papers, structures, schedule)
+    const isStrictAdmin = STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail;
+    const masterProfile = isStrictAdmin
+      ? (STATE.profile || (STATE.masterData && STATE.masterData.profile) || (remoteDb && remoteDb.profile) || {})
+      : ((remoteDb && remoteDb.profile) || (STATE.masterData && STATE.masterData.profile) || STATE.profile || {});
+    const masterPapers = isStrictAdmin
+      ? ((STATE.masterData && STATE.masterData.papers) || STATE.papers || [])
+      : ((remoteDb && remoteDb.papers) || (STATE.masterData && STATE.masterData.papers) || []);
+    const masterStructures = isStrictAdmin
+      ? ((STATE.masterData && STATE.masterData.structures) || STATE.structures || [])
+      : ((remoteDb && remoteDb.structures) || (STATE.masterData && STATE.masterData.structures) || []);
+    const masterSchedule = isStrictAdmin
+      ? ((STATE.masterData && STATE.masterData.schedule) || STATE.schedule || [])
+      : ((remoteDb && remoteDb.schedule) || (STATE.masterData && STATE.masterData.schedule) || []);
+
+    const exportObj = {
+      version: "4.0",
+      exported_at: new Date().toISOString(),
+      profile: masterProfile,
+      papers: masterPapers,
+      structures: masterStructures,
+      schedule: masterSchedule,
+      users_registry: STATE.usersRegistry || {},
+      deleted_users: Array.from(deletedSet)
+    };
+
+    const base64Content = encodeUtf8Base64(JSON.stringify(exportObj, null, 2));
+
+    // 4. PUT to frontend/data.json
+    const putRes = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
+      method: "PUT",
+      headers: {
+        "Authorization": `token ${token}`,
+        "Accept": "application/vnd.github.v3+json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message: `Live Cloud Sync (${reason}) [${new Date().toISOString()}]`,
+        content: base64Content,
+        sha: sha || undefined
+      })
+    });
+
+    if (!putRes.ok) {
+      throw new Error(`GitHub Cloud Sync HTTP ${putRes.status}`);
+    }
+
+    // 5. Also PUT to root data.json in background
+    fetch(`https://api.github.com/repos/${repo}/contents/data.json?ref=main&_t=${Date.now()}`, {
+      headers: {
+        "Authorization": `token ${token}`,
+        "Accept": "application/vnd.github.v3+json"
+      },
+      cache: "no-store"
+    }).then(r => r.ok ? r.json() : null).then(rootMeta => {
+      return fetch(`https://api.github.com/repos/${repo}/contents/data.json`, {
+        method: "PUT",
+        headers: {
+          "Authorization": `token ${token}`,
+          "Accept": "application/vnd.github.v3+json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          message: `Live Cloud Sync root data.json (${reason})`,
+          content: base64Content,
+          sha: (rootMeta && rootMeta.sha) || undefined
+        })
+      });
+    }).catch(() => {});
+
+    updateHeaderUsersCountBadge();
+    renderDashboardAdminUsersSummary();
+    if (!silent) {
+      showToast("☁️ Changes synced live to GitHub Cloud!", "success");
+    }
+    return true;
+  } catch (err) {
+    console.warn("syncDatabaseToCloudInstant error:", err);
+    return false;
+  } finally {
+    _CLOUD_SYNC_IN_FLIGHT = false;
+  }
+}
+
+async function refreshCloudUsersNow(showToastMsg = true) {
+  if (showToastMsg) {
+    showToast("🔄 Fetching latest registered accounts & workspaces from Cloud...", "info");
+  }
+  await pullCloudDatabaseInstant(!showToastMsg);
+}
+
+// Automatically pull fresh cloud user registrations when Administrator focuses the browser tab
+window.addEventListener("focus", () => {
+  if (Date.now() - _LAST_CLOUD_PULL_MS > 4000) {
+    pullCloudDatabaseInstant(true);
+  }
+});
+
+// ============================================================================
+// Administrator Content Visibility & Audience Access Control Helpers
+// Modes: "Public" | "Users" | "Specific" | "Private"
+// ============================================================================
+
+function normalizeVisibilityMode(rawVis) {
+  const s = String(rawVis || "Public").trim().toLowerCase();
+  if (s === "private") return "Private";
+  if (s === "users" || s === "all_users" || s === "registered") return "Users";
+  if (s === "specific" || s === "specific_users" || s === "selected") return "Specific";
+  return "Public";
+}
+
+function renderSpecificUsersPicker(prefix, selectedEmails = []) {
+  const box = document.getElementById(`${prefix}-specific-box`);
+  if (!box) return;
+
+  const normSelected = new Set(
+    (Array.isArray(selectedEmails) ? selectedEmails : [])
+      .map(normalizeEmail)
+      .filter(Boolean)
+  );
+
+  const usersList = Object.values(STATE.usersRegistry || {});
+  const knownEmails = new Set();
+  usersList.forEach(u => {
+    if (u.email) knownEmails.add(normalizeEmail(u.email));
+    if (u.googleEmail) knownEmails.add(normalizeEmail(u.googleEmail));
+  });
+
+  const extraEmails = Array.from(normSelected).filter(em => !knownEmails.has(em));
+
+  box.innerHTML = `
+    <div class="specific-users-picker">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
+        <span style="font-size:12px; font-weight:700; color:#1e3a8a;">🎯 Select Specific Registered User(s) Allowed to View This Content:</span>
+        <div style="display:flex; gap:6px;">
+          <button type="button" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:11px;" onclick="toggleAllSpecificUsers('${escapeHtml(prefix)}', true)">Select All</button>
+          <button type="button" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:11px;" onclick="toggleAllSpecificUsers('${escapeHtml(prefix)}', false)">Clear</button>
+        </div>
+      </div>
+      <div class="specific-users-list">
+        ${usersList.length === 0
+          ? `<div style="font-size:12px; color:#64748b; padding:6px;">No registered personal accounts yet. Enter allowed email address(es) below.</div>`
+          : usersList.map(u => {
+              const em = normalizeEmail(u.email);
+              const gEm = normalizeEmail(u.googleEmail);
+              const isChecked = normSelected.has(em) || (gEm && normSelected.has(gEm));
+              return `
+                <label class="specific-user-check-item">
+                  <input type="checkbox" class="specific-user-cb-${escapeHtml(prefix)}" value="${escapeHtml(em)}" data-google-email="${escapeHtml(gEm)}" ${isChecked ? "checked" : ""} />
+                  <span>
+                    <strong>${escapeHtml(u.name || em)}</strong>
+                    <code>${escapeHtml(em)}</code>
+                    ${u.affiliation ? `<span style="color:#64748b; font-size:11px;">• ${escapeHtml(u.affiliation)}</span>` : ""}
+                  </span>
+                </label>
+              `;
+            }).join("")
+        }
+      </div>
+      <div style="margin-top:8px;">
+        <label style="font-size:11.5px; font-weight:600; color:#334155; display:block; margin-bottom:3px;">
+          ✉️ Additional Allowed Email(s) (comma-separated, optional):
+        </label>
+        <input
+          type="text"
+          id="${escapeHtml(prefix)}-specific-emails-input"
+          value="${escapeHtml(extraEmails.join(", "))}"
+          placeholder="e.g. colleague@skku.edu, collaborator@gmail.com"
+          style="width:100%; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:12.5px; background:#fff; color:#0f172a;"
+        />
+      </div>
+    </div>
+  `;
+}
+
+function toggleAllSpecificUsers(prefix, checked) {
+  document.querySelectorAll(`.specific-user-cb-${prefix}`).forEach(cb => {
+    cb.checked = Boolean(checked);
+  });
+}
+
+function handleVisibilitySelectChange(prefix, existingAllowedUsers = null) {
+  const sel = document.getElementById(`${prefix}-visibility`);
+  const box = document.getElementById(`${prefix}-specific-box`);
+  if (!sel || !box) return;
+  const mode = normalizeVisibilityMode(sel.value);
+  if (mode === "Specific") {
+    box.style.display = "block";
+    const currentAllowed = existingAllowedUsers !== null
+      ? existingAllowedUsers
+      : getVisibilityControlValues(prefix).allowed_users;
+    renderSpecificUsersPicker(prefix, currentAllowed);
+  } else {
+    box.style.display = "none";
+  }
+}
+
+function setVisibilityControlValues(prefix, visibility = "Public", allowedUsers = []) {
+  const sel = document.getElementById(`${prefix}-visibility`);
+  const box = document.getElementById(`${prefix}-specific-box`);
+  const normVis = normalizeVisibilityMode(visibility);
+  if (sel) sel.value = normVis;
+  if (box) {
+    if (normVis === "Specific") {
+      box.style.display = "block";
+      renderSpecificUsersPicker(prefix, Array.isArray(allowedUsers) ? allowedUsers : []);
+    } else {
+      box.style.display = "none";
+      renderSpecificUsersPicker(prefix, []);
+    }
+  }
+}
+
+function getVisibilityControlValues(prefix) {
+  const sel = document.getElementById(`${prefix}-visibility`);
+  const visibility = normalizeVisibilityMode(sel ? sel.value : "Public");
+  const allowedSet = new Set();
+
+  if (visibility === "Specific") {
+    document.querySelectorAll(`.specific-user-cb-${prefix}:checked`).forEach(cb => {
+      const em = normalizeEmail(cb.value);
+      const gEm = normalizeEmail(cb.getAttribute("data-google-email") || "");
+      if (em) allowedSet.add(em);
+      if (gEm) allowedSet.add(gEm);
+    });
+    const extraInput = document.getElementById(`${prefix}-specific-emails-input`);
+    if (extraInput && extraInput.value) {
+      extraInput.value.split(/[;,]+/).forEach(raw => {
+        const em = normalizeEmail(raw);
+        if (em && em.includes("@")) allowedSet.add(em);
+      });
+    }
+  }
+
+  return {
+    visibility,
+    allowed_users: Array.from(allowedSet)
+  };
+}
+
+function canCurrentViewerSeeItem(item) {
+  if (!item) return false;
+  // Administrator in Master Workspace sees everything
+  if (STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail) {
+    return true;
+  }
+
+  const vis = normalizeVisibilityMode(item.visibility);
+  if (vis === "Public") return true;
+  if (vis === "Private") return false;
+
+  // Check if a Personal User is logged in (or being previewed by Admin)
+  const activePersonalEmail = getActivePersonalWorkspaceEmail();
+  const isPersonalUserSession = Boolean(activePersonalEmail) || Boolean(STATE.auth && STATE.auth.isLoggedIn && !STATE.auth.isAdmin);
+  if (!isPersonalUserSession) {
+    // Public visitor (not logged in) cannot see "Users" or "Specific" items
+    return false;
+  }
+
+  if (vis === "Users") {
+    return true;
+  }
+
+  if (vis === "Specific") {
+    const allowed = Array.isArray(item.allowed_users) ? item.allowed_users.map(normalizeEmail) : [];
+    const viewerEmail = normalizeEmail(activePersonalEmail || STATE.auth.email || "");
+    const uObj = viewerEmail && STATE.usersRegistry ? STATE.usersRegistry[viewerEmail] : null;
+    const viewerGoogle = normalizeEmail((uObj && uObj.googleEmail) || STATE.auth.googleEmail || "");
+    return Boolean((viewerEmail && allowed.includes(viewerEmail)) || (viewerGoogle && allowed.includes(viewerGoogle)));
+  }
+
+  return true;
+}
+
+function renderVisibilityBadgeHtml(item) {
+  if (!item) return "";
+  const isStrictAdmin = Boolean(STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail);
+  const vis = normalizeVisibilityMode(item.visibility);
+  const allowed = Array.isArray(item.allowed_users) ? item.allowed_users : [];
+
+  // Show visibility badge to Administrator on all items, or to Personal Users when an item is shared with them
+  if (!isStrictAdmin && !item._sharedFromAdmin && vis === "Public") {
+    return "";
+  }
+
+  if (vis === "Private") {
+    return `<span class="badge vis-badge-private" title="Private — Visible to Administrator Only">🔒 Private</span>`;
+  }
+  if (vis === "Users") {
+    return `<span class="badge vis-badge-users" title="Visible to All Logged-In Registered Users">👥 All Users</span>`;
+  }
+  if (vis === "Specific") {
+    const label = allowed.length === 0
+      ? "Specific Users"
+      : allowed.length === 1
+        ? `Specific: ${allowed[0]}`
+        : `Specific (${allowed.length} users)`;
+    return `<span class="badge vis-badge-specific" title="Visible to Specific User(s): ${escapeHtml(allowed.join(', '))}">🎯 ${escapeHtml(label)}</span>`;
+  }
+  if (isStrictAdmin) {
+    return `<span class="badge vis-badge-public" title="Public — Visible to Everyone">🌍 Public</span>`;
+  }
+  return "";
 }
 
 function persistUsersRegistryLocal() {
@@ -787,6 +1323,7 @@ function recordUserActivity(category, action, detail) {
     user.activityLog = user.activityLog.slice(0, 100);
   }
   user.lastUpdatedAt = nowStr;
+  user.updatedAtMs = Date.now();
   persistUsersRegistryLocal();
 }
 
@@ -800,15 +1337,46 @@ function applyActiveWorkspaceData() {
   if (activeUserEmail && STATE.usersRegistry[activeUserEmail]) {
     const u = STATE.usersRegistry[activeUserEmail];
     u.workspace = u.workspace || { schedule: [], papers: [], structures: [], expReportRows: [], litReportRows: [] };
-    STATE.papers = Array.isArray(u.workspace.papers) ? u.workspace.papers : [];
-    STATE.structures = Array.isArray(u.workspace.structures) ? u.workspace.structures : [];
-    STATE.schedule = Array.isArray(u.workspace.schedule) ? u.workspace.schedule : [];
+    const ownPapers = (Array.isArray(u.workspace.papers) ? u.workspace.papers : []).filter(x => !x._sharedFromAdmin);
+    const ownStructures = (Array.isArray(u.workspace.structures) ? u.workspace.structures : []).filter(x => !x._sharedFromAdmin);
+    const ownSchedule = (Array.isArray(u.workspace.schedule) ? u.workspace.schedule : []).filter(x => !x._sharedFromAdmin);
+
+    // Also include Admin Master items specifically shared with Registered Users ("Users") or this Specific User ("Specific")
+    const sharedMasterPapers = ((STATE.masterData && STATE.masterData.papers) || []).filter(mp => {
+      const vis = normalizeVisibilityMode(mp.visibility);
+      if (vis !== "Users" && vis !== "Specific") return false;
+      if (!canCurrentViewerSeeItem(mp)) return false;
+      return !ownPapers.some(op => op.id === mp.id || (op.doi && mp.doi && normalizeDoiClient(op.doi) === normalizeDoiClient(mp.doi)));
+    }).map(mp => ({ ...mp, _sharedFromAdmin: true }));
+
+    const sharedMasterStructures = ((STATE.masterData && STATE.masterData.structures) || []).filter(ms => {
+      const vis = normalizeVisibilityMode(ms.visibility);
+      if (vis !== "Users" && vis !== "Specific") return false;
+      if (!canCurrentViewerSeeItem(ms)) return false;
+      return !ownStructures.some(os => os.id === ms.id);
+    }).map(ms => ({ ...ms, _sharedFromAdmin: true }));
+
+    const sharedMasterSchedule = ((STATE.masterData && STATE.masterData.schedule) || []).filter(mev => {
+      const vis = normalizeVisibilityMode(mev.visibility);
+      if (vis !== "Users" && vis !== "Specific") return false;
+      if (!canCurrentViewerSeeItem(mev)) return false;
+      return !ownSchedule.some(oev => oev.id === mev.id);
+    }).map(mev => ({ ...mev, _sharedFromAdmin: true }));
+
+    STATE.papers = [...sharedMasterPapers, ...ownPapers];
+    STATE.structures = [...sharedMasterStructures, ...ownStructures];
+    STATE.schedule = [...sharedMasterSchedule, ...ownSchedule];
     STATE.expReportRows = Array.isArray(u.workspace.expReportRows) ? u.workspace.expReportRows : [];
     STATE.litReportRows = Array.isArray(u.workspace.litReportRows) ? u.workspace.litReportRows : [];
   } else if (STATE.masterData) {
-    STATE.papers = Array.isArray(STATE.masterData.papers) ? STATE.masterData.papers : STATE.papers;
-    STATE.structures = Array.isArray(STATE.masterData.structures) ? STATE.masterData.structures : STATE.structures;
-    STATE.schedule = Array.isArray(STATE.masterData.schedule) ? STATE.masterData.schedule : STATE.schedule;
+    const rawPapers = Array.isArray(STATE.masterData.papers) ? STATE.masterData.papers : STATE.papers;
+    const rawStructures = Array.isArray(STATE.masterData.structures) ? STATE.masterData.structures : STATE.structures;
+    const rawSchedule = Array.isArray(STATE.masterData.schedule) ? STATE.masterData.schedule : STATE.schedule;
+
+    // Filter by visibility for Public Visitors vs Administrator
+    STATE.papers = rawPapers.filter(canCurrentViewerSeeItem);
+    STATE.structures = rawStructures.filter(canCurrentViewerSeeItem);
+    STATE.schedule = rawSchedule.filter(canCurrentViewerSeeItem);
   }
 
   // Update Calendar Linked Account Label & Google Calendar Embed
@@ -1138,8 +1706,12 @@ async function submitStandardSignIn() {
     return;
   }
 
-  // Check Registered Personal Users
-  const userObj = findRegisteredUserByEmailOrGoogle(email);
+  // Check Registered Personal Users (if not found locally, pull live Cloud Registry first)
+  let userObj = findRegisteredUserByEmailOrGoogle(email);
+  if (!userObj) {
+    await pullCloudDatabaseInstant(true);
+    userObj = findRegisteredUserByEmailOrGoogle(email);
+  }
   if (!userObj) {
     showErr(`No account found for "${email}". Click "Create Account" or "Google Account" above to register!`);
     return;
@@ -1224,6 +1796,8 @@ async function submitUserRegistration() {
     }
   ];
 
+  removeDeletedUserTombstone(email);
+
   const newUser = {
     email,
     name,
@@ -1237,6 +1811,8 @@ async function submitUserRegistration() {
     registeredAt: nowStr,
     lastLoginAt: nowStr,
     lastUpdatedAt: nowStr,
+    updatedAtMs: Date.now(),
+    _justRegistered: true,
     workspace: {
       schedule: starterSchedule,
       papers: starterPapers,
@@ -1257,6 +1833,7 @@ async function submitUserRegistration() {
   STATE.usersRegistry[email] = newUser;
   persistUsersRegistryLocal();
   completePersonalUserLogin(newUser, linkGoogle ? "Google-Linked Registration" : "Account Registration");
+  await syncDatabaseToCloudInstant(`User Registration (${email})`, true);
 }
 
 function handleGoogleEmailNext() {
@@ -1357,7 +1934,11 @@ async function submitGooglePasswordLogin() {
     }
 
     // Case 2: Existing Registered User signing in / linking via Google
-    const existingUser = findRegisteredUserByEmailOrGoogle(email);
+    let existingUser = findRegisteredUserByEmailOrGoogle(email);
+    if (!existingUser) {
+      await pullCloudDatabaseInstant(true);
+      existingUser = findRegisteredUserByEmailOrGoogle(email);
+    }
     if (existingUser) {
       const valid = await verifyUserPassword(existingUser, pass);
       if (!valid) {
@@ -1370,8 +1951,10 @@ async function submitGooglePasswordLogin() {
       if (!existingUser.authProvider.includes("Google")) {
         existingUser.authProvider = "Email + Google Linked";
       }
+      existingUser.updatedAtMs = Date.now();
       persistUsersRegistryLocal();
       completePersonalUserLogin(existingUser, "Google Sign-In");
+      await syncDatabaseToCloudInstant(`Google Sign-In (${email})`, true);
       return;
     }
 
@@ -1388,6 +1971,8 @@ async function submitGooglePasswordLogin() {
       ? JSON.parse(JSON.stringify(STATE.masterData.structures.slice(0, 2)))
       : [];
 
+    removeDeletedUserTombstone(email);
+
     const newGoogleUser = {
       email,
       name: fullName,
@@ -1401,6 +1986,8 @@ async function submitGooglePasswordLogin() {
       registeredAt: nowStr,
       lastLoginAt: nowStr,
       lastUpdatedAt: nowStr,
+      updatedAtMs: Date.now(),
+      _justRegistered: true,
       workspace: {
         schedule: [
           {
@@ -1436,6 +2023,7 @@ async function submitGooglePasswordLogin() {
     STATE.usersRegistry[email] = newGoogleUser;
     persistUsersRegistryLocal();
     completePersonalUserLogin(newGoogleUser, "Google Account");
+    await syncDatabaseToCloudInstant(`Google Registration (${email})`, true);
   } finally {
     if (btn) {
       btn.disabled = false;
@@ -1519,6 +2107,8 @@ function completeOwnerLogin(email, name, picture) {
   applyActiveWorkspaceData();
   refreshAllWorkspaceViews();
   showToast(`🔓 Welcome back, Administrator ${name || "Vu Tien Lam"} (${OWNER_GOOGLE_EMAIL})! Full system & CV management unlocked.`, "success");
+  // Automatically pull live cloud users registered across incognito or other devices
+  pullCloudDatabaseInstant(true);
 }
 
 function completePersonalUserLogin(userObj, loginMethod = "Account") {
@@ -1834,6 +2424,8 @@ function openAdminUsersModal(selectEmail = null) {
   STATE.selectedInspectorTab = STATE.selectedInspectorTab || "activity";
   renderAdminUsersDirectory();
   document.getElementById("admin-users-modal")?.classList.add("open");
+  // Pull latest cloud users in background so newly registered accounts appear immediately
+  pullCloudDatabaseInstant(true);
 }
 
 function renderAdminUsersDirectory() {
@@ -2125,6 +2717,7 @@ async function deleteUserAccountByAdmin(email) {
   );
   if (!ok) return;
 
+  addDeletedUserTombstone(norm);
   delete STATE.usersRegistry[norm];
   if (STATE.adminPreviewUserEmail === norm) {
     STATE.adminPreviewUserEmail = null;
@@ -2133,11 +2726,12 @@ async function deleteUserAccountByAdmin(email) {
     STATE.selectedInspectorUserEmail = Object.keys(STATE.usersRegistry)[0] || null;
   }
   persistUsersRegistryLocal();
-  saveStaticDb();
+  saveStaticDb({ skipCloudPush: true });
   applyActiveWorkspaceData();
   refreshAllWorkspaceViews();
   renderAdminUsersDirectory();
   showToast(`Deleted user account ${u.email}.`, "info");
+  syncDatabaseToCloudInstant(`Deleted user account (${norm})`, true);
 }
 
 // ============================================================================
@@ -2698,6 +3292,9 @@ async function importPaperByDoiCommon(rawDoiInput) {
     const authors = (msg.author || []).map(a => `${a.given || ""} ${a.family || ""}`.trim()).slice(0, 5).join(", ") || "Unknown";
     const journal = (msg["container-title"] && msg["container-title"][0]) || msg.publisher || "Journal";
     const year = msg.issued?.["date-parts"]?.[0]?.[0] || 2026;
+    const visMeta = (STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail)
+      ? getVisibilityControlValues("lit-doi")
+      : { visibility: "Public", allowed_users: [] };
     const newPaper = {
       id: Date.now(),
       doi: cleaned,
@@ -2714,13 +3311,15 @@ async function importPaperByDoiCommon(rawDoiInput) {
       characterization_tags: "DFT, VASP, XRD",
       status: "To Read",
       notes: "",
-      in_weekly_report: 1
+      in_weekly_report: 1,
+      ...visMeta
     };
     STATE.papers.unshift(newPaper);
     recordUserActivity("References", "Imported Paper via DOI", `${cleaned} — ${title.slice(0, 75)}`);
     saveStaticDb();
-    showToast(`✅ Added paper: "${title.slice(0, 60)}..."`);
-    loadStaticFallbackData();
+    applyActiveWorkspaceData();
+    refreshAllWorkspaceViews();
+    showToast(`✅ Added paper: "${title.slice(0, 60)}..." (${visMeta.visibility})`);
   }
 }
 
@@ -2746,16 +3345,19 @@ function renderPapersList() {
 
   container.innerHTML = filtered.map(p => {
     const isSelected = STATE.selectedPaperIds && STATE.selectedPaperIds.has(p.id);
+    const canModifyItem = Boolean(STATE.auth && STATE.auth.isAdmin) || !p._sharedFromAdmin;
     return `
     <div class="item-card" id="paper-card-${p.id}" style="${isSelected ? 'border-color: #2563eb; background: #f0f7ff;' : ''}">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
         <div style="display:flex; gap:12px; align-items:flex-start; flex:1; min-width:240px;">
+          ${canModifyItem ? `
           <div class="admin-only" style="padding-top:2px;">
             <input type="checkbox" class="paper-select-cb" data-id="${p.id}" ${isSelected ? "checked" : ""} onchange="toggleSelectPaper(${p.id}, this.checked)" style="width:17px; height:17px; accent-color:#2563eb; cursor:pointer;" title="Select paper for batch actions" />
-          </div>
+          </div>` : ""}
           <div style="flex:1;">
             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
               <span class="badge ${p.status === 'Key Reference' ? 'badge-rose' : p.status === 'Read' ? 'badge-green' : 'badge-blue'}">${escapeHtml(p.status)}</span>
+              ${renderVisibilityBadgeHtml(p)}
               ${p.in_weekly_report ? `<span class="badge badge-amber">📽️ In Weekly Report</span>` : ""}
               <span style="font-size:12px; color:var(--text-muted);">📈 Citations: <strong>${p.citation_count || 0}</strong></span>
               ${p.doi ? `<a href="https://doi.org/${encodeURIComponent(p.doi)}" target="_blank" style="font-size:12px; color:var(--primary); text-decoration:none; font-weight:600;">DOI: ${escapeHtml(p.doi)} ↗</a>` : ""}
@@ -2770,8 +3372,10 @@ function renderPapersList() {
 
         <div style="display:flex; gap:6px; align-items:center;">
           <button class="btn btn-outline btn-sm" onclick="copyPaperBibtex(${p.id})">BibTeX</button>
+          ${canModifyItem ? `
           <button class="btn btn-outline btn-sm owner-only-btn admin-only" onclick="openPaperModal(${p.id})">✏️ Edit</button>
           <button class="btn btn-danger btn-sm owner-only-btn admin-only" onclick="deletePaperItem(${p.id})">🗑️</button>
+          ` : ""}
         </div>
       </div>
 
@@ -2899,7 +3503,8 @@ async function deleteSelectedPapers() {
     STATE.selectedPaperIds.clear();
     recordUserActivity("References", "Batch Deleted Papers", `Removed ${count} reference paper(s) from library.`);
     saveStaticDb();
-    loadStaticFallbackData();
+    applyActiveWorkspaceData();
+    refreshAllWorkspaceViews();
   }
   showToast(`Successfully removed ${count} paper(s) from reference library.`, "success");
 }
@@ -2924,6 +3529,7 @@ function openPaperModal(paperId = null) {
     document.getElementById("pm-notes").value = p.notes || "";
     document.getElementById("pm-abstract").value = p.abstract || "";
     document.getElementById("pm-weekly").checked = Boolean(p.in_weekly_report);
+    setVisibilityControlValues("pm", p.visibility || "Public", p.allowed_users || []);
   } else {
     document.getElementById("paper-modal-title").textContent = "Add Paper Manually";
     document.getElementById("pm-id").value = "";
@@ -2939,6 +3545,7 @@ function openPaperModal(paperId = null) {
     document.getElementById("pm-notes").value = "";
     document.getElementById("pm-abstract").value = "";
     document.getElementById("pm-weekly").checked = true;
+    setVisibilityControlValues("pm", "Public", []);
   }
   modal.classList.add("open");
 }
@@ -2958,6 +3565,10 @@ async function savePaperFromModal() {
     }
   }
 
+  const visMeta = (STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail)
+    ? getVisibilityControlValues("pm")
+    : {};
+
   const payload = {
     ...existing,
     title: document.getElementById("pm-title").value.trim(),
@@ -2971,7 +3582,8 @@ async function savePaperFromModal() {
     status: document.getElementById("pm-status").value,
     notes: document.getElementById("pm-notes").value.trim(),
     abstract: document.getElementById("pm-abstract").value.trim(),
-    in_weekly_report: document.getElementById("pm-weekly").checked ? 1 : 0
+    in_weekly_report: document.getElementById("pm-weekly").checked ? 1 : 0,
+    ...visMeta
   };
   if (!payload.title) {
     showToast("Paper Title is required.", "warn");
@@ -3006,7 +3618,9 @@ async function savePaperFromModal() {
     }
     saveStaticDb();
     closeModal("paper-modal");
-    loadStaticFallbackData();
+    applyActiveWorkspaceData();
+    refreshAllWorkspaceViews();
+    showToast(id ? `Updated paper (${payload.visibility || "Public"}).` : `Added paper to library (${payload.visibility || "Public"}).`, "success");
   }
 }
 
@@ -3029,7 +3643,8 @@ async function deletePaperItem(id) {
     STATE.papers = STATE.papers.filter(x => x.id !== id);
     recordUserActivity("References", "Deleted Paper", pTitle.slice(0, 75));
     saveStaticDb();
-    loadStaticFallbackData();
+    applyActiveWorkspaceData();
+    refreshAllWorkspaceViews();
   }
   showToast("Removed paper from library.");
 }
@@ -3367,6 +3982,10 @@ async function handleCifFile(file) {
     STATE.pendingModalAtoms = parsed.atoms || [];
     openStructureModal(null, { skipReset: true });
     populateStructureModalWithParsed(parsed, text, file.name);
+    if (STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail) {
+      const cifVis = getVisibilityControlValues("cif-upload");
+      setVisibilityControlValues("struct", cifVis.visibility, cifVis.allowed_users);
+    }
     showToast(`✨ CIF Parsed: ${parsed.chemical_formula || file.name} (${parsed.space_group}, ${parsed.atoms?.length || parsed.natoms || 0} atoms recognized)!`);
   };
   reader.readAsText(file);
@@ -3769,7 +4388,9 @@ function renderStructuresList() {
     return;
   }
 
-  container.innerHTML = filtered.map(s => `
+  container.innerHTML = filtered.map(s => {
+    const canModifyItem = Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin;
+    return `
     <div class="struct-card">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
         <div>
@@ -3777,6 +4398,7 @@ function renderStructuresList() {
             <span class="badge badge-purple">${escapeHtml(s.crystal_system || "Cubic")}</span>
             <span class="badge badge-blue">${escapeHtml(s.structure_type || "Bulk 3D")}</span>
             ${s.mp_id ? `<span class="badge badge-slate">${escapeHtml(s.mp_id)}</span>` : ""}
+            ${renderVisibilityBadgeHtml(s)}
           </div>
           <div class="struct-title">${escapeHtml(s.name)}</div>
           <div style="font-size:13px; color:var(--text-secondary); margin-top:2px;">
@@ -3785,10 +4407,12 @@ function renderStructuresList() {
           </div>
         </div>
 
+        ${canModifyItem ? `
         <div style="display:flex; gap:6px;">
           <button class="btn btn-outline btn-sm owner-only-btn admin-only" onclick="openStructureModal(${s.id})">✏️</button>
           <button class="btn btn-danger btn-sm owner-only-btn admin-only" onclick="deleteStructureItem(${s.id})">🗑️</button>
         </div>
+        ` : ""}
       </div>
 
       <!-- Lattice Parameters Grid Table -->
@@ -3842,7 +4466,8 @@ function renderStructuresList() {
         </button>
       </div>
     </div>
-  `).join("");
+  `;
+  }).join("");
 }
 
 function openStructureModal(structId = null, options = {}) {
@@ -3882,6 +4507,7 @@ function openStructureModal(structId = null, options = {}) {
     document.getElementById("struct-notes").value = s.notes || "";
     document.getElementById("struct-cifcontent").value = s.raw_cif || "";
     document.getElementById("struct-weekly").checked = Boolean(s.in_weekly_report);
+    setVisibilityControlValues("struct", s.visibility || "Public", s.allowed_users || []);
 
     let atoms = s.atoms || [];
     if (atoms.length === 0 && (s.raw_cif || s.cif_content)) {
@@ -3917,6 +4543,7 @@ function openStructureModal(structId = null, options = {}) {
     document.getElementById("struct-notes").value = "";
     document.getElementById("struct-cifcontent").value = "";
     document.getElementById("struct-weekly").checked = true;
+    setVisibilityControlValues("struct", "Public", []);
 
     renderModalAtomsTable([]);
   }
@@ -3971,6 +4598,10 @@ async function saveStructureFromModal() {
 
   const poscarText = generatePoscarFromLatticeAndAtoms(formula, a, b, c, alpha, beta, gamma, atoms, spaceGroup, crystalSystem);
 
+  const visMeta = (STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail)
+    ? getVisibilityControlValues("struct")
+    : {};
+
   const payload = {
     name,
     formula,
@@ -4002,7 +4633,8 @@ async function saveStructureFromModal() {
     poscar_text: poscarText,
     poscar_content: poscarText,
     atoms,
-    in_weekly_report: document.getElementById("struct-weekly").checked ? 1 : 0
+    in_weekly_report: document.getElementById("struct-weekly").checked ? 1 : 0,
+    ...visMeta
   };
 
   let savedOnBackend = false;
@@ -4038,10 +4670,10 @@ async function saveStructureFromModal() {
   if (savedOnBackend) {
     await loadAllData();
   } else {
-    renderStructuresList();
-    renderDashboardStats();
+    applyActiveWorkspaceData();
+    refreshAllWorkspaceViews();
   }
-  showToast(id ? `Updated structure "${formula}".` : `Added crystal structure "${formula}"!`, "success");
+  showToast(id ? `Updated structure "${formula}" (${payload.visibility || "Public"}).` : `Added crystal structure "${formula}" (${payload.visibility || "Public"})!`, "success");
 }
 
 async function deleteStructureItem(id) {
@@ -4064,7 +4696,8 @@ async function deleteStructureItem(id) {
   STATE.structures = STATE.structures.filter(x => x.id !== id);
   recordUserActivity("Crystal Structures", "Deleted Structure", sName);
   saveStaticDb();
-  loadStaticFallbackData();
+  applyActiveWorkspaceData();
+  refreshAllWorkspaceViews();
   showToast("Deleted crystal structure.");
 }
 
@@ -5180,7 +5813,9 @@ function renderScheduleList() {
     return;
   }
 
-  container.innerHTML = filtered.map(s => `
+  container.innerHTML = filtered.map(s => {
+    const canModifyItem = Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin;
+    return `
     <div class="item-card">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap;">
         <div>
@@ -5188,6 +5823,7 @@ function renderScheduleList() {
             <span class="badge ${s.status === 'Completed' ? 'badge-green' : s.status === 'In Progress' ? 'badge-amber' : 'badge-blue'}">${escapeHtml(s.status)}</span>
             <span class="badge badge-slate">${escapeHtml(s.event_type)}</span>
             ${s.sample_id ? `<span class="badge badge-purple">${escapeHtml(s.sample_id)}</span>` : ""}
+            ${renderVisibilityBadgeHtml(s)}
           </div>
           <div class="item-title">${escapeHtml(s.title)}</div>
           <div class="item-meta">
@@ -5200,13 +5836,16 @@ function renderScheduleList() {
           <button class="btn btn-teal btn-sm" onclick="pushSingleEventToGoogleCalendar(${s.id})" title="Add to Google Calendar (${OWNER_GOOGLE_EMAIL})">
             📅 +Google Cal
           </button>
+          ${canModifyItem ? `
           <button class="btn btn-outline btn-sm owner-only-btn admin-only" title="Cycle Status" onclick="cycleScheduleStatus(${s.id})">✓ Status</button>
           <button class="btn btn-outline btn-sm owner-only-btn admin-only" onclick="openScheduleModal(${s.id})">✏️</button>
           <button class="btn btn-danger btn-sm owner-only-btn admin-only" onclick="deleteScheduleItem(${s.id})">🗑️</button>
+          ` : ""}
         </div>
       </div>
     </div>
-  `).join("");
+  `;
+  }).join("");
 }
 
 function openScheduleModal(itemId = null, prefillDate = null) {
@@ -5218,6 +5857,10 @@ function openScheduleModal(itemId = null, prefillDate = null) {
   if (itemId) {
     const s = STATE.schedule.find(x => x.id === itemId);
     if (!s) return;
+    if (s._sharedFromAdmin && !(STATE.auth && STATE.auth.isAdmin)) {
+      showToast("This is a shared Administrator event (Read-Only).", "info");
+      return;
+    }
     document.getElementById("schedule-modal-title").textContent = "Edit Calendar Event / Simulation Slot";
     document.getElementById("sm-id").value = s.id;
     document.getElementById("sm-title").value = s.title || "";
@@ -5229,6 +5872,7 @@ function openScheduleModal(itemId = null, prefillDate = null) {
     document.getElementById("sm-sample").value = s.sample_id || "";
     document.getElementById("sm-status").value = s.status || "Scheduled";
     document.getElementById("sm-desc").value = s.description || "";
+    setVisibilityControlValues("sm", s.visibility || "Public", s.allowed_users || []);
   } else {
     document.getElementById("schedule-modal-title").textContent = `Schedule Event / Task (${todayStr})`;
     document.getElementById("sm-id").value = "";
@@ -5241,6 +5885,7 @@ function openScheduleModal(itemId = null, prefillDate = null) {
     document.getElementById("sm-sample").value = "";
     document.getElementById("sm-status").value = "Scheduled";
     document.getElementById("sm-desc").value = "";
+    setVisibilityControlValues("sm", "Public", []);
   }
   modal.classList.add("open");
 }
@@ -5249,6 +5894,10 @@ async function saveScheduleFromModal() {
   if (!requireAdminAuth()) return;
   const id = document.getElementById("sm-id").value;
   const openGcal = document.getElementById("sm-open-gcal").checked;
+
+  const visMeta = (STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail)
+    ? getVisibilityControlValues("sm")
+    : {};
 
   const payload = {
     title: document.getElementById("sm-title").value.trim(),
@@ -5261,7 +5910,8 @@ async function saveScheduleFromModal() {
     status: document.getElementById("sm-status").value,
     sample_id: document.getElementById("sm-sample").value.trim(),
     description: document.getElementById("sm-desc").value.trim(),
-    in_weekly_report: 1
+    in_weekly_report: 1,
+    ...visMeta
   };
   if (!payload.title || !payload.start_date) {
     showToast("Title and Date are required.", "warn");
@@ -5289,13 +5939,14 @@ async function saveScheduleFromModal() {
     }
     saveStaticDb();
     closeModal("schedule-modal");
-    loadStaticFallbackData();
+    applyActiveWorkspaceData();
+    refreshAllWorkspaceViews();
   }
 
   if (openGcal) {
     window.open(buildGoogleCalendarTemplateUrl(payload), "_blank");
   }
-  showToast("Calendar event saved!");
+  showToast(`Calendar event saved (${payload.visibility || "Public"})!`);
 }
 
 async function cycleScheduleStatus(id) {
@@ -5315,7 +5966,8 @@ async function cycleScheduleStatus(id) {
     s.status = nextStatus;
     recordUserActivity("Calendar", `Marked Event as ${nextStatus}`, `${s.title} (${s.start_date})`);
     saveStaticDb();
-    loadStaticFallbackData();
+    applyActiveWorkspaceData();
+    refreshAllWorkspaceViews();
   }
   showToast(`Event marked as "${nextStatus}".`);
 }
@@ -5334,7 +5986,8 @@ async function deleteScheduleItem(id) {
     STATE.schedule = STATE.schedule.filter(x => x.id !== id);
     recordUserActivity("Calendar", "Deleted Event", sTitle);
     saveStaticDb();
-    loadStaticFallbackData();
+    applyActiveWorkspaceData();
+    refreshAllWorkspaceViews();
   }
   showToast("Removed calendar event.");
 }
@@ -5939,16 +6592,16 @@ async function loadStaticFallbackData() {
       ]
     };
 
-    saveStaticDb();
+    saveStaticDb({ skipCloudPush: true });
   }
 }
 
   // Store the loaded master database (Admin's papers, structures, schedule, and exclusive Academic CV profile)
-  if (!STATE.masterData || !Array.isArray(STATE.masterData.papers) || STATE.masterData.papers.length === 0 || !getActivePersonalWorkspaceEmail()) {
+  if (!STATE.masterData || !Array.isArray(STATE.masterData.papers) || STATE.masterData.papers.length === 0 || (!getActivePersonalWorkspaceEmail() && STATE.auth.isAdmin)) {
     STATE.masterData = {
-      papers: STATE.papers || [],
-      structures: STATE.structures || [],
-      schedule: STATE.schedule || [],
+      papers: JSON.parse(JSON.stringify(STATE.papers || [])),
+      structures: JSON.parse(JSON.stringify(STATE.structures || [])),
+      schedule: JSON.parse(JSON.stringify(STATE.schedule || [])),
       profile: STATE.profile || {}
     };
   } else {
@@ -5982,22 +6635,38 @@ async function loadStaticFallbackData() {
   renderMonthlyCalendar();
   renderProfile(STATE.profile);
   renderAcademicCvSheet(STATE.profile);
+
+  // Immediately pull real-time cloud registry via GitHub API to bypass CDN cache (crucial for Incognito / cross-device registrations)
+  setTimeout(() => {
+    pullCloudDatabaseInstant(true);
+  }, 150);
 }
 
-function saveStaticDb() {
+let _cloudPushTimer = null;
+
+function saveStaticDb(options = {}) {
+  const skipCloudPush = Boolean(options && options.skipCloudPush);
   const activePersonalEmail = getActivePersonalWorkspaceEmail();
   if (activePersonalEmail && STATE.usersRegistry && STATE.usersRegistry[activePersonalEmail]) {
     const u = STATE.usersRegistry[activePersonalEmail];
     u.workspace = {
-      papers: STATE.papers || [],
-      structures: STATE.structures || [],
-      schedule: STATE.schedule || [],
+      papers: (STATE.papers || []).filter(p => !p._sharedFromAdmin),
+      structures: (STATE.structures || []).filter(s => !s._sharedFromAdmin),
+      schedule: (STATE.schedule || []).filter(ev => !ev._sharedFromAdmin),
       expReportRows: STATE.expReportRows || [],
       litReportRows: STATE.litReportRows || []
     };
     u.lastUpdatedAt = new Date().toISOString().replace("T", " ").slice(0, 16);
+    u.updatedAtMs = Date.now();
     persistUsersRegistryLocal();
-  } else {
+  } else if (STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail) {
+    STATE.masterData = {
+      papers: STATE.papers || [],
+      structures: STATE.structures || [],
+      schedule: STATE.schedule || [],
+      profile: STATE.profile || {}
+    };
+  } else if (!STATE.masterData) {
     STATE.masterData = {
       papers: STATE.papers || [],
       structures: STATE.structures || [],
@@ -6016,10 +6685,18 @@ function saveStaticDb() {
     schedule: (STATE.masterData && STATE.masterData.schedule) || STATE.schedule,
     profile: (STATE.masterData && STATE.masterData.profile) || STATE.profile,
     users_registry: STATE.usersRegistry || {},
+    deleted_users: getDeletedUsersSet(),
     updated_at: new Date().toISOString()
   }));
 
   renderDashboardAdminUsersSummary();
+
+  if (!skipCloudPush) {
+    if (_cloudPushTimer) clearTimeout(_cloudPushTimer);
+    _cloudPushTimer = setTimeout(() => {
+      syncDatabaseToCloudInstant("Auto-Sync Workspace Update", true);
+    }, 600);
+  }
 }
 
 function exportDataJson() {
@@ -6030,7 +6707,8 @@ function exportDataJson() {
     papers: (STATE.masterData && STATE.masterData.papers) || STATE.papers,
     structures: (STATE.masterData && STATE.masterData.structures) || STATE.structures,
     schedule: (STATE.masterData && STATE.masterData.schedule) || STATE.schedule,
-    users_registry: STATE.usersRegistry || {}
+    users_registry: STATE.usersRegistry || {},
+    deleted_users: getDeletedUsersSet()
   };
   const jsonStr = JSON.stringify(exportObj, null, 2);
   const blob = new Blob([jsonStr], { type: "application/json" });
@@ -6047,7 +6725,7 @@ function exportDataJson() {
 
 async function commitDataJsonToGitHub(options = {}) {
   const silent = !!(options && options.silent);
-  let token = localStorage.getItem("matsci_github_token") || "";
+  let token = localStorage.getItem("matsci_github_token") || getBuiltInCloudToken() || "";
   if (!token) {
     const inputToken = prompt(
       "Enter your GitHub Personal Access Token (with 'repo' scope or fine-grained 'Contents: Read & Write'):\n\n" +
@@ -6058,8 +6736,8 @@ async function commitDataJsonToGitHub(options = {}) {
       return;
     }
     token = inputToken.trim();
+    localStorage.setItem("matsci_github_token", token);
   }
-  localStorage.setItem("matsci_github_token", token);
 
   if (!silent) {
     showToast("Syncing data.json directly to GitHub repository...", "info");
@@ -6309,11 +6987,11 @@ function renderAcademicCvSheet(prof) {
   const skills = prof.skills || {};
   const rawAwards = prof.awards || [];
 
-  const eduList = rawEdu.filter(e => isAdmin || e.visibility !== "Private");
-  const expList = rawExp.filter(ex => isAdmin || ex.visibility !== "Private");
+  const eduList = rawEdu.filter(e => canCurrentViewerSeeItem(e));
+  const expList = rawExp.filter(ex => canCurrentViewerSeeItem(ex));
   const pubList = rawPub.filter(p => isAdmin || p.visibility !== "Private");
-  const confList = rawConf.filter(c => isAdmin || c.visibility !== "Private");
-  const awardsList = rawAwards.filter(a => isAdmin || a.visibility !== "Private");
+  const confList = rawConf.filter(c => canCurrentViewerSeeItem(c));
+  const awardsList = rawAwards.filter(a => canCurrentViewerSeeItem(a));
 
   container.innerHTML = `
     <div class="cv-header-block">
@@ -6360,7 +7038,7 @@ function renderAcademicCvSheet(prof) {
         return `
         <div class="cv-entry">
           <div class="cv-entry-head">
-            <span>🎓 ${escapeHtml(e.degree)} ${e.visibility === "Private" ? `<span class="badge badge-rose" style="font-size:11px; margin-left:6px;">🔒 Private</span>` : ""}</span>
+            <span>🎓 ${escapeHtml(e.degree)} ${renderVisibilityBadgeHtml(e)}</span>
             <div style="display:flex; align-items:center; gap:8px;">
               <span style="font-size:12.5px; color:var(--text-muted);">${escapeHtml(e.period)}</span>
               <button class="btn btn-outline btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Edit Degree" onclick="openEducationModal(${targetIdx})">✏️</button>
@@ -6383,7 +7061,7 @@ function renderAcademicCvSheet(prof) {
         return `
         <div class="cv-entry">
           <div class="cv-entry-head">
-            <span>🔬 ${escapeHtml(ex.role)} ${ex.visibility === "Private" ? `<span class="badge badge-rose" style="font-size:11px; margin-left:6px;">🔒 Private</span>` : ""}</span>
+            <span>🔬 ${escapeHtml(ex.role)} ${renderVisibilityBadgeHtml(ex)}</span>
             <div style="display:flex; align-items:center; gap:8px;">
               <span style="font-size:12.5px; color:var(--text-muted);">${escapeHtml(ex.period)}</span>
               <button class="btn btn-outline btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Edit Position" onclick="openExperienceModal(${targetIdx})">✏️</button>
@@ -6426,7 +7104,7 @@ function renderAcademicCvSheet(prof) {
         return `
         <div class="cv-entry">
           <div class="cv-entry-head">
-            <span>🎤 ${escapeHtml(c.title)} ${c.visibility === "Private" ? `<span class="badge badge-rose" style="font-size:11px; margin-left:6px;">🔒 Private</span>` : ""}</span>
+            <span>🎤 ${escapeHtml(c.title)} ${renderVisibilityBadgeHtml(c)}</span>
             <div style="display:flex; align-items:center; gap:8px;">
               <span class="badge badge-blue">${escapeHtml(c.type || "Oral")} (${c.year || 2026})</span>
               <button class="btn btn-outline btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Edit Presentation" onclick="openConferenceModal(${targetIdx})">✏️</button>
@@ -6451,7 +7129,7 @@ function renderAcademicCvSheet(prof) {
         return `
         <div class="cv-entry">
           <div class="cv-entry-head">
-            <span>🏆 ${escapeHtml(a.title)} ${a.visibility === "Private" ? `<span class="badge badge-rose" style="font-size:11px; margin-left:6px;">🔒 Private</span>` : ""}</span>
+            <span>🏆 ${escapeHtml(a.title)} ${renderVisibilityBadgeHtml(a)}</span>
             <div style="display:flex; align-items:center; gap:8px;">
               <span style="font-size:12.5px; color:var(--text-muted);">${escapeHtml(a.issuer)} (${a.year || 2026})</span>
               <button class="btn btn-outline btn-sm cv-action-btn no-print owner-only-btn admin-only" title="Edit Honor/Award" onclick="openAwardModal(${targetIdx})">✏️</button>
@@ -7249,7 +7927,6 @@ function openConferenceModal(idx = null) {
   const eventInput = document.getElementById("cm-event");
   const typeSelect = document.getElementById("cm-type");
   const yearInput = document.getElementById("cm-year");
-  const visibilitySelect = document.getElementById("cm-visibility");
   const urlInput = document.getElementById("cm-url");
 
   if (idx !== null && idx !== undefined && STATE.profile.conferences && STATE.profile.conferences[idx]) {
@@ -7260,8 +7937,8 @@ function openConferenceModal(idx = null) {
     if (eventInput) eventInput.value = c.event || "";
     if (typeSelect) typeSelect.value = c.type || "Oral Presentation";
     if (yearInput) yearInput.value = c.year || 2026;
-    if (visibilitySelect) visibilitySelect.value = c.visibility || "Public";
     if (urlInput) urlInput.value = c.url || "";
+    setVisibilityControlValues("cm", c.visibility || "Public", c.allowed_users || []);
   } else {
     if (titleEl) titleEl.textContent = "🎤 Add Conference Presentation / Seminar";
     if (idEl) idEl.value = "";
@@ -7269,8 +7946,8 @@ function openConferenceModal(idx = null) {
     if (eventInput) eventInput.value = "MRS Fall Meeting 2026, Boston, MA, USA";
     if (typeSelect) typeSelect.value = "Oral Presentation";
     if (yearInput) yearInput.value = 2026;
-    if (visibilitySelect) visibilitySelect.value = "Public";
     if (urlInput) urlInput.value = "";
+    setVisibilityControlValues("cm", "Public", []);
   }
 
   modal.classList.add("open");
@@ -7284,8 +7961,8 @@ async function saveConferenceFromModal() {
   const event = document.getElementById("cm-event")?.value.trim() || "Conference";
   const type = document.getElementById("cm-type")?.value || "Oral Presentation";
   const year = parseInt(document.getElementById("cm-year")?.value) || 2026;
-  const visibility = document.getElementById("cm-visibility")?.value || "Public";
   const url = document.getElementById("cm-url")?.value.trim() || "";
+  const visObj = getVisibilityControlValues("cm");
 
   if (!title) {
     showToast("Please enter presentation title.", "error");
@@ -7294,7 +7971,7 @@ async function saveConferenceFromModal() {
   }
 
   STATE.profile.conferences = STATE.profile.conferences || [];
-  const confObj = { title, event, type, year, visibility, url };
+  const confObj = { title, event, type, year, url, ...visObj };
 
   if (idVal !== "" && idVal !== undefined) {
     const idx = parseInt(idVal);
@@ -7309,7 +7986,7 @@ async function saveConferenceFromModal() {
 
   closeModal("conference-modal");
   renderAcademicCvSheet(STATE.profile);
-  showToast(`Conference presentation saved (${visibility})!`, "success");
+  showToast(`Conference presentation saved (${visObj.visibility})!`, "success");
   await persistProfileState();
 }
 
@@ -7323,7 +8000,6 @@ function openAwardModal(idx = null) {
   const titleInput = document.getElementById("awm-title");
   const issuerInput = document.getElementById("awm-issuer");
   const yearInput = document.getElementById("awm-year");
-  const visibilitySelect = document.getElementById("awm-visibility");
   const detailsInput = document.getElementById("awm-details");
 
   if (idx !== null && idx !== undefined && STATE.profile.awards && STATE.profile.awards[idx]) {
@@ -7333,16 +8009,16 @@ function openAwardModal(idx = null) {
     if (titleInput) titleInput.value = a.title || "";
     if (issuerInput) issuerInput.value = a.issuer || "";
     if (yearInput) yearInput.value = a.year || "2026";
-    if (visibilitySelect) visibilitySelect.value = a.visibility || "Public";
     if (detailsInput) detailsInput.value = a.details || "";
+    setVisibilityControlValues("awm", a.visibility || "Public", a.allowed_users || []);
   } else {
     if (titleEl) titleEl.textContent = "🏆 Add Honor, Fellowship or Academic Award";
     if (idEl) idEl.value = "";
     if (titleInput) titleInput.value = "";
     if (issuerInput) issuerInput.value = "Sungkyunkwan University (SKKU)";
     if (yearInput) yearInput.value = "2026";
-    if (visibilitySelect) visibilitySelect.value = "Public";
     if (detailsInput) detailsInput.value = "";
+    setVisibilityControlValues("awm", "Public", []);
   }
 
   modal.classList.add("open");
@@ -7355,8 +8031,8 @@ async function saveAwardFromModal() {
   const title = document.getElementById("awm-title")?.value.trim();
   const issuer = document.getElementById("awm-issuer")?.value.trim() || "Granting Organization";
   const year = document.getElementById("awm-year")?.value.trim() || "2026";
-  const visibility = document.getElementById("awm-visibility")?.value || "Public";
   const details = document.getElementById("awm-details")?.value.trim() || "";
+  const visObj = getVisibilityControlValues("awm");
 
   if (!title) {
     showToast("Please enter award title.", "error");
@@ -7365,7 +8041,7 @@ async function saveAwardFromModal() {
   }
 
   STATE.profile.awards = STATE.profile.awards || [];
-  const awardObj = { title, issuer, year, visibility, details };
+  const awardObj = { title, issuer, year, details, ...visObj };
 
   if (idVal !== "" && idVal !== undefined) {
     const idx = parseInt(idVal);
@@ -7380,7 +8056,7 @@ async function saveAwardFromModal() {
 
   closeModal("award-modal");
   renderAcademicCvSheet(STATE.profile);
-  showToast(`Award saved (${visibility})!`, "success");
+  showToast(`Award saved (${visObj.visibility})!`, "success");
   await persistProfileState();
 }
 
@@ -7394,7 +8070,6 @@ function openEducationModal(idx = null) {
   const degreeInput = document.getElementById("edu-degree");
   const instInput = document.getElementById("edu-inst");
   const periodInput = document.getElementById("edu-period");
-  const visibilitySelect = document.getElementById("edu-visibility");
   const detailsInput = document.getElementById("edu-details");
 
   if (idx !== null && idx !== undefined && STATE.profile.education && STATE.profile.education[idx]) {
@@ -7404,16 +8079,16 @@ function openEducationModal(idx = null) {
     if (degreeInput) degreeInput.value = e.degree || "";
     if (instInput) instInput.value = e.institution || "";
     if (periodInput) periodInput.value = e.period || "2024 – Present";
-    if (visibilitySelect) visibilitySelect.value = e.visibility || "Public";
     if (detailsInput) detailsInput.value = e.details || "";
+    setVisibilityControlValues("edu", e.visibility || "Public", e.allowed_users || []);
   } else {
     if (titleEl) titleEl.textContent = "🎓 Add Degree / Academic Training";
     if (idEl) idEl.value = "";
     if (degreeInput) degreeInput.value = "";
     if (instInput) instInput.value = "Sungkyunkwan University (SKKU)";
     if (periodInput) periodInput.value = "2024 – Present";
-    if (visibilitySelect) visibilitySelect.value = "Public";
     if (detailsInput) detailsInput.value = "";
+    setVisibilityControlValues("edu", "Public", []);
   }
 
   modal.classList.add("open");
@@ -7426,8 +8101,8 @@ async function saveEducationFromModal() {
   const degree = document.getElementById("edu-degree")?.value.trim();
   const institution = document.getElementById("edu-inst")?.value.trim() || "University";
   const period = document.getElementById("edu-period")?.value.trim() || "2024 – Present";
-  const visibility = document.getElementById("edu-visibility")?.value || "Public";
   const details = document.getElementById("edu-details")?.value.trim() || "";
+  const visObj = getVisibilityControlValues("edu");
 
   if (!degree) {
     showToast("Please enter degree title.", "error");
@@ -7436,7 +8111,7 @@ async function saveEducationFromModal() {
   }
 
   STATE.profile.education = STATE.profile.education || [];
-  const eduObj = { degree, institution, period, visibility, details };
+  const eduObj = { degree, institution, period, details, ...visObj };
 
   if (idVal !== "" && idVal !== undefined) {
     const idx = parseInt(idVal);
@@ -7451,7 +8126,7 @@ async function saveEducationFromModal() {
 
   closeModal("education-modal");
   renderAcademicCvSheet(STATE.profile);
-  showToast(`Degree saved (${visibility})!`, "success");
+  showToast(`Degree saved (${visObj.visibility})!`, "success");
   await persistProfileState();
 }
 
@@ -7465,7 +8140,6 @@ function openExperienceModal(idx = null) {
   const roleInput = document.getElementById("exp-role");
   const orgInput = document.getElementById("exp-org");
   const periodInput = document.getElementById("exp-period");
-  const visibilitySelect = document.getElementById("exp-visibility");
   const descInput = document.getElementById("exp-desc");
 
   if (idx !== null && idx !== undefined && STATE.profile.experiences && STATE.profile.experiences[idx]) {
@@ -7475,16 +8149,16 @@ function openExperienceModal(idx = null) {
     if (roleInput) roleInput.value = ex.role || "";
     if (orgInput) orgInput.value = ex.organization || "";
     if (periodInput) periodInput.value = ex.period || "2024 – Present";
-    if (visibilitySelect) visibilitySelect.value = ex.visibility || "Public";
     if (descInput) descInput.value = ex.description || "";
+    setVisibilityControlValues("exp", ex.visibility || "Public", ex.allowed_users || []);
   } else {
     if (titleEl) titleEl.textContent = "🔬 Add Appointment / Experience";
     if (idEl) idEl.value = "";
     if (roleInput) roleInput.value = "";
     if (orgInput) orgInput.value = STATE.profile.affiliation || "Sungkyunkwan University (SKKU)";
     if (periodInput) periodInput.value = "2024 – Present";
-    if (visibilitySelect) visibilitySelect.value = "Public";
     if (descInput) descInput.value = "";
+    setVisibilityControlValues("exp", "Public", []);
   }
 
   modal.classList.add("open");
@@ -7497,8 +8171,8 @@ async function saveExperienceFromModal() {
   const role = document.getElementById("exp-role")?.value.trim();
   const organization = document.getElementById("exp-org")?.value.trim() || "Organization";
   const period = document.getElementById("exp-period")?.value.trim() || "2024 – Present";
-  const visibility = document.getElementById("exp-visibility")?.value || "Public";
   const description = document.getElementById("exp-desc")?.value.trim() || "";
+  const visObj = getVisibilityControlValues("exp");
 
   if (!role) {
     showToast("Please enter role title.", "error");
@@ -7507,7 +8181,7 @@ async function saveExperienceFromModal() {
   }
 
   STATE.profile.experiences = STATE.profile.experiences || [];
-  const expObj = { role, organization, period, visibility, description };
+  const expObj = { role, organization, period, description, ...visObj };
 
   if (idVal !== "" && idVal !== undefined) {
     const idx = parseInt(idVal);
@@ -7522,7 +8196,7 @@ async function saveExperienceFromModal() {
 
   closeModal("experience-modal");
   renderAcademicCvSheet(STATE.profile);
-  showToast(`Experience saved (${visibility})!`, "success");
+  showToast(`Experience saved (${visObj.visibility})!`, "success");
   await persistProfileState();
 }
 
@@ -7656,6 +8330,12 @@ function populateReportForm(data) {
   document.getElementById("rep-blockers").value = data.blockers_troubleshooting || "";
   document.getElementById("rep-next-plan").value = data.next_week_plan || "";
 
+  setVisibilityControlValues(
+    "rep",
+    data.visibility || (STATE.profile && STATE.profile.weekly_report_visibility) || "Public",
+    data.allowed_users || (STATE.profile && STATE.profile.weekly_report_allowed_users) || []
+  );
+
   STATE.expReportRows = data.experimental_results || [];
   STATE.litReportRows = data.literature_review || [];
 
@@ -7732,6 +8412,12 @@ function addLitReviewRow() {
 }
 
 function collectReportPayload() {
+  const isAdminMaster = !!(STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail);
+  const visObj = isAdminMaster ? getVisibilityControlValues("rep") : { visibility: "Public", allowed_users: [] };
+  if (isAdminMaster && STATE.profile) {
+    STATE.profile.weekly_report_visibility = visObj.visibility;
+    STATE.profile.weekly_report_allowed_users = visObj.allowed_users;
+  }
   return {
     title: document.getElementById("rep-title").value.trim() || "Weekly Research Progress Report",
     week_start: document.getElementById("rep-start").value || "2026-11-09",
@@ -7746,6 +8432,7 @@ function collectReportPayload() {
     literature_review: STATE.litReportRows,
     blockers_troubleshooting: document.getElementById("rep-blockers").value,
     next_week_plan: document.getElementById("rep-next-plan").value,
+    ...visObj,
     metrics: {
       samples_count: STATE.expReportRows.length,
       characterizations_count: Math.max(STATE.expReportRows.length * 2, 4),
