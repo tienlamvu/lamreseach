@@ -1199,6 +1199,13 @@ async function pullCloudDatabaseInstant(silent = true) {
       if (Array.isArray(cloudDb.structures)) STATE.masterData.structures = cloudDb.structures;
       if (Array.isArray(cloudDb.schedule)) STATE.masterData.schedule = cloudDb.schedule;
       if (cloudDb.profile && typeof cloudDb.profile === "object") {
+        const localCid = (localStorage.getItem("matsci_google_oauth_client_id") || "").trim();
+        const remoteCid = (cloudDb.profile.google_client_id || "").trim();
+        if (remoteCid) {
+          try { localStorage.setItem("matsci_google_oauth_client_id", remoteCid); } catch (e) {}
+        } else if (localCid) {
+          cloudDb.profile.google_client_id = localCid;
+        }
         STATE.masterData.profile = cloudDb.profile;
         STATE.profile = cloudDb.profile;
       }
@@ -3815,7 +3822,21 @@ function completeOwnerLogin(email, name, picture) {
   applyActiveWorkspaceData();
   refreshAllWorkspaceViews();
   showToast(`🔓 Welcome back, Administrator ${name || "Vu Tien Lam"} (${OWNER_GOOGLE_EMAIL})! Full system & CV management unlocked.`, "success");
-  pullCloudDatabaseInstant(true);
+  const localCid = (localStorage.getItem("matsci_google_oauth_client_id") || "").trim();
+  const profileCid = (STATE.profile && STATE.profile.google_client_id ? STATE.profile.google_client_id : "").trim();
+  pullCloudDatabaseInstant(true).then((pulled) => {
+    const cloudCid = (STATE.profile && STATE.profile.google_client_id ? STATE.profile.google_client_id : "").trim();
+    const effectiveCid = localCid || profileCid;
+    if (effectiveCid && effectiveCid.includes(".apps.googleusercontent.com") && cloudCid !== effectiveCid) {
+      if (!STATE.profile) STATE.profile = {};
+      STATE.profile.google_client_id = effectiveCid;
+      if (STATE.masterData && STATE.masterData.profile) {
+        STATE.masterData.profile.google_client_id = effectiveCid;
+      }
+      saveStaticDb({ skipCloudPush: true });
+      syncDatabaseToCloudInstant("Sync Google OAuth Client ID", true);
+    }
+  });
 }
 
 function completePersonalUserLogin(userObj, loginMethod = "Account") {
