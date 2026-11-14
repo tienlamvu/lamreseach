@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T14:31:12.739Z",
+  "exported_at": "2026-11-14T14:35:41.904Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -61,7 +61,7 @@
       {
         "id": 1794564001047,
         "title": "Influence of complex antisite defects in structural distortion, electrical and optical properties of Bi0.5Na0.5TiO3(110) surface: A DFT investigation",
-        "authors": "Tien Lam Vu; Huu Lam Nguyen; Hoang Linh Nguyen; Quoc Van Duong; Dang Duc Dung",
+        "authors": "Vu Tien Lam, Nguyen Huu Lam, Nguyen Hoang Linh, Duong Quoc Van, Dang Duc Dung",
         "journal": "Communications in Physics",
         "year": 2026,
         "volume": "",
@@ -445,7 +445,9 @@
         "visibility": "Public",
         "details": ""
       }
-    ]
+    ],
+    "weekly_report_visibility": "Public",
+    "weekly_report_allowed_users": []
   },
   "papers": [
     {
