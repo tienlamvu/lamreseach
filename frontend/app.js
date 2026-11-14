@@ -3188,9 +3188,8 @@ async function confirmSelfPasswordReset() {
 // ============================================================================
 
 const GOOGLE_OAUTH_CONFIG = {
-  // Paste your Google Cloud OAuth 2.0 Web Client ID (*.apps.googleusercontent.com) here,
-  // or configure it directly on the website via the OAuth 2.0 Setup dialog / Researcher Profile.
-  DEFAULT_CLIENT_ID: "",
+  // Configured Google Cloud OAuth 2.0 Web Client ID
+  DEFAULT_CLIENT_ID: "973243021804-duchlur7n8hu5lh2f684cid9nufor61v.apps.googleusercontent.com",
   AUTH_ENDPOINT: "https://accounts.google.com/o/oauth2/v2/auth",
   USERINFO_ENDPOINT: "https://www.googleapis.com/oauth2/v3/userinfo",
   REVOKE_ENDPOINT: "https://oauth2.googleapis.com/revoke",
