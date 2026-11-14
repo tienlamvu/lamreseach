@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261114_v60_email_verify_google_sso" onerror="this.href='/static/styles.css?v=20261114_v60_email_verify_google_sso'" />
+  <link rel="stylesheet" href="styles.css?v=20261114_v61_oauth2_popup" onerror="this.href='/static/styles.css?v=20261114_v61_oauth2_popup'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -1675,32 +1675,29 @@
     <div class="google-auth-card" style="max-width:480px;">
       <button class="google-modal-close" onclick="closeModal('login-modal')" title="Close">✕</button>
 
-      <!-- Mode Switcher Tabs -->
-      <div class="auth-mode-tabs" id="auth-mode-tabs-bar">
+      <!-- Mode Switcher Tabs (Sign In & Create Account Only) -->
+      <div class="auth-mode-tabs" id="auth-mode-tabs-bar" style="grid-template-columns: 1fr 1fr;">
         <button type="button" class="auth-mode-tab-btn active" id="auth-tab-btn-signin" onclick="switchAuthModalTab('signin')">🔑 Sign In</button>
         <button type="button" class="auth-mode-tab-btn" id="auth-tab-btn-register" onclick="switchAuthModalTab('register')">✨ Create Account</button>
-        <button type="button" class="auth-mode-tab-btn" id="auth-tab-btn-google" onclick="switchAuthModalTab('google')">🌐 Google Sync</button>
       </div>
 
       <!-- ================================================================ -->
-      <!-- PANE 1: STANDARD SIGN IN (EMAIL & PASSWORD + GOOGLE SHORTCUT)    -->
+      <!-- PANE 1: STANDARD SIGN IN + OAUTH 2.0 "SIGN IN WITH GOOGLE"       -->
       <!-- ================================================================ -->
       <div id="auth-pane-signin">
         <h2 class="google-auth-title" style="font-size:22px;">Welcome to MatSci Nexus</h2>
         <p class="google-auth-subtitle">Sign in to access your personal research workspace, schedule events, and manage references &amp; structures</p>
 
         <div style="margin-top:16px;">
-          <button type="button" class="auth-sso-btn" style="width:100%; margin-bottom:8px; background:#f8fafc; border:1.5px solid #93c5fd; padding:11px 14px;" onclick="switchAuthModalTab('google')">
+          <!-- Step 1: Official OAuth 2.0 "Sign in with Google" Button -->
+          <button type="button" class="auth-sso-btn" style="width:100%; margin-bottom:10px; background:#ffffff; border:1.5px solid #dadce0; padding:11px 16px; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:10px; box-shadow:0 1px 2px rgba(60,64,67,0.1);" onclick="startGoogleOAuth2SignIn()">
             <svg width="20" height="20" viewBox="0 0 48 48">
               <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
               <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
               <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
               <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
             </svg>
-            <div style="text-align:left; line-height:1.25;">
-              <div style="font-weight:700; color:#1e3a8a; font-size:13.5px;">Sign In &amp; Sync with Google Account</div>
-              <div style="font-size:11px; color:#475569; font-weight:500;">Instant workspace sync — no static username or password needed</div>
-            </div>
+            <span style="font-weight:600; color:#3c4043; font-size:14px;">Sign in with Google</span>
           </button>
 
           <div style="display:flex; align-items:center; gap:10px; margin:12px 0; color:#9ca3af; font-size:11.5px; font-weight:600;">
@@ -1748,16 +1745,16 @@
           <h2 class="google-auth-title" style="font-size:21px;">Create Personal Account</h2>
           <p class="google-auth-subtitle">Register with email verification or sign in directly with your Google Account</p>
 
-          <!-- Instant Google Sync Option for users who don't want static username/password -->
+          <!-- Official OAuth 2.0 "Sign in with Google" Button -->
           <div style="margin-top:12px; margin-bottom:12px;">
-            <button type="button" class="auth-sso-btn" style="width:100%; background:#eff6ff; border:1px solid #93c5fd; padding:9px 12px;" onclick="switchAuthModalTab('google')">
+            <button type="button" class="auth-sso-btn" style="width:100%; background:#ffffff; border:1.5px solid #dadce0; padding:10px 14px; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:10px;" onclick="startGoogleOAuth2SignIn()">
               <svg width="18" height="18" viewBox="0 0 48 48">
                 <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
                 <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
                 <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
                 <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
               </svg>
-              <span style="font-size:12.5px; color:#1e40af; font-weight:700;">Use Google Account Sync Instead (No Static Password) →</span>
+              <span style="font-size:13.5px; color:#3c4043; font-weight:600;">Sign in with Google</span>
             </button>
           </div>
 
@@ -1893,10 +1890,6 @@
 
           <div id="reset-request-error-msg" class="g-error-text" style="display:none; margin-bottom:10px;"></div>
 
-          <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:10px 12px; font-size:12px; color:#1e40af; margin-bottom:14px;">
-            💡 <strong>Tip:</strong> If your account is linked with Google, you can also sign in immediately without a password using the <a href="javascript:void(0)" onclick="switchAuthModalTab('google')" style="color:#1d4ed8; font-weight:700; text-decoration:underline;">🌐 Google Sync</a> tab!
-          </div>
-
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <button type="button" class="g-text-btn" onclick="switchAuthModalTab('signin')">← Back to Sign In</button>
             <button type="button" class="g-primary-btn" id="btn-reset-send-code" onclick="requestPasswordResetEmail()">📧 Send Reset Email →</button>
@@ -1948,134 +1941,6 @@
           <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
             <button type="button" class="g-text-btn" onclick="openForgotPasswordPane()">← Change Email</button>
             <button type="button" class="g-primary-btn" onclick="confirmSelfPasswordReset()">🔑 Reset Password &amp; Sign In</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- ================================================================ -->
-      <!-- PANE 4: PASSWORDLESS GOOGLE ACCOUNT SYNC & OAUTH SIGN-IN         -->
-      <!-- ================================================================ -->
-      <div id="auth-pane-google" style="display:none;">
-        <!-- Google Brand Header -->
-        <div class="google-auth-header" style="margin-bottom:14px;">
-          <svg class="google-logo" width="38" height="38" viewBox="0 0 48 48">
-            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-          </svg>
-        </div>
-
-        <!-- STEP 1: CHOOSE OR ENTER GOOGLE ACCOUNT (PASSWORDLESS FOR USERS) -->
-        <div id="google-step-email">
-          <h2 class="google-auth-title" style="font-size:21px;">Sign in &amp; Sync with Google</h2>
-          <p class="google-auth-subtitle" style="font-size:13px;">
-            Sign in with your Google Account to synchronize your personal workspace across devices — <strong>no static username or password required</strong>
-          </p>
-
-          <!-- Quick 1-Click Synced Google Accounts Chooser -->
-          <div id="google-chooser-container" style="margin-top:14px; text-align:left; display:none;">
-            <div style="font-size:11.5px; font-weight:700; color:#475569; margin-bottom:6px;">⚡ Choose a Linked Google Account (1-Click Instant Sync):</div>
-            <div id="google-chooser-list" style="display:flex; flex-direction:column; gap:6px; max-height:135px; overflow-y:auto; margin-bottom:12px;"></div>
-          </div>
-
-          <div style="margin-top:14px;">
-            <div class="g-input-wrapper" id="g-email-input-wrapper">
-              <input
-                type="email"
-                id="g-email-input"
-                class="g-input-field"
-                placeholder=" "
-                autocomplete="username"
-                onkeydown="if(event.key==='Enter') handleGoogleEmailNext()"
-                oninput="clearGoogleInputError('email')"
-              />
-              <label class="g-input-label">Enter your Google / Gmail or Workspace email</label>
-            </div>
-            <div id="g-email-error" class="g-error-text" style="display:none;"></div>
-
-            <div style="margin-top:12px; font-size:11.5px; color:#1e40af; line-height:1.45; background:#eff6ff; padding:9px 12px; border-radius:8px; border:1px solid #bfdbfe; text-align:left;">
-              🌐 <strong>Passwordless Google Account Sync:</strong> Personal users are authenticated and synced directly via their Google Account without needing a static password. (Signing in as Administrator <code>lamvt.skku@gmail.com</code> requires the Admin security key).
-            </div>
-
-            <div class="g-action-row" style="margin-top:18px;">
-              <button type="button" class="g-text-btn" onclick="switchAuthModalTab('signin')">← Other Options</button>
-              <button type="button" class="g-primary-btn" id="btn-email-next" onclick="handleGoogleEmailNext()">🌐 Continue with Google</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- STEP 2A: PASSWORDLESS FIRST-TIME GOOGLE PROFILE CONFIRMATION -->
-        <div id="google-step-consent" style="display:none; text-align:left;">
-          <div style="text-align:center; margin-bottom:12px;">
-            <h2 class="google-auth-title" style="font-size:20px;">Complete Google Account Sync</h2>
-            <div class="g-user-badge" onclick="backToGoogleEmailStep()" title="Switch Google account" style="margin-top:6px;">
-              <div class="g-badge-avatar" id="g-consent-avatar-char">G</div>
-              <span id="g-consent-email-text"></span>
-              <span class="badge badge-green" style="font-size:10px; margin-left:4px;">✓ Google Verified</span>
-            </div>
-          </div>
-
-          <div style="background:#eff6ff; border:1px solid #bfdbfe; padding:14px; border-radius:10px; margin-bottom:14px;">
-            <div style="font-size:12px; font-weight:700; color:#1e40af; margin-bottom:10px;">
-              ✨ Confirm your display profile for your Google-synced workspace (No static password needed):
-            </div>
-            <div class="form-group" style="margin-bottom:10px;">
-              <label style="font-size:12px; font-weight:600; color:#1e3a8a;">Your Display Name *</label>
-              <input type="text" id="g-new-name-input" placeholder="e.g., Min-Seo Kim" style="width:100%; padding:9px 12px; border:1px solid #93c5fd; border-radius:7px; font-size:13.5px; background:#fff;" onkeydown="if(event.key==='Enter') completePasswordlessGoogleSignIn()" />
-            </div>
-            <div class="form-group" style="margin-bottom:0;">
-              <label style="font-size:12px; font-weight:600; color:#1e3a8a;">Affiliation / University / Lab (Optional)</label>
-              <input type="text" id="g-new-affiliation-input" placeholder="e.g., Sungkyunkwan University (SKKU)" style="width:100%; padding:9px 12px; border:1px solid #93c5fd; border-radius:7px; font-size:13px; background:#fff;" onkeydown="if(event.key==='Enter') completePasswordlessGoogleSignIn()" />
-            </div>
-          </div>
-
-          <div class="g-action-row" style="margin-top:14px;">
-            <button type="button" class="g-text-btn" onclick="backToGoogleEmailStep()">← Back</button>
-            <button type="button" class="g-primary-btn" id="btn-google-consent-submit" onclick="completePasswordlessGoogleSignIn()">🌐 Sync &amp; Sign In Now</button>
-          </div>
-        </div>
-
-        <!-- STEP 2B: ADMINISTRATOR SECURITY PASSWORD VERIFICATION -->
-        <div id="google-step-password" style="display:none;">
-          <h2 class="google-auth-title" id="google-step-pw-title">Administrator Sign-In</h2>
-          
-          <!-- User Account Chip with switcher -->
-          <div class="g-user-badge" onclick="backToGoogleEmailStep()" title="Switch Google account">
-            <div class="g-badge-avatar" id="g-badge-avatar-char">V</div>
-            <span id="g-badge-email-text"></span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5f6368" stroke-width="2">
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
-          </div>
-
-          <div style="margin-top:18px;">
-            <div class="g-input-wrapper" id="g-password-input-wrapper">
-              <input
-                type="password"
-                id="g-password-input"
-                class="g-input-field"
-                placeholder=" "
-                autocomplete="current-password"
-                onkeydown="if(event.key==='Enter') submitGooglePasswordLogin()"
-                oninput="clearGoogleInputError('password')"
-              />
-              <label class="g-input-label" id="g-password-label">Enter Administrator password</label>
-            </div>
-            <div id="g-password-error" class="g-error-text" style="display:none;"></div>
-
-            <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
-              <label class="g-checkbox-label">
-                <input type="checkbox" id="g-show-password-chk" onchange="toggleGooglePasswordVisibility()" />
-                <span>Show password</span>
-              </label>
-              <a href="javascript:void(0)" onclick="openForgotPasswordPane()" class="g-link-btn">Forgot password?</a>
-            </div>
-
-            <div class="g-action-row">
-              <button type="button" class="g-text-btn" onclick="backToGoogleEmailStep()">Back</button>
-              <button type="button" class="g-primary-btn" id="btn-password-submit" onclick="submitGooglePasswordLogin()">Continue</button>
-            </div>
           </div>
         </div>
       </div>
@@ -3293,7 +3158,7 @@
   <div id="toast-container"></div>
   <div id="plag-pdf-render-area" style="display:none;"></div>
 
-  <script src="matsci_tools.js?v=20261114_v60_email_verify_google_sso" onerror="this.src='/static/matsci_tools.js?v=20261114_v60_email_verify_google_sso'"></script>
-  <script src="app.js?v=20261114_v60_email_verify_google_sso" onerror="this.src='/static/app.js?v=20261114_v60_email_verify_google_sso'"></script>
+  <script src="matsci_tools.js?v=20261114_v61_oauth2_popup" onerror="this.src='/static/matsci_tools.js?v=20261114_v61_oauth2_popup'"></script>
+  <script src="app.js?v=20261114_v61_oauth2_popup" onerror="this.src='/static/app.js?v=20261114_v61_oauth2_popup'"></script>
 </body>
 </html>
