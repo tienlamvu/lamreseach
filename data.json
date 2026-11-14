@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T06:48:35.981Z",
+  "exported_at": "2026-11-14T06:49:25.363Z",
   "profile": {
     "full_name": "Vu Tien Lam",
     "title_role": "Ph.D. Candidate in Computational Materials Science",
@@ -849,12 +849,12 @@
       "authProvider": "Email + Google Linked",
       "googleLinked": true,
       "googleEmail": "las@gmail.com",
-      "passwordPlainHint": "1234",
-      "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
+      "passwordPlainHint": "skku1234",
+      "passwordHash": "441d52fbb490008fa860a41b38fe03e0b7f6fb06b56336922f7d7a95562f51dd",
       "registeredAt": "2026-11-14 04:00",
       "lastLoginAt": "2026-11-14 06:28",
-      "lastUpdatedAt": "2026-11-14 06:33",
-      "updatedAtMs": 1794638010468,
+      "lastUpdatedAt": "2026-11-14 06:49",
+      "updatedAtMs": 1794638964952,
       "workspace": {
         "papers": [],
         "structures": [
@@ -955,6 +955,12 @@
         "litReportRows": []
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-14 06:49",
+          "category": "Security",
+          "action": "Password Reset by Administrator",
+          "detail": "Administrator reset password to default (\"skku1234\") for las@gmail.com."
+        },
         {
           "timestamp": "2026-11-14 06:28",
           "category": "Account",
