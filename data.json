@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T05:29:05.578Z",
+  "exported_at": "2026-11-14T05:36:33.249Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -2109,8 +2109,8 @@
       "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
       "registeredAt": "2026-11-14 04:00",
       "lastLoginAt": "2026-11-14 05:29",
-      "lastUpdatedAt": "2026-11-14 05:29",
-      "updatedAtMs": 1794634143891,
+      "lastUpdatedAt": "2026-11-14 05:36",
+      "updatedAtMs": 1794634592877,
       "workspace": {
         "papers": [],
         "structures": [
