@@ -1802,14 +1802,30 @@ body.visitor-mode .owner-only-btn {
 }
 
 /* =========================================================================
-   Role-Based UI Control: Admin Mode vs Public Read-Only Visitor
+   Role-Based UI Control: Admin vs Logged-in Personal User vs Public Visitor
    ========================================================================= */
-body:not(.is-admin) .admin-only,
-body:not(.is-admin) .owner-only-btn {
+/* Hide workspace action buttons when not logged in at all */
+body:not(.is-logged-in) .admin-only,
+body:not(.is-logged-in) .owner-only-btn {
   display: none !important;
 }
 
-body.is-admin .visitor-only {
+/* Academic CV (#tab-cv), Profile Settings (#tab-profile), and strict-admin-only controls belong EXCLUSIVELY to Admin */
+body:not(.is-admin) #tab-cv .admin-only,
+body:not(.is-admin) #tab-cv .owner-only-btn,
+body:not(.is-admin) #tab-profile .admin-only,
+body:not(.is-admin) #tab-profile .owner-only-btn,
+body:not(.is-admin) .strict-admin-only {
+  display: none !important;
+}
+
+/* Hide read-only visitor banners once any user (Admin or Personal User) logs in */
+body.is-logged-in .visitor-only {
+  display: none !important;
+}
+
+/* Hide CV Exclusive Read-Only notice when Admin is logged in */
+body.is-admin #cv-exclusive-owner-notice {
   display: none !important;
 }
 
@@ -3861,10 +3877,164 @@ body.is-admin .visitor-only {
   .pub-select-cb,
   .paper-select-cb,
   #paper-batch-bar,
-  #pub-batch-bar {
+  #pub-batch-bar,
+  #workspace-context-banner,
+  #cv-exclusive-owner-notice {
     display: none !important;
   }
 }
+
+/* =========================================================================
+   Multi-User Auth Tabs, Personal User Pill, Workspace Banner & Admin Inspector
+   ========================================================================= */
+.auth-mode-tabs {
+  display: flex;
+  background: #f3f4f6;
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 18px;
+  gap: 4px;
+}
+
+.auth-mode-tab-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4b5563;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.auth-mode-tab-btn.active {
+  background: #ffffff;
+  color: #111827;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.user-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px;
+  border-radius: 20px;
+  background: rgba(37, 99, 235, 0.18);
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  color: #93c5fd;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.user-pill:hover {
+  background: rgba(37, 99, 235, 0.28);
+}
+
+.workspace-context-banner {
+  background: linear-gradient(90deg, #eff6ff 0%, #f8fafc 100%);
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.workspace-context-banner.admin-preview-mode {
+  background: linear-gradient(90deg, #fffbeb 0%, #fef3c7 100%);
+  border-color: #fcd34d;
+  color: #92400e;
+}
+
+.admin-users-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 18px;
+  min-height: 480px;
+}
+
+@media (max-width: 900px) {
+  .admin-users-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-user-list-panel {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 12px;
+  max-height: 560px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-user-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 11px 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.admin-user-card:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.08);
+}
+
+.admin-user-card.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.14);
+}
+
+.admin-user-detail-panel {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 18px;
+  max-height: 560px;
+  overflow-y: auto;
+}
+
+.inspector-subtabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+}
+
+.inspector-subtab-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.inspector-subtab-btn.active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
 
 
 
