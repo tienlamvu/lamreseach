@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T03:48:52.374Z",
+  "exported_at": "2026-11-14T03:48:59.362Z",
   "profile": {
     "full_name": "Vu Tien Lam",
     "title_role": "Ph.D. Candidate in Computational Materials Science",
@@ -447,38 +447,8 @@
       "passwordHash": "e5acba84c164be5493b03ab87712975cdaf2149d43c81df395eb07f8a1057264",
       "registeredAt": "2026-11-10 09:15",
       "lastLoginAt": "2026-11-14 10:20",
-      "lastUpdatedAt": "2026-11-14 10:42",
+      "lastUpdatedAt": "2026-11-14 03:48",
       "workspace": {
-        "schedule": [
-          {
-            "id": 90101,
-            "title": "VASP Hybrid HSE06 Bandgap Calculation — CsPbI3 Slab",
-            "event_type": "Electrochemistry / Battery Testing",
-            "instrument_or_location": "SKKU HPC Cluster (Node 04)",
-            "start_date": "2026-11-16",
-            "start_time": "09:30",
-            "end_time": "12:30",
-            "priority": "High",
-            "status": "Scheduled",
-            "sample_id": "CsPbI3-Slab-01",
-            "description": "Surface termination relaxation and dipole correction for perovskite solar cell interface.",
-            "in_weekly_report": 1
-          },
-          {
-            "id": 90102,
-            "title": "In-situ Grazing Incidence XRD Beamtime Meeting",
-            "event_type": "Group Meeting / PI Meeting",
-            "instrument_or_location": "N-Center Room 86412",
-            "start_date": "2026-11-18",
-            "start_time": "14:00",
-            "end_time": "15:30",
-            "priority": "High",
-            "status": "In Progress",
-            "sample_id": "GIXRD-2026B",
-            "description": "Review synchrotron beamtime schedule and sample holder geometry.",
-            "in_weekly_report": 1
-          }
-        ],
         "papers": [
           {
             "id": 90201,
@@ -553,6 +523,36 @@
             ]
           }
         ],
+        "schedule": [
+          {
+            "id": 90101,
+            "title": "VASP Hybrid HSE06 Bandgap Calculation — CsPbI3 Slab",
+            "event_type": "Electrochemistry / Battery Testing",
+            "instrument_or_location": "SKKU HPC Cluster (Node 04)",
+            "start_date": "2026-11-16",
+            "start_time": "09:30",
+            "end_time": "12:30",
+            "priority": "High",
+            "status": "Scheduled",
+            "sample_id": "CsPbI3-Slab-01",
+            "description": "Surface termination relaxation and dipole correction for perovskite solar cell interface.",
+            "in_weekly_report": 1
+          },
+          {
+            "id": 90102,
+            "title": "In-situ Grazing Incidence XRD Beamtime Meeting",
+            "event_type": "Group Meeting / PI Meeting",
+            "instrument_or_location": "N-Center Room 86412",
+            "start_date": "2026-11-18",
+            "start_time": "14:00",
+            "end_time": "15:30",
+            "priority": "High",
+            "status": "In Progress",
+            "sample_id": "GIXRD-2026B",
+            "description": "Review synchrotron beamtime schedule and sample holder geometry.",
+            "in_weekly_report": 1
+          }
+        ],
         "expReportRows": [
           {
             "sample_id": "CsPbI3-HSE06",
@@ -595,7 +595,8 @@
           "action": "Account Registered & Linked with Google",
           "detail": "Linked Google Account jhpark.matsci@gmail.com"
         }
-      ]
+      ],
+      "updatedAtMs": 1794628136716
     },
     "minseo.kim@gmail.com": {
       "email": "minseo.kim@gmail.com",
