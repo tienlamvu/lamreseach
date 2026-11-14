@@ -1060,7 +1060,12 @@ window.addEventListener("focus", () => {
 // ============================================================================
 // Administrator Content Visibility & Audience Access Control Helpers
 // Modes: "Public" | "Users" | "Specific" | "Private"
+// Compact Searchable Dropdown Combobox + Selected User Chips
 // ============================================================================
+
+const _SPECIFIC_SELECTED_MAP = {};
+const _SPECIFIC_DROPDOWN_OPEN = {};
+const _SPECIFIC_SEARCH_QUERY = {};
 
 function normalizeVisibilityMode(rawVis) {
   const s = String(rawVis || "Public").trim().toLowerCase();
@@ -1070,75 +1075,384 @@ function normalizeVisibilityMode(rawVis) {
   return "Public";
 }
 
-function renderSpecificUsersPicker(prefix, selectedEmails = []) {
+function getSpecificSelectedSet(prefix) {
+  if (!_SPECIFIC_SELECTED_MAP[prefix]) {
+    _SPECIFIC_SELECTED_MAP[prefix] = new Set();
+  }
+  return _SPECIFIC_SELECTED_MAP[prefix];
+}
+
+function buildSpecificChipsHtml(prefix) {
+  const normSelected = getSpecificSelectedSet(prefix);
+  const usersList = Object.values(STATE.usersRegistry || {});
+  const emailToUser = {};
+  usersList.forEach(u => {
+    if (u.email) emailToUser[normalizeEmail(u.email)] = u;
+    if (u.googleEmail) emailToUser[normalizeEmail(u.googleEmail)] = u;
+  });
+
+  // Deduplicate display chips so a user with both email and googleEmail in normSelected shows as 1 chip
+  const displayedUserKeys = new Set();
+  const chips = [];
+
+  Array.from(normSelected).forEach(em => {
+    const u = emailToUser[em];
+    if (u) {
+      const primaryKey = normalizeEmail(u.email);
+      if (displayedUserKeys.has(primaryKey)) return;
+      displayedUserKeys.add(primaryKey);
+      chips.push({
+        primaryEmail: primaryKey,
+        googleEmail: normalizeEmail(u.googleEmail || ""),
+        label: u.name || primaryKey,
+        sub: primaryKey
+      });
+    } else if (em) {
+      if (displayedUserKeys.has(em)) return;
+      displayedUserKeys.add(em);
+      chips.push({
+        primaryEmail: em,
+        googleEmail: "",
+        label: em,
+        sub: ""
+      });
+    }
+  });
+
+  if (chips.length === 0) {
+    return `<span class="specific-empty-hint">No specific user selected yet — click the search box or "▾ Browse Users" below</span>`;
+  }
+
+  return chips.map(c => `
+    <span class="specific-user-chip" title="${escapeHtml(c.sub || c.label)}">
+      <span class="chip-avatar">👤</span>
+      <strong class="chip-name">${escapeHtml(c.label)}</strong>
+      ${c.sub && c.sub !== c.label ? `<code class="chip-email">${escapeHtml(c.sub)}</code>` : ""}
+      <button type="button" class="chip-remove-btn" title="Remove user" onclick="removeSpecificUserChip('${escapeHtml(prefix)}', '${escapeHtml(c.primaryEmail)}', '${escapeHtml(c.googleEmail)}', event)">✕</button>
+    </span>
+  `).join("");
+}
+
+function buildSpecificDropdownMenuItemsHtml(prefix, queryRaw = "") {
+  const query = String(queryRaw || "").trim().toLowerCase();
+  const normSelected = getSpecificSelectedSet(prefix);
+  const usersList = Object.values(STATE.usersRegistry || {});
+
+  const filtered = usersList.filter(u => {
+    if (!query) return true;
+    const hay = `${u.name || ""} ${u.email || ""} ${u.googleEmail || ""} ${u.affiliation || ""} ${u.academicRole || ""}`.toLowerCase();
+    return hay.includes(query);
+  });
+
+  let customAddHtml = "";
+  const cleanEmailCandidate = normalizeEmail(queryRaw);
+  if (cleanEmailCandidate && cleanEmailCandidate.includes("@") && cleanEmailCandidate.includes(".")) {
+    const alreadyInSelected = normSelected.has(cleanEmailCandidate);
+    if (!alreadyInSelected) {
+      customAddHtml = `
+        <div class="specific-dropdown-custom-add" onclick="addCustomSpecificEmail('${escapeHtml(prefix)}', '${escapeHtml(cleanEmailCandidate)}', event)">
+          <span>➕ Add custom email address: <strong>${escapeHtml(cleanEmailCandidate)}</strong></span>
+          <span class="badge badge-blue" style="font-size:10.5px;">Press Enter or Click</span>
+        </div>
+      `;
+    }
+  }
+
+  if (filtered.length === 0) {
+    return `
+      ${customAddHtml}
+      <div class="specific-dropdown-empty">
+        No registered user matches "<strong>${escapeHtml(queryRaw)}</strong>".
+        ${!customAddHtml ? `<div style="margin-top:4px; font-size:11px; color:#64748b;">Tip: Type a full email address (e.g. <code>user@skku.edu</code>) and press <strong>Enter</strong> to grant access by email.</div>` : ""}
+      </div>
+    `;
+  }
+
+  const rowsHtml = filtered.map(u => {
+    const em = normalizeEmail(u.email);
+    const gEm = normalizeEmail(u.googleEmail);
+    const isChecked = normSelected.has(em) || (gEm && normSelected.has(gEm));
+    return `
+      <label class="specific-user-check-item ${isChecked ? 'is-selected' : ''}" onclick="event.stopPropagation();">
+        <input
+          type="checkbox"
+          class="specific-user-cb-${escapeHtml(prefix)}"
+          value="${escapeHtml(em)}"
+          data-google-email="${escapeHtml(gEm)}"
+          ${isChecked ? "checked" : ""}
+          onchange="toggleSpecificUserOption('${escapeHtml(prefix)}', '${escapeHtml(em)}', '${escapeHtml(gEm)}', this.checked)"
+        />
+        <div class="specific-user-item-info">
+          <div class="specific-user-item-top">
+            <strong class="specific-user-item-name">${escapeHtml(u.name || em)}</strong>
+            <code class="specific-user-item-email">${escapeHtml(em)}</code>
+            ${u.googleLinked ? `<span class="badge badge-green" style="font-size:10px; padding:1px 6px;">Google</span>` : ""}
+          </div>
+          ${u.affiliation ? `<div class="specific-user-item-affil">🏛️ ${escapeHtml(u.affiliation)}${u.academicRole ? ` • ${escapeHtml(u.academicRole)}` : ""}</div>` : ""}
+        </div>
+      </label>
+    `;
+  }).join("");
+
+  return `${customAddHtml}${rowsHtml}`;
+}
+
+function renderSpecificUsersPicker(prefix, selectedEmails = null) {
   const box = document.getElementById(`${prefix}-specific-box`);
   if (!box) return;
 
-  const normSelected = new Set(
-    (Array.isArray(selectedEmails) ? selectedEmails : [])
-      .map(normalizeEmail)
-      .filter(Boolean)
-  );
+  if (selectedEmails !== null && selectedEmails !== undefined) {
+    _SPECIFIC_SELECTED_MAP[prefix] = new Set(
+      (Array.isArray(selectedEmails) ? selectedEmails : [])
+        .map(normalizeEmail)
+        .filter(Boolean)
+    );
+  }
 
+  const normSelected = getSpecificSelectedSet(prefix);
   const usersList = Object.values(STATE.usersRegistry || {});
-  const knownEmails = new Set();
-  usersList.forEach(u => {
-    if (u.email) knownEmails.add(normalizeEmail(u.email));
-    if (u.googleEmail) knownEmails.add(normalizeEmail(u.googleEmail));
-  });
+  const isOpen = Boolean(_SPECIFIC_DROPDOWN_OPEN[prefix]);
+  const query = _SPECIFIC_SEARCH_QUERY[prefix] || "";
 
-  const extraEmails = Array.from(normSelected).filter(em => !knownEmails.has(em));
+  // Count distinct selected users/emails
+  const chipCount = (() => {
+    const seen = new Set();
+    usersList.forEach(u => {
+      const em = normalizeEmail(u.email);
+      const gEm = normalizeEmail(u.googleEmail);
+      if (normSelected.has(em) || (gEm && normSelected.has(gEm))) seen.add(em);
+    });
+    normSelected.forEach(em => {
+      const matchesUser = usersList.some(u => normalizeEmail(u.email) === em || normalizeEmail(u.googleEmail) === em);
+      if (!matchesUser) seen.add(em);
+    });
+    return seen.size;
+  })();
 
   box.innerHTML = `
-    <div class="specific-users-picker">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
-        <span style="font-size:12px; font-weight:700; color:#1e3a8a;">🎯 Select Specific Registered User(s) Allowed to View This Content:</span>
-        <div style="display:flex; gap:6px;">
-          <button type="button" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:11px;" onclick="toggleAllSpecificUsers('${escapeHtml(prefix)}', true)">Select All</button>
-          <button type="button" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:11px;" onclick="toggleAllSpecificUsers('${escapeHtml(prefix)}', false)">Clear</button>
+    <div class="specific-users-picker" onclick="event.stopPropagation();">
+      <!-- Top Row: Selected Chips Bar + Select All / Clear -->
+      <div class="specific-picker-header">
+        <div class="specific-picker-title">
+          <span>🎯 Allowed Specific User(s)</span>
+          <span class="specific-count-pill" id="${escapeHtml(prefix)}-selected-count-pill">${chipCount} selected</span>
+        </div>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <button type="button" class="specific-mini-btn" onclick="toggleAllSpecificUsers('${escapeHtml(prefix)}', true, event)">Select All (${usersList.length})</button>
+          <button type="button" class="specific-mini-btn" onclick="toggleAllSpecificUsers('${escapeHtml(prefix)}', false, event)">Clear All</button>
         </div>
       </div>
-      <div class="specific-users-list">
-        ${usersList.length === 0
-          ? `<div style="font-size:12px; color:#64748b; padding:6px;">No registered personal accounts yet. Enter allowed email address(es) below.</div>`
-          : usersList.map(u => {
-              const em = normalizeEmail(u.email);
-              const gEm = normalizeEmail(u.googleEmail);
-              const isChecked = normSelected.has(em) || (gEm && normSelected.has(gEm));
-              return `
-                <label class="specific-user-check-item">
-                  <input type="checkbox" class="specific-user-cb-${escapeHtml(prefix)}" value="${escapeHtml(em)}" data-google-email="${escapeHtml(gEm)}" ${isChecked ? "checked" : ""} />
-                  <span>
-                    <strong>${escapeHtml(u.name || em)}</strong>
-                    <code>${escapeHtml(em)}</code>
-                    ${u.affiliation ? `<span style="color:#64748b; font-size:11px;">• ${escapeHtml(u.affiliation)}</span>` : ""}
-                  </span>
-                </label>
-              `;
-            }).join("")
-        }
+
+      <!-- Selected User Chips Container -->
+      <div class="specific-chips-container" id="${escapeHtml(prefix)}-chips-row">
+        ${buildSpecificChipsHtml(prefix)}
       </div>
-      <div style="margin-top:8px;">
-        <label style="font-size:11.5px; font-weight:600; color:#334155; display:block; margin-bottom:3px;">
-          ✉️ Additional Allowed Email(s) (comma-separated, optional):
-        </label>
-        <input
-          type="text"
-          id="${escapeHtml(prefix)}-specific-emails-input"
-          value="${escapeHtml(extraEmails.join(", "))}"
-          placeholder="e.g. colleague@skku.edu, collaborator@gmail.com"
-          style="width:100%; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:12.5px; background:#fff; color:#0f172a;"
-        />
+
+      <!-- Searchable Combobox & Dropdown Trigger -->
+      <div class="specific-combobox-wrap" id="${escapeHtml(prefix)}-combobox-wrap">
+        <div class="specific-search-bar-row">
+          <div class="specific-search-input-wrap">
+            <span class="specific-search-icon">🔍</span>
+            <input
+              type="text"
+              id="${escapeHtml(prefix)}-user-search-input"
+              class="specific-user-search-input"
+              value="${escapeHtml(query)}"
+              placeholder="Search user by name, email, or affiliation (or type email & press Enter)..."
+              autocomplete="off"
+              onfocus="openSpecificUsersDropdown('${escapeHtml(prefix)}')"
+              oninput="filterSpecificUsersDropdown('${escapeHtml(prefix)}', this.value)"
+              onkeydown="handleSpecificSearchKeydown(event, '${escapeHtml(prefix)}')"
+            />
+          </div>
+          <button type="button" class="specific-dropdown-toggle-btn" id="${escapeHtml(prefix)}-dropdown-btn" onclick="toggleSpecificUsersDropdown('${escapeHtml(prefix)}', event)">
+            ${isOpen ? "▴ Hide List" : `▾ Browse Users (${usersList.length})`}
+          </button>
+        </div>
+
+        <!-- Floating / Collapsible Searchable Dropdown List -->
+        <div id="${escapeHtml(prefix)}-dropdown-menu" class="specific-users-dropdown-menu" style="display:${isOpen ? 'block' : 'none'};">
+          ${buildSpecificDropdownMenuItemsHtml(prefix, query)}
+        </div>
       </div>
     </div>
   `;
 }
 
-function toggleAllSpecificUsers(prefix, checked) {
-  document.querySelectorAll(`.specific-user-cb-${prefix}`).forEach(cb => {
-    cb.checked = Boolean(checked);
-  });
+function refreshSpecificPickerUiWithoutLosingFocus(prefix) {
+  const chipsRow = document.getElementById(`${prefix}-chips-row`);
+  if (chipsRow) {
+    chipsRow.innerHTML = buildSpecificChipsHtml(prefix);
+  }
+  const menu = document.getElementById(`${prefix}-dropdown-menu`);
+  const query = _SPECIFIC_SEARCH_QUERY[prefix] || "";
+  if (menu) {
+    menu.innerHTML = buildSpecificDropdownMenuItemsHtml(prefix, query);
+  }
+  const pill = document.getElementById(`${prefix}-selected-count-pill`);
+  if (pill) {
+    const normSelected = getSpecificSelectedSet(prefix);
+    const usersList = Object.values(STATE.usersRegistry || {});
+    const seen = new Set();
+    usersList.forEach(u => {
+      const em = normalizeEmail(u.email);
+      const gEm = normalizeEmail(u.googleEmail);
+      if (normSelected.has(em) || (gEm && normSelected.has(gEm))) seen.add(em);
+    });
+    normSelected.forEach(em => {
+      const matchesUser = usersList.some(u => normalizeEmail(u.email) === em || normalizeEmail(u.googleEmail) === em);
+      if (!matchesUser) seen.add(em);
+    });
+    pill.textContent = `${seen.size} selected`;
+  }
 }
+
+function openSpecificUsersDropdown(prefix) {
+  _SPECIFIC_DROPDOWN_OPEN[prefix] = true;
+  const menu = document.getElementById(`${prefix}-dropdown-menu`);
+  if (menu) {
+    menu.style.display = "block";
+    menu.innerHTML = buildSpecificDropdownMenuItemsHtml(prefix, _SPECIFIC_SEARCH_QUERY[prefix] || "");
+  }
+  const btn = document.getElementById(`${prefix}-dropdown-btn`);
+  if (btn) {
+    btn.textContent = "▴ Hide List";
+  }
+}
+
+function closeSpecificUsersDropdown(prefix) {
+  _SPECIFIC_DROPDOWN_OPEN[prefix] = false;
+  const menu = document.getElementById(`${prefix}-dropdown-menu`);
+  if (menu) menu.style.display = "none";
+  const btn = document.getElementById(`${prefix}-dropdown-btn`);
+  if (btn) {
+    const count = Object.keys(STATE.usersRegistry || {}).length;
+    btn.textContent = `▾ Browse Users (${count})`;
+  }
+}
+
+function toggleSpecificUsersDropdown(prefix, event) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  if (_SPECIFIC_DROPDOWN_OPEN[prefix]) {
+    closeSpecificUsersDropdown(prefix);
+  } else {
+    openSpecificUsersDropdown(prefix);
+    const input = document.getElementById(`${prefix}-user-search-input`);
+    if (input) input.focus();
+  }
+}
+
+function filterSpecificUsersDropdown(prefix, val) {
+  _SPECIFIC_SEARCH_QUERY[prefix] = val || "";
+  _SPECIFIC_DROPDOWN_OPEN[prefix] = true;
+  const menu = document.getElementById(`${prefix}-dropdown-menu`);
+  if (menu) {
+    menu.style.display = "block";
+    menu.innerHTML = buildSpecificDropdownMenuItemsHtml(prefix, _SPECIFIC_SEARCH_QUERY[prefix]);
+  }
+  const btn = document.getElementById(`${prefix}-dropdown-btn`);
+  if (btn) btn.textContent = "▴ Hide List";
+}
+
+function handleSpecificSearchKeydown(event, prefix) {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    event.stopPropagation();
+    const input = document.getElementById(`${prefix}-user-search-input`);
+    const raw = (input ? input.value : "").trim();
+    if (!raw) return;
+
+    const norm = normalizeEmail(raw);
+    const usersList = Object.values(STATE.usersRegistry || {});
+    const q = raw.toLowerCase();
+    const matches = usersList.filter(u =>
+      `${u.name || ""} ${u.email || ""} ${u.googleEmail || ""} ${u.affiliation || ""}`.toLowerCase().includes(q)
+    );
+
+    if (matches.length === 1) {
+      const u = matches[0];
+      toggleSpecificUserOption(prefix, normalizeEmail(u.email), normalizeEmail(u.googleEmail), true);
+      _SPECIFIC_SEARCH_QUERY[prefix] = "";
+      if (input) input.value = "";
+      refreshSpecificPickerUiWithoutLosingFocus(prefix);
+    } else if (norm.includes("@")) {
+      addCustomSpecificEmail(prefix, norm);
+    }
+  } else if (event.key === "Escape") {
+    closeSpecificUsersDropdown(prefix);
+  }
+}
+
+function toggleSpecificUserOption(prefix, em, gEm, checked) {
+  const set = getSpecificSelectedSet(prefix);
+  const normEm = normalizeEmail(em);
+  const normG = normalizeEmail(gEm);
+  if (checked) {
+    if (normEm) set.add(normEm);
+    if (normG) set.add(normG);
+  } else {
+    if (normEm) set.delete(normEm);
+    if (normG) set.delete(normG);
+  }
+  refreshSpecificPickerUiWithoutLosingFocus(prefix);
+}
+
+function addCustomSpecificEmail(prefix, emailRaw, event) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  const norm = normalizeEmail(emailRaw);
+  if (!norm || !norm.includes("@")) return;
+  const set = getSpecificSelectedSet(prefix);
+  set.add(norm);
+  _SPECIFIC_SEARCH_QUERY[prefix] = "";
+  const input = document.getElementById(`${prefix}-user-search-input`);
+  if (input) input.value = "";
+  refreshSpecificPickerUiWithoutLosingFocus(prefix);
+}
+
+function removeSpecificUserChip(prefix, primaryEmail, googleEmail, event) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  const set = getSpecificSelectedSet(prefix);
+  if (primaryEmail) set.delete(normalizeEmail(primaryEmail));
+  if (googleEmail) set.delete(normalizeEmail(googleEmail));
+  refreshSpecificPickerUiWithoutLosingFocus(prefix);
+}
+
+function toggleAllSpecificUsers(prefix, checked, event) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  const set = getSpecificSelectedSet(prefix);
+  if (!checked) {
+    set.clear();
+  } else {
+    Object.values(STATE.usersRegistry || {}).forEach(u => {
+      if (u.email) set.add(normalizeEmail(u.email));
+      if (u.googleEmail) set.add(normalizeEmail(u.googleEmail));
+    });
+  }
+  refreshSpecificPickerUiWithoutLosingFocus(prefix);
+}
+
+// Close open specific user dropdowns when clicking anywhere outside
+document.addEventListener("click", (e) => {
+  Object.keys(_SPECIFIC_DROPDOWN_OPEN).forEach(prefix => {
+    if (!_SPECIFIC_DROPDOWN_OPEN[prefix]) return;
+    const box = document.getElementById(`${prefix}-specific-box`);
+    if (box && !box.contains(e.target)) {
+      closeSpecificUsersDropdown(prefix);
+    }
+  });
+});
 
 function handleVisibilitySelectChange(prefix, existingAllowedUsers = null) {
   const sel = document.getElementById(`${prefix}-visibility`);
@@ -1147,12 +1461,14 @@ function handleVisibilitySelectChange(prefix, existingAllowedUsers = null) {
   const mode = normalizeVisibilityMode(sel.value);
   if (mode === "Specific") {
     box.style.display = "block";
-    const currentAllowed = existingAllowedUsers !== null
-      ? existingAllowedUsers
-      : getVisibilityControlValues(prefix).allowed_users;
-    renderSpecificUsersPicker(prefix, currentAllowed);
+    if (existingAllowedUsers !== null) {
+      renderSpecificUsersPicker(prefix, existingAllowedUsers);
+    } else {
+      renderSpecificUsersPicker(prefix, Array.from(getSpecificSelectedSet(prefix)));
+    }
   } else {
     box.style.display = "none";
+    closeSpecificUsersDropdown(prefix);
   }
 }
 
@@ -1161,6 +1477,8 @@ function setVisibilityControlValues(prefix, visibility = "Public", allowedUsers 
   const box = document.getElementById(`${prefix}-specific-box`);
   const normVis = normalizeVisibilityMode(visibility);
   if (sel) sel.value = normVis;
+  _SPECIFIC_SEARCH_QUERY[prefix] = "";
+  _SPECIFIC_DROPDOWN_OPEN[prefix] = false;
   if (box) {
     if (normVis === "Specific") {
       box.style.display = "block";
@@ -1178,18 +1496,17 @@ function getVisibilityControlValues(prefix) {
   const allowedSet = new Set();
 
   if (visibility === "Specific") {
-    document.querySelectorAll(`.specific-user-cb-${prefix}:checked`).forEach(cb => {
-      const em = normalizeEmail(cb.value);
-      const gEm = normalizeEmail(cb.getAttribute("data-google-email") || "");
-      if (em) allowedSet.add(em);
-      if (gEm) allowedSet.add(gEm);
+    const mapSet = getSpecificSelectedSet(prefix);
+    mapSet.forEach(em => {
+      if (em) allowedSet.add(normalizeEmail(em));
     });
-    const extraInput = document.getElementById(`${prefix}-specific-emails-input`);
-    if (extraInput && extraInput.value) {
-      extraInput.value.split(/[;,]+/).forEach(raw => {
-        const em = normalizeEmail(raw);
-        if (em && em.includes("@")) allowedSet.add(em);
-      });
+    // Also check if user typed an email in the search input without pressing Enter yet
+    const searchInput = document.getElementById(`${prefix}-user-search-input`);
+    if (searchInput && searchInput.value) {
+      const candidate = normalizeEmail(searchInput.value);
+      if (candidate && candidate.includes("@") && candidate.includes(".")) {
+        allowedSet.add(candidate);
+      }
     }
   }
 
@@ -3396,10 +3713,11 @@ function renderPapersList() {
 function updatePaperBatchBar(filtered = null) {
   if (!STATE.selectedPaperIds) STATE.selectedPaperIds = new Set();
   const countTextEl = document.getElementById("paper-batch-count-text");
-  const delBtn = document.getElementById("paper-batch-delete-btn");
+  const customControls = document.getElementById("paper-batch-custom-controls");
   const delCountEl = document.getElementById("paper-batch-delete-count");
-  const clearBtn = document.getElementById("paper-batch-clear-btn");
   const selectAllCb = document.getElementById("paper-select-all-cb");
+  const specBox = document.getElementById("batch-lit-specific-box");
+  const visSel = document.getElementById("batch-lit-visibility");
 
   const visibleList = filtered || STATE.papers || [];
   const count = STATE.selectedPaperIds.size;
@@ -3407,8 +3725,16 @@ function updatePaperBatchBar(filtered = null) {
   if (countTextEl) countTextEl.textContent = `• ${count} selected`;
   if (delCountEl) delCountEl.textContent = count;
 
-  if (delBtn) delBtn.style.display = count > 0 ? "inline-flex" : "none";
-  if (clearBtn) clearBtn.style.display = count > 0 ? "inline-flex" : "none";
+  if (customControls) {
+    customControls.style.display = count > 0 ? "flex" : "none";
+  }
+  if (specBox) {
+    if (count > 0 && visSel && normalizeVisibilityMode(visSel.value) === "Specific") {
+      specBox.style.display = "block";
+    } else {
+      specBox.style.display = "none";
+    }
+  }
 
   if (selectAllCb) {
     if (visibleList.length > 0 && visibleList.every(p => STATE.selectedPaperIds.has(p.id))) {
@@ -3421,6 +3747,102 @@ function updatePaperBatchBar(filtered = null) {
       selectAllCb.checked = false;
       selectAllCb.indeterminate = false;
     }
+  }
+}
+
+async function applyBatchPapersVisibility() {
+  if (!requireStrictAdminAuth()) return;
+  if (!STATE.selectedPaperIds || STATE.selectedPaperIds.size === 0) {
+    showToast("No papers selected.", "warn");
+    return;
+  }
+  const visMeta = getVisibilityControlValues("batch-lit");
+  if (visMeta.visibility === "Specific" && (!visMeta.allowed_users || visMeta.allowed_users.length === 0)) {
+    showToast("Please select at least one specific user from the dropdown.", "warn");
+    return;
+  }
+  const ids = new Set(Array.from(STATE.selectedPaperIds).map(Number));
+  let updatedCount = 0;
+
+  STATE.papers.forEach(p => {
+    if (ids.has(Number(p.id))) {
+      p.visibility = visMeta.visibility;
+      p.allowed_users = visMeta.allowed_users;
+      updatedCount++;
+    }
+  });
+  if (STATE.masterData && Array.isArray(STATE.masterData.papers)) {
+    STATE.masterData.papers.forEach(p => {
+      if (ids.has(Number(p.id))) {
+        p.visibility = visMeta.visibility;
+        p.allowed_users = visMeta.allowed_users;
+      }
+    });
+  }
+
+  saveStaticDb();
+  applyActiveWorkspaceData();
+  refreshAllWorkspaceViews();
+  showToast(`🛡️ Updated visibility to "${visMeta.visibility}" for ${updatedCount} selected paper(s)!`, "success");
+}
+
+async function applyBatchPapersField(fieldType) {
+  if (!requireAdminAuth()) return;
+  if (!STATE.selectedPaperIds || STATE.selectedPaperIds.size === 0) {
+    showToast("No papers selected.", "warn");
+    return;
+  }
+  const ids = new Set(Array.from(STATE.selectedPaperIds).map(Number));
+  let updatedCount = 0;
+
+  if (fieldType === "status") {
+    const newStatus = document.getElementById("batch-lit-status")?.value || "Read";
+    STATE.papers.forEach(p => {
+      if (ids.has(Number(p.id)) && (!p._sharedFromAdmin || (STATE.auth && STATE.auth.isAdmin))) {
+        p.status = newStatus;
+        updatedCount++;
+      }
+    });
+    recordUserActivity("References", "Batch Updated Reading Status", `Set status to "${newStatus}" for ${updatedCount} paper(s).`);
+    showToast(`📖 Updated reading status to "${newStatus}" for ${updatedCount} selected paper(s)!`, "success");
+  } else if (fieldType === "report") {
+    const inRep = parseInt(document.getElementById("batch-lit-report")?.value || "1", 10) ? 1 : 0;
+    STATE.papers.forEach(p => {
+      if (ids.has(Number(p.id)) && (!p._sharedFromAdmin || (STATE.auth && STATE.auth.isAdmin))) {
+        p.in_weekly_report = inRep;
+        updatedCount++;
+      }
+    });
+    recordUserActivity("References", "Batch Updated Weekly Report Flag", `${inRep ? "Included" : "Excluded"} ${updatedCount} paper(s) in Weekly Report.`);
+    showToast(`📽️ ${inRep ? "Added" : "Removed"} ${updatedCount} selected paper(s) ${inRep ? "to" : "from"} Weekly Report!`, "success");
+  }
+
+  saveStaticDb();
+  applyActiveWorkspaceData();
+  refreshAllWorkspaceViews();
+}
+
+function copySelectedPapersBibtex() {
+  if (!STATE.selectedPaperIds || STATE.selectedPaperIds.size === 0) {
+    showToast("No papers selected.", "warn");
+    return;
+  }
+  const ids = new Set(Array.from(STATE.selectedPaperIds).map(Number));
+  const selectedList = STATE.papers.filter(p => ids.has(Number(p.id)));
+  if (selectedList.length === 0) return;
+
+  const bibEntries = selectedList.map(p => {
+    const firstAuthor = (p.authors || "Author").split(",")[0].trim().split(" ").pop().replace(/[^A-Za-z]/g, "") || "Ref";
+    const key = `${firstAuthor}${p.year || 2026}_${p.id}`;
+    return `@article{${key},\n  title = {${(p.title || "").replace(/<[^>]+>/g, "")}},\n  author = {${p.authors || ""}},\n  journal = {${p.journal || ""}},\n  year = {${p.year || 2026}}${p.volume ? `,\n  volume = {${p.volume}}` : ""}${p.pages ? `,\n  pages = {${p.pages}}` : ""}${p.doi ? `,\n  doi = {${p.doi}}` : ""}\n}`;
+  }).join("\n\n");
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(bibEntries).then(() => {
+      showToast(`📋 Copied BibTeX citations for ${selectedList.length} selected paper(s)!`, "success");
+    });
+  } else {
+    prompt("Copy BibTeX:", bibEntries);
   }
 }
 
@@ -4368,6 +4790,7 @@ function populateStructureModalWithParsed(p, rawCif, filename) {
 }
 
 function renderStructuresList() {
+  if (!STATE.selectedStructureIds) STATE.selectedStructureIds = new Set();
   const query = (document.getElementById("struct-search")?.value || "").toLowerCase();
   const systemFilter = document.getElementById("struct-system-filter")?.value || "ALL";
   const typeFilter = document.getElementById("struct-type-filter")?.value || "ALL";
@@ -4380,6 +4803,8 @@ function renderStructuresList() {
     return hay.includes(query);
   });
 
+  updateStructBatchBar(filtered);
+
   const container = document.getElementById("structures-list-container");
   if (!container) return;
 
@@ -4390,20 +4815,27 @@ function renderStructuresList() {
 
   container.innerHTML = filtered.map(s => {
     const canModifyItem = Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin;
+    const isSelected = STATE.selectedStructureIds && STATE.selectedStructureIds.has(Number(s.id));
     return `
-    <div class="struct-card">
+    <div class="struct-card" id="struct-card-${s.id}" style="${isSelected ? 'border-color:#2563eb; background:#f0f7ff; box-shadow:0 0 0 2px rgba(37,99,235,0.18);' : ''}">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
-        <div>
-          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:4px;">
-            <span class="badge badge-purple">${escapeHtml(s.crystal_system || "Cubic")}</span>
-            <span class="badge badge-blue">${escapeHtml(s.structure_type || "Bulk 3D")}</span>
-            ${s.mp_id ? `<span class="badge badge-slate">${escapeHtml(s.mp_id)}</span>` : ""}
-            ${renderVisibilityBadgeHtml(s)}
-          </div>
-          <div class="struct-title">${escapeHtml(s.name)}</div>
-          <div style="font-size:13px; color:var(--text-secondary); margin-top:2px;">
-            Formula: <strong style="color:var(--primary); font-family:monospace; font-size:14px;">${formatFormulaHtml(s.chemical_formula || s.formula)}</strong>
-            &nbsp;|&nbsp; Space Group: <code>${escapeHtml(s.space_group || "P1")}</code>
+        <div style="display:flex; gap:10px; align-items:flex-start; flex:1;">
+          ${canModifyItem ? `
+          <div class="admin-only" style="padding-top:2px;">
+            <input type="checkbox" class="struct-select-cb" data-id="${s.id}" ${isSelected ? "checked" : ""} onchange="toggleSelectStructure(${s.id}, this.checked)" style="width:17px; height:17px; accent-color:#2563eb; cursor:pointer;" title="Select structure for batch actions" />
+          </div>` : ""}
+          <div style="flex:1;">
+            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:4px;">
+              <span class="badge badge-purple">${escapeHtml(s.crystal_system || "Cubic")}</span>
+              <span class="badge badge-blue">${escapeHtml(s.structure_type || "Bulk 3D")}</span>
+              ${s.mp_id ? `<span class="badge badge-slate">${escapeHtml(s.mp_id)}</span>` : ""}
+              ${renderVisibilityBadgeHtml(s)}
+            </div>
+            <div class="struct-title">${escapeHtml(s.name)}</div>
+            <div style="font-size:13px; color:var(--text-secondary); margin-top:2px;">
+              Formula: <strong style="color:var(--primary); font-family:monospace; font-size:14px;">${formatFormulaHtml(s.chemical_formula || s.formula)}</strong>
+              &nbsp;|&nbsp; Space Group: <code>${escapeHtml(s.space_group || "P1")}</code>
+            </div>
           </div>
         </div>
 
@@ -4468,6 +4900,191 @@ function renderStructuresList() {
     </div>
   `;
   }).join("");
+}
+
+function updateStructBatchBar(filtered = null) {
+  if (!STATE.selectedStructureIds) STATE.selectedStructureIds = new Set();
+  const countTextEl = document.getElementById("struct-batch-count-text");
+  const customControls = document.getElementById("struct-batch-custom-controls");
+  const delCountEl = document.getElementById("struct-batch-delete-count");
+  const selectAllCb = document.getElementById("struct-select-all-cb");
+  const specBox = document.getElementById("batch-struct-specific-box");
+  const visSel = document.getElementById("batch-struct-visibility");
+
+  const visibleList = filtered || STATE.structures || [];
+  const count = STATE.selectedStructureIds.size;
+
+  if (countTextEl) countTextEl.textContent = `• ${count} selected`;
+  if (delCountEl) delCountEl.textContent = count;
+  if (customControls) customControls.style.display = count > 0 ? "flex" : "none";
+
+  if (specBox) {
+    if (count > 0 && visSel && normalizeVisibilityMode(visSel.value) === "Specific") {
+      specBox.style.display = "block";
+    } else {
+      specBox.style.display = "none";
+    }
+  }
+
+  if (selectAllCb) {
+    if (visibleList.length > 0 && visibleList.every(s => STATE.selectedStructureIds.has(Number(s.id)))) {
+      selectAllCb.checked = true;
+      selectAllCb.indeterminate = false;
+    } else if (visibleList.some(s => STATE.selectedStructureIds.has(Number(s.id)))) {
+      selectAllCb.checked = false;
+      selectAllCb.indeterminate = true;
+    } else {
+      selectAllCb.checked = false;
+      selectAllCb.indeterminate = false;
+    }
+  }
+}
+
+function toggleSelectStructure(id, isChecked) {
+  if (!STATE.selectedStructureIds) STATE.selectedStructureIds = new Set();
+  const numId = Number(id);
+  if (isChecked) {
+    STATE.selectedStructureIds.add(numId);
+  } else {
+    STATE.selectedStructureIds.delete(numId);
+  }
+  const card = document.getElementById(`struct-card-${id}`);
+  if (card) {
+    if (isChecked) {
+      card.style.borderColor = "#2563eb";
+      card.style.background = "#f0f7ff";
+      card.style.boxShadow = "0 0 0 2px rgba(37,99,235,0.18)";
+    } else {
+      card.style.borderColor = "";
+      card.style.background = "";
+      card.style.boxShadow = "";
+    }
+  }
+  updateStructBatchBar();
+}
+
+function toggleSelectAllStructures(isChecked) {
+  if (!STATE.selectedStructureIds) STATE.selectedStructureIds = new Set();
+  const query = (document.getElementById("struct-search")?.value || "").toLowerCase();
+  const systemFilter = document.getElementById("struct-system-filter")?.value || "ALL";
+  const typeFilter = document.getElementById("struct-type-filter")?.value || "ALL";
+
+  const filtered = STATE.structures.filter(s => {
+    if (systemFilter !== "ALL" && s.crystal_system !== systemFilter) return false;
+    if (typeFilter !== "ALL" && s.structure_type !== typeFilter) return false;
+    if (!query) return true;
+    const hay = `${s.name} ${s.chemical_formula} ${s.space_group} ${s.mp_id} ${s.dft_code} ${s.dft_functional} ${s.notes}`.toLowerCase();
+    return hay.includes(query);
+  });
+
+  if (isChecked) {
+    filtered.forEach(s => STATE.selectedStructureIds.add(Number(s.id)));
+  } else {
+    filtered.forEach(s => STATE.selectedStructureIds.delete(Number(s.id)));
+  }
+  renderStructuresList();
+}
+
+function clearSelectedStructures() {
+  if (STATE.selectedStructureIds) STATE.selectedStructureIds.clear();
+  renderStructuresList();
+}
+
+async function applyBatchStructuresVisibility() {
+  if (!requireStrictAdminAuth()) return;
+  if (!STATE.selectedStructureIds || STATE.selectedStructureIds.size === 0) {
+    showToast("No structures selected.", "warn");
+    return;
+  }
+  const visMeta = getVisibilityControlValues("batch-struct");
+  if (visMeta.visibility === "Specific" && (!visMeta.allowed_users || visMeta.allowed_users.length === 0)) {
+    showToast("Please select at least one specific user from the dropdown.", "warn");
+    return;
+  }
+  const ids = new Set(Array.from(STATE.selectedStructureIds).map(Number));
+  let updatedCount = 0;
+
+  STATE.structures.forEach(s => {
+    if (ids.has(Number(s.id))) {
+      s.visibility = visMeta.visibility;
+      s.allowed_users = visMeta.allowed_users;
+      updatedCount++;
+    }
+  });
+  if (STATE.masterData && Array.isArray(STATE.masterData.structures)) {
+    STATE.masterData.structures.forEach(s => {
+      if (ids.has(Number(s.id))) {
+        s.visibility = visMeta.visibility;
+        s.allowed_users = visMeta.allowed_users;
+      }
+    });
+  }
+
+  saveStaticDb();
+  applyActiveWorkspaceData();
+  refreshAllWorkspaceViews();
+  showToast(`🛡️ Updated visibility to "${visMeta.visibility}" for ${updatedCount} selected structure(s)!`, "success");
+}
+
+async function applyBatchStructuresField(fieldName) {
+  if (!requireAdminAuth()) return;
+  if (!STATE.selectedStructureIds || STATE.selectedStructureIds.size === 0) {
+    showToast("No structures selected.", "warn");
+    return;
+  }
+  const ids = new Set(Array.from(STATE.selectedStructureIds).map(Number));
+  let updatedCount = 0;
+
+  if (fieldName === "structure_type") {
+    const newVal = document.getElementById("batch-struct-type")?.value || "Bulk 3D";
+    STATE.structures.forEach(s => {
+      if (ids.has(Number(s.id)) && (!s._sharedFromAdmin || (STATE.auth && STATE.auth.isAdmin))) {
+        s.structure_type = newVal;
+        updatedCount++;
+      }
+    });
+    recordUserActivity("Crystal Structures", "Batch Updated Structure Type", `Set type to "${newVal}" for ${updatedCount} structure(s).`);
+    showToast(`🧊 Updated structure type to "${newVal}" for ${updatedCount} selected structure(s)!`, "success");
+  } else if (fieldName === "dft_functional") {
+    const newVal = document.getElementById("batch-struct-functional")?.value || "PBE";
+    STATE.structures.forEach(s => {
+      if (ids.has(Number(s.id)) && (!s._sharedFromAdmin || (STATE.auth && STATE.auth.isAdmin))) {
+        s.dft_functional = newVal;
+        updatedCount++;
+      }
+    });
+    recordUserActivity("Crystal Structures", "Batch Updated DFT Functional", `Set DFT functional to "${newVal}" for ${updatedCount} structure(s).`);
+    showToast(`⚡ Updated DFT functional to "${newVal}" for ${updatedCount} selected structure(s)!`, "success");
+  }
+
+  saveStaticDb();
+  applyActiveWorkspaceData();
+  refreshAllWorkspaceViews();
+}
+
+async function deleteSelectedStructures() {
+  if (!requireAdminAuth()) return;
+  if (!STATE.selectedStructureIds || STATE.selectedStructureIds.size === 0) {
+    showToast("No structures selected to delete.", "warn");
+    return;
+  }
+  const count = STATE.selectedStructureIds.size;
+  const msg = count === 1
+    ? "Are you sure you want to remove the selected crystal structure from your database?"
+    : `Are you sure you want to permanently remove ${count} selected crystal structures from your database?`;
+  const itemDesc = `Total of ${count} crystal structure${count > 1 ? "s" : ""} will be permanently removed.`;
+
+  const ok = await confirmAction(msg, itemDesc);
+  if (!ok) return;
+
+  const idsToDelete = new Set(Array.from(STATE.selectedStructureIds).map(Number));
+  STATE.structures = STATE.structures.filter(s => !idsToDelete.has(Number(s.id)));
+  STATE.selectedStructureIds.clear();
+  recordUserActivity("Crystal Structures", "Batch Deleted Structures", `Removed ${count} crystal structure(s) from database.`);
+  saveStaticDb();
+  applyActiveWorkspaceData();
+  refreshAllWorkspaceViews();
+  showToast(`Successfully removed ${count} crystal structure(s).`, "success");
 }
 
 function openStructureModal(structId = null, options = {}) {
@@ -5803,6 +6420,7 @@ function downloadPoscarById(id) {
 // ============================================================================
 
 function renderScheduleList() {
+  if (!STATE.selectedScheduleIds) STATE.selectedScheduleIds = new Set();
   const statusFilter = document.getElementById("schedule-status-filter")?.value || "ALL";
   const filtered = STATE.schedule.filter(s => statusFilter === "ALL" || s.status === statusFilter);
 
@@ -5810,26 +6428,36 @@ function renderScheduleList() {
   if (!container) return;
   if (filtered.length === 0) {
     container.innerHTML = `<div style="padding:16px; text-align:center; color:var(--text-muted);">No schedule items found. Click any date on the calendar above to add an event!</div>`;
+    updateScheduleBatchBar([]);
     return;
   }
 
   container.innerHTML = filtered.map(s => {
     const canModifyItem = Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin;
+    const isSelected = STATE.selectedScheduleIds.has(s.id);
     return `
-    <div class="item-card">
+    <div class="item-card" id="sched-card-${s.id}" style="${isSelected ? 'border-color:#2563eb; background:#f0f7ff;' : ''}">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap;">
-        <div>
-          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:5px;">
-            <span class="badge ${s.status === 'Completed' ? 'badge-green' : s.status === 'In Progress' ? 'badge-amber' : 'badge-blue'}">${escapeHtml(s.status)}</span>
-            <span class="badge badge-slate">${escapeHtml(s.event_type)}</span>
-            ${s.sample_id ? `<span class="badge badge-purple">${escapeHtml(s.sample_id)}</span>` : ""}
-            ${renderVisibilityBadgeHtml(s)}
+        <div style="display:flex; gap:10px; align-items:flex-start; flex:1;">
+          ${canModifyItem ? `
+          <div class="admin-only no-print" style="padding-top:2px;">
+            <input type="checkbox" class="sched-select-cb" data-id="${s.id}" ${isSelected ? "checked" : ""} onchange="toggleSelectSchedule(${s.id}, this.checked)" style="width:17px; height:17px; accent-color:var(--primary); cursor:pointer;" title="Select event for batch customization or deletion" />
           </div>
-          <div class="item-title">${escapeHtml(s.title)}</div>
-          <div class="item-meta">
-            📅 <strong>${escapeHtml(s.start_date)}</strong> (${escapeHtml(s.start_time)} – ${escapeHtml(s.end_time)}) &nbsp;|&nbsp; 📍 ${escapeHtml(s.instrument_or_location || "Lab")}
+          ` : ""}
+          <div style="flex:1;">
+            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:5px;">
+              <span class="badge ${s.status === 'Completed' ? 'badge-green' : s.status === 'In Progress' ? 'badge-amber' : 'badge-blue'}">${escapeHtml(s.status)}</span>
+              <span class="badge badge-slate">${escapeHtml(s.event_type)}</span>
+              ${s.sample_id ? `<span class="badge badge-purple">${escapeHtml(s.sample_id)}</span>` : ""}
+              ${s.in_weekly_report ? `<span class="badge badge-amber">📝 In Weekly Report</span>` : ""}
+              ${renderVisibilityBadgeHtml(s)}
+            </div>
+            <div class="item-title">${escapeHtml(s.title)}</div>
+            <div class="item-meta">
+              📅 <strong>${escapeHtml(s.start_date)}</strong> (${escapeHtml(s.start_time)} – ${escapeHtml(s.end_time)}) &nbsp;|&nbsp; 📍 ${escapeHtml(s.instrument_or_location || "Lab")}
+            </div>
+            ${s.description ? `<div style="font-size:12.5px; color:var(--text-secondary); margin-top:4px;">${escapeHtml(s.description)}</div>` : ""}
           </div>
-          ${s.description ? `<div style="font-size:12.5px; color:var(--text-secondary); margin-top:4px;">${escapeHtml(s.description)}</div>` : ""}
         </div>
 
         <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
@@ -5846,6 +6474,219 @@ function renderScheduleList() {
     </div>
   `;
   }).join("");
+
+  updateScheduleBatchBar(filtered);
+}
+
+function updateScheduleBatchBar(filteredEvents = null) {
+  if (!STATE.selectedScheduleIds) STATE.selectedScheduleIds = new Set();
+  const selectAllCb = document.getElementById("sched-select-all-cb");
+  const countTextEl = document.getElementById("sched-batch-count-text");
+  const delBtn = document.getElementById("sched-batch-delete-btn");
+  const delCountEl = document.getElementById("sched-batch-delete-count");
+  const clearBtn = document.getElementById("sched-batch-clear-btn");
+  const customControls = document.getElementById("sched-batch-custom-controls");
+
+  const validIds = new Set((STATE.schedule || []).map(s => s.id));
+  for (const id of Array.from(STATE.selectedScheduleIds)) {
+    if (!validIds.has(id)) STATE.selectedScheduleIds.delete(id);
+  }
+
+  const count = STATE.selectedScheduleIds.size;
+  if (countTextEl) countTextEl.textContent = `• ${count} selected`;
+  if (delCountEl) delCountEl.textContent = count;
+  if (delBtn) delBtn.style.display = count > 0 ? "inline-flex" : "none";
+  if (clearBtn) clearBtn.style.display = count > 0 ? "inline-flex" : "none";
+  if (customControls) {
+    customControls.style.display = count > 0 ? "flex" : "none";
+    if (count === 0) {
+      const specBox = document.getElementById("batch-sched-specific-box");
+      if (specBox) specBox.style.display = "none";
+    }
+  }
+
+  if (selectAllCb) {
+    let list = filteredEvents;
+    if (!list) {
+      const statusFilter = document.getElementById("schedule-status-filter")?.value || "ALL";
+      list = (STATE.schedule || []).filter(s => statusFilter === "ALL" || s.status === statusFilter);
+    }
+    const modifiable = list.filter(s => Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin);
+    if (modifiable.length > 0 && modifiable.every(s => STATE.selectedScheduleIds.has(s.id))) {
+      selectAllCb.checked = true;
+      selectAllCb.indeterminate = false;
+    } else if (modifiable.some(s => STATE.selectedScheduleIds.has(s.id))) {
+      selectAllCb.checked = false;
+      selectAllCb.indeterminate = true;
+    } else {
+      selectAllCb.checked = false;
+      selectAllCb.indeterminate = false;
+    }
+  }
+}
+
+function toggleSelectSchedule(id, isChecked) {
+  if (!STATE.selectedScheduleIds) STATE.selectedScheduleIds = new Set();
+  if (isChecked) {
+    STATE.selectedScheduleIds.add(id);
+  } else {
+    STATE.selectedScheduleIds.delete(id);
+  }
+  const card = document.getElementById(`sched-card-${id}`);
+  if (card) {
+    if (isChecked) {
+      card.style.borderColor = "#2563eb";
+      card.style.background = "#f0f7ff";
+    } else {
+      card.style.borderColor = "";
+      card.style.background = "";
+    }
+  }
+  updateScheduleBatchBar();
+}
+
+function toggleSelectAllSchedule(isChecked) {
+  if (!STATE.selectedScheduleIds) STATE.selectedScheduleIds = new Set();
+  const statusFilter = document.getElementById("schedule-status-filter")?.value || "ALL";
+  const filtered = (STATE.schedule || []).filter(s => statusFilter === "ALL" || s.status === statusFilter);
+  filtered.forEach(s => {
+    const canModifyItem = Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin;
+    if (!canModifyItem) return;
+    if (isChecked) {
+      STATE.selectedScheduleIds.add(s.id);
+    } else {
+      STATE.selectedScheduleIds.delete(s.id);
+    }
+  });
+  renderScheduleList();
+}
+
+function clearSelectedSchedule() {
+  if (STATE.selectedScheduleIds) STATE.selectedScheduleIds.clear();
+  renderScheduleList();
+}
+
+async function applyBatchScheduleVisibility() {
+  if (!requireAdminAuth()) return;
+  if (!STATE.selectedScheduleIds || STATE.selectedScheduleIds.size === 0) {
+    showToast("No events selected.", "warn");
+    return;
+  }
+  const visData = getVisibilityControlValues("batch-sched");
+  if (visData.visibility === "Specific" && (!visData.allowed_users || visData.allowed_users.length === 0)) {
+    showToast("Please select at least 1 specific user (or type an email) for Specific User(s) visibility.", "warn");
+    return;
+  }
+  const ids = Array.from(STATE.selectedScheduleIds);
+  let updatedCount = 0;
+  ids.forEach(id => {
+    const s = (STATE.schedule || []).find(x => x.id === id);
+    if (s && (Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin)) {
+      s.visibility = visData.visibility;
+      s.allowed_users = visData.allowed_users;
+      updatedCount++;
+    }
+  });
+  saveStaticState();
+  renderScheduleList();
+  renderCalendarGrid();
+  const specBox = document.getElementById("batch-sched-specific-box");
+  if (specBox && visData.visibility !== "Specific") specBox.style.display = "none";
+  showToast(`Updated visibility to "${visData.visibility}" for ${updatedCount} selected event(s)!`, "success");
+}
+
+async function applyBatchScheduleField(fieldType) {
+  if (!requireAdminAuth()) return;
+  if (!STATE.selectedScheduleIds || STATE.selectedScheduleIds.size === 0) {
+    showToast("No events selected.", "warn");
+    return;
+  }
+  const ids = Array.from(STATE.selectedScheduleIds);
+  let updatedCount = 0;
+  if (fieldType === "status") {
+    const val = document.getElementById("batch-sched-status")?.value;
+    if (!val) {
+      showToast("Please choose a Status to apply.", "warn");
+      return;
+    }
+    ids.forEach(id => {
+      const s = (STATE.schedule || []).find(x => x.id === id);
+      if (s && (Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin)) {
+        s.status = val;
+        updatedCount++;
+      }
+    });
+    saveStaticState();
+    renderScheduleList();
+    renderCalendarGrid();
+    showToast(`Updated Status to "${val}" for ${updatedCount} event(s)!`, "success");
+  } else if (fieldType === "priority") {
+    const val = document.getElementById("batch-sched-priority")?.value;
+    if (!val) {
+      showToast("Please choose a Priority to apply.", "warn");
+      return;
+    }
+    ids.forEach(id => {
+      const s = (STATE.schedule || []).find(x => x.id === id);
+      if (s && (Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin)) {
+        s.priority = val;
+        updatedCount++;
+      }
+    });
+    saveStaticState();
+    renderScheduleList();
+    showToast(`Updated Priority to "${val}" for ${updatedCount} event(s)!`, "success");
+  } else if (fieldType === "report") {
+    const val = document.getElementById("batch-sched-report")?.value;
+    if (val === "" || val === undefined) {
+      showToast("Please choose a Weekly Report option to apply.", "warn");
+      return;
+    }
+    const numVal = parseInt(val, 10) ? 1 : 0;
+    ids.forEach(id => {
+      const s = (STATE.schedule || []).find(x => x.id === id);
+      if (s && (Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin)) {
+        s.in_weekly_report = numVal;
+        updatedCount++;
+      }
+    });
+    saveStaticState();
+    renderScheduleList();
+    showToast(`${numVal ? "Included" : "Removed"} ${updatedCount} event(s) ${numVal ? "in" : "from"} Weekly Report!`, "success");
+  }
+}
+
+async function deleteSelectedSchedule() {
+  if (!requireAdminAuth()) return;
+  if (!STATE.selectedScheduleIds || STATE.selectedScheduleIds.size === 0) {
+    showToast("No events selected to delete.", "warn");
+    return;
+  }
+  const count = STATE.selectedScheduleIds.size;
+  const ok = await confirmAction(
+    count === 1
+      ? "Are you sure you want to delete the selected calendar event?"
+      : `Are you sure you want to delete ${count} selected calendar events?`,
+    `Total of ${count} event${count > 1 ? "s" : ""} will be permanently removed.`
+  );
+  if (!ok) return;
+
+  const idsToDelete = Array.from(STATE.selectedScheduleIds);
+  STATE.schedule = (STATE.schedule || []).filter(s => !STATE.selectedScheduleIds.has(s.id));
+  if (!STATIC_MODE) {
+    for (const id of idsToDelete) {
+      try {
+        await apiFetch(`/api/schedule/${id}`, { method: "DELETE" });
+      } catch (e) {}
+    }
+  } else {
+    saveStaticState();
+  }
+  STATE.selectedScheduleIds.clear();
+  renderScheduleList();
+  renderCalendarGrid();
+  loadDashboard();
+  showToast(`Deleted ${count} selected event(s).`, "info");
 }
 
 function openScheduleModal(itemId = null, prefillDate = null) {
@@ -6077,34 +6918,41 @@ async function loadStaticFallbackData() {
           });
 
           const currentPubs = STATE.profile.publications || [];
-          if (currentPubs.length === 0) {
-            STATE.profile.publications = remoteData.profile.publications;
-          } else {
-            STATE.profile.publications = currentPubs.map(p => {
-              const keyDoi = (p.doi || '').toLowerCase().trim();
-              const keyTitle = (p.title || '').toLowerCase().replace(/<[^>]+>/g, '').trim();
-              const match = remoteMap.get(keyDoi) || remoteMap.get(keyTitle);
-              const matchAuthors = match ? match.authors : "";
-              const hasAbbrev = (s) => /\b[A-Z]\./.test(s || "") || /,\s*[A-Z]\./.test(s || "");
-              let authorsToUse = (matchAuthors && (!p.authors || hasAbbrev(p.authors) || !p.authors.includes(',') || p.authors === STATE.profile.full_name))
-                ? matchAuthors
-                : (p.authors || matchAuthors);
-              if (typeof expandAuthorInitials === "function") {
-                authorsToUse = expandAuthorInitials(authorsToUse);
+          if (currentPubs.length === 0 || remoteData.profile.publications.length > currentPubs.length) {
+            const existingSet = new Set(currentPubs.map(p => (p.doi || p.title || "").toLowerCase().trim()).filter(Boolean));
+            const mergedPubs = [...currentPubs];
+            remoteData.profile.publications.forEach(rp => {
+              const rk = (rp.doi || rp.title || "").toLowerCase().trim();
+              if (rk && !existingSet.has(rk)) {
+                mergedPubs.push(rp);
+                existingSet.add(rk);
               }
-
-              return {
-                ...p,
-                authors: authorsToUse,
-                volume: p.volume || (match ? match.volume : "") || "",
-                issue: p.issue || (match ? match.issue : "") || "",
-                pages: p.pages || (match ? match.pages : "") || "",
-                doi: p.doi || (match ? match.doi : "") || "",
-                journal: p.journal || (match ? match.journal : "") || ""
-              };
-              return p;
             });
+            STATE.profile.publications = mergedPubs;
           }
+          STATE.profile.publications = (STATE.profile.publications || []).map(p => {
+            const keyDoi = (p.doi || '').toLowerCase().trim();
+            const keyTitle = (p.title || '').toLowerCase().replace(/<[^>]+>/g, '').trim();
+            const match = remoteMap.get(keyDoi) || remoteMap.get(keyTitle);
+            const matchAuthors = match ? match.authors : "";
+            const hasAbbrev = (s) => /\b[A-Z]\./.test(s || "") || /,\s*[A-Z]\./.test(s || "");
+            let authorsToUse = (matchAuthors && (!p.authors || hasAbbrev(p.authors) || !p.authors.includes(',') || p.authors === STATE.profile.full_name))
+              ? matchAuthors
+              : (p.authors || matchAuthors);
+            if (typeof expandAuthorInitials === "function") {
+              authorsToUse = expandAuthorInitials(authorsToUse);
+            }
+
+            return {
+              ...p,
+              authors: authorsToUse,
+              volume: p.volume || (match ? match.volume : "") || "",
+              issue: p.issue || (match ? match.issue : "") || "",
+              pages: p.pages || (match ? match.pages : "") || "",
+              doi: p.doi || (match ? match.doi : "") || "",
+              journal: p.journal || (match ? match.journal : "") || ""
+            };
+          });
         }
       }
     }
@@ -7162,6 +8010,7 @@ function updatePubBatchBar(allPubs = null) {
   const delBtn = document.getElementById("pub-batch-delete-btn");
   const delCountEl = document.getElementById("pub-batch-delete-count");
   const clearBtn = document.getElementById("pub-batch-clear-btn");
+  const customControls = document.getElementById("pub-batch-custom-controls");
 
   const profDelBtn = document.getElementById("prof-pub-batch-delete-btn");
   const profDelCount = document.getElementById("prof-pub-delete-count");
@@ -7180,6 +8029,7 @@ function updatePubBatchBar(allPubs = null) {
   if (delCountEl) delCountEl.textContent = count;
   if (delBtn) delBtn.style.display = count > 0 ? "inline-flex" : "none";
   if (clearBtn) clearBtn.style.display = count > 0 ? "inline-flex" : "none";
+  if (customControls) customControls.style.display = count > 0 ? "flex" : "none";
 
   if (profDelBtn) profDelBtn.style.display = count > 0 ? "inline-flex" : "none";
   if (profDelCount) profDelCount.textContent = count;
@@ -7301,6 +8151,83 @@ async function deleteSelectedPublications() {
   } catch (err) {
     console.error("Failed to persist bulk publication deletion:", err);
   }
+}
+
+async function applyBatchPubsVisibility() {
+  if (!requireStrictAdminAuth()) return;
+  if (!STATE.selectedPubKeys || STATE.selectedPubKeys.size === 0) {
+    showToast("No publications selected.", "warn");
+    return;
+  }
+  const visVal = document.getElementById("batch-pub-visibility")?.value || "Public";
+  const pubs = STATE.profile.publications || [];
+  let updatedCount = 0;
+  pubs.forEach((p, idx) => {
+    const key = getPubUniqueKey(p, idx);
+    if (STATE.selectedPubKeys.has(key)) {
+      p.visibility = visVal;
+      updatedCount++;
+    }
+  });
+  if (Array.isArray(STATE.orcidLiveWorks)) {
+    STATE.orcidLiveWorks.forEach((p, idx) => {
+      const key = getPubUniqueKey(p, idx);
+      if (STATE.selectedPubKeys.has(key)) {
+        p.visibility = visVal;
+      }
+    });
+  }
+  renderAcademicCvSheet(STATE.profile);
+  renderProfile(STATE.profile);
+  showToast(`Updated visibility to "${visVal}" for ${updatedCount} selected publication(s)!`, "success");
+  try {
+    await persistProfileState();
+  } catch (e) {}
+}
+
+async function applyBatchPubsSource() {
+  if (!requireStrictAdminAuth()) return;
+  if (!STATE.selectedPubKeys || STATE.selectedPubKeys.size === 0) {
+    showToast("No publications selected.", "warn");
+    return;
+  }
+  const srcVal = document.getElementById("batch-pub-source")?.value;
+  if (!srcVal) {
+    showToast("Please choose a Source tag to apply.", "warn");
+    return;
+  }
+  const pubs = STATE.profile.publications || [];
+  let updatedCount = 0;
+  pubs.forEach((p, idx) => {
+    const key = getPubUniqueKey(p, idx);
+    if (STATE.selectedPubKeys.has(key)) {
+      p.source = srcVal;
+      updatedCount++;
+    }
+  });
+  renderAcademicCvSheet(STATE.profile);
+  renderProfile(STATE.profile);
+  showToast(`Updated Source to "${srcVal}" for ${updatedCount} selected publication(s)!`, "success");
+  try {
+    await persistProfileState();
+  } catch (e) {}
+}
+
+function copySelectedPubsBibtex() {
+  if (!STATE.selectedPubKeys || STATE.selectedPubKeys.size === 0) {
+    showToast("No publications selected.", "warn");
+    return;
+  }
+  const pubs = (STATE.profile && STATE.profile.publications) || [];
+  const selected = pubs.filter((p, idx) => STATE.selectedPubKeys.has(getPubUniqueKey(p, idx)));
+  if (selected.length === 0) return;
+  const bibtexAll = selected.map((p, i) => {
+    const firstAuthor = ((p.authors || "Author").split(/[,;]/)[0] || "Author").trim().split(" ").pop().replace(/[^A-Za-z]/g, "") || "Pub";
+    const citeKey = `${firstAuthor}${p.year || 2026}_${i + 1}`;
+    return `@article{${citeKey},\n  title = {${(p.title || "").replace(/<[^>]+>/g, "")}},\n  author = {${p.authors || ""}},\n  journal = {${p.journal || ""}},\n  year = {${p.year || 2026}}${p.volume ? `,\n  volume = {${p.volume}}` : ""}${p.pages ? `,\n  pages = {${p.pages}}` : ""}${p.doi ? `,\n  doi = {${p.doi}}` : ""}\n}`;
+  }).join("\n\n");
+  navigator.clipboard.writeText(bibtexAll);
+  showToast(`Copied BibTeX for ${selected.length} selected publication(s)!`, "success");
 }
 
 let CURRENT_PUB_VIEW_MODE = "curated"; // 'curated' (default with enriched 24 publications) or 'orcid'
@@ -7442,19 +8369,44 @@ function renderAcademicCvPublicationsSection(prof, pubList = []) {
       </div>
 
       <!-- Admin Batch Action Bar for Publications -->
-      <div class="pub-batch-bar admin-only no-print" id="pub-batch-bar" style="display:flex; align-items:center; justify-content:space-between; gap:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:9px 14px; margin-top:10px; margin-bottom:12px; font-size:13px;">
-        <div style="display:flex; align-items:center; gap:10px;">
-          <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; color:#334155; margin:0;">
-            <input type="checkbox" id="pub-select-all-cb" onchange="toggleSelectAllPubs(this.checked)" style="width:16px; height:16px; accent-color:var(--primary); cursor:pointer;" />
-            Select All Publications (${papers.length})
-          </label>
-          <span id="pub-batch-count-text" style="color:#64748b; font-size:12.5px;">• ${STATE.selectedPubKeys ? STATE.selectedPubKeys.size : 0} selected</span>
+      <div class="pub-batch-bar admin-only no-print" id="pub-batch-bar" style="display:flex; flex-direction:column; gap:8px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; margin-top:10px; margin-bottom:12px; font-size:13px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; color:#334155; margin:0;">
+              <input type="checkbox" id="pub-select-all-cb" onchange="toggleSelectAllPubs(this.checked)" style="width:16px; height:16px; accent-color:var(--primary); cursor:pointer;" />
+              Select All Publications (${papers.length})
+            </label>
+            <span id="pub-batch-count-text" style="color:#64748b; font-size:12.5px;">• ${STATE.selectedPubKeys ? STATE.selectedPubKeys.size : 0} selected</span>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-outline btn-sm" id="pub-batch-clear-btn" style="${STATE.selectedPubKeys && STATE.selectedPubKeys.size > 0 ? 'display:inline-flex;' : 'display:none;'}" onclick="clearSelectedPubs()">Clear Selection</button>
+            <button class="btn btn-danger btn-sm" id="pub-batch-delete-btn" style="${STATE.selectedPubKeys && STATE.selectedPubKeys.size > 0 ? 'display:inline-flex;' : 'display:none;'} font-weight:700; background:#dc2626; color:#ffffff; border:none; align-items:center; gap:4px;" onclick="deleteSelectedPublications()">
+              🗑️ Delete Selected (<span id="pub-batch-delete-count">${STATE.selectedPubKeys ? STATE.selectedPubKeys.size : 0}</span>)
+            </button>
+          </div>
         </div>
-        <div style="display:flex; gap:8px;">
-          <button class="btn btn-outline btn-sm" id="pub-batch-clear-btn" style="${STATE.selectedPubKeys && STATE.selectedPubKeys.size > 0 ? 'display:inline-flex;' : 'display:none;'}" onclick="clearSelectedPubs()">Clear Selection</button>
-          <button class="btn btn-danger btn-sm" id="pub-batch-delete-btn" style="${STATE.selectedPubKeys && STATE.selectedPubKeys.size > 0 ? 'display:inline-flex;' : 'display:none;'} font-weight:700; background:#dc2626; color:#ffffff; border:none; display:inline-flex; align-items:center; gap:4px;" onclick="deleteSelectedPublications()">
-            🗑️ Delete Selected (<span id="pub-batch-delete-count">${STATE.selectedPubKeys ? STATE.selectedPubKeys.size : 0}</span>)
-          </button>
+        <div id="pub-batch-custom-controls" style="${STATE.selectedPubKeys && STATE.selectedPubKeys.size > 0 ? 'display:flex;' : 'display:none;'} align-items:center; gap:8px; flex-wrap:wrap; padding-top:8px; border-top:1px dashed #cbd5e1;">
+          <span style="font-size:12px; font-weight:700; color:#1e40af;">⚡ Batch Customize Selected:</span>
+          <div style="display:inline-flex; align-items:center; gap:4px; background:#ffffff; border:1px solid #cbd5e1; border-radius:6px; padding:3px 8px;">
+            <span style="font-size:11.5px; font-weight:600; color:#475569;">🛡️ Visibility:</span>
+            <select id="batch-pub-visibility" class="form-select" style="width:auto; min-width:130px; padding:3px 8px; font-size:12px; height:28px;">
+              <option value="Public">🌍 Public (Everyone)</option>
+              <option value="Curated">📜 Curated</option>
+              <option value="Private">🔒 Private (Admin Only)</option>
+            </select>
+            <button type="button" class="btn btn-primary btn-sm" style="padding:3px 9px; font-size:11.5px; height:26px;" onclick="applyBatchPubsVisibility()">Apply</button>
+          </div>
+          <div style="display:inline-flex; align-items:center; gap:4px; background:#ffffff; border:1px solid #cbd5e1; border-radius:6px; padding:3px 8px;">
+            <span style="font-size:11.5px; font-weight:600; color:#475569;">🏷️ Source:</span>
+            <select id="batch-pub-source" class="form-select" style="width:auto; min-width:120px; padding:3px 8px; font-size:12px; height:28px;">
+              <option value="">-- Keep Current --</option>
+              <option value="ORCID">ORCID</option>
+              <option value="Manual">Manual / Curated</option>
+              <option value="Google Scholar">Google Scholar</option>
+            </select>
+            <button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px; height:26px;" onclick="applyBatchPubsSource()">Apply</button>
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" style="padding:3px 10px; font-size:11.5px; height:28px;" onclick="copySelectedPubsBibtex()">📋 Copy BibTeX</button>
         </div>
       </div>
 
