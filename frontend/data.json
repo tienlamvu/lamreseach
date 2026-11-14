@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T14:40:20.463Z",
+  "exported_at": "2026-11-14T14:40:54.682Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -1763,7 +1763,7 @@
       "registeredAt": "2026-11-14 14:39",
       "lastLoginAt": "2026-11-14 14:39",
       "lastUpdatedAt": "2026-11-14 14:40",
-      "updatedAtMs": 1794667219363,
+      "updatedAtMs": 1794667254164,
       "workspace": {
         "papers": [
           {
@@ -2041,6 +2041,12 @@
         ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-14 14:40",
+          "category": "Profile",
+          "action": "Profile & Groups Updated by Administrator",
+          "detail": "Updated profile (SKKU-STEM Laboratory — Researcher) and group assignments."
+        },
         {
           "timestamp": "2026-11-14 14:40",
           "category": "Account",
