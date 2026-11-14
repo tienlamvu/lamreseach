@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T09:21:28.610Z",
+  "exported_at": "2026-11-14T09:21:37.665Z",
   "profile": {
     "full_name": "Vu Tien Lam",
     "title_role": "Ph.D. Candidate in Computational Materials Science",
@@ -226,19 +226,6 @@
         "volume": "51",
         "issue": "6",
         "pages": "2716-2731"
-      },
-      {
-        "title": "A Methodology for the Emulation of Architecture",
-        "authors": "Josiah Carberry",
-        "journal": "Journal of Psychoceramics",
-        "year": 2012,
-        "doi": "10.5555/12345680",
-        "citations": 0,
-        "volume": "1",
-        "issue": "1",
-        "pages": "",
-        "source": "ORCID",
-        "visibility": "Public"
       },
       {
         "title": "First-principles calculation of the impact of interstitial point defects on the Bi<sub>0.5</sub>Na<sub>0.5</sub>TiO<sub>3</sub> (110) surface",
