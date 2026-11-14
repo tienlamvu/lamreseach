@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T03:48:59.362Z",
+  "exported_at": "2026-11-14T03:49:03.634Z",
   "profile": {
     "full_name": "Vu Tien Lam",
     "title_role": "Ph.D. Candidate in Computational Materials Science",
@@ -596,7 +596,7 @@
           "detail": "Linked Google Account jhpark.matsci@gmail.com"
         }
       ],
-      "updatedAtMs": 1794628136716
+      "updatedAtMs": 1794628139779
     },
     "minseo.kim@gmail.com": {
       "email": "minseo.kim@gmail.com",
@@ -765,7 +765,7 @@
       "passwordHash": "e5acba84c164be5493b03ab87712975cdaf2149d43c81df395eb07f8a1057264",
       "registeredAt": "2026-11-14 03:14",
       "lastLoginAt": "2026-11-14 03:14",
-      "lastUpdatedAt": "2026-11-14 03:14",
+      "lastUpdatedAt": "2026-11-14 03:49",
       "workspace": {
         "papers": [],
         "structures": [],
@@ -801,7 +801,8 @@
           "action": "Registered Personal Account",
           "detail": "Seojeong Rho (SKKU) created a personal workspace."
         }
-      ]
+      ],
+      "updatedAtMs": 1794628142609
     }
   },
   "deleted_users": []
