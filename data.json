@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T09:20:49.411Z",
+  "exported_at": "2026-11-14T09:21:19.104Z",
   "profile": {
     "full_name": "Vu Tien Lam",
     "title_role": "Ph.D. Candidate in Computational Materials Science",
@@ -289,19 +289,6 @@
         "volume": "1",
         "issue": "1",
         "pages": "",
-        "source": "ORCID",
-        "visibility": "Public"
-      },
-      {
-        "title": "Bulk and surface plasmons in artificially structured materials",
-        "authors": "Quinn, J.J., Carberry, J.S.",
-        "journal": "IEEE Transactions on Plasma Science",
-        "year": 1987,
-        "doi": "10.1109/TPS.1987.4316723",
-        "citations": 5,
-        "volume": "15",
-        "issue": "4",
-        "pages": "394-410",
         "source": "ORCID",
         "visibility": "Public"
       },
