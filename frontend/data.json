@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-14T14:36:16.211Z",
+  "exported_at": "2026-11-14T14:36:20.090Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -1738,14 +1738,6 @@
       "color": "blue",
       "members": [],
       "updatedAtMs": 1700000000000
-    },
-    "grp_dft_team": {
-      "id": "grp_dft_team",
-      "name": "DFT & Computational Team",
-      "description": "VASP, Quantum ESPRESSO & First-Principles Simulation Group",
-      "color": "purple",
-      "members": [],
-      "updatedAtMs": 1700000000000
     }
   },
   "deleted_users": [
@@ -1757,6 +1749,7 @@
     "lamvt@g.skku.edu"
   ],
   "deleted_groups": [
-    "grp_external_collab"
+    "grp_external_collab",
+    "grp_dft_team"
   ]
 }
