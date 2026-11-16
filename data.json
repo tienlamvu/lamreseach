@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T05:47:38.206Z",
+  "exported_at": "2026-11-16T05:48:10.367Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -2866,9 +2866,9 @@
       "passwordPlainHint": "skku1234",
       "passwordHash": "441d52fbb490008fa860a41b38fe03e0b7f6fb06b56336922f7d7a95562f51dd",
       "registeredAt": "2026-11-16 05:32",
-      "lastLoginAt": "2026-11-16 05:32",
-      "lastUpdatedAt": "2026-11-16 05:47",
-      "updatedAtMs": 1794808037543,
+      "lastLoginAt": "2026-11-16 05:48",
+      "lastUpdatedAt": "2026-11-16 05:48",
+      "updatedAtMs": 1794808089152,
       "workspace": {
         "papers": [
           {
@@ -3179,6 +3179,12 @@
         ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-16 05:48",
+          "category": "Session",
+          "action": "Signed In (Email & Password)",
+          "detail": "Authenticated as Dr. Test Researcher (test.researcher@skku.edu)"
+        },
         {
           "timestamp": "2026-11-16 05:47",
           "category": "Security",
