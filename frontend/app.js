@@ -2020,10 +2020,14 @@ function mergeTwoUserRecords(existingU, incomingU) {
 
 function ensureUsersRegistryInitialized(remoteRegistry = null, remoteDeleted = null, remoteGroups = null, remoteDeletedGroups = null) {
   const deletedSet = getDeletedUsersSet();
+  const remoteDeletedSet = new Set();
   if (Array.isArray(remoteDeleted)) {
     remoteDeleted.forEach(em => {
       const n = normalizeEmail(em);
-      if (n) deletedSet.add(n);
+      if (n) {
+        deletedSet.add(n);
+        remoteDeletedSet.add(n);
+      }
     });
   }
 
@@ -2034,6 +2038,30 @@ function ensureUsersRegistryInitialized(remoteRegistry = null, remoteDeleted = n
       deletedSet.delete(act);
       removeDeletedUserTombstone(act);
     }
+  }
+
+  // CRITICAL FIX: If remoteRegistry contains an active user account that is NOT in remoteDeletedSet,
+  // that user is alive in the cloud database! Purge any stale local tombstone so they are not deleted.
+  if (remoteRegistry && typeof remoteRegistry === "object") {
+    Object.keys(remoteRegistry).forEach(k => {
+      const normK = normalizeEmail(k);
+      if (normK && normK !== OWNER_GOOGLE_EMAIL && !remoteDeletedSet.has(normK)) {
+        deletedSet.delete(normK);
+        removeDeletedUserTombstone(normK);
+      }
+    });
+  }
+
+  // Active users registered or modified locally in STATE.usersRegistry
+  if (STATE.usersRegistry && typeof STATE.usersRegistry === "object") {
+    Object.keys(STATE.usersRegistry).forEach(k => {
+      const normK = normalizeEmail(k);
+      const u = STATE.usersRegistry[k];
+      if (normK && u && (u._justRegistered || (STATE.auth && normalizeEmail(STATE.auth.email) === normK))) {
+        deletedSet.delete(normK);
+        removeDeletedUserTombstone(normK);
+      }
+    });
   }
 
   try {
@@ -2207,18 +2235,50 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
 
     // 2. Merge remote users_registry, deleted_users & user_groups with local state
     const deletedSet = getDeletedUsersSet();
+    const remoteDeletedSet = new Set();
     if (remoteDb && Array.isArray(remoteDb.deleted_users)) {
       remoteDb.deleted_users.forEach(em => {
         const n = normalizeEmail(em);
-        if (n) deletedSet.add(n);
+        if (n) {
+          deletedSet.add(n);
+          remoteDeletedSet.add(n);
+        }
       });
     }
 
     // Active logged-in user on this device (if regular user): keep their active session safe
     if (STATE.auth && STATE.auth.isLoggedIn && !STATE.auth.isAdmin && STATE.auth.email) {
       const myEmail = normalizeEmail(STATE.auth.email);
-      if (myEmail) deletedSet.delete(myEmail);
+      if (myEmail) {
+        deletedSet.delete(myEmail);
+        removeDeletedUserTombstone(myEmail);
+      }
     }
+
+    // CRITICAL FIX: If remoteDb.users_registry has a user that is NOT in remoteDb.deleted_users,
+    // that user is an active registered user in Cloud! Purge any stale local tombstone:
+    if (remoteDb && remoteDb.users_registry && typeof remoteDb.users_registry === "object") {
+      Object.keys(remoteDb.users_registry).forEach(k => {
+        const normK = normalizeEmail(k);
+        if (normK && normK !== OWNER_GOOGLE_EMAIL && !remoteDeletedSet.has(normK)) {
+          deletedSet.delete(normK);
+          removeDeletedUserTombstone(normK);
+        }
+      });
+    }
+
+    // If local STATE.usersRegistry has a user that was actively created/updated locally
+    // (e.g. registration, Google OAuth login, admin edit), purge any tombstone:
+    Object.keys(STATE.usersRegistry || {}).forEach(k => {
+      const normK = normalizeEmail(k);
+      const u = STATE.usersRegistry[k];
+      if (normK && u) {
+        if (u._justRegistered || (STATE.auth && normalizeEmail(STATE.auth.email) === normK)) {
+          deletedSet.delete(normK);
+          removeDeletedUserTombstone(normK);
+        }
+      }
+    });
 
     // Merge remoteDb.users_registry into local STATE.usersRegistry
     // CRITICAL: Any email in deletedSet MUST NOT be added, and MUST be deleted from STATE.usersRegistry!
@@ -5073,6 +5133,8 @@ window.receiveGoogleOAuth2PopupResult = async function (payload) {
     existingUser.updatedAtMs = Date.now();
 
     const normKey = normalizeEmail(existingUser.email);
+    removeDeletedUserTombstone(normKey);
+    removeDeletedUserTombstone(email);
     STATE.usersRegistry[normKey] = existingUser;
     persistUsersRegistryLocal();
     completePersonalUserLogin(existingUser, "Google OAuth 2.0");
@@ -5204,6 +5266,8 @@ function completeOwnerLogin(email, name, picture) {
 function completePersonalUserLogin(userObj, loginMethod = "Account") {
   const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
   const normEmail = normalizeEmail(userObj.email);
+  removeDeletedUserTombstone(normEmail);
+  if (userObj.googleEmail) removeDeletedUserTombstone(normalizeEmail(userObj.googleEmail));
   userObj.lastLoginAt = nowStr;
   userObj.activityLog = Array.isArray(userObj.activityLog) ? userObj.activityLog : [];
   userObj.activityLog.unshift({
@@ -5466,6 +5530,9 @@ function saveUserGoogleLink() {
     showToast("Please enter a valid Google / Gmail address to link.", "warn");
     return;
   }
+
+  removeDeletedUserTombstone(gEmail);
+  removeDeletedUserTombstone(u.email);
 
   u.googleLinked = true;
   u.googleEmail = gEmail;
