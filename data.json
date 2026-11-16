@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T11:30:27.629Z",
+  "exported_at": "2026-11-16T11:30:43.272Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -1950,7 +1950,7 @@
       "registeredAt": "2026-11-16 10:47",
       "lastLoginAt": "2026-11-16 11:30",
       "lastUpdatedAt": "2026-11-16 11:30",
-      "updatedAtMs": 1794828627140,
+      "updatedAtMs": 1794828643142,
       "workspace": {
         "papers": [],
         "structures": [],
