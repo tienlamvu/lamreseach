@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T06:16:00.958Z",
+  "exported_at": "2026-11-16T06:19:30.835Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -2126,7 +2126,7 @@
       "authProvider": "Verified Email + Google Linked",
       "googleLinked": true,
       "googleEmail": "a@gmail.com",
-      "passwordPlainHint": "aaaaa",
+      "passwordPlainHint": "••••••••",
       "passwordHash": "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
       "registeredAt": "2026-11-16 06:07",
       "lastLoginAt": "2026-11-16 06:07",
