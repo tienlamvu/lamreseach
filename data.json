@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T01:50:48.751Z",
+  "exported_at": "2026-11-16T01:51:35.671Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -44,6 +44,15 @@
       }
     ],
     "experiences": [
+      {
+        "role": "Researcher",
+        "organization": "Energy Transport Lab.",
+        "period": "2025 – Present",
+        "description": "DFT simulations on 2D Semiconductor Materials.",
+        "visibility": "Public",
+        "allowed_users": [],
+        "allowed_groups": []
+      },
       {
         "role": "Researcher",
         "organization": "Multifunctional Multiferroics Lab.",
