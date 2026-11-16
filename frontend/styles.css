@@ -4334,8 +4334,7 @@ body.is-admin #cv-exclusive-owner-notice {
 
 @media print {
   .vis-badge,
-  .visibility-control-box,
-  #email-dispatch-drawer {
+  .visibility-control-box {
     display: none !important;
   }
 }
