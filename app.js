@@ -2202,19 +2202,26 @@ function renderWorkspaceBanner() {
   }
 
   if (STATE.auth.isLoggedIn && !STATE.auth.isAdmin) {
-    const u = STATE.usersRegistry[normalizeEmail(STATE.auth.email)] || STATE.auth;
+    const normEmail = normalizeEmail(STATE.auth.email);
+    if (sessionStorage.getItem("matsci_workspace_banner_dismissed_" + normEmail) === "1") {
+      banner.style.display = "none";
+      banner.innerHTML = "";
+      return;
+    }
+    const u = (STATE.usersRegistry && STATE.usersRegistry[normEmail]) || STATE.auth;
     const googleBadge = u.googleLinked
       ? `<span class="badge badge-blue" style="margin-left:6px;">🌐 Google Linked (${escapeHtml(u.googleEmail || u.email)})</span>`
       : `<button class="btn btn-outline btn-sm" style="margin-left:6px; padding:2px 8px; font-size:11px;" onclick="openUserAccountModal()">🔗 Link Google Account</button>`;
     banner.className = "workspace-context-banner no-print";
     banner.style.display = "flex";
     banner.innerHTML = `
-      <div>
+      <div style="flex:1; min-width:280px;">
         🧑‍🔬 <strong>Personal Research Workspace Active:</strong> Signed in as <strong>${escapeHtml(u.name || STATE.auth.name)}</strong> (<code>${escapeHtml(u.email)}</code>). You can add your own Calendar Events, Reference Papers, Crystal Structures (*.cif), and Weekly Reports. ${googleBadge}
       </div>
       <div style="display:flex; gap:8px; align-items:center;">
         <span style="font-size:11.5px; color:#475569;">🔒 <em>Academic CV is read-only (exclusive to Administrator)</em></span>
-        <button class="btn btn-outline btn-sm" onclick="openUserAccountModal()">⚙️ Account Settings</button>
+        <button class="btn btn-outline btn-sm" onclick="openUserAccountModal()" style="font-size:11.5px; padding:3px 9px;">⚙️ Account Settings</button>
+        <button type="button" onclick="dismissWorkspaceBanner()" style="background:transparent; border:1px solid #cbd5e1; border-radius:6px; color:#64748b; font-size:13px; font-weight:700; width:24px; height:24px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; padding:0; margin-left:4px; line-height:1;" title="Dismiss this banner">✕</button>
       </div>
     `;
     return;
@@ -4118,6 +4125,7 @@ function completePersonalUserLogin(userObj, loginMethod = "Account") {
   const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
   const normEmail = normalizeEmail(userObj.email);
   removeDeletedUserTombstone(normEmail);
+  sessionStorage.removeItem("matsci_workspace_banner_dismissed_" + normEmail);
   if (userObj.googleEmail) removeDeletedUserTombstone(normalizeEmail(userObj.googleEmail));
   userObj.lastLoginAt = nowStr;
   userObj.activityLog = Array.isArray(userObj.activityLog) ? userObj.activityLog : [];
@@ -23718,3 +23726,17 @@ window.saveGeminiApiKey = saveGeminiApiKey;
 window.clearGeminiApiKey = clearGeminiApiKey;
 window.copyGeminiRewrite = copyGeminiRewrite;
 window.callGoogleGeminiPlagiarismAnalysis = callGoogleGeminiPlagiarismAnalysis;
+
+
+function dismissWorkspaceBanner() {
+  const banner = document.getElementById("workspace-context-banner");
+  if (banner) {
+    banner.style.display = "none";
+    banner.innerHTML = "";
+  }
+  if (STATE.auth && STATE.auth.email) {
+    const normEmail = normalizeEmail(STATE.auth.email);
+    sessionStorage.setItem("matsci_workspace_banner_dismissed_" + normEmail, "1");
+  }
+}
+window.dismissWorkspaceBanner = dismissWorkspaceBanner;
