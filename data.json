@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T05:04:52.845Z",
+  "exported_at": "2026-11-16T05:05:51.567Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -2127,6 +2127,40 @@
       ],
       "groups": [],
       "picture": "https://lh3.googleusercontent.com/a/ACg8ocJ5aVyRlpWSljVC2OJusM1rb39s2jSKUTJqGBroVnc79VyzoEsF=s96-c"
+    },
+    "linh@gmail.com": {
+      "email": "linh@gmail.com",
+      "name": "Nguyen Thi Khanh Linh",
+      "affiliation": "Sungkyunkwan University (SKKU)",
+      "academicRole": "Student",
+      "status": "Active",
+      "authProvider": "Email + Google Linked",
+      "googleLinked": true,
+      "googleEmail": "linh@gmail.com",
+      "passwordPlainHint": "skku1234",
+      "passwordHash": "441d52fbb490008fa860a41b38fe03e0b7f6fb06b56336922f7d7a95562f51dd",
+      "groups": [
+        "grp_dft_team_gun1"
+      ],
+      "registeredAt": "2026-11-16 05:05",
+      "lastLoginAt": "2026-11-16 05:05",
+      "lastUpdatedAt": "2026-11-16 05:05",
+      "updatedAtMs": 1794805551086,
+      "workspace": {
+        "schedule": [],
+        "papers": [],
+        "structures": [],
+        "expReportRows": [],
+        "litReportRows": []
+      },
+      "activityLog": [
+        {
+          "timestamp": "2026-11-16 05:05",
+          "category": "Account",
+          "action": "Created by Administrator",
+          "detail": "Administrator created personal account for Nguyen Thi Khanh Linh (linh@gmail.com)."
+        }
+      ]
     }
   },
   "user_groups": {
@@ -2135,8 +2169,10 @@
       "name": "DFT Team",
       "color": "blue",
       "description": "User group created by Administrator",
-      "members": [],
-      "updatedAtMs": 1794668802589
+      "members": [
+        "linh@gmail.com"
+      ],
+      "updatedAtMs": 1794805551086
     }
   },
   "deleted_users": [
