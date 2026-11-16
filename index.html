@@ -1121,118 +1121,212 @@
 
         <!-- SUB-TAB 2: PLAGIARISM & DUPLICATE PARAGRAPH CHECKER -->
         <div id="manuscript-plag-panel" style="display:none;">
-          <div class="grid-2">
-            <!-- Left: Upload & Config -->
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">📤 Upload Manuscript (.pdf, .docx, .txt)</div>
-                <button class="btn btn-outline btn-sm" onclick="loadSampleManuscriptText()">Load Sample Text</button>
-              </div>
 
-              <!-- Drag and drop zone -->
-              <div class="cif-drop-zone" id="plag-drop-zone" onclick="document.getElementById('plag-file-input').click()">
-                <input type="file" id="plag-file-input" accept=".docx,.pdf,.txt" style="display:none;" onchange="handlePlagFileInput(event)" />
-                <div style="font-size:32px; margin-bottom:6px;">📄</div>
-                <div style="font-weight:700; font-size:14px; color:var(--text-main);" id="plag-drop-title">Drop your manuscript (PDF or Word .docx) here</div>
-                <div style="font-size:12px; color:var(--text-muted); margin-top:4px;" id="plag-drop-sub">Extracts text and splits into distinct paragraphs for cross-checking</div>
+          <!-- AUTHENTICATION GATE (Shown when user is not logged in) -->
+          <div id="plag-auth-gate" style="display:none; margin-bottom:20px;">
+            <div class="card" style="text-align:center; padding:36px 20px; border-radius:12px; background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); border:1px solid #e2e8f0; box-shadow:0 4px 12px rgba(0,0,0,0.05); max-width:820px; margin:0 auto;">
+              <div style="font-size:44px; margin-bottom:12px;">🛡️</div>
+              <div style="display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; padding:3px 10px; border-radius:12px; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; margin-bottom:10px;">
+                🔒 Authenticated Researcher Suite
               </div>
+              <h3 style="font-size:22px; font-weight:800; color:#0f172a; margin:0 0 10px 0;">
+                Manuscript Plagiarism Checker &amp; Google Gemini AI Deep Audit
+              </h3>
+              <p style="font-size:13.5px; color:#475569; max-width:620px; margin:0 auto 20px auto; line-height:1.6;">
+                Turnitin-grade cross-checks against 250M+ academic publications (CrossRef, OpenAlex, Europe PMC) and Google Gemini AI deep semantic paraphrase audits require an active researcher account or Google Sign-In.
+              </p>
 
-              <div style="margin-top:14px;">
-                <label style="font-size:12.5px; font-weight:700; color:var(--text-secondary); display:block; margin-bottom:6px;">Or Paste Manuscript Draft Text Below:</label>
-                <textarea id="plag-text-input" rows="5" placeholder="Paste draft paragraphs here to check for duplicate content..." style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border-color); font-size:13px; font-family:inherit;"></textarea>
-              </div>
-
-              <div style="margin-top:12px; padding:12px; background:#f8fafc; border-radius:8px; border:1px solid var(--border-color);">
-                <div style="font-weight:700; font-size:12.5px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
-                  <span>Cross-Check Sources &amp; Literature Databases:</span>
-                  <span style="font-size:11px; padding:2px 8px; border-radius:12px; background:#eff6ff; color:#1d4ed8; font-weight:700; border:1px solid #bfdbfe;">Live 250M+ Index</span>
-                </div>
-                <div style="display:flex; flex-direction:column; gap:6px; font-size:12.5px;">
-                  <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; color:#1d4ed8;">
-                    <input type="checkbox" id="chk-cross-internet" checked />
-                    🌐 Deep Internet &amp; Google Scholar Scan (OpenAlex &amp; CrossRef 250M+ Works)
-                  </label>
-                  <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-                    <input type="checkbox" id="chk-cross-library" checked />
-                    📚 Literature Library (Abstracts &amp; Notes in personal database)
-                  </label>
-                  <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-                    <input type="checkbox" id="chk-cross-periodicals" checked />
-                    🏛️ Published Periodicals, Academic Journals &amp; Conference Proceedings (Turnitin Standard)
-                  </label>
-                </div>
-              </div>
-
-              <div style="margin-top:14px; display:flex; justify-content:flex-end;">
-                <button class="btn btn-primary" id="btn-run-plag" onclick="runPlagiarismAnalysis()">
-                  ⚡ Check Plagiarism &amp; Cross-Check Literature
+              <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-bottom:24px;">
+                <button class="btn btn-primary" onclick="openAuthModal('signin')" style="padding:10px 20px; font-size:14px; font-weight:700; border-radius:8px; display:inline-flex; align-items:center; gap:8px;">
+                  🔑 Sign In to Workspace
+                </button>
+                <button class="btn btn-outline" onclick="openAuthModal('register')" style="padding:10px 20px; font-size:14px; font-weight:700; border-radius:8px; display:inline-flex; align-items:center; gap:8px;">
+                  ✨ Create Free Account
+                </button>
+                <button class="google-header-signin-btn" onclick="startGoogleOAuth2SignIn()" style="padding:10px 18px; font-size:13.5px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.1);" title="Sign in with your Google Account">
+                  <svg width="18" height="18" viewBox="0 0 48 48">
+                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                  </svg>
+                  Sign in with Google
                 </button>
               </div>
-            </div>
 
-            <!-- Right: Analysis Summary & KPIs -->
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">📊 Duplication &amp; Overlap Scorecard</div>
-                <div id="plag-file-badge" style="font-size:12px; color:var(--text-muted);"></div>
-              </div>
-
-              <div id="plag-kpi-container" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap:10px; margin-bottom:14px;">
-                <div class="kpi-card" style="padding:10px 12px;">
-                  <div class="kpi-label">Overall Similarity</div>
-                  <div class="kpi-value" id="kpi-overall-sim" style="color:#2563eb;">0%</div>
-                  <div class="kpi-sub">Composite index</div>
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:12px; text-align:left; border-top:1px solid #e2e8f0; padding-top:20px;">
+                <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+                  <div style="font-weight:700; font-size:13px; color:#1e293b; margin-bottom:3px;">🌐 250M+ Works Index</div>
+                  <div style="font-size:11.5px; color:#64748b; line-height:1.4;">CrossRef, Europe PMC &amp; OpenAlex cross-matching with exact DOI source linking.</div>
                 </div>
-                <div class="kpi-card" style="padding:10px 12px;">
-                  <div class="kpi-label">High Risk</div>
-                  <div class="kpi-value" id="kpi-high-risk" style="color:#e11d48;">0</div>
-                  <div class="kpi-sub">>65% duplicate</div>
+                <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+                  <div style="font-weight:700; font-size:13px; color:#1e293b; margin-bottom:3px;">✨ Google Gemini 2.0 AI Audit</div>
+                  <div style="font-size:11.5px; color:#64748b; line-height:1.4;">Deep neural check for masked paraphrasing, synonym swapping &amp; uncited DFT functionals.</div>
                 </div>
-                <div class="kpi-card" style="padding:10px 12px;">
-                  <div class="kpi-label">Moderate Risk</div>
-                  <div class="kpi-value" id="kpi-mod-risk" style="color:#d97706;">0</div>
-                  <div class="kpi-sub">35–64% overlap</div>
+                <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+                  <div style="font-weight:700; font-size:13px; color:#1e293b; margin-bottom:3px;">📝 Scholarly Rewriting</div>
+                  <div style="font-size:11.5px; color:#64748b; line-height:1.4;">Publication-ready academic rewrites with 1-click clipboard copy and citation insertions.</div>
                 </div>
-                <div class="kpi-card" style="padding:10px 12px;">
-                  <div class="kpi-label">Paragraphs</div>
-                  <div class="kpi-value" id="kpi-total-paras" style="color:#0d9488;">0</div>
-                  <div class="kpi-sub">Analyzed</div>
+                <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+                  <div style="font-weight:700; font-size:13px; color:#1e293b; margin-bottom:3px;">📄 Verifiable PDF Export</div>
+                  <div style="font-size:11.5px; color:#64748b; line-height:1.4;">Generate professional Turnitin-grade Originality Certificates for journal submissions.</div>
                 </div>
-              </div>
-
-              <div id="plag-status-alert" style="padding:10px 14px; border-radius:8px; font-size:12.5px; background:#f8fafc; border:1px solid var(--border-color); color:var(--text-secondary);">
-                Ready to analyze. Upload a PDF or Word document on the left and click "Check Duplicate Paragraphs".
               </div>
             </div>
           </div>
 
-          <!-- Detailed Paragraph Match Table (Primary Results View) -->
-          <div class="card" id="plag-breakdown-card" style="margin-top:16px;">
-            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-              <div class="card-title" style="font-size:15px; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:8px;">
-                <span>📄</span> Paragraph-by-Paragraph Duplicate Breakdown
-              </div>
-              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                <select id="plag-filter-level" onchange="filterPlagResults()" style="padding:6px 12px; border-radius:6px; border:1px solid #cbd5e1; font-size:12.5px; background:#fff; color:#334155; font-weight:500;">
-                  <option value="ALL">All Paragraphs</option>
-                  <option value="FLAGGED">Only Flagged (High &amp; Moderate)</option>
-                  <option value="HIGH">High Risk (&gt;65%) Only</option>
-                </select>
-                <button class="btn btn-primary btn-sm btn-export-pdf-action" id="btn-export-pdf" onclick="exportPlagiarismPdfReport()" style="display:inline-flex; align-items:center; gap:6px; font-weight:700; background:#dc2626; border:none; border-radius:6px; padding:6px 14px; color:#fff; font-size:12px; box-shadow:0 1px 2px rgba(220,38,38,0.2); cursor:pointer;" title="Download Academic Originality Audit PDF Report">
-                  📄 Export PDF Report
-                </button>
-                <button class="btn btn-outline btn-sm" onclick="exportPlagiarismTxtReport()" style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:6px 12px; color:#334155; font-size:12px; font-weight:500; display:inline-flex; align-items:center; gap:6px;" title="Export summary text file">
-                  📝 Export Text
-                </button>
+          <!-- MAIN PLAGIARISM WORKSPACE (Shown when authenticated) -->
+          <div id="plag-main-content">
+            <!-- Active Researcher Session & AI Controls Bar -->
+            <div class="card" style="margin-bottom:14px; padding:12px 16px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <div style="display:flex; align-items:center; gap:8px;" id="plag-user-session-pill">
+                  <!-- Populated dynamically by updatePlagiarismAuthGateState() -->
+                </div>
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                  <label style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:700; color:#1e293b; cursor:pointer;" title="Enable Google Gemini Deep Semantic Analysis & Paraphrase Audit">
+                    <input type="checkbox" id="chk-gemini-ai" checked onchange="document.getElementById('chk-cross-gemini').checked = this.checked;" />
+                    <span>✨ Google Gemini AI Audit</span>
+                  </label>
+                  <select id="sel-gemini-model" style="padding:4px 8px; border-radius:6px; border:1px solid #cbd5e1; font-size:12px; background:#fff; font-weight:600; color:#0f172a;" title="Choose Google Gemini AI Model">
+                    <option value="gemini-2.0-flash">Gemini 2.0 Flash (Recommended)</option>
+                    <option value="gemini-1.5-pro">Gemini 1.5 Pro (Deep Reasoning)</option>
+                    <option value="gemini-1.5-flash">Gemini 1.5 Flash (Lightweight)</option>
+                  </select>
+                  <button class="btn btn-outline btn-sm" onclick="openGeminiConfigModal()" style="font-size:12px; padding:4px 10px; display:inline-flex; align-items:center; gap:5px; border-radius:6px;">
+                    ⚙️ Configure Gemini Key
+                  </button>
+                  <span id="gemini-key-status-badge"></span>
+                </div>
               </div>
             </div>
 
-            <!-- Top Overlap Sources Summary Bar -->
-            <div id="plag-sources-summary-bar" style="display:none; padding:12px 16px; border-bottom:1px solid var(--border-color); background:#f8fafc;"></div>
+            <div class="grid-2">
+              <!-- Left: Upload & Config -->
+              <div class="card">
+                <div class="card-header">
+                  <div class="card-title">📤 Upload Manuscript (.pdf, .docx, .txt)</div>
+                  <button class="btn btn-outline btn-sm" onclick="loadSampleManuscriptText()">Load Sample Text</button>
+                </div>
 
-            <div id="plag-results-list" style="display:flex; flex-direction:column; gap:10px;">
-              <div style="padding:24px; text-align:center; color:var(--text-muted); font-size:13px;">
-                No analysis results yet.
+                <!-- Drag and drop zone -->
+                <div class="cif-drop-zone" id="plag-drop-zone" onclick="document.getElementById('plag-file-input').click()">
+                  <input type="file" id="plag-file-input" accept=".docx,.pdf,.txt" style="display:none;" onchange="handlePlagFileInput(event)" />
+                  <div style="font-size:32px; margin-bottom:6px;">📄</div>
+                  <div style="font-weight:700; font-size:14px; color:var(--text-main);" id="plag-drop-title">Drop your manuscript (PDF or Word .docx) here</div>
+                  <div style="font-size:12px; color:var(--text-muted); margin-top:4px;" id="plag-drop-sub">Extracts text and splits into distinct paragraphs for cross-checking</div>
+                </div>
+
+                <div style="margin-top:14px;">
+                  <label style="font-size:12.5px; font-weight:700; color:var(--text-secondary); display:block; margin-bottom:6px;">Or Paste Manuscript Draft Text Below:</label>
+                  <textarea id="plag-text-input" rows="5" placeholder="Paste draft paragraphs here to check for duplicate content..." style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border-color); font-size:13px; font-family:inherit;"></textarea>
+                </div>
+
+                <div style="margin-top:12px; padding:12px; background:#f8fafc; border-radius:8px; border:1px solid var(--border-color);">
+                  <div style="font-weight:700; font-size:12.5px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+                    <span>Cross-Check Sources &amp; Literature Databases:</span>
+                    <span style="font-size:11px; padding:2px 8px; border-radius:12px; background:#eff6ff; color:#1d4ed8; font-weight:700; border:1px solid #bfdbfe;">Live 250M+ Index</span>
+                  </div>
+                  <div style="display:flex; flex-direction:column; gap:6px; font-size:12.5px;">
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; color:#1d4ed8;">
+                      <input type="checkbox" id="chk-cross-internet" checked />
+                      🌐 Deep Internet &amp; Google Scholar Scan (OpenAlex &amp; CrossRef 250M+ Works)
+                    </label>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                      <input type="checkbox" id="chk-cross-library" checked />
+                      📚 Literature Library (Abstracts &amp; Notes in personal database)
+                    </label>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                      <input type="checkbox" id="chk-cross-periodicals" checked />
+                      🏛️ Published Periodicals, Academic Journals &amp; Conference Proceedings (Turnitin Standard)
+                    </label>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; color:#7c3aed;">
+                      <input type="checkbox" id="chk-cross-gemini" checked onchange="document.getElementById('chk-gemini-ai').checked = this.checked;" />
+                      ✨ Google Gemini Deep Semantic &amp; Masked Paraphrase Detection
+                    </label>
+                  </div>
+                </div>
+
+                <div style="margin-top:14px; display:flex; justify-content:flex-end;">
+                  <button class="btn btn-primary" id="btn-run-plag" onclick="runPlagiarismAnalysis()">
+                    ⚡ Check Plagiarism &amp; Cross-Check Literature
+                  </button>
+                </div>
+              </div>
+
+              <!-- Right: Analysis Summary & KPIs -->
+              <div class="card">
+                <div class="card-header">
+                  <div class="card-title">📊 Duplication &amp; Overlap Scorecard</div>
+                  <div id="plag-file-badge" style="font-size:12px; color:var(--text-muted);"></div>
+                </div>
+
+                <div id="plag-kpi-container" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); gap:10px; margin-bottom:14px;">
+                  <div class="kpi-card" style="padding:10px 12px;">
+                    <div class="kpi-label">Overall Similarity</div>
+                    <div class="kpi-value" id="kpi-overall-sim" style="color:#2563eb;">0%</div>
+                    <div class="kpi-sub">Composite index</div>
+                  </div>
+                  <div class="kpi-card" style="padding:10px 12px;">
+                    <div class="kpi-label">High Risk</div>
+                    <div class="kpi-value" id="kpi-high-risk" style="color:#e11d48;">0</div>
+                    <div class="kpi-sub">>65% duplicate</div>
+                  </div>
+                  <div class="kpi-card" style="padding:10px 12px;">
+                    <div class="kpi-label">Moderate Risk</div>
+                    <div class="kpi-value" id="kpi-mod-risk" style="color:#d97706;">0</div>
+                    <div class="kpi-sub">35–64% overlap</div>
+                  </div>
+                  <div class="kpi-card" style="padding:10px 12px;">
+                    <div class="kpi-label">Paragraphs</div>
+                    <div class="kpi-value" id="kpi-total-paras" style="color:#0d9488;">0</div>
+                    <div class="kpi-sub">Analyzed</div>
+                  </div>
+                  <div class="kpi-card" style="padding:10px 12px;">
+                    <div class="kpi-label">Gemini AI Audit</div>
+                    <div class="kpi-value" id="kpi-gemini-status" style="color:#7c3aed; font-size:15px; font-weight:800;">Ready</div>
+                    <div class="kpi-sub" id="kpi-gemini-sub">Semantic Paraphrase</div>
+                  </div>
+                </div>
+
+                <div id="plag-status-alert" style="padding:10px 14px; border-radius:8px; font-size:12.5px; background:#f8fafc; border:1px solid var(--border-color); color:var(--text-secondary);">
+                  Ready to analyze. Upload a PDF or Word document on the left and click "Check Plagiarism &amp; Cross-Check Literature".
+                </div>
+              </div>
+            </div>
+
+            <!-- Detailed Paragraph Match Table (Primary Results View) -->
+            <div class="card" id="plag-breakdown-card" style="margin-top:16px;">
+              <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                <div class="card-title" style="font-size:15px; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:8px;">
+                  <span>📄</span> Paragraph-by-Paragraph Duplicate Breakdown
+                </div>
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                  <select id="plag-filter-level" onchange="filterPlagResults()" style="padding:6px 12px; border-radius:6px; border:1px solid #cbd5e1; font-size:12.5px; background:#fff; color:#334155; font-weight:500;">
+                    <option value="ALL">All Paragraphs</option>
+                    <option value="FLAGGED">Only Flagged (High &amp; Moderate)</option>
+                    <option value="HIGH">High Risk (&gt;65%) Only</option>
+                  </select>
+                  <button class="btn btn-primary btn-sm btn-export-pdf-action" id="btn-export-pdf" onclick="exportPlagiarismPdfReport()" style="display:inline-flex; align-items:center; gap:6px; font-weight:700; background:#dc2626; border:none; border-radius:6px; padding:6px 14px; color:#fff; font-size:12px; box-shadow:0 1px 2px rgba(220,38,38,0.2); cursor:pointer;" title="Download Academic Originality Audit PDF Report">
+                    📄 Export PDF Report
+                  </button>
+                  <button class="btn btn-outline btn-sm" onclick="exportPlagiarismTxtReport()" style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:6px 12px; color:#334155; font-size:12px; font-weight:500; display:inline-flex; align-items:center; gap:6px;" title="Export summary text file">
+                    📝 Export Text
+                  </button>
+                </div>
+              </div>
+
+              <!-- Google Gemini Deep Semantic Analysis Report Container -->
+              <div id="plag-gemini-results-container" style="display:none; padding:16px 20px; border-bottom:1px solid var(--border-color); background:linear-gradient(135deg, #f8fafc 0%, #faf5ff 100%);">
+              </div>
+
+              <!-- Top Overlap Sources Summary Bar -->
+              <div id="plag-sources-summary-bar" style="display:none; padding:12px 16px; border-bottom:1px solid var(--border-color); background:#f8fafc;"></div>
+
+              <div id="plag-results-list" style="display:flex; flex-direction:column; gap:10px;">
+                <div style="padding:24px; text-align:center; color:var(--text-muted); font-size:13px;">
+                  No analysis results yet.
+                </div>
               </div>
             </div>
           </div>
@@ -3337,7 +3431,69 @@
     </div>
   </div>
 
-  <script src="matsci_tools.js?v=20261116_v66_email_relay_fallback" onerror="this.src='/static/matsci_tools.js?v=20261116_v66_email_relay_fallback'"></script>
-  <script src="app.js?v=20261116_v68_permanent_admin_user_deletion" onerror="this.src='/static/app.js?v=20261116_v68_permanent_admin_user_deletion'"></script>
+    <!-- ==================================================================== -->
+  <!-- MODAL: GOOGLE GEMINI AI CONFIGURATION & API KEY MANAGER              -->
+  <!-- ==================================================================== -->
+  <div id="gemini-config-modal" class="modal-backdrop">
+    <div class="modal-box" style="max-width:560px;">
+      <div class="card-header" style="border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:14px;">
+        <div>
+          <div class="card-title" style="display:flex; align-items:center; gap:8px; font-size:18px; color:#0f172a;">
+            <span style="font-size:22px;">✨</span> Google Gemini AI Configuration
+          </div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+            Deep semantic plagiarism audit, masked paraphrase detection &amp; scholarly citation rewrites
+          </div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('gemini-config-modal')">✕ Close</button>
+      </div>
+
+      <div>
+        <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:12px 14px; margin-bottom:14px; font-size:12.5px; line-height:1.5;">
+          <div style="font-weight:700; color:#1e40af; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+            <span>💡</span> Free Google Gemini API Key for Researchers
+          </div>
+          <p style="margin:0 0 8px 0; color:#1e3a8a;">
+            If you have a Google account, you can obtain a free, high-speed Gemini API Key directly from Google AI Studio in just 10 seconds:
+          </p>
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:6px; font-weight:700; color:#ffffff; background:#2563eb; padding:6px 12px; border-radius:6px; text-decoration:none; font-size:12px;">
+            🚀 Open Google AI Studio (Get Free API Key) ↗
+          </a>
+        </div>
+
+        <div class="form-group" style="margin-bottom:14px;">
+          <label style="font-size:12.5px; font-weight:700; color:var(--text-secondary); display:block; margin-bottom:6px;">
+            Google Gemini API Key:
+          </label>
+          <div style="display:flex; gap:8px;">
+            <input type="password" id="input-gemini-api-key" placeholder="AIzaSy..." style="flex:1; padding:9px 12px; border-radius:6px; border:1px solid #cbd5e1; font-family:monospace; font-size:13px;" />
+            <button class="btn btn-outline btn-sm" type="button" onclick="toggleGeminiKeyVisibility()" title="Show/Hide Key" style="padding:0 12px;">👁️</button>
+          </div>
+          <small style="color:var(--text-muted); font-size:11px; margin-top:4px; display:block;">
+            Stored securely in your private browser session &amp; researcher profile. Never shared with third parties.
+          </small>
+        </div>
+
+        <div id="gemini-test-status" style="margin-bottom:14px; font-size:12px; min-height:18px;"></div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; border-top:1px solid #e2e8f0; padding-top:14px;">
+          <button class="btn btn-outline btn-sm" type="button" onclick="testGeminiApiKey()">
+            ⚡ Test Connection
+          </button>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-outline btn-sm" type="button" onclick="clearGeminiApiKey()" style="color:#ef4444; border-color:#fca5a5;">
+              Clear Key
+            </button>
+            <button class="btn btn-primary btn-sm" type="button" onclick="saveGeminiApiKey()">
+              💾 Save Settings
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script src="matsci_tools.js?v=20261116_v66_email_relay_fallback" onerror="this.src='/static/matsci_tools.js?v=20261116_v66_email_relay_fallback'"></script>
+  <script src="app.js?v=20261116_v69_gemini_plagiarism_upgrade" onerror="this.src='/static/app.js?v=20261116_v69_gemini_plagiarism_upgrade'"></script>
 </body>
 </html>
