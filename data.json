@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T05:17:25.466Z",
+  "exported_at": "2026-11-16T05:17:28.811Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -2192,15 +2192,15 @@
       "authProvider": "Email + Google Linked",
       "googleLinked": true,
       "googleEmail": "linh@gmail.com",
-      "passwordPlainHint": "skku1234",
-      "passwordHash": "441d52fbb490008fa860a41b38fe03e0b7f6fb06b56336922f7d7a95562f51dd",
+      "passwordPlainHint": "1234",
+      "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
       "groups": [
         "grp_dft_team_gun1"
       ],
       "registeredAt": "2026-11-16 05:05",
-      "lastLoginAt": "2026-11-16 05:06",
-      "lastUpdatedAt": "2026-11-16 05:15",
-      "updatedAtMs": 1794806159403,
+      "lastLoginAt": "2026-11-16 05:17",
+      "lastUpdatedAt": "2026-11-16 05:17",
+      "updatedAtMs": 1794806248058,
       "workspace": {
         "papers": [],
         "structures": [],
@@ -2209,6 +2209,18 @@
         "litReportRows": []
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-16 05:17",
+          "category": "Session",
+          "action": "Signed In (Password Reset & Sign-In)",
+          "detail": "Authenticated as Nguyen Thi Khanh Linh (linh@gmail.com)"
+        },
+        {
+          "timestamp": "2026-11-16 05:17",
+          "category": "Security",
+          "action": "Self-Service Password Reset",
+          "detail": "User verified email (linh@gmail.com) via 6-digit code and set a new password."
+        },
         {
           "timestamp": "2026-11-16 05:06",
           "category": "Session",
@@ -2221,7 +2233,9 @@
           "action": "Created by Administrator",
           "detail": "Administrator created personal account for Nguyen Thi Khanh Linh (linh@gmail.com)."
         }
-      ]
+      ],
+      "passwordlessGoogle": false,
+      "emailVerified": true
     }
   },
   "user_groups": {
