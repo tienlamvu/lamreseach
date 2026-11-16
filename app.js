@@ -3831,17 +3831,6 @@ function openEmailRelayGuideModal() {
   } else if (typeof openAdminEmailRelayModal === "function" && STATE.auth && STATE.auth.isAdmin) {
     openAdminEmailRelayModal();
   }
-}`;
-
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(code).then(() => {
-      showToast("📋 Copied Google Apps Script code to clipboard! Paste into script.google.com.", "success");
-    }).catch(() => {
-      showToast("Failed to auto-copy. Please copy from documentation.", "warn");
-    });
-  } else {
-    showToast("Clipboard API unavailable. Please check documentation.", "info");
-  }
 }
 
 async function verifyAdminPassword(pass) {
