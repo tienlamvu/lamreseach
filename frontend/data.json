@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T06:51:42.374Z",
+  "exported_at": "2026-11-16T06:52:25.226Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -1945,11 +1945,11 @@
       "googleLinked": true,
       "googleEmail": "lamvt.sep@gmail.com",
       "passwordPlainHint": "••••••••",
-      "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
+      "passwordHash": "441d52fbb490008fa860a41b38fe03e0b7f6fb06b56336922f7d7a95562f51dd",
       "registeredAt": "2026-11-16 06:51",
-      "lastLoginAt": "2026-11-16 06:51",
-      "lastUpdatedAt": "2026-11-16 06:51",
-      "updatedAtMs": 1794811901125,
+      "lastLoginAt": "2026-11-16 06:52",
+      "lastUpdatedAt": "2026-11-16 06:52",
+      "updatedAtMs": 1794811944770,
       "workspace": {
         "papers": [],
         "structures": [],
@@ -2054,6 +2054,18 @@
       },
       "activityLog": [
         {
+          "timestamp": "2026-11-16 06:52",
+          "category": "Session",
+          "action": "Signed In (Password Reset & Sign-In)",
+          "detail": "Authenticated as Lam (lamvt.sep@gmail.com)"
+        },
+        {
+          "timestamp": "2026-11-16 06:52",
+          "category": "Security",
+          "action": "Self-Service Password Reset via Verified Email OTP",
+          "detail": "User verified email (lamvt.sep@gmail.com) via private 6-digit code and updated password."
+        },
+        {
           "timestamp": "2026-11-16 06:51",
           "category": "Session",
           "action": "Signed In (Private Email OTP Verified)",
@@ -2066,7 +2078,8 @@
           "detail": "Lam (Independent Researcher) verified email lamvt.sep@gmail.com and linked Google Sign-In."
         }
       ],
-      "groups": []
+      "groups": [],
+      "passwordlessGoogle": false
     }
   },
   "user_groups": {
