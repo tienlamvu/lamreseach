@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T10:46:05.606Z",
+  "exported_at": "2026-11-16T10:46:25.136Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -27,7 +27,7 @@
     "awards_json": "[{\"title\": \"Graduate Research Fellowship in Advanced Energy Materials\", \"issuer\": \"Materials Research Institute\", \"year\": 2025, \"visibility\": \"Public\", \"details\": \"Full doctoral tuition and stipend award for top 5% PhD candidates.\"}, {\"title\": \"Outstanding Symposium Poster Award\", \"issuer\": \"Symposium EN04 \\u2014 Solid-State Batteries\", \"year\": 2024, \"visibility\": \"Public\", \"details\": \"Recognized for excellence in interfacial XPS characterization.\"}]",
     "owner_email": "lamvt.skku@gmail.com",
     "google_client_id": "973243021804-duchlur7n8hu5lh2f684cid9nufor61v.apps.googleusercontent.com",
-    "email_relay_url": "",
+    "email_relay_url": "https://script.google.com/macros/s/AKfycbxSqwetg5uTfuFh5fOmwSM6WVzoqPDHhnckjM_X6jjpw5hAg00wx1C_-Mw_pgLBZDo/exec",
     "education": [
       {
         "degree": "Doctor",
