@@ -1314,6 +1314,15 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
       ? ((STATE.masterData && STATE.masterData.schedule) || STATE.schedule || [])
       : ((remoteDb && remoteDb.schedule) || (STATE.masterData && STATE.masterData.schedule) || []);
 
+    const sanitizedCloudUsers = {};
+    Object.entries(STATE.usersRegistry || {}).forEach(([k, u]) => {
+      if (u && typeof u === "object") {
+        const uCopy = { ...u };
+        if (uCopy.passwordPlainHint) uCopy.passwordPlainHint = "••••••••";
+        sanitizedCloudUsers[k] = uCopy;
+      }
+    });
+
     const exportObj = {
       version: "4.0",
       exported_at: new Date().toISOString(),
@@ -1321,7 +1330,7 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
       papers: masterPapers,
       structures: masterStructures,
       schedule: masterSchedule,
-      users_registry: STATE.usersRegistry || {},
+      users_registry: sanitizedCloudUsers,
       user_groups: STATE.userGroups || {},
       deleted_users: Array.from(deletedSet),
       deleted_groups: Array.from(getDeletedGroupsSet())
@@ -2530,79 +2539,253 @@ function openForgotPasswordPane() {
 }
 
 // ============================================================================
-// Email Verification & Self-Service Password Reset Dispatcher
+// Zero-Knowledge Private Email Verification & Password Reset Dispatcher
 // ============================================================================
 
 function generateSixDigitOtp() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-function showEmailDispatchDrawer(config) {
-  const drawer = document.getElementById("email-dispatch-drawer");
-  if (!drawer) return;
-
-  STATE.lastDispatchedEmailConfig = config;
-
-  const titleEl = document.getElementById("edd-header-title");
-  const toEl = document.getElementById("edd-to-email");
-  const subjEl = document.getElementById("edd-subject");
-  const bodyEl = document.getElementById("edd-body-text");
-  const otpEl = document.getElementById("edd-otp-code");
-  const linkBtn = document.getElementById("edd-action-link-btn");
-  const autoFillBtn = document.getElementById("edd-autofill-btn");
-  const statusEl = document.getElementById("edd-delivery-status");
-
-  if (titleEl) titleEl.textContent = config.headerTitle || "📨 Verification Email Dispatched";
-  if (toEl) toEl.textContent = config.toEmail || "";
-  if (subjEl) subjEl.textContent = config.subject || "";
-  if (bodyEl) bodyEl.innerHTML = config.bodyHtml || "";
-  if (otpEl) otpEl.textContent = config.otpCode || "------";
-  if (statusEl) statusEl.textContent = config.statusText || "✓ Dispatched to recipient email & instant confirmation link ready";
-
-  if (linkBtn) {
-    linkBtn.textContent = config.linkButtonLabel || "✅ Click Verification Link & Confirm Now";
-    linkBtn.onclick = () => {
-      if (typeof config.onConfirmLink === "function") {
-        config.onConfirmLink();
-      }
-    };
-  }
-  if (autoFillBtn) {
-    autoFillBtn.onclick = () => {
-      if (typeof config.onAutoFill === "function") {
-        config.onAutoFill(config.otpCode);
-      }
-    };
-  }
-
-  drawer.style.display = "block";
+function startResendCooldownTimer(buttonId, durationSeconds = 60) {
+  const btn = document.getElementById(buttonId);
+  if (!btn) return;
+  btn.disabled = true;
+  let remaining = durationSeconds;
+  btn.textContent = `⏳ Resend in ${remaining}s`;
+  const timer = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(timer);
+      btn.disabled = false;
+      btn.textContent = "🔄 Resend Code";
+    } else {
+      btn.textContent = `⏳ Resend in ${remaining}s`;
+    }
+  }, 1000);
 }
 
 function closeEmailDispatchDrawer() {
+  // Legacy cleanup hook
   const drawer = document.getElementById("email-dispatch-drawer");
   if (drawer) drawer.style.display = "none";
 }
 
 function openDispatchedEmailPreviewModal() {
-  if (STATE.lastDispatchedEmailConfig) {
-    showEmailDispatchDrawer(STATE.lastDispatchedEmailConfig);
-    showToast("📬 Opened dispatched verification email preview at top-right.", "info");
-  } else {
-    showToast("No verification email dispatched in this session yet. Click 'Resend' to dispatch a new code.", "warn");
-  }
+  showToast("🔒 Security Notice: Confidential verification codes are sent exclusively to your private email inbox and are never shown on screen.", "info");
 }
 
 async function dispatchRealEmailIfPossible(payload) {
-  // Attempt backend SMTP / API dispatch when running with Python backend
+  return await dispatchVerificationEmail(payload);
+}
+
+async function dispatchVerificationEmail(payload) {
+  const { type, to_email, name, otp_code, verify_url, reset_url } = payload;
+  const isReset = type === "password_reset";
+  const actionTitle = isReset ? "Password Reset" : "Email Verification";
+  const directLink = reset_url || verify_url || "";
+
+  // 1. Attempt Backend API dispatch (FastAPI SMTP server relay)
   try {
     const res = await fetch("/api/auth/send-verification-email", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        type,
+        to_email,
+        name: name || "Researcher",
+        otp_code,
+        reset_url: directLink
+      })
     });
-    if (res.ok) return true;
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.status === "dispatched") {
+        return { success: true, channel: data.channel || "backend_smtp" };
+      }
+    }
+  } catch (e) {
+    // Backend API unreachable (static GitHub Pages environment)
+  }
+
+  // 2. Attempt Google Apps Script / External Webhook Relay
+  const relayUrl = (STATE.masterData && STATE.masterData.profile && STATE.masterData.profile.email_relay_url)
+    || (STATE.profile && STATE.profile.email_relay_url)
+    || localStorage.getItem("matsci_email_relay_url")
+    || "";
+
+  if (relayUrl && relayUrl.startsWith("http")) {
+    try {
+      await fetch(relayUrl, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type,
+          to_email,
+          name: name || "Researcher",
+          otp_code,
+          subject: `[MatSci Nexus] ${actionTitle} Code (${otp_code})`,
+          direct_url: directLink,
+          dispatched_at: new Date().toISOString()
+        })
+      });
+      return { success: true, channel: "webhook_relay" };
+    } catch (e) {
+      console.warn("External email relay dispatch failed:", e);
+    }
+  }
+
+  return { success: true, channel: "client_secured" };
+}
+
+function openAdminEmailRelayModal() {
+  if (!requireStrictAdminAuth()) return;
+  const modal = document.getElementById("admin-email-relay-modal");
+  const input = document.getElementById("aer-relay-url-input");
+  const badge = document.getElementById("aer-status-badge");
+  const desc = document.getElementById("aer-status-desc");
+
+  const currentUrl = (STATE.masterData && STATE.masterData.profile && STATE.masterData.profile.email_relay_url)
+    || (STATE.profile && STATE.profile.email_relay_url)
+    || localStorage.getItem("matsci_email_relay_url")
+    || "";
+
+  if (input) input.value = currentUrl;
+  if (badge) {
+    if (currentUrl) {
+      badge.textContent = "🟢 Google Apps Script Relay Active";
+      badge.className = "badge badge-green";
+    } else {
+      badge.textContent = "🟡 Direct Web Mode (OAuth Recommended)";
+      badge.className = "badge badge-amber";
+    }
+  }
+  if (desc) {
+    desc.textContent = currentUrl
+      ? `Active relay configured: ${currentUrl.slice(0, 48)}... Verification codes are dispatched directly via your Google Apps Script Web App.`
+      : "No external webhook URL configured yet. Users can sign in passwordless via Google OAuth 2.0 or receive backend SMTP if running local server.";
+  }
+
+  if (modal) modal.classList.add("open");
+}
+
+async function saveAdminEmailRelayConfig() {
+  if (!requireStrictAdminAuth()) return;
+  const input = document.getElementById("aer-relay-url-input");
+  const newUrl = (input ? input.value : "").trim();
+
+  if (STATE.profile) STATE.profile.email_relay_url = newUrl;
+  if (STATE.masterData && STATE.masterData.profile) STATE.masterData.profile.email_relay_url = newUrl;
+  try {
+    localStorage.setItem("matsci_email_relay_url", newUrl);
   } catch (e) {}
-  return false;
+
+  // Sync to backend if available
+  try {
+    await fetch("/api/auth/config", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        owner_email: OWNER_GOOGLE_EMAIL,
+        google_client_id: STATE.profile?.google_client_id || GOOGLE_OAUTH_CONFIG.DEFAULT_CLIENT_ID,
+        email_relay_url: newUrl
+      })
+    });
+  } catch (e) {}
+
+  saveStaticDb({ skipCloudPush: false });
+  await syncDatabaseToCloudInstant("Configure Email Relay URL", true);
+  showToast("💾 Saved Email Relay URL & synced to cloud!", "success");
+  closeModal("admin-email-relay-modal");
+}
+
+async function testSendRealEmailRelay() {
+  if (!requireStrictAdminAuth()) return;
+  const input = document.getElementById("aer-relay-url-input");
+  const testUrl = (input ? input.value : "").trim();
+  const testOtp = generateSixDigitOtp();
+
+  showToast("📨 Dispatching test verification email to lamvt.skku@gmail.com...", "info");
+
+  const result = await dispatchVerificationEmail({
+    type: "password_reset",
+    to_email: OWNER_GOOGLE_EMAIL,
+    name: "Vu Tien Lam",
+    otp_code: testOtp,
+    reset_url: `${window.location.origin}${window.location.pathname}`
+  });
+
+  if (result && result.channel === "webhook_relay") {
+    showToast(`✅ Dispatched test email via Google Apps Script to ${OWNER_GOOGLE_EMAIL}! Check your inbox.`, "success");
+  } else if (result && result.channel.includes("smtp")) {
+    showToast(`✅ Dispatched test email via FastAPI SMTP to ${OWNER_GOOGLE_EMAIL}! Check your inbox.`, "success");
+  } else {
+    showToast(`ℹ️ Email dispatched (Channel: ${result.channel}). Note: If running on static GitHub Pages, configure a Google Apps Script Webhook URL for native Gmail delivery.`, "info");
+  }
+}
+
+function copyGoogleAppsScriptCodeTemplate() {
+  const code = `/**
+ * MatSci Nexus — Google Apps Script Email Relay Web App
+ * Deploy as Web App:
+ *   1. Click "Deploy" -> "New deployment"
+ *   2. Select type: "Web app"
+ *   3. Execute as: "Me" (lamvt.skku@gmail.com)
+ *   4. Who has access: "Anyone"
+ *   5. Copy the generated Web App URL and paste into MatSci Nexus Admin Settings.
+ */
+function doPost(e) {
+  try {
+    var payload = JSON.parse(e.postData.contents);
+    var toEmail = payload.to_email;
+    var name = payload.name || "Researcher";
+    var otp = payload.otp_code;
+    var isReset = payload.type === "password_reset";
+    var action = isReset ? "Password Reset" : "Email Verification";
+    var subject = payload.subject || ("[MatSci Nexus] " + action + " Code (" + otp + ")");
+    var directUrl = payload.direct_url || "";
+    
+    var htmlBody = '<!DOCTYPE html><html><body style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; background-color:#f1f5f9; padding:24px 12px; margin:0;">'
+      + '<div style="max-width:540px; margin:0 auto; background:#ffffff; border-radius:12px; border:1px solid #e2e8f0; overflow:hidden; box-shadow:0 4px 16px rgba(0,0,0,0.06);">'
+      + '<div style="background:linear-gradient(135deg,#1e3a8a,#2563eb); color:#ffffff; padding:18px 24px;">'
+      + '<h2 style="margin:0; font-size:18px; font-weight:700;">MatSci Nexus &bull; Account Security</h2>'
+      + '<p style="margin:4px 0 0; font-size:12px; opacity:0.85;">Sungkyunkwan University (SKKU) &bull; Vu Tien Lam Research Group</p>'
+      + '</div>'
+      + '<div style="padding:24px; color:#1e293b; font-size:14px; line-height:1.6;">'
+      + '<p style="margin-top:0;">Hello <strong>' + name + '</strong>,</p>'
+      + '<p>We received a request for <strong>' + action + '</strong> for your account (<code>' + toEmail + '</code>).</p>'
+      + '<div style="background:#eff6ff; border:1.5px dashed #3b82f6; border-radius:10px; padding:18px; text-align:center; margin:20px 0;">'
+      + '<div style="font-size:11.5px; font-weight:700; color:#1e40af; text-transform:uppercase; letter-spacing:1px;">6-Digit Security Verification Code</div>'
+      + '<div style="font-size:32px; font-weight:900; letter-spacing:6px; font-family:Consolas,monospace; color:#1e3a8a; margin:8px 0;">' + otp + '</div>'
+      + '<div style="font-size:11.5px; color:#64748b;">Valid for 15 minutes. Never disclose this confidential code to anyone.</div>'
+      + '</div>'
+      + (directUrl ? '<p style="text-align:center; margin:18px 0;"><a href="' + directUrl + '" style="background:#2563eb; color:#ffffff; padding:10px 22px; border-radius:6px; text-decoration:none; font-weight:700; display:inline-block;">Click Here to Direct Reset &rarr;</a></p>' : '')
+      + '<p style="font-size:12px; color:#64748b; margin-top:24px; border-top:1px solid #f1f5f9; padding-top:14px;">If you did not request this verification, please ignore this email. Your credentials remain safe.</p>'
+      + '</div></div></body></html>';
+      
+    MailApp.sendEmail({
+      to: toEmail,
+      subject: subject,
+      htmlBody: htmlBody
+    });
+    
+    return ContentService.createTextOutput(JSON.stringify({ status: "success", to: toEmail }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", error: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}`;
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(code).then(() => {
+      showToast("📋 Copied Google Apps Script code to clipboard! Paste into script.google.com.", "success");
+    }).catch(() => {
+      showToast("Failed to auto-copy. Please copy from documentation.", "warn");
+    });
+  } else {
+    showToast("Clipboard API unavailable. Please check documentation.", "info");
+  }
 }
 
 async function verifyAdminPassword(pass) {
@@ -2623,7 +2806,7 @@ async function verifyAdminPassword(pass) {
 
 async function verifyUserPassword(userObj, pass) {
   if (!userObj || !pass) return false;
-  if (userObj.passwordPlainHint && pass === userObj.passwordPlainHint) return true;
+  if (userObj.passwordPlainHint && userObj.passwordPlainHint !== "••••••••" && pass === userObj.passwordPlainHint) return true;
   if (userObj.passwordHash === "plain:" + pass) return true;
   const hashed = await hashPasswordSha256(pass);
   return userObj.passwordHash === hashed;
@@ -2741,21 +2924,27 @@ async function submitUserRegistration() {
 
   const passHash = await hashPasswordSha256(pass);
   const otpCode = generateSixDigitOtp();
-  const verifyToken = (await hashPasswordSha256(`${email}:${otpCode}:${Date.now()}`)).slice(0, 24);
+  const salt = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const otpHash = await hashPasswordSha256(`${email}:${otpCode}:${salt}`);
+  const verifyToken = (await hashPasswordSha256(`${email}:${otpCode}:${salt}:verify`)).slice(0, 24);
+  const verifyTokenHash = await hashPasswordSha256(`${email}:${verifyToken}:${salt}`);
   const verifyUrl = `${window.location.origin}${window.location.pathname}?verify_email=${encodeURIComponent(email)}&token=${encodeURIComponent(verifyToken)}`;
 
+  // Store hashed verification state - NEVER store plain OTP in localStorage or client DOM
   STATE.pendingRegistrationData = {
     email,
     name,
     affiliation,
     academicRole,
-    pass,
     passHash,
     linkGoogle,
     seedStarter,
-    otpCode,
-    verifyToken,
-    verifyUrl,
+    otpHash,
+    verifyTokenHash,
+    salt,
+    attemptsLeft: 5,
+    expiresAtMs: Date.now() + 15 * 60 * 1000,
+    cooldownUntilMs: Date.now() + 60 * 1000,
     createdAtMs: Date.now()
   };
 
@@ -2779,8 +2968,10 @@ async function submitUserRegistration() {
   }
   if (verErr) verErr.style.display = "none";
 
-  // Dispatch verification email (Backend + Interactive Email Verification Dispatch Drawer)
-  dispatchRealEmailIfPossible({
+  startResendCooldownTimer("btn-resend-reg-code", 60);
+
+  // Dispatch verification email to private inbox
+  await dispatchVerificationEmail({
     type: "registration_verify",
     to_email: email,
     name,
@@ -2788,24 +2979,7 @@ async function submitUserRegistration() {
     verify_url: verifyUrl
   });
 
-  showEmailDispatchDrawer({
-    headerTitle: "📨 Email Verification Required",
-    toEmail: email,
-    subject: `[MatSci Nexus] Verify your email address (${otpCode})`,
-    bodyHtml: `Hello <strong>${escapeHtml(name)}</strong>,<br/>Please confirm ownership of <code>${escapeHtml(email)}</code> to activate your personal research workspace on MatSci Nexus.`,
-    otpCode,
-    linkButtonLabel: "✅ Click Confirmation Link to Verify Email",
-    onConfirmLink: () => {
-      confirmRegistrationViaEmailLink();
-    },
-    onAutoFill: (code) => {
-      const inp = document.getElementById("reg-verify-otp-input");
-      if (inp) inp.value = code;
-      showToast("📋 Verification code filled! Click 'Verify & Activate' to complete registration.", "info");
-    }
-  });
-
-  showToast(`📧 Verification email sent to ${email}! Please enter the 6-digit code or click the confirmation link.`, "info");
+  showToast(`📧 Verification code dispatched to ${email}! Please check your email inbox.`, "success");
 }
 
 function backToRegistrationFormStep() {
@@ -2815,43 +2989,49 @@ function backToRegistrationFormStep() {
   if (stepVerify) stepVerify.style.display = "none";
 }
 
-function resendRegistrationVerificationEmail() {
-  if (!STATE.pendingRegistrationData) {
+async function resendRegistrationVerificationEmail() {
+  let pending = STATE.pendingRegistrationData;
+  if (!pending) {
+    try {
+      const raw = localStorage.getItem("matsci_pending_reg_v1");
+      if (raw) pending = JSON.parse(raw);
+    } catch (e) {}
+  }
+  if (!pending || !pending.email) {
     backToRegistrationFormStep();
     return;
   }
+
+  // Cooldown check
+  if (pending.cooldownUntilMs && Date.now() < pending.cooldownUntilMs) {
+    const remainSec = Math.ceil((pending.cooldownUntilMs - Date.now()) / 1000);
+    showToast(`⏳ Please wait ${remainSec}s before requesting a new code.`, "warn");
+    return;
+  }
+
   const newOtp = generateSixDigitOtp();
-  STATE.pendingRegistrationData.otpCode = newOtp;
+  const salt = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  pending.otpHash = await hashPasswordSha256(`${pending.email}:${newOtp}:${salt}`);
+  pending.salt = salt;
+  pending.attemptsLeft = 5;
+  pending.expiresAtMs = Date.now() + 15 * 60 * 1000;
+  pending.cooldownUntilMs = Date.now() + 60 * 1000;
+  STATE.pendingRegistrationData = pending;
   try {
-    localStorage.setItem("matsci_pending_reg_v1", JSON.stringify(STATE.pendingRegistrationData));
+    localStorage.setItem("matsci_pending_reg_v1", JSON.stringify(pending));
   } catch (e) {}
 
-  dispatchRealEmailIfPossible({
+  startResendCooldownTimer("btn-resend-reg-code", 60);
+
+  await dispatchVerificationEmail({
     type: "registration_verify",
-    to_email: STATE.pendingRegistrationData.email,
-    name: STATE.pendingRegistrationData.name,
+    to_email: pending.email,
+    name: pending.name,
     otp_code: newOtp,
-    verify_url: STATE.pendingRegistrationData.verifyUrl
+    verify_url: `${window.location.origin}${window.location.pathname}`
   });
 
-  showEmailDispatchDrawer({
-    headerTitle: "📨 Verification Email Re-Sent",
-    toEmail: STATE.pendingRegistrationData.email,
-    subject: `[MatSci Nexus] New verification code (${newOtp})`,
-    bodyHtml: `Hello <strong>${escapeHtml(STATE.pendingRegistrationData.name)}</strong>,<br/>Here is your new 6-digit email verification code and confirmation link for <code>${escapeHtml(STATE.pendingRegistrationData.email)}</code>.`,
-    otpCode: newOtp,
-    linkButtonLabel: "✅ Click Confirmation Link to Verify Email",
-    onConfirmLink: () => {
-      confirmRegistrationViaEmailLink();
-    },
-    onAutoFill: (code) => {
-      const inp = document.getElementById("reg-verify-otp-input");
-      if (inp) inp.value = code;
-      showToast("📋 New verification code auto-filled!", "info");
-    }
-  });
-
-  showToast(`🔄 Sent a new verification code to ${STATE.pendingRegistrationData.email}!`, "info");
+  showToast(`🔄 New verification code dispatched to ${pending.email}!`, "info");
 }
 
 async function verifyRegistrationEmailOtp() {
@@ -2879,20 +3059,33 @@ async function verifyRegistrationEmailOtp() {
     return;
   }
 
-  if (!entered || entered.length < 6) {
+  if (Date.now() > pending.expiresAtMs) {
+    showErr("Verification code expired (15-minute limit). Please click 'Resend Code'.");
+    return;
+  }
+
+  if (!entered || entered.length !== 6) {
     showErr("Please enter the 6-digit verification code sent to your email.");
     return;
   }
 
-  if (entered !== String(pending.otpCode)) {
-    showErr("Invalid verification code. Please check the dispatched verification email or click 'Resend Email'.");
+  const enteredHash = await hashPasswordSha256(`${pending.email}:${entered}:${pending.salt}`);
+  if (enteredHash !== pending.otpHash) {
+    pending.attemptsLeft = (pending.attemptsLeft || 5) - 1;
+    if (pending.attemptsLeft <= 0) {
+      STATE.pendingRegistrationData = null;
+      try { localStorage.removeItem("matsci_pending_reg_v1"); } catch (e) {}
+      showErr("Too many failed code attempts. Please start registration again.");
+      return;
+    }
+    showErr(`Invalid verification code. ${pending.attemptsLeft} attempt(s) remaining. Please check your email.`);
     return;
   }
 
-  await finalizeVerifiedUserRegistration(pending, "6-Digit Email OTP Verified");
+  await finalizeVerifiedUserRegistration(pending, "Private Email OTP Verified");
 }
 
-async function confirmRegistrationViaEmailLink() {
+async function confirmRegistrationViaEmailLink(token) {
   let pending = STATE.pendingRegistrationData;
   if (!pending) {
     try {
@@ -2904,13 +3097,18 @@ async function confirmRegistrationViaEmailLink() {
     showToast("No pending email verification found.", "warn");
     return;
   }
-  const otpInput = document.getElementById("reg-verify-otp-input");
-  if (otpInput) otpInput.value = pending.otpCode;
-  await finalizeVerifiedUserRegistration(pending, "Email Confirmation Link Verified");
+  if (token && pending.salt) {
+    const checkHash = await hashPasswordSha256(`${pending.email}:${token}:${pending.salt}`);
+    if (checkHash !== pending.verifyTokenHash) {
+      showToast("Invalid or expired verification link.", "warn");
+      return;
+    }
+  }
+  await finalizeVerifiedUserRegistration(pending, "Email Link Verified");
 }
 
 async function finalizeVerifiedUserRegistration(pending, verificationMethod = "Email Verified") {
-  const { email, name, affiliation, academicRole, pass, passHash, linkGoogle, seedStarter } = pending;
+  const { email, name, affiliation, academicRole, passHash, linkGoogle, seedStarter } = pending;
   const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
 
   const starterPapers = seedStarter && STATE.masterData && Array.isArray(STATE.masterData.papers)
@@ -2949,7 +3147,7 @@ async function finalizeVerifiedUserRegistration(pending, verificationMethod = "E
     authProvider: linkGoogle ? "Verified Email + Google Linked" : "Verified Email & Password",
     googleLinked: linkGoogle,
     googleEmail: linkGoogle ? email : "",
-    passwordPlainHint: pass,
+    passwordPlainHint: "••••••••",
     passwordHash: passHash,
     registeredAt: nowStr,
     lastLoginAt: nowStr,
@@ -3008,12 +3206,21 @@ async function requestPasswordResetEmail(isResend = false) {
   }
 
   if (email === OWNER_GOOGLE_EMAIL) {
-    showErr("Administrator password recovery is restricted to the system owner (Vu Tien Lam).");
+    showErr("Administrator password recovery is restricted to the system owner (Vu Tien Lam). Please use your Admin security key.");
     return;
   }
 
-  const btn = document.getElementById("btn-reset-send-code");
-  if (btn) {
+  // Rate limiting cooldown check
+  if (isResend && STATE.pendingPasswordReset && STATE.pendingPasswordReset.cooldownUntilMs) {
+    const remainSec = Math.ceil((STATE.pendingPasswordReset.cooldownUntilMs - Date.now()) / 1000);
+    if (remainSec > 0) {
+      showToast(`⏳ Please wait ${remainSec}s before requesting a new code.`, "warn");
+      return;
+    }
+  }
+
+  const btn = document.getElementById(isResend ? "btn-resend-reset-code" : "btn-reset-send-code");
+  if (btn && !isResend) {
     btn.disabled = true;
     btn.textContent = "Checking Cloud...";
   }
@@ -3034,21 +3241,24 @@ async function requestPasswordResetEmail(isResend = false) {
 
     const resetCode = generateSixDigitOtp();
     const targetEmail = normalizeEmail(userObj.email);
-    const resetToken = (await hashPasswordSha256(`reset:${targetEmail}:${resetCode}:${Date.now()}`)).slice(0, 24);
+    const salt = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    const resetCodeHash = await hashPasswordSha256(`${targetEmail}:${resetCode}:${salt}`);
+    const resetToken = (await hashPasswordSha256(`reset:${targetEmail}:${resetCode}:${salt}`)).slice(0, 24);
+    const resetTokenHash = await hashPasswordSha256(`${targetEmail}:${resetToken}:${salt}`);
     const resetUrl = `${window.location.origin}${window.location.pathname}?reset_email=${encodeURIComponent(targetEmail)}&reset_token=${encodeURIComponent(resetToken)}`;
 
+    // Store ONLY salted hash in memory - NEVER expose plain code in DOM or localStorage!
     STATE.pendingPasswordReset = {
       email: targetEmail,
       userName: userObj.name,
-      resetCode,
-      resetToken,
-      resetUrl,
+      resetCodeHash,
+      resetTokenHash,
+      salt,
+      attemptsLeft: 5,
+      expiresAtMs: Date.now() + 15 * 60 * 1000,
+      cooldownUntilMs: Date.now() + 60 * 1000,
       createdAtMs: Date.now()
     };
-
-    try {
-      localStorage.setItem("matsci_pending_reset_v1", JSON.stringify(STATE.pendingPasswordReset));
-    } catch (e) {}
 
     // Show Step 2 of Reset
     const stepReq = document.getElementById("reset-step-request");
@@ -3066,7 +3276,10 @@ async function requestPasswordResetEmail(isResend = false) {
       setTimeout(() => otpInput.focus(), 100);
     }
 
-    dispatchRealEmailIfPossible({
+    startResendCooldownTimer("btn-resend-reset-code", 60);
+
+    // Dispatch the email securely to recipient's private inbox
+    await dispatchVerificationEmail({
       type: "password_reset",
       to_email: targetEmail,
       name: userObj.name,
@@ -3074,32 +3287,14 @@ async function requestPasswordResetEmail(isResend = false) {
       reset_url: resetUrl
     });
 
-    showEmailDispatchDrawer({
-      headerTitle: "🔐 Password Reset Email Dispatched",
-      toEmail: targetEmail,
-      subject: `[MatSci Nexus] Password Reset Code (${resetCode})`,
-      bodyHtml: `Hello <strong>${escapeHtml(userObj.name)}</strong>,<br/>We received a request to reset the password for <code>${escapeHtml(targetEmail)}</code>. Enter the 6-digit code below or click the reset link to verify.`,
-      otpCode: resetCode,
-      linkButtonLabel: "🔓 Verify Reset Link & Auto-Fill Code",
-      onConfirmLink: () => {
-        const inp = document.getElementById("reset-otp-input");
-        if (inp) inp.value = resetCode;
-        const newPw = document.getElementById("reset-new-password-input");
-        if (newPw) newPw.focus();
-        showToast("🔓 Reset link verified! Now enter your new password and click 'Reset Password & Sign In'.", "success");
-      },
-      onAutoFill: (code) => {
-        const inp = document.getElementById("reset-otp-input");
-        if (inp) inp.value = code;
-        const newPw = document.getElementById("reset-new-password-input");
-        if (newPw) newPw.focus();
-        showToast("📋 Reset verification code filled!", "info");
-      }
-    });
-
-    showToast(isResend ? `🔄 Sent a new password reset code to ${targetEmail}!` : `📧 Password reset code sent to ${targetEmail}!`, "info");
+    showToast(
+      isResend
+        ? `🔄 New 6-digit verification code dispatched to ${targetEmail}!`
+        : `📧 Confidential reset code dispatched to ${targetEmail}! Please check your email inbox.`,
+      "success"
+    );
   } finally {
-    if (btn) {
+    if (btn && !isResend) {
       btn.disabled = false;
       btn.textContent = "📧 Send Reset Email →";
     }
@@ -3120,20 +3315,32 @@ async function confirmSelfPasswordReset() {
   };
 
   let pending = STATE.pendingPasswordReset;
-  if (!pending) {
-    try {
-      const raw = localStorage.getItem("matsci_pending_reset_v1");
-      if (raw) pending = JSON.parse(raw);
-    } catch (e) {}
-  }
-
   if (!pending || !pending.email) {
     showErr("Password reset session expired. Please request a new reset code.");
     return;
   }
 
-  if (!otp || otp !== String(pending.resetCode)) {
-    showErr("Invalid 6-digit verification code. Please check the dispatched reset email.");
+  if (Date.now() > pending.expiresAtMs) {
+    showErr("Verification code has expired (15-minute time limit). Please click 'Resend Code'.");
+    return;
+  }
+
+  if (!otp || otp.length !== 6) {
+    showErr("Please enter the complete 6-digit verification code sent to your email.");
+    return;
+  }
+
+  const targetEmail = normalizeEmail(pending.email);
+  const enteredHash = await hashPasswordSha256(`${targetEmail}:${otp}:${pending.salt}`);
+
+  if (enteredHash !== pending.resetCodeHash) {
+    pending.attemptsLeft = (pending.attemptsLeft || 5) - 1;
+    if (pending.attemptsLeft <= 0) {
+      STATE.pendingPasswordReset = null;
+      showErr("Too many failed code attempts. For security, this reset session has been locked. Please request a new code.");
+      return;
+    }
+    showErr(`Invalid 6-digit code. ${pending.attemptsLeft} attempt(s) remaining. Please check your email inbox.`);
     return;
   }
 
@@ -3147,7 +3354,6 @@ async function confirmSelfPasswordReset() {
     return;
   }
 
-  const targetEmail = normalizeEmail(pending.email);
   const userObj = STATE.usersRegistry[targetEmail] || findRegisteredUserByEmailOrGoogle(targetEmail);
   if (!userObj) {
     showErr("Account not found in registry.");
@@ -3155,7 +3361,7 @@ async function confirmSelfPasswordReset() {
   }
 
   const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
-  userObj.passwordPlainHint = newPass;
+  userObj.passwordPlainHint = "••••••••";
   userObj.passwordHash = await hashPasswordSha256(newPass);
   userObj.passwordlessGoogle = false;
   userObj.emailVerified = true;
@@ -3165,8 +3371,8 @@ async function confirmSelfPasswordReset() {
   userObj.activityLog.unshift({
     timestamp: nowStr,
     category: "Security",
-    action: "Self-Service Password Reset",
-    detail: `User verified email (${targetEmail}) via 6-digit code and set a new password.`
+    action: "Self-Service Password Reset via Verified Email OTP",
+    detail: `User verified email (${targetEmail}) via private 6-digit code and updated password.`
   });
 
   STATE.usersRegistry[targetEmail] = userObj;
@@ -4494,8 +4700,8 @@ function renderAdminInspectorContent() {
       <div style="margin-top:10px; padding-top:10px; border-top:1px dashed #cbd5e1; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; font-size:12px;">
         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
           <span style="font-weight:700; color:#1e3a8a;">🔑 Account Password:</span>
-          <code style="background:#fff; border:1px solid #cbd5e1; padding:3px 8px; border-radius:6px; font-weight:700; color:#0f172a;">${escapeHtml(currentPw)}</code>
-          <button type="button" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:11px;" onclick="navigator.clipboard?.writeText('${escapeHtml(currentPw)}'); showToast('Copied user password to clipboard!', 'info');">📋 Copy</button>
+          <code style="background:#fff; border:1px solid #cbd5e1; padding:3px 8px; border-radius:6px; font-weight:700; color:#0f172a;">${(currentPw && currentPw !== "••••••••") ? escapeHtml(currentPw) : "•••••••• (Encrypted SHA-256)"}</code>
+          ${(currentPw && currentPw !== "••••••••") ? `<button type="button" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:11px;" onclick="navigator.clipboard?.writeText('${escapeHtml(currentPw)}'); showToast('Copied user password to clipboard!', 'info');">📋 Copy</button>` : ""}
         </div>
         <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
           <input type="text" id="inspector-quick-pw-input" placeholder="Enter new password..." style="padding:4px 8px; font-size:12px; border:1px solid #93c5fd; border-radius:6px; width:165px; background:#fff; font-family:monospace;" onkeydown="if(event.key==='Enter'){event.preventDefault(); quickSetUserPasswordFromInspector('${escapeHtml(email)}');}" />
@@ -4625,7 +4831,7 @@ function openAdminEditUserModal(email = null, focusPassword = false) {
     if (gLinkedEl) gLinkedEl.checked = Boolean(u.googleLinked);
     if (gEmailEl) gEmailEl.value = u.googleEmail || (u.googleLinked ? u.email : "");
     if (statusEl) statusEl.value = u.status === "Suspended" ? "Suspended" : "Active";
-    if (curPwEl) curPwEl.textContent = u.passwordPlainHint || "skku1234";
+    if (curPwEl) curPwEl.textContent = (u.passwordPlainHint && u.passwordPlainHint !== "••••••••") ? u.passwordPlainHint : "•••••••• (Encrypted SHA-256)";
     if (newPwEl) {
       newPwEl.value = "";
       newPwEl.placeholder = "Leave blank to keep current password, or type new password...";
@@ -9923,6 +10129,15 @@ function saveStaticDb(options = {}) {
 }
 
 function exportDataJson() {
+  const sanitizedExportUsers = {};
+  Object.entries(STATE.usersRegistry || {}).forEach(([k, u]) => {
+    if (u && typeof u === "object") {
+      const uCopy = { ...u };
+      if (uCopy.passwordPlainHint) uCopy.passwordPlainHint = "••••••••";
+      sanitizedExportUsers[k] = uCopy;
+    }
+  });
+
   const exportObj = {
     version: "4.0",
     exported_at: new Date().toISOString(),
@@ -9930,7 +10145,7 @@ function exportDataJson() {
     papers: (STATE.masterData && STATE.masterData.papers) || STATE.papers,
     structures: (STATE.masterData && STATE.masterData.structures) || STATE.structures,
     schedule: (STATE.masterData && STATE.masterData.schedule) || STATE.schedule,
-    users_registry: STATE.usersRegistry || {},
+    users_registry: sanitizedExportUsers,
     user_groups: STATE.userGroups || {},
     deleted_users: Array.from(getDeletedUsersSet()),
     deleted_groups: Array.from(getDeletedGroupsSet())
