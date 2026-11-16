@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T04:42:13.402Z",
+  "exported_at": "2026-11-16T05:03:15.243Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -76,7 +76,7 @@
         "doi": "10.15625/0868-3166/23659",
         "citations": 0,
         "visibility": "Public",
-        "source": "Academic CV"
+        "source": "ORCID"
       },
       {
         "title": "First-principles calculation of the impact of interstitial point defects on the Bi<sub>0.5</sub>Na<sub>0.5</sub>TiO<sub>3</sub> (110) surface",
