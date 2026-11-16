@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T05:28:47.412Z",
+  "exported_at": "2026-11-16T05:28:58.609Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -2202,14 +2202,81 @@
         "grp_dft_team_gun1"
       ],
       "registeredAt": "2026-11-16 05:05",
-      "lastLoginAt": "2026-11-16 05:25",
+      "lastLoginAt": "2026-11-16 05:28",
       "lastUpdatedAt": "2026-11-16 05:28",
-      "updatedAtMs": 1794806911669,
+      "updatedAtMs": 1794806937493,
       "workspace": {
         "papers": [],
         "structures": [],
         "schedule": [],
-        "expReportRows": [],
+        "expReportRows": [
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N4",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2P4",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "Te",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSSe",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "Na0.5TiBi0.5O3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Non-relaxed"
+          },
+          {
+            "sample_id": "Na0.5TiBi0.5O3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Non-relaxed"
+          },
+          {
+            "sample_id": "Na0.5TiBi0.5O3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Non-relaxed"
+          }
+        ],
         "litReportRows": [
           {
             "title": "Y-decorated MoS2 monolayer for promising hydrogen storage: A DFT study",
@@ -2220,6 +2287,12 @@
         ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-16 05:28",
+          "category": "Session",
+          "action": "Signed In (Email & Password)",
+          "detail": "Authenticated as Nguyen Thi Khanh Linh (linh@gmail.com)"
+        },
         {
           "timestamp": "2026-11-16 05:25",
           "category": "Session",
