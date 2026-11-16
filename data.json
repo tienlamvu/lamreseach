@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T11:30:06.314Z",
+  "exported_at": "2026-11-16T11:30:13.982Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -1938,7 +1938,7 @@
       "name": "Lam",
       "affiliation": "Independent Researcher",
       "academicRole": "Researcher",
-      "status": "Active",
+      "status": "Suspended",
       "emailVerified": true,
       "verifiedAt": "2026-11-16 10:47",
       "passwordlessGoogle": false,
@@ -1950,7 +1950,7 @@
       "registeredAt": "2026-11-16 10:47",
       "lastLoginAt": "2026-11-16 11:30",
       "lastUpdatedAt": "2026-11-16 11:30",
-      "updatedAtMs": 1794828605874,
+      "updatedAtMs": 1794828613468,
       "workspace": {
         "papers": [],
         "structures": [],
@@ -2054,6 +2054,12 @@
         ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-16 11:30",
+          "category": "Profile",
+          "action": "Profile & Groups Updated by Administrator",
+          "detail": "Updated profile (Independent Researcher — Researcher) and group assignments."
+        },
         {
           "timestamp": "2026-11-16 11:30",
           "category": "Session",
