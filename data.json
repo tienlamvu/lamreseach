@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T01:30:31.886Z",
+  "exported_at": "2026-11-16T01:48:58.981Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -43,20 +43,7 @@
         "visibility": "Public"
       }
     ],
-    "experiences": [
-      {
-        "role": "Graduate Research Assistant (Ph.D. Researcher)",
-        "organization": "Nanomaterials & Energy Storage Laboratory (PI: Prof. Sarah Jenkins)",
-        "period": "2024 – Present",
-        "description": "Leading solid-state garnet electrolyte synthesis (LLZTO), thermal ALD surface modification, synchrotron XRD Rietveld refinement, and in-situ XPS interfacial analysis."
-      },
-      {
-        "role": "Graduate Teaching Assistant — Crystallography & Diffraction (MATSCI 302)",
-        "organization": "Department of Materials Science & Engineering",
-        "period": "Fall 2025 – Spring 2026",
-        "description": "Instructed weekly powder XRD laboratory sessions, Bragg/Scherrer phase indexing, and GSAS-II refinement tutorials for 45 undergraduate students."
-      }
-    ],
+    "experiences": [],
     "publications": [
       {
         "id": 1794564001047,
