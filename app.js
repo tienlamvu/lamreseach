@@ -3589,7 +3589,7 @@ async function dispatchRealEmailIfPossible(payload) {
 }
 
 async function dispatchVerificationEmail(payload) {
-  const { type, to_email, name, otp_code, verify_url, reset_url } = payload;
+  const { type, to_email, name, otp_code, verify_url, reset_url, relay_url } = payload;
   const isReset = type === "password_reset";
   const actionTitle = isReset ? "Password Reset" : "Email Verification";
   const directLink = reset_url || verify_url || "";
@@ -3618,17 +3618,19 @@ async function dispatchVerificationEmail(payload) {
   }
 
   // 2. Attempt Google Apps Script / External Webhook Relay
-  const relayUrl = (STATE.masterData && STATE.masterData.profile && STATE.masterData.profile.email_relay_url)
-    || (STATE.profile && STATE.profile.email_relay_url)
-    || localStorage.getItem("matsci_email_relay_url")
-    || "";
+  const targetRelay = (relay_url && relay_url.startsWith("http"))
+    ? relay_url
+    : ((STATE.masterData && STATE.masterData.profile && STATE.masterData.profile.email_relay_url)
+      || (STATE.profile && STATE.profile.email_relay_url)
+      || localStorage.getItem("matsci_email_relay_url")
+      || "");
 
-  if (relayUrl && relayUrl.startsWith("http")) {
+  if (targetRelay && targetRelay.startsWith("http")) {
     try {
-      await fetch(relayUrl, {
+      await fetch(targetRelay, {
         method: "POST",
         mode: "no-cors",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({
           type,
           to_email,
@@ -3642,10 +3644,11 @@ async function dispatchVerificationEmail(payload) {
       return { success: true, channel: "webhook_relay" };
     } catch (e) {
       console.warn("External email relay dispatch failed:", e);
+      return { success: false, channel: "webhook_failed", error: e.message };
     }
   }
 
-  return { success: true, channel: "client_secured" };
+  return { success: false, channel: "unconfigured_relay" };
 }
 
 function openAdminEmailRelayModal() {
@@ -3713,6 +3716,10 @@ async function testSendRealEmailRelay() {
   if (!requireStrictAdminAuth()) return;
   const input = document.getElementById("aer-relay-url-input");
   const testUrl = (input ? input.value : "").trim();
+  if (!testUrl || !testUrl.startsWith("http")) {
+    showToast("⚠️ Please enter a valid Google Apps Script Web App URL first.", "warn");
+    return;
+  }
   const testOtp = generateSixDigitOtp();
 
   showToast("📨 Dispatching test verification email to lamvt.skku@gmail.com...", "info");
@@ -3722,7 +3729,8 @@ async function testSendRealEmailRelay() {
     to_email: OWNER_GOOGLE_EMAIL,
     name: "Vu Tien Lam",
     otp_code: testOtp,
-    reset_url: `${window.location.origin}${window.location.pathname}`
+    reset_url: `${window.location.origin}${window.location.pathname}`,
+    relay_url: testUrl
   });
 
   if (result && result.channel === "webhook_relay") {
@@ -3730,7 +3738,7 @@ async function testSendRealEmailRelay() {
   } else if (result && result.channel.includes("smtp")) {
     showToast(`✅ Dispatched test email via FastAPI SMTP to ${OWNER_GOOGLE_EMAIL}! Check your inbox.`, "success");
   } else {
-    showToast(`ℹ️ Email dispatched (Channel: ${result.channel}). Note: If running on static GitHub Pages, configure a Google Apps Script Webhook URL for native Gmail delivery.`, "info");
+    showToast(`⚠️ Could not reach email relay (${result ? result.channel : 'unconfigured'}). Please verify that the Web App was deployed with access set to 'Anyone'.`, "warn");
   }
 }
 
@@ -3738,16 +3746,33 @@ function copyGoogleAppsScriptCodeTemplate() {
   const code = `/**
  * MatSci Nexus — Google Apps Script Email Relay Web App
  * Deploy as Web App:
- *   1. Click "Deploy" -> "New deployment"
- *   2. Select type: "Web app"
- *   3. Execute as: "Me" (lamvt.skku@gmail.com)
- *   4. Who has access: "Anyone"
- *   5. Copy the generated Web App URL and paste into MatSci Nexus Admin Settings.
+ *   1. Click "Deploy" (blue button, top right) -> "New deployment"
+ *   2. Click the gear icon next to "Select type" -> Choose "Web app"
+ *   3. Description: "MatSci Nexus Email Relay"
+ *   4. Execute as: "Me (lamvt.skku@gmail.com)"
+ *   5. Who has access: "Anyone" (CRITICAL: must be Anyone)
+ *   6. Click "Deploy" -> Click "Authorize access" -> Select your Google account
+ *      -> Click "Advanced" -> Click "Go to Untitled project (unsafe)" -> Click "Allow"
+ *   7. Copy the generated Web App URL and paste into MatSci Nexus Admin Settings.
  */
+function doGet(e) {
+  return ContentService.createTextOutput(JSON.stringify({
+    status: "ok",
+    service: "MatSci Nexus Email Relay",
+    sender: Session.getActiveUser().getEmail(),
+    timestamp: new Date().toISOString()
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+
 function doPost(e) {
   try {
-    var payload = JSON.parse(e.postData.contents);
+    var contents = (e && e.postData && e.postData.contents) ? e.postData.contents : "{}";
+    var payload = JSON.parse(contents);
     var toEmail = payload.to_email;
+    if (!toEmail) {
+      return ContentService.createTextOutput(JSON.stringify({ status: "error", message: "Missing to_email" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
     var name = payload.name || "Researcher";
     var otp = payload.otp_code;
     var isReset = payload.type === "password_reset";
@@ -3784,6 +3809,27 @@ function doPost(e) {
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ status: "error", error: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+`;
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(code).then(() => {
+      showToast("📋 Copied Google Apps Script code to clipboard! Paste into script.google.com.", "success");
+    }).catch(() => {
+      showToast("Failed to auto-copy. Please copy from documentation.", "warn");
+    });
+  } else {
+    showToast("Clipboard API unavailable. Please check documentation.", "info");
+  }
+}
+
+function openEmailRelayGuideModal() {
+  const guideModal = document.getElementById("email-relay-guide-modal");
+  if (guideModal) {
+    guideModal.classList.add("open");
+  } else if (typeof openAdminEmailRelayModal === "function" && STATE.auth && STATE.auth.isAdmin) {
+    openAdminEmailRelayModal();
   }
 }`;
 
@@ -3981,7 +4027,7 @@ async function submitUserRegistration() {
   startResendCooldownTimer("btn-resend-reg-code", 60);
 
   // Dispatch verification email to private inbox
-  await dispatchVerificationEmail({
+  const dispatchRes = await dispatchVerificationEmail({
     type: "registration_verify",
     to_email: email,
     name,
@@ -3989,14 +4035,53 @@ async function submitUserRegistration() {
     verify_url: verifyUrl
   });
 
-  showToast(`📧 Verification code dispatched to ${email}! Please check your email inbox.`, "success");
+  const noticeEl = document.getElementById("reg-unconfigured-relay-notice");
+  const confidentialBanner = document.getElementById("reg-confidential-email-banner");
+
+  if (dispatchRes && dispatchRes.channel === "unconfigured_relay") {
+    if (confidentialBanner) confidentialBanner.style.display = "none";
+    if (noticeEl) {
+      noticeEl.style.display = "block";
+      noticeEl.innerHTML = `
+        <div style="background:#fffbeb; border:1.5px solid #fde047; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+            <span style="font-weight:700; color:#b45309; font-size:12.5px;">⚠️ Email Relay Not Yet Configured (GitHub Pages)</span>
+            <span class="badge badge-amber" style="font-size:10.5px;">Testing Mode</span>
+          </div>
+          <div style="font-size:12px; color:#78350f; line-height:1.45; margin-bottom:8px;">
+            Because this site runs on static GitHub Pages, real emails cannot reach your inbox until Administrator connects the Google Apps Script Relay. To complete your registration right now, your verification code is:
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; background:#ffffff; border:1.5px dashed #f59e0b; border-radius:8px; padding:8px 12px; margin-bottom:8px;">
+            <div>
+              <span style="font-size:10.5px; text-transform:uppercase; color:#92400e; font-weight:700; display:block;">Verification Code</span>
+              <span style="font-size:22px; font-weight:800; font-family:monospace; letter-spacing:4px; color:#b45309;">${otpCode}</span>
+            </div>
+            <button type="button" class="btn btn-warning btn-sm" style="padding:5px 12px; font-size:11.5px; font-weight:700;" onclick="document.getElementById('reg-verify-otp-input').value='${otpCode}'; verifyRegistrationEmailOtp();">
+              📋 Auto-Fill &amp; Activate
+            </button>
+          </div>
+          <div style="font-size:11px; color:#92400e; display:flex; justify-content:space-between; align-items:center;">
+            <span>💡 Administrator: Connect Google Apps Script URL for genuine Gmail delivery.</span>
+            <a href="javascript:void(0)" onclick="openEmailRelayGuideModal()" style="color:#b45309; font-weight:700; text-decoration:underline;">Setup Guide ↗</a>
+          </div>
+        </div>
+      `;
+    }
+    showToast("⚠️ Email Relay not yet connected. Test verification code provided on screen.", "warn");
+  } else {
+    if (noticeEl) noticeEl.style.display = "none";
+    if (confidentialBanner) confidentialBanner.style.display = "block";
+    showToast(`📧 Verification code dispatched to ${email}! Please check your email inbox.`, "success");
+  }
 }
 
 function backToRegistrationFormStep() {
   const stepForm = document.getElementById("reg-step-form");
   const stepVerify = document.getElementById("reg-step-verify");
+  const noticeEl = document.getElementById("reg-unconfigured-relay-notice");
   if (stepForm) stepForm.style.display = "block";
   if (stepVerify) stepVerify.style.display = "none";
+  if (noticeEl) noticeEl.style.display = "none";
 }
 
 async function resendRegistrationVerificationEmail() {
@@ -4033,7 +4118,7 @@ async function resendRegistrationVerificationEmail() {
 
   startResendCooldownTimer("btn-resend-reg-code", 60);
 
-  await dispatchVerificationEmail({
+  const dispatchRes = await dispatchVerificationEmail({
     type: "registration_verify",
     to_email: pending.email,
     name: pending.name,
@@ -4041,7 +4126,44 @@ async function resendRegistrationVerificationEmail() {
     verify_url: `${window.location.origin}${window.location.pathname}`
   });
 
-  showToast(`🔄 New verification code dispatched to ${pending.email}!`, "info");
+  const noticeEl = document.getElementById("reg-unconfigured-relay-notice");
+  const confidentialBanner = document.getElementById("reg-confidential-email-banner");
+
+  if (dispatchRes && dispatchRes.channel === "unconfigured_relay") {
+    if (confidentialBanner) confidentialBanner.style.display = "none";
+    if (noticeEl) {
+      noticeEl.style.display = "block";
+      noticeEl.innerHTML = `
+        <div style="background:#fffbeb; border:1.5px solid #fde047; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+            <span style="font-weight:700; color:#b45309; font-size:12.5px;">⚠️ Email Relay Not Yet Configured (GitHub Pages)</span>
+            <span class="badge badge-amber" style="font-size:10.5px;">Testing Mode</span>
+          </div>
+          <div style="font-size:12px; color:#78350f; line-height:1.45; margin-bottom:8px;">
+            Because this site runs on static GitHub Pages, real emails cannot reach your inbox until Administrator connects the Google Apps Script Relay. To complete your registration right now, your new verification code is:
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; background:#ffffff; border:1.5px dashed #f59e0b; border-radius:8px; padding:8px 12px; margin-bottom:8px;">
+            <div>
+              <span style="font-size:10.5px; text-transform:uppercase; color:#92400e; font-weight:700; display:block;">New Verification Code</span>
+              <span style="font-size:22px; font-weight:800; font-family:monospace; letter-spacing:4px; color:#b45309;">${newOtp}</span>
+            </div>
+            <button type="button" class="btn btn-warning btn-sm" style="padding:5px 12px; font-size:11.5px; font-weight:700;" onclick="document.getElementById('reg-verify-otp-input').value='${newOtp}'; verifyRegistrationEmailOtp();">
+              📋 Auto-Fill &amp; Activate
+            </button>
+          </div>
+          <div style="font-size:11px; color:#92400e; display:flex; justify-content:space-between; align-items:center;">
+            <span>💡 Administrator: Connect Google Apps Script URL for genuine Gmail delivery.</span>
+            <a href="javascript:void(0)" onclick="openEmailRelayGuideModal()" style="color:#b45309; font-weight:700; text-decoration:underline;">Setup Guide ↗</a>
+          </div>
+        </div>
+      `;
+    }
+    showToast("🔄 New test verification code provided on screen.", "info");
+  } else {
+    if (noticeEl) noticeEl.style.display = "none";
+    if (confidentialBanner) confidentialBanner.style.display = "block";
+    showToast(`🔄 New verification code dispatched to ${pending.email}!`, "info");
+  }
 }
 
 async function verifyRegistrationEmailOtp() {
@@ -4289,7 +4411,7 @@ async function requestPasswordResetEmail(isResend = false) {
     startResendCooldownTimer("btn-resend-reset-code", 60);
 
     // Dispatch the email securely to recipient's private inbox
-    await dispatchVerificationEmail({
+    const dispatchRes = await dispatchVerificationEmail({
       type: "password_reset",
       to_email: targetEmail,
       name: userObj.name,
@@ -4297,12 +4419,49 @@ async function requestPasswordResetEmail(isResend = false) {
       reset_url: resetUrl
     });
 
-    showToast(
-      isResend
-        ? `🔄 New 6-digit verification code dispatched to ${targetEmail}!`
-        : `📧 Confidential reset code dispatched to ${targetEmail}! Please check your email inbox.`,
-      "success"
-    );
+    const resetNoticeEl = document.getElementById("reset-unconfigured-relay-notice");
+    const resetConfidentialBanner = document.getElementById("reset-confidential-email-banner");
+
+    if (dispatchRes && dispatchRes.channel === "unconfigured_relay") {
+      if (resetConfidentialBanner) resetConfidentialBanner.style.display = "none";
+      if (resetNoticeEl) {
+        resetNoticeEl.style.display = "block";
+        resetNoticeEl.innerHTML = `
+          <div style="background:#fffbeb; border:1.5px solid #fde047; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+              <span style="font-weight:700; color:#b45309; font-size:12.5px;">⚠️ Email Relay Not Configured (GitHub Pages)</span>
+              <span class="badge badge-amber" style="font-size:10.5px;">Testing Mode</span>
+            </div>
+            <div style="font-size:12px; color:#78350f; line-height:1.45; margin-bottom:8px;">
+              To dispatch real emails to inboxes, Administrator can connect Google Apps Script Relay. For testing, your password reset code is:
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; background:#ffffff; border:1.5px dashed #f59e0b; border-radius:8px; padding:8px 12px; margin-bottom:8px;">
+              <div>
+                <span style="font-size:10.5px; text-transform:uppercase; color:#92400e; font-weight:700; display:block;">Password Reset Code</span>
+                <span style="font-size:22px; font-weight:800; font-family:monospace; letter-spacing:4px; color:#b45309;">${resetCode}</span>
+              </div>
+              <button type="button" class="btn btn-warning btn-sm" style="padding:5px 12px; font-size:11.5px; font-weight:700;" onclick="document.getElementById('reset-otp-input').value='${resetCode}';">
+                📋 Auto-Fill Code
+              </button>
+            </div>
+            <div style="font-size:11px; color:#92400e; display:flex; justify-content:space-between; align-items:center;">
+              <span>💡 Administrator: Connect Google Apps Script URL for genuine Gmail delivery.</span>
+              <a href="javascript:void(0)" onclick="openEmailRelayGuideModal()" style="color:#b45309; font-weight:700; text-decoration:underline;">Setup Guide ↗</a>
+            </div>
+          </div>
+        `;
+      }
+      showToast("⚠️ Email Relay not yet connected. Password reset code provided on screen.", "warn");
+    } else {
+      if (resetNoticeEl) resetNoticeEl.style.display = "none";
+      if (resetConfidentialBanner) resetConfidentialBanner.style.display = "block";
+      showToast(
+        isResend
+          ? `🔄 New 6-digit verification code dispatched to ${targetEmail}!`
+          : `📧 Confidential reset code dispatched to ${targetEmail}! Please check your email inbox.`,
+        "success"
+      );
+    }
   } finally {
     if (btn && !isResend) {
       btn.disabled = false;
