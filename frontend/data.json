@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T01:50:25.822Z",
+  "exported_at": "2026-11-16T01:50:48.751Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -48,7 +48,7 @@
         "role": "Researcher",
         "organization": "Multifunctional Multiferroics Lab.",
         "period": "2020-2024",
-        "description": "",
+        "description": "DFT simulations on Perovskite materials.",
         "visibility": "Public",
         "allowed_users": [],
         "allowed_groups": []
