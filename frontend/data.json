@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T06:15:20.225Z",
+  "exported_at": "2026-11-16T06:15:39.601Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -2270,6 +2270,189 @@
           "category": "Account",
           "action": "Registered & Verified Email (Email Confirmation Link Verified)",
           "detail": "A (Independent Researcher) verified email a@gmail.com and linked Google Sign-In."
+        }
+      ],
+      "groups": []
+    },
+    "tlamvux@gmail.com": {
+      "email": "tlamvux@gmail.com",
+      "name": "Vu Tien Lam",
+      "picture": "https://lh3.googleusercontent.com/a/ACg8ocJkmbotoEnTKmM7rmipG10oPpY5ec5ZFCIwFGEGiFHyrdnY1Q=s96-c",
+      "affiliation": "Google OAuth Verified Researcher",
+      "academicRole": "Researcher",
+      "status": "Active",
+      "emailVerified": true,
+      "verifiedAt": "2026-11-16 06:15",
+      "passwordlessGoogle": true,
+      "authProvider": "Google OAuth 2.0",
+      "googleLinked": true,
+      "googleEmail": "tlamvux@gmail.com",
+      "passwordPlainHint": "(Google OAuth 2.0)",
+      "passwordHash": "eff5744012e53167117dcbfb7eea0438d490d95d7cf54bdf5ba1109e322d1aff",
+      "registeredAt": "2026-11-16 06:15",
+      "lastLoginAt": "2026-11-16 06:15",
+      "lastUpdatedAt": "2026-11-16 06:15",
+      "updatedAtMs": 1794809738675,
+      "workspace": {
+        "papers": [
+          {
+            "id": 1794807682082,
+            "doi": "10.1038/s41467-022-28133-x",
+            "title": "Antisite defect qubits in monolayer transition metal dichalcogenides",
+            "authors": "Jeng-Yuan Tsai, Jinbo Pan, Hsin Lin, Arun Bansil, Qimin Yan",
+            "journal": "Nature Communications",
+            "year": 2022,
+            "volume": "13",
+            "pages": "",
+            "abstract": "Abstract\n                  \n                    Being atomically thin and amenable to external controls, two-dimensional (2D) materials offer a new paradigm for the realization of patterned qubit fabrication and operation at room temperature for quantum information sciences applications. Here we show that the antisite defect in 2D transition metal dichalcogenides (TMDs) can provide a controllable solid-state spin qubit system. Using high-throughput atomistic simulations, we identify several neutral antisite defects in TMDs that lie deep in the bulk band gap and host a paramagnetic triplet ground state. Our in-depth analysis reveals the presence of optical transitions and triplet-singlet intersystem crossing processes for fingerprinting these defect qubits. As an illustrative example, we discuss the initialization and readout principles of an antisite qubit in WS\n                    2\n                    , which is expected to be stable against interlayer interactions in a multilayer structure for qubit isolation and protection in future qubit-based devices. Our study opens a new pathway for creating scalable, room-temperature spin qubits in 2D TMDs.",
+            "citation_count": 74,
+            "material_system": "Perovskite / 2D Material",
+            "synthesis_method": "First-principles DFT",
+            "characterization_tags": "DFT, VASP, XRD",
+            "status": "To Read",
+            "notes": "Good reference for antisite defects in TMDs.",
+            "in_weekly_report": 0,
+            "visibility": "Public",
+            "allowed_users": [],
+            "allowed_groups": []
+          }
+        ],
+        "structures": [],
+        "schedule": [
+          {
+            "id": 1794809738653,
+            "title": "Google Calendar Synced Session — Vu Tien Lam",
+            "event_type": "Group Meeting / PI Meeting",
+            "instrument_or_location": "Research Workspace",
+            "start_date": "2026-11-16",
+            "start_time": "09:30",
+            "end_time": "11:00",
+            "priority": "High",
+            "status": "Scheduled",
+            "sample_id": "GCAL-01",
+            "description": "Initialized via Google OAuth 2.0 Sign-In (tlamvux@gmail.com).",
+            "in_weekly_report": 1
+          }
+        ],
+        "expReportRows": [
+          {
+            "sample_id": "J+4",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N4",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2P4",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "Te",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSSe",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "Na0.5TiBi0.5O3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Non-relaxed"
+          },
+          {
+            "sample_id": "Na0.5TiBi0.5O3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Non-relaxed"
+          },
+          {
+            "sample_id": "Na0.5TiBi0.5O3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Non-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          }
+        ],
+        "litReportRows": [
+          {
+            "title": "Antisite defect qubits in monolayer transition metal dichalcogenides",
+            "journal": "Nature Communications (2022) | DOI: 10.1038/s41467-022-28133-x",
+            "material": "Perovskite / 2D Material",
+            "takeaway": "Good reference for antisite defects in TMDs."
+          }
+        ]
+      },
+      "activityLog": [
+        {
+          "timestamp": "2026-11-16 06:15",
+          "category": "Session",
+          "action": "Signed In (Google OAuth 2.0)",
+          "detail": "Authenticated as Vu Tien Lam (tlamvux@gmail.com)"
+        },
+        {
+          "timestamp": "2026-11-16 06:15",
+          "category": "Account",
+          "action": "Signed In & Authorized via Google OAuth 2.0",
+          "detail": "Vu Tien Lam granted Google OAuth 2.0 permission (name, email, profile picture) for tlamvux@gmail.com."
         }
       ],
       "groups": []
