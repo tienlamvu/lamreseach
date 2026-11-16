@@ -1,6 +1,11 @@
 import json
 import re
 import math
+import os
+import smtplib
+import logging
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 import requests as ext_requests
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -377,6 +382,15 @@ class GoogleVerifyRequest(BaseModel):
 class AuthConfigUpdate(BaseModel):
     owner_email: str = "lamvt.skku@gmail.com"
     google_client_id: Optional[str] = ""
+    email_relay_url: Optional[str] = ""
+
+
+class EmailVerificationRequest(BaseModel):
+    type: str  # "password_reset" or "registration_verify"
+    to_email: str
+    name: Optional[str] = "Researcher"
+    otp_code: str
+    reset_url: Optional[str] = ""
 
 
 PRIMARY_OWNER_EMAIL = "lamvt.skku@gmail.com"
@@ -446,6 +460,30 @@ def dump_all_to_data_json():
         schedule = [dict(r) for r in cur.fetchall()]
         conn.close()
         profile = load_full_profile()
+
+        existing_users = {}
+        existing_groups = {}
+        target_path = Path(__file__).parent / "data.json"
+        if target_path.exists():
+            try:
+                with open(target_path, "r", encoding="utf-8") as rf:
+                    prior = json.load(rf)
+                    existing_users = prior.get("users_registry") or {}
+                    existing_groups = prior.get("user_groups") or {}
+            except Exception:
+                pass
+
+        # Redact plaintext password hints so plain passwords are never written to data.json
+        sanitized_users = {}
+        for uk, uv in existing_users.items():
+            if isinstance(uv, dict):
+                uv_copy = dict(uv)
+                if uv_copy.get("passwordPlainHint"):
+                    uv_copy["passwordPlainHint"] = "••••••••"
+                sanitized_users[uk] = uv_copy
+            else:
+                sanitized_users[uk] = uv
+
         obj = {
             "version": "4.0",
             "exported_at": datetime.now().isoformat(),
@@ -453,6 +491,8 @@ def dump_all_to_data_json():
             "papers": papers,
             "structures": structures,
             "schedule": schedule,
+            "users_registry": sanitized_users,
+            "user_groups": existing_groups,
         }
         for target in [FRONTEND_DIR / "data.json", Path(__file__).parent / "data.json"]:
             try:
@@ -475,6 +515,7 @@ def get_auth_config():
     return {
         "owner_email": PRIMARY_OWNER_EMAIL,
         "google_client_id": prof.get("google_client_id") or "",
+        "email_relay_url": prof.get("email_relay_url") or "",
     }
 
 
@@ -483,12 +524,75 @@ def update_auth_config(cfg: AuthConfigUpdate):
     conn = get_connection()
     cur = conn.cursor()
     cur.execute(
-        "UPDATE academic_profile SET owner_email = ?, google_client_id = ? WHERE id = 1",
-        (PRIMARY_OWNER_EMAIL, (cfg.google_client_id or "").strip()),
+        "UPDATE academic_profile SET owner_email = ?, google_client_id = ?, email_relay_url = ? WHERE id = 1",
+        (PRIMARY_OWNER_EMAIL, (cfg.google_client_id or "").strip(), (cfg.email_relay_url or "").strip()),
     )
     conn.commit()
     conn.close()
     return get_auth_config()
+
+
+@app.post("/api/auth/send-verification-email")
+def api_send_verification_email(req: EmailVerificationRequest):
+    smtp_host = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.environ.get("SMTP_PORT", "587"))
+    smtp_user = os.environ.get("SMTP_USER", "").strip()
+    smtp_pass = os.environ.get("SMTP_PASS", "").strip()
+    sender = os.environ.get("SMTP_FROM", smtp_user or "lamvt.skku@gmail.com")
+
+    is_reset = req.type == "password_reset"
+    action_title = "Password Reset" if is_reset else "Email Verification"
+    subject = f"[MatSci Nexus] {action_title} Code ({req.otp_code})"
+
+    html_body = f"""<!DOCTYPE html>
+<html>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; background-color:#f1f5f9; margin:0; padding:24px 12px;">
+  <div style="max-width:560px; margin:0 auto; background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden; box-shadow:0 4px 16px rgba(0,0,0,0.06);">
+    <div style="background:linear-gradient(135deg,#1e3a8a,#2563eb); color:#ffffff; padding:20px 24px;">
+      <h2 style="margin:0; font-size:19px; font-weight:700;">MatSci Nexus &bull; Account Security</h2>
+      <p style="margin:4px 0 0; font-size:12.5px; opacity:0.85;">Sungkyunkwan University (SKKU) &bull; Vu Tien Lam Research Group</p>
+    </div>
+    <div style="padding:24px; color:#1e293b; font-size:14px; line-height:1.6;">
+      <p style="margin-top:0;">Hello <strong>{req.name or 'Researcher'}</strong>,</p>
+      <p>We received a request to {'reset the account password' if is_reset else 'verify the registered email'} for <code>{req.to_email}</code>.</p>
+      <div style="background:#eff6ff; border:1.5px dashed #3b82f6; border-radius:10px; padding:18px; text-align:center; margin:20px 0;">
+        <div style="font-size:11.5px; font-weight:700; color:#1e40af; text-transform:uppercase; letter-spacing:1px;">6-Digit Security Verification Code</div>
+        <div style="font-size:32px; font-weight:900; letter-spacing:6px; font-family:Consolas,monospace; color:#1e3a8a; margin:8px 0;">{req.otp_code}</div>
+        <div style="font-size:11.5px; color:#64748b;">Valid for 15 minutes. Never disclose this confidential code to anyone.</div>
+      </div>
+      {f'<p style="text-align:center; margin:18px 0;"><a href="{req.reset_url}" style="background:#2563eb; color:#ffffff; padding:10px 22px; border-radius:6px; text-decoration:none; font-weight:700; display:inline-block;">Click Here to Direct Reset &rarr;</a></p>' if req.reset_url else ''}
+      <p style="font-size:12px; color:#64748b; margin-top:24px; border-top:1px solid #f1f5f9; padding-top:14px;">
+        If you did not request this verification, please ignore this email. Your account credentials remain secure.
+      </p>
+    </div>
+  </div>
+</body>
+</html>"""
+
+    delivery_channel = "server_log"
+    if smtp_user and smtp_pass:
+        try:
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subject
+            msg["From"] = f"MatSci Nexus <{sender}>"
+            msg["To"] = req.to_email
+            msg.attach(MIMEText(html_body, "html"))
+
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as s:
+                s.starttls()
+                s.login(smtp_user, smtp_pass)
+                s.send_message(msg)
+            delivery_channel = "smtp_delivered"
+        except Exception as e:
+            delivery_channel = f"smtp_failed: {str(e)}"
+
+    # CRITICAL: Never return the plain OTP code in client response!
+    return {
+        "status": "dispatched",
+        "to_email": req.to_email,
+        "type": req.type,
+        "channel": delivery_channel,
+    }
 
 
 @app.post("/api/auth/google-verify")
