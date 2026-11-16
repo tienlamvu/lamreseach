@@ -1830,6 +1830,9 @@
             </div>
           </div>
 
+          <!-- Dynamic Notice when Google Apps Script Relay is not configured -->
+          <div id="reg-unconfigured-relay-notice" style="display:none;"></div>
+
           <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; padding:14px; margin-bottom:12px;">
             <label style="font-size:12.5px; font-weight:700; color:#0f172a; display:block; margin-bottom:6px;">
               🔢 Enter 6-Digit Email Verification Code *
@@ -1847,7 +1850,7 @@
                 ✅ Verify &amp; Activate
               </button>
             </div>
-            <div style="font-size:11.5px; color:#475569; margin-top:8px; line-height:1.45;">
+            <div id="reg-confidential-email-banner" style="font-size:11.5px; color:#475569; margin-top:8px; line-height:1.45;">
               🛡️ <strong>Private Email Verification:</strong> A confidential 6-digit confirmation code was sent to your email inbox. For account safety, this code is <strong>never displayed in the browser</strong>. Please check your inbox and Spam/Junk folder.
             </div>
           </div>
@@ -1918,7 +1921,10 @@
             </p>
           </div>
 
-          <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:10px 12px; margin-bottom:12px; font-size:12px; color:#1e40af; line-height:1.45;">
+          <!-- Dynamic Notice when Google Apps Script Relay is not configured -->
+          <div id="reset-unconfigured-relay-notice" style="display:none;"></div>
+
+          <div id="reset-confidential-email-banner" style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:10px 12px; margin-bottom:12px; font-size:12px; color:#1e40af; line-height:1.45;">
             🛡️ <strong>Zero-Knowledge Email Delivery:</strong> A confidential 6-digit code has been dispatched directly to your private email inbox. For account safety, this code is <strong>never displayed on screen</strong>. Please open your private inbox to view it.
           </div>
 
@@ -2358,6 +2364,67 @@
 
       <div style="display:flex; justify-content:flex-end; padding-top:8px;">
         <button type="button" class="btn btn-outline" onclick="closeModal('admin-email-relay-modal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- MODAL: GOOGLE APPS SCRIPT EMAIL RELAY SETUP GUIDE                   -->
+  <!-- ==================================================================== -->
+  <div id="email-relay-guide-modal" class="modal-backdrop">
+    <div class="modal-box" style="max-width:680px; width:95%;">
+      <div class="card-header" style="border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:14px;">
+        <div>
+          <div class="card-title" style="font-size:18px; color:#0f172a;">📖 Google Apps Script Email Relay Setup (1 Minute)</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+            Enables genuine private email delivery for registration verification and password reset codes via your Gmail.
+          </div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('email-relay-guide-modal')">✕ Close</button>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:12px; font-size:13px; color:#334155; line-height:1.5;">
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+          <strong style="color:#0f172a;">Step 1: Open Google Apps Script</strong>
+          <p style="margin:4px 0 0; font-size:12px; color:#64748b;">
+            Visit <a href="https://script.google.com" target="_blank" rel="noopener noreferrer" style="color:#2563eb; font-weight:600;">script.google.com ↗</a> and click <strong>New project</strong>.
+          </p>
+        </div>
+
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <strong style="color:#0f172a;">Step 2: Paste Webhook Script Code</strong>
+            <button type="button" class="btn btn-outline btn-sm" onclick="copyGoogleAppsScriptCodeTemplate()">📋 Copy Script Code</button>
+          </div>
+          <p style="margin:4px 0 0; font-size:12px; color:#64748b;">
+            In the <code>Code.gs</code> editor, replace all existing code with the copied script, then save (Ctrl+S).
+          </p>
+        </div>
+
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+          <strong style="color:#0f172a;">Step 3: Deploy as Web App</strong>
+          <ul style="margin:4px 0 0; padding-left:18px; font-size:12px; color:#64748b;">
+            <li>Click <strong>Deploy</strong> (blue button top-right) &rarr; <strong>New deployment</strong>.</li>
+            <li>Click the gear icon next to "Select type" &rarr; Choose <strong>Web app</strong>.</li>
+            <li>Execute as: <strong>Me (lamvt.skku@gmail.com)</strong>.</li>
+            <li>Who has access: <strong style="color:#b45309;">Anyone</strong> (critical for browser relay).</li>
+            <li>Click <strong>Deploy</strong> &rarr; Click <strong>Authorize access</strong> &rarr; Select your Google account &rarr; Click <em>Advanced</em> &rarr; <em>Go to Untitled project (unsafe)</em> &rarr; <strong>Allow</strong>.</li>
+          </ul>
+        </div>
+
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+          <strong style="color:#0f172a;">Step 4: Save Web App URL</strong>
+          <p style="margin:4px 0 0; font-size:12px; color:#64748b;">
+            Copy the generated <strong>Web app URL</strong> (ending in <code>/exec</code>), then paste it into MatSci Nexus Administrator settings (Email Relay Config).
+          </p>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; padding-top:12px; border-top:1px solid #e2e8f0;">
+        <button type="button" class="btn btn-outline btn-sm" onclick="copyGoogleAppsScriptCodeTemplate()">📋 Copy Script Code</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="closeModal('email-relay-guide-modal'); if (typeof openAdminEmailRelayModal === 'function') openAdminEmailRelayModal();">
+          ⚙️ Open Email Relay Settings &rarr;
+        </button>
       </div>
     </div>
   </div>
