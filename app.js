@@ -2110,8 +2110,9 @@ function renderVisibilityBadgeHtml(item) {
     if (userEmails.length > 0) tooltipParts.push(`Users: ${userEmails.join(", ")}`);
     return `<span class="badge vis-badge-specific" title="Target Audience — ${escapeHtml(tooltipParts.join(' | ') || label)}">${escapeHtml(label)}</span>`;
   }
-  if (isStrictAdmin) {
-    return `<span class="badge vis-badge-public" title="Public — Visible to Everyone">🌍 Public</span>`;
+  if (isStrictAdmin || item._sharedFromAdmin) {
+    const titleText = item._sharedFromAdmin ? "Public — Shared by Administrator" : "Public — Visible to Everyone";
+    return `<span class="badge vis-badge-public" title="${titleText}">🌍 Public</span>`;
   }
   return "";
 }
@@ -2159,6 +2160,10 @@ function getActivePersonalWorkspaceEmail() {
   return null;
 }
 
+function shouldUseBackendApi() {
+  return !STATIC_MODE && !getActivePersonalWorkspaceEmail();
+}
+
 function recordUserActivity(category, action, detail) {
   const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
   const activeEmail = getActivePersonalWorkspaceEmail();
@@ -2193,24 +2198,18 @@ function applyActiveWorkspaceData() {
     const ownStructures = (Array.isArray(u.workspace.structures) ? u.workspace.structures : []).filter(x => !x._sharedFromAdmin);
     const ownSchedule = (Array.isArray(u.workspace.schedule) ? u.workspace.schedule : []).filter(x => !x._sharedFromAdmin);
 
-    // Also include Admin Master items specifically shared with Registered Users ("Users"), User Groups ("Groups"), or Specific Users/Groups ("Specific")
+    // Include Admin Master items visible to this viewer ("Public", "Users", "Groups", or matching "Specific")
     const sharedMasterPapers = ((STATE.masterData && STATE.masterData.papers) || []).filter(mp => {
-      const vis = normalizeVisibilityMode(mp.visibility);
-      if (vis !== "Users" && vis !== "Specific" && vis !== "Groups") return false;
       if (!canCurrentViewerSeeItem(mp)) return false;
       return !ownPapers.some(op => op.id === mp.id || (op.doi && mp.doi && normalizeDoiClient(op.doi) === normalizeDoiClient(mp.doi)));
     }).map(mp => ({ ...mp, _sharedFromAdmin: true }));
 
     const sharedMasterStructures = ((STATE.masterData && STATE.masterData.structures) || []).filter(ms => {
-      const vis = normalizeVisibilityMode(ms.visibility);
-      if (vis !== "Users" && vis !== "Specific" && vis !== "Groups") return false;
       if (!canCurrentViewerSeeItem(ms)) return false;
       return !ownStructures.some(os => os.id === ms.id);
     }).map(ms => ({ ...ms, _sharedFromAdmin: true }));
 
     const sharedMasterSchedule = ((STATE.masterData && STATE.masterData.schedule) || []).filter(mev => {
-      const vis = normalizeVisibilityMode(mev.visibility);
-      if (vis !== "Users" && vis !== "Specific" && vis !== "Groups") return false;
       if (!canCurrentViewerSeeItem(mev)) return false;
       return !ownSchedule.some(oev => oev.id === mev.id);
     }).map(mev => ({ ...mev, _sharedFromAdmin: true }));
@@ -2915,10 +2914,10 @@ async function finalizeVerifiedUserRegistration(pending, verificationMethod = "E
   const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
 
   const starterPapers = seedStarter && STATE.masterData && Array.isArray(STATE.masterData.papers)
-    ? JSON.parse(JSON.stringify(STATE.masterData.papers.slice(0, 2)))
+    ? JSON.parse(JSON.stringify(STATE.masterData.papers.filter(p => normalizeVisibilityMode(p.visibility) === "Public").slice(0, 2)))
     : [];
   const starterStructures = seedStarter && STATE.masterData && Array.isArray(STATE.masterData.structures)
-    ? JSON.parse(JSON.stringify(STATE.masterData.structures.slice(0, 2)))
+    ? JSON.parse(JSON.stringify(STATE.masterData.structures.filter(s => normalizeVisibilityMode(s.visibility) === "Public").slice(0, 2)))
     : [];
   const starterSchedule = [
     {
@@ -3722,10 +3721,10 @@ window.receiveGoogleOAuth2PopupResult = async function (payload) {
   const passToHash = password || ("google-oauth-" + generateSixDigitOtp());
   const passHash = await hashPasswordSha256(passToHash);
   const starterPapers = STATE.masterData && Array.isArray(STATE.masterData.papers)
-    ? JSON.parse(JSON.stringify(STATE.masterData.papers.slice(0, 2)))
+    ? JSON.parse(JSON.stringify(STATE.masterData.papers.filter(p => normalizeVisibilityMode(p.visibility) === "Public").slice(0, 2)))
     : [];
   const starterStructures = STATE.masterData && Array.isArray(STATE.masterData.structures)
-    ? JSON.parse(JSON.stringify(STATE.masterData.structures.slice(0, 2)))
+    ? JSON.parse(JSON.stringify(STATE.masterData.structures.filter(s => normalizeVisibilityMode(s.visibility) === "Public").slice(0, 2)))
     : [];
 
   removeDeletedUserTombstone(email);
@@ -5849,7 +5848,7 @@ async function importPaperByDoiCommon(rawDoiInput) {
     return;
   }
 
-  if (!STATIC_MODE) {
+  if (shouldUseBackendApi()) {
     const res = await fetch("/api/papers/doi", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -6180,7 +6179,7 @@ async function deleteSelectedPapers() {
 
   const idsToDelete = new Set(Array.from(STATE.selectedPaperIds).map(Number));
 
-  if (!STATIC_MODE) {
+  if (shouldUseBackendApi()) {
     for (const id of idsToDelete) {
       try {
         await fetch(`/api/papers/${id}`, { method: "DELETE" });
@@ -6207,6 +6206,10 @@ function openPaperModal(paperId = null) {
   if (paperId) {
     const p = STATE.papers.find(x => x.id === paperId);
     if (!p) return;
+    if (p._sharedFromAdmin && !(STATE.auth && STATE.auth.isAdmin)) {
+      showToast("This is a shared Administrator reference paper (Read-Only).", "info");
+      return;
+    }
     document.getElementById("paper-modal-title").textContent = "Edit Paper Details & Research Notes";
     document.getElementById("pm-id").value = p.id;
     document.getElementById("pm-title").value = p.title || "";
@@ -6282,7 +6285,7 @@ async function savePaperFromModal() {
     return;
   }
 
-  if (!STATIC_MODE) {
+  if (shouldUseBackendApi()) {
     const url = id ? `/api/papers/${id}` : "/api/papers";
     const method = id ? "PUT" : "POST";
     const res = await fetch(url, {
@@ -6319,6 +6322,10 @@ async function savePaperFromModal() {
 async function deletePaperItem(id) {
   if (!requireAdminAuth()) return;
   const p = STATE.papers.find(x => x.id === id);
+  if (p && p._sharedFromAdmin && !(STATE.auth && STATE.auth.isAdmin)) {
+    showToast("This is a shared Administrator reference paper (Read-Only).", "info");
+    return;
+  }
   const pTitle = p ? (p.title || `ID #${id}`) : `ID #${id}`;
   const ok = await confirmAction("Are you sure you want to remove this paper from your reference library?", pTitle);
   if (!ok) return;
@@ -6328,7 +6335,7 @@ async function deletePaperItem(id) {
     STATE.selectedPaperIds.delete(Number(id));
   }
 
-  if (!STATIC_MODE) {
+  if (shouldUseBackendApi()) {
     await fetch(`/api/papers/${id}`, { method: "DELETE" });
     await loadAllData();
   } else {
@@ -7532,7 +7539,7 @@ async function saveStructureFromModal() {
   };
 
   let savedOnBackend = false;
-  if (!STATIC_MODE) {
+  if (shouldUseBackendApi()) {
     try {
       const url = id ? `/api/structures/${id}` : "/api/structures";
       const method = id ? "PUT" : "POST";
@@ -7573,11 +7580,15 @@ async function saveStructureFromModal() {
 async function deleteStructureItem(id) {
   if (!requireAdminAuth()) return;
   const s = STATE.structures.find(x => x.id === id);
+  if (s && s._sharedFromAdmin && !(STATE.auth && STATE.auth.isAdmin)) {
+    showToast("This is a shared Administrator crystal structure (Read-Only).", "info");
+    return;
+  }
   const sName = s ? (s.chemical_formula ? `${s.chemical_formula} - ${s.name || ""}` : (s.name || `ID #${id}`)) : `ID #${id}`;
   const ok = await confirmAction("Are you sure you want to delete this crystal structure?", sName);
   if (!ok) return;
 
-  if (!STATIC_MODE) {
+  if (shouldUseBackendApi()) {
     try {
       await fetch(`/api/structures/${id}`, { method: "DELETE" });
       await loadAllData();
@@ -8971,7 +8982,7 @@ async function deleteSelectedSchedule() {
 
   const idsToDelete = Array.from(STATE.selectedScheduleIds);
   STATE.schedule = (STATE.schedule || []).filter(s => !STATE.selectedScheduleIds.has(s.id));
-  if (!STATIC_MODE) {
+  if (shouldUseBackendApi()) {
     for (const id of idsToDelete) {
       try {
         await apiFetch(`/api/schedule/${id}`, { method: "DELETE" });
@@ -9057,7 +9068,7 @@ async function saveScheduleFromModal() {
     return;
   }
 
-  if (!STATIC_MODE) {
+  if (shouldUseBackendApi()) {
     const url = id ? `/api/schedule/${id}` : "/api/schedule";
     const method = id ? "PUT" : "POST";
     await fetch(url, {
@@ -9092,9 +9103,13 @@ async function cycleScheduleStatus(id) {
   if (!requireAdminAuth()) return;
   const s = STATE.schedule.find(x => x.id === id);
   if (!s) return;
+  if (s._sharedFromAdmin && !(STATE.auth && STATE.auth.isAdmin)) {
+    showToast("This is a shared Administrator event (Read-Only).", "info");
+    return;
+  }
   const order = ["Scheduled", "In Progress", "Completed"];
   const nextStatus = order[(order.indexOf(s.status) + 1) % order.length];
-  if (!STATIC_MODE) {
+  if (shouldUseBackendApi()) {
     await fetch(`/api/schedule/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -9114,11 +9129,15 @@ async function cycleScheduleStatus(id) {
 async function deleteScheduleItem(id) {
   if (!requireAdminAuth()) return;
   const s = STATE.schedule.find(x => x.id === id);
+  if (s && s._sharedFromAdmin && !(STATE.auth && STATE.auth.isAdmin)) {
+    showToast("This is a shared Administrator event (Read-Only).", "info");
+    return;
+  }
   const sTitle = s ? (s.title || `ID #${id}`) : `ID #${id}`;
   const ok = await confirmAction("Are you sure you want to delete this calendar event?", sTitle);
   if (!ok) return;
 
-  if (!STATIC_MODE) {
+  if (shouldUseBackendApi()) {
     await fetch(`/api/schedule/${id}`, { method: "DELETE" });
     await loadAllData();
   } else {
@@ -9148,18 +9167,64 @@ async function loadAllData() {
     ]);
 
     STATIC_MODE = false;
-    STATE.papers = papersRes;
-    STATE.structures = structsRes;
-    STATE.schedule = schedRes;
-    STATE.profile = profRes;
+    try {
+      const djResp = await fetch(`data.json?v=${Date.now()}`);
+      if (djResp.ok) {
+        const remoteData = await djResp.json();
+        ensureUsersRegistryInitialized(
+          remoteData && remoteData.users_registry ? remoteData.users_registry : null,
+          remoteData && remoteData.deleted_users ? remoteData.deleted_users : [],
+          remoteData && remoteData.user_groups ? remoteData.user_groups : null,
+          remoteData && remoteData.deleted_groups ? remoteData.deleted_groups : []
+        );
+      } else {
+        ensureUsersRegistryInitialized();
+        ensureUserGroupsInitialized();
+      }
+    } catch (e) {
+      ensureUsersRegistryInitialized();
+      ensureUserGroupsInitialized();
+    }
 
-    renderDashboard(dashRes);
+    STATE.masterData = {
+      papers: Array.isArray(papersRes) ? papersRes : [],
+      structures: Array.isArray(structsRes) ? structsRes : [],
+      schedule: Array.isArray(schedRes) ? schedRes : [],
+      profile: profRes || {}
+    };
+    STATE.papers = STATE.masterData.papers;
+    STATE.structures = STATE.masterData.structures;
+    STATE.schedule = STATE.masterData.schedule;
+    STATE.profile = profRes || {};
+
+    applyActiveWorkspaceData();
+    refreshAudienceFilterDropdowns();
+
+    const filteredDash = {
+      ...(dashRes || {}),
+      stats: {
+        ...(dashRes && dashRes.stats ? dashRes.stats : {}),
+        total_papers: STATE.papers.length,
+        papers_read: STATE.papers.filter(p => ["Read", "Key Reference", "Cited in Thesis"].includes(p.status)).length,
+        total_structures: STATE.structures.length,
+        upcoming_tasks: STATE.schedule.filter(s => s.status !== "Completed").length,
+        completed_tasks: STATE.schedule.filter(s => s.status === "Completed").length,
+        total_citations: STATE.profile.total_citations || 0,
+        h_index: STATE.profile.h_index || 0
+      },
+      recent_papers: STATE.papers.slice(0, 4),
+      recent_structures: STATE.structures.slice(0, 4),
+      upcoming_schedule: STATE.schedule.slice(0, 6),
+      profile: STATE.profile
+    };
+
+    renderDashboard(filteredDash);
     renderPapersList();
     renderStructuresList();
     renderScheduleList();
     renderMonthlyCalendar();
-    renderProfile(profRes);
-    renderAcademicCvSheet(profRes);
+    renderProfile(STATE.profile);
+    renderAcademicCvSheet(STATE.profile);
   } catch (err) {
     STATIC_MODE = true;
     await loadStaticFallbackData();
@@ -11528,7 +11593,7 @@ async function saveCvSkillsModal() {
 
 async function autofillReportFromDatabase(silent = false) {
   try {
-    if (!STATIC_MODE) {
+    if (shouldUseBackendApi()) {
       const res = await fetch("/api/reports/autofill");
       const data = await res.json();
       populateReportForm(data);
