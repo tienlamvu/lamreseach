@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T01:49:35.145Z",
+  "exported_at": "2026-11-16T01:50:25.822Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -43,7 +43,17 @@
         "visibility": "Public"
       }
     ],
-    "experiences": [],
+    "experiences": [
+      {
+        "role": "Researcher",
+        "organization": "Multifunctional Multiferroics Lab.",
+        "period": "2020-2024",
+        "description": "",
+        "visibility": "Public",
+        "allowed_users": [],
+        "allowed_groups": []
+      }
+    ],
     "publications": [
       {
         "id": 1794564001047,
