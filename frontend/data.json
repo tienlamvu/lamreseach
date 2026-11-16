@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T07:26:16.032Z",
+  "exported_at": "2026-11-16T07:27:14.347Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -2864,6 +2864,38 @@
       ],
       "passwordlessGoogle": false,
       "emailVerified": true
+    },
+    "temp.delete.test@gmail.com": {
+      "email": "temp.delete.test@gmail.com",
+      "name": "Temporary Test User",
+      "affiliation": "Test Lab",
+      "academicRole": "Researcher",
+      "status": "Active",
+      "authProvider": "Email + Google Linked",
+      "googleLinked": true,
+      "googleEmail": "temp.delete.test@gmail.com",
+      "passwordPlainHint": "••••••••",
+      "passwordHash": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
+      "groups": [],
+      "registeredAt": "2026-11-16 07:27",
+      "lastLoginAt": "2026-11-16 07:27",
+      "lastUpdatedAt": "2026-11-16 07:27",
+      "updatedAtMs": 1794814033548,
+      "workspace": {
+        "schedule": [],
+        "papers": [],
+        "structures": [],
+        "expReportRows": [],
+        "litReportRows": []
+      },
+      "activityLog": [
+        {
+          "timestamp": "2026-11-16 07:27",
+          "category": "Account",
+          "action": "Created by Administrator",
+          "detail": "Administrator created personal account for Temporary Test User (temp.delete.test@gmail.com)."
+        }
+      ]
     }
   },
   "user_groups": {
