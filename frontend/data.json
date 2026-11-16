@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T11:05:51.440Z",
+  "exported_at": "2026-11-16T11:07:04.878Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -2670,8 +2670,8 @@
       "passwordHash": "2c85c7a47fb54b1c1d6b11f1d7b5d5360cf40741f5ae37e4d83d9ac2dcf14894",
       "registeredAt": "2026-11-16 10:41",
       "lastLoginAt": "2026-11-16 10:41",
-      "lastUpdatedAt": "2026-11-16 10:41",
-      "updatedAtMs": 1794825686885,
+      "lastUpdatedAt": "2026-11-16 11:07",
+      "updatedAtMs": 1794827224482,
       "workspace": {
         "papers": [
           {
@@ -3025,11 +3025,11 @@
     "tlamvux@gmail.com",
     "a@gmail.com",
     "jhpark.matsci@skku.edu",
-    "temp.delete.test@gmail.com",
     "minseo.kim@gmail.com",
     "ssk@gmail.com",
     "las@gmail.com",
-    "lamvt@g.skku.edu"
+    "lamvt@g.skku.edu",
+    "temp.delete.test@gmail.com"
   ],
   "deleted_groups": [
     "grp_external_collab",
