@@ -51,12 +51,47 @@ def init_db():
     )
     """)
 
-    # 2. Lab Notes & Synthesis Log table
+    # 2. CIF Structures & Computational Materials Simulation Database
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS cif_structures (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        formula TEXT NOT NULL,
+        crystal_system TEXT DEFAULT 'Cubic',
+        space_group TEXT DEFAULT 'Pm-3m (221)',
+        a REAL DEFAULT 4.006,
+        b REAL DEFAULT 4.006,
+        c REAL DEFAULT 4.006,
+        alpha REAL DEFAULT 90.0,
+        beta REAL DEFAULT 90.0,
+        gamma REAL DEFAULT 90.0,
+        volume REAL DEFAULT 64.29,
+        natoms INTEGER DEFAULT 5,
+        cif_content TEXT,
+        poscar_content TEXT,
+        dft_code TEXT DEFAULT 'VASP',
+        functional TEXT DEFAULT 'PBE',
+        ecut REAL DEFAULT 520.0,
+        kpoints TEXT DEFAULT '8x8x8',
+        bandgap REAL DEFAULT 3.20,
+        bandgap_type TEXT DEFAULT 'Direct',
+        energy_per_atom REAL DEFAULT -6.85,
+        magnetic_state TEXT DEFAULT 'NM',
+        materials_project_id TEXT DEFAULT 'mp-2998',
+        structure_type TEXT DEFAULT 'Bulk 3D',
+        notes TEXT,
+        in_weekly_report INTEGER DEFAULT 1,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    # 3. Lab Notes & Simulation Log table (maintained for backward compatibility)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS notes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
-        category TEXT DEFAULT 'Experiment / Synthesis',
+        category TEXT DEFAULT 'Simulation / DFT',
         sample_id TEXT,
         material_formula TEXT,
         precursors TEXT,
@@ -72,12 +107,12 @@ def init_db():
     )
     """)
 
-    # 3. Schedule / Calendar / Tasks table
+    # 4. Schedule / Calendar / Tasks table (focused on simulation & milestones)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS schedule_items (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
-        event_type TEXT DEFAULT 'Synthesis / Furnace',
+        event_type TEXT DEFAULT 'DFT Simulation Run / Supercomputing',
         instrument_or_location TEXT,
         start_date TEXT NOT NULL,
         start_time TEXT DEFAULT '09:00',
@@ -91,7 +126,7 @@ def init_db():
     )
     """)
 
-    # 4. Weekly Reports table
+    # 5. Weekly Reports table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS weekly_reports (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -113,47 +148,48 @@ def init_db():
     )
     """)
 
-    # 5. Academic Profile & Scientific CV table
+    # 6. Academic Profile & Scientific CV table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS academic_profile (
         id INTEGER PRIMARY KEY CHECK (id = 1),
-        full_name TEXT DEFAULT 'Alex Chen',
-        title_role TEXT DEFAULT 'Ph.D. Candidate in Materials Science & Engineering',
-        affiliation TEXT DEFAULT 'Department of Materials Science & Engineering',
-        advisor TEXT DEFAULT 'Prof. Sarah Jenkins',
-        research_focus TEXT DEFAULT 'Solid-State Batteries, Perovskite Optoelectronics & 2D MXene Catalysts',
+        full_name TEXT DEFAULT 'Vu Tien Lam',
+        title_role TEXT DEFAULT 'Ph.D. Candidate in Computational Materials Science & Physics',
+        affiliation TEXT DEFAULT 'Department of Physics & Energy Materials, Sungkyunkwan University (SKKU)',
+        advisor TEXT DEFAULT 'Prof. Advisor',
+        research_focus TEXT DEFAULT 'First-Principles DFT Calculations, Perovskite Oxides, 2D Materials & Electronic Structure',
         orcid_id TEXT DEFAULT '',
         scholar_id TEXT DEFAULT '',
-        email TEXT DEFAULT 'alex.chen@university.edu',
-        phone TEXT DEFAULT '+1 (555) 234-5678',
-        website TEXT DEFAULT 'https://github.com/matsci-researcher',
-        location TEXT DEFAULT 'Cambridge, MA / Materials Research Lab',
+        email TEXT DEFAULT 'lamvt.skku@gmail.com',
+        phone TEXT DEFAULT '+82-10-0000-0000',
+        website TEXT DEFAULT 'https://tienlamvu.github.io/lamreseach/',
+        location TEXT DEFAULT 'Sungkyunkwan University (SKKU), Republic of Korea',
         total_citations INTEGER DEFAULT 0,
         h_index INTEGER DEFAULT 0,
         i10_index INTEGER DEFAULT 0,
-        bio TEXT DEFAULT '',
+        bio TEXT DEFAULT 'Ph.D. Candidate at Sungkyunkwan University (SKKU) specializing in first-principles Density Functional Theory (DFT) calculations, electronic structure, and optical properties of cubic perovskite oxides and 2D materials.',
         education_json TEXT DEFAULT '[]',
         experiences_json TEXT DEFAULT '[]',
         publications_json TEXT DEFAULT '[]',
         conferences_json TEXT DEFAULT '[]',
         skills_json TEXT DEFAULT '{}',
         awards_json TEXT DEFAULT '[]',
-        owner_email TEXT DEFAULT '',
+        owner_email TEXT DEFAULT 'lamvt.skku@gmail.com',
         google_client_id TEXT DEFAULT '',
         last_synced_at TEXT DEFAULT ''
     )
     """)
 
     # Ensure new CV & Auth columns exist if migrating an existing DB
-    ensure_column(cursor, "academic_profile", "phone", "TEXT DEFAULT '+1 (555) 234-5678'")
-    ensure_column(cursor, "academic_profile", "website", "TEXT DEFAULT 'https://github.com/matsci-researcher'")
-    ensure_column(cursor, "academic_profile", "location", "TEXT DEFAULT 'Materials Research Institute'")
+    ensure_column(cursor, "academic_profile", "phone", "TEXT DEFAULT '+82-10-0000-0000'")
+    ensure_column(cursor, "academic_profile", "website", "TEXT DEFAULT 'https://tienlamvu.github.io/lamreseach/'")
+    ensure_column(cursor, "academic_profile", "location", "TEXT DEFAULT 'Sungkyunkwan University (SKKU)'")
     ensure_column(cursor, "academic_profile", "experiences_json", "TEXT DEFAULT '[]'")
     ensure_column(cursor, "academic_profile", "conferences_json", "TEXT DEFAULT '[]'")
     ensure_column(cursor, "academic_profile", "skills_json", "TEXT DEFAULT '{}'")
     ensure_column(cursor, "academic_profile", "awards_json", "TEXT DEFAULT '[]'")
-    ensure_column(cursor, "academic_profile", "owner_email", "TEXT DEFAULT ''")
+    ensure_column(cursor, "academic_profile", "owner_email", "TEXT DEFAULT 'lamvt.skku@gmail.com'")
     ensure_column(cursor, "academic_profile", "google_client_id", "TEXT DEFAULT ''")
+    ensure_column(cursor, "academic_profile", "email_relay_url", "TEXT DEFAULT ''")
 
     conn.commit()
     seed_initial_data(conn)
@@ -396,4 +432,182 @@ def seed_initial_data(conn):
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, sample_papers)
 
+    # Seed sample CIF structures for computational materials science
+    cursor.execute("SELECT COUNT(*) as cnt FROM cif_structures")
+    if cursor.fetchone()["cnt"] == 0:
+        cif_batio3 = """data_BaTiO3_cubic
+_chemical_name_common 'Barium titanate'
+_chemical_formula_sum 'Ba Ti O3'
+_symmetry_space_group_name_H-M 'P m -3 m'
+_symmetry_Int_Tables_number 221
+_cell_length_a 4.0060
+_cell_length_b 4.0060
+_cell_length_c 4.0060
+_cell_angle_alpha 90.00
+_cell_angle_beta 90.00
+_cell_angle_gamma 90.00
+_cell_volume 64.29
+loop_
+  _atom_site_label
+  _atom_site_type_symbol
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Ba1 Ba 0.00000 0.00000 0.00000 1.0
+  Ti1 Ti 0.50000 0.50000 0.50000 1.0
+  O1  O  0.50000 0.50000 0.00000 1.0
+  O2  O  0.50000 0.00000 0.50000 1.0
+  O3  O  0.00000 0.50000 0.50000 1.0
+"""
+        poscar_batio3 = """BaTiO3 cubic perovskite Pm-3m
+1.0
+4.006000 0.000000 0.000000
+0.000000 4.006000 0.000000
+0.000000 0.000000 4.006000
+Ba Ti O
+1 1 3
+Direct
+0.000000 0.000000 0.000000
+0.500000 0.500000 0.500000
+0.500000 0.500000 0.000000
+0.500000 0.000000 0.500000
+0.000000 0.500000 0.500000
+"""
+
+        cif_basno3 = """data_BaSnO3_cubic
+_chemical_name_common 'Barium stannate'
+_chemical_formula_sum 'Ba Sn O3'
+_symmetry_space_group_name_H-M 'P m -3 m'
+_symmetry_Int_Tables_number 221
+_cell_length_a 4.1160
+_cell_length_b 4.1160
+_cell_length_c 4.1160
+_cell_angle_alpha 90.00
+_cell_angle_beta 90.00
+_cell_angle_gamma 90.00
+_cell_volume 69.73
+loop_
+  _atom_site_label
+  _atom_site_type_symbol
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Ba1 Ba 0.00000 0.00000 0.00000 1.0
+  Sn1 Sn 0.50000 0.50000 0.50000 1.0
+  O1  O  0.50000 0.50000 0.00000 1.0
+  O2  O  0.50000 0.00000 0.50000 1.0
+  O3  O  0.00000 0.50000 0.50000 1.0
+"""
+        poscar_basno3 = """BaSnO3 cubic perovskite Pm-3m
+1.0
+4.116000 0.000000 0.000000
+0.000000 4.116000 0.000000
+0.000000 0.000000 4.116000
+Ba Sn O
+1 1 3
+Direct
+0.000000 0.000000 0.000000
+0.500000 0.500000 0.500000
+0.500000 0.500000 0.000000
+0.500000 0.000000 0.500000
+0.000000 0.500000 0.500000
+"""
+
+        cif_mos2 = """data_MoS2_2H
+_chemical_name_common 'Molybdenum disulfide 2H monolayer'
+_chemical_formula_sum 'Mo S2'
+_symmetry_space_group_name_H-M 'P 63/m m c'
+_symmetry_Int_Tables_number 194
+_cell_length_a 3.1800
+_cell_length_b 3.1800
+_cell_length_c 12.2900
+_cell_angle_alpha 90.00
+_cell_angle_beta 90.00
+_cell_angle_gamma 120.00
+_cell_volume 107.69
+loop_
+  _atom_site_label
+  _atom_site_type_symbol
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Mo1 Mo 0.33333 0.66667 0.25000 1.0
+  S1  S  0.33333 0.66667 0.62100 1.0
+  S2  S  0.33333 0.66667 0.87900 1.0
+"""
+        poscar_mos2 = """MoS2 2H monolayer P63/mmc
+1.0
+3.180000 0.000000 0.000000
+-1.590000 2.753961 0.000000
+0.000000 0.000000 12.290000
+Mo S
+1 2
+Direct
+0.333333 0.666667 0.250000
+0.333333 0.666667 0.621000
+0.333333 0.666667 0.879000
+"""
+
+        sample_structures = [
+            (
+                "BaTiO3 (Cubic Perovskite)",
+                "BaTiO3",
+                "Cubic",
+                "Pm-3m (221)",
+                4.006, 4.006, 4.006,
+                90.0, 90.0, 90.0,
+                64.29, 5,
+                cif_batio3, poscar_batio3,
+                "VASP", "PBE", 520.0, "8x8x8",
+                3.20, "Direct", -6.85, "NM",
+                "mp-2998", "Bulk 3D",
+                "Benchmark prototypical cubic perovskite oxide. Relaxed lattice matches experimental neutron data within 0.8% error.",
+                1
+            ),
+            (
+                "BaSnO3 (Barium Stannate)",
+                "BaSnO3",
+                "Cubic",
+                "Pm-3m (221)",
+                4.116, 4.116, 4.116,
+                90.0, 90.0, 90.0,
+                69.73, 5,
+                cif_basno3, poscar_basno3,
+                "VASP", "HSE06", 550.0, "8x8x8",
+                3.10, "Direct", -6.42, "NM",
+                "mp-2611", "Bulk 3D",
+                "High room-temperature electron mobility transparent conducting oxide (TCO). First-principles electronic structure & optical properties.",
+                1
+            ),
+            (
+                "MoS2 (2H Hexagonal Monolayer)",
+                "MoS2",
+                "Hexagonal",
+                "P63/mmc (194)",
+                3.180, 3.180, 12.290,
+                90.0, 90.0, 120.0,
+                107.69, 3,
+                cif_mos2, poscar_mos2,
+                "VASP", "PBE-D3", 480.0, "12x12x1",
+                1.88, "Direct", -7.12, "NM",
+                "mp-2815", "2D Monolayer",
+                "2D Transition Metal Dichalcogenide (TMD). Demonstrates indirect-to-direct bandgap transition from bulk (1.29 eV) to monolayer (1.88 eV).",
+                1
+            ),
+        ]
+        cursor.executemany("""
+            INSERT INTO cif_structures (
+                name, formula, crystal_system, space_group,
+                a, b, c, alpha, beta, gamma, volume, natoms,
+                cif_content, poscar_content, dft_code, functional,
+                ecut, kpoints, bandgap, bandgap_type, energy_per_atom,
+                magnetic_state, materials_project_id, structure_type,
+                notes, in_weekly_report
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, sample_structures)
+
     conn.commit()
+
