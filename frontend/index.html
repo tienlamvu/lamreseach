@@ -1848,16 +1848,14 @@
               </button>
             </div>
             <div style="font-size:11.5px; color:#475569; margin-top:8px; line-height:1.45;">
-              💡 Check the dispatched verification email banner at the top-right of your screen (or your email inbox). You can either type the 6-digit code above or click the <strong>Confirmation Link</strong> inside the email.
+              🛡️ <strong>Private Email Verification:</strong> A confidential 6-digit confirmation code was sent to your email inbox. For account safety, this code is <strong>never displayed in the browser</strong>. Please check your inbox and Spam/Junk folder.
             </div>
           </div>
 
-          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
-            <button type="button" class="btn btn-outline btn-sm" style="flex:1; justify-content:center; border-color:#93c5fd; color:#1d4ed8; background:#eff6ff;" onclick="openDispatchedEmailPreviewModal()">
-              📬 View Verification Email &amp; Link
-            </button>
-            <button type="button" class="btn btn-outline btn-sm" style="justify-content:center;" onclick="resendRegistrationVerificationEmail()">
-              🔄 Resend Email
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <span style="font-size:11.5px; color:#64748b;">Code expires in <strong>15 minutes</strong></span>
+            <button type="button" class="btn btn-outline btn-sm" id="btn-resend-reg-code" onclick="resendRegistrationVerificationEmail()">
+              🔄 Resend Code
             </button>
           </div>
 
@@ -1865,7 +1863,7 @@
 
           <div style="display:flex; justify-content:space-between; align-items:center; padding-top:8px; border-top:1px solid #e2e8f0;">
             <button type="button" class="g-text-btn" onclick="backToRegistrationFormStep()">← Edit Email / Details</button>
-            <button type="button" class="btn btn-teal btn-sm" onclick="confirmRegistrationViaEmailLink()">🔗 Click Confirmation Link Directly</button>
+            <a href="mailto:lamvt.skku@gmail.com?subject=MatSci%20Nexus%20Email%20Verification%20Support" style="font-size:11.5px; color:#2563eb; text-decoration:none;">Need Help? Contact Admin ↗</a>
           </div>
         </div>
       </div>
@@ -1880,8 +1878,16 @@
             <div style="width:46px; height:46px; border-radius:50%; background:#fef3c7; color:#b45309; display:inline-flex; align-items:center; justify-content:center; font-size:22px; margin-bottom:6px;">🔐</div>
             <h2 class="google-auth-title" style="font-size:21px;">Reset Your Password</h2>
             <p class="google-auth-subtitle" style="font-size:13px;">
-              Enter your registered email address. We will send a 6-digit verification code and password reset link to your email.
+              Enter your registered email address. We will dispatch a confidential 6-digit verification code to your private email inbox.
             </p>
+          </div>
+
+          <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 12px; margin-bottom:12px; font-size:12px; color:#166534; display:flex; align-items:center; gap:8px;">
+            <span style="font-size:16px;">✨</span>
+            <div style="flex:1;">
+              <strong>Recommended Secure Login:</strong> Use <strong>Sign in with Google</strong> (OAuth 2.0). It is completely passwordless and never requires reset codes or passwords!
+              <div style="margin-top:3px;"><a href="javascript:void(0)" onclick="triggerGoogleOAuthPopup()" style="color:#15803d; font-weight:700; text-decoration:underline;">Click to Sign in with Google &rarr;</a></div>
+            </div>
           </div>
 
           <div class="form-group" style="margin-bottom:12px;">
@@ -1912,11 +1918,13 @@
             </p>
           </div>
 
-          <div style="display:flex; gap:8px; margin-bottom:10px;">
-            <button type="button" class="btn btn-outline btn-sm" style="flex:1; justify-content:center; background:#eff6ff; border-color:#93c5fd; color:#1d4ed8;" onclick="openDispatchedEmailPreviewModal()">
-              📬 Open Reset Email &amp; Code
-            </button>
-            <button type="button" class="btn btn-outline btn-sm" onclick="requestPasswordResetEmail(true)">
+          <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:10px 12px; margin-bottom:12px; font-size:12px; color:#1e40af; line-height:1.45;">
+            🛡️ <strong>Zero-Knowledge Email Delivery:</strong> A confidential 6-digit code has been dispatched directly to your private email inbox. For account safety, this code is <strong>never displayed on screen</strong>. Please open your private inbox to view it.
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <span style="font-size:11.5px; color:#64748b;">Code expires in <strong>15 minutes</strong></span>
+            <button type="button" class="btn btn-outline btn-sm" id="btn-resend-reset-code" onclick="requestPasswordResetEmail(true)">
               🔄 Resend Code
             </button>
           </div>
@@ -1948,6 +1956,12 @@
           <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
             <button type="button" class="g-text-btn" onclick="openForgotPasswordPane()">← Change Email</button>
             <button type="button" class="g-primary-btn" onclick="confirmSelfPasswordReset()">🔑 Reset Password &amp; Sign In</button>
+          </div>
+
+          <div style="margin-top:12px; padding-top:10px; border-top:1px dashed #cbd5e1; font-size:11.5px; color:#64748b; text-align:center;">
+            Didn't receive email? <a href="mailto:lamvt.skku@gmail.com?subject=MatSci%20Nexus%20Password%20Reset%20Assistance" style="color:#2563eb; font-weight:600;">Contact Administrator for Manual Reset</a> or <a href="javascript:void(0)" onclick="triggerGoogleOAuthPopup()" style="color:#16a34a; font-weight:600;">Sign in with Google</a>.
+          </div>
+        </div>
           </div>
         </div>
       </div>
@@ -2051,6 +2065,7 @@
         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
           <button class="btn btn-primary btn-sm" onclick="openAdminEditUserModal(null)">➕ Add New User</button>
           <button class="btn btn-teal btn-sm" onclick="openAdminGroupsModal()">🏷️ Manage User Groups</button>
+          <button class="btn btn-outline btn-sm" style="border-color:#3b82f6; color:#1d4ed8; font-weight:600;" onclick="openAdminEmailRelayModal()">📧 Email Relay Config</button>
           <button class="btn btn-outline btn-sm" onclick="refreshCloudUsersNow(true)">🔄 Refresh Cloud Users</button>
           <button class="btn btn-outline btn-sm" onclick="syncOrExportDataJson()">☁️ Sync All to GitHub</button>
           <button class="btn btn-outline btn-sm" onclick="closeModal('admin-users-modal')">✕ Close</button>
@@ -2269,6 +2284,80 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- MODAL: ADMINISTRATOR REAL EMAIL RELAY & DISPATCH CONFIGURATION       -->
+  <!-- ==================================================================== -->
+  <div id="admin-email-relay-modal" class="modal-backdrop">
+    <div class="modal-box" style="max-width:720px; width:95%;">
+      <div class="card-header" style="border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:14px;">
+        <div>
+          <div class="card-title" style="font-size:18px; color:#0f172a;">📧 Private Email Relay &amp; OTP Security Dispatcher (Administrator)</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+            Configure real email delivery for registration verification and password reset codes. Security codes are dispatched directly to recipient inboxes and never revealed in-browser.
+          </div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('admin-email-relay-modal')">✕ Close</button>
+      </div>
+
+      <!-- Active Channel Status Banner -->
+      <div id="email-relay-status-banner" style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:18px;">🛡️</span>
+            <div>
+              <div style="font-weight:700; font-size:13px; color:#1e3a8a;" id="aer-status-title">Email Dispatch Architecture</div>
+              <div style="font-size:11.5px; color:#2563eb;" id="aer-status-desc">Zero-knowledge delivery: OTP codes are cryptographically salted and only viewable in private email inboxes.</div>
+            </div>
+          </div>
+          <span class="badge badge-blue" id="aer-status-badge">Private Relay Active</span>
+        </div>
+      </div>
+
+      <!-- Option 1: Google Apps Script Free Web App Relay (Native to Gmail) -->
+      <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; padding:14px; margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span style="font-size:13px; font-weight:700; color:#0f172a;">⚡ Option 1: Google Apps Script Webhook (Free, Native Gmail Delivery)</span>
+          <a href="https://script.google.com" target="_blank" rel="noopener noreferrer" style="font-size:12px; color:#1d4ed8; text-decoration:none; font-weight:600;">Open script.google.com ↗</a>
+        </div>
+        <p style="font-size:12px; color:#475569; margin:0 0 10px; line-height:1.5;">
+          Deploy a 100% free serverless email dispatcher under your Google Account (<code>lamvt.skku@gmail.com</code>). It dispatches genuine emails through Google's mail servers directly to users' inboxes.
+        </p>
+
+        <div class="form-group" style="margin-bottom:10px;">
+          <label style="font-size:12px; font-weight:600; color:#374151;">Google Apps Script Web App Deployment URL</label>
+          <div style="display:flex; gap:6px;">
+            <input
+              type="url"
+              id="aer-relay-url-input"
+              placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+              style="flex:1; padding:8px 12px; font-size:12.5px; border:1px solid #cbd5e1; border-radius:8px; font-family:monospace;"
+            />
+            <button type="button" class="btn btn-outline btn-sm" onclick="copyGoogleAppsScriptCodeTemplate()">📋 Copy Script Code</button>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:8px; justify-content:flex-end; align-items:center;">
+          <button type="button" class="btn btn-teal btn-sm" onclick="testSendRealEmailRelay()">📨 Send Test Email to lamvt.skku@gmail.com</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="saveAdminEmailRelayConfig()">💾 Save Relay URL</button>
+        </div>
+      </div>
+
+      <!-- Option 2: Recommend Google OAuth 2.0 (Zero Password Risk) -->
+      <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:12px 14px; margin-bottom:10px;">
+        <div style="display:flex; align-items:flex-start; gap:8px;">
+          <span style="font-size:18px;">💡</span>
+          <div style="font-size:12px; color:#14532d; line-height:1.5;">
+            <strong>Ultimate Security Recommendation:</strong> Encourage lab researchers and collaborators to click <strong>"Sign in with Google"</strong>. Google OAuth 2.0 uses cryptographic tokens and 2-Factor Authentication (2FA), eliminating static passwords, password leaks, and the need for password reset OTP codes completely.
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; padding-top:8px;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('admin-email-relay-modal')">Close</button>
       </div>
     </div>
   </div>
@@ -3127,37 +3216,6 @@
         <button type="button" class="btn btn-danger" id="confirm-dialog-ok-btn" style="min-width:140px; padding:8px 18px; font-weight:700; background:#dc2626; color:#ffffff; border:none; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
           🗑️ Confirm Delete
         </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ==================================================================== -->
-  <!-- INTERACTIVE EMAIL VERIFICATION & PASSWORD RESET DISPATCH DRAWER      -->
-  <!-- ==================================================================== -->
-  <div id="email-dispatch-drawer" class="no-print" style="display:none; position:fixed; top:18px; right:18px; width:410px; max-width:calc(100vw - 32px); background:#ffffff; border:2px solid #2563eb; border-radius:14px; box-shadow:0 20px 50px rgba(15,23,42,0.32); z-index:20000; overflow:hidden; font-family:system-ui,-apple-system,sans-serif;">
-    <div style="background:linear-gradient(90deg,#1e3a8a,#2563eb); color:#fff; padding:10px 14px; display:flex; justify-content:space-between; align-items:center;">
-      <div style="display:flex; align-items:center; gap:8px; font-weight:700; font-size:13px;">
-        <span>📨</span>
-        <span id="edd-header-title">Verification Email Dispatched</span>
-      </div>
-      <button type="button" onclick="closeEmailDispatchDrawer()" style="background:rgba(255,255,255,0.18); border:none; color:#fff; border-radius:6px; padding:2px 8px; cursor:pointer; font-size:12px;">✕</button>
-    </div>
-    <div style="padding:14px; font-size:12.5px; color:#1e293b;">
-      <div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid #e2e8f0; line-height:1.45;">
-        <div><strong style="color:#64748b;">To:</strong> <code id="edd-to-email" style="color:#1d4ed8; font-weight:700;"></code></div>
-        <div><strong style="color:#64748b;">Subject:</strong> <span id="edd-subject" style="font-weight:700; color:#0f172a;"></span></div>
-      </div>
-      <div id="edd-body-text" style="color:#334155; line-height:1.5; margin-bottom:10px;"></div>
-      <div style="background:#eff6ff; border:1.5px dashed #3b82f6; border-radius:10px; padding:10px 12px; text-align:center; margin-bottom:10px;">
-        <div style="font-size:11px; color:#1e40af; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">6-Digit Verification Code</div>
-        <div id="edd-otp-code" style="font-size:24px; font-weight:900; color:#1e3a8a; letter-spacing:5px; font-family:monospace; margin:4px 0;">000000</div>
-        <div style="display:flex; gap:6px; justify-content:center; margin-top:6px;">
-          <button type="button" class="btn btn-primary btn-sm" id="edd-action-link-btn" style="font-weight:700;">✅ Click Verification Link &amp; Confirm Now</button>
-          <button type="button" class="btn btn-outline btn-sm" id="edd-autofill-btn">📋 Auto-Fill Code</button>
-        </div>
-      </div>
-      <div style="font-size:11px; color:#64748b; display:flex; justify-content:space-between; align-items:center;">
-        <span id="edd-delivery-status">✓ Dispatched via Email Relay &amp; Instant Verification Link</span>
       </div>
     </div>
   </div>
