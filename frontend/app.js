@@ -438,1215 +438,13 @@ async function hashPasswordSha256(plainText) {
   }
 }
 
-const DEFAULT_USERS_REGISTRY = {
-  "lamvt.sep@gmail.com": {
-    "email": "lamvt.sep@gmail.com",
-    "name": "Vu Tien Lam",
-    "affiliation": "SKKU Laboratory",
-    "academicRole": "Researcher",
-    "status": "Active",
-    "emailVerified": true,
-    "verifiedAt": "2026-11-14 14:39",
-    "passwordlessGoogle": false,
-    "authProvider": "Email + Google Linked",
-    "googleLinked": true,
-    "googleEmail": "lamvt.sep@gmail.com",
-    "passwordPlainHint": "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",
-    "passwordHash": "441d52fbb490008fa860a41b38fe03e0b7f6fb06b56336922f7d7a95562f51dd",
-    "registeredAt": "2026-11-14 14:39",
-    "lastLoginAt": "2026-11-14 14:41",
-    "lastUpdatedAt": "2026-11-16 01:30",
-    "updatedAtMs": 1794792631117,
-    "workspace": {
-        "papers": [
-            {
-                "id": 1794572247854,
-                "doi": "10.1016/j.ijhydene.2022.01.236",
-                "title": "Y-decorated MoS2 monolayer for promising hydrogen storage: A DFT study",
-                "authors": "Hongying Liu, Shulin Yang, Gu Lei, Miaojing Xu, Huoxi Xu",
-                "journal": "International Journal of Hydrogen Energy",
-                "year": 2022,
-                "volume": "47",
-                "pages": "12096-12106",
-                "abstract": "",
-                "citation_count": 53,
-                "material_system": "Perovskite / 2D Material",
-                "synthesis_method": "First-principles DFT",
-                "characterization_tags": "DFT, VASP, XRD",
-                "status": "To Read",
-                "notes": "",
-                "in_weekly_report": 1
-            },
-            {
-                "id": 1794572106086,
-                "doi": "10.1038/s41467-026-71890-2",
-                "title": "Stabilization of sliding ferroelectricity through exciton condensation",
-                "authors": "Matteo D\u2019Alessio, Daniele Varsano, Elisa Molinari, Massimo Rontani",
-                "journal": "Nature Communications",
-                "year": 2026,
-                "volume": "17",
-                "pages": "",
-                "abstract": "",
-                "citation_count": 0,
-                "material_system": "Perovskite / 2D Material",
-                "synthesis_method": "First-principles DFT",
-                "characterization_tags": "DFT, VASP, XRD",
-                "status": "To Read",
-                "notes": "",
-                "in_weekly_report": 1
-            }
-        ],
-        "structures": [
-            {
-                "name": "MoSi2N2P2 Janus 4",
-                "formula": "MoSi2N2P2",
-                "chemical_formula": "MoSi2N2P2",
-                "crystal_system": "Triclinic",
-                "space_group": "P1 (1)",
-                "structure_type": "2D Monolayer",
-                "mp_id": "",
-                "materials_project_id": "",
-                "a": 3.0781,
-                "b": 3.075,
-                "c": 26.912,
-                "alpha": 90.0066,
-                "beta": 90,
-                "gamma": 120.0335,
-                "volume": 220.52,
-                "natoms": 7,
-                "dft_code": "CASTEP",
-                "functional": "PBE",
-                "dft_functional": "PBE",
-                "ecut": 520,
-                "cutoff_energy": 520,
-                "kpoints": "8x8x8",
-                "bandgap": 3.2,
-                "bandgap_ev": 3.2,
-                "bandgap_type": "Direct",
-                "energy_per_atom": -6.85,
-                "total_energy_per_atom": -6.85,
-                "magnetic_state": "NM",
-                "notes": "Full-relaxed",
-                "raw_cif": "data_MoSX4\n_audit_creation_date              2026-09-16\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.0781\n_cell_length_b                    3.0750\n_cell_length_c                    26.9120\n_cell_angle_alpha                 90.0066\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0335\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo   -0.00001  -0.00002   0.50000   0.00000  Uiso   1.00\nS2     P     0.33367   0.66735   0.44115   0.00000  Uiso   1.00\nS3     P     0.33372   0.66745   0.55885   0.00000  Uiso   1.00\nSi4    Si    0.33744   0.67489   0.64121   0.00000  Uiso   1.00\nSi5    Si    0.33716   0.67432   0.35879   0.00000  Uiso   1.00\nN6     N     0.67101   0.34203   0.65897   0.00000  Uiso   1.00\nN7     N     0.67070   0.34141   0.34102   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    S3      2.380   .     S\nMo1    S2      2.380   .     S\nMo1    S3      2.379   1_445 S\nMo1    S3      2.379   1_545 S\nMo1    S2      2.379   1_445 S\nMo1    S2      2.379   1_545 S\nS2     Mo1     2.379   1_665 S\nS2     Mo1     2.379   1_565 S\nS2     Si5     2.217   .     S\nS3     Mo1     2.379   1_665 S\nS3     Mo1     2.379   1_565 S\nS3     Si4     2.217   .     S\nSi4    N6      1.839   .     S\nSi4    N6      1.839   1_565 S\nSi4    N6      1.839   1_455 S\nSi5    N7      1.839   .     S\nSi5    N7      1.839   1_565 S\nSi5    N7      1.839   1_455 S\nN6     Si4     1.839   1_545 S\nN6     Si4     1.839   1_655 S\nN7     Si5     1.839   1_545 S\nN7     Si5     1.839   1_655 S",
-                "cif_content": "data_MoSX4\n_audit_creation_date              2026-09-16\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.0781\n_cell_length_b                    3.0750\n_cell_length_c                    26.9120\n_cell_angle_alpha                 90.0066\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0335\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo   -0.00001  -0.00002   0.50000   0.00000  Uiso   1.00\nS2     P     0.33367   0.66735   0.44115   0.00000  Uiso   1.00\nS3     P     0.33372   0.66745   0.55885   0.00000  Uiso   1.00\nSi4    Si    0.33744   0.67489   0.64121   0.00000  Uiso   1.00\nSi5    Si    0.33716   0.67432   0.35879   0.00000  Uiso   1.00\nN6     N     0.67101   0.34203   0.65897   0.00000  Uiso   1.00\nN7     N     0.67070   0.34141   0.34102   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    S3      2.380   .     S\nMo1    S2      2.380   .     S\nMo1    S3      2.379   1_445 S\nMo1    S3      2.379   1_545 S\nMo1    S2      2.379   1_445 S\nMo1    S2      2.379   1_545 S\nS2     Mo1     2.379   1_665 S\nS2     Mo1     2.379   1_565 S\nS2     Si5     2.217   .     S\nS3     Mo1     2.379   1_665 S\nS3     Mo1     2.379   1_565 S\nS3     Si4     2.217   .     S\nSi4    N6      1.839   .     S\nSi4    N6      1.839   1_565 S\nSi4    N6      1.839   1_455 S\nSi5    N7      1.839   .     S\nSi5    N7      1.839   1_565 S\nSi5    N7      1.839   1_455 S\nN6     Si4     1.839   1_545 S\nN6     Si4     1.839   1_655 S\nN7     Si5     1.839   1_545 S\nN7     Si5     1.839   1_655 S",
-                "poscar_text": "MoSi2N2P2 Triclinic P1 (1)\n1.0\n       3.07810000     0.00000000     0.00000000\n      -1.53905677     2.66212871     0.00000000\n       0.00000000    -0.00358083    26.91199976\n   Mo    P   Si    N\n    1    2    2    2\nDirect\n   -0.00001000  -0.00002000   0.50000000\n    0.33367000   0.66735000   0.44115000\n    0.33372000   0.66745000   0.55885000\n    0.33744000   0.67489000   0.64121000\n    0.33716000   0.67432000   0.35879000\n    0.67101000   0.34203000   0.65897000\n    0.67070000   0.34141000   0.34102000\n",
-                "poscar_content": "MoSi2N2P2 Triclinic P1 (1)\n1.0\n       3.07810000     0.00000000     0.00000000\n      -1.53905677     2.66212871     0.00000000\n       0.00000000    -0.00358083    26.91199976\n   Mo    P   Si    N\n    1    2    2    2\nDirect\n   -0.00001000  -0.00002000   0.50000000\n    0.33367000   0.66735000   0.44115000\n    0.33372000   0.66745000   0.55885000\n    0.33744000   0.67489000   0.64121000\n    0.33716000   0.67432000   0.35879000\n    0.67101000   0.34203000   0.65897000\n    0.67070000   0.34141000   0.34102000\n",
-                "atoms": [
-                    {
-                        "element": "Mo",
-                        "label": "Mo1",
-                        "x": -1e-05,
-                        "y": -2e-05,
-                        "z": 0.5,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "P",
-                        "label": "S2",
-                        "x": 0.33367,
-                        "y": 0.66735,
-                        "z": 0.44115,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "P",
-                        "label": "S3",
-                        "x": 0.33372,
-                        "y": 0.66745,
-                        "z": 0.55885,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "Si",
-                        "label": "Si4",
-                        "x": 0.33744,
-                        "y": 0.67489,
-                        "z": 0.64121,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "Si",
-                        "label": "Si5",
-                        "x": 0.33716,
-                        "y": 0.67432,
-                        "z": 0.35879,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "N",
-                        "label": "N6",
-                        "x": 0.67101,
-                        "y": 0.34203,
-                        "z": 0.65897,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "N",
-                        "label": "N7",
-                        "x": 0.6707,
-                        "y": 0.34141,
-                        "z": 0.34102,
-                        "occupancy": 1
-                    }
-                ],
-                "in_weekly_report": 0,
-                "id": 1794571683470
-            },
-            {
-                "name": "MoSi2N2P2 Janus 3",
-                "formula": "MoSi2N2P2",
-                "chemical_formula": "MoSi2N2P2",
-                "crystal_system": "Triclinic",
-                "space_group": "P1 (1)",
-                "structure_type": "2D Monolayer",
-                "mp_id": "",
-                "materials_project_id": "",
-                "a": 3.2726,
-                "b": 3.27,
-                "c": 23.5067,
-                "alpha": 90.0103,
-                "beta": 90,
-                "gamma": 120.0266,
-                "volume": 217.79,
-                "natoms": 7,
-                "dft_code": "CASTEP",
-                "functional": "PBE",
-                "dft_functional": "PBE",
-                "ecut": 520,
-                "cutoff_energy": 520,
-                "kpoints": "8x8x8",
-                "bandgap": 3.2,
-                "bandgap_ev": 3.2,
-                "bandgap_type": "Direct",
-                "energy_per_atom": -6.85,
-                "total_energy_per_atom": -6.85,
-                "magnetic_state": "NM",
-                "notes": "Full-relaxed",
-                "raw_cif": "data_MoSX3\n_audit_creation_date              2026-09-16\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.2726\n_cell_length_b                    3.2700\n_cell_length_c                    23.5067\n_cell_angle_alpha                 90.0103\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0266\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo    0.00071   0.00143   0.50000   0.00000  Uiso   1.00\nS2     N     0.33420   0.66840   0.44897   0.00000  Uiso   1.00\nS3     N     0.33427   0.66855   0.55102   0.00000  Uiso   1.00\nSi4    Si    0.33689   0.67379   0.62531   0.00000  Uiso   1.00\nSi5    Si    0.33665   0.67331   0.37469   0.00000  Uiso   1.00\nP6     P     0.67064   0.34130   0.67269   0.00000  Uiso   1.00\nP7     P     0.67032   0.34066   0.32731   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nS2     Si5     1.746   .     S\nS3     Si4     1.746   .     S\nSi4    P6      2.192   .     S\nSi4    P6      2.193   1_565 S\nSi4    P6      2.192   1_455 S\nSi5    P7      2.192   .     S\nSi5    P7      2.193   1_565 S\nSi5    P7      2.192   1_455 S\nP6     Si4     2.193   1_545 S\nP6     Si4     2.192   1_655 S\nP7     Si5     2.193   1_545 S\nP7     Si5     2.192   1_655 S",
-                "cif_content": "data_MoSX3\n_audit_creation_date              2026-09-16\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.2726\n_cell_length_b                    3.2700\n_cell_length_c                    23.5067\n_cell_angle_alpha                 90.0103\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0266\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo    0.00071   0.00143   0.50000   0.00000  Uiso   1.00\nS2     N     0.33420   0.66840   0.44897   0.00000  Uiso   1.00\nS3     N     0.33427   0.66855   0.55102   0.00000  Uiso   1.00\nSi4    Si    0.33689   0.67379   0.62531   0.00000  Uiso   1.00\nSi5    Si    0.33665   0.67331   0.37469   0.00000  Uiso   1.00\nP6     P     0.67064   0.34130   0.67269   0.00000  Uiso   1.00\nP7     P     0.67032   0.34066   0.32731   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nS2     Si5     1.746   .     S\nS3     Si4     1.746   .     S\nSi4    P6      2.192   .     S\nSi4    P6      2.193   1_565 S\nSi4    P6      2.192   1_455 S\nSi5    P7      2.192   .     S\nSi5    P7      2.193   1_565 S\nSi5    P7      2.192   1_455 S\nP6     Si4     2.193   1_545 S\nP6     Si4     2.192   1_655 S\nP7     Si5     2.193   1_545 S\nP7     Si5     2.192   1_655 S",
-                "poscar_text": "MoSi2N2P2 Triclinic P1 (1)\n1.0\n       3.27260000     0.00000000     0.00000000\n      -1.63631456     2.83114370     0.00000000\n       0.00000000    -0.00488081    23.50669949\n   Mo    N   Si    P\n    1    2    2    2\nDirect\n    0.00071000   0.00143000   0.50000000\n    0.33420000   0.66840000   0.44897000\n    0.33427000   0.66855000   0.55102000\n    0.33689000   0.67379000   0.62531000\n    0.33665000   0.67331000   0.37469000\n    0.67064000   0.34130000   0.67269000\n    0.67032000   0.34066000   0.32731000\n",
-                "poscar_content": "MoSi2N2P2 Triclinic P1 (1)\n1.0\n       3.27260000     0.00000000     0.00000000\n      -1.63631456     2.83114370     0.00000000\n       0.00000000    -0.00488081    23.50669949\n   Mo    N   Si    P\n    1    2    2    2\nDirect\n    0.00071000   0.00143000   0.50000000\n    0.33420000   0.66840000   0.44897000\n    0.33427000   0.66855000   0.55102000\n    0.33689000   0.67379000   0.62531000\n    0.33665000   0.67331000   0.37469000\n    0.67064000   0.34130000   0.67269000\n    0.67032000   0.34066000   0.32731000\n",
-                "atoms": [
-                    {
-                        "element": "Mo",
-                        "label": "Mo1",
-                        "x": 0.00071,
-                        "y": 0.00143,
-                        "z": 0.5,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "N",
-                        "label": "S2",
-                        "x": 0.3342,
-                        "y": 0.6684,
-                        "z": 0.44897,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "N",
-                        "label": "S3",
-                        "x": 0.33427,
-                        "y": 0.66855,
-                        "z": 0.55102,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "Si",
-                        "label": "Si4",
-                        "x": 0.33689,
-                        "y": 0.67379,
-                        "z": 0.62531,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "Si",
-                        "label": "Si5",
-                        "x": 0.33665,
-                        "y": 0.67331,
-                        "z": 0.37469,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "P",
-                        "label": "P6",
-                        "x": 0.67064,
-                        "y": 0.3413,
-                        "z": 0.67269,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "P",
-                        "label": "P7",
-                        "x": 0.67032,
-                        "y": 0.34066,
-                        "z": 0.32731,
-                        "occupancy": 1
-                    }
-                ],
-                "in_weekly_report": 0,
-                "id": 1794571666118
-            }
-        ],
-        "schedule": [
-            {
-                "id": 1794667184422,
-                "title": "Welcome Research Session \u2014 Seojeong Ro's Workspace",
-                "event_type": "Group Meeting / PI Meeting",
-                "instrument_or_location": "SKKU-STEM Laboratory",
-                "start_date": "2026-11-14",
-                "start_time": "10:00",
-                "end_time": "11:30",
-                "priority": "High",
-                "status": "Scheduled",
-                "sample_id": "INIT-01",
-                "description": "Personal schedule initialized for Seojeong Ro (lamvt.sep@gmail.com).",
-                "in_weekly_report": 1
-            }
-        ],
-        "expReportRows": [
-            {
-                "sample_id": "MoSi2N2P2",
-                "material": "CASTEP (PBE)",
-                "conditions": "Eg = 3.2 eV (Direct)",
-                "findings": "Full-relaxed"
-            },
-            {
-                "sample_id": "MoSi2N2P2",
-                "material": "CASTEP (PBE)",
-                "conditions": "Eg = 3.2 eV (Direct)",
-                "findings": "Full-relaxed"
-            }
-        ],
-        "litReportRows": [
-            {
-                "title": "Y-decorated MoS2 monolayer for promising hydrogen storage: A DFT study",
-                "journal": "International Journal of Hydrogen Energy (2022) | DOI: 10.1016/j.ijhydene.2022.01.236",
-                "material": "Perovskite / 2D Material",
-                "takeaway": ""
-            },
-            {
-                "title": "Stabilization of sliding ferroelectricity through exciton condensation",
-                "journal": "Nature Communications (2026) | DOI: 10.1038/s41467-026-71890-2",
-                "material": "Perovskite / 2D Material",
-                "takeaway": ""
-            }
-        ]
-    },
-    "activityLog": [
-        {
-            "timestamp": "2026-11-16 01:30",
-            "category": "Profile",
-            "action": "Profile & Groups Updated by Administrator",
-            "detail": "Updated profile (SKKU Laboratory \u2014 Researcher) and group assignments."
-        },
-        {
-            "timestamp": "2026-11-16 00:15",
-            "category": "Security",
-            "action": "Password Changed / Reset by Administrator",
-            "detail": "Administrator updated password & profile for Vu Tien Lam (lamvt.sep@gmail.com)."
-        },
-        {
-            "timestamp": "2026-11-16 00:15",
-            "category": "Security",
-            "action": "Password Reset by Administrator",
-            "detail": "Administrator reset password to default (\"skku1234\") for lamvt.sep@gmail.com."
-        },
-        {
-            "timestamp": "2026-11-14 14:41",
-            "category": "Session",
-            "action": "Signed In (Google OAuth 2.0)",
-            "detail": "Authenticated as Vu Tien Lam (lamvt.sep@gmail.com)"
-        },
-        {
-            "timestamp": "2026-11-14 14:40",
-            "category": "Profile",
-            "action": "Profile & Groups Updated by Administrator",
-            "detail": "Updated profile (SKKU-STEM Laboratory \u2014 Researcher) and group assignments."
-        },
-        {
-            "timestamp": "2026-11-14 14:40",
-            "category": "Account",
-            "action": "Updated Profile Settings",
-            "detail": "Name: Seojeong Ro, Affiliation: SKKU-STEM Laboratory"
-        },
-        {
-            "timestamp": "2026-11-14 14:40",
-            "category": "Account",
-            "action": "Linked Google Account",
-            "detail": "Linked Google Account: lamvt.sep@gmail.com"
-        },
-        {
-            "timestamp": "2026-11-14 14:39",
-            "category": "Session",
-            "action": "Signed In (Email Confirmation Link Verified)",
-            "detail": "Authenticated as Seojeong Ro (lamvt.sep@gmail.com)"
-        },
-        {
-            "timestamp": "2026-11-14 14:39",
-            "category": "Account",
-            "action": "Registered & Verified Email (Email Confirmation Link Verified)",
-            "detail": "Seojeong Ro (SKKU-STEM Laboratory) verified email lamvt.sep@gmail.com and linked Google Sign-In."
-        }
-    ],
-    "groups": [],
-    "picture": "https://lh3.googleusercontent.com/a/ACg8ocJ5aVyRlpWSljVC2OJusM1rb39s2jSKUTJqGBroVnc79VyzoEsF=s96-c"
-},
-  "linh@gmail.com": {
-    "email": "linh@gmail.com",
-    "name": "Nguyen Thi Khanh Linh",
-    "affiliation": "Sungkyunkwan University (SKKU)",
-    "academicRole": "Student",
-    "status": "Active",
-    "authProvider": "Email + Google Linked",
-    "googleLinked": true,
-    "googleEmail": "linh@gmail.com",
-    "passwordPlainHint": "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",
-    "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
-    "groups": [
-        "grp_dft_team_gun1"
-    ],
-    "registeredAt": "2026-11-16 05:05",
-    "lastLoginAt": "2026-11-16 05:28",
-    "lastUpdatedAt": "2026-11-16 05:47",
-    "updatedAtMs": 1794808057951,
-    "workspace": {
-        "papers": [
-            {
-                "id": 1794807682082,
-                "doi": "10.1038/s41467-022-28133-x",
-                "title": "Antisite defect qubits in monolayer transition metal dichalcogenides",
-                "authors": "Jeng-Yuan Tsai, Jinbo Pan, Hsin Lin, Arun Bansil, Qimin Yan",
-                "journal": "Nature Communications",
-                "year": 2022,
-                "volume": "13",
-                "pages": "",
-                "abstract": "Abstract\n                  \n                    Being atomically thin and amenable to external controls, two-dimensional (2D) materials offer a new paradigm for the realization of patterned qubit fabrication and operation at room temperature for quantum information sciences applications. Here we show that the antisite defect in 2D transition metal dichalcogenides (TMDs) can provide a controllable solid-state spin qubit system. Using high-throughput atomistic simulations, we identify several neutral antisite defects in TMDs that lie deep in the bulk band gap and host a paramagnetic triplet ground state. Our in-depth analysis reveals the presence of optical transitions and triplet-singlet intersystem crossing processes for fingerprinting these defect qubits. As an illustrative example, we discuss the initialization and readout principles of an antisite qubit in WS\n                    2\n                    , which is expected to be stable against interlayer interactions in a multilayer structure for qubit isolation and protection in future qubit-based devices. Our study opens a new pathway for creating scalable, room-temperature spin qubits in 2D TMDs.",
-                "citation_count": 74,
-                "material_system": "Perovskite / 2D Material",
-                "synthesis_method": "First-principles DFT",
-                "characterization_tags": "DFT, VASP, XRD",
-                "status": "To Read",
-                "notes": "Good reference for antisite defects in TMDs.",
-                "in_weekly_report": 0,
-                "visibility": "Public",
-                "allowed_users": [],
-                "allowed_groups": []
-            },
-            {
-                "id": 1794807682084,
-                "doi": "10.1038/s41467-026-71890-2",
-                "title": "Stabilization of sliding ferroelectricity through exciton condensation",
-                "authors": "Matteo D\u2019Alessio, Daniele Varsano, Elisa Molinari, Massimo Rontani",
-                "journal": "Nature Communications",
-                "year": 2026,
-                "volume": "17",
-                "pages": "",
-                "abstract": "",
-                "citation_count": 0,
-                "material_system": "Perovskite / 2D Material",
-                "synthesis_method": "First-principles DFT",
-                "characterization_tags": "DFT, VASP, XRD",
-                "status": "To Read",
-                "notes": "",
-                "in_weekly_report": 0,
-                "visibility": "Private",
-                "allowed_users": [],
-                "allowed_groups": []
-            },
-            {
-                "id": 1794807682085,
-                "doi": "10.1038/s41467-025-67240-3",
-                "title": "Sliding ferroelectric metal with ferrimagnetism",
-                "authors": "Zhenzhou Guo, Shifeng Qian, Xiaodong Zhou, Wenhong Wang, Zhenxiang Cheng",
-                "journal": "Nature Communications",
-                "year": 2025,
-                "volume": "17",
-                "pages": "",
-                "abstract": "",
-                "citation_count": 17,
-                "material_system": "Perovskite / 2D Material",
-                "synthesis_method": "First-principles DFT",
-                "characterization_tags": "DFT, VASP, XRD",
-                "status": "To Read",
-                "notes": "",
-                "in_weekly_report": 0,
-                "visibility": "Private",
-                "allowed_users": [],
-                "allowed_groups": []
-            }
-        ],
-        "structures": [
-            {
-                "name": "MoSi2N2P2 Janus 4",
-                "formula": "MoSi2N2P2",
-                "chemical_formula": "MoSi2N2P2",
-                "crystal_system": "Triclinic",
-                "space_group": "P1 (1)",
-                "structure_type": "2D Monolayer",
-                "mp_id": "",
-                "materials_project_id": "",
-                "a": 3.0781,
-                "b": 3.075,
-                "c": 26.912,
-                "alpha": 90.0066,
-                "beta": 90,
-                "gamma": 120.0335,
-                "volume": 220.52,
-                "natoms": 7,
-                "dft_code": "CASTEP",
-                "functional": "PBE",
-                "dft_functional": "PBE",
-                "ecut": 520,
-                "cutoff_energy": 520,
-                "kpoints": "8x8x8",
-                "bandgap": 3.2,
-                "bandgap_ev": 3.2,
-                "bandgap_type": "Direct",
-                "energy_per_atom": -6.85,
-                "total_energy_per_atom": -6.85,
-                "magnetic_state": "NM",
-                "notes": "Full-relaxed",
-                "raw_cif": "data_MoSX4\n_audit_creation_date              2026-09-16\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.0781\n_cell_length_b                    3.0750\n_cell_length_c                    26.9120\n_cell_angle_alpha                 90.0066\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0335\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo   -0.00001  -0.00002   0.50000   0.00000  Uiso   1.00\nS2     P     0.33367   0.66735   0.44115   0.00000  Uiso   1.00\nS3     P     0.33372   0.66745   0.55885   0.00000  Uiso   1.00\nSi4    Si    0.33744   0.67489   0.64121   0.00000  Uiso   1.00\nSi5    Si    0.33716   0.67432   0.35879   0.00000  Uiso   1.00\nN6     N     0.67101   0.34203   0.65897   0.00000  Uiso   1.00\nN7     N     0.67070   0.34141   0.34102   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    S3      2.380   .     S\nMo1    S2      2.380   .     S\nMo1    S3      2.379   1_445 S\nMo1    S3      2.379   1_545 S\nMo1    S2      2.379   1_445 S\nMo1    S2      2.379   1_545 S\nS2     Mo1     2.379   1_665 S\nS2     Mo1     2.379   1_565 S\nS2     Si5     2.217   .     S\nS3     Mo1     2.379   1_665 S\nS3     Mo1     2.379   1_565 S\nS3     Si4     2.217   .     S\nSi4    N6      1.839   .     S\nSi4    N6      1.839   1_565 S\nSi4    N6      1.839   1_455 S\nSi5    N7      1.839   .     S\nSi5    N7      1.839   1_565 S\nSi5    N7      1.839   1_455 S\nN6     Si4     1.839   1_545 S\nN6     Si4     1.839   1_655 S\nN7     Si5     1.839   1_545 S\nN7     Si5     1.839   1_655 S",
-                "cif_content": "data_MoSX4\n_audit_creation_date              2026-09-16\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.0781\n_cell_length_b                    3.0750\n_cell_length_c                    26.9120\n_cell_angle_alpha                 90.0066\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0335\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo   -0.00001  -0.00002   0.50000   0.00000  Uiso   1.00\nS2     P     0.33367   0.66735   0.44115   0.00000  Uiso   1.00\nS3     P     0.33372   0.66745   0.55885   0.00000  Uiso   1.00\nSi4    Si    0.33744   0.67489   0.64121   0.00000  Uiso   1.00\nSi5    Si    0.33716   0.67432   0.35879   0.00000  Uiso   1.00\nN6     N     0.67101   0.34203   0.65897   0.00000  Uiso   1.00\nN7     N     0.67070   0.34141   0.34102   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    S3      2.380   .     S\nMo1    S2      2.380   .     S\nMo1    S3      2.379   1_445 S\nMo1    S3      2.379   1_545 S\nMo1    S2      2.379   1_445 S\nMo1    S2      2.379   1_545 S\nS2     Mo1     2.379   1_665 S\nS2     Mo1     2.379   1_565 S\nS2     Si5     2.217   .     S\nS3     Mo1     2.379   1_665 S\nS3     Mo1     2.379   1_565 S\nS3     Si4     2.217   .     S\nSi4    N6      1.839   .     S\nSi4    N6      1.839   1_565 S\nSi4    N6      1.839   1_455 S\nSi5    N7      1.839   .     S\nSi5    N7      1.839   1_565 S\nSi5    N7      1.839   1_455 S\nN6     Si4     1.839   1_545 S\nN6     Si4     1.839   1_655 S\nN7     Si5     1.839   1_545 S\nN7     Si5     1.839   1_655 S",
-                "poscar_text": "MoSi2N2P2 Triclinic P1 (1)\n1.0\n       3.07810000     0.00000000     0.00000000\n      -1.53905677     2.66212871     0.00000000\n       0.00000000    -0.00358083    26.91199976\n   Mo    P   Si    N\n    1    2    2    2\nDirect\n   -0.00001000  -0.00002000   0.50000000\n    0.33367000   0.66735000   0.44115000\n    0.33372000   0.66745000   0.55885000\n    0.33744000   0.67489000   0.64121000\n    0.33716000   0.67432000   0.35879000\n    0.67101000   0.34203000   0.65897000\n    0.67070000   0.34141000   0.34102000\n",
-                "poscar_content": "MoSi2N2P2 Triclinic P1 (1)\n1.0\n       3.07810000     0.00000000     0.00000000\n      -1.53905677     2.66212871     0.00000000\n       0.00000000    -0.00358083    26.91199976\n   Mo    P   Si    N\n    1    2    2    2\nDirect\n   -0.00001000  -0.00002000   0.50000000\n    0.33367000   0.66735000   0.44115000\n    0.33372000   0.66745000   0.55885000\n    0.33744000   0.67489000   0.64121000\n    0.33716000   0.67432000   0.35879000\n    0.67101000   0.34203000   0.65897000\n    0.67070000   0.34141000   0.34102000\n",
-                "atoms": [
-                    {
-                        "element": "Mo",
-                        "label": "Mo1",
-                        "x": -1e-05,
-                        "y": -2e-05,
-                        "z": 0.5,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "P",
-                        "label": "S2",
-                        "x": 0.33367,
-                        "y": 0.66735,
-                        "z": 0.44115,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "P",
-                        "label": "S3",
-                        "x": 0.33372,
-                        "y": 0.66745,
-                        "z": 0.55885,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "Si",
-                        "label": "Si4",
-                        "x": 0.33744,
-                        "y": 0.67489,
-                        "z": 0.64121,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "Si",
-                        "label": "Si5",
-                        "x": 0.33716,
-                        "y": 0.67432,
-                        "z": 0.35879,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "N",
-                        "label": "N6",
-                        "x": 0.67101,
-                        "y": 0.34203,
-                        "z": 0.65897,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "N",
-                        "label": "N7",
-                        "x": 0.6707,
-                        "y": 0.34141,
-                        "z": 0.34102,
-                        "occupancy": 1
-                    }
-                ],
-                "in_weekly_report": 0,
-                "id": 1794807682182
-            },
-            {
-                "name": "MoSi2N2P2 Janus 3",
-                "formula": "MoSi2N2P2",
-                "chemical_formula": "MoSi2N2P2",
-                "crystal_system": "Triclinic",
-                "space_group": "P1 (1)",
-                "structure_type": "2D Monolayer",
-                "mp_id": "",
-                "materials_project_id": "",
-                "a": 3.2726,
-                "b": 3.27,
-                "c": 23.5067,
-                "alpha": 90.0103,
-                "beta": 90,
-                "gamma": 120.0266,
-                "volume": 217.79,
-                "natoms": 7,
-                "dft_code": "CASTEP",
-                "functional": "PBE",
-                "dft_functional": "PBE",
-                "ecut": 520,
-                "cutoff_energy": 520,
-                "kpoints": "8x8x8",
-                "bandgap": 3.2,
-                "bandgap_ev": 3.2,
-                "bandgap_type": "Direct",
-                "energy_per_atom": -6.85,
-                "total_energy_per_atom": -6.85,
-                "magnetic_state": "NM",
-                "notes": "Full-relaxed",
-                "raw_cif": "data_MoSX3\n_audit_creation_date              2026-09-16\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.2726\n_cell_length_b                    3.2700\n_cell_length_c                    23.5067\n_cell_angle_alpha                 90.0103\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0266\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo    0.00071   0.00143   0.50000   0.00000  Uiso   1.00\nS2     N     0.33420   0.66840   0.44897   0.00000  Uiso   1.00\nS3     N     0.33427   0.66855   0.55102   0.00000  Uiso   1.00\nSi4    Si    0.33689   0.67379   0.62531   0.00000  Uiso   1.00\nSi5    Si    0.33665   0.67331   0.37469   0.00000  Uiso   1.00\nP6     P     0.67064   0.34130   0.67269   0.00000  Uiso   1.00\nP7     P     0.67032   0.34066   0.32731   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nS2     Si5     1.746   .     S\nS3     Si4     1.746   .     S\nSi4    P6      2.192   .     S\nSi4    P6      2.193   1_565 S\nSi4    P6      2.192   1_455 S\nSi5    P7      2.192   .     S\nSi5    P7      2.193   1_565 S\nSi5    P7      2.192   1_455 S\nP6     Si4     2.193   1_545 S\nP6     Si4     2.192   1_655 S\nP7     Si5     2.193   1_545 S\nP7     Si5     2.192   1_655 S",
-                "cif_content": "data_MoSX3\n_audit_creation_date              2026-09-16\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.2726\n_cell_length_b                    3.2700\n_cell_length_c                    23.5067\n_cell_angle_alpha                 90.0103\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0266\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo    0.00071   0.00143   0.50000   0.00000  Uiso   1.00\nS2     N     0.33420   0.66840   0.44897   0.00000  Uiso   1.00\nS3     N     0.33427   0.66855   0.55102   0.00000  Uiso   1.00\nSi4    Si    0.33689   0.67379   0.62531   0.00000  Uiso   1.00\nSi5    Si    0.33665   0.67331   0.37469   0.00000  Uiso   1.00\nP6     P     0.67064   0.34130   0.67269   0.00000  Uiso   1.00\nP7     P     0.67032   0.34066   0.32731   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nS2     Si5     1.746   .     S\nS3     Si4     1.746   .     S\nSi4    P6      2.192   .     S\nSi4    P6      2.193   1_565 S\nSi4    P6      2.192   1_455 S\nSi5    P7      2.192   .     S\nSi5    P7      2.193   1_565 S\nSi5    P7      2.192   1_455 S\nP6     Si4     2.193   1_545 S\nP6     Si4     2.192   1_655 S\nP7     Si5     2.193   1_545 S\nP7     Si5     2.192   1_655 S",
-                "poscar_text": "MoSi2N2P2 Triclinic P1 (1)\n1.0\n       3.27260000     0.00000000     0.00000000\n      -1.63631456     2.83114370     0.00000000\n       0.00000000    -0.00488081    23.50669949\n   Mo    N   Si    P\n    1    2    2    2\nDirect\n    0.00071000   0.00143000   0.50000000\n    0.33420000   0.66840000   0.44897000\n    0.33427000   0.66855000   0.55102000\n    0.33689000   0.67379000   0.62531000\n    0.33665000   0.67331000   0.37469000\n    0.67064000   0.34130000   0.67269000\n    0.67032000   0.34066000   0.32731000\n",
-                "poscar_content": "MoSi2N2P2 Triclinic P1 (1)\n1.0\n       3.27260000     0.00000000     0.00000000\n      -1.63631456     2.83114370     0.00000000\n       0.00000000    -0.00488081    23.50669949\n   Mo    N   Si    P\n    1    2    2    2\nDirect\n    0.00071000   0.00143000   0.50000000\n    0.33420000   0.66840000   0.44897000\n    0.33427000   0.66855000   0.55102000\n    0.33689000   0.67379000   0.62531000\n    0.33665000   0.67331000   0.37469000\n    0.67064000   0.34130000   0.67269000\n    0.67032000   0.34066000   0.32731000\n",
-                "atoms": [
-                    {
-                        "element": "Mo",
-                        "label": "Mo1",
-                        "x": 0.00071,
-                        "y": 0.00143,
-                        "z": 0.5,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "N",
-                        "label": "S2",
-                        "x": 0.3342,
-                        "y": 0.6684,
-                        "z": 0.44897,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "N",
-                        "label": "S3",
-                        "x": 0.33427,
-                        "y": 0.66855,
-                        "z": 0.55102,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "Si",
-                        "label": "Si4",
-                        "x": 0.33689,
-                        "y": 0.67379,
-                        "z": 0.62531,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "Si",
-                        "label": "Si5",
-                        "x": 0.33665,
-                        "y": 0.67331,
-                        "z": 0.37469,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "P",
-                        "label": "P6",
-                        "x": 0.67064,
-                        "y": 0.3413,
-                        "z": 0.67269,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "P",
-                        "label": "P7",
-                        "x": 0.67032,
-                        "y": 0.34066,
-                        "z": 0.32731,
-                        "occupancy": 1
-                    }
-                ],
-                "in_weekly_report": 0,
-                "id": 1794807682183
-            },
-            {
-                "name": "MoSi2N2P2 Janus 2",
-                "formula": "MoSi2N2P2",
-                "chemical_formula": "MoSi2N2P2",
-                "crystal_system": "Triclinic",
-                "space_group": "P1 (1)",
-                "structure_type": "2D Monolayer",
-                "mp_id": "",
-                "materials_project_id": "",
-                "a": 3.1789,
-                "b": 3.1741,
-                "c": 25.0782,
-                "alpha": 90.0037,
-                "beta": 90,
-                "gamma": 120.0503,
-                "volume": 219.03,
-                "natoms": 7,
-                "dft_code": "CASTEP",
-                "functional": "PBE",
-                "dft_functional": "PBE",
-                "ecut": 520,
-                "cutoff_energy": 520,
-                "kpoints": "8x8x8",
-                "bandgap": 3.2,
-                "bandgap_ev": 3.2,
-                "bandgap_type": "Direct",
-                "energy_per_atom": -6.85,
-                "total_energy_per_atom": -6.85,
-                "magnetic_state": "NM",
-                "notes": "Full-relaxed",
-                "raw_cif": "data_MoSX2\n_audit_creation_date              2026-09-16\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.1789\n_cell_length_b                    3.1741\n_cell_length_c                    25.0782\n_cell_angle_alpha                 90.0037\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0503\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo    0.00040   0.00082   0.49324   0.00000  Uiso   1.00\nS2     N     0.33397   0.66795   0.44470   0.00000  Uiso   1.00\nS3     P     0.33401   0.66803   0.55415   0.00000  Uiso   1.00\nSi4    Si    0.33728   0.67457   0.64317   0.00000  Uiso   1.00\nSi5    Si    0.33669   0.67338   0.37569   0.00000  Uiso   1.00\nN6     N     0.67077   0.34154   0.65998   0.00000  Uiso   1.00\nP7     P     0.67057   0.34115   0.32906   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    S3      2.386   .     S\nMo1    S2      2.200   .     S\nMo1    S3      2.387   1_445 S\nMo1    S3      2.387   1_545 S\nMo1    S2      2.201   1_445 S\nMo1    S2      2.201   1_545 S\nS2     Mo1     2.201   1_665 S\nS2     Mo1     2.201   1_565 S\nS2     Si5     1.731   .     S\nS3     Mo1     2.387   1_665 S\nS3     Mo1     2.387   1_565 S\nS3     Si4     2.233   .     S\nSi4    N6      1.882   .     S\nSi4    N6      1.880   1_565 S\nSi4    N6      1.882   1_455 S\nSi5    P7      2.174   .     S\nSi5    P7      2.176   1_565 S\nSi5    P7      2.174   1_455 S\nN6     Si4     1.880   1_545 S\nN6     Si4     1.882   1_655 S\nP7     Si5     2.176   1_545 S\nP7     Si5     2.174   1_655 S",
-                "cif_content": "data_MoSX2\n_audit_creation_date              2026-09-16\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.1789\n_cell_length_b                    3.1741\n_cell_length_c                    25.0782\n_cell_angle_alpha                 90.0037\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0503\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo    0.00040   0.00082   0.49324   0.00000  Uiso   1.00\nS2     N     0.33397   0.66795   0.44470   0.00000  Uiso   1.00\nS3     P     0.33401   0.66803   0.55415   0.00000  Uiso   1.00\nSi4    Si    0.33728   0.67457   0.64317   0.00000  Uiso   1.00\nSi5    Si    0.33669   0.67338   0.37569   0.00000  Uiso   1.00\nN6     N     0.67077   0.34154   0.65998   0.00000  Uiso   1.00\nP7     P     0.67057   0.34115   0.32906   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    S3      2.386   .     S\nMo1    S2      2.200   .     S\nMo1    S3      2.387   1_445 S\nMo1    S3      2.387   1_545 S\nMo1    S2      2.201   1_445 S\nMo1    S2      2.201   1_545 S\nS2     Mo1     2.201   1_665 S\nS2     Mo1     2.201   1_565 S\nS2     Si5     1.731   .     S\nS3     Mo1     2.387   1_665 S\nS3     Mo1     2.387   1_565 S\nS3     Si4     2.233   .     S\nSi4    N6      1.882   .     S\nSi4    N6      1.880   1_565 S\nSi4    N6      1.882   1_455 S\nSi5    P7      2.174   .     S\nSi5    P7      2.176   1_565 S\nSi5    P7      2.174   1_455 S\nN6     Si4     1.880   1_545 S\nN6     Si4     1.882   1_655 S\nP7     Si5     2.176   1_545 S\nP7     Si5     2.174   1_655 S",
-                "poscar_text": "MoSi2N2P2 Triclinic P1 (1)\n1.0\n       3.17890000     0.00000000     0.00000000\n      -1.58946261     2.74745690     0.00000000\n       0.00000000    -0.00187096    25.07819993\n   Mo    N    P   Si\n    1    2    2    2\nDirect\n    0.00040000   0.00082000   0.49324000\n    0.33397000   0.66795000   0.44470000\n    0.67077000   0.34154000   0.65998000\n    0.33401000   0.66803000   0.55415000\n    0.67057000   0.34115000   0.32906000\n    0.33728000   0.67457000   0.64317000\n    0.33669000   0.67338000   0.37569000\n",
-                "poscar_content": "MoSi2N2P2 Triclinic P1 (1)\n1.0\n       3.17890000     0.00000000     0.00000000\n      -1.58946261     2.74745690     0.00000000\n       0.00000000    -0.00187096    25.07819993\n   Mo    N    P   Si\n    1    2    2    2\nDirect\n    0.00040000   0.00082000   0.49324000\n    0.33397000   0.66795000   0.44470000\n    0.67077000   0.34154000   0.65998000\n    0.33401000   0.66803000   0.55415000\n    0.67057000   0.34115000   0.32906000\n    0.33728000   0.67457000   0.64317000\n    0.33669000   0.67338000   0.37569000\n",
-                "atoms": [
-                    {
-                        "element": "Mo",
-                        "label": "Mo1",
-                        "x": 0.0004,
-                        "y": 0.00082,
-                        "z": 0.49324,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "N",
-                        "label": "S2",
-                        "x": 0.33397,
-                        "y": 0.66795,
-                        "z": 0.4447,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "P",
-                        "label": "S3",
-                        "x": 0.33401,
-                        "y": 0.66803,
-                        "z": 0.55415,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "Si",
-                        "label": "Si4",
-                        "x": 0.33728,
-                        "y": 0.67457,
-                        "z": 0.64317,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "Si",
-                        "label": "Si5",
-                        "x": 0.33669,
-                        "y": 0.67338,
-                        "z": 0.37569,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "N",
-                        "label": "N6",
-                        "x": 0.67077,
-                        "y": 0.34154,
-                        "z": 0.65998,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "P",
-                        "label": "P7",
-                        "x": 0.67057,
-                        "y": 0.34115,
-                        "z": 0.32906,
-                        "occupancy": 1
-                    }
-                ],
-                "in_weekly_report": 0,
-                "id": 1794807682184
-            },
-            {
-                "name": "MoSi2N2P2 Janus 1",
-                "formula": "MoSi2N2P2",
-                "chemical_formula": "MoSi2N2P2",
-                "crystal_system": "Triclinic",
-                "space_group": "P1 (1)",
-                "structure_type": "2D Monolayer",
-                "mp_id": "",
-                "materials_project_id": "",
-                "a": 3.1703,
-                "b": 3.17,
-                "c": 25.1509,
-                "alpha": 89.9956,
-                "beta": 90.0001,
-                "gamma": 120.0031,
-                "volume": 218.89,
-                "natoms": 7,
-                "dft_code": "CASTEP",
-                "functional": "PBE",
-                "dft_functional": "PBE",
-                "ecut": 520,
-                "cutoff_energy": 520,
-                "kpoints": "8x8x8",
-                "bandgap": 3.2,
-                "bandgap_ev": 3.2,
-                "bandgap_type": "Direct",
-                "energy_per_atom": -6.85,
-                "total_energy_per_atom": -6.85,
-                "magnetic_state": "NM",
-                "notes": "Full-relaxed",
-                "raw_cif": "data_MoSX1\n_audit_creation_date              2026-09-16\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.1703\n_cell_length_b                    3.1700\n_cell_length_c                    25.1509\n_cell_angle_alpha                 89.9956\n_cell_angle_beta                  90.0001\n_cell_angle_gamma                 120.0031\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo    0.00223   0.00447   0.51497   0.00000  Uiso   1.00\nS2     P     0.33562   0.67124   0.45386   0.00000  Uiso   1.00\nS3     N     0.33555   0.67111   0.56286   0.00000  Uiso   1.00\nSi4    Si    0.33578   0.67158   0.63266   0.00000  Uiso   1.00\nSi5    Si    0.33602   0.67204   0.36598   0.00000  Uiso   1.00\nN6     N     0.66910   0.33821   0.64968   0.00000  Uiso   1.00\nP7     P     0.66939   0.33879   0.31998   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    S2      2.390   .     S\nMo1    S2      2.390   1_445 S\nMo1    S2      2.390   1_545 S\nMo1    S3      2.191   .     S\nMo1    S3      2.191   1_445 S\nMo1    S3      2.191   1_545 S\nS2     Mo1     2.390   1_665 S\nS2     Mo1     2.390   1_565 S\nS2     Si5     2.210   .     S\nS3     Si4     1.755   .     S\nS3     Mo1     2.191   1_665 S\nS3     Mo1     2.191   1_565 S\nSi4    N6      1.880   .     S\nSi4    N6      1.880   1_565 S\nSi4    N6      1.880   1_455 S\nSi5    P7      2.165   .     S\nSi5    P7      2.165   1_565 S\nSi5    P7      2.165   1_455 S\nN6     Si4     1.880   1_545 S\nN6     Si4     1.880   1_655 S\nP7     Si5     2.165   1_545 S\nP7     Si5     2.165   1_655 S",
-                "cif_content": "data_MoSX1\n_audit_creation_date              2026-09-16\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.1703\n_cell_length_b                    3.1700\n_cell_length_c                    25.1509\n_cell_angle_alpha                 89.9956\n_cell_angle_beta                  90.0001\n_cell_angle_gamma                 120.0031\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo    0.00223   0.00447   0.51497   0.00000  Uiso   1.00\nS2     P     0.33562   0.67124   0.45386   0.00000  Uiso   1.00\nS3     N     0.33555   0.67111   0.56286   0.00000  Uiso   1.00\nSi4    Si    0.33578   0.67158   0.63266   0.00000  Uiso   1.00\nSi5    Si    0.33602   0.67204   0.36598   0.00000  Uiso   1.00\nN6     N     0.66910   0.33821   0.64968   0.00000  Uiso   1.00\nP7     P     0.66939   0.33879   0.31998   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    S2      2.390   .     S\nMo1    S2      2.390   1_445 S\nMo1    S2      2.390   1_545 S\nMo1    S3      2.191   .     S\nMo1    S3      2.191   1_445 S\nMo1    S3      2.191   1_545 S\nS2     Mo1     2.390   1_665 S\nS2     Mo1     2.390   1_565 S\nS2     Si5     2.210   .     S\nS3     Si4     1.755   .     S\nS3     Mo1     2.191   1_665 S\nS3     Mo1     2.191   1_565 S\nSi4    N6      1.880   .     S\nSi4    N6      1.880   1_565 S\nSi4    N6      1.880   1_455 S\nSi5    P7      2.165   .     S\nSi5    P7      2.165   1_565 S\nSi5    P7      2.165   1_455 S\nN6     Si4     1.880   1_545 S\nN6     Si4     1.880   1_655 S\nP7     Si5     2.165   1_545 S\nP7     Si5     2.165   1_655 S",
-                "poscar_text": "MoSi2N2P2 Triclinic P1 (1)\n1.0\n       3.17030000     0.00000000     0.00000000\n      -1.58514853     2.74521477     0.00000000\n      -0.00004390     0.00220497    25.15089990\n   Mo    P    N   Si\n    1    2    2    2\nDirect\n    0.00223000   0.00447000   0.51497000\n    0.33562000   0.67124000   0.45386000\n    0.66939000   0.33879000   0.31998000\n    0.33555000   0.67111000   0.56286000\n    0.66910000   0.33821000   0.64968000\n    0.33578000   0.67158000   0.63266000\n    0.33602000   0.67204000   0.36598000\n",
-                "poscar_content": "MoSi2N2P2 Triclinic P1 (1)\n1.0\n       3.17030000     0.00000000     0.00000000\n      -1.58514853     2.74521477     0.00000000\n      -0.00004390     0.00220497    25.15089990\n   Mo    P    N   Si\n    1    2    2    2\nDirect\n    0.00223000   0.00447000   0.51497000\n    0.33562000   0.67124000   0.45386000\n    0.66939000   0.33879000   0.31998000\n    0.33555000   0.67111000   0.56286000\n    0.66910000   0.33821000   0.64968000\n    0.33578000   0.67158000   0.63266000\n    0.33602000   0.67204000   0.36598000\n",
-                "atoms": [
-                    {
-                        "element": "Mo",
-                        "label": "Mo1",
-                        "x": 0.00223,
-                        "y": 0.00447,
-                        "z": 0.51497,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "P",
-                        "label": "S2",
-                        "x": 0.33562,
-                        "y": 0.67124,
-                        "z": 0.45386,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "N",
-                        "label": "S3",
-                        "x": 0.33555,
-                        "y": 0.67111,
-                        "z": 0.56286,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "Si",
-                        "label": "Si4",
-                        "x": 0.33578,
-                        "y": 0.67158,
-                        "z": 0.63266,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "Si",
-                        "label": "Si5",
-                        "x": 0.33602,
-                        "y": 0.67204,
-                        "z": 0.36598,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "N",
-                        "label": "N6",
-                        "x": 0.6691,
-                        "y": 0.33821,
-                        "z": 0.64968,
-                        "occupancy": 1
-                    },
-                    {
-                        "element": "P",
-                        "label": "P7",
-                        "x": 0.66939,
-                        "y": 0.33879,
-                        "z": 0.31998,
-                        "occupancy": 1
-                    }
-                ],
-                "in_weekly_report": 0,
-                "id": 1794807682185
-            }
-        ],
-        "schedule": [],
-        "expReportRows": [
-            {
-                "sample_id": "MoSi2N2P2",
-                "material": "CASTEP (PBE)",
-                "conditions": "Eg = 3.2 eV (Direct)",
-                "findings": "Full-relaxed"
-            },
-            {
-                "sample_id": "MoSi2N2P2",
-                "material": "CASTEP (PBE)",
-                "conditions": "Eg = 3.2 eV (Direct)",
-                "findings": "Full-relaxed"
-            },
-            {
-                "sample_id": "MoSi2N2P2",
-                "material": "CASTEP (PBE)",
-                "conditions": "Eg = 3.2 eV (Direct)",
-                "findings": "Full-relaxed"
-            },
-            {
-                "sample_id": "MoSi2N2P2",
-                "material": "CASTEP (PBE)",
-                "conditions": "Eg = 3.2 eV (Direct)",
-                "findings": "Full-relaxed"
-            }
-        ],
-        "litReportRows": [
-            {
-                "title": "Y-decorated MoS2 monolayer for promising hydrogen storage: A DFT study",
-                "journal": "International Journal of Hydrogen Energy (2022) | DOI: 10.1016/j.ijhydene.2022.01.236",
-                "material": "Perovskite / 2D Material",
-                "takeaway": ""
-            }
-        ]
-    },
-    "activityLog": [
-        {
-            "timestamp": "2026-11-16 05:42",
-            "category": "Workspace",
-            "action": "Imported Sample Library",
-            "detail": "Imported 0 reference papers and 0 crystal structures."
-        },
-        {
-            "timestamp": "2026-11-16 05:41",
-            "category": "Workspace",
-            "action": "Imported Sample Library",
-            "detail": "Imported 0 reference papers and 0 crystal structures."
-        },
-        {
-            "timestamp": "2026-11-16 05:41",
-            "category": "Workspace",
-            "action": "Imported Sample Library",
-            "detail": "Imported 0 reference papers and 0 crystal structures."
-        },
-        {
-            "timestamp": "2026-11-16 05:41",
-            "category": "Workspace",
-            "action": "Imported Sample Library",
-            "detail": "Imported 3 reference papers and 4 crystal structures."
-        },
-        {
-            "timestamp": "2026-11-16 05:28",
-            "category": "Session",
-            "action": "Signed In (Email & Password)",
-            "detail": "Authenticated as Nguyen Thi Khanh Linh (linh@gmail.com)"
-        },
-        {
-            "timestamp": "2026-11-16 05:25",
-            "category": "Session",
-            "action": "Signed In (Email & Password)",
-            "detail": "Authenticated as Nguyen Thi Khanh Linh (linh@gmail.com)"
-        },
-        {
-            "timestamp": "2026-11-16 05:17",
-            "category": "Session",
-            "action": "Signed In (Password Reset & Sign-In)",
-            "detail": "Authenticated as Nguyen Thi Khanh Linh (linh@gmail.com)"
-        },
-        {
-            "timestamp": "2026-11-16 05:17",
-            "category": "Security",
-            "action": "Self-Service Password Reset",
-            "detail": "User verified email (linh@gmail.com) via 6-digit code and set a new password."
-        },
-        {
-            "timestamp": "2026-11-16 05:06",
-            "category": "Session",
-            "action": "Signed In (Email & Password)",
-            "detail": "Authenticated as Nguyen Thi Khanh Linh (linh@gmail.com)"
-        },
-        {
-            "timestamp": "2026-11-16 05:05",
-            "category": "Account",
-            "action": "Created by Administrator",
-            "detail": "Administrator created personal account for Nguyen Thi Khanh Linh (linh@gmail.com)."
-        }
-    ],
-    "passwordlessGoogle": false,
-    "emailVerified": true
-},
-  "jhpark.matsci@skku.edu": {
-    email: "jhpark.matsci@skku.edu",
-    name: "Dr. Ji-Hoon Park",
-    affiliation: "Sungkyunkwan University (SKKU) — Energy Science",
-    academicRole: "Postdoctoral Researcher",
-    authProvider: "Google Account Linked",
-    googleLinked: true,
-    googleEmail: "jhpark.matsci@gmail.com",
-    passwordPlainHint: "skku2026",
-    passwordHash: "e5acba84c164be5493b03ab87712975cdaf2149d43c81df395eb07f8a1057264",
-    registeredAt: "2026-11-10 09:15",
-    lastLoginAt: "2026-11-14 10:20",
-    lastUpdatedAt: "2026-11-14 10:42",
-    workspace: {
-      schedule: [
-        {
-          id: 90101,
-          title: "VASP Hybrid HSE06 Bandgap Calculation — CsPbI3 Slab",
-          event_type: "Electrochemistry / Battery Testing",
-          instrument_or_location: "SKKU HPC Cluster (Node 04)",
-          start_date: "2026-11-16",
-          start_time: "09:30",
-          end_time: "12:30",
-          priority: "High",
-          status: "Scheduled",
-          sample_id: "CsPbI3-Slab-01",
-          description: "Surface termination relaxation and dipole correction for perovskite solar cell interface.",
-          in_weekly_report: 1
-        },
-        {
-          id: 90102,
-          title: "In-situ Grazing Incidence XRD Beamtime Meeting",
-          event_type: "Group Meeting / PI Meeting",
-          instrument_or_location: "N-Center Room 86412",
-          start_date: "2026-11-18",
-          start_time: "14:00",
-          end_time: "15:30",
-          priority: "High",
-          status: "In Progress",
-          sample_id: "GIXRD-2026B",
-          description: "Review synchrotron beamtime schedule and sample holder geometry.",
-          in_weekly_report: 1
-        }
-      ],
-      papers: [
-        {
-          id: 90201,
-          doi: "10.1038/s41560-023-01245-w",
-          title: "Surface passivation of halide perovskite thin films for high-stability photovoltaics",
-          authors: "Ji-Hoon Park, Seong Chu Lim, Min-Seo Kim",
-          journal: "Nature Energy",
-          year: 2025,
-          material_system: "CsPbI3 / 2D Perovskite Passivation",
-          synthesis_method: "Spin-Coating + First-principles DFT",
-          characterization_tags: "DFT, VASP, GIWAXS, XPS",
-          status: "Key Reference",
-          notes: "Reference energy alignment values for octahedral tilting in CsPbI3.",
-          abstract: "Comprehensive investigation of surface ligand binding energies and defect tolerance in inorganic halide perovskites.",
-          in_weekly_report: 1
-        }
-      ],
-      structures: [
-        {
-          id: 90301,
-          name: "Cubic Halide Perovskite CsPbI3 (α-phase)",
-          chemical_formula: "CsPbI3",
-          crystal_system: "Cubic",
-          space_group: "Pm-3m (221)",
-          structure_type: "Bulk 3D",
-          a: 6.289,
-          b: 6.289,
-          c: 6.289,
-          alpha: 90,
-          beta: 90,
-          gamma: 90,
-          volume: 248.74,
-          bandgap_ev: 1.73,
-          bandgap_type: "Direct",
-          formation_energy_ev: -1.42,
-          dft_code: "VASP 6.4",
-          dft_functional: "HSE06 + SOC",
-          kpoints_mesh: "6x6x6",
-          encut_ev: 500,
-          notes: "Personal workspace model by Dr. Ji-Hoon Park — α-CsPbI3 unit cell.",
-          atoms: [
-            { element: "Cs", x: 0.0, y: 0.0, z: 0.0 },
-            { element: "Pb", x: 0.5, y: 0.5, z: 0.5 },
-            { element: "I", x: 0.5, y: 0.5, z: 0.0 },
-            { element: "I", x: 0.5, y: 0.0, z: 0.5 },
-            { element: "I", x: 0.0, y: 0.5, z: 0.5 }
-          ]
-        }
-      ],
-      expReportRows: [
-        {
-          sample_id: "CsPbI3-HSE06",
-          material: "VASP 6.4 (HSE06 + SOC)",
-          conditions: "Eg = 1.73 eV (Direct at R-point)",
-          findings: "Spin-orbit coupling reduces Pb-6p conduction band minimum by 0.65 eV."
-        }
-      ],
-      litReportRows: [
-        {
-          title: "Surface passivation of halide perovskite thin films for high-stability photovoltaics",
-          journal: "Nature Energy (2025)",
-          material: "CsPbI3",
-          takeaway: "2D Ruddlesden-Popper capping layer suppresses iodide vacancy migration."
-        }
-      ]
-    },
-    activityLog: [
-      {
-        timestamp: "2026-11-14 10:42",
-        category: "Crystal Structures",
-        action: "Added Structure",
-        detail: "Uploaded Cubic Halide Perovskite CsPbI3 (Pm-3m, Eg = 1.73 eV)"
-      },
-      {
-        timestamp: "2026-11-14 10:30",
-        category: "Calendar",
-        action: "Scheduled Event",
-        detail: "VASP Hybrid HSE06 Bandgap Calculation — CsPbI3 Slab (2026-11-16)"
-      },
-      {
-        timestamp: "2026-11-14 10:22",
-        category: "References",
-        action: "Imported Paper via DOI",
-        detail: "10.1038/s41560-023-01245-w — Nature Energy (2025)"
-      },
-      {
-        timestamp: "2026-11-10 09:15",
-        category: "Account",
-        action: "Account Registered & Linked with Google",
-        detail: "Linked Google Account jhpark.matsci@gmail.com"
-      }
-    ]
-  },
-  "minseo.kim@gmail.com": {
-    email: "minseo.kim@gmail.com",
-    name: "Min-Seo Kim",
-    affiliation: "KAIST — Department of Materials Science & Engineering",
-    academicRole: "Ph.D. Candidate",
-    authProvider: "Google Account",
-    googleLinked: true,
-    googleEmail: "minseo.kim@gmail.com",
-    passwordPlainHint: "kaist2026",
-    passwordHash: "plain:kaist2026",
-    registeredAt: "2026-11-12 14:05",
-    lastLoginAt: "2026-11-14 09:50",
-    lastUpdatedAt: "2026-11-14 10:05",
-    workspace: {
-      schedule: [
-        {
-          id: 90401,
-          title: "Solid-State Electrolyte LLZTO Pellet Sintering & EIS",
-          event_type: "Furnace Synthesis / Calcination",
-          instrument_or_location: "Tube Furnace #2 & BioLogic VMP3",
-          start_date: "2026-11-17",
-          start_time: "10:00",
-          end_time: "16:00",
-          priority: "High",
-          status: "Scheduled",
-          sample_id: "LLZTO-1150C",
-          description: "Sintering Ta-doped LLZO at 1150 °C in MgO crucible with mother powder.",
-          in_weekly_report: 1
-        }
-      ],
-      papers: [
-        {
-          id: 90501,
-          doi: "10.1021/acsenergylett.4c00812",
-          title: "Grain boundary engineering in garnet-type solid-state electrolytes for lithium metal batteries",
-          authors: "Min-Seo Kim, H. J. Ryu",
-          journal: "ACS Energy Letters",
-          year: 2025,
-          material_system: "Li6.4La3Zr1.4Ta0.6O12 (LLZTO)",
-          synthesis_method: "Solid-State Reaction + ALD",
-          characterization_tags: "XRD, EIS, SEM, XPS",
-          status: "Reading",
-          notes: "Critical current density reaches 2.1 mA/cm2 after Li3PO4 interface modification.",
-          abstract: "Interfacial impedance reduction between garnet electrolyte and Li metal anode via ultrathin ALD coating.",
-          in_weekly_report: 1
-        }
-      ],
-      structures: [
-        {
-          id: 90601,
-          name: "2D Titanium Carbide MXene Monolayer (Ti3C2O2)",
-          chemical_formula: "Ti3C2O2",
-          crystal_system: "Hexagonal",
-          space_group: "P-3m1 (164)",
-          structure_type: "2D Monolayer",
-          a: 3.071,
-          b: 3.071,
-          c: 20.0,
-          alpha: 90,
-          beta: 90,
-          gamma: 120,
-          volume: 163.35,
-          bandgap_ev: 0.0,
-          bandgap_type: "Metallic",
-          formation_energy_ev: -2.85,
-          dft_code: "VASP 6.4",
-          dft_functional: "PBE + DFT-D3",
-          kpoints_mesh: "12x12x1",
-          encut_ev: 520,
-          notes: "Oxygen-terminated Ti3C2O2 MXene slab with 20 Å vacuum layer.",
-          atoms: [
-            { element: "Ti", x: 0.0, y: 0.0, z: 0.5 },
-            { element: "Ti", x: 0.3333, y: 0.6667, z: 0.618 },
-            { element: "Ti", x: 0.6667, y: 0.3333, z: 0.382 },
-            { element: "C", x: 0.6667, y: 0.3333, z: 0.558 },
-            { element: "C", x: 0.3333, y: 0.6667, z: 0.442 },
-            { element: "O", x: 0.0, y: 0.0, z: 0.675 },
-            { element: "O", x: 0.0, y: 0.0, z: 0.325 }
-          ]
-        }
-      ],
-      expReportRows: [
-        {
-          sample_id: "Ti3C2O2-Slab",
-          material: "VASP (PBE-D3)",
-          conditions: "Metallic DOS at EF",
-          findings: "Li-ion diffusion barrier on O-terminated Ti3C2O2 is 0.18 eV."
-        }
-      ],
-      litReportRows: [
-        {
-          title: "Grain boundary engineering in garnet-type solid-state electrolytes",
-          journal: "ACS Energy Letters (2025)",
-          material: "LLZTO",
-          takeaway: "Eliminates Li2CO3 surface contaminants via thermal acid etching."
-        }
-      ]
-    },
-    activityLog: [
-      {
-        timestamp: "2026-11-14 10:05",
-        category: "Calendar",
-        action: "Scheduled Event",
-        detail: "Solid-State Electrolyte LLZTO Pellet Sintering & EIS (2026-11-17)"
-      },
-      {
-        timestamp: "2026-11-14 09:55",
-        category: "Crystal Structures",
-        action: "Added Structure",
-        detail: "2D Titanium Carbide MXene Monolayer Ti3C2O2 (P-3m1)"
-      },
-      {
-        timestamp: "2026-11-12 14:05",
-        category: "Account",
-        action: "Signed in with Google Account",
-        detail: "Google OAuth Linked: minseo.kim@gmail.com"
-      }
-    ]
-  }
-};
+const DEFAULT_USERS_REGISTRY = {};
 
 // ============================================================================
 // Default User Groups Registry & Cloud Sync Engine
 // ============================================================================
 
-const DEFAULT_USER_GROUPS = {
-  "grp_skku_lab": {
-    id: "grp_skku_lab",
-    name: "SKKU Energy Transport Lab",
-    description: "Sungkyunkwan University Energy Science & Materials Modeling Members",
-    color: "blue",
-    members: ["jhpark.matsci@skku.edu", "ssk@gmail.com"],
-    updatedAtMs: 1700000000000
-  },
-  "grp_dft_team": {
-    id: "grp_dft_team",
-    name: "DFT & Computational Team",
-    description: "VASP, Quantum ESPRESSO & First-Principles Simulation Group",
-    color: "purple",
-    members: ["jhpark.matsci@skku.edu", "las@gmail.com"],
-    updatedAtMs: 1700000000000
-  },
-  "grp_external_collab": {
-    id: "grp_external_collab",
-    name: "External Collaborators",
-    description: "KAIST & Partner University Research Collaborators",
-    color: "teal",
-    members: ["minseo.kim@gmail.com"],
-    updatedAtMs: 1700000000000
-  }
-};
+const DEFAULT_USER_GROUPS = {};
 
 function getDeletedGroupsSet() {
   try {
@@ -1975,34 +773,55 @@ function decodeBase64Utf8(b64) {
   return new TextDecoder("utf-8").decode(bytes);
 }
 
-function getDeletedUsersSet() {
+function getDeletedUsersMap() {
   try {
-    const raw = localStorage.getItem("matsci_deleted_users_v1");
-    const arr = raw ? JSON.parse(raw) : [];
-    return new Set(Array.isArray(arr) ? arr.map(normalizeEmail) : []);
-  } catch (e) {
-    return new Set();
-  }
+    const raw = localStorage.getItem("matsci_deleted_users_map_v2");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") return parsed;
+    }
+  } catch (e) {}
+  const map = {};
+  try {
+    const rawOld = localStorage.getItem("matsci_deleted_users_v1");
+    if (rawOld) {
+      const arr = JSON.parse(rawOld);
+      if (Array.isArray(arr)) {
+        arr.forEach(em => {
+          const n = normalizeEmail(em);
+          if (n) map[n] = 1;
+        });
+      }
+    }
+  } catch (e) {}
+  return map;
 }
 
-function addDeletedUserTombstone(email) {
+function getDeletedUsersSet() {
+  const map = getDeletedUsersMap();
+  return new Set(Object.keys(map).map(normalizeEmail));
+}
+
+function addDeletedUserTombstone(email, timestampMs = null) {
   const norm = normalizeEmail(email);
   if (!norm) return;
-  const s = getDeletedUsersSet();
-  s.add(norm);
+  const map = getDeletedUsersMap();
+  map[norm] = timestampMs || Date.now();
   try {
-    localStorage.setItem("matsci_deleted_users_v1", JSON.stringify(Array.from(s)));
+    localStorage.setItem("matsci_deleted_users_map_v2", JSON.stringify(map));
+    localStorage.setItem("matsci_deleted_users_v1", JSON.stringify(Object.keys(map)));
   } catch (e) {}
 }
 
 function removeDeletedUserTombstone(email) {
   const norm = normalizeEmail(email);
   if (!norm) return;
-  const s = getDeletedUsersSet();
-  if (s.has(norm)) {
-    s.delete(norm);
+  const map = getDeletedUsersMap();
+  if (map[norm] !== undefined) {
+    delete map[norm];
     try {
-      localStorage.setItem("matsci_deleted_users_v1", JSON.stringify(Array.from(s)));
+      localStorage.setItem("matsci_deleted_users_map_v2", JSON.stringify(map));
+      localStorage.setItem("matsci_deleted_users_v1", JSON.stringify(Object.keys(map)));
     } catch (e) {}
   }
 }
@@ -2018,15 +837,24 @@ function mergeTwoUserRecords(existingU, incomingU) {
   return { ...incomingU, ...existingU };
 }
 
-function ensureUsersRegistryInitialized(remoteRegistry = null, remoteDeleted = null, remoteGroups = null, remoteDeletedGroups = null) {
-  const deletedSet = getDeletedUsersSet();
-  const remoteDeletedSet = new Set();
+function ensureUsersRegistryInitialized(remoteRegistry = null, remoteDeleted = null, remoteGroups = null, remoteDeletedGroups = null, remoteDeletedMap = null) {
+  const deletedMap = getDeletedUsersMap();
   if (Array.isArray(remoteDeleted)) {
     remoteDeleted.forEach(em => {
       const n = normalizeEmail(em);
       if (n) {
-        deletedSet.add(n);
-        remoteDeletedSet.add(n);
+        const rTs = (remoteDeletedMap && remoteDeletedMap[n]) || 1;
+        if (!deletedMap[n] || rTs > deletedMap[n]) {
+          deletedMap[n] = rTs;
+        }
+      }
+    });
+  }
+  if (remoteDeletedMap && typeof remoteDeletedMap === "object") {
+    Object.entries(remoteDeletedMap).forEach(([em, ts]) => {
+      const n = normalizeEmail(em);
+      if (n && (!deletedMap[n] || ts > deletedMap[n])) {
+        deletedMap[n] = Number(ts) || Date.now();
       }
     });
   }
@@ -2035,52 +863,32 @@ function ensureUsersRegistryInitialized(remoteRegistry = null, remoteDeleted = n
   if (STATE.auth && STATE.auth.isLoggedIn && !STATE.auth.isAdmin && STATE.auth.email) {
     const act = normalizeEmail(STATE.auth.email);
     if (act) {
-      deletedSet.delete(act);
+      delete deletedMap[act];
       removeDeletedUserTombstone(act);
     }
   }
 
-  // CRITICAL FIX: If remoteRegistry contains an active user account that is NOT in remoteDeletedSet,
-  // that user is alive in the cloud database! Purge any stale local tombstone so they are not deleted.
-  if (remoteRegistry && typeof remoteRegistry === "object") {
-    Object.keys(remoteRegistry).forEach(k => {
-      const normK = normalizeEmail(k);
-      if (normK && normK !== OWNER_GOOGLE_EMAIL && !remoteDeletedSet.has(normK)) {
-        deletedSet.delete(normK);
-        removeDeletedUserTombstone(normK);
-      }
-    });
-  }
-
-  // Active users registered or modified locally in STATE.usersRegistry
-  if (STATE.usersRegistry && typeof STATE.usersRegistry === "object") {
-    Object.keys(STATE.usersRegistry).forEach(k => {
-      const normK = normalizeEmail(k);
-      const u = STATE.usersRegistry[k];
-      if (normK && u && (u._justRegistered || (STATE.auth && normalizeEmail(STATE.auth.email) === normK))) {
-        deletedSet.delete(normK);
-        removeDeletedUserTombstone(normK);
-      }
-    });
-  }
-
-  try {
-    localStorage.setItem("matsci_deleted_users_v1", JSON.stringify(Array.from(deletedSet)));
-  } catch (e) {}
-
-  let merged = JSON.parse(JSON.stringify(DEFAULT_USERS_REGISTRY));
-  Object.keys(merged).forEach(k => {
-    if (deletedSet.has(normalizeEmail(k))) delete merged[k];
-  });
+  let merged = {};
 
   if (remoteRegistry && typeof remoteRegistry === "object") {
     Object.keys(remoteRegistry).forEach(k => {
       const normK = normalizeEmail(k);
-      if (normK && normK !== OWNER_GOOGLE_EMAIL && !deletedSet.has(normK)) {
-        merged[normK] = mergeTwoUserRecords(merged[normK], remoteRegistry[k]);
+      if (!normK || normK === OWNER_GOOGLE_EMAIL) return;
+      const remoteU = remoteRegistry[k];
+      const rTs = (remoteU && (remoteU.updatedAtMs || (remoteU.lastUpdatedAt ? new Date(remoteU.lastUpdatedAt.replace(" ", "T")).getTime() : 0))) || 0;
+      const delTs = deletedMap[normK];
+
+      if (delTs !== undefined && delTs >= rTs) {
+        return; // Deleted by tombstone
       }
+      if (delTs !== undefined && rTs > delTs) {
+        delete deletedMap[normK];
+        removeDeletedUserTombstone(normK);
+      }
+      merged[normK] = remoteU;
     });
   }
+
   try {
     const localRaw = localStorage.getItem("matsci_users_registry_v1");
     if (localRaw) {
@@ -2088,28 +896,60 @@ function ensureUsersRegistryInitialized(remoteRegistry = null, remoteDeleted = n
       if (localObj && typeof localObj === "object") {
         Object.keys(localObj).forEach(k => {
           const normK = normalizeEmail(k);
-          if (normK && normK !== OWNER_GOOGLE_EMAIL && !deletedSet.has(normK)) {
-            merged[normK] = mergeTwoUserRecords(merged[normK], localObj[k]);
+          if (!normK || normK === OWNER_GOOGLE_EMAIL) return;
+          const localU = localObj[k];
+          const lTs = (localU && (localU.updatedAtMs || (localU.lastUpdatedAt ? new Date(localU.lastUpdatedAt.replace(" ", "T")).getTime() : 0))) || 0;
+          const delTs = deletedMap[normK];
+
+          if (delTs !== undefined && delTs >= lTs) {
+            return; // Deleted
           }
+          if (delTs !== undefined && lTs > delTs) {
+            delete deletedMap[normK];
+            removeDeletedUserTombstone(normK);
+          }
+          merged[normK] = mergeTwoUserRecords(merged[normK], localU);
         });
       }
     }
   } catch (e) {
     console.warn("Could not parse local users registry:", e);
   }
+
   if (STATE.usersRegistry && typeof STATE.usersRegistry === "object") {
     Object.keys(STATE.usersRegistry).forEach(k => {
       const normK = normalizeEmail(k);
-      if (normK && normK !== OWNER_GOOGLE_EMAIL && !deletedSet.has(normK)) {
-        merged[normK] = mergeTwoUserRecords(merged[normK], STATE.usersRegistry[k]);
+      if (!normK || normK === OWNER_GOOGLE_EMAIL) return;
+      const curU = STATE.usersRegistry[k];
+      const cTs = (curU && (curU.updatedAtMs || (curU.lastUpdatedAt ? new Date(curU.lastUpdatedAt.replace(" ", "T")).getTime() : 0))) || 0;
+      const delTs = deletedMap[normK];
+
+      if (delTs !== undefined && delTs >= cTs && !curU._justRegistered) {
+        return; // Deleted
       }
+      if (delTs !== undefined && (cTs > delTs || curU._justRegistered)) {
+        delete deletedMap[normK];
+        removeDeletedUserTombstone(normK);
+      }
+      merged[normK] = mergeTwoUserRecords(merged[normK], curU);
     });
   }
 
-  // Enforce tombstones strictly: any deleted email must be purged from merged
-  deletedSet.forEach(delEmail => {
-    delete merged[delEmail];
+  // Purge any deleted users from merged
+  Object.entries(deletedMap).forEach(([delEmail, delTs]) => {
+    const u = merged[delEmail];
+    if (u) {
+      const uTs = (u.updatedAtMs || (u.lastUpdatedAt ? new Date(u.lastUpdatedAt.replace(" ", "T")).getTime() : 0)) || 0;
+      if (delTs >= uTs && !u._justRegistered) {
+        delete merged[delEmail];
+      }
+    }
   });
+
+  try {
+    localStorage.setItem("matsci_deleted_users_map_v2", JSON.stringify(deletedMap));
+    localStorage.setItem("matsci_deleted_users_v1", JSON.stringify(Object.keys(deletedMap)));
+  } catch (e) {}
 
   STATE.usersRegistry = merged;
   ensureUserGroupsInitialized(remoteGroups, remoteDeletedGroups);
@@ -2144,7 +984,8 @@ async function pullCloudDatabaseInstant(silent = true) {
       cloudDb.users_registry || {},
       cloudDb.deleted_users || [],
       cloudDb.user_groups || null,
-      cloudDb.deleted_groups || []
+      cloudDb.deleted_groups || [],
+      cloudDb.deleted_users_map || null
     );
 
     // Also check if cloud masterData is newer than local masterData
@@ -2204,7 +1045,6 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
   const token = getBuiltInCloudToken();
   if (!token) return false;
   if (_CLOUD_SYNC_IN_FLIGHT) {
-    // Queue one follow-up sync after current finishes
     setTimeout(() => syncDatabaseToCloudInstant(reason, true), 1200);
     return true;
   }
@@ -2234,14 +1074,24 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
     }
 
     // 2. Merge remote users_registry, deleted_users & user_groups with local state
-    const deletedSet = getDeletedUsersSet();
-    const remoteDeletedSet = new Set();
+    const deletedMap = getDeletedUsersMap();
+    const remoteExportedMs = remoteDb && remoteDb.exported_at ? new Date(remoteDb.exported_at).getTime() : 1;
     if (remoteDb && Array.isArray(remoteDb.deleted_users)) {
       remoteDb.deleted_users.forEach(em => {
         const n = normalizeEmail(em);
         if (n) {
-          deletedSet.add(n);
-          remoteDeletedSet.add(n);
+          const remoteTs = (remoteDb.deleted_users_map && remoteDb.deleted_users_map[n]) || remoteExportedMs;
+          if (!deletedMap[n] || remoteTs > deletedMap[n]) {
+            deletedMap[n] = remoteTs;
+          }
+        }
+      });
+    }
+    if (remoteDb && remoteDb.deleted_users_map && typeof remoteDb.deleted_users_map === "object") {
+      Object.entries(remoteDb.deleted_users_map).forEach(([em, ts]) => {
+        const n = normalizeEmail(em);
+        if (n && (!deletedMap[n] || ts > deletedMap[n])) {
+          deletedMap[n] = Number(ts) || Date.now();
         }
       });
     }
@@ -2250,55 +1100,52 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
     if (STATE.auth && STATE.auth.isLoggedIn && !STATE.auth.isAdmin && STATE.auth.email) {
       const myEmail = normalizeEmail(STATE.auth.email);
       if (myEmail) {
-        deletedSet.delete(myEmail);
+        delete deletedMap[myEmail];
         removeDeletedUserTombstone(myEmail);
       }
     }
 
-    // CRITICAL FIX: If remoteDb.users_registry has a user that is NOT in remoteDb.deleted_users,
-    // that user is an active registered user in Cloud! Purge any stale local tombstone:
+    // Merge remoteDb.users_registry into local STATE.usersRegistry using timestamp comparison:
     if (remoteDb && remoteDb.users_registry && typeof remoteDb.users_registry === "object") {
       Object.keys(remoteDb.users_registry).forEach(k => {
         const normK = normalizeEmail(k);
-        if (normK && normK !== OWNER_GOOGLE_EMAIL && !remoteDeletedSet.has(normK)) {
-          deletedSet.delete(normK);
+        if (!normK || normK === OWNER_GOOGLE_EMAIL) return;
+        const remoteU = remoteDb.users_registry[k];
+        const rTs = (remoteU && (remoteU.updatedAtMs || (remoteU.lastUpdatedAt ? new Date(remoteU.lastUpdatedAt.replace(" ", "T")).getTime() : 0))) || 0;
+        const delTs = deletedMap[normK];
+
+        if (delTs !== undefined && delTs >= rTs) {
+          // Deletion timestamp is newer than or equal to user timestamp: USER IS DELETED!
+          delete STATE.usersRegistry[normK];
+          return;
+        }
+        if (delTs !== undefined && rTs > delTs) {
+          // Remote user was registered/updated AFTER deletion: UN-TOMBSTONE
+          delete deletedMap[normK];
           removeDeletedUserTombstone(normK);
         }
+        STATE.usersRegistry[normK] = mergeTwoUserRecords(STATE.usersRegistry[normK], remoteU);
       });
     }
 
-    // If local STATE.usersRegistry has a user that was actively created/updated locally
-    // (e.g. registration, Google OAuth login, admin edit), purge any tombstone:
-    Object.keys(STATE.usersRegistry || {}).forEach(k => {
-      const normK = normalizeEmail(k);
-      const u = STATE.usersRegistry[k];
-      if (normK && u) {
-        if (u._justRegistered || (STATE.auth && normalizeEmail(STATE.auth.email) === normK)) {
-          deletedSet.delete(normK);
-          removeDeletedUserTombstone(normK);
+    // Enforce deletedMap strictly across STATE.usersRegistry
+    Object.entries(deletedMap).forEach(([delEmail, delTs]) => {
+      const localU = STATE.usersRegistry[delEmail];
+      if (localU) {
+        const localTs = (localU.updatedAtMs || (localU.lastUpdatedAt ? new Date(localU.lastUpdatedAt.replace(" ", "T")).getTime() : 0)) || 0;
+        if (delTs >= localTs && !localU._justRegistered) {
+          delete STATE.usersRegistry[delEmail];
+        } else if (localTs > delTs || localU._justRegistered) {
+          delete deletedMap[delEmail];
+          removeDeletedUserTombstone(delEmail);
         }
       }
     });
 
-    // Merge remoteDb.users_registry into local STATE.usersRegistry
-    // CRITICAL: Any email in deletedSet MUST NOT be added, and MUST be deleted from STATE.usersRegistry!
-    if (remoteDb && remoteDb.users_registry) {
-      Object.keys(remoteDb.users_registry).forEach(k => {
-        const normK = normalizeEmail(k);
-        if (normK && normK !== OWNER_GOOGLE_EMAIL) {
-          if (deletedSet.has(normK)) {
-            delete STATE.usersRegistry[normK];
-          } else {
-            STATE.usersRegistry[normK] = mergeTwoUserRecords(STATE.usersRegistry[normK], remoteDb.users_registry[k]);
-          }
-        }
-      });
-    }
-
-    // Enforce deletedSet strictly across STATE.usersRegistry
-    deletedSet.forEach(delEmail => {
-      delete STATE.usersRegistry[delEmail];
-    });
+    try {
+      localStorage.setItem("matsci_deleted_users_map_v2", JSON.stringify(deletedMap));
+      localStorage.setItem("matsci_deleted_users_v1", JSON.stringify(Object.keys(deletedMap)));
+    } catch (e) {}
 
     if (remoteDb && remoteDb.user_groups) {
       ensureUserGroupsInitialized(remoteDb.user_groups, remoteDb.deleted_groups || []);
@@ -2345,7 +1192,8 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
       schedule: masterSchedule,
       users_registry: sanitizedCloudUsers,
       user_groups: STATE.userGroups || {},
-      deleted_users: Array.from(deletedSet).filter(em => !sanitizedCloudUsers[em] && (!STATE.auth || normalizeEmail(STATE.auth.email) !== em)),
+      deleted_users: Object.keys(deletedMap).filter(em => !sanitizedCloudUsers[em] && (!STATE.auth || normalizeEmail(STATE.auth.email) !== em)),
+      deleted_users_map: deletedMap,
       deleted_groups: Array.from(getDeletedGroupsSet())
     };
 
@@ -2430,6 +1278,7 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
     _CLOUD_SYNC_IN_FLIGHT = false;
   }
 }
+
 
 async function refreshCloudUsersNow(showToastMsg = true) {
   if (showToastMsg) {
@@ -6812,7 +5661,8 @@ async function deleteUserAccountByAdmin(email) {
   );
   if (!ok) return;
 
-  addDeletedUserTombstone(norm);
+  const delTime = Date.now();
+  addDeletedUserTombstone(norm, delTime);
   delete STATE.usersRegistry[norm];
   Object.values(STATE.userGroups || {}).forEach(g => {
     if (Array.isArray(g.members)) {
@@ -10699,7 +9549,8 @@ async function loadAllData() {
           remoteData && remoteData.users_registry ? remoteData.users_registry : null,
           remoteData && remoteData.deleted_users ? remoteData.deleted_users : [],
           remoteData && remoteData.user_groups ? remoteData.user_groups : null,
-          remoteData && remoteData.deleted_groups ? remoteData.deleted_groups : []
+          remoteData && remoteData.deleted_groups ? remoteData.deleted_groups : [],
+          remoteData && remoteData.deleted_users_map ? remoteData.deleted_users_map : null
         );
       } else {
         ensureUsersRegistryInitialized();
@@ -10764,9 +9615,21 @@ async function loadStaticFallbackData() {
     if (dataResp.ok) {
       const remoteData = await dataResp.json();
       if (remoteData && remoteData.users_registry) {
-        ensureUsersRegistryInitialized(remoteData.users_registry);
+        ensureUsersRegistryInitialized(
+          remoteData.users_registry,
+          remoteData.deleted_users || [],
+          remoteData.user_groups || null,
+          remoteData.deleted_groups || [],
+          remoteData.deleted_users_map || null
+        );
       } else {
-        ensureUsersRegistryInitialized();
+        ensureUsersRegistryInitialized(
+          null,
+          remoteData ? remoteData.deleted_users : null,
+          remoteData ? remoteData.user_groups : null,
+          remoteData ? remoteData.deleted_groups : null,
+          remoteData ? remoteData.deleted_users_map : null
+        );
       }
       if (remoteData && remoteData.user_groups) {
         ensureUserGroupsInitialized(remoteData.user_groups);
@@ -10779,7 +9642,13 @@ async function loadStaticFallbackData() {
           try {
             const parsed = JSON.parse(saved);
             if (parsed && parsed.users_registry) {
-              ensureUsersRegistryInitialized(parsed.users_registry);
+              ensureUsersRegistryInitialized(
+                parsed.users_registry,
+                parsed.deleted_users || [],
+                parsed.user_groups || null,
+                parsed.deleted_groups || [],
+                parsed.deleted_users_map || null
+              );
             }
             if (parsed && parsed.user_groups) {
               ensureUserGroupsInitialized(parsed.user_groups);
