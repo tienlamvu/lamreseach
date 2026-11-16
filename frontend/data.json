@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T05:41:45.811Z",
+  "exported_at": "2026-11-16T05:42:13.773Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -2203,8 +2203,8 @@
       ],
       "registeredAt": "2026-11-16 05:05",
       "lastLoginAt": "2026-11-16 05:28",
-      "lastUpdatedAt": "2026-11-16 05:41",
-      "updatedAtMs": 1794807705386,
+      "lastUpdatedAt": "2026-11-16 05:42",
+      "updatedAtMs": 1794807732673,
       "workspace": {
         "papers": [
           {
@@ -2690,6 +2690,12 @@
         ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-16 05:42",
+          "category": "Workspace",
+          "action": "Imported Sample Library",
+          "detail": "Imported 0 reference papers and 0 crystal structures."
+        },
         {
           "timestamp": "2026-11-16 05:41",
           "category": "Workspace",
