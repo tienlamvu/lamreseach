@@ -1105,10 +1105,35 @@ function ensureUsersRegistryInitialized(remoteRegistry = null, remoteDeleted = n
       const n = normalizeEmail(em);
       if (n) deletedSet.add(n);
     });
-    try {
-      localStorage.setItem("matsci_deleted_users_v1", JSON.stringify(Array.from(deletedSet)));
-    } catch (e) {}
   }
+
+  // CRITICAL: Any user currently in STATE.usersRegistry, remoteRegistry, or logged in must NEVER be in deletedSet!
+  if (STATE.auth && STATE.auth.email) {
+    const act = normalizeEmail(STATE.auth.email);
+    if (act) {
+      deletedSet.delete(act);
+      removeDeletedUserTombstone(act);
+    }
+  }
+  if (STATE.usersRegistry && typeof STATE.usersRegistry === "object") {
+    Object.keys(STATE.usersRegistry).forEach(k => {
+      const normK = normalizeEmail(k);
+      if (normK && STATE.usersRegistry[k]) {
+        deletedSet.delete(normK);
+      }
+    });
+  }
+  if (remoteRegistry && typeof remoteRegistry === "object") {
+    Object.keys(remoteRegistry).forEach(k => {
+      const normK = normalizeEmail(k);
+      if (normK && remoteRegistry[k]) {
+        deletedSet.delete(normK);
+      }
+    });
+  }
+  try {
+    localStorage.setItem("matsci_deleted_users_v1", JSON.stringify(Array.from(deletedSet)));
+  } catch (e) {}
 
   let merged = JSON.parse(JSON.stringify(DEFAULT_USERS_REGISTRY));
   Object.keys(merged).forEach(k => {
@@ -1274,11 +1299,30 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
     if (remoteDb && Array.isArray(remoteDb.deleted_users)) {
       remoteDb.deleted_users.forEach(em => {
         const n = normalizeEmail(em);
-        if (n && (!STATE.usersRegistry[n] || !STATE.usersRegistry[n]._justRegistered)) {
+        const isActiveUser = (STATE.auth && STATE.auth.email && normalizeEmail(STATE.auth.email) === n);
+        const existsLocally = Boolean(STATE.usersRegistry && STATE.usersRegistry[n]);
+        const existsInRemote = Boolean(remoteDb.users_registry && remoteDb.users_registry[n]);
+        if (n && !existsLocally && !isActiveUser && !existsInRemote) {
           deletedSet.add(n);
+        } else if (n) {
+          deletedSet.delete(n);
         }
       });
     }
+
+    // Always ensure active user and local users are NOT in deletedSet
+    if (STATE.auth && STATE.auth.email) {
+      deletedSet.delete(normalizeEmail(STATE.auth.email));
+    }
+    if (STATE.usersRegistry && typeof STATE.usersRegistry === "object") {
+      Object.keys(STATE.usersRegistry).forEach(k => {
+        const normK = normalizeEmail(k);
+        if (normK && STATE.usersRegistry[k]) {
+          deletedSet.delete(normK);
+        }
+      });
+    }
+
     if (remoteDb && remoteDb.users_registry) {
       Object.keys(remoteDb.users_registry).forEach(k => {
         const normK = normalizeEmail(k);
@@ -1332,14 +1376,14 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
       schedule: masterSchedule,
       users_registry: sanitizedCloudUsers,
       user_groups: STATE.userGroups || {},
-      deleted_users: Array.from(deletedSet),
+      deleted_users: Array.from(deletedSet).filter(em => !sanitizedCloudUsers[em] && (!STATE.auth || normalizeEmail(STATE.auth.email) !== em)),
       deleted_groups: Array.from(getDeletedGroupsSet())
     };
 
     const base64Content = encodeUtf8Base64(JSON.stringify(exportObj, null, 2));
 
     // 4. PUT to frontend/data.json
-    const putRes = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
+    let putRes = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
       method: "PUT",
       headers: {
         "Authorization": `token ${token}`,
@@ -1352,6 +1396,30 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
         sha: sha || undefined
       })
     });
+
+    if (!putRes.ok && putRes.status === 409) {
+      console.warn("GitHub Cloud Sync Conflict 409, refetching SHA and retrying...");
+      const retryGet = await fetch(`https://api.github.com/repos/${repo}/contents/${path}?ref=main&_t=${Date.now()}`, {
+        headers: { "Authorization": `token ${token}`, "Accept": "application/vnd.github.v3+json" },
+        cache: "no-store"
+      });
+      if (retryGet.ok) {
+        const retryMeta = await retryGet.json();
+        putRes = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
+          method: "PUT",
+          headers: {
+            "Authorization": `token ${token}`,
+            "Accept": "application/vnd.github.v3+json",
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            message: `Live Cloud Sync (${reason} - Retry 409) [${new Date().toISOString()}]`,
+            content: base64Content,
+            sha: (retryMeta && retryMeta.sha) || undefined
+          })
+        });
+      }
+    }
 
     if (!putRes.ok) {
       throw new Error(`GitHub Cloud Sync HTTP ${putRes.status}`);
@@ -2157,14 +2225,47 @@ function findRegisteredUserByEmailOrGoogle(emailInput) {
 }
 
 function getActivePersonalWorkspaceEmail() {
-  if (STATE.auth.isAdmin && STATE.adminPreviewUserEmail && STATE.usersRegistry[STATE.adminPreviewUserEmail]) {
+  if (STATE.auth.isAdmin && STATE.adminPreviewUserEmail && STATE.usersRegistry && STATE.usersRegistry[STATE.adminPreviewUserEmail]) {
     return STATE.adminPreviewUserEmail;
   }
   if (STATE.auth.isLoggedIn && !STATE.auth.isAdmin) {
     const norm = normalizeEmail(STATE.auth.email);
+    if (!norm) return null;
     if (STATE.usersRegistry && STATE.usersRegistry[norm]) {
       return norm;
     }
+    // Auto-repair missing registry entry for logged-in user
+    if (!STATE.usersRegistry || typeof STATE.usersRegistry !== "object") STATE.usersRegistry = {};
+    removeDeletedUserTombstone(norm);
+    STATE.usersRegistry[norm] = {
+      email: norm,
+      name: STATE.auth.name || "Researcher",
+      affiliation: STATE.auth.affiliation || "Sungkyunkwan University (SKKU)",
+      academicRole: STATE.auth.academicRole || "Researcher",
+      status: "Active",
+      emailVerified: true,
+      authProvider: STATE.auth.googleLinked ? "Email + Google Linked" : "Verified Email",
+      googleLinked: Boolean(STATE.auth.googleLinked),
+      googleEmail: STATE.auth.googleEmail || (STATE.auth.googleLinked ? norm : ""),
+      passwordPlainHint: "••••••••",
+      workspace: {
+        papers: Array.isArray(STATE.papers) ? STATE.papers.filter(p => !p._sharedFromAdmin) : [],
+        structures: Array.isArray(STATE.structures) ? STATE.structures.filter(s => !s._sharedFromAdmin) : [],
+        schedule: Array.isArray(STATE.schedule) ? STATE.schedule.filter(s => !s._sharedFromAdmin) : [],
+        expReportRows: STATE.expReportRows || [],
+        litReportRows: STATE.litReportRows || []
+      },
+      activityLog: [
+        {
+          timestamp: new Date().toISOString().replace("T", " ").slice(0, 16),
+          category: "Account",
+          action: "Workspace Session Active",
+          detail: `Active researcher session for ${STATE.auth.name || norm}.`
+        }
+      ]
+    };
+    persistUsersRegistryLocal();
+    return norm;
   }
   return null;
 }
@@ -4150,36 +4251,110 @@ function refreshAllWorkspaceViews() {
 // ============================================================================
 
 function openUserAccountModal() {
-  if (!STATE.auth.isLoggedIn || STATE.auth.isAdmin) return;
+  if (!STATE.auth || !STATE.auth.isLoggedIn) {
+    if (typeof openAuthModal === "function") openAuthModal("signin");
+    return;
+  }
+  if (STATE.auth.isAdmin) {
+    if (typeof openEditProfileModal === "function") openEditProfileModal();
+    return;
+  }
   const email = normalizeEmail(STATE.auth.email);
-  const u = STATE.usersRegistry[email];
-  if (!u) return;
+  if (!email) return;
 
-  document.getElementById("ua-name-input").value = u.name || "";
-  document.getElementById("ua-email-input").value = u.email || "";
-  document.getElementById("ua-affiliation-input").value = u.affiliation || "";
-  document.getElementById("ua-role-input").value = u.academicRole || "Researcher";
-  document.getElementById("ua-new-password-input").value = "";
-  document.getElementById("ua-google-email-input").value = u.googleEmail || u.email || "";
+  // Ensure active email is never marked as deleted
+  removeDeletedUserTombstone(email);
+
+  if (!STATE.usersRegistry || typeof STATE.usersRegistry !== "object") {
+    STATE.usersRegistry = {};
+  }
+
+  let u = STATE.usersRegistry[email] || findRegisteredUserByEmailOrGoogle(email);
+  if (!u) {
+    const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
+    u = {
+      email: email,
+      name: STATE.auth.name || "Researcher",
+      affiliation: STATE.auth.affiliation || "Sungkyunkwan University (SKKU)",
+      academicRole: STATE.auth.academicRole || "Researcher",
+      status: "Active",
+      emailVerified: true,
+      authProvider: STATE.auth.googleLinked ? "Email + Google Linked" : "Verified Email",
+      googleLinked: Boolean(STATE.auth.googleLinked),
+      googleEmail: STATE.auth.googleEmail || (STATE.auth.googleLinked ? email : ""),
+      passwordPlainHint: "••••••••",
+      passwordHash: "",
+      registeredAt: nowStr,
+      lastLoginAt: nowStr,
+      lastUpdatedAt: nowStr,
+      updatedAtMs: Date.now(),
+      workspace: {
+        papers: Array.isArray(STATE.papers) ? STATE.papers.filter(p => !p._sharedFromAdmin) : [],
+        structures: Array.isArray(STATE.structures) ? STATE.structures.filter(s => !s._sharedFromAdmin) : [],
+        schedule: Array.isArray(STATE.schedule) ? STATE.schedule.filter(s => !s._sharedFromAdmin) : [],
+        expReportRows: STATE.expReportRows || [],
+        litReportRows: STATE.litReportRows || []
+      },
+      activityLog: [
+        {
+          timestamp: nowStr,
+          category: "Account",
+          action: "Session Initialized",
+          detail: `User profile active for ${STATE.auth.name || email}`
+        }
+      ]
+    };
+    STATE.usersRegistry[email] = u;
+    persistUsersRegistryLocal();
+  }
+
+  const nameInp = document.getElementById("ua-name-input");
+  if (nameInp) nameInp.value = u.name || STATE.auth.name || "";
+
+  const emailInp = document.getElementById("ua-email-input");
+  if (emailInp) emailInp.value = u.email || email;
+
+  const affInp = document.getElementById("ua-affiliation-input");
+  if (affInp) affInp.value = u.affiliation || STATE.auth.affiliation || "";
+
+  const roleInp = document.getElementById("ua-role-input");
+  if (roleInp) roleInp.value = u.academicRole || STATE.auth.academicRole || "Researcher";
+
+  const passInp = document.getElementById("ua-new-password-input");
+  if (passInp) passInp.value = "";
+
+  const gEmailInp = document.getElementById("ua-google-email-input");
+  if (gEmailInp) gEmailInp.value = u.googleEmail || (u.googleLinked ? (u.email || email) : "");
 
   const statusBadge = document.getElementById("ua-google-status-badge");
   if (statusBadge) {
-    if (u.googleLinked) {
+    if (u.googleLinked || STATE.auth.googleLinked) {
       statusBadge.className = "badge badge-green";
-      statusBadge.textContent = `✓ Linked (${u.googleEmail || u.email})`;
+      statusBadge.textContent = `✓ Linked (${u.googleEmail || STATE.auth.googleEmail || email})`;
     } else {
       statusBadge.className = "badge badge-amber";
       statusBadge.textContent = "Not Linked";
     }
   }
 
-  document.getElementById("user-account-modal")?.classList.add("open");
+  const modal = document.getElementById("user-account-modal");
+  if (modal) {
+    modal.classList.add("open");
+  }
 }
 
 async function saveUserAccountSettings() {
-  if (!STATE.auth.isLoggedIn || STATE.auth.isAdmin) return;
+  if (!STATE.auth || !STATE.auth.isLoggedIn || STATE.auth.isAdmin) return;
   const email = normalizeEmail(STATE.auth.email);
-  const u = STATE.usersRegistry[email];
+  if (!email) return;
+  removeDeletedUserTombstone(email);
+
+  if (!STATE.usersRegistry) STATE.usersRegistry = {};
+  let u = STATE.usersRegistry[email] || findRegisteredUserByEmailOrGoogle(email);
+  if (!u) {
+    openUserAccountModal();
+    u = STATE.usersRegistry[email];
+  }
   if (!u) return;
 
   const newName = (document.getElementById("ua-name-input")?.value || "").trim();
@@ -4206,17 +4381,27 @@ async function saveUserAccountSettings() {
   localStorage.setItem("matsci_admin_session_v4", JSON.stringify(STATE.auth));
 
   recordUserActivity("Account", "Updated Profile Settings", `Name: ${newName}, Affiliation: ${newAff}`);
+  persistUsersRegistryLocal();
   saveStaticDb();
   renderAuthHeader();
   renderWorkspaceBanner();
   closeModal("user-account-modal");
   showToast("Personal account settings updated!", "success");
+  syncDatabaseToCloudInstant(`Updated Profile (${email})`, true);
 }
 
 function saveUserGoogleLink() {
-  if (!STATE.auth.isLoggedIn || STATE.auth.isAdmin) return;
+  if (!STATE.auth || !STATE.auth.isLoggedIn || STATE.auth.isAdmin) return;
   const email = normalizeEmail(STATE.auth.email);
-  const u = STATE.usersRegistry[email];
+  if (!email) return;
+  removeDeletedUserTombstone(email);
+
+  if (!STATE.usersRegistry) STATE.usersRegistry = {};
+  let u = STATE.usersRegistry[email] || findRegisteredUserByEmailOrGoogle(email);
+  if (!u) {
+    openUserAccountModal();
+    u = STATE.usersRegistry[email];
+  }
   if (!u) return;
 
   const gEmail = normalizeEmail(document.getElementById("ua-google-email-input")?.value || "");
@@ -4233,6 +4418,7 @@ function saveUserGoogleLink() {
   localStorage.setItem("matsci_admin_session_v4", JSON.stringify(STATE.auth));
 
   recordUserActivity("Account", "Linked Google Account", `Linked Google Account: ${gEmail}`);
+  persistUsersRegistryLocal();
   saveStaticDb();
   renderAuthHeader();
   applyActiveWorkspaceData();
@@ -4243,6 +4429,7 @@ function saveUserGoogleLink() {
     statusBadge.textContent = `✓ Linked (${gEmail})`;
   }
   showToast(`🔗 Successfully linked Google Account (${gEmail})!`, "success");
+  syncDatabaseToCloudInstant(`Linked Google Account (${gEmail})`, true);
 }
 
 function importPublicStarterDataToUser() {
@@ -4374,8 +4561,13 @@ function openAdminUsersModal(selectEmail = null) {
   STATE.selectedInspectorTab = STATE.selectedInspectorTab || "activity";
   renderAdminUsersDirectory();
   document.getElementById("admin-users-modal")?.classList.add("open");
-  // Pull latest cloud users in background so newly registered accounts appear immediately
-  pullCloudDatabaseInstant(true);
+  // Pull latest cloud users in background and refresh view
+  pullCloudDatabaseInstant(false).then(() => {
+    if (!STATE.selectedInspectorUserEmail || !STATE.usersRegistry[STATE.selectedInspectorUserEmail]) {
+      STATE.selectedInspectorUserEmail = Object.keys(STATE.usersRegistry || {})[0] || null;
+    }
+    renderAdminUsersDirectory();
+  });
 }
 
 function filterAdminUsersByGroupPill(groupVal) {
