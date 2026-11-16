@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T01:06:43.283Z",
+  "exported_at": "2026-11-16T01:06:48.403Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -450,6 +450,27 @@
     "weekly_report_allowed_users": []
   },
   "papers": [
+    {
+      "id": 1794791207173,
+      "doi": "10.1038/s41467-022-28133-x",
+      "title": "Antisite defect qubits in monolayer transition metal dichalcogenides",
+      "authors": "Jeng-Yuan Tsai, Jinbo Pan, Hsin Lin, Arun Bansil, Qimin Yan",
+      "journal": "Nature Communications",
+      "year": 2022,
+      "volume": "13",
+      "pages": "",
+      "abstract": "Abstract\n                  \n                    Being atomically thin and amenable to external controls, two-dimensional (2D) materials offer a new paradigm for the realization of patterned qubit fabrication and operation at room temperature for quantum information sciences applications. Here we show that the antisite defect in 2D transition metal dichalcogenides (TMDs) can provide a controllable solid-state spin qubit system. Using high-throughput atomistic simulations, we identify several neutral antisite defects in TMDs that lie deep in the bulk band gap and host a paramagnetic triplet ground state. Our in-depth analysis reveals the presence of optical transitions and triplet-singlet intersystem crossing processes for fingerprinting these defect qubits. As an illustrative example, we discuss the initialization and readout principles of an antisite qubit in WS\n                    2\n                    , which is expected to be stable against interlayer interactions in a multilayer structure for qubit isolation and protection in future qubit-based devices. Our study opens a new pathway for creating scalable, room-temperature spin qubits in 2D TMDs.\n                  ",
+      "citation_count": 74,
+      "material_system": "Perovskite / 2D Material",
+      "synthesis_method": "First-principles DFT",
+      "characterization_tags": "DFT, VASP, XRD",
+      "status": "To Read",
+      "notes": "",
+      "in_weekly_report": 1,
+      "visibility": "Public",
+      "allowed_users": [],
+      "allowed_groups": []
+    },
     {
       "id": 1794572247854,
       "doi": "10.1016/j.ijhydene.2022.01.236",
