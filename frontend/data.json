@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T05:06:14.339Z",
+  "exported_at": "2026-11-16T05:06:27.902Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -2143,17 +2143,23 @@
         "grp_dft_team_gun1"
       ],
       "registeredAt": "2026-11-16 05:05",
-      "lastLoginAt": "2026-11-16 05:05",
-      "lastUpdatedAt": "2026-11-16 05:05",
-      "updatedAtMs": 1794805551086,
+      "lastLoginAt": "2026-11-16 05:06",
+      "lastUpdatedAt": "2026-11-16 05:06",
+      "updatedAtMs": 1794805586827,
       "workspace": {
-        "schedule": [],
         "papers": [],
         "structures": [],
+        "schedule": [],
         "expReportRows": [],
         "litReportRows": []
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-16 05:06",
+          "category": "Session",
+          "action": "Signed In (Email & Password)",
+          "detail": "Authenticated as Nguyen Thi Khanh Linh (linh@gmail.com)"
+        },
         {
           "timestamp": "2026-11-16 05:05",
           "category": "Account",
