@@ -2027,30 +2027,15 @@ function ensureUsersRegistryInitialized(remoteRegistry = null, remoteDeleted = n
     });
   }
 
-  // CRITICAL: Any user currently in STATE.usersRegistry, remoteRegistry, or logged in must NEVER be in deletedSet!
-  if (STATE.auth && STATE.auth.email) {
+  // Active logged-in user on THIS device (if not admin): keep their active session safe
+  if (STATE.auth && STATE.auth.isLoggedIn && !STATE.auth.isAdmin && STATE.auth.email) {
     const act = normalizeEmail(STATE.auth.email);
     if (act) {
       deletedSet.delete(act);
       removeDeletedUserTombstone(act);
     }
   }
-  if (STATE.usersRegistry && typeof STATE.usersRegistry === "object") {
-    Object.keys(STATE.usersRegistry).forEach(k => {
-      const normK = normalizeEmail(k);
-      if (normK && STATE.usersRegistry[k]) {
-        deletedSet.delete(normK);
-      }
-    });
-  }
-  if (remoteRegistry && typeof remoteRegistry === "object") {
-    Object.keys(remoteRegistry).forEach(k => {
-      const normK = normalizeEmail(k);
-      if (normK && remoteRegistry[k]) {
-        deletedSet.delete(normK);
-      }
-    });
-  }
+
   try {
     localStorage.setItem("matsci_deleted_users_v1", JSON.stringify(Array.from(deletedSet)));
   } catch (e) {}
@@ -2092,6 +2077,12 @@ function ensureUsersRegistryInitialized(remoteRegistry = null, remoteDeleted = n
       }
     });
   }
+
+  // Enforce tombstones strictly: any deleted email must be purged from merged
+  deletedSet.forEach(delEmail => {
+    delete merged[delEmail];
+  });
+
   STATE.usersRegistry = merged;
   ensureUserGroupsInitialized(remoteGroups, remoteDeletedGroups);
   persistUsersRegistryLocal();
@@ -2219,38 +2210,36 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
     if (remoteDb && Array.isArray(remoteDb.deleted_users)) {
       remoteDb.deleted_users.forEach(em => {
         const n = normalizeEmail(em);
-        const isActiveUser = (STATE.auth && STATE.auth.email && normalizeEmail(STATE.auth.email) === n);
-        const existsLocally = Boolean(STATE.usersRegistry && STATE.usersRegistry[n]);
-        const existsInRemote = Boolean(remoteDb.users_registry && remoteDb.users_registry[n]);
-        if (n && !existsLocally && !isActiveUser && !existsInRemote) {
-          deletedSet.add(n);
-        } else if (n) {
-          deletedSet.delete(n);
-        }
+        if (n) deletedSet.add(n);
       });
     }
 
-    // Always ensure active user and local users are NOT in deletedSet
-    if (STATE.auth && STATE.auth.email) {
-      deletedSet.delete(normalizeEmail(STATE.auth.email));
-    }
-    if (STATE.usersRegistry && typeof STATE.usersRegistry === "object") {
-      Object.keys(STATE.usersRegistry).forEach(k => {
-        const normK = normalizeEmail(k);
-        if (normK && STATE.usersRegistry[k]) {
-          deletedSet.delete(normK);
-        }
-      });
+    // Active logged-in user on this device (if regular user): keep their active session safe
+    if (STATE.auth && STATE.auth.isLoggedIn && !STATE.auth.isAdmin && STATE.auth.email) {
+      const myEmail = normalizeEmail(STATE.auth.email);
+      if (myEmail) deletedSet.delete(myEmail);
     }
 
+    // Merge remoteDb.users_registry into local STATE.usersRegistry
+    // CRITICAL: Any email in deletedSet MUST NOT be added, and MUST be deleted from STATE.usersRegistry!
     if (remoteDb && remoteDb.users_registry) {
       Object.keys(remoteDb.users_registry).forEach(k => {
         const normK = normalizeEmail(k);
-        if (normK && normK !== OWNER_GOOGLE_EMAIL && !deletedSet.has(normK)) {
-          STATE.usersRegistry[normK] = mergeTwoUserRecords(STATE.usersRegistry[normK], remoteDb.users_registry[k]);
+        if (normK && normK !== OWNER_GOOGLE_EMAIL) {
+          if (deletedSet.has(normK)) {
+            delete STATE.usersRegistry[normK];
+          } else {
+            STATE.usersRegistry[normK] = mergeTwoUserRecords(STATE.usersRegistry[normK], remoteDb.users_registry[k]);
+          }
         }
       });
     }
+
+    // Enforce deletedSet strictly across STATE.usersRegistry
+    deletedSet.forEach(delEmail => {
+      delete STATE.usersRegistry[delEmail];
+    });
+
     if (remoteDb && remoteDb.user_groups) {
       ensureUserGroupsInitialized(remoteDb.user_groups, remoteDb.deleted_groups || []);
     } else {
@@ -6627,8 +6616,10 @@ async function deleteUserAccountByAdmin(email) {
   applyActiveWorkspaceData();
   refreshAllWorkspaceViews();
   renderAdminUsersDirectory();
-  showToast(`Deleted user account ${u.email}.`, "info");
-  syncDatabaseToCloudInstant(`Deleted user account (${norm})`, true);
+  renderDashboardAdminUsersSummary();
+  showToast(`Deleting user account ${u.email} and syncing to Cloud...`, "info");
+  await syncDatabaseToCloudInstant(`Deleted user account (${norm})`, false);
+  showToast(`🗑️ Permanently deleted user account ${u.email} from Cloud and local database.`, "success");
 }
 
 // ============================================================================
