@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T05:16:06.168Z",
+  "exported_at": "2026-11-16T05:16:23.918Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -474,7 +474,7 @@
       "status": "To Read",
       "notes": "Good reference for antisite defects in TMDs.",
       "in_weekly_report": 0,
-      "visibility": "Private",
+      "visibility": "Public",
       "allowed_users": [],
       "allowed_groups": []
     },
