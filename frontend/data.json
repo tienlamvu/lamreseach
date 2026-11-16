@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T05:06:27.902Z",
+  "exported_at": "2026-11-16T05:09:40.383Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -1772,6 +1772,25 @@
       "allowed_users": [],
       "allowed_groups": [],
       "id": 1794667045339
+    },
+    {
+      "title": "Welcome Meeting",
+      "event_type": "Group Meeting / PI Meeting",
+      "instrument_or_location": "SKKU Cluster / Office",
+      "start_date": "2026-11-16",
+      "start_time": "10:00",
+      "end_time": "12:00",
+      "priority": "High",
+      "status": "Scheduled",
+      "sample_id": "",
+      "description": "",
+      "in_weekly_report": 1,
+      "visibility": "Specific",
+      "allowed_users": [
+        "linh@gmail.com"
+      ],
+      "allowed_groups": [],
+      "id": 1794805779333
     }
   ],
   "users_registry": {
