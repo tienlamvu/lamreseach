@@ -20984,7 +20984,7 @@ async function runPlagiarismAnalysis() {
   const chkLibrary = document.getElementById("chk-cross-library")?.checked ?? true;
   const chkPeriodicals = document.getElementById("chk-cross-periodicals")?.checked ?? true;
   const chkGemini = (document.getElementById("chk-gemini-ai")?.checked ?? true) || (document.getElementById("chk-cross-gemini")?.checked ?? true);
-  const geminiModel = document.getElementById("sel-gemini-model")?.value || "gemini-2.0-flash";
+  const geminiModel = document.getElementById("sel-gemini-model")?.value || localStorage.getItem("matsci_gemini_active_model") || "gemini-3.8-flash";
 
   if (!currentPlagFile && !textInput) {
     showToast("Please upload a PDF/Word file or paste manuscript draft text first.", "warn");
@@ -21226,7 +21226,7 @@ function renderPlagiarismResults(data) {
               <div>
                 <div style="font-weight:800; font-size:16px; color:#4c1d95; display:flex; align-items:center; gap:8px;">
                   <span>Google Gemini Deep Semantic &amp; Paraphrase Audit</span>
-                  <span style="font-size:11px; padding:2px 7px; border-radius:10px; background:#f3e8ff; color:#7c3aed; font-weight:700; border:1px solid #ddd6fe;">${escapeHtml(g.modelUsed || "Gemini 2.0 Flash")}</span>
+                  <span style="font-size:11px; padding:2px 7px; border-radius:10px; background:#f3e8ff; color:#7c3aed; font-weight:700; border:1px solid #ddd6fe;">${escapeHtml(g.modelUsed || "Gemini 3.8 Flash")}</span>
                 </div>
                 <div style="font-size:12px; color:#6b21a8; margin-top:2px;">
                   Neural evaluation of masked paraphrasing, synonym substitution, formula attribution &amp; academic perplexity
@@ -22005,7 +22005,7 @@ function buildAcademicReportHtml(data, docName, reportId, fullDateStr, timeStr) 
         return `
           <div style="margin-top:14px; margin-bottom:12px; page-break-inside:avoid; break-inside:avoid;">
             <div style="font-size:11px; font-weight:800; color:#4c1d95; text-transform:uppercase; letter-spacing:0.5px; border-bottom:2px solid #8b5cf6; padding-bottom:3px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-              <span>✨ Google Gemini Deep Semantic &amp; Paraphrase Audit (${escapeHtml(g.modelUsed || "Gemini 2.0 Flash")})</span>
+              <span>✨ Google Gemini Deep Semantic &amp; Paraphrase Audit (${escapeHtml(g.modelUsed || "Gemini 3.8 Flash")})</span>
               <span style="font-size:9.5px; color:#6b21a8; font-weight:700;">Verdict: ${escapeHtml(g.overallVerdict || "Complete")} &bull; Paraphrase Risk: ${g.paraphraseScorePct}%</span>
             </div>
             <div style="background:#faf5ff; border:1px solid #ddd6fe; border-radius:5px; padding:7px 10px; font-size:9.5px; color:#3b0764; margin-bottom:8px; line-height:1.45;">
@@ -22291,7 +22291,7 @@ function exportPlagiarismTxtReport() {
     report += `\n------------------------------------------------------------\n`;
     report += `GOOGLE GEMINI AI DEEP SEMANTIC & PARAPHRASE AUDIT\n`;
     report += `------------------------------------------------------------\n`;
-    report += `Model: ${g.modelUsed || "Gemini 2.0 Flash"}\n`;
+    report += `Model: ${g.modelUsed || "Gemini 3.8 Flash"}\n`;
     report += `Overall Verdict: ${g.overallVerdict || "N/A"}\n`;
     report += `Paraphrase Risk Index: ${g.paraphraseScorePct}%\n`;
     if (g.aiUniformityPct !== undefined) report += `AI Syntactic Uniformity: ${g.aiUniformityPct}%\n`;
@@ -23425,33 +23425,104 @@ async function testGeminiApiKey() {
     if (statusEl) statusEl.innerHTML = `<span style="color:#dc2626; font-weight:600;">⚠️ Please paste a Google Gemini API Key first.</span>`;
     return;
   }
-  if (statusEl) statusEl.innerHTML = `<span style="color:#2563eb;"><span class="loading-spinner"></span> Connecting to Google Gemini 2.0 Flash...</span>`;
+  if (statusEl) statusEl.innerHTML = `<span style="color:#2563eb;"><span class="loading-spinner"></span> Connecting to Google Gemini API...</span>`;
 
+  let activeModel = localStorage.getItem("matsci_gemini_active_model") || "gemini-3.8-flash";
+  let discoveredModels = [];
+
+  // Step 1: Query models endpoint to discover models active on this API key
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(key)}`, {
+    const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`);
+    if (listRes.ok) {
+      const listData = await listRes.json();
+      if (Array.isArray(listData.models)) {
+        discoveredModels = listData.models
+          .filter(m => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes("generateContent"))
+          .map(m => m.name.replace(/^models\//, ""));
+      }
+    }
+  } catch (e) {
+    console.warn("Gemini model listing query failed, using direct model fallback:", e);
+  }
+
+  // Prioritize modern model: gemini-3.8-flash, then any non-2.0 flash, then first available
+  if (discoveredModels.length > 0) {
+    if (discoveredModels.includes("gemini-3.8-flash")) {
+      activeModel = "gemini-3.8-flash";
+    } else {
+      const preferred = discoveredModels.find(m => m.includes("flash") && !m.includes("2.0"));
+      activeModel = preferred || discoveredModels[0];
+    }
+    populateGeminiModelDropdown(discoveredModels, activeModel);
+  }
+
+  // Helper to attempt generateContent on a specific model
+  const tryModel = async (targetModel) => {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(targetModel)}:generateContent?key=${encodeURIComponent(key)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: "Ping test. Respond with valid JSON: {\"status\": \"OK\", \"message\": \"Google Gemini 2.0 Flash connected successfully.\"}" }] }],
+        contents: [{ parts: [{ text: "Respond strictly with valid JSON: {\"status\": \"OK\"}" }] }],
         generationConfig: { responseMimeType: "application/json" }
       })
     });
+    return res;
+  };
+
+  try {
+    let res = await tryModel(activeModel);
+
+    // If failed, check if Google suggested a newer model in the error message
     if (!res.ok) {
       const errJson = await res.json().catch(() => ({}));
-      const errMsg = (errJson.error && errJson.error.message) || `HTTP error ${res.status}`;
-      throw new Error(errMsg);
+      const errMsg = (errJson.error && errJson.error.message) || "";
+      const suggestedMatch = errMsg.match(/models\/([a-zA-Z0-9_\-\.]+)/i);
+
+      if (suggestedMatch && suggestedMatch[1] && suggestedMatch[1] !== activeModel) {
+        const suggestedModel = suggestedMatch[1];
+        if (statusEl) statusEl.innerHTML = `<span style="color:#2563eb;"><span class="loading-spinner"></span> Switching to latest ${escapeHtml(suggestedModel)}...</span>`;
+        const retryRes = await tryModel(suggestedModel);
+        if (retryRes.ok) {
+          activeModel = suggestedModel;
+          res = retryRes;
+        } else {
+          throw new Error(errMsg || `HTTP error ${res.status}`);
+        }
+      } else {
+        throw new Error(errMsg || `HTTP error ${res.status}`);
+      }
     }
-    const data = await res.json();
+
+    localStorage.setItem("matsci_gemini_active_model", activeModel);
     if (statusEl) {
-      statusEl.innerHTML = `<span style="color:#16a34a; font-weight:700;">✅ Connection Successful! Google Gemini 2.0 Flash is verified &amp; ready.</span>`;
+      statusEl.innerHTML = `<span style="color:#16a34a; font-weight:700;">✅ Connection Successful! Google ${escapeHtml(activeModel)} is verified &amp; ready.</span>`;
     }
-    showToast("✨ Google Gemini API connection verified successfully!", "success");
+    showToast(`✨ Google Gemini connection verified (${activeModel})!`, "success");
   } catch (e) {
     if (statusEl) {
       statusEl.innerHTML = `<span style="color:#dc2626; font-weight:600;">❌ Connection failed: ${escapeHtml(e.message)}</span>`;
     }
     showToast(`Gemini API connection error: ${e.message}`, "error");
   }
+}
+
+function populateGeminiModelDropdown(modelsList, selectedModel) {
+  const sel = document.getElementById("sel-gemini-model");
+  if (!sel || !Array.isArray(modelsList) || modelsList.length === 0) return;
+  const currentVal = sel.value || selectedModel;
+  sel.innerHTML = "";
+  modelsList.forEach(m => {
+    const opt = document.createElement("option");
+    opt.value = m;
+    let label = m;
+    if (m === "gemini-3.8-flash") label = "Gemini 3.8 Flash (Recommended)";
+    else if (m === "gemini-1.5-pro") label = "Gemini 1.5 Pro (Deep Reasoning)";
+    else if (m === "gemini-1.5-flash") label = "Gemini 1.5 Flash";
+    else label = m.replace(/^gemini-/, "Gemini ").replace(/-/g, " ");
+    opt.textContent = label;
+    if (m === currentVal || m === selectedModel) opt.selected = true;
+    sel.appendChild(opt);
+  });
 }
 
 function saveGeminiApiKey() {
@@ -23522,7 +23593,7 @@ function fallbackCopyText(text) {
   showToast("📋 Copied scholarly rewrite to clipboard!", "success");
 }
 
-function localMaterialsScienceAttributionScan(paragraphs, model = "gemini-2.0-flash") {
+function localMaterialsScienceAttributionScan(paragraphs, model = "gemini-3.8-flash") {
   const flaggedItems = [];
   const theoryRules = [
     {
@@ -23631,8 +23702,11 @@ function localMaterialsScienceAttributionScan(paragraphs, model = "gemini-2.0-fl
   };
 }
 
-async function callGoogleGeminiPlagiarismAnalysis(rawText, paragraphs, model = "gemini-2.0-flash") {
+async function callGoogleGeminiPlagiarismAnalysis(rawText, paragraphs, model = "gemini-3.8-flash") {
   const apiKey = getGeminiApiKey();
+  if (model === "gemini-2.0-flash") model = "gemini-3.8-flash";
+  const savedModel = localStorage.getItem("matsci_gemini_active_model");
+  if (savedModel) model = savedModel;
   const sampleSlice = (rawText || "").slice(0, 12000);
 
   if (!apiKey) {
