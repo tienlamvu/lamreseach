@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T05:11:43.371Z",
+  "exported_at": "2026-11-16T05:12:52.807Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -474,7 +474,7 @@
       "status": "To Read",
       "notes": "Good reference for antisite defects in TMDs.",
       "in_weekly_report": 0,
-      "visibility": "Public",
+      "visibility": "Private",
       "allowed_users": [],
       "allowed_groups": []
     },
@@ -494,7 +494,10 @@
       "characterization_tags": "DFT, VASP, XRD",
       "status": "To Read",
       "notes": "",
-      "in_weekly_report": 1
+      "in_weekly_report": 1,
+      "visibility": "Private",
+      "allowed_users": [],
+      "allowed_groups": []
     },
     {
       "id": 1794572106086,
@@ -512,7 +515,10 @@
       "characterization_tags": "DFT, VASP, XRD",
       "status": "To Read",
       "notes": "",
-      "in_weekly_report": 1
+      "in_weekly_report": 1,
+      "visibility": "Private",
+      "allowed_users": [],
+      "allowed_groups": []
     },
     {
       "id": 1794572091315,
@@ -530,7 +536,10 @@
       "characterization_tags": "DFT, VASP, XRD",
       "status": "To Read",
       "notes": "",
-      "in_weekly_report": 1
+      "in_weekly_report": 1,
+      "visibility": "Private",
+      "allowed_users": [],
+      "allowed_groups": []
     },
     {
       "id": 1794572081666,
@@ -548,7 +557,10 @@
       "characterization_tags": "DFT, VASP, XRD",
       "status": "To Read",
       "notes": "",
-      "in_weekly_report": 1
+      "in_weekly_report": 1,
+      "visibility": "Private",
+      "allowed_users": [],
+      "allowed_groups": []
     },
     {
       "id": 1794572073248,
@@ -566,7 +578,10 @@
       "characterization_tags": "DFT, VASP, XRD",
       "status": "To Read",
       "notes": "",
-      "in_weekly_report": 1
+      "in_weekly_report": 1,
+      "visibility": "Private",
+      "allowed_users": [],
+      "allowed_groups": []
     },
     {
       "id": 1794572062022,
@@ -584,7 +599,10 @@
       "characterization_tags": "DFT, VASP, XRD",
       "status": "To Read",
       "notes": "",
-      "in_weekly_report": 1
+      "in_weekly_report": 1,
+      "visibility": "Private",
+      "allowed_users": [],
+      "allowed_groups": []
     },
     {
       "id": 1794572009312,
@@ -602,7 +620,10 @@
       "characterization_tags": "DFT, VASP, XRD",
       "status": "To Read",
       "notes": "",
-      "in_weekly_report": 1
+      "in_weekly_report": 1,
+      "visibility": "Private",
+      "allowed_users": [],
+      "allowed_groups": []
     },
     {
       "id": 16,
@@ -626,7 +647,10 @@
       "notes": "",
       "bibtex": "@article{Man2026Universal,\n  title = {Universal hydrogen-free synthesis and elemental doping of two-dimensional transition metal selenides},\n  author = {Ping Man and Lok Wing Wong and Ka Ho Leung and Zhiqiang Guan and Tianren Chen and Honglin Chen and Jiangbo Peng and Mingjie Li and Chun-Sing Lee and Qingming Deng and Jiong Zhao and Thuc Hue Ly},\n  journal = {Nature Communications},\n  year = {2026},\n  volume = {17},\n  pages = {11445},\n  doi = {10.1038/s41467-026-78372-5}\n}",
       "in_weekly_report": 1,
-      "created_at": "2026-11-11 12:10:56"
+      "created_at": "2026-11-11 12:10:56",
+      "visibility": "Private",
+      "allowed_users": [],
+      "allowed_groups": []
     },
     {
       "id": 15,
@@ -650,7 +674,10 @@
       "notes": "",
       "bibtex": "@article{Lam2024Firstprinciples,\n  title = {First-principles calculations of self-defects on the structural, electronic, and optical properties of BaXO3 (X = Ti, Zr, and Hf) perovskite oxide materials},\n  author = {Vu Tien Lam and Nguyen Huu Lam and Duong Quoc Van and Nguyen Minh Quan and Nguyen Hoang Thoan and Dang Duc Dung},\n  journal = {Materials Today Communications},\n  year = {2024},\n  volume = {41},\n  pages = {110641},\n  doi = {10.1016/j.mtcomm.2024.110641}\n}",
       "in_weekly_report": 1,
-      "created_at": "2026-11-11 05:42:55"
+      "created_at": "2026-11-11 05:42:55",
+      "visibility": "Private",
+      "allowed_users": [],
+      "allowed_groups": []
     },
     {
       "id": 14,
@@ -674,7 +701,10 @@
       "notes": "",
       "bibtex": "@article{Simon2014Where,\n  title = {Where Do Batteries End and Supercapacitors Begin?},\n  author = {Patrice Simon and Yury Gogotsi and Bruce Dunn},\n  journal = {Science},\n  year = {2014},\n  volume = {343},\n  pages = {1210-1211},\n  doi = {10.1126/science.1249625}\n}",
       "in_weekly_report": 1,
-      "created_at": "2026-11-11 02:08:26"
+      "created_at": "2026-11-11 02:08:26",
+      "visibility": "Private",
+      "allowed_users": [],
+      "allowed_groups": []
     },
     {
       "id": 13,
@@ -698,7 +728,10 @@
       "notes": "",
       "bibtex": "@article{Famprikis2019Fundamentals,\n  title = {Fundamentals of inorganic solid-state electrolytes for batteries},\n  author = {Theodosios Famprikis and Pieremanuele Canepa and James A. Dawson and M. Saiful Islam and Christian Masquelier},\n  journal = {Nature Materials},\n  year = {2019},\n  volume = {18},\n  pages = {1278-1291},\n  doi = {10.1038/s41563-019-0431-3}\n}",
       "in_weekly_report": 1,
-      "created_at": "2026-11-10 12:32:34"
+      "created_at": "2026-11-10 12:32:34",
+      "visibility": "Private",
+      "allowed_users": [],
+      "allowed_groups": []
     },
     {
       "id": 4,
@@ -722,7 +755,10 @@
       "notes": "",
       "bibtex": "@article{Lei2025What,\n  title = {What Is the Role of a Magnetic Mo Antisite Defect on Carrier Relaxation and Spin Dynamics in 2-D MoS<sub>2</sub>?},\n  author = {Chengan Lei and Zhao Qian and Yandong Ma and Rajeev Ahuja},\n  journal = {Nano Letters},\n  year = {2025},\n  volume = {25},\n  pages = {7378-7384},\n  doi = {10.1021/acs.nanolett.5c00628}\n}",
       "in_weekly_report": 1,
-      "created_at": "2026-11-10 12:09:04"
+      "created_at": "2026-11-10 12:09:04",
+      "visibility": "Private",
+      "allowed_users": [],
+      "allowed_groups": []
     }
   ],
   "structures": [
