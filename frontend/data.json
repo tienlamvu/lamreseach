@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T11:28:53.587Z",
+  "exported_at": "2026-11-16T11:28:58.758Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -1932,7 +1932,163 @@
       "id": 1794805779333
     }
   ],
-  "users_registry": {},
+  "users_registry": {
+    "lamvt.sep@gmail.com": {
+      "email": "lamvt.sep@gmail.com",
+      "name": "Lam",
+      "affiliation": "Independent Researcher",
+      "academicRole": "Researcher",
+      "status": "Active",
+      "emailVerified": true,
+      "verifiedAt": "2026-11-16 10:47",
+      "passwordlessGoogle": false,
+      "authProvider": "Email + Google Linked",
+      "googleLinked": true,
+      "googleEmail": "lamvt.sep@gmail.com",
+      "passwordPlainHint": "••••••••",
+      "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
+      "registeredAt": "2026-11-16 10:47",
+      "lastLoginAt": "2026-11-16 10:50",
+      "lastUpdatedAt": "2026-11-16 11:28",
+      "updatedAtMs": 1794828538182,
+      "workspace": {
+        "papers": [],
+        "structures": [],
+        "schedule": [
+          {
+            "id": 1794826039049,
+            "title": "Welcome Research Session — Lam's Workspace",
+            "event_type": "Group Meeting / PI Meeting",
+            "instrument_or_location": "Independent Researcher",
+            "start_date": "2026-11-16",
+            "start_time": "10:00",
+            "end_time": "11:30",
+            "priority": "High",
+            "status": "Scheduled",
+            "sample_id": "INIT-01",
+            "description": "Personal schedule initialized for Lam (lamvt.sep@gmail.com).",
+            "in_weekly_report": 1
+          }
+        ],
+        "expReportRows": [
+          {
+            "sample_id": "J+4",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N4",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2P4",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "Te",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSSe",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "Na0.5TiBi0.5O3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Non-relaxed"
+          },
+          {
+            "sample_id": "Na0.5TiBi0.5O3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Non-relaxed"
+          },
+          {
+            "sample_id": "Na0.5TiBi0.5O3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Non-relaxed"
+          }
+        ],
+        "litReportRows": [
+          {
+            "title": "Antisite defect qubits in monolayer transition metal dichalcogenides",
+            "journal": "Nature Communications (2022) | DOI: 10.1038/s41467-022-28133-x",
+            "material": "Perovskite / 2D Material",
+            "takeaway": "Good reference for antisite defects in TMDs."
+          }
+        ]
+      },
+      "activityLog": [
+        {
+          "timestamp": "2026-11-16 10:50",
+          "category": "Session",
+          "action": "Signed In (Email & Password)",
+          "detail": "Authenticated as Lam (lamvt.sep@gmail.com)"
+        },
+        {
+          "timestamp": "2026-11-16 10:49",
+          "category": "Session",
+          "action": "Signed In (Email & Password)",
+          "detail": "Authenticated as Lam (lamvt.sep@gmail.com)"
+        },
+        {
+          "timestamp": "2026-11-16 10:48",
+          "category": "Account",
+          "action": "Linked Google Account",
+          "detail": "Linked Google Account: lamvt.sep@gmail.com"
+        },
+        {
+          "timestamp": "2026-11-16 10:47",
+          "category": "Session",
+          "action": "Signed In (Private Email OTP Verified)",
+          "detail": "Authenticated as Lam (lamvt.sep@gmail.com)"
+        },
+        {
+          "timestamp": "2026-11-16 10:47",
+          "category": "Account",
+          "action": "Registered & Verified Email (Private Email OTP Verified)",
+          "detail": "Lam (Independent Researcher) verified email lamvt.sep@gmail.com."
+        }
+      ],
+      "groups": [],
+      "picture": "https://lh3.googleusercontent.com/a/ACg8ocJ5aVyRlpWSljVC2OJusM1rb39s2jSKUTJqGBroVnc79VyzoEsF=s96-c"
+    }
+  },
   "user_groups": {
     "grp_dft_team_gun1": {
       "id": "grp_dft_team_gun1",
@@ -1955,7 +2111,6 @@
     "las@gmail.com",
     "lamvt@g.skku.edu",
     "test.relay.otp@skku.edu",
-    "lamvt.sep@gmail.com",
     "linh@gmail.com"
   ],
   "deleted_users_map": {
@@ -1970,7 +2125,6 @@
     "las@gmail.com": 1794808579198,
     "lamvt@g.skku.edu": 1794808579198,
     "test.relay.otp@skku.edu": 1794828400878,
-    "lamvt.sep@gmail.com": 1794828523564,
     "linh@gmail.com": 1794828525404
   },
   "deleted_groups": [
