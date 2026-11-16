@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T01:30:04.998Z",
+  "exported_at": "2026-11-16T01:30:31.886Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -1771,7 +1771,7 @@
     "lamvt.sep@gmail.com": {
       "email": "lamvt.sep@gmail.com",
       "name": "Vu Tien Lam",
-      "affiliation": "SKKU-STEM Laboratory",
+      "affiliation": "SKKU Laboratory",
       "academicRole": "Researcher",
       "status": "Active",
       "emailVerified": true,
@@ -1784,8 +1784,8 @@
       "passwordHash": "441d52fbb490008fa860a41b38fe03e0b7f6fb06b56336922f7d7a95562f51dd",
       "registeredAt": "2026-11-14 14:39",
       "lastLoginAt": "2026-11-14 14:41",
-      "lastUpdatedAt": "2026-11-16 00:15",
-      "updatedAtMs": 1794788138405,
+      "lastUpdatedAt": "2026-11-16 01:30",
+      "updatedAtMs": 1794792631117,
       "workspace": {
         "papers": [
           {
@@ -2063,6 +2063,12 @@
         ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-16 01:30",
+          "category": "Profile",
+          "action": "Profile & Groups Updated by Administrator",
+          "detail": "Updated profile (SKKU Laboratory — Researcher) and group assignments."
+        },
         {
           "timestamp": "2026-11-16 00:15",
           "category": "Security",
