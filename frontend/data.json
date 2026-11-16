@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T05:46:42.645Z",
+  "exported_at": "2026-11-16T05:47:18.018Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -2863,12 +2863,12 @@
       "authProvider": "Verified Email + Google Linked",
       "googleLinked": true,
       "googleEmail": "test.researcher@skku.edu",
-      "passwordPlainHint": "Password123!",
-      "passwordHash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
+      "passwordPlainHint": "skku1234",
+      "passwordHash": "441d52fbb490008fa860a41b38fe03e0b7f6fb06b56336922f7d7a95562f51dd",
       "registeredAt": "2026-11-16 05:32",
       "lastLoginAt": "2026-11-16 05:32",
-      "lastUpdatedAt": "2026-11-16 05:32",
-      "updatedAtMs": 1794807121184,
+      "lastUpdatedAt": "2026-11-16 05:47",
+      "updatedAtMs": 1794808037543,
       "workspace": {
         "papers": [
           {
@@ -3179,6 +3179,12 @@
         ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-16 05:47",
+          "category": "Security",
+          "action": "Password Reset by Administrator",
+          "detail": "Administrator reset password to default (\"skku1234\") for test.researcher@skku.edu."
+        },
         {
           "timestamp": "2026-11-16 05:32",
           "category": "Session",
