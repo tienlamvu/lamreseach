@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-16T07:16:18.317Z",
+  "exported_at": "2026-11-16T07:16:28.755Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -1949,8 +1949,8 @@
       "passwordHash": "441d52fbb490008fa860a41b38fe03e0b7f6fb06b56336922f7d7a95562f51dd",
       "registeredAt": "2026-11-14 14:39",
       "lastLoginAt": "2026-11-14 14:41",
-      "lastUpdatedAt": "2026-11-16 01:30",
-      "updatedAtMs": 1794792631117,
+      "lastUpdatedAt": "2026-11-16 07:16",
+      "updatedAtMs": 1794813388053,
       "workspace": {
         "papers": [
           {
@@ -2228,6 +2228,12 @@
         ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-16 07:16",
+          "category": "Security",
+          "action": "Password Reset by Administrator",
+          "detail": "Administrator reset password to default (\"skku1234\") for lamvt.sep@gmail.com."
+        },
         {
           "timestamp": "2026-11-16 01:30",
           "category": "Profile",
