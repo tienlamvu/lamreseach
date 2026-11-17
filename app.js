@@ -7993,6 +7993,67 @@ STATE.structGroupBy = "project";
 STATE.structCollapsedFolders = new Set();
 if (!STATE.customProjectFolders) STATE.customProjectFolders = new Set();
 
+
+function autoCategorizeStructureFolder(s) {
+  if (s.project_folder && s.project_folder !== "General Research") {
+    return s.project_folder;
+  }
+  const name = s.name || "";
+  const formula = s.chemical_formula || s.formula || "";
+  const hay = `${name} ${formula}`.toLowerCase();
+
+  if (hay.includes("mosi2") || hay.includes("ma2z4") || hay.includes("janus") || name === "A") {
+    return "2D Janus MA2Z4 & Layered TMDs";
+  }
+  if (hay.includes("na0.5") || hay.includes("bio") || hay.includes("batio3") || hay.includes("perovskite") || hay.includes("ferroelectric")) {
+    return "Lead-Free Perovskite Ferroelectrics";
+  }
+  if (hay.includes("mosse") || hay.includes("mos2") || hay.includes("ws2") || hay.includes("tmd") || hay.includes("dichalcogenide")) {
+    return "Transition Metal Dichalcogenides & Defects";
+  }
+  if (hay.includes("tellur") || hay.includes(" te ") || hay.startsWith("te ") || hay === "te" || hay.includes("anisotropic")) {
+    return "2D Tellurium & Anisotropic Semicond.";
+  }
+  return s.project_folder || "General Research";
+}
+window.autoCategorizeStructureFolder = autoCategorizeStructureFolder;
+
+function clearStructSearch() {
+  const inp = document.getElementById("struct-search");
+  if (inp) {
+    inp.value = "";
+    const btn = document.getElementById("struct-search-clear");
+    if (btn) btn.style.display = "none";
+    renderStructuresList();
+  }
+}
+window.clearStructSearch = clearStructSearch;
+
+function resetAllStructureFilters() {
+  const searchInp = document.getElementById("struct-search");
+  const sysSel = document.getElementById("struct-system-filter");
+  const typeSel = document.getElementById("struct-type-filter");
+  const projSel = document.getElementById("struct-project-filter");
+  const paperSel = document.getElementById("struct-paper-filter");
+  const audSel = document.getElementById("struct-audience-filter");
+  const sortSel = document.getElementById("struct-sort-by");
+
+  if (searchInp) searchInp.value = "";
+  if (sysSel) sysSel.value = "ALL";
+  if (typeSel) typeSel.value = "ALL";
+  if (projSel) projSel.value = "ALL";
+  if (paperSel) paperSel.value = "ALL";
+  if (audSel) audSel.value = "ALL";
+  if (sortSel) sortSel.value = "default";
+
+  const clearBtn = document.getElementById("struct-search-clear");
+  if (clearBtn) clearBtn.style.display = "none";
+
+  renderStructuresList();
+  showToast("↺ All crystal structure filters and search queries reset.", "info");
+}
+window.resetAllStructureFilters = resetAllStructureFilters;
+
 function getExistingProjectFolders() {
   const folders = new Set();
   (STATE.structures || []).forEach(s => {
@@ -8424,6 +8485,17 @@ function renderStructuresList() {
   if (!STATE.selectedStructureIds) STATE.selectedStructureIds = new Set();
   if (!STATE.structCollapsedFolders) STATE.structCollapsedFolders = new Set();
 
+  // Auto-categorize structures into research projects if unassigned
+  (STATE.structures || []).forEach(s => {
+    s.project_folder = autoCategorizeStructureFolder(s);
+  });
+
+  const searchInput = document.getElementById("struct-search");
+  const searchClearBtn = document.getElementById("struct-search-clear");
+  if (searchClearBtn) {
+    searchClearBtn.style.display = (searchInput && searchInput.value) ? "block" : "none";
+  }
+
   const filterSel = document.getElementById("struct-project-filter");
   if (filterSel && filterSel.options.length <= 1) {
     populateProjectFolderDropdowns();
@@ -8539,9 +8611,9 @@ function renderStructuresList() {
           </div>
 
           ${canModifyItem ? `
-          <div style="display:flex; gap:6px;">
-            <button class="btn btn-outline btn-sm owner-only-btn admin-only" onclick="openStructureModal(${s.id})" title="Edit Structure">✏️</button>
-            <button class="btn btn-danger btn-sm owner-only-btn admin-only" onclick="deleteStructureItem(${s.id})" title="Delete Structure">🗑️</button>
+          <div style="display:flex; gap:5px; align-items:center;">
+            <button type="button" class="struct-card-btn-edit owner-only-btn admin-only" onclick="openStructureModal(${s.id})" title="Edit Structure">✏️</button>
+            <button type="button" class="struct-card-btn-delete owner-only-btn admin-only" onclick="deleteStructureItem(${s.id})" title="Delete Structure">🗑️</button>
           </div>
           ` : ""}
         </div>
@@ -8587,14 +8659,14 @@ function renderStructuresList() {
 
         ${s.notes ? `<div style="font-size:12px; color:var(--text-secondary); margin-top:4px; line-height:1.45; background:#f8fafc; padding:6px 10px; border-radius:6px;"><strong>Simulation Insight:</strong> ${escapeHtml(s.notes)}</div>` : ""}
 
-        <div class="struct-actions" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
-          <button class="btn btn-primary btn-sm" onclick="viewCifModal(${s.id})">
+        <div class="struct-actions" style="display:flex; gap:8px; margin-top:6px;">
+          <button class="btn btn-primary btn-sm" onclick="viewCifModal(${s.id})" style="flex:2; height:32px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; justify-content:center; gap:5px;">
             👁️ View CIF / POSCAR
           </button>
-          <button class="btn btn-outline btn-sm" onclick="downloadCifById(${s.id})">
+          <button class="btn btn-outline btn-sm" onclick="downloadCifById(${s.id})" style="flex:1; height:32px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; justify-content:center; gap:4px; background:#fff;">
             📥 .cif
           </button>
-          <button class="btn btn-teal btn-sm" onclick="downloadPoscarById(${s.id})">
+          <button class="btn btn-teal btn-sm" onclick="downloadPoscarById(${s.id})" style="flex:1; height:32px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; justify-content:center; gap:4px;">
             ⚡ POSCAR
           </button>
         </div>
