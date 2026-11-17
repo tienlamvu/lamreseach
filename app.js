@@ -418,6 +418,133 @@ function renderScientificTitle(rawTitle) {
 
 
 // ============================================================================
+
+// ============================================================================
+// Korea Standard Time (GMT+9 / KST / Asia/Seoul) Timezone & Multi-Day Helpers
+// ============================================================================
+
+function getGmt9NowStr() {
+  const d = new Date();
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Seoul",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    }).formatToParts(d);
+    const getP = (t) => parts.find(p => p.type === t)?.value || "00";
+    return `${getP("year")}-${getP("month")}-${getP("day")} ${getP("hour")}:${getP("minute")}`;
+  } catch (e) {
+    return d.toISOString().replace("T", " ").slice(0, 16);
+  }
+}
+
+function formatToGmt9(ts, fallbackMs = null) {
+  if (fallbackMs && typeof fallbackMs === "number" && fallbackMs > 0) {
+    try {
+      const d = new Date(fallbackMs);
+      if (!isNaN(d.getTime())) {
+        const parts = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "Asia/Seoul",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false
+        }).formatToParts(d);
+        const getP = (t) => parts.find(p => p.type === t)?.value || "00";
+        return `${getP("year")}-${getP("month")}-${getP("day")} ${getP("hour")}:${getP("minute")}`;
+      }
+    } catch (e) {}
+  }
+  if (!ts) return "N/A";
+  let s = String(ts).trim();
+  if (s.includes("GMT+9") || s.includes("KST")) return s;
+
+  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(s)) {
+    try {
+      const cleanIso = s.replace(" ", "T") + (s.endsWith("Z") ? "" : ":00Z");
+      const d = new Date(cleanIso);
+      if (!isNaN(d.getTime())) {
+        const parts = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "Asia/Seoul",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false
+        }).formatToParts(d);
+        const getP = (t) => parts.find(p => p.type === t)?.value || "00";
+        return `${getP("year")}-${getP("month")}-${getP("day")} ${getP("hour")}:${getP("minute")}`;
+      }
+    } catch (e) {}
+  }
+  return s;
+}
+
+function getDatesInRange(startIso, endIso) {
+  if (!startIso) return [];
+  const end = endIso || startIso;
+  if (startIso === end) return [startIso];
+
+  const dStart = new Date(startIso + "T00:00:00");
+  const dEnd = new Date(end + "T00:00:00");
+  if (isNaN(dStart.getTime()) || isNaN(dEnd.getTime()) || dEnd < dStart) {
+    return [startIso];
+  }
+
+  const dates = [];
+  const curr = new Date(dStart);
+  let limit = 0;
+  while (curr <= dEnd && limit < 90) {
+    const y = curr.getFullYear();
+    const m = String(curr.getMonth() + 1).padStart(2, "0");
+    const d = String(curr.getDate()).padStart(2, "0");
+    dates.push(`${y}-${m}-${d}`);
+    curr.setDate(curr.getDate() + 1);
+    limit++;
+  }
+  return dates.length > 0 ? dates : [startIso];
+}
+
+function handleScheduleStartDateChange() {
+  const sDate = document.getElementById("sm-date")?.value;
+  const eDateInput = document.getElementById("sm-end-date");
+  if (!sDate || !eDateInput) return;
+  if (!eDateInput.value || eDateInput.value < sDate) {
+    eDateInput.value = sDate;
+  }
+  updateScheduleDurationBadge();
+}
+
+function updateScheduleDurationBadge() {
+  const sDate = document.getElementById("sm-date")?.value;
+  const eDate = document.getElementById("sm-end-date")?.value || sDate;
+  const badge = document.getElementById("sm-duration-badge");
+  if (!badge || !sDate) return;
+
+  if (!eDate || eDate === sDate) {
+    badge.textContent = "Single Day";
+    badge.style.color = "#64748b";
+  } else {
+    const d1 = new Date(sDate + "T00:00:00");
+    const d2 = new Date(eDate + "T00:00:00");
+    const diff = Math.round((d2 - d1) / 86400000) + 1;
+    if (diff > 1) {
+      badge.textContent = `⚡ Multi-Day (${diff} Days)`;
+      badge.style.color = "#7c3aed";
+    } else {
+      badge.textContent = "Single Day";
+      badge.style.color = "#64748b";
+    }
+  }
+}
+
 // Multi-User Authentication, Google Account Linking, Personal Workspaces
 // & Administrator User Directory / Content Inspector
 // Exclusive CV Owner & Administrator: lamvt.skku@gmail.com
@@ -2075,7 +2202,7 @@ function getActivePersonalWorkspaceEmail() {
       },
       activityLog: [
         {
-          timestamp: new Date().toISOString().replace("T", " ").slice(0, 16),
+          timestamp: getGmt9NowStr(),
           category: "Account",
           action: "Workspace Session Active",
           detail: `Active researcher session for ${STATE.auth.name || norm}.`
@@ -2093,7 +2220,7 @@ function shouldUseBackendApi() {
 }
 
 function recordUserActivity(category, action, detail) {
-  const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
+  const nowStr = getGmt9NowStr();
   const activeEmail = getActivePersonalWorkspaceEmail();
   if (!activeEmail || !STATE.usersRegistry[activeEmail]) return;
   const user = STATE.usersRegistry[activeEmail];
@@ -3147,7 +3274,7 @@ async function confirmRegistrationViaEmailLink(token) {
 
 async function finalizeVerifiedUserRegistration(pending, verificationMethod = "Email Verified") {
   const { email, name, affiliation, academicRole, passHash, linkGoogle, seedStarter } = pending;
-  const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
+  const nowStr = getGmt9NowStr();
 
   const starterPapers = seedStarter && STATE.masterData && Array.isArray(STATE.masterData.papers)
     ? JSON.parse(JSON.stringify(STATE.masterData.papers.filter(p => normalizeVisibilityMode(p.visibility) === "Public").slice(0, 2)))
@@ -3435,7 +3562,7 @@ async function confirmSelfPasswordReset() {
     return;
   }
 
-  const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
+  const nowStr = getGmt9NowStr();
   userObj.passwordPlainHint = "••••••••";
   userObj.passwordHash = await hashPasswordSha256(newPass);
   userObj.passwordlessGoogle = false;
@@ -3473,7 +3600,7 @@ const GOOGLE_OAUTH_CONFIG = {
   AUTH_ENDPOINT: "https://accounts.google.com/o/oauth2/v2/auth",
   USERINFO_ENDPOINT: "https://www.googleapis.com/oauth2/v3/userinfo",
   REVOKE_ENDPOINT: "https://oauth2.googleapis.com/revoke",
-  SCOPES: "openid email profile",
+  SCOPES: "openid email profile https://www.googleapis.com/auth/calendar.events",
   PROMPT: "select_account consent"
 };
 
@@ -3968,7 +4095,7 @@ window.receiveGoogleOAuth2PopupResult = async function (payload) {
     existingUser = findRegisteredUserByEmailOrGoogle(email);
   }
 
-  const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
+  const nowStr = getGmt9NowStr();
 
   if (existingUser) {
     if (existingUser.status === "Suspended") {
@@ -4122,7 +4249,7 @@ function completeOwnerLogin(email, name, picture) {
 }
 
 function completePersonalUserLogin(userObj, loginMethod = "Account") {
-  const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
+  const nowStr = getGmt9NowStr();
   const normEmail = normalizeEmail(userObj.email);
   removeDeletedUserTombstone(normEmail);
   sessionStorage.removeItem("matsci_workspace_banner_dismissed_" + normEmail);
@@ -4251,7 +4378,7 @@ function openUserAccountModal() {
 
   let u = STATE.usersRegistry[email] || findRegisteredUserByEmailOrGoogle(email);
   if (!u) {
-    const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
+    const nowStr = getGmt9NowStr();
     u = {
       email: email,
       name: STATE.auth.name || "Researcher",
@@ -4516,7 +4643,7 @@ function renderDashboardAdminUsersSummary() {
                 <span class="badge badge-slate">💎 ${sCount} CIFs</span>
               </div>
               <div style="font-size:11.5px; color:#475569; background:#f8fafc; padding:6px 8px; border-radius:6px; margin-top:8px; border-left:3px solid #3b82f6;">
-                <strong>Latest Update (${escapeHtml(u.lastUpdatedAt || u.lastLoginAt || "")}):</strong><br/>
+                <strong>Latest Update (${escapeHtml(formatToGmt9(u.lastUpdatedAt || u.lastLoginAt, u.updatedAtMs))} <span style="font-size:10px; color:#2563eb;">GMT+9</span>):</strong><br/>
                 ${escapeHtml(latestAct.slice(0, 90))}${latestAct.length > 90 ? "..." : ""}
               </div>
             </div>
@@ -4751,7 +4878,7 @@ function renderAdminInspectorContent() {
             <strong style="font-size:13px; color:#0f172a;">${escapeHtml(item.action)}</strong>
             <div style="font-size:12.5px; color:#475569; margin-top:3px;">${escapeHtml(item.detail)}</div>
           </div>
-          <div style="font-size:11.5px; color:#64748b; white-space:nowrap; font-family:monospace;">${escapeHtml(item.timestamp)}</div>
+          <div style="font-size:11.5px; color:#64748b; white-space:nowrap; font-family:monospace;">${escapeHtml(formatToGmt9(item.timestamp, item.timestampMs))} <span style="font-size:10px; color:#2563eb;">(GMT+9)</span></div>
         </div>
       `).join("");
     }
@@ -4852,7 +4979,7 @@ function renderAdminInspectorContent() {
             <button type="button" class="btn btn-outline btn-sm" style="padding:2px 7px; font-size:10.5px;" onclick="openAdminEditUserModal('${escapeHtml(email)}')">+ Assign / Edit Groups</button>
           </div>
           <div style="font-size:11.5px; color:#64748b; margin-top:6px;">
-            Registered: <strong>${escapeHtml(u.registeredAt || "N/A")}</strong> &nbsp;|&nbsp; Last Sign-In: <strong>${escapeHtml(u.lastLoginAt || "N/A")}</strong> &nbsp;|&nbsp; Last Update: <strong>${escapeHtml(u.lastUpdatedAt || "N/A")}</strong>
+            Registered: <strong>${escapeHtml(formatToGmt9(u.registeredAt))}</strong> &nbsp;|&nbsp; Last Sign-In: <strong>${escapeHtml(formatToGmt9(u.lastLoginAt))}</strong> &nbsp;|&nbsp; Last Update: <strong>${escapeHtml(formatToGmt9(u.lastUpdatedAt, u.updatedAtMs))}</strong> <span style="font-size:10.5px; color:#2563eb; font-weight:700;">(GMT+9)</span>
           </div>
         </div>
         <div style="display:flex; gap:6px; flex-wrap:wrap;">
@@ -4922,7 +5049,7 @@ async function quickSetUserPasswordFromInspector(email) {
     return;
   }
 
-  const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
+  const nowStr = getGmt9NowStr();
   u.passwordPlainHint = newPass;
   u.passwordHash = await hashPasswordSha256(newPass);
   u.lastUpdatedAt = nowStr;
@@ -4949,7 +5076,7 @@ async function quickResetUserPasswordFromInspector(email) {
   if (!u) return;
 
   const defaultPass = "skku1234";
-  const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
+  const nowStr = getGmt9NowStr();
   u.passwordPlainHint = defaultPass;
   u.passwordHash = await hashPasswordSha256(defaultPass);
   u.lastUpdatedAt = nowStr;
@@ -5173,7 +5300,7 @@ async function saveAdminEditedUser() {
     showToast(`A user account with email "${newEmail}" already exists. Editing existing account instead.`, "warn");
   }
 
-  const nowStr = new Date().toISOString().replace("T", " ").slice(0, 16);
+  const nowStr = getGmt9NowStr();
   removeDeletedUserTombstone(newEmail);
 
   let userObj = origEmail ? STATE.usersRegistry[origEmail] : STATE.usersRegistry[newEmail];
@@ -5737,13 +5864,33 @@ function renderMonthlyCalendar() {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const prevMonthDays = new Date(year, month, 0).getDate();
-  const todayIso = new Date().toISOString().split("T")[0];
+  let todayIso = "";
+  try {
+    todayIso = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  } catch (e) {
+    todayIso = new Date().toISOString().split("T")[0];
+  }
 
+  // Group events by date, distributing multi-day events across all covered dates
   const eventsByDate = {};
-  STATE.schedule.forEach(item => {
-    const d = item.start_date;
-    if (!eventsByDate[d]) eventsByDate[d] = [];
-    eventsByDate[d].push(item);
+  (STATE.schedule || []).forEach(item => {
+    const sDate = item.start_date;
+    const eDate = item.end_date || item.start_date;
+    const range = getDatesInRange(sDate, eDate);
+    const totalDays = range.length;
+    const isMulti = totalDays > 1;
+
+    range.forEach((d, dayIndex) => {
+      if (!eventsByDate[d]) eventsByDate[d] = [];
+      eventsByDate[d].push({
+        ...item,
+        isMultiDay: isMulti,
+        dayIndex: dayIndex + 1,
+        totalDays: totalDays,
+        isFirstDay: dayIndex === 0,
+        isLastDay: dayIndex === totalDays - 1
+      });
+    });
   });
 
   let cellsHtml = "";
@@ -5775,18 +5922,45 @@ function renderMonthlyCalendar() {
 
     const eventsHtml = dayEvents.map(ev => {
       let typeClass = "";
-      if ((ev.event_type || "").includes("Synthesis")) typeClass = "type-synth";
+      const isGoogleEvent = Boolean(ev.syncedWithGoogle || ev.googleEventId || (ev.event_type || "").includes("Google Calendar"));
+
+      if (isGoogleEvent) typeClass = "type-gcal";
+      else if ((ev.event_type || "").includes("Synthesis")) typeClass = "type-synth";
       else if ((ev.event_type || "").includes("Characterization")) typeClass = "type-char";
       else if ((ev.event_type || "").includes("Meeting")) typeClass = "type-meet";
+
+      let multiClass = "";
+      let multiLabel = "";
+      if (ev.isMultiDay) {
+        if (ev.isFirstDay) {
+          multiClass = "multi-day-start";
+          multiLabel = `<span style="opacity:0.9;">🚩 (${ev.dayIndex}/${ev.totalDays})</span> `;
+        } else if (ev.isLastDay) {
+          multiClass = "multi-day-end";
+          multiLabel = `<span style="opacity:0.9;">🏁 (${ev.totalDays}/${ev.totalDays})</span> `;
+        } else {
+          multiClass = "multi-day-mid";
+          multiLabel = `<span style="opacity:0.9;">↔️ (${ev.dayIndex}/${ev.totalDays})</span> `;
+        }
+      }
+
       const doneClass = ev.status === "Completed" ? "done" : "";
+      const gcalIcon = isGoogleEvent ? "🌐 " : "";
+      const timeDisplay = ev.isMultiDay
+        ? (ev.isFirstDay ? (ev.start_time || "09:00") : (ev.isLastDay ? (ev.end_time || "18:00") : "All Day"))
+        : (ev.start_time || "09:00");
+
+      const tooltipText = ev.isMultiDay
+        ? `${ev.title} [${ev.start_date} ${ev.start_time || ""} → ${ev.end_date} ${ev.end_time || ""}] (${ev.totalDays} Days - Day ${ev.dayIndex})`
+        : `${ev.start_time || ""}–${ev.end_time || ""}: ${ev.title}`;
 
       return `
         <div
-          class="cal-event-chip ${typeClass} ${doneClass}"
+          class="cal-event-chip ${typeClass} ${multiClass} ${doneClass}"
           onclick="event.stopPropagation(); openScheduleModal(${ev.id})"
-          title="${escapeHtml(ev.start_time)}–${escapeHtml(ev.end_time)}: ${escapeHtml(ev.title)}"
+          title="${escapeHtml(tooltipText)}"
         >
-          ${escapeHtml(ev.start_time)} ${escapeHtml(ev.title)}
+          ${gcalIcon}${multiLabel}${escapeHtml(timeDisplay)}: ${escapeHtml(ev.title)}
         </div>
       `;
     }).join("");
@@ -5808,23 +5982,26 @@ function renderMonthlyCalendar() {
 
   grid.innerHTML = cellsHtml;
 }
-
 function openScheduleModalForDate(isoDate) {
   if (!requireAdminAuth()) return;
   openScheduleModal(null, isoDate);
 }
 
 function buildGoogleCalendarTemplateUrl(item) {
-  const dateClean = (item.start_date || new Date().toISOString().split("T")[0]).replace(/-/g, "");
+  const sDateClean = (item.start_date || new Date().toISOString().split("T")[0]).replace(/-/g, "");
+  const eDateClean = (item.end_date || item.start_date || sDateClean).replace(/-/g, "");
   const startClean = (item.start_time || "09:00").replace(":", "") + "00";
   const endClean = (item.end_time || "11:00").replace(":", "") + "00";
-  const datesParam = `${dateClean}T${startClean}/${dateClean}T${endClean}`;
+  const datesParam = `${sDateClean}T${startClean}/${eDateClean}T${endClean}`;
 
   const detailsParts = [];
   if (item.event_type) detailsParts.push(`Category: ${item.event_type}`);
   if (item.sample_id) detailsParts.push(`Sample/Batch: ${item.sample_id}`);
+  if (item.end_date && item.end_date !== item.start_date) {
+    detailsParts.push(`Multi-Day Schedule: ${item.start_date} -> ${item.end_date}`);
+  }
   if (item.description) detailsParts.push(`Details: ${item.description}`);
-  detailsParts.push("Synced from MatSci Nexus PhD Hub");
+  detailsParts.push("Synced from MatSci Nexus PhD Hub (Asia/Seoul • GMT+9)");
 
   const params = new URLSearchParams({
     action: "TEMPLATE",
@@ -5832,11 +6009,11 @@ function buildGoogleCalendarTemplateUrl(item) {
     dates: datesParam,
     details: detailsParts.join("\n"),
     location: item.instrument_or_location || "SKKU Materials Science Lab",
+    ctz: "Asia/Seoul",
     authuser: OWNER_GOOGLE_EMAIL
   });
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
-
 function pushSingleEventToGoogleCalendar(id) {
   const item = STATE.schedule.find(x => x.id === id);
   if (!item) return;
@@ -5862,15 +6039,16 @@ function exportScheduleToIcs() {
   ];
 
   STATE.schedule.forEach(ev => {
-    const d = (ev.start_date || "2026-11-11").replace(/-/g, "");
+    const sd = (ev.start_date || "2026-11-11").replace(/-/g, "");
+    const ed = (ev.end_date || ev.start_date || sd).replace(/-/g, "");
     const st = (ev.start_time || "09:00").replace(":", "") + "00";
     const et = (ev.end_time || "11:00").replace(":", "") + "00";
     const desc = `${ev.event_type || ""} | Sample: ${ev.sample_id || "N/A"} | ${ev.description || ""}`.replace(/\r?\n/g, "\\n");
 
     lines.push("BEGIN:VEVENT");
     lines.push(`UID:matsci-${ev.id}@lamvt.skku`);
-    lines.push(`DTSTART:${d}T${st}`);
-    lines.push(`DTEND:${d}T${et}`);
+    lines.push(`DTSTART:${sd}T${st}`);
+    lines.push(`DTEND:${ed}T${et}`);
     lines.push(`SUMMARY:[MatSci] ${ev.title}`);
     lines.push(`LOCATION:${ev.instrument_or_location || "SKKU Lab"}`);
     lines.push(`DESCRIPTION:${desc}`);
@@ -5889,7 +6067,6 @@ function exportScheduleToIcs() {
   URL.revokeObjectURL(url);
   showToast(`Downloaded .ics file! Import it into Google Calendar (${OWNER_GOOGLE_EMAIL}) Settings -> Import.`);
 }
-
 function toggleGoogleCalendarEmbed() {
   const card = document.getElementById("gcal-embed-card");
   if (!card) return;
@@ -5935,6 +6112,7 @@ function parseIcsContentAndMerge(icsText) {
     const loc = locMatch ? locMatch[1].trim().replace(/\\,/g, ",") : "Lab";
 
     let startDate = new Date().toISOString().split("T")[0];
+    let endDate = startDate;
     let startTime = "09:00";
     let endTime = "10:30";
 
@@ -5953,6 +6131,12 @@ function parseIcsContentAndMerge(icsText) {
     }
     if (rawEnd) {
       const cleanEnd = rawEnd.replace(/[^0-9T]/g, "");
+      if (cleanEnd.length >= 8) {
+        const ey = cleanEnd.slice(0, 4);
+        const em = cleanEnd.slice(4, 6);
+        const ed = cleanEnd.slice(6, 8);
+        endDate = `${ey}-${em}-${ed}`;
+      }
       if (cleanEnd.includes("T") && cleanEnd.length >= 13) {
         const tIdx = cleanEnd.indexOf("T");
         endTime = `${cleanEnd.slice(tIdx + 1, tIdx + 3)}:${cleanEnd.slice(tIdx + 3, tIdx + 5)}`;
@@ -5964,8 +6148,10 @@ function parseIcsContentAndMerge(icsText) {
       event_type: "Google Calendar Sync",
       instrument_or_location: loc,
       start_date: startDate,
+      end_date: endDate,
       start_time: startTime,
       end_time: endTime,
+      syncedWithGoogle: true,
       priority: "Medium",
       status: "Scheduled",
       sample_id: "",
@@ -6031,67 +6217,109 @@ async function handleGcalIcsUrlFetch() {
 
 async function syncWithGoogleCalendarApi() {
   if (!requireAdminAuth()) return;
+  const btnSync = document.getElementById("btn-sync-google-cal");
+  const origBtnHtml = btnSync ? btnSync.innerHTML : "";
+  if (btnSync) {
+    btnSync.disabled = true;
+    btnSync.innerHTML = `<span class="loading-spinner"></span> Syncing Google Calendar...`;
+  }
+
+  const targetCalEmail = (STATE.auth && (STATE.auth.googleEmail || STATE.auth.email)) || OWNER_GOOGLE_EMAIL;
 
   if (STATE.auth.googleAccessToken) {
     try {
-      const timeMin = new Date(Date.now() - 14 * 86400000).toISOString();
+      // Query events from past 60 days to next 180 days
+      const dMin = new Date(Date.now() - 60 * 86400000).toISOString();
+      const dMax = new Date(Date.now() + 180 * 86400000).toISOString();
       const res = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&singleEvents=true&orderBy=startTime&maxResults=25`,
+        `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(dMin)}&timeMax=${encodeURIComponent(dMax)}&singleEvents=true&orderBy=startTime&maxResults=100`,
         { headers: { Authorization: `Bearer ${STATE.auth.googleAccessToken}` } }
       );
-      if (!res.ok) throw new Error("Google Calendar token expired. Please re-authorize.");
+      if (!res.ok) throw new Error("Google Calendar authorization expired. Please re-authenticate.");
       const data = await res.json();
       let imported = 0;
-      const existingTitles = new Set(STATE.schedule.map(s => `${s.title}|${s.start_date}`));
+      let updated = 0;
 
-      for (const item of data.items || []) {
+      const items = data.items || [];
+      for (const item of items) {
         const startRaw = item.start?.dateTime || item.start?.date || "";
         if (!startRaw) continue;
         const startDate = startRaw.slice(0, 10);
         const startTime = startRaw.length > 10 ? startRaw.slice(11, 16) : "09:00";
-        const endRaw = item.end?.dateTime || "";
-        const endTime = endRaw.length > 10 ? endRaw.slice(11, 16) : "10:30";
-        const title = item.summary || "Google Calendar Event";
-        const key = `${title}|${startDate}`;
 
-        if (!existingTitles.has(key)) {
-          const newEv = {
-            title,
-            event_type: "Group Meeting / PI Meeting",
-            instrument_or_location: item.location || "Google Calendar",
-            start_date: startDate,
-            start_time: startTime,
-            end_time: endTime,
-            priority: "High",
-            status: "Scheduled",
-            sample_id: "",
-            description: item.description || "Synced from Google Calendar (lamvt.skku@gmail.com)",
-            in_weekly_report: 1
-          };
-          if (!STATIC_MODE) {
-            await fetch("/api/schedule", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(newEv)
-            });
-          } else {
-            STATE.schedule.push({ ...newEv, id: Date.now() + imported });
-          }
-          existingTitles.add(key);
+        const endRaw = item.end?.dateTime || item.end?.date || "";
+        let endDate = endRaw ? endRaw.slice(0, 10) : startDate;
+        let endTime = endRaw.length > 10 ? endRaw.slice(11, 16) : "18:00";
+
+        // For all-day multi-day events in Google Calendar, end.date is exclusive (the day after)
+        if (!item.end?.dateTime && item.end?.date && endDate > startDate) {
+          try {
+            const dEnd = new Date(endDate + "T00:00:00");
+            dEnd.setDate(dEnd.getDate() - 1);
+            const prevY = dEnd.getFullYear();
+            const prevM = String(dEnd.getMonth() + 1).padStart(2, "0");
+            const prevD = String(dEnd.getDate()).padStart(2, "0");
+            endDate = `${prevY}-${prevM}-${prevD}`;
+          } catch(e) {}
+        }
+
+        const title = item.summary || "Google Calendar Event";
+        const gEventId = item.id;
+
+        // Check if event already exists by googleEventId or title+start_date
+        const existingIdx = STATE.schedule.findIndex(s => s.googleEventId === gEventId || (s.title === title && s.start_date === startDate));
+
+        const evPayload = {
+          title,
+          event_type: "Google Calendar Sync",
+          instrument_or_location: item.location || "Google Calendar",
+          start_date: startDate,
+          end_date: endDate,
+          start_time: startTime,
+          end_time: endTime,
+          syncedWithGoogle: true,
+          googleEventId: gEventId,
+          priority: "High",
+          status: "Scheduled",
+          sample_id: "",
+          description: item.description || `Synced live from Google Calendar (${targetCalEmail})`,
+          in_weekly_report: 1
+        };
+
+        if (existingIdx >= 0) {
+          STATE.schedule[existingIdx] = { ...STATE.schedule[existingIdx], ...evPayload };
+          updated++;
+        } else {
+          STATE.schedule.unshift({ ...evPayload, id: Date.now() + Math.floor(Math.random() * 10000) });
           imported++;
         }
       }
-      if (STATIC_MODE) saveStaticDb();
-      await loadAllData();
-      showToast(`✅ Synced with ${OWNER_GOOGLE_EMAIL} Google Calendar (${imported} new events imported)!`);
+
+      saveStaticDb();
+      renderMonthlyCalendar();
+      renderScheduleList();
+      renderDashboardSchedule();
+
+      showToast(`✅ Synced with Google Calendar (${targetCalEmail}): ${imported} new, ${updated} updated!`, "success");
       return;
     } catch (err) {
+      console.warn("Google Calendar API sync error:", err);
       showToast(err.message, "warn");
+    } finally {
+      if (btnSync) {
+        btnSync.disabled = false;
+        btnSync.innerHTML = origBtnHtml;
+      }
     }
   }
 
-  toggleGoogleCalendarEmbed();
-  showToast(`Live Google Calendar view toggled for ${OWNER_GOOGLE_EMAIL}. You can click "📅 +Google Cal" on any event or Export .ics!`);
+  // If no direct OAuth token available, prompt user to authorize or link Google Calendar
+  if (btnSync) {
+    btnSync.disabled = false;
+    btnSync.innerHTML = origBtnHtml;
+  }
+  showToast(`💡 To sync live events directly into this calendar, click "Sign in with Google" or import your .ics file!`, "info");
+  toggleIcsImportBox();
 }
 
 // ============================================================================
@@ -9131,7 +9359,18 @@ function renderScheduleList() {
             </div>
             <div class="item-title">${escapeHtml(s.title)}</div>
             <div class="item-meta">
-              📅 <strong>${escapeHtml(s.start_date)}</strong> (${escapeHtml(s.start_time)} – ${escapeHtml(s.end_time)}) &nbsp;|&nbsp; 📍 ${escapeHtml(s.instrument_or_location || "Lab")}
+              ${(() => {
+                const isMulti = Boolean(s.end_date && s.end_date !== s.start_date);
+                if (isMulti) {
+                  const d1 = new Date(s.start_date + "T00:00:00");
+                  const d2 = new Date(s.end_date + "T00:00:00");
+                  const diff = Math.round((d2 - d1) / 86400000) + 1;
+                  return `📅 <strong>${escapeHtml(s.start_date)}</strong> (${escapeHtml(s.start_time || "09:00")}) &rarr; <strong>${escapeHtml(s.end_date)}</strong> (${escapeHtml(s.end_time || "18:00")}) <span class="badge badge-purple" style="font-size:10px; margin-left:4px;">⚡ Multi-Day (${diff} Days)</span>`;
+                }
+                return `📅 <strong>${escapeHtml(s.start_date)}</strong> (${escapeHtml(s.start_time || "09:00")} – ${escapeHtml(s.end_time || "11:30")})`;
+              })()}
+              &nbsp;|&nbsp; 📍 ${escapeHtml(s.instrument_or_location || "Lab")}
+              ${(s.syncedWithGoogle || s.googleEventId || (s.event_type || "").includes("Google Calendar")) ? `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:10px; margin-left:6px;">🌐 Google Calendar Event</span>` : ""}
             </div>
             ${s.description ? `<div style="font-size:12.5px; color:var(--text-secondary); margin-top:4px;">${escapeHtml(s.description)}</div>` : ""}
           </div>
@@ -9385,8 +9624,14 @@ async function deleteSelectedSchedule() {
 function openScheduleModal(itemId = null, prefillDate = null) {
   if (!requireAdminAuth()) return;
   const modal = document.getElementById("schedule-modal");
-  const todayStr = prefillDate || new Date().toISOString().split("T")[0];
-  document.getElementById("sm-open-gcal").checked = true;
+  let todayStr = "";
+  try {
+    todayStr = prefillDate || new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  } catch (e) {
+    todayStr = prefillDate || new Date().toISOString().split("T")[0];
+  }
+  const openGcalCb = document.getElementById("sm-open-gcal");
+  if (openGcalCb) openGcalCb.checked = true;
 
   if (itemId) {
     const s = STATE.schedule.find(x => x.id === itemId);
@@ -9401,11 +9646,16 @@ function openScheduleModal(itemId = null, prefillDate = null) {
     document.getElementById("sm-type").value = s.event_type || "Group Meeting / PI Meeting";
     document.getElementById("sm-location").value = s.instrument_or_location || "";
     document.getElementById("sm-date").value = s.start_date || todayStr;
+
+    const endDateEl = document.getElementById("sm-end-date");
+    if (endDateEl) endDateEl.value = s.end_date || s.start_date || todayStr;
+
     document.getElementById("sm-start").value = s.start_time || "09:00";
     document.getElementById("sm-end").value = s.end_time || "11:30";
     document.getElementById("sm-sample").value = s.sample_id || "";
     document.getElementById("sm-status").value = s.status || "Scheduled";
     document.getElementById("sm-desc").value = s.description || "";
+    updateScheduleDurationBadge();
     setVisibilityControlValues("sm", s.visibility || "Public", s.allowed_users || []);
   } else {
     document.getElementById("schedule-modal-title").textContent = `Schedule Event / Task (${todayStr})`;
@@ -9414,32 +9664,51 @@ function openScheduleModal(itemId = null, prefillDate = null) {
     document.getElementById("sm-type").value = "Group Meeting / PI Meeting";
     document.getElementById("sm-location").value = "SKKU Cluster / Office";
     document.getElementById("sm-date").value = todayStr;
+
+    const endDateEl = document.getElementById("sm-end-date");
+    if (endDateEl) endDateEl.value = todayStr;
+
     document.getElementById("sm-start").value = "10:00";
     document.getElementById("sm-end").value = "12:00";
     document.getElementById("sm-sample").value = "";
     document.getElementById("sm-status").value = "Scheduled";
     document.getElementById("sm-desc").value = "";
+    updateScheduleDurationBadge();
     setVisibilityControlValues("sm", "Public", []);
   }
   modal.classList.add("open");
 }
-
 async function saveScheduleFromModal() {
   if (!requireAdminAuth()) return;
   const id = document.getElementById("sm-id").value;
-  const openGcal = document.getElementById("sm-open-gcal").checked;
+  const openGcal = document.getElementById("sm-open-gcal")?.checked;
 
   const visMeta = (STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail)
     ? getVisibilityControlValues("sm")
     : {};
 
+  const sDate = document.getElementById("sm-date").value;
+  const eDate = document.getElementById("sm-end-date")?.value || sDate;
+  const sTime = document.getElementById("sm-start").value || "09:00";
+  const eTime = document.getElementById("sm-end").value || "11:30";
+
+  if (!document.getElementById("sm-title").value.trim() || !sDate) {
+    showToast("Title and Start Date are required.", "warn");
+    return;
+  }
+  if (eDate < sDate) {
+    showToast("End Date cannot be earlier than Start Date.", "warn");
+    return;
+  }
+
   const payload = {
     title: document.getElementById("sm-title").value.trim(),
     event_type: document.getElementById("sm-type").value,
     instrument_or_location: document.getElementById("sm-location").value.trim(),
-    start_date: document.getElementById("sm-date").value,
-    start_time: document.getElementById("sm-start").value,
-    end_time: document.getElementById("sm-end").value,
+    start_date: sDate,
+    end_date: eDate,
+    start_time: sTime,
+    end_time: eTime,
     priority: "High",
     status: document.getElementById("sm-status").value,
     sample_id: document.getElementById("sm-sample").value.trim(),
@@ -9447,10 +9716,9 @@ async function saveScheduleFromModal() {
     in_weekly_report: 1,
     ...visMeta
   };
-  if (!payload.title || !payload.start_date) {
-    showToast("Title and Date are required.", "warn");
-    return;
-  }
+
+  const isMulti = eDate !== sDate;
+  const durationDesc = isMulti ? ` (${sDate} -> ${eDate})` : ` (${sDate} ${sTime}–${eTime})`;
 
   if (shouldUseBackendApi()) {
     const url = id ? `/api/schedule/${id}` : "/api/schedule";
@@ -9466,10 +9734,10 @@ async function saveScheduleFromModal() {
     if (id) {
       const idx = STATE.schedule.findIndex(x => x.id === Number(id));
       if (idx >= 0) STATE.schedule[idx] = { ...STATE.schedule[idx], ...payload };
-      recordUserActivity("Calendar", "Updated Event", `${payload.title} (${payload.start_date})`);
+      recordUserActivity("Calendar", "Updated Event", `${payload.title}${durationDesc}`);
     } else {
       STATE.schedule.push({ ...payload, id: Date.now() });
-      recordUserActivity("Calendar", "Scheduled Event", `${payload.title} (${payload.start_date} ${payload.start_time}–${payload.end_time})`);
+      recordUserActivity("Calendar", "Scheduled Event", `${payload.title}${durationDesc}`);
     }
     saveStaticDb();
     closeModal("schedule-modal");
@@ -9480,9 +9748,8 @@ async function saveScheduleFromModal() {
   if (openGcal) {
     window.open(buildGoogleCalendarTemplateUrl(payload), "_blank");
   }
-  showToast(`Calendar event saved (${payload.visibility || "Public"})!`);
+  showToast(`Calendar event saved (${payload.visibility || "Public"})${isMulti ? " [Multi-Day]" : ""}!`);
 }
-
 async function cycleScheduleStatus(id) {
   if (!requireAdminAuth()) return;
   const s = STATE.schedule.find(x => x.id === id);
@@ -10280,7 +10547,7 @@ function saveStaticDb(options = {}) {
       expReportRows: STATE.expReportRows || [],
       litReportRows: STATE.litReportRows || []
     };
-    u.lastUpdatedAt = new Date().toISOString().replace("T", " ").slice(0, 16);
+    u.lastUpdatedAt = getGmt9NowStr();
     u.updatedAtMs = Date.now();
     persistUsersRegistryLocal();
   } else if (STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail) {
@@ -13326,7 +13593,7 @@ async function handleSyncOrcid() {
 
       STATE.profile.publications = currentPubs;
       STATE.profile.orcid_id = cleanId;
-      STATE.profile.last_synced_at = new Date().toISOString().replace("T", " ").slice(0, 16);
+      STATE.profile.last_synced_at = getGmt9NowStr();
       saveStaticDb();
       renderProfile(STATE.profile);
       renderAcademicCvSheet(STATE.profile);
@@ -23814,3 +24081,10 @@ function dismissWorkspaceBanner() {
   }
 }
 window.dismissWorkspaceBanner = dismissWorkspaceBanner;
+
+
+window.getGmt9NowStr = getGmt9NowStr;
+window.formatToGmt9 = formatToGmt9;
+window.getDatesInRange = getDatesInRange;
+window.handleScheduleStartDateChange = handleScheduleStartDateChange;
+window.updateScheduleDurationBadge = updateScheduleDurationBadge;
