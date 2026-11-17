@@ -4713,3 +4713,306 @@ body.is-admin #cv-exclusive-owner-notice {
   border-color: #c4b5fd;
   background: #faf5ff;
 }
+
+
+/* ============================================================================
+   Tidy, Ergonomic Crystal Structures Control Panel & Buttons (v77)
+   ============================================================================ */
+
+.struct-control-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.struct-search-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.struct-search-box-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 260px;
+}
+
+.struct-search-icon {
+  position: absolute;
+  left: 12px;
+  font-size: 14px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+#struct-search {
+  width: 100%;
+  height: 38px;
+  padding: 0 34px 0 36px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #0f172a;
+  background: #f8fafc;
+  transition: all 0.15s ease;
+}
+
+#struct-search:focus {
+  background: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  outline: none;
+}
+
+#struct-search-clear {
+  position: absolute;
+  right: 10px;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+#struct-search-clear:hover {
+  color: #0f172a;
+}
+
+.struct-primary-action-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.struct-action-btn-folder {
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid #c084fc !important;
+  background: #faf5ff !important;
+  color: #6b21a8 !important;
+  font-weight: 700 !important;
+  border-radius: 8px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-size: 12.5px !important;
+  cursor: pointer;
+  transition: all 0.15s ease !important;
+  white-space: nowrap;
+}
+
+.struct-action-btn-folder:hover {
+  background: #f3e8ff !important;
+  border-color: #a855f7 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(107, 33, 168, 0.12);
+}
+
+.struct-action-btn-new {
+  height: 38px;
+  padding: 0 16px;
+  background: #2563eb !important;
+  border: 1px solid #1d4ed8 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border-radius: 8px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-size: 13px !important;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2);
+  transition: all 0.15s ease !important;
+  white-space: nowrap;
+}
+
+.struct-action-btn-new:hover {
+  background: #1d4ed8 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(37, 99, 235, 0.25);
+}
+
+/* Row 2: Filter Ribbon */
+.struct-filter-ribbon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 6px;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.struct-filter-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  padding: 3px 8px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.struct-filter-item:hover {
+  border-color: #cbd5e1;
+  background: #ffffff;
+}
+
+.struct-filter-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #475569;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.struct-filter-select {
+  height: 26px;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e293b;
+  padding: 0 2px;
+  cursor: pointer;
+  outline: none;
+  max-width: 175px;
+}
+
+.struct-filter-select:focus {
+  color: #2563eb;
+}
+
+.struct-filter-select-folder {
+  color: #6b21a8 !important;
+  font-weight: 700 !important;
+}
+
+.struct-filter-reset-btn {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 7px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.struct-filter-reset-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+/* Card edit and delete buttons */
+.struct-card-btn-edit, .struct-card-btn-delete {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+}
+
+.struct-card-btn-edit {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  color: #3b82f6;
+}
+
+.struct-card-btn-edit:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  transform: translateY(-1px);
+}
+
+.struct-card-btn-delete {
+  background: #ffffff;
+  border-color: #fee2e2;
+  color: #ef4444;
+}
+
+.struct-card-btn-delete:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #dc2626;
+  transform: translateY(-1px);
+}
+
+/* Enhanced View Toolbar */
+.struct-view-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+}
+
+.struct-view-btn-group {
+  display: inline-flex;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+.struct-view-btn {
+  padding: 6px 13px;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  background: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.struct-view-btn:not(:last-child) {
+  border-right: 1px solid #e2e8f0;
+}
+
+.struct-view-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.struct-view-btn.active {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  font-weight: 700;
+}
