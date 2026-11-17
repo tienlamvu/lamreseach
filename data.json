@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-17T00:09:25.751Z",
+  "exported_at": "2026-11-17T00:15:06.305Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -2308,15 +2308,15 @@
       "emailVerified": true,
       "verifiedAt": "2026-11-17 00:09",
       "passwordlessGoogle": true,
-      "authProvider": "Google OAuth 2.0",
+      "authProvider": "Email + Google Linked",
       "googleLinked": true,
       "googleEmail": "tlamvux@gmail.com",
       "passwordPlainHint": "••••••••",
       "passwordHash": "d2fb761fdc23a442de155300e60284390cb87b20b815d03786da83b76d145932",
       "registeredAt": "2026-11-17 00:09",
       "lastLoginAt": "2026-11-17 00:09",
-      "lastUpdatedAt": "2026-11-17 00:09",
-      "updatedAtMs": 1794874163504,
+      "lastUpdatedAt": "2026-11-17 00:15",
+      "updatedAtMs": 1794874505783,
       "workspace": {
         "papers": [
           {
@@ -2637,6 +2637,12 @@
       },
       "activityLog": [
         {
+          "timestamp": "2026-11-17 00:15",
+          "category": "Profile",
+          "action": "Profile & Groups Updated by Administrator",
+          "detail": "Updated profile (Google OAuth Verified Researcher — Researcher) and group assignments."
+        },
+        {
           "timestamp": "2026-11-17 00:09",
           "category": "Session",
           "action": "Signed In (Google OAuth 2.0)",
@@ -2649,7 +2655,9 @@
           "detail": "Vu Tien Lam granted Google OAuth 2.0 permission (name, email, profile picture) for tlamvux@gmail.com."
         }
       ],
-      "groups": []
+      "groups": [
+        "grp_dft_team_gun1"
+      ]
     }
   },
   "user_groups": {
@@ -2658,8 +2666,10 @@
       "name": "DFT Team",
       "color": "blue",
       "description": "User group created by Administrator",
-      "members": [],
-      "updatedAtMs": 1794805551086
+      "members": [
+        "tlamvux@gmail.com"
+      ],
+      "updatedAtMs": 1794874505783
     }
   },
   "deleted_users": [
