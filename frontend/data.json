@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-17T12:46:24.791Z",
+  "exported_at": "2026-11-17T12:47:04.926Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -926,7 +926,8 @@
       "id": 1794916433265,
       "associated_paper_id": null,
       "associated_paper_title": "",
-      "associated_paper_doi": ""
+      "associated_paper_doi": "",
+      "project_folder": "General Research"
     },
     {
       "name": "J1+4_Si_N1",
@@ -1084,7 +1085,8 @@
       "allowed_groups": [
         "grp_dft_team_gun1"
       ],
-      "id": 1794916417728
+      "id": 1794916417728,
+      "project_folder": "General Research"
     },
     {
       "name": "J1+4_P_Si2",
@@ -1242,7 +1244,8 @@
       "allowed_groups": [
         "grp_dft_team_gun1"
       ],
-      "id": 1794916204898
+      "id": 1794916204898,
+      "project_folder": "General Research"
     },
     {
       "name": "J1+4_P_N2",
@@ -1400,7 +1403,8 @@
       "allowed_groups": [
         "grp_dft_team_gun1"
       ],
-      "id": 1794916190122
+      "id": 1794916190122,
+      "project_folder": "General Research"
     },
     {
       "name": "J1+4_P_N1",
@@ -1558,7 +1562,8 @@
       "allowed_groups": [
         "grp_dft_team_gun1"
       ],
-      "id": 1794916177922
+      "id": 1794916177922,
+      "project_folder": "General Research"
     },
     {
       "name": "J1+4_N_Si1",
@@ -1716,7 +1721,8 @@
       "allowed_groups": [
         "grp_dft_team_gun1"
       ],
-      "id": 1794916165066
+      "id": 1794916165066,
+      "project_folder": "General Research"
     },
     {
       "name": "J1+4_N_P2",
@@ -1874,7 +1880,8 @@
       "allowed_groups": [
         "grp_dft_team_gun1"
       ],
-      "id": 1794916149442
+      "id": 1794916149442,
+      "project_folder": "General Research"
     },
     {
       "name": "J1+4_N_P1",
@@ -2032,7 +2039,8 @@
       "allowed_groups": [
         "grp_dft_team_gun1"
       ],
-      "id": 1794916136770
+      "id": 1794916136770,
+      "project_folder": "General Research"
     },
     {
       "name": "J1+4_V(Si2)",
@@ -2182,7 +2190,8 @@
       "allowed_groups": [
         "grp_dft_team_gun1"
       ],
-      "id": 1794916122658
+      "id": 1794916122658,
+      "project_folder": "General Research"
     },
     {
       "name": "J1+4_V(Si1)",
@@ -2328,7 +2337,8 @@
       "visibility": "Specific",
       "allowed_users": [],
       "allowed_groups": [],
-      "id": 1794916108842
+      "id": 1794916108842,
+      "project_folder": "General Research"
     },
     {
       "name": "J1+4_V(P2)",
@@ -2478,7 +2488,8 @@
       "allowed_groups": [
         "grp_dft_team_gun1"
       ],
-      "id": 1794916066074
+      "id": 1794916066074,
+      "project_folder": "General Research"
     },
     {
       "name": "J1+4_V(P1)",
@@ -2628,7 +2639,8 @@
       "allowed_groups": [
         "grp_dft_team_gun1"
       ],
-      "id": 1794916050563
+      "id": 1794916050563,
+      "project_folder": "General Research"
     },
     {
       "name": "J1+4_V(N2)",
@@ -2778,7 +2790,8 @@
       "allowed_groups": [
         "grp_dft_team_gun1"
       ],
-      "id": 1794916033307
+      "id": 1794916033307,
+      "project_folder": "General Research"
     },
     {
       "name": "J1+4_V(N1)",
@@ -2928,7 +2941,8 @@
       "allowed_groups": [
         "grp_dft_team_gun1"
       ],
-      "id": 1794915986867
+      "id": 1794915986867,
+      "project_folder": "General Research"
     },
     {
       "name": "J1+4_V(Mo)",
@@ -3078,7 +3092,8 @@
       "allowed_groups": [
         "grp_dft_team_gun1"
       ],
-      "id": 1794915826092
+      "id": 1794915826092,
+      "project_folder": "General Research"
     },
     {
       "name": "MoSi2N2P2 Janus 4",
@@ -3173,7 +3188,8 @@
         }
       ],
       "in_weekly_report": 0,
-      "id": 1794571683470
+      "id": 1794571683470,
+      "project_folder": "2D Janus MA2Z4 & Layered TMDs"
     },
     {
       "name": "MoSi2N2P2 Janus 3",
@@ -3268,7 +3284,8 @@
         }
       ],
       "in_weekly_report": 0,
-      "id": 1794571666118
+      "id": 1794571666118,
+      "project_folder": "2D Janus MA2Z4 & Layered TMDs"
     },
     {
       "name": "MoSi2N2P2 Janus 2",
@@ -3363,7 +3380,8 @@
         }
       ],
       "in_weekly_report": 0,
-      "id": 1794571655351
+      "id": 1794571655351,
+      "project_folder": "2D Janus MA2Z4 & Layered TMDs"
     },
     {
       "name": "MoSi2N2P2 Janus 1",
@@ -3458,7 +3476,8 @@
         }
       ],
       "in_weekly_report": 0,
-      "id": 1794571634351
+      "id": 1794571634351,
+      "project_folder": "2D Janus MA2Z4 & Layered TMDs"
     },
     {
       "name": "MoSi2N4",
@@ -3553,7 +3572,8 @@
         }
       ],
       "in_weekly_report": 0,
-      "id": 1794571560271
+      "id": 1794571560271,
+      "project_folder": "2D Janus MA2Z4 & Layered TMDs"
     },
     {
       "name": "MoSi2P4",
@@ -3648,7 +3668,8 @@
         }
       ],
       "in_weekly_report": 0,
-      "id": 1794571538527
+      "id": 1794571538527,
+      "project_folder": "2D Janus MA2Z4 & Layered TMDs"
     },
     {
       "name": "Te supercell",
@@ -3695,7 +3716,8 @@
         }
       ],
       "in_weekly_report": 0,
-      "id": 1794571475791
+      "id": 1794571475791,
+      "project_folder": "2D Tellurium & Anisotropic Semicond."
     },
     {
       "name": "MoSSe",
@@ -3758,7 +3780,8 @@
         }
       ],
       "in_weekly_report": 0,
-      "id": 1794571412232
+      "id": 1794571412232,
+      "project_folder": "Transition Metal Dichalcogenides & Defects"
     },
     {
       "name": "Na0.5Bi0.5TiO3 - Cubic",
@@ -3829,7 +3852,8 @@
         }
       ],
       "in_weekly_report": 0,
-      "id": 1794571327536
+      "id": 1794571327536,
+      "project_folder": "Lead-Free Perovskite Ferroelectrics"
     },
     {
       "name": "Na0.5Bi0.5TiO3 - Orthorhombic",
@@ -3916,7 +3940,8 @@
         }
       ],
       "in_weekly_report": 0,
-      "id": 1794571259385
+      "id": 1794571259385,
+      "project_folder": "Lead-Free Perovskite Ferroelectrics"
     },
     {
       "name": "Na0.5Bi0.5TiO3 - Rhombohedral",
@@ -4003,7 +4028,8 @@
         }
       ],
       "in_weekly_report": 0,
-      "id": 1794571107171
+      "id": 1794571107171,
+      "project_folder": "Lead-Free Perovskite Ferroelectrics"
     }
   ],
   "schedule": [
@@ -4911,27 +4937,27 @@
     }
   },
   "deleted_users": [
+    "test.researcher@skku.edu",
+    "aaa@gmail.com",
     "jhpark.matsci@skku.edu",
+    "temp.delete.test@gmail.com",
     "minseo.kim@gmail.com",
     "ssk@gmail.com",
     "las@gmail.com",
     "lamvt@g.skku.edu",
-    "test.researcher@skku.edu",
-    "aaa@gmail.com",
-    "temp.delete.test@gmail.com",
     "test.relay.otp@skku.edu",
     "linh@gmail.com",
     "a@gmail.com"
   ],
   "deleted_users_map": {
+    "test.researcher@skku.edu": 1794916443733,
+    "aaa@gmail.com": 1794916443733,
     "jhpark.matsci@skku.edu": 1794916443733,
+    "temp.delete.test@gmail.com": 1794916443733,
     "minseo.kim@gmail.com": 1794916443733,
     "ssk@gmail.com": 1794916443733,
     "las@gmail.com": 1794916443733,
     "lamvt@g.skku.edu": 1794916443733,
-    "test.researcher@skku.edu": 1794916443733,
-    "aaa@gmail.com": 1794916443733,
-    "temp.delete.test@gmail.com": 1794916443733,
     "test.relay.otp@skku.edu": 1794916443733,
     "linh@gmail.com": 1794916443733,
     "a@gmail.com": 1794916443733
