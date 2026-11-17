@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-17T00:09:15.927Z",
+  "exported_at": "2026-11-17T00:09:25.751Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -2297,6 +2297,359 @@
       ],
       "groups": [],
       "picture": "https://lh3.googleusercontent.com/a/ACg8ocJ5aVyRlpWSljVC2OJusM1rb39s2jSKUTJqGBroVnc79VyzoEsF=s96-c"
+    },
+    "tlamvux@gmail.com": {
+      "email": "tlamvux@gmail.com",
+      "name": "Vu Tien Lam",
+      "picture": "https://lh3.googleusercontent.com/a/ACg8ocJkmbotoEnTKmM7rmipG10oPpY5ec5ZFCIwFGEGiFHyrdnY1Q=s96-c",
+      "affiliation": "Google OAuth Verified Researcher",
+      "academicRole": "Researcher",
+      "status": "Active",
+      "emailVerified": true,
+      "verifiedAt": "2026-11-17 00:09",
+      "passwordlessGoogle": true,
+      "authProvider": "Google OAuth 2.0",
+      "googleLinked": true,
+      "googleEmail": "tlamvux@gmail.com",
+      "passwordPlainHint": "••••••••",
+      "passwordHash": "d2fb761fdc23a442de155300e60284390cb87b20b815d03786da83b76d145932",
+      "registeredAt": "2026-11-17 00:09",
+      "lastLoginAt": "2026-11-17 00:09",
+      "lastUpdatedAt": "2026-11-17 00:09",
+      "updatedAtMs": 1794874163504,
+      "workspace": {
+        "papers": [
+          {
+            "id": 1794791207173,
+            "doi": "10.1038/s41467-022-28133-x",
+            "title": "Antisite defect qubits in monolayer transition metal dichalcogenides",
+            "authors": "Jeng-Yuan Tsai, Jinbo Pan, Hsin Lin, Arun Bansil, Qimin Yan",
+            "journal": "Nature Communications",
+            "year": 2022,
+            "volume": "13",
+            "pages": "",
+            "abstract": "Abstract\n                  \n                    Being atomically thin and amenable to external controls, two-dimensional (2D) materials offer a new paradigm for the realization of patterned qubit fabrication and operation at room temperature for quantum information sciences applications. Here we show that the antisite defect in 2D transition metal dichalcogenides (TMDs) can provide a controllable solid-state spin qubit system. Using high-throughput atomistic simulations, we identify several neutral antisite defects in TMDs that lie deep in the bulk band gap and host a paramagnetic triplet ground state. Our in-depth analysis reveals the presence of optical transitions and triplet-singlet intersystem crossing processes for fingerprinting these defect qubits. As an illustrative example, we discuss the initialization and readout principles of an antisite qubit in WS\n                    2\n                    , which is expected to be stable against interlayer interactions in a multilayer structure for qubit isolation and protection in future qubit-based devices. Our study opens a new pathway for creating scalable, room-temperature spin qubits in 2D TMDs.",
+            "citation_count": 74,
+            "material_system": "Perovskite / 2D Material",
+            "synthesis_method": "First-principles DFT",
+            "characterization_tags": "DFT, VASP, XRD",
+            "status": "To Read",
+            "notes": "Good reference for antisite defects in TMDs.",
+            "in_weekly_report": 0,
+            "visibility": "Public",
+            "allowed_users": [],
+            "allowed_groups": []
+          }
+        ],
+        "structures": [
+          {
+            "name": "A",
+            "formula": "J+4",
+            "chemical_formula": "J+4",
+            "crystal_system": "Triclinic",
+            "space_group": "P1 (1)",
+            "structure_type": "Bulk 3D",
+            "mp_id": "",
+            "materials_project_id": "",
+            "a": 3.2971,
+            "b": 3.2971,
+            "c": 25.1509,
+            "alpha": 90,
+            "beta": 90,
+            "gamma": 120,
+            "volume": 236.78,
+            "natoms": 7,
+            "dft_code": "CASTEP",
+            "functional": "PBE",
+            "dft_functional": "PBE",
+            "ecut": 520,
+            "cutoff_energy": 520,
+            "kpoints": "8x8x8",
+            "bandgap": 3.2,
+            "bandgap_ev": 3.2,
+            "bandgap_type": "Direct",
+            "energy_per_atom": -6.85,
+            "total_energy_per_atom": -6.85,
+            "magnetic_state": "NM",
+            "notes": "Full-relaxed",
+            "raw_cif": "data_J1+4\n_audit_creation_date              2026-10-22\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.2971\n_cell_length_b                    3.2971\n_cell_length_c                    25.1509\n_cell_angle_alpha                 90.0000\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0000\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo    0.00243   0.00485   0.52961   0.00000  Uiso   1.00\nS2     P     0.33581   0.67162   0.47053   0.00000  Uiso   1.00\nS3     N     0.33574   0.67148   0.57569   0.00000  Uiso   1.00\nSi4    Si    0.33562   0.67128   0.64572   0.00000  Uiso   1.00\nSi5    Si    0.33589   0.67178   0.38228   0.00000  Uiso   1.00\nN6     N     0.66896   0.33794   0.66139   0.00000  Uiso   1.00\nP7     P     0.66923   0.33849   0.33861   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    S2      2.415   .     S\nMo1    S2      2.415   1_445 S\nMo1    S2      2.415   1_545 S\nMo1    S3      2.229   .     S\nMo1    S3      2.229   1_445 S\nMo1    S3      2.229   1_545 S\nS2     Mo1     2.415   1_665 S\nS2     Mo1     2.415   1_565 S\nS2     Si5     2.220   .     S\nS3     Si4     1.761   .     S\nS3     Mo1     2.229   1_665 S\nS3     Mo1     2.229   1_565 S\nSi4    N6      1.944   .     S\nSi4    N6      1.944   1_565 S\nSi4    N6      1.944   1_455 S\nSi5    P7      2.198   .     S\nSi5    P7      2.198   1_565 S\nSi5    P7      2.198   1_455 S\nN6     Si4     1.944   1_545 S\nN6     Si4     1.944   1_655 S\nP7     Si5     2.198   1_545 S\nP7     Si5     2.198   1_655 S",
+            "cif_content": "data_J1+4\n_audit_creation_date              2026-10-22\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.2971\n_cell_length_b                    3.2971\n_cell_length_c                    25.1509\n_cell_angle_alpha                 90.0000\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0000\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo    0.00243   0.00485   0.52961   0.00000  Uiso   1.00\nS2     P     0.33581   0.67162   0.47053   0.00000  Uiso   1.00\nS3     N     0.33574   0.67148   0.57569   0.00000  Uiso   1.00\nSi4    Si    0.33562   0.67128   0.64572   0.00000  Uiso   1.00\nSi5    Si    0.33589   0.67178   0.38228   0.00000  Uiso   1.00\nN6     N     0.66896   0.33794   0.66139   0.00000  Uiso   1.00\nP7     P     0.66923   0.33849   0.33861   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    S2      2.415   .     S\nMo1    S2      2.415   1_445 S\nMo1    S2      2.415   1_545 S\nMo1    S3      2.229   .     S\nMo1    S3      2.229   1_445 S\nMo1    S3      2.229   1_545 S\nS2     Mo1     2.415   1_665 S\nS2     Mo1     2.415   1_565 S\nS2     Si5     2.220   .     S\nS3     Si4     1.761   .     S\nS3     Mo1     2.229   1_665 S\nS3     Mo1     2.229   1_565 S\nSi4    N6      1.944   .     S\nSi4    N6      1.944   1_565 S\nSi4    N6      1.944   1_455 S\nSi5    P7      2.198   .     S\nSi5    P7      2.198   1_565 S\nSi5    P7      2.198   1_455 S\nN6     Si4     1.944   1_545 S\nN6     Si4     1.944   1_655 S\nP7     Si5     2.198   1_545 S\nP7     Si5     2.198   1_655 S",
+            "poscar_text": "J+4 Triclinic P1 (1)\n1.0\n       3.29710000     0.00000000     0.00000000\n      -1.64855000     2.85537236     0.00000000\n       0.00000000     0.00000000    25.15090000\n   Mo    P    N   Si\n    1    2    2    2\nDirect\n    0.00243000   0.00485000   0.52961000\n    0.33581000   0.67162000   0.47053000\n    0.66923000   0.33849000   0.33861000\n    0.33574000   0.67148000   0.57569000\n    0.66896000   0.33794000   0.66139000\n    0.33562000   0.67128000   0.64572000\n    0.33589000   0.67178000   0.38228000\n",
+            "poscar_content": "J+4 Triclinic P1 (1)\n1.0\n       3.29710000     0.00000000     0.00000000\n      -1.64855000     2.85537236     0.00000000\n       0.00000000     0.00000000    25.15090000\n   Mo    P    N   Si\n    1    2    2    2\nDirect\n    0.00243000   0.00485000   0.52961000\n    0.33581000   0.67162000   0.47053000\n    0.66923000   0.33849000   0.33861000\n    0.33574000   0.67148000   0.57569000\n    0.66896000   0.33794000   0.66139000\n    0.33562000   0.67128000   0.64572000\n    0.33589000   0.67178000   0.38228000\n",
+            "atoms": [
+              {
+                "element": "Mo",
+                "label": "Mo1",
+                "x": 0.00243,
+                "y": 0.00485,
+                "z": 0.52961,
+                "occupancy": 1
+              },
+              {
+                "element": "P",
+                "label": "S2",
+                "x": 0.33581,
+                "y": 0.67162,
+                "z": 0.47053,
+                "occupancy": 1
+              },
+              {
+                "element": "N",
+                "label": "S3",
+                "x": 0.33574,
+                "y": 0.67148,
+                "z": 0.57569,
+                "occupancy": 1
+              },
+              {
+                "element": "Si",
+                "label": "Si4",
+                "x": 0.33562,
+                "y": 0.67128,
+                "z": 0.64572,
+                "occupancy": 1
+              },
+              {
+                "element": "Si",
+                "label": "Si5",
+                "x": 0.33589,
+                "y": 0.67178,
+                "z": 0.38228,
+                "occupancy": 1
+              },
+              {
+                "element": "N",
+                "label": "N6",
+                "x": 0.66896,
+                "y": 0.33794,
+                "z": 0.66139,
+                "occupancy": 1
+              },
+              {
+                "element": "P",
+                "label": "P7",
+                "x": 0.66923,
+                "y": 0.33849,
+                "z": 0.33861,
+                "occupancy": 1
+              }
+            ],
+            "in_weekly_report": 0,
+            "visibility": "Public",
+            "allowed_users": [],
+            "allowed_groups": [],
+            "id": 1794807861185
+          },
+          {
+            "name": "MoSi2N2P2 Janus 4",
+            "formula": "MoSi2N2P2",
+            "chemical_formula": "MoSi2N2P2",
+            "crystal_system": "Triclinic",
+            "space_group": "P1 (1)",
+            "structure_type": "2D Monolayer",
+            "mp_id": "",
+            "materials_project_id": "",
+            "a": 3.0781,
+            "b": 3.075,
+            "c": 26.912,
+            "alpha": 90.0066,
+            "beta": 90,
+            "gamma": 120.0335,
+            "volume": 220.52,
+            "natoms": 7,
+            "dft_code": "CASTEP",
+            "functional": "PBE",
+            "dft_functional": "PBE",
+            "ecut": 520,
+            "cutoff_energy": 520,
+            "kpoints": "8x8x8",
+            "bandgap": 3.2,
+            "bandgap_ev": 3.2,
+            "bandgap_type": "Direct",
+            "energy_per_atom": -6.85,
+            "total_energy_per_atom": -6.85,
+            "magnetic_state": "NM",
+            "notes": "Full-relaxed",
+            "raw_cif": "data_MoSX4\n_audit_creation_date              2026-09-16\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.0781\n_cell_length_b                    3.0750\n_cell_length_c                    26.9120\n_cell_angle_alpha                 90.0066\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0335\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo   -0.00001  -0.00002   0.50000   0.00000  Uiso   1.00\nS2     P     0.33367   0.66735   0.44115   0.00000  Uiso   1.00\nS3     P     0.33372   0.66745   0.55885   0.00000  Uiso   1.00\nSi4    Si    0.33744   0.67489   0.64121   0.00000  Uiso   1.00\nSi5    Si    0.33716   0.67432   0.35879   0.00000  Uiso   1.00\nN6     N     0.67101   0.34203   0.65897   0.00000  Uiso   1.00\nN7     N     0.67070   0.34141   0.34102   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    S3      2.380   .     S\nMo1    S2      2.380   .     S\nMo1    S3      2.379   1_445 S\nMo1    S3      2.379   1_545 S\nMo1    S2      2.379   1_445 S\nMo1    S2      2.379   1_545 S\nS2     Mo1     2.379   1_665 S\nS2     Mo1     2.379   1_565 S\nS2     Si5     2.217   .     S\nS3     Mo1     2.379   1_665 S\nS3     Mo1     2.379   1_565 S\nS3     Si4     2.217   .     S\nSi4    N6      1.839   .     S\nSi4    N6      1.839   1_565 S\nSi4    N6      1.839   1_455 S\nSi5    N7      1.839   .     S\nSi5    N7      1.839   1_565 S\nSi5    N7      1.839   1_455 S\nN6     Si4     1.839   1_545 S\nN6     Si4     1.839   1_655 S\nN7     Si5     1.839   1_545 S\nN7     Si5     1.839   1_655 S",
+            "cif_content": "data_MoSX4\n_audit_creation_date              2026-09-16\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.0781\n_cell_length_b                    3.0750\n_cell_length_c                    26.9120\n_cell_angle_alpha                 90.0066\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0335\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo   -0.00001  -0.00002   0.50000   0.00000  Uiso   1.00\nS2     P     0.33367   0.66735   0.44115   0.00000  Uiso   1.00\nS3     P     0.33372   0.66745   0.55885   0.00000  Uiso   1.00\nSi4    Si    0.33744   0.67489   0.64121   0.00000  Uiso   1.00\nSi5    Si    0.33716   0.67432   0.35879   0.00000  Uiso   1.00\nN6     N     0.67101   0.34203   0.65897   0.00000  Uiso   1.00\nN7     N     0.67070   0.34141   0.34102   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    S3      2.380   .     S\nMo1    S2      2.380   .     S\nMo1    S3      2.379   1_445 S\nMo1    S3      2.379   1_545 S\nMo1    S2      2.379   1_445 S\nMo1    S2      2.379   1_545 S\nS2     Mo1     2.379   1_665 S\nS2     Mo1     2.379   1_565 S\nS2     Si5     2.217   .     S\nS3     Mo1     2.379   1_665 S\nS3     Mo1     2.379   1_565 S\nS3     Si4     2.217   .     S\nSi4    N6      1.839   .     S\nSi4    N6      1.839   1_565 S\nSi4    N6      1.839   1_455 S\nSi5    N7      1.839   .     S\nSi5    N7      1.839   1_565 S\nSi5    N7      1.839   1_455 S\nN6     Si4     1.839   1_545 S\nN6     Si4     1.839   1_655 S\nN7     Si5     1.839   1_545 S\nN7     Si5     1.839   1_655 S",
+            "poscar_text": "MoSi2N2P2 Triclinic P1 (1)\n1.0\n       3.07810000     0.00000000     0.00000000\n      -1.53905677     2.66212871     0.00000000\n       0.00000000    -0.00358083    26.91199976\n   Mo    P   Si    N\n    1    2    2    2\nDirect\n   -0.00001000  -0.00002000   0.50000000\n    0.33367000   0.66735000   0.44115000\n    0.33372000   0.66745000   0.55885000\n    0.33744000   0.67489000   0.64121000\n    0.33716000   0.67432000   0.35879000\n    0.67101000   0.34203000   0.65897000\n    0.67070000   0.34141000   0.34102000\n",
+            "poscar_content": "MoSi2N2P2 Triclinic P1 (1)\n1.0\n       3.07810000     0.00000000     0.00000000\n      -1.53905677     2.66212871     0.00000000\n       0.00000000    -0.00358083    26.91199976\n   Mo    P   Si    N\n    1    2    2    2\nDirect\n   -0.00001000  -0.00002000   0.50000000\n    0.33367000   0.66735000   0.44115000\n    0.33372000   0.66745000   0.55885000\n    0.33744000   0.67489000   0.64121000\n    0.33716000   0.67432000   0.35879000\n    0.67101000   0.34203000   0.65897000\n    0.67070000   0.34141000   0.34102000\n",
+            "atoms": [
+              {
+                "element": "Mo",
+                "label": "Mo1",
+                "x": -0.00001,
+                "y": -0.00002,
+                "z": 0.5,
+                "occupancy": 1
+              },
+              {
+                "element": "P",
+                "label": "S2",
+                "x": 0.33367,
+                "y": 0.66735,
+                "z": 0.44115,
+                "occupancy": 1
+              },
+              {
+                "element": "P",
+                "label": "S3",
+                "x": 0.33372,
+                "y": 0.66745,
+                "z": 0.55885,
+                "occupancy": 1
+              },
+              {
+                "element": "Si",
+                "label": "Si4",
+                "x": 0.33744,
+                "y": 0.67489,
+                "z": 0.64121,
+                "occupancy": 1
+              },
+              {
+                "element": "Si",
+                "label": "Si5",
+                "x": 0.33716,
+                "y": 0.67432,
+                "z": 0.35879,
+                "occupancy": 1
+              },
+              {
+                "element": "N",
+                "label": "N6",
+                "x": 0.67101,
+                "y": 0.34203,
+                "z": 0.65897,
+                "occupancy": 1
+              },
+              {
+                "element": "N",
+                "label": "N7",
+                "x": 0.6707,
+                "y": 0.34141,
+                "z": 0.34102,
+                "occupancy": 1
+              }
+            ],
+            "in_weekly_report": 0,
+            "id": 1794571683470
+          }
+        ],
+        "schedule": [
+          {
+            "id": 1794874163483,
+            "title": "Google Calendar Synced Session — Vu Tien Lam",
+            "event_type": "Group Meeting / PI Meeting",
+            "instrument_or_location": "Research Workspace",
+            "start_date": "2026-11-17",
+            "start_time": "09:30",
+            "end_time": "11:00",
+            "priority": "High",
+            "status": "Scheduled",
+            "sample_id": "GCAL-01",
+            "description": "Initialized via Google OAuth 2.0 Sign-In (tlamvux@gmail.com).",
+            "in_weekly_report": 1
+          }
+        ],
+        "expReportRows": [
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N4",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2P4",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "Te",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSSe",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "Na0.5TiBi0.5O3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Non-relaxed"
+          },
+          {
+            "sample_id": "Na0.5TiBi0.5O3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Non-relaxed"
+          },
+          {
+            "sample_id": "Na0.5TiBi0.5O3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Non-relaxed"
+          },
+          {
+            "sample_id": "J+4",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          }
+        ],
+        "litReportRows": [
+          {
+            "title": "Antisite defect qubits in monolayer transition metal dichalcogenides",
+            "journal": "Nature Communications (2022) | DOI: 10.1038/s41467-022-28133-x",
+            "material": "Perovskite / 2D Material",
+            "takeaway": "Good reference for antisite defects in TMDs."
+          }
+        ]
+      },
+      "activityLog": [
+        {
+          "timestamp": "2026-11-17 00:09",
+          "category": "Session",
+          "action": "Signed In (Google OAuth 2.0)",
+          "detail": "Authenticated as Vu Tien Lam (tlamvux@gmail.com)"
+        },
+        {
+          "timestamp": "2026-11-17 00:09",
+          "category": "Account",
+          "action": "Signed In & Authorized via Google OAuth 2.0",
+          "detail": "Vu Tien Lam granted Google OAuth 2.0 permission (name, email, profile picture) for tlamvux@gmail.com."
+        }
+      ],
+      "groups": []
     }
   },
   "user_groups": {
@@ -2312,7 +2665,6 @@
   "deleted_users": [
     "test.researcher@skku.edu",
     "aaa@gmail.com",
-    "tlamvux@gmail.com",
     "jhpark.matsci@skku.edu",
     "temp.delete.test@gmail.com",
     "minseo.kim@gmail.com",
@@ -2326,7 +2678,6 @@
   "deleted_users_map": {
     "test.researcher@skku.edu": 1794873932461,
     "aaa@gmail.com": 1794873932461,
-    "tlamvux@gmail.com": 1794873932461,
     "jhpark.matsci@skku.edu": 1794873932461,
     "temp.delete.test@gmail.com": 1794873932461,
     "minseo.kim@gmail.com": 1794873932461,
