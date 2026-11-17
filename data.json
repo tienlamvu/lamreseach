@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-17T12:20:46.720Z",
+  "exported_at": "2026-11-17T12:20:55.263Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -925,8 +925,8 @@
       ],
       "id": 1794916433265,
       "associated_paper_id": null,
-      "associated_paper_title": "A",
-      "associated_paper_doi": "10.1016/j.comptc.2024.114989"
+      "associated_paper_title": "",
+      "associated_paper_doi": ""
     },
     {
       "name": "J1+4_Si_N1",
