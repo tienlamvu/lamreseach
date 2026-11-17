@@ -4489,56 +4489,10 @@ body.is-admin #cv-exclusive-owner-notice {
   color: #115e59;
 }
 
-/* Mode 2: Details / Scientific Spreadsheet Table View */
-.struct-table-wrapper {
-  width: 100%;
-  overflow-x: auto;
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  margin-top: 6px;
-}
-
+/* Mode 2: Details / Scientific Spreadsheet Table View (Legacy Compatibility) */
 .struct-details-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12.5px;
-  text-align: left;
-}
-
-.struct-details-table th {
-  background: #f8fafc;
-  color: #475569;
-  font-weight: 700;
-  padding: 10px 12px;
-  border-bottom: 2px solid #e2e8f0;
-  white-space: nowrap;
-  user-select: none;
-}
-
-.struct-details-table th.sortable-th {
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.struct-details-table th.sortable-th:hover {
-  background: #f1f5f9;
-  color: #1e293b;
-}
-
-.struct-details-table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid #f1f5f9;
-  vertical-align: middle;
-}
-
-.struct-details-table tr:hover {
-  background: #f8fafc;
-}
-
-.struct-details-table tr.selected-row {
-  background: #eff6ff !important;
 }
 
 .struct-param-mono {
@@ -4722,16 +4676,16 @@ body.is-admin #cv-exclusive-owner-notice {
 .struct-single-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 9px;
-  padding: 6px 10px;
-  margin-bottom: 10px;
+  border-radius: 8px;
+  padding: 5px 8px;
+  margin-bottom: 8px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
   flex-wrap: nowrap;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .struct-bar-search {
@@ -4739,44 +4693,45 @@ body.is-admin #cv-exclusive-owner-notice {
   display: flex;
   align-items: center;
   flex: 1;
-  min-width: 170px;
-  max-width: 280px;
+  min-width: 130px;
+  max-width: 220px;
 }
 
 .struct-bar-search-icon {
   position: absolute;
-  left: 9px;
-  font-size: 13px;
+  left: 8px;
+  font-size: 12px;
   color: #94a3b8;
   pointer-events: none;
 }
 
 #struct-search {
   width: 100%;
-  height: 32px;
-  padding: 0 28px 0 30px;
+  height: 30px;
+  padding: 0 24px 0 26px;
   border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  font-size: 12.5px;
+  border-radius: 5px;
+  font-size: 12px;
   color: #0f172a;
   background: #f8fafc;
   transition: all 0.15s ease;
+  box-sizing: border-box;
 }
 
 #struct-search:focus {
   background: #ffffff;
   border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
   outline: none;
 }
 
 #struct-search-clear {
   position: absolute;
-  right: 6px;
+  right: 5px;
   background: transparent;
   border: none;
   color: #94a3b8;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   padding: 2px 4px;
   border-radius: 50%;
@@ -4788,17 +4743,18 @@ body.is-admin #cv-exclusive-owner-notice {
 }
 
 .struct-bar-select {
-  height: 32px;
+  height: 30px;
   border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  font-size: 12px;
+  border-radius: 5px;
+  font-size: 11.5px;
   font-weight: 600;
   color: #1e293b;
-  padding: 0 8px;
+  padding: 0 6px;
   background: #ffffff;
   cursor: pointer;
   outline: none;
   white-space: nowrap;
+  box-sizing: border-box;
   transition: border-color 0.15s;
 }
 
@@ -4811,42 +4767,81 @@ body.is-admin #cv-exclusive-owner-notice {
   border-color: #d8b4fe !important;
   background: #faf5ff !important;
   font-weight: 700 !important;
-  max-width: 190px;
+  max-width: 140px;
+}
+
+.struct-view-mode-group {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  overflow: hidden;
+  height: 30px;
+  background: #f1f5f9;
+  flex-shrink: 0;
+}
+
+.struct-view-btn {
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0 7px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: all 0.12s ease;
+  white-space: nowrap;
+}
+
+.struct-view-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.struct-view-btn.active {
+  background: #2563eb;
+  color: #ffffff;
 }
 
 .struct-bar-stats {
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 600;
   color: #64748b;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  padding: 5px 8px;
+  border-radius: 5px;
+  padding: 4px 6px;
   white-space: nowrap;
   user-select: none;
+  flex-shrink: 0;
 }
 
 .struct-bar-actions {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   margin-left: auto;
+  flex-shrink: 0;
 }
 
 .struct-bar-btn-folder {
-  height: 32px;
-  padding: 0 11px !important;
+  height: 30px;
+  padding: 0 9px !important;
   border: 1px solid #c084fc !important;
   background: #faf5ff !important;
   color: #6b21a8 !important;
   font-weight: 700 !important;
-  border-radius: 6px !important;
-  font-size: 12px !important;
+  border-radius: 5px !important;
+  font-size: 11.5px !important;
   white-space: nowrap !important;
   cursor: pointer;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 4px !important;
+  gap: 3px !important;
   transition: all 0.15s ease !important;
 }
 
@@ -4856,19 +4851,19 @@ body.is-admin #cv-exclusive-owner-notice {
 }
 
 .struct-bar-btn-new {
-  height: 32px;
-  padding: 0 13px !important;
+  height: 30px;
+  padding: 0 10px !important;
   background: #2563eb !important;
   border: 1px solid #1d4ed8 !important;
   color: #ffffff !important;
   font-weight: 700 !important;
-  border-radius: 6px !important;
-  font-size: 12.5px !important;
+  border-radius: 5px !important;
+  font-size: 12px !important;
   white-space: nowrap !important;
   cursor: pointer;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 4px !important;
+  gap: 3px !important;
   transition: all 0.15s ease !important;
 }
 
@@ -4876,38 +4871,51 @@ body.is-admin #cv-exclusive-owner-notice {
   background: #1d4ed8 !important;
 }
 
-/* Single-Row Structure Table */
+/* Single-Row Structure Table (Tight 1-Page Fit, No Overflow) */
 .struct-table-wrapper {
   width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow-x: hidden; /* Strictly 1-page fit on desktop, no horizontal scrollbar */
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  box-sizing: border-box;
 }
 
 .struct-single-row-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12.5px;
-  table-layout: auto;
+  font-size: 12px;
+  table-layout: fixed; /* Strictly adheres to 100% container width */
+  box-sizing: border-box;
 }
 
 .struct-single-row-table thead th {
   background: #f8fafc;
   color: #475569;
   font-weight: 700;
-  font-size: 11.5px;
-  padding: 8px 10px;
+  font-size: 11px;
+  padding: 6px 5px;
   border-bottom: 1px solid #e2e8f0;
   white-space: nowrap;
   user-select: none;
   text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+}
+
+.struct-single-row-table thead th.sortable-th {
+  cursor: pointer;
+}
+
+.struct-single-row-table thead th.sortable-th:hover {
+  background: #f1f5f9;
+  color: #0f172a;
 }
 
 .struct-single-row {
-  height: 38px;
+  height: 36px;
   border-bottom: 1px solid #f1f5f9;
   transition: background 0.12s ease;
 }
@@ -4925,36 +4933,50 @@ body.is-admin #cv-exclusive-owner-notice {
   overflow: hidden;
   text-overflow: ellipsis;
   vertical-align: middle;
-  padding: 4px 10px;
+  padding: 3px 5px;
+  box-sizing: border-box;
+}
+
+.struct-cell-flex {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .struct-row-formula {
   font-family: monospace;
-  font-size: 13.5px;
+  font-size: 12.5px;
   font-weight: 700;
   color: var(--primary);
-  margin-right: 6px;
+  flex-shrink: 0;
 }
 
 .struct-row-name {
-  font-size: 12.5px;
-  font-weight: 600;
+  font-size: 11.5px;
+  font-weight: 500;
   color: #334155;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .struct-folder-badge-mini {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
   background: #f5f3ff;
   color: #6b21a8;
   border: 1px solid #ddd6fe;
   font-size: 10.5px;
-  font-weight: 700;
-  padding: 1px 6px;
+  font-weight: 600;
+  padding: 1px 5px;
   border-radius: 4px;
   cursor: pointer;
-  white-space: nowrap;
   transition: all 0.12s ease;
 }
 
@@ -4963,19 +4985,37 @@ body.is-admin #cv-exclusive-owner-notice {
   border-color: #c4b5fd;
 }
 
+.struct-cell-audience {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.struct-cell-audience .badge {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: middle;
+  padding: 1px 5px !important;
+  font-size: 10px !important;
+}
+
 .struct-mini-btn {
-  width: 25px;
-  height: 25px;
+  width: 22px;
+  height: 22px;
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 11px;
   border: 1px solid #cbd5e1;
   background: #ffffff;
   color: #475569;
   cursor: pointer;
+  flex-shrink: 0;
   transition: all 0.12s ease;
 }
 
@@ -4997,6 +5037,7 @@ body.is-admin #cv-exclusive-owner-notice {
     flex-wrap: wrap;
     gap: 6px;
     padding: 6px 8px;
+    overflow-x: auto;
   }
   .struct-bar-search {
     min-width: 140px;
@@ -5020,8 +5061,15 @@ body.is-admin #cv-exclusive-owner-notice {
     justify-content: center;
     height: 30px;
   }
+  .struct-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .struct-single-row-table {
+    min-width: 650px;
+  }
   .struct-single-row-table thead th, .struct-single-row-table td {
-    padding: 4px 6px;
-    font-size: 11.5px;
+    padding: 4px 5px;
+    font-size: 11px;
   }
 }
