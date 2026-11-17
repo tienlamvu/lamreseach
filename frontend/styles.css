@@ -4387,3 +4387,258 @@ body.is-admin #cv-exclusive-owner-notice {
 }
 
 
+
+
+/* ============================================================================
+   Crystal Structures Database Management & Explorer Views
+   ============================================================================ */
+
+.struct-view-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+}
+
+.struct-view-btn-group {
+  display: inline-flex;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.struct-view-btn {
+  padding: 6px 12px;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  background: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.struct-view-btn:not(:last-child) {
+  border-right: 1px solid #e2e8f0;
+}
+
+.struct-view-btn:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.struct-view-btn.active {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  font-weight: 700;
+}
+
+/* Associated Literature / Paper Link Chip in Structure Cards */
+.struct-linked-paper-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: #f0fdfa;
+  border: 1px solid #99f6e4;
+  border-radius: 8px;
+  padding: 7px 10px;
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.struct-paper-title-text {
+  font-weight: 600;
+  color: #0f766e;
+  flex: 1;
+  min-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.struct-doi-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #ccfbf1;
+  color: #0d9488;
+  border: 1px solid #5eead4;
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-family: monospace;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.struct-doi-pill:hover {
+  background: #99f6e4;
+  color: #115e59;
+}
+
+/* Mode 2: Details / Scientific Spreadsheet Table View */
+.struct-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  margin-top: 6px;
+}
+
+.struct-details-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  text-align: left;
+}
+
+.struct-details-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  padding: 10px 12px;
+  border-bottom: 2px solid #e2e8f0;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.struct-details-table th.sortable-th {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.struct-details-table th.sortable-th:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.struct-details-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.struct-details-table tr:hover {
+  background: #f8fafc;
+}
+
+.struct-details-table tr.selected-row {
+  background: #eff6ff !important;
+}
+
+.struct-param-mono {
+  font-family: monospace;
+  font-size: 12px;
+  color: #334155;
+  white-space: nowrap;
+}
+
+/* Mode 3: Compact List View */
+.struct-compact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.struct-compact-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 14px;
+  transition: all 0.15s ease;
+}
+
+.struct-compact-item:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
+  transform: translateY(-1px);
+}
+
+.struct-compact-item.selected-item {
+  border-color: #2563eb !important;
+  background: #f0f7ff !important;
+}
+
+/* Mode 4: Grouped Folders View */
+.struct-grouped-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.struct-folder-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.struct-folder-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: #f8fafc;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid #e2e8f0;
+  transition: background 0.15s;
+}
+
+.struct-folder-header:hover {
+  background: #f1f5f9;
+}
+
+.struct-folder-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  color: #1e293b;
+}
+
+.struct-folder-body {
+  padding: 14px;
+}
+
+@media (max-width: 768px) {
+  .struct-view-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .struct-view-btn-group {
+    width: 100%;
+    display: flex;
+  }
+  .struct-view-btn {
+    flex: 1;
+    justify-content: center;
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+}
