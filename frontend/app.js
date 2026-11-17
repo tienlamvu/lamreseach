@@ -3609,6 +3609,37 @@ async function confirmSelfPasswordReset() {
 // ============================================================================
 
 
+
+async function executeGoogleOAuthCalendarConsent(targetEmail = "") {
+  closeModal("google-cal-unverified-modal");
+  const activeEmail = targetEmail || (STATE.auth && (STATE.auth.googleEmail || STATE.auth.email)) || OWNER_GOOGLE_EMAIL;
+  const btnSync = document.getElementById("btn-sync-google-cal");
+  const origBtnHtml = btnSync ? btnSync.innerHTML : "";
+  if (btnSync) {
+    btnSync.disabled = true;
+    btnSync.innerHTML = `<span class="loading-spinner"></span> Authorizing with Google...`;
+  }
+  try {
+    const token = await requestGoogleCalendarToken(activeEmail, true);
+    if (token) {
+      await syncWithGoogleCalendarApi({ silent: false, forceToken: token });
+    }
+  } catch (err) {
+    console.warn("Google OAuth calendar consent failed:", err);
+    if (err && err.message === "access_denied") {
+      openGoogleCalendarVerificationHelperModal(activeEmail);
+    } else {
+      showToast("Google Calendar Authorization: " + err.message, "warn");
+    }
+  } finally {
+    if (btnSync) {
+      btnSync.disabled = false;
+      btnSync.innerHTML = origBtnHtml;
+    }
+  }
+}
+window.executeGoogleOAuthCalendarConsent = executeGoogleOAuthCalendarConsent;
+
 function openGoogleCalendarVerificationHelperModal(emailHint = "") {
   const modal = document.getElementById("google-cal-unverified-modal");
   if (!modal) return;
@@ -6456,44 +6487,19 @@ async function syncWithGoogleCalendarApi(options = {}) {
     return await res.json();
   }
 
-  let token = STATE.auth ? STATE.auth.googleAccessToken : "";
-  const isExpired = !STATE.auth || !STATE.auth.googleTokenExpiresAt || (Date.now() >= (STATE.auth.googleTokenExpiresAt - 30000));
+  let token = (options && options.forceToken) || (STATE.auth ? STATE.auth.googleAccessToken : "");
+  const isExpired = !token || !STATE.auth || !STATE.auth.googleTokenExpiresAt || (Date.now() >= (STATE.auth.googleTokenExpiresAt - 30000));
 
-  // If token is missing or expired, attempt token acquisition
+  // If token is missing or expired, open Google Calendar Verification / Options Modal
   if (!token || isExpired) {
-    try {
-      token = await requestGoogleCalendarToken(targetCalEmail, false);
-    } catch (authErr) {
-      console.warn("Could not acquire fresh Google Calendar token without prompt:", authErr);
-      if (!silent) {
-        // If not silent, prompt user for consent
-        try {
-          token = await requestGoogleCalendarToken(targetCalEmail, true);
-        } catch (consentErr) {
-          if (btnSync) {
-            btnSync.disabled = false;
-            btnSync.innerHTML = origBtnHtml;
-          }
-          if (badgeEl) {
-            badgeEl.textContent = "⚠️ Authorization Needed";
-            badgeEl.style.background = "rgba(239, 68, 68, 0.25)";
-            badgeEl.style.color = "#fca5a5";
-          }
-          if (consentErr && consentErr.message === "access_denied") {
-            openGoogleCalendarVerificationHelperModal(targetCalEmail);
-          } else {
-            showToast("Google Calendar Authorization: " + consentErr.message, "warn");
-          }
-          return;
-        }
-      } else {
-        if (btnSync) {
-          btnSync.disabled = false;
-          btnSync.innerHTML = origBtnHtml;
-        }
-        return;
-      }
+    if (btnSync) {
+      btnSync.disabled = false;
+      btnSync.innerHTML = origBtnHtml;
     }
+    if (!silent) {
+      openGoogleCalendarVerificationHelperModal(targetCalEmail);
+    }
+    return;
   }
 
   // Fetch events from Google Calendar API
