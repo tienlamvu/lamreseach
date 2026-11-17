@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-17T11:55:16.023Z",
+  "exported_at": "2026-11-17T12:08:08.848Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -4172,15 +4172,15 @@
       "emailVerified": true,
       "verifiedAt": "2026-11-16 11:31",
       "passwordlessGoogle": false,
-      "authProvider": "Email + Google Linked",
+      "authProvider": "Verified Email + Google Linked",
       "googleLinked": true,
       "googleEmail": "lamvt.sep@gmail.com",
       "passwordPlainHint": "••••••••",
       "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
       "registeredAt": "2026-11-16 11:31",
-      "lastLoginAt": "2026-11-17 20:54",
-      "lastUpdatedAt": "2026-11-17 20:54",
-      "updatedAtMs": 1794916458939,
+      "lastLoginAt": "2026-11-17 16:14",
+      "lastUpdatedAt": "2026-11-17 21:08",
+      "updatedAtMs": 1794917288741,
       "workspace": {
         "papers": [
           {
@@ -4500,24 +4500,6 @@
         ]
       },
       "activityLog": [
-        {
-          "timestamp": "2026-11-17 20:54",
-          "category": "Session",
-          "action": "Signed In (Email & Password)",
-          "detail": "Authenticated as Tien Lam (lamvt.sep@gmail.com)"
-        },
-        {
-          "timestamp": "2026-11-17 20:50",
-          "category": "Profile",
-          "action": "Profile & Groups Updated by Administrator",
-          "detail": "Updated profile (Independent Researcher — Researcher) and group assignments."
-        },
-        {
-          "timestamp": "2026-11-17 20:50",
-          "category": "Session",
-          "action": "Signed In (Email & Password)",
-          "detail": "Authenticated as Tien Lam (lamvt.sep@gmail.com)"
-        },
         {
           "timestamp": "2026-11-17 16:14",
           "category": "Session",
@@ -4924,27 +4906,27 @@
     }
   },
   "deleted_users": [
-    "test.researcher@skku.edu",
-    "aaa@gmail.com",
     "jhpark.matsci@skku.edu",
-    "temp.delete.test@gmail.com",
     "minseo.kim@gmail.com",
     "ssk@gmail.com",
     "las@gmail.com",
     "lamvt@g.skku.edu",
+    "test.researcher@skku.edu",
+    "aaa@gmail.com",
+    "temp.delete.test@gmail.com",
     "test.relay.otp@skku.edu",
     "linh@gmail.com",
     "a@gmail.com"
   ],
   "deleted_users_map": {
-    "test.researcher@skku.edu": 1794916443733,
-    "aaa@gmail.com": 1794916443733,
     "jhpark.matsci@skku.edu": 1794916443733,
-    "temp.delete.test@gmail.com": 1794916443733,
     "minseo.kim@gmail.com": 1794916443733,
     "ssk@gmail.com": 1794916443733,
     "las@gmail.com": 1794916443733,
     "lamvt@g.skku.edu": 1794916443733,
+    "test.researcher@skku.edu": 1794916443733,
+    "aaa@gmail.com": 1794916443733,
+    "temp.delete.test@gmail.com": 1794916443733,
     "test.relay.otp@skku.edu": 1794916443733,
     "linh@gmail.com": 1794916443733,
     "a@gmail.com": 1794916443733
