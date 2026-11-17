@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-17T06:54:00.628Z",
+  "exported_at": "2026-11-17T06:56:31.187Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -1868,9 +1868,9 @@
       "passwordPlainHint": "••••••••",
       "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
       "registeredAt": "2026-11-16 11:31",
-      "lastLoginAt": "2026-11-16 14:29",
-      "lastUpdatedAt": "2026-11-16 14:40",
-      "updatedAtMs": 1794840041323,
+      "lastLoginAt": "2026-11-16 11:53",
+      "lastUpdatedAt": "2026-11-17 15:56",
+      "updatedAtMs": 1794898591040,
       "workspace": {
         "papers": [
           {
@@ -2190,12 +2190,6 @@
         ]
       },
       "activityLog": [
-        {
-          "timestamp": "2026-11-16 14:29",
-          "category": "Session",
-          "action": "Signed In (Email & Password)",
-          "detail": "Authenticated as Tien Lam (lamvt.sep@gmail.com)"
-        },
         {
           "timestamp": "2026-11-16 11:53",
           "category": "Session",
@@ -2593,27 +2587,27 @@
     }
   },
   "deleted_users": [
-    "test.researcher@skku.edu",
-    "aaa@gmail.com",
     "jhpark.matsci@skku.edu",
-    "temp.delete.test@gmail.com",
     "minseo.kim@gmail.com",
     "ssk@gmail.com",
     "las@gmail.com",
     "lamvt@g.skku.edu",
+    "test.researcher@skku.edu",
+    "aaa@gmail.com",
+    "temp.delete.test@gmail.com",
     "test.relay.otp@skku.edu",
     "linh@gmail.com",
     "a@gmail.com"
   ],
   "deleted_users_map": {
-    "test.researcher@skku.edu": 1794873932461,
-    "aaa@gmail.com": 1794873932461,
     "jhpark.matsci@skku.edu": 1794873932461,
-    "temp.delete.test@gmail.com": 1794873932461,
     "minseo.kim@gmail.com": 1794873932461,
     "ssk@gmail.com": 1794873932461,
     "las@gmail.com": 1794873932461,
     "lamvt@g.skku.edu": 1794873932461,
+    "test.researcher@skku.edu": 1794873932461,
+    "aaa@gmail.com": 1794873932461,
+    "temp.delete.test@gmail.com": 1794873932461,
     "test.relay.otp@skku.edu": 1794873932461,
     "linh@gmail.com": 1794873932461,
     "a@gmail.com": 1794873932461
