@@ -4716,52 +4716,48 @@ body.is-admin #cv-exclusive-owner-notice {
 
 
 /* ============================================================================
-   Tidy, Ergonomic Crystal Structures Control Panel & Buttons (v77)
+   Ultra-Streamlined Single-Row Controls Toolbar & 1-Row Structures (v78)
    ============================================================================ */
 
-.struct-control-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 12px 14px;
-  margin-bottom: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
-}
-
-.struct-search-action-row {
+.struct-single-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  padding: 6px 10px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
-.struct-search-box-wrap {
+.struct-bar-search {
   position: relative;
   display: flex;
   align-items: center;
   flex: 1;
-  min-width: 260px;
+  min-width: 170px;
+  max-width: 280px;
 }
 
-.struct-search-icon {
+.struct-bar-search-icon {
   position: absolute;
-  left: 12px;
-  font-size: 14px;
+  left: 9px;
+  font-size: 13px;
   color: #94a3b8;
   pointer-events: none;
 }
 
 #struct-search {
   width: 100%;
-  height: 38px;
-  padding: 0 34px 0 36px;
+  height: 32px;
+  padding: 0 28px 0 30px;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  font-size: 13px;
+  border-radius: 6px;
+  font-size: 12.5px;
   color: #0f172a;
   background: #f8fafc;
   transition: all 0.15s ease;
@@ -4770,249 +4766,262 @@ body.is-admin #cv-exclusive-owner-notice {
 #struct-search:focus {
   background: #ffffff;
   border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
   outline: none;
 }
 
 #struct-search-clear {
   position: absolute;
-  right: 10px;
+  right: 6px;
   background: transparent;
   border: none;
   color: #94a3b8;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
-  padding: 4px;
+  padding: 2px 4px;
   border-radius: 50%;
   line-height: 1;
-  transition: color 0.15s;
 }
 
 #struct-search-clear:hover {
   color: #0f172a;
 }
 
-.struct-primary-action-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+.struct-bar-select {
+  height: 32px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e293b;
+  padding: 0 8px;
+  background: #ffffff;
+  cursor: pointer;
+  outline: none;
+  white-space: nowrap;
+  transition: border-color 0.15s;
 }
 
-.struct-action-btn-folder {
-  height: 38px;
-  padding: 0 14px;
-  border: 1px solid #c084fc !important;
-  background: #faf5ff !important;
+.struct-bar-select:hover, .struct-bar-select:focus {
+  border-color: #94a3b8;
+}
+
+.struct-bar-select-folder {
   color: #6b21a8 !important;
+  border-color: #d8b4fe !important;
+  background: #faf5ff !important;
   font-weight: 700 !important;
-  border-radius: 8px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  font-size: 12.5px !important;
-  cursor: pointer;
-  transition: all 0.15s ease !important;
-  white-space: nowrap;
+  max-width: 190px;
 }
 
-.struct-action-btn-folder:hover {
-  background: #f3e8ff !important;
-  border-color: #a855f7 !important;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(107, 33, 168, 0.12);
-}
-
-.struct-action-btn-new {
-  height: 38px;
-  padding: 0 16px;
-  background: #2563eb !important;
-  border: 1px solid #1d4ed8 !important;
-  color: #ffffff !important;
-  font-weight: 700 !important;
-  border-radius: 8px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  font-size: 13px !important;
-  cursor: pointer;
-  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2);
-  transition: all 0.15s ease !important;
-  white-space: nowrap;
-}
-
-.struct-action-btn-new:hover {
-  background: #1d4ed8 !important;
-  transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(37, 99, 235, 0.25);
-}
-
-/* Row 2: Filter Ribbon */
-.struct-filter-ribbon {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding-top: 6px;
-  border-top: 1px dashed #e2e8f0;
-}
-
-.struct-filter-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.struct-bar-stats {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #64748b;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 7px;
-  padding: 3px 8px;
-  transition: border-color 0.15s, background 0.15s;
-}
-
-.struct-filter-item:hover {
-  border-color: #cbd5e1;
-  background: #ffffff;
-}
-
-.struct-filter-label {
-  font-size: 11.5px;
-  font-weight: 700;
-  color: #475569;
+  border-radius: 6px;
+  padding: 5px 8px;
   white-space: nowrap;
   user-select: none;
 }
 
-.struct-filter-select {
-  height: 26px;
-  border: none;
-  background: transparent;
-  font-size: 12px;
-  font-weight: 600;
-  color: #1e293b;
-  padding: 0 2px;
-  cursor: pointer;
-  outline: none;
-  max-width: 175px;
-}
-
-.struct-filter-select:focus {
-  color: #2563eb;
-}
-
-.struct-filter-select-folder {
-  color: #6b21a8 !important;
-  font-weight: 700 !important;
-}
-
-.struct-filter-reset-btn {
-  height: 32px;
-  padding: 0 10px;
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 600;
-  border-radius: 7px;
-  cursor: pointer;
+.struct-bar-actions {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  transition: all 0.15s ease;
-  white-space: nowrap;
+  gap: 6px;
+  margin-left: auto;
 }
 
-.struct-filter-reset-btn:hover {
+.struct-bar-btn-folder {
+  height: 32px;
+  padding: 0 11px !important;
+  border: 1px solid #c084fc !important;
+  background: #faf5ff !important;
+  color: #6b21a8 !important;
+  font-weight: 700 !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  white-space: nowrap !important;
+  cursor: pointer;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  transition: all 0.15s ease !important;
+}
+
+.struct-bar-btn-folder:hover {
+  background: #f3e8ff !important;
+  border-color: #a855f7 !important;
+}
+
+.struct-bar-btn-new {
+  height: 32px;
+  padding: 0 13px !important;
+  background: #2563eb !important;
+  border: 1px solid #1d4ed8 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border-radius: 6px !important;
+  font-size: 12.5px !important;
+  white-space: nowrap !important;
+  cursor: pointer;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  transition: all 0.15s ease !important;
+}
+
+.struct-bar-btn-new:hover {
+  background: #1d4ed8 !important;
+}
+
+/* Single-Row Structure Table */
+.struct-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.struct-single-row-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  table-layout: auto;
+}
+
+.struct-single-row-table thead th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  font-size: 11.5px;
+  padding: 8px 10px;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+  user-select: none;
+  text-align: left;
+}
+
+.struct-single-row {
+  height: 38px;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.12s ease;
+}
+
+.struct-single-row:hover {
+  background: #f8fafc;
+}
+
+.struct-single-row.selected-row {
+  background: #eff6ff !important;
+}
+
+.nowrap-cell {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  padding: 4px 10px;
+}
+
+.struct-row-formula {
+  font-family: monospace;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-right: 6px;
+}
+
+.struct-row-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.struct-folder-badge-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #f5f3ff;
+  color: #6b21a8;
+  border: 1px solid #ddd6fe;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.12s ease;
+}
+
+.struct-folder-badge-mini:hover {
+  background: #ede9fe;
+  border-color: #c4b5fd;
+}
+
+.struct-mini-btn {
+  width: 25px;
+  height: 25px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-size: 12px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.struct-mini-btn:hover {
   background: #f1f5f9;
   color: #0f172a;
   border-color: #94a3b8;
 }
 
-/* Card edit and delete buttons */
-.struct-card-btn-edit, .struct-card-btn-delete {
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  border: 1px solid transparent;
+.struct-mini-btn-del:hover {
+  background: #fef2f2 !important;
+  color: #dc2626 !important;
+  border-color: #fca5a5 !important;
 }
 
-.struct-card-btn-edit {
-  background: #ffffff;
-  border-color: #e2e8f0;
-  color: #3b82f6;
-}
-
-.struct-card-btn-edit:hover {
-  background: #eff6ff;
-  border-color: #93c5fd;
-  transform: translateY(-1px);
-}
-
-.struct-card-btn-delete {
-  background: #ffffff;
-  border-color: #fee2e2;
-  color: #ef4444;
-}
-
-.struct-card-btn-delete:hover {
-  background: #fef2f2;
-  border-color: #fca5a5;
-  color: #dc2626;
-  transform: translateY(-1px);
-}
-
-/* Enhanced View Toolbar */
-.struct-view-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 8px 12px;
-  margin-bottom: 12px;
-}
-
-.struct-view-btn-group {
-  display: inline-flex;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  overflow: hidden;
-  background: #ffffff;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-}
-
-.struct-view-btn {
-  padding: 6px 13px;
-  border: none;
-  font-size: 12px;
-  font-weight: 600;
-  background: #ffffff;
-  color: #475569;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.struct-view-btn:not(:last-child) {
-  border-right: 1px solid #e2e8f0;
-}
-
-.struct-view-btn:hover {
-  background: #f1f5f9;
-  color: #0f172a;
-}
-
-.struct-view-btn.active {
-  background: #2563eb !important;
-  color: #ffffff !important;
-  font-weight: 700;
+/* Mobile Responsiveness (< 768px) */
+@media (max-width: 768px) {
+  .struct-single-bar {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 8px;
+  }
+  .struct-bar-search {
+    min-width: 140px;
+    max-width: 100%;
+    flex: 1 1 100%;
+  }
+  .struct-bar-select {
+    flex: 1 1 auto;
+    font-size: 11.5px;
+    height: 30px;
+    padding: 0 4px;
+  }
+  .struct-bar-actions {
+    margin-left: 0;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+  }
+  .struct-bar-btn-folder, .struct-bar-btn-new {
+    flex: 1;
+    justify-content: center;
+    height: 30px;
+  }
+  .struct-single-row-table thead th, .struct-single-row-table td {
+    padding: 4px 6px;
+    font-size: 11.5px;
+  }
 }
