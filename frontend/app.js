@@ -7984,13 +7984,267 @@ function populateStructureModalWithParsed(p, rawCif, filename) {
 
 
 // ============================================================================
-// Crystal Structures Database View Modes & Literature Association
+// Crystal Structures Database View Modes, Folders & Literature Association
 // ============================================================================
 
 STATE.structViewMode = localStorage.getItem("matsci_struct_view_mode") || "cards";
 STATE.structSortBy = "default";
-STATE.structGroupBy = "system";
+STATE.structGroupBy = "project";
 STATE.structCollapsedFolders = new Set();
+if (!STATE.customProjectFolders) STATE.customProjectFolders = new Set();
+
+function getExistingProjectFolders() {
+  const folders = new Set();
+  (STATE.structures || []).forEach(s => {
+    if (s.project_folder && typeof s.project_folder === "string" && s.project_folder.trim()) {
+      folders.add(s.project_folder.trim());
+    }
+  });
+  if (STATE.masterData && Array.isArray(STATE.masterData.structures)) {
+    STATE.masterData.structures.forEach(s => {
+      if (s.project_folder && typeof s.project_folder === "string" && s.project_folder.trim()) {
+        folders.add(s.project_folder.trim());
+      }
+    });
+  }
+  if (STATE.customProjectFolders) {
+    STATE.customProjectFolders.forEach(f => {
+      if (f && typeof f === "string" && f.trim()) folders.add(f.trim());
+    });
+  }
+  if (folders.size === 0) {
+    folders.add("General Research");
+  }
+  return Array.from(folders).sort((a, b) => a.localeCompare(b));
+}
+window.getExistingProjectFolders = getExistingProjectFolders;
+
+function populateProjectFolderDropdowns(selectedForModal = null) {
+  const folders = getExistingProjectFolders();
+
+  // 1. Filter dropdown: #struct-project-filter
+  const filterSel = document.getElementById("struct-project-filter");
+  if (filterSel) {
+    const curVal = filterSel.value || "ALL";
+    let optHtml = `<option value="ALL">📁 All Project Folders (${folders.length})</option>`;
+    folders.forEach(f => {
+      const count = (STATE.structures || []).filter(s => (s.project_folder || "General Research") === f).length;
+      optHtml += `<option value="${escapeHtml(f)}"${curVal === f ? " selected" : ""}>📁 ${escapeHtml(f)} (${count})</option>`;
+    });
+    filterSel.innerHTML = optHtml;
+  }
+
+  // 2. Batch Move dropdown: #batch-struct-folder
+  const batchSel = document.getElementById("batch-struct-folder");
+  if (batchSel) {
+    const curVal = batchSel.value;
+    let optHtml = "";
+    folders.forEach(f => {
+      optHtml += `<option value="${escapeHtml(f)}"${curVal === f ? " selected" : ""}>📁 ${escapeHtml(f)}</option>`;
+    });
+    batchSel.innerHTML = optHtml;
+  }
+
+  // 3. Modal dropdown: #struct-folder-select
+  populateModalFolderDropdown(selectedForModal);
+}
+window.populateProjectFolderDropdowns = populateProjectFolderDropdowns;
+
+function populateModalFolderDropdown(selectedVal = null) {
+  const modalSel = document.getElementById("struct-folder-select");
+  if (!modalSel) return;
+  const folders = getExistingProjectFolders();
+  const curVal = selectedVal !== null ? selectedVal : (modalSel.value || "General Research");
+
+  let optHtml = "";
+  folders.forEach(f => {
+    optHtml += `<option value="${escapeHtml(f)}"${curVal === f ? " selected" : ""}>📁 ${escapeHtml(f)}</option>`;
+  });
+  optHtml += `<option value="__new__"${curVal === "__new__" ? " selected" : ""}>➕ Create New Project Folder...</option>`;
+  modalSel.innerHTML = optHtml;
+
+  const customInput = document.getElementById("struct-folder-custom");
+  if (customInput) {
+    customInput.style.display = curVal === "__new__" ? "block" : "none";
+  }
+}
+window.populateModalFolderDropdown = populateModalFolderDropdown;
+
+function handleStructFolderSelectChange() {
+  const modalSel = document.getElementById("struct-folder-select");
+  const customInput = document.getElementById("struct-folder-custom");
+  if (!modalSel || !customInput) return;
+  if (modalSel.value === "__new__") {
+    customInput.style.display = "block";
+    customInput.focus();
+  } else {
+    customInput.style.display = "none";
+    customInput.value = "";
+  }
+}
+window.handleStructFolderSelectChange = handleStructFolderSelectChange;
+
+function openManageFoldersModal() {
+  if (!requireAdminAuth()) return;
+  const modal = document.getElementById("manage-folders-modal");
+  if (!modal) return;
+  renderManageFoldersList();
+  modal.classList.add("open");
+}
+window.openManageFoldersModal = openManageFoldersModal;
+
+function renderManageFoldersList() {
+  const container = document.getElementById("manage-folders-list");
+  if (!container) return;
+  const folders = getExistingProjectFolders();
+
+  if (folders.length === 0) {
+    container.innerHTML = `<div style="text-align:center; padding:16px; color:#64748b; font-size:12.5px;">No folders created yet. Type a folder name above to create one.</div>`;
+    return;
+  }
+
+  let html = "";
+  folders.forEach(f => {
+    const structuresInFolder = (STATE.structures || []).filter(s => (s.project_folder || "General Research") === f);
+    const count = structuresInFolder.length;
+
+    html += `
+      <div class="manage-folder-row" id="manage-folder-row-${encodeURIComponent(f)}">
+        <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
+          <span style="font-size:16px;">📁</span>
+          <span style="font-weight:700; color:#1e293b; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(f)}">
+            ${escapeHtml(f)}
+          </span>
+          <span class="badge badge-purple" style="font-size:11px; white-space:nowrap;">${count} structure${count === 1 ? '' : 's'}</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button type="button" class="btn btn-outline btn-xs" onclick="promptProjectFolderRename('${escapeHtml(f).replace(/'/g, "\\'")}')" style="padding:3px 8px; font-size:11.5px; background:#fff; font-weight:600;" title="Rename Folder">✏️ Rename</button>
+          <button type="button" class="btn btn-outline btn-xs" onclick="filterStructuresByFolder('${escapeHtml(f).replace(/'/g, "\\'")}') ; closeModal('manage-folders-modal');" style="padding:3px 8px; font-size:11.5px; background:#fff; color:#2563eb; font-weight:600;" title="View Structures in this folder">👁️ View</button>
+          ${f !== "General Research" ? `
+            <button type="button" class="btn btn-danger btn-xs" onclick="deleteProjectFolder('${escapeHtml(f).replace(/'/g, "\\'")}', ${count})" style="padding:3px 7px; font-size:11.5px;" title="Delete or Dissolve folder">🗑️</button>
+          ` : ""}
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+window.renderManageFoldersList = renderManageFoldersList;
+
+function createNewProjectFolderFromInput() {
+  const input = document.getElementById("new-folder-name-input");
+  const folderName = (input?.value || "").trim();
+  if (!folderName) {
+    showToast("Please enter a valid folder name.", "warn");
+    return;
+  }
+  if (!STATE.customProjectFolders) STATE.customProjectFolders = new Set();
+  STATE.customProjectFolders.add(folderName);
+
+  input.value = "";
+  populateProjectFolderDropdowns();
+  renderManageFoldersList();
+  showToast(`📁 Created project folder "${folderName}"!`, "success");
+}
+window.createNewProjectFolderFromInput = createNewProjectFolderFromInput;
+
+function promptProjectFolderRename(oldName) {
+  const newName = prompt(`Enter new name for project folder "${oldName}":`, oldName);
+  if (!newName || newName.trim() === "" || newName.trim() === oldName) return;
+  renameProjectFolder(oldName, newName.trim());
+}
+window.promptProjectFolderRename = promptProjectFolderRename;
+window.renameFolderPrompt = promptProjectFolderRename;
+
+function renameProjectFolder(oldName, newName) {
+  let updatedCount = 0;
+  (STATE.structures || []).forEach(s => {
+    if ((s.project_folder || "General Research") === oldName) {
+      s.project_folder = newName;
+      updatedCount++;
+    }
+  });
+  if (STATE.masterData && Array.isArray(STATE.masterData.structures)) {
+    STATE.masterData.structures.forEach(s => {
+      if ((s.project_folder || "General Research") === oldName) {
+        s.project_folder = newName;
+      }
+    });
+  }
+  if (STATE.customProjectFolders) {
+    if (STATE.customProjectFolders.has(oldName)) {
+      STATE.customProjectFolders.delete(oldName);
+      STATE.customProjectFolders.add(newName);
+    }
+  }
+
+  saveUserData();
+  saveStaticDb();
+  populateProjectFolderDropdowns();
+  renderManageFoldersList();
+  renderStructuresList();
+  recordUserActivity("Crystal Structures", "Renamed Folder", `Renamed folder "${oldName}" to "${newName}" (${updatedCount} structures updated).`);
+  showToast(`📁 Renamed folder to "${newName}" (${updatedCount} structures updated)!`, "success");
+}
+window.renameProjectFolder = renameProjectFolder;
+
+function deleteProjectFolder(folderName, count) {
+  if (count > 0) {
+    if (!confirm(`Folder "${folderName}" contains ${count} structure(s).\n\nDeleting this folder will reassign all its structures to "General Research". Proceed?`)) {
+      return;
+    }
+    (STATE.structures || []).forEach(s => {
+      if (s.project_folder === folderName) {
+        s.project_folder = "General Research";
+      }
+    });
+    if (STATE.masterData && Array.isArray(STATE.masterData.structures)) {
+      STATE.masterData.structures.forEach(s => {
+        if (s.project_folder === folderName) {
+          s.project_folder = "General Research";
+        }
+      });
+    }
+    saveUserData();
+    saveStaticDb();
+  }
+
+  if (STATE.customProjectFolders) {
+    STATE.customProjectFolders.delete(folderName);
+  }
+
+  populateProjectFolderDropdowns();
+  renderManageFoldersList();
+  renderStructuresList();
+  showToast(`🗑️ Folder "${folderName}" removed.`, "info");
+}
+window.deleteProjectFolder = deleteProjectFolder;
+
+function filterStructuresByFolder(folderName) {
+  const filterSel = document.getElementById("struct-project-filter");
+  if (filterSel) {
+    filterSel.value = folderName;
+  }
+  renderStructuresList();
+  showToast(`Filtering by Project Folder: "${folderName}"`, "info");
+}
+window.filterStructuresByFolder = filterStructuresByFolder;
+
+function toggleSelectAllInFolder(folderKey, isChecked) {
+  if (!STATE.selectedStructureIds) STATE.selectedStructureIds = new Set();
+  const folderStructures = (STATE.structures || []).filter(s => (s.project_folder || "General Research") === folderKey);
+  folderStructures.forEach(s => {
+    if (isChecked) {
+      STATE.selectedStructureIds.add(Number(s.id));
+    } else {
+      STATE.selectedStructureIds.delete(Number(s.id));
+    }
+  });
+  updateStructBatchBar();
+  renderStructuresList();
+}
+window.toggleSelectAllInFolder = toggleSelectAllInFolder;
 
 function setStructureDisplayMode(mode) {
   STATE.structViewMode = mode;
@@ -8168,13 +8422,21 @@ window.handleStructPaperSelectChange = handleStructPaperSelectChange;
 
 function renderStructuresList() {
   if (!STATE.selectedStructureIds) STATE.selectedStructureIds = new Set();
+  if (!STATE.structCollapsedFolders) STATE.structCollapsedFolders = new Set();
+
+  const filterSel = document.getElementById("struct-project-filter");
+  if (filterSel && filterSel.options.length <= 1) {
+    populateProjectFolderDropdowns();
+  }
+
   const query = (document.getElementById("struct-search")?.value || "").toLowerCase().trim();
+  const folderFilter = document.getElementById("struct-project-filter")?.value || "ALL";
   const systemFilter = document.getElementById("struct-system-filter")?.value || "ALL";
   const typeFilter = document.getElementById("struct-type-filter")?.value || "ALL";
   const audienceFilter = document.getElementById("struct-audience-filter")?.value || "ALL";
   const paperFilter = document.getElementById("struct-paper-filter")?.value || "ALL";
   const sortBy = document.getElementById("struct-sort-by")?.value || "default";
-  const groupBy = document.getElementById("struct-group-by")?.value || "system";
+  const groupBy = document.getElementById("struct-group-by")?.value || "project";
 
   STATE.structSortBy = sortBy;
   STATE.structGroupBy = groupBy;
@@ -8183,6 +8445,10 @@ function renderStructuresList() {
 
   // Filter structures
   let filtered = STATE.structures.filter(s => {
+    // Project Folder Filter
+    const sFolder = s.project_folder || "General Research";
+    if (folderFilter !== "ALL" && sFolder !== folderFilter) return false;
+
     if (systemFilter !== "ALL" && s.crystal_system !== systemFilter) return false;
     if (typeFilter !== "ALL" && s.structure_type !== typeFilter) return false;
     if (!doesItemMatchAudienceFilter(s, audienceFilter)) return false;
@@ -8193,7 +8459,7 @@ function renderStructuresList() {
     if (paperFilter === "NO_PAPER" && hasPaper) return false;
 
     if (!query) return true;
-    const hay = `${s.name} ${s.chemical_formula} ${s.formula} ${s.space_group} ${s.mp_id} ${s.dft_code} ${s.dft_functional} ${s.notes} ${s.associated_paper_title || ""} ${s.associated_paper_doi || ""}`.toLowerCase();
+    const hay = `${s.name} ${s.chemical_formula} ${s.formula} ${s.project_folder || ""} ${s.space_group} ${s.mp_id} ${s.dft_code} ${s.dft_functional} ${s.notes} ${s.associated_paper_title || ""} ${s.associated_paper_doi || ""}`.toLowerCase();
     return hay.includes(query);
   });
 
@@ -8205,7 +8471,8 @@ function renderStructuresList() {
   if (statsEl) {
     const totalCount = STATE.structures.length;
     const withPaperCount = filtered.filter(s => Boolean(s.associated_paper_title || s.associated_paper_doi || s.associated_paper_id)).length;
-    statsEl.innerHTML = `📊 <strong>${filtered.length}</strong> / ${totalCount} structures &bull; <span style="color:#0f766e; font-weight:700;">${withPaperCount} Linked Papers</span>`;
+    const distinctFolders = getExistingProjectFolders();
+    statsEl.innerHTML = `📊 <strong>${filtered.length}</strong> / ${totalCount} structures &bull; <span style="color:#7c3aed; font-weight:700;">📁 ${distinctFolders.length} Projects</span> &bull; <span style="color:#0f766e; font-weight:700;">📄 ${withPaperCount} Linked Papers</span>`;
   }
 
   updateStructBatchBar(filtered);
@@ -8245,6 +8512,7 @@ function renderStructuresList() {
   function renderSingleCardHtml(s) {
     const canModifyItem = Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin;
     const isSelected = STATE.selectedStructureIds && STATE.selectedStructureIds.has(Number(s.id));
+    const sFolder = s.project_folder || "General Research";
 
     return `
       <div class="struct-card" id="struct-card-${s.id}" style="${isSelected ? 'border-color:#2563eb; background:#f0f7ff; box-shadow:0 0 0 2px rgba(37,99,235,0.18);' : ''}">
@@ -8256,6 +8524,7 @@ function renderStructuresList() {
             </div>` : ""}
             <div style="flex:1;">
               <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:4px;">
+                <span class="struct-folder-badge" onclick="filterStructuresByFolder('${escapeHtml(sFolder).replace(/'/g, "\\'")}')" title="Filter by Project Folder: ${escapeHtml(sFolder)}">📁 ${escapeHtml(sFolder)}</span>
                 <span class="badge badge-purple">${escapeHtml(s.crystal_system || "Cubic")}</span>
                 <span class="badge badge-blue">${escapeHtml(s.structure_type || "Bulk 3D")}</span>
                 ${s.mp_id ? `<span class="badge badge-slate">${escapeHtml(s.mp_id)}</span>` : ""}
@@ -8352,7 +8621,7 @@ function renderStructuresList() {
               <input type="checkbox" ${allSelected ? "checked" : ""} onchange="toggleSelectAllStructures(this.checked)" style="width:16px; height:16px; accent-color:#2563eb; cursor:pointer;" />
             </th>
             <th class="sortable-th" onclick="document.getElementById('struct-sort-by').value='name-asc'; renderStructuresList();" title="Click to sort by Name">Material &amp; Formula ↕</th>
-            <th class="sortable-th" onclick="document.getElementById('struct-sort-by').value='default'; renderStructuresList();">System &amp; Type</th>
+            <th class="sortable-th" onclick="document.getElementById('struct-sort-by').value='default'; renderStructuresList();">Folder &amp; Classification</th>
             <th>Space Group</th>
             <th class="sortable-th" onclick="document.getElementById('struct-sort-by').value='vol-asc'; renderStructuresList();" title="Click to sort by Cell Volume">Lattice (a, b, c) &amp; Vol ↕</th>
             <th class="sortable-th" onclick="document.getElementById('struct-sort-by').value='bandgap-asc'; renderStructuresList();" title="Click to sort by Bandgap">DFT &amp; Eg (eV) ↕</th>
@@ -8370,6 +8639,7 @@ function renderStructuresList() {
       const paperDoi = s.associated_paper_doi || "";
       const paperTitle = s.associated_paper_title || "";
       const paperId = s.associated_paper_id;
+      const sFolder = s.project_folder || "General Research";
 
       tableHtml += `
         <tr class="${isSelected ? 'selected-row' : ''}">
@@ -8384,8 +8654,13 @@ function renderStructuresList() {
             ${s.mp_id ? `<span class="badge badge-slate" style="font-size:10px; margin-top:2px;">${escapeHtml(s.mp_id)}</span>` : ""}
           </td>
           <td>
-            <span class="badge badge-purple" style="font-size:11px;">${escapeHtml(s.crystal_system || "Cubic")}</span>
-            <div style="font-size:11px; color:#64748b; margin-top:2px;">${escapeHtml(s.structure_type || "Bulk 3D")}</div>
+            <div>
+              <span class="struct-folder-badge" onclick="filterStructuresByFolder('${escapeHtml(sFolder).replace(/'/g, "\\'")}')" style="font-size:10.5px; padding:2px 7px;" title="Filter by folder: ${escapeHtml(sFolder)}">📁 ${escapeHtml(sFolder)}</span>
+            </div>
+            <div style="margin-top:3px; display:flex; gap:4px; align-items:center;">
+              <span class="badge badge-purple" style="font-size:10.5px;">${escapeHtml(s.crystal_system || "Cubic")}</span>
+              <span class="badge badge-blue" style="font-size:10px;">${escapeHtml(s.structure_type || "Bulk 3D")}</span>
+            </div>
           </td>
           <td>
             <code style="font-size:11.5px; font-weight:600; color:#334155;">${escapeHtml(s.space_group || "P1")}</code>
@@ -8441,6 +8716,7 @@ function renderStructuresList() {
       const paperDoi = s.associated_paper_doi || "";
       const paperTitle = s.associated_paper_title || "";
       const paperId = s.associated_paper_id;
+      const sFolder = s.project_folder || "General Research";
 
       listHtml += `
         <div class="struct-compact-item ${isSelected ? 'selected-item' : ''}" id="struct-compact-${s.id}">
@@ -8461,6 +8737,7 @@ function renderStructuresList() {
           </div>
 
           <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span class="struct-folder-badge" onclick="filterStructuresByFolder('${escapeHtml(sFolder).replace(/'/g, "\\'")}')" style="font-size:10.5px; padding:2px 7px;" title="Filter by folder: ${escapeHtml(sFolder)}">📁 ${escapeHtml(sFolder)}</span>
             <span class="badge ${s.bandgap_ev > 0 ? 'badge-green' : 'badge-amber'}" style="font-size:11px;">
               Eg: ${Number(s.bandgap_ev || 0).toFixed(2)} eV
             </span>
@@ -8497,11 +8774,15 @@ function renderStructuresList() {
     const groupsMap = new Map();
 
     filtered.forEach(s => {
-      let gKey = "Uncategorized";
-      let gTitle = "Uncategorized Structures";
+      let gKey = "General Research";
+      let gTitle = "General Research";
       let gIcon = "📁";
 
-      if (groupBy === "system") {
+      if (groupBy === "project" || !groupBy) {
+        gKey = s.project_folder || "General Research";
+        gTitle = gKey;
+        gIcon = "📁";
+      } else if (groupBy === "system") {
         gKey = s.crystal_system || "Other";
         gTitle = `${gKey} Crystal System`;
         gIcon = "💎";
@@ -8539,9 +8820,17 @@ function renderStructuresList() {
               <span id="folder-arrow-${safeKey}" style="font-size:12px; color:#64748b;">${isCollapsed ? '▶' : '▼'}</span>
               <span>${group.icon}</span>
               <span>${escapeHtml(group.title)}</span>
-              <span class="badge badge-slate" style="font-size:11px; margin-left:6px;">${group.items.length} structure${group.items.length > 1 ? 's' : ''}</span>
+              <span class="badge badge-purple" style="font-size:11px; margin-left:6px;">${group.items.length} structure${group.items.length > 1 ? 's' : ''}</span>
             </div>
-            <div style="font-size:12px; color:#64748b;">Click to ${isCollapsed ? 'expand' : 'collapse'}</div>
+            <div style="display:flex; align-items:center; gap:8px;" onclick="event.stopPropagation()">
+              <button type="button" class="struct-folder-action-btn admin-only" onclick="toggleSelectAllInFolder('${escapeHtml(group.key).replace(/'/g, "\\'")}', true)" title="Select all structures in this folder">☑ Select All</button>
+              ${(groupBy === "project" || !groupBy) && group.key !== "__unlinked__" ? `
+                <button type="button" class="struct-folder-action-btn admin-only" onclick="promptProjectFolderRename('${escapeHtml(group.key).replace(/'/g, "\\'")}')" title="Rename Folder">✏️ Rename</button>
+              ` : ""}
+              <div style="font-size:12px; color:#64748b; margin-left:4px; cursor:pointer;" onclick="toggleStructFolder('${safeKey}')">
+                ${isCollapsed ? '▶ Expand' : '▼ Collapse'}
+              </div>
+            </div>
           </div>
           <div class="struct-folder-body" id="folder-body-${safeKey}" style="display:${isCollapsed ? 'none' : 'block'};">
             <div class="struct-grid" style="margin-top:0;">
@@ -8686,6 +8975,41 @@ async function applyBatchStructuresVisibility() {
   showToast(`🛡️ Updated visibility to "${visMeta.visibility}" for ${updatedCount} selected structure(s)!`, "success");
 }
 
+
+async function applyBatchStructuresFolder() {
+  if (!requireAdminAuth()) return;
+  if (!STATE.selectedStructureIds || STATE.selectedStructureIds.size === 0) {
+    showToast("No structures selected. Please check the structures you wish to move.", "warn");
+    return;
+  }
+  const folderSelect = document.getElementById("batch-struct-folder");
+  const targetFolder = (folderSelect ? folderSelect.value : "").trim() || "General Research";
+  const ids = new Set(Array.from(STATE.selectedStructureIds).map(Number));
+  let updatedCount = 0;
+
+  STATE.structures.forEach(s => {
+    if (ids.has(Number(s.id)) && (!s._sharedFromAdmin || (STATE.auth && STATE.auth.isAdmin))) {
+      s.project_folder = targetFolder;
+      updatedCount++;
+    }
+  });
+  if (STATE.masterData && Array.isArray(STATE.masterData.structures)) {
+    STATE.masterData.structures.forEach(s => {
+      if (ids.has(Number(s.id))) {
+        s.project_folder = targetFolder;
+      }
+    });
+  }
+
+  saveStaticDb();
+  applyActiveWorkspaceData();
+  populateProjectFolderDropdowns();
+  refreshAllWorkspaceViews();
+  recordUserActivity("Crystal Structures", "Moved to Folder", `Moved ${updatedCount} structure(s) to project folder "${targetFolder}".`);
+  showToast(`📁 Successfully moved ${updatedCount} structure(s) to folder "${targetFolder}"!`, "success");
+}
+window.applyBatchStructuresFolder = applyBatchStructuresFolder;
+
 async function applyBatchStructuresField(fieldName) {
   if (!requireAdminAuth()) return;
   if (!STATE.selectedStructureIds || STATE.selectedStructureIds.size === 0) {
@@ -8793,6 +9117,7 @@ function openStructureModal(structId = null, options = {}) {
     }
     renderModalAtomsTable(atoms);
     populateModalPaperDropdown(s.associated_paper_id, s.associated_paper_title || "", s.associated_paper_doi || "");
+    populateModalFolderDropdown(s.project_folder || "General Research");
   } else if (!options.skipReset) {
     document.getElementById("struct-modal-title").textContent = "Add Crystal Structure (*.cif)";
     document.getElementById("struct-id").value = "";
@@ -8824,6 +9149,9 @@ function openStructureModal(structId = null, options = {}) {
     setVisibilityControlValues("struct", "Public", []);
 
     renderModalAtomsTable([]);
+    populateModalPaperDropdown(null, "", "");
+    const curFilterVal = document.getElementById("struct-project-filter")?.value;
+    populateModalFolderDropdown(curFilterVal && curFilterVal !== "ALL" ? curFilterVal : "General Research");
   }
   modal.classList.add("open");
 }
@@ -8899,10 +9227,19 @@ async function saveStructureFromModal() {
     }
   }
 
+  // Project / Research Folder assignment
+  const folderSelect = document.getElementById("struct-folder-select");
+  let assignedFolder = folderSelect ? folderSelect.value : "General Research";
+  if (assignedFolder === "__new__") {
+    assignedFolder = (document.getElementById("struct-folder-custom")?.value || "").trim() || "General Research";
+  }
+  if (!assignedFolder) assignedFolder = "General Research";
+
   const payload = {
     name,
     formula,
     chemical_formula: formula,
+    project_folder: assignedFolder,
     associated_paper_id: assocPaperId,
     associated_paper_title: assocPaperTitle,
     associated_paper_doi: assocPaperDoi,
