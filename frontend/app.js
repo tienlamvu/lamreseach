@@ -8686,20 +8686,31 @@ function renderStructuresList() {
     const allSelected = filtered.length > 0 && filtered.every(s => STATE.selectedStructureIds.has(Number(s.id)));
 
     let tableHtml = `
-      <table class="struct-details-table struct-single-row-table">
+      <table class="struct-single-row-table">
+        <colgroup>
+          <col style="width: 32px;" />
+          <col style="width: 25%;" />
+          <col style="width: 14%;" />
+          <col style="width: 12%;" />
+          <col style="width: 15%;" />
+          <col style="width: 7%;" />
+          <col style="width: 6%;" />
+          <col style="width: 8%;" />
+          <col style="width: 114px;" />
+        </colgroup>
         <thead>
           <tr>
-            <th style="width:34px; text-align:center;">
-              <input type="checkbox" id="struct-select-all-cb" ${allSelected ? "checked" : ""} onchange="toggleSelectAllStructures(this.checked)" style="width:15px; height:15px; accent-color:#2563eb; cursor:pointer;" title="Select / Deselect All" />
+            <th style="text-align:center;">
+              <input type="checkbox" id="struct-select-all-cb" ${allSelected ? "checked" : ""} onchange="toggleSelectAllStructures(this.checked)" style="width:14px; height:14px; accent-color:#2563eb; cursor:pointer;" title="Select / Deselect All" />
             </th>
-            <th class="sortable-th" onclick="document.getElementById('struct-sort-by').value='formula-asc'; renderStructuresList();" style="min-width:180px;">Material &amp; Formula ↕</th>
-            <th style="min-width:130px;">Folder</th>
-            <th style="min-width:110px;">System &amp; Group</th>
-            <th style="min-width:140px;">Lattice (a, b, c) &amp; Vol</th>
-            <th style="min-width:90px;">Bandgap Eg</th>
-            <th style="min-width:120px;">Publication</th>
-            <th style="min-width:80px;">Audience</th>
-            <th style="text-align:right; min-width:125px;">Actions</th>
+            <th class="sortable-th" onclick="document.getElementById('struct-sort-by').value='formula-asc'; renderStructuresList();" title="Sort by Formula">Material &amp; Formula ↕</th>
+            <th>Folder</th>
+            <th>System &amp; Group</th>
+            <th>Lattice &amp; Vol</th>
+            <th style="text-align:center;">Eg (eV)</th>
+            <th style="text-align:center;">Paper</th>
+            <th style="text-align:center;">Audience</th>
+            <th style="text-align:right;">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -8715,35 +8726,37 @@ function renderStructuresList() {
       tableHtml += `
         <tr class="struct-single-row ${isSelected ? 'selected-row' : ''}">
           <td style="text-align:center;">
-            ${canModifyItem ? `<input type="checkbox" class="struct-select-cb" data-id="${s.id}" ${isSelected ? "checked" : ""} onchange="toggleSelectStructure(${s.id}, this.checked)" style="width:15px; height:15px; accent-color:#2563eb; cursor:pointer;" />` : ""}
+            ${canModifyItem ? `<input type="checkbox" class="struct-select-cb" data-id="${s.id}" ${isSelected ? "checked" : ""} onchange="toggleSelectStructure(${s.id}, this.checked)" style="width:14px; height:14px; accent-color:#2563eb; cursor:pointer;" />` : ""}
           </td>
           <td class="nowrap-cell" title="${escapeHtml(s.name)} [${s.chemical_formula || s.formula}]">
-            <span class="struct-row-formula">${formatFormulaHtml(s.chemical_formula || s.formula)}</span>
-            <span class="struct-row-name">${escapeHtml(s.name)}</span>
+            <div class="struct-cell-flex">
+              <span class="struct-row-formula">${formatFormulaHtml(s.chemical_formula || s.formula)}</span>
+              <span class="struct-row-name">${escapeHtml(s.name)}</span>
+            </div>
           </td>
           <td class="nowrap-cell">
-            <span class="struct-folder-badge-mini" onclick="filterStructuresByFolder('${escapeHtml(sFolder).replace(/'/g, "\\'")}')" title="Filter: ${escapeHtml(sFolder)}">📁 ${escapeHtml(sFolder)}</span>
+            <span class="struct-folder-badge-mini" onclick="filterStructuresByFolder('${escapeHtml(sFolder).replace(/'/g, "\\'")}')" title="Folder: ${escapeHtml(sFolder)}">📁 ${escapeHtml(sFolder)}</span>
           </td>
-          <td class="nowrap-cell" style="font-size:12px; color:#475569;">
+          <td class="nowrap-cell" style="font-size:12px; color:#475569;" title="${escapeHtml(s.crystal_system || 'Cubic')} ${escapeHtml(s.space_group || 'P1')}">
             <span>${escapeHtml(s.crystal_system || "Cubic")}</span>
-            <code style="font-size:11px; margin-left:4px; color:#64748b;">${escapeHtml(s.space_group || "P1")}</code>
+            <code style="font-size:10.5px; margin-left:3px; color:#64748b;">${escapeHtml(s.space_group || "P1")}</code>
           </td>
-          <td class="nowrap-cell" style="font-family:monospace; font-size:11.5px; color:#334155;">
-            ${Number(s.a || 0).toFixed(2)}×${Number(s.b || 0).toFixed(2)}×${Number(s.c || 0).toFixed(2)} Å <span style="color:#64748b; font-size:11px;">(${Number(s.volume || 0).toFixed(0)} Å³)</span>
+          <td class="nowrap-cell" style="font-family:monospace; font-size:11px; color:#334155;" title="a=${s.a}, b=${s.b}, c=${s.c} Å | Vol=${s.volume} Å³">
+            ${Number(s.a || 0).toFixed(2)}×${Number(s.b || 0).toFixed(2)}×${Number(s.c || 0).toFixed(2)} <span style="color:#64748b; font-size:10px;">(${Number(s.volume || 0).toFixed(0)} Å³)</span>
           </td>
-          <td class="nowrap-cell">
-            <span class="badge ${s.bandgap_ev > 0 ? 'badge-green' : 'badge-amber'}" style="font-size:11px; font-weight:700; padding:1px 6px;">
+          <td class="nowrap-cell" style="text-align:center;">
+            <span class="badge ${s.bandgap_ev > 0 ? 'badge-green' : 'badge-amber'}" style="font-size:11px; font-weight:700; padding:1px 5px; white-space:nowrap;">
               ${Number(s.bandgap_ev || 0).toFixed(2)} eV
             </span>
           </td>
-          <td class="nowrap-cell">
-            ${paperDoi ? `<a href="https://doi.org/${encodeURIComponent(paperDoi)}" target="_blank" class="struct-doi-pill" style="font-size:10.5px; padding:1px 5px;">DOI ↗</a>` : (paperTitle ? `<span style="font-size:11px; color:#0f766e;" title="${escapeHtml(paperTitle)}">📄 ${escapeHtml(paperTitle.slice(0, 15))}...</span>` : `<span style="color:#cbd5e1;">—</span>`)}
+          <td class="nowrap-cell" style="text-align:center;">
+            ${paperDoi ? `<a href="https://doi.org/${encodeURIComponent(paperDoi)}" target="_blank" class="struct-doi-pill" style="font-size:10px; padding:1px 5px;" title="${escapeHtml(paperTitle || paperDoi)}">DOI ↗</a>` : (paperTitle ? `<span style="font-size:10.5px; color:#0f766e; max-width:100%; overflow:hidden; text-overflow:ellipsis; display:inline-block; vertical-align:middle;" title="${escapeHtml(paperTitle)}">📄 Paper</span>` : `<span style="color:#cbd5e1;">—</span>`)}
           </td>
-          <td class="nowrap-cell">
+          <td class="nowrap-cell struct-cell-audience" style="text-align:center;">
             ${renderVisibilityBadgeHtml(s)}
           </td>
           <td class="nowrap-cell" style="text-align:right;">
-            <div style="display:inline-flex; gap:3px; align-items:center;">
+            <div style="display:inline-flex; gap:2px; align-items:center; justify-content:flex-end;">
               <button type="button" class="struct-mini-btn" onclick="viewCifModal(${s.id})" title="View CIF / 3D POSCAR">👁️</button>
               <button type="button" class="struct-mini-btn" onclick="downloadCifById(${s.id})" title="Download .cif">📥</button>
               <button type="button" class="struct-mini-btn" onclick="downloadPoscarById(${s.id})" title="Download POSCAR">⚡</button>
