@@ -372,25 +372,28 @@
         <div class="card" style="background: linear-gradient(135deg, #0f172a, #1e3a8a); color:#fff; border:none; margin-bottom:16px;">
           <div class="card-header" style="margin-bottom:0; flex-wrap:wrap; gap:12px;">
             <div>
-              <div class="card-title" style="color:#fff; font-size:17.5px;">📅 Unified Calendar — Two-Way Google Calendar Synchronization</div>
+              <div class="card-title" style="color:#fff; font-size:17.5px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span>📅 Unified Research &amp; Google Calendar</span>
+                <span class="badge badge-blue" style="background:rgba(255,255,255,0.16); border:1px solid rgba(255,255,255,0.3); color:#fff; font-size:11px;">KST • GMT+9</span>
+              </div>
               <div style="font-size:12.5px; color:#cbd5e1; margin-top:3px;">
-                Linked with Google Account <strong id="calendar-active-email-label">lamvt.skku@gmail.com</strong>. Events added on web automatically sync to Google Calendar, and Google Calendar events display seamlessly on this site.
+                Website simulation tasks &amp; Google Calendar events are unified into a single live schedule grid. Google Account: <strong id="calendar-active-email-label">lamvt.skku@gmail.com</strong>
               </div>
             </div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-              <button class="btn btn-primary owner-only-btn admin-only" onclick="openScheduleModal()">
-                + Add Event (Syncs to Google)
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              <button class="btn btn-primary owner-only-btn admin-only" onclick="openScheduleModal()" style="font-weight:700;">
+                ➕ Add Event (Single &amp; Multi-Day)
               </button>
-              <button class="btn btn-sm btn-outline" id="btn-cal-interactive" style="background:rgba(255,255,255,0.18); color:#fff; border-color:#94a3b8;" onclick="setCalendarDisplayMode('interactive')">
-                📅 PhD Schedule Grid
+              <button class="btn btn-sm btn-outline" id="btn-sync-google-cal" style="background:#2563eb; color:#fff; border-color:#3b82f6; font-weight:700; display:inline-flex; align-items:center; gap:5px;" onclick="syncWithGoogleCalendarApi()" title="Fetch &amp; sync Google Calendar events directly into this unified calendar">
+                🔄 Sync with Google Calendar
               </button>
-              <button class="btn btn-sm btn-outline" id="btn-cal-gcal" style="background:rgba(255,255,255,0.1); color:#fff; border-color:#475569;" onclick="setCalendarDisplayMode('gcal')">
-                🌐 Live Google Calendar
-              </button>
-              <button class="btn btn-sm btn-outline" style="background:rgba(255,255,255,0.1); color:#fff; border-color:#475569;" onclick="toggleIcsImportBox()">
+              <button class="btn btn-sm btn-outline" style="background:rgba(255,255,255,0.1); color:#fff; border-color:#64748b;" onclick="toggleIcsImportBox()">
                 📥 Import GCal (.ics)
               </button>
-              <a href="https://calendar.google.com/calendar/u/0/r" target="_blank" class="btn btn-sm btn-outline" style="background:rgba(255,255,255,0.1); color:#fff; border-color:#475569; text-decoration:none;">
+              <button class="btn btn-sm btn-outline" style="background:rgba(255,255,255,0.1); color:#fff; border-color:#64748b;" onclick="exportScheduleToIcs()" title="Export all events as iCalendar .ics file">
+                📤 Export .ics
+              </button>
+              <a href="https://calendar.google.com/calendar/u/0/r" target="_blank" class="btn btn-sm btn-outline" style="background:rgba(255,255,255,0.1); color:#fff; border-color:#64748b; text-decoration:none;">
                 Open Google Calendar ↗
               </a>
             </div>
@@ -447,10 +450,12 @@
             </div>
 
             <div style="display:flex; gap:8px; flex-wrap:wrap; font-size:11.5px;">
+              <span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;">🌐 Google Calendar Event</span>
               <span class="badge badge-amber">🔥 Synthesis / Furnace</span>
               <span class="badge badge-green">🔬 Characterization (XRD/SEM/XPS)</span>
               <span class="badge badge-purple">👥 Group / PI Meeting</span>
               <span class="badge badge-blue">⚡ Electrochemistry / Writing</span>
+              <span class="badge" style="background:#f3e8ff; color:#6b21a8; border:1px solid #d8b4fe;">⚡ Multi-Day Spanning</span>
             </div>
           </div>
 
@@ -3278,14 +3283,23 @@
           <input type="text" id="sm-location" placeholder="e.g., Bruker D8 XRD / Tube Furnace #2" />
         </div>
         <div class="form-group">
-          <label>Date *</label>
-          <input type="date" id="sm-date" />
+          <label style="display:flex; justify-content:space-between; align-items:center;">
+            <span>Start Date &amp; Time *</span>
+            <span style="font-size:11px; color:#64748b; font-weight:normal;">Begins (GMT+9)</span>
+          </label>
+          <div style="display:flex; gap:6px;">
+            <input type="date" id="sm-date" style="flex:1.4;" required onchange="handleScheduleStartDateChange()" />
+            <input type="time" id="sm-start" value="09:00" style="flex:1;" onchange="updateScheduleDurationBadge()" />
+          </div>
         </div>
         <div class="form-group">
-          <label>Time Slot</label>
+          <label style="display:flex; justify-content:space-between; align-items:center;">
+            <span>End Date &amp; Time *</span>
+            <span style="font-size:11px; font-weight:700; color:#2563eb;" id="sm-duration-badge">Single Day</span>
+          </label>
           <div style="display:flex; gap:6px;">
-            <input type="time" id="sm-start" value="09:00" style="width:50%;" />
-            <input type="time" id="sm-end" value="11:30" style="width:50%;" />
+            <input type="date" id="sm-end-date" style="flex:1.4;" required onchange="updateScheduleDurationBadge()" />
+            <input type="time" id="sm-end" value="11:30" style="flex:1;" onchange="updateScheduleDurationBadge()" />
           </div>
         </div>
         <div class="form-group">
@@ -3494,6 +3508,6 @@
   </div>
 
 <script src="matsci_tools.js?v=20261116_v66_email_relay_fallback" onerror="this.src='/static/matsci_tools.js?v=20261116_v66_email_relay_fallback'"></script>
-  <script src="app.js?v=20261116_v71_gemini_38_upgrade" onerror="this.src='/static/app.js?v=20261116_v71_gemini_38_upgrade'"></script>
+  <script src="app.js?v=20261117_v72_unified_calendar_multiday_gmt9" onerror="this.src='/static/app.js?v=20261117_v72_unified_calendar_multiday_gmt9'"></script>
 </body>
 </html>
