@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261117_v76_project_folders_grouping" onerror="this.href='/static/styles.css?v=20261117_v76_project_folders_grouping'" />
+  <link rel="stylesheet" href="styles.css?v=20261117_v77_tidy_buttons_explorer" onerror="this.href='/static/styles.css?v=20261117_v77_tidy_buttons_explorer'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -648,45 +648,85 @@
 
         <!-- Structures List & Filters -->
         <div class="card">
-          <div class="card-header">
-            <div style="display:flex; gap:10px; flex:1; flex-wrap:wrap;">
-              <input
-                type="text"
-                id="struct-search"
-                placeholder="Search by formula (e.g., BaTiO3, BaSnO3, MoS2, MXene), space group, or mp-id..."
-                style="flex:1; min-width:220px; padding:8px 12px; border:1px solid var(--border-color); border-radius:8px; font-size:13px;"
-                oninput="renderStructuresList()"
-              />
-              <select id="struct-system-filter" onchange="renderStructuresList()" style="padding:8px 12px; border:1px solid var(--border-color); border-radius:8px; font-size:13px;">
-                <option value="ALL">All Crystal Systems</option>
-                <option value="Cubic">Cubic</option>
-                <option value="Tetragonal">Tetragonal</option>
-                <option value="Hexagonal">Hexagonal</option>
-                <option value="Orthorhombic">Orthorhombic</option>
-                <option value="Monoclinic">Monoclinic</option>
-                <option value="Triclinic">Triclinic</option>
-              </select>
-              <select id="struct-type-filter" onchange="renderStructuresList()" style="padding:8px 12px; border:1px solid var(--border-color); border-radius:8px; font-size:13px;">
-                <option value="ALL">All Structure Types</option>
-                <option value="Bulk 3D">Bulk 3D Crystal</option>
-                <option value="2D Monolayer">2D Monolayer / Layered</option>
-                <option value="Surface Slab">Surface Slab</option>
-                <option value="Defect Supercell">Defect Supercell</option>
-              </select>
-              <select id="struct-project-filter" onchange="renderStructuresList()" style="padding:8px 12px; border:1px solid #c4b5fd; background:#faf5ff; color:#5b21b6; font-weight:600; border-radius:8px; font-size:13px;" title="Filter crystal structures by Research Project / Folder">
-                <option value="ALL">📁 All Project Folders</option>
-              </select>
-              <select id="struct-paper-filter" onchange="renderStructuresList()" style="padding:8px 12px; border:1px solid var(--border-color); border-radius:8px; font-size:13px;" title="Filter by linked publication">
-                <option value="ALL">📄 All Literature Links</option>
-                <option value="WITH_PAPER">✅ Has Linked Paper</option>
-                <option value="NO_PAPER">⚪ No Linked Paper</option>
-              </select>
-              <select id="struct-audience-filter" class="strict-admin-only audience-group-filter-select" onchange="renderStructuresList()" style="padding:8px 12px; border:1px solid #93c5fd; background:#eff6ff; color:#1e3a8a; font-weight:600; border-radius:8px; font-size:13px;" title="Filter displayed structures by Visibility Mode or Target User Group">
-                <option value="ALL">🛡️ All Audiences &amp; Groups</option>
-              </select>
+          <!-- Structured Top Control Panel: Row 1 Search & Primary Actions, Row 2 Clean Filter Ribbon -->
+          <div class="struct-control-panel">
+            <!-- Row 1: Search Bar & Primary Actions -->
+            <div class="struct-search-action-row">
+              <div class="struct-search-box-wrap">
+                <span class="struct-search-icon">🔍</span>
+                <input
+                  type="text"
+                  id="struct-search"
+                  placeholder="Search formula (e.g. BaTiO3, MoS2), material name, space group, or ID..."
+                  oninput="renderStructuresList()"
+                  autocomplete="off"
+                />
+                <button type="button" id="struct-search-clear" onclick="clearStructSearch()" title="Clear search" style="display:none;">✕</button>
+              </div>
+
+              <div class="struct-primary-action-group">
+                <button type="button" class="btn btn-outline btn-sm admin-only struct-action-btn-folder" onclick="openManageFoldersModal()" title="Manage and organize research project folders">
+                  📁 Manage Folders
+                </button>
+                <button type="button" class="btn btn-primary btn-sm admin-only struct-action-btn-new" onclick="openStructureModal()" title="Add new crystal structure or drop CIF file">
+                  <span style="font-size:15px; font-weight:800; line-height:1;">+</span> New Structure
+                </button>
+              </div>
             </div>
-            <button class="btn btn-outline btn-sm admin-only" onclick="openManageFoldersModal()" style="border-color:#c4b5fd; color:#6b21a8; background:#fff; font-weight:600;" title="Manage and organize research project folders">📁 Manage Folders</button>
-            <button class="btn btn-primary btn-sm admin-only" onclick="openStructureModal()">+ New Structure</button>
+
+            <!-- Row 2: Clean, Uniform Filter Ribbon -->
+            <div class="struct-filter-ribbon">
+              <div class="struct-filter-item" title="Filter crystal structures by Research Project Folder">
+                <label for="struct-project-filter" class="struct-filter-label">📁 Folder:</label>
+                <select id="struct-project-filter" onchange="renderStructuresList()" class="struct-filter-select struct-filter-select-folder">
+                  <option value="ALL">All Project Folders</option>
+                </select>
+              </div>
+
+              <div class="struct-filter-item" title="Filter by Crystal System">
+                <label for="struct-system-filter" class="struct-filter-label">💎 System:</label>
+                <select id="struct-system-filter" onchange="renderStructuresList()" class="struct-filter-select">
+                  <option value="ALL">All Crystal Systems</option>
+                  <option value="Cubic">Cubic</option>
+                  <option value="Tetragonal">Tetragonal</option>
+                  <option value="Hexagonal">Hexagonal</option>
+                  <option value="Orthorhombic">Orthorhombic</option>
+                  <option value="Monoclinic">Monoclinic</option>
+                  <option value="Triclinic">Triclinic</option>
+                </select>
+              </div>
+
+              <div class="struct-filter-item" title="Filter by Structure Type">
+                <label for="struct-type-filter" class="struct-filter-label">🧊 Type:</label>
+                <select id="struct-type-filter" onchange="renderStructuresList()" class="struct-filter-select">
+                  <option value="ALL">All Structure Types</option>
+                  <option value="Bulk 3D">Bulk 3D Crystal</option>
+                  <option value="2D Monolayer">2D Monolayer / Layered</option>
+                  <option value="Surface Slab">Surface Slab</option>
+                  <option value="Defect Supercell">Defect Supercell</option>
+                </select>
+              </div>
+
+              <div class="struct-filter-item" title="Filter by linked literature publication">
+                <label for="struct-paper-filter" class="struct-filter-label">📄 Paper:</label>
+                <select id="struct-paper-filter" onchange="renderStructuresList()" class="struct-filter-select">
+                  <option value="ALL">All Literature Links</option>
+                  <option value="WITH_PAPER">✅ Has Linked Paper</option>
+                  <option value="NO_PAPER">⚪ No Linked Paper</option>
+                </select>
+              </div>
+
+              <div class="struct-filter-item strict-admin-only" title="Filter by Audience Access Control">
+                <label for="struct-audience-filter" class="struct-filter-label" style="color:#1e3a8a;">🛡️ Visibility:</label>
+                <select id="struct-audience-filter" class="struct-filter-select audience-group-filter-select" onchange="renderStructuresList()" style="color:#1e3a8a; font-weight:700;">
+                  <option value="ALL">All Audiences &amp; Groups</option>
+                </select>
+              </div>
+
+              <button type="button" class="struct-filter-reset-btn" id="btn-struct-reset-filters" onclick="resetAllStructureFilters()" title="Reset all filters and search query to show all structures">
+                ↺ Reset Filters
+              </button>
+            </div>
           </div>
 
           <!-- Crystal Structures Batch Action Toolbar (Admin & Personal Users) -->
@@ -3682,8 +3722,8 @@
     </div>
   </div>
 
-<script src="matsci_tools.js?v=20261117_v76_project_folders_grouping" onerror="this.src='/static/matsci_tools.js?v=20261117_v76_project_folders_grouping'"></script>
-  <script src="app.js?v=20261117_v76_project_folders_grouping" onerror="this.src='/static/app.js?v=20261117_v76_project_folders_grouping'"></script>
+<script src="matsci_tools.js?v=20261117_v77_tidy_buttons_explorer" onerror="this.src='/static/matsci_tools.js?v=20261117_v77_tidy_buttons_explorer'"></script>
+  <script src="app.js?v=20261117_v77_tidy_buttons_explorer" onerror="this.src='/static/app.js?v=20261117_v77_tidy_buttons_explorer'"></script>
 
     <!-- Google Calendar Verification / 403 Access Blocked Helper Modal -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
