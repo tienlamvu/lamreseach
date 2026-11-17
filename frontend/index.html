@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261117_v74_oauth_scope_fix_and_gcal_guide" onerror="this.href='/static/styles.css?v=20261117_v74_oauth_scope_fix_and_gcal_guide'" />
+  <link rel="stylesheet" href="styles.css?v=20261117_v75_crystal_structures_explorer_views_linked_literature" onerror="this.href='/static/styles.css?v=20261117_v75_crystal_structures_explorer_views_linked_literature'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -673,6 +673,11 @@
                 <option value="Surface Slab">Surface Slab</option>
                 <option value="Defect Supercell">Defect Supercell</option>
               </select>
+              <select id="struct-paper-filter" onchange="renderStructuresList()" style="padding:8px 12px; border:1px solid var(--border-color); border-radius:8px; font-size:13px;" title="Filter by linked publication">
+                <option value="ALL">📄 All Literature Links</option>
+                <option value="WITH_PAPER">✅ Has Linked Paper</option>
+                <option value="NO_PAPER">⚪ No Linked Paper</option>
+              </select>
               <select id="struct-audience-filter" class="strict-admin-only audience-group-filter-select" onchange="renderStructuresList()" style="padding:8px 12px; border:1px solid #93c5fd; background:#eff6ff; color:#1e3a8a; font-weight:600; border-radius:8px; font-size:13px;" title="Filter displayed structures by Visibility Mode or Target User Group">
                 <option value="ALL">🛡️ All Audiences &amp; Groups</option>
               </select>
@@ -738,6 +743,59 @@
             </div>
             <div id="batch-struct-specific-box" class="specific-users-picker-wrap strict-admin-only" style="display:none; width:100%;"></div>
           </div>
+
+        <!-- Crystal Structures Database View Modes & Management Toolbar (File-Explorer Styles) -->
+        <div class="struct-view-toolbar" id="struct-view-toolbar">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <span style="font-size:12px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.5px;">📁 View Mode:</span>
+            <div class="struct-view-btn-group" id="struct-view-btn-group">
+              <button type="button" class="struct-view-btn active" id="btn-struct-view-cards" onclick="setStructureDisplayMode('cards')" title="Large Icons / Interactive Cards Grid">
+                📱 Cards
+              </button>
+              <button type="button" class="struct-view-btn" id="btn-struct-view-details" onclick="setStructureDisplayMode('details')" title="Details / Scientific Spreadsheet Table View">
+                📋 Details Table
+              </button>
+              <button type="button" class="struct-view-btn" id="btn-struct-view-compact" onclick="setStructureDisplayMode('compact')" title="Compact List / Small Icons View">
+                📄 Compact List
+              </button>
+              <button type="button" class="struct-view-btn" id="btn-struct-view-grouped" onclick="setStructureDisplayMode('grouped')" title="Group by Folder / System / Publication">
+                📁 Grouped Folders
+              </button>
+            </div>
+
+            <!-- Grouping Criterion Selector (visible when in grouped mode) -->
+            <div id="struct-group-by-wrap" style="display:none; align-items:center; gap:6px;">
+              <span style="font-size:11.5px; font-weight:600; color:#64748b;">Group by:</span>
+              <select id="struct-group-by" onchange="renderStructuresList()" style="padding:4px 8px; border-radius:6px; border:1px solid #cbd5e1; font-size:12px; background:#fff; color:#1e293b; font-weight:600;">
+                <option value="system">Crystal System (Cubic, Hex, ...)</option>
+                <option value="type">Structure Type (Bulk 3D, 2D Monolayer, ...)</option>
+                <option value="paper">Associated Literature / Paper</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="font-size:12px; font-weight:600; color:#64748b;">Sort:</span>
+              <select id="struct-sort-by" onchange="renderStructuresList()" style="padding:5px 10px; border-radius:6px; border:1px solid #cbd5e1; font-size:12px; background:#fff; color:#0f172a; font-weight:600;">
+                <option value="default">Default (Newest First)</option>
+                <option value="name-asc">Name (A &rarr; Z)</option>
+                <option value="name-desc">Name (Z &rarr; A)</option>
+                <option value="formula-asc">Formula (A &rarr; Z)</option>
+                <option value="bandgap-asc">Bandgap Eg (Lowest &rarr; Highest)</option>
+                <option value="bandgap-desc">Bandgap Eg (Highest &rarr; Lowest)</option>
+                <option value="vol-asc">Cell Volume (Small &rarr; Large)</option>
+                <option value="vol-desc">Cell Volume (Large &rarr; Small)</option>
+                <option value="atoms-desc">Atom Count (High &rarr; Low)</option>
+                <option value="paper-first">📄 Has Linked Paper First</option>
+              </select>
+            </div>
+
+            <div id="struct-db-stats" style="font-size:12px; color:#475569; background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:4px 10px; font-weight:600; white-space:nowrap;">
+              📊 12 structures
+            </div>
+          </div>
+        </div>
 
           <div id="structures-list-container" class="struct-grid"></div>
         </div>
@@ -3144,6 +3202,32 @@
           <textarea id="struct-cifcontent" rows="4" style="font-family:monospace; font-size:12px;" placeholder="Paste raw CIF content here..."></textarea>
         </div>
 
+        <!-- Associated Literature / Publication Reference -->
+        <div class="form-group full" style="background:#f0fdfa; border:1px solid #99f6e4; border-radius:8px; padding:12px 14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+            <label style="font-weight:700; color:#0f766e; display:flex; align-items:center; gap:6px; font-size:13px; margin:0;">
+              <span>📄</span> Associated Literature / Publication Reference
+            </label>
+            <span class="badge badge-teal" style="font-size:11px;">Database Link</span>
+          </div>
+          <div style="font-size:12px; color:#115e59; margin-bottom:8px;">
+            Link this computational structure to a reference paper in your Literature Library, or specify an external publication DOI.
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+            <select id="struct-paper-select" onchange="handleStructPaperSelectChange()" style="flex:1; min-width:260px; padding:7px 10px; border:1px solid #5eead4; border-radius:6px; font-size:12.5px; background:#fff; font-weight:600; color:#0f172a;">
+              <option value="">-- None (No Linked Publication) --</option>
+              <option value="__custom__">➕ Custom / External DOI or Title</option>
+            </select>
+            <button type="button" class="btn btn-outline btn-sm" onclick="switchTabByName('literature')" style="background:#fff; border-color:#99f6e4; color:#0f766e; font-size:12px;" title="Browse Literature Library in new view">
+              📚 Browse Papers
+            </button>
+          </div>
+          <div id="struct-paper-custom-wrap" style="display:none; gap:8px; flex-wrap:wrap;">
+            <input type="text" id="struct-paper-title" placeholder="Paper Title / Citation description..." style="flex:2; min-width:200px; padding:6px 10px; border:1px solid #99f6e4; border-radius:6px; font-size:12px;" />
+            <input type="text" id="struct-paper-doi" placeholder="DOI (e.g., 10.1038/s41467-025-67240-3)" style="flex:1; min-width:180px; padding:6px 10px; border:1px solid #99f6e4; border-radius:6px; font-size:12px;" />
+          </div>
+          <div id="struct-paper-preview-box" style="margin-top:6px; font-size:11.5px; color:#0d9488; display:none;"></div>
+        </div>
         <div class="form-group full">
           <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
             <input type="checkbox" id="struct-weekly" checked />
@@ -3530,8 +3614,8 @@
     </div>
   </div>
 
-<script src="matsci_tools.js?v=20261117_v74_oauth_scope_fix_and_gcal_guide" onerror="this.src='/static/matsci_tools.js?v=20261117_v74_oauth_scope_fix_and_gcal_guide'"></script>
-  <script src="app.js?v=20261117_v74_oauth_scope_fix_and_gcal_guide" onerror="this.src='/static/app.js?v=20261117_v74_oauth_scope_fix_and_gcal_guide'"></script>
+<script src="matsci_tools.js?v=20261117_v75_crystal_structures_explorer_views_linked_literature" onerror="this.src='/static/matsci_tools.js?v=20261117_v75_crystal_structures_explorer_views_linked_literature'"></script>
+  <script src="app.js?v=20261117_v75_crystal_structures_explorer_views_linked_literature" onerror="this.src='/static/app.js?v=20261117_v75_crystal_structures_explorer_views_linked_literature'"></script>
 
     <!-- Google Calendar Verification / 403 Access Blocked Helper Modal -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
