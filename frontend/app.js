@@ -3608,6 +3608,19 @@ async function confirmSelfPasswordReset() {
 // Google Calendar Live Integration & Token Management
 // ============================================================================
 
+
+function openGoogleCalendarVerificationHelperModal(emailHint = "") {
+  const modal = document.getElementById("google-cal-unverified-modal");
+  if (!modal) return;
+  const activeEmail = emailHint || (STATE.auth && (STATE.auth.googleEmail || STATE.auth.email)) || OWNER_GOOGLE_EMAIL;
+  const hintEl = document.getElementById("gcal-blocked-email-hint");
+  const codeEl = document.getElementById("gcal-blocked-email-code");
+  if (hintEl) hintEl.textContent = activeEmail;
+  if (codeEl) codeEl.textContent = activeEmail;
+  modal.classList.add("open");
+}
+window.openGoogleCalendarVerificationHelperModal = openGoogleCalendarVerificationHelperModal;
+
 function requestGoogleCalendarToken(targetEmail = "", forceConsent = false) {
   return new Promise((resolve, reject) => {
     const clientId = getGoogleOAuthClientId();
@@ -3623,13 +3636,18 @@ function requestGoogleCalendarToken(targetEmail = "", forceConsent = false) {
       typeof window.google.accounts.oauth2.initTokenClient === "function"
     ) {
       try {
+        const calScopes = (GOOGLE_OAUTH_CONFIG && GOOGLE_OAUTH_CONFIG.CALENDAR_SCOPES) ? GOOGLE_OAUTH_CONFIG.CALENDAR_SCOPES : "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events";
         const tokenClient = window.google.accounts.oauth2.initTokenClient({
           client_id: clientId,
-          scope: "openid email profile https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events",
+          scope: calScopes,
           prompt: forceConsent ? "consent" : "",
           hint: targetEmail || (STATE.auth && (STATE.auth.googleEmail || STATE.auth.email)) || "",
           callback: (tokenResp) => {
             if (tokenResp && tokenResp.error) {
+              if (tokenResp.error === "access_denied") {
+                openGoogleCalendarVerificationHelperModal(targetEmail);
+                return reject(new Error("access_denied"));
+              }
               return reject(new Error(tokenResp.error_description || tokenResp.error));
             }
             if (tokenResp && tokenResp.access_token) {
@@ -3733,7 +3751,8 @@ const GOOGLE_OAUTH_CONFIG = {
   AUTH_ENDPOINT: "https://accounts.google.com/o/oauth2/v2/auth",
   USERINFO_ENDPOINT: "https://www.googleapis.com/oauth2/v3/userinfo",
   REVOKE_ENDPOINT: "https://oauth2.googleapis.com/revoke",
-  SCOPES: "openid email profile https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events",
+  SCOPES: "openid email profile",
+  CALENDAR_SCOPES: "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events",
   PROMPT: "select_account consent"
 };
 
@@ -4224,9 +4243,6 @@ window.receiveGoogleOAuth2PopupResult = async function (payload) {
   // Administrator login via Google OAuth 2.0
   if (email === OWNER_GOOGLE_EMAIL) {
     completeOwnerLogin(OWNER_GOOGLE_EMAIL, fullName || "Vu Tien Lam", picture);
-    setTimeout(() => {
-      syncWithGoogleCalendarApi({ silent: false, autoOnLogin: true });
-    }, 400);
     return;
   }
 
@@ -4267,9 +4283,6 @@ window.receiveGoogleOAuth2PopupResult = async function (payload) {
     completePersonalUserLogin(existingUser, "Google OAuth 2.0");
     showToast(`✅ Signed in with Google as ${existingUser.name} (${email})!`, "success");
     await syncDatabaseToCloudInstant(`Google OAuth 2.0 Login (${email})`, true);
-    setTimeout(() => {
-      syncWithGoogleCalendarApi({ silent: false, autoOnLogin: true });
-    }, 400);
     return;
   }
 
@@ -4342,9 +4355,6 @@ window.receiveGoogleOAuth2PopupResult = async function (payload) {
   completePersonalUserLogin(newGoogleUser, "Google OAuth 2.0");
   showToast(`✅ Signed in with Google as ${fullName} (${email})!`, "success");
   await syncDatabaseToCloudInstant(`Google OAuth 2.0 Registration (${email})`, true);
-  setTimeout(() => {
-    syncWithGoogleCalendarApi({ silent: false, autoOnLogin: true });
-  }, 400);
 };
 
 // Listen for postMessage from Google OAuth 2.0 popup window
@@ -6469,7 +6479,11 @@ async function syncWithGoogleCalendarApi(options = {}) {
             badgeEl.style.background = "rgba(239, 68, 68, 0.25)";
             badgeEl.style.color = "#fca5a5";
           }
-          showToast("Google Calendar Authorization: " + consentErr.message, "warn");
+          if (consentErr && consentErr.message === "access_denied") {
+            openGoogleCalendarVerificationHelperModal(targetCalEmail);
+          } else {
+            showToast("Google Calendar Authorization: " + consentErr.message, "warn");
+          }
           return;
         }
       } else {
