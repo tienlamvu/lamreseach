@@ -4642,3 +4642,74 @@ body.is-admin #cv-exclusive-owner-notice {
     font-size: 11px;
   }
 }
+
+
+/* ============================================================================
+   Project / Research Folder Badges, Header Actions & Folder Management Modal
+   ============================================================================ */
+
+.struct-folder-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  color: #6b21a8;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.struct-folder-badge:hover {
+  background: #ede9fe;
+  border-color: #c4b5fd;
+  color: #581c87;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(107, 33, 168, 0.12);
+}
+
+.struct-folder-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.struct-folder-action-btn {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.struct-folder-action-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+.manage-folder-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  margin-bottom: 8px;
+  transition: all 0.15s ease;
+}
+
+.manage-folder-row:hover {
+  border-color: #c4b5fd;
+  background: #faf5ff;
+}
