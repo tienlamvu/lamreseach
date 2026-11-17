@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-17T11:45:53.230Z",
+  "exported_at": "2026-11-17T11:46:11.913Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -773,7 +773,7 @@
       "chemical_formula": "VMo",
       "crystal_system": "Hexagonal",
       "space_group": "P3M1 (156)",
-      "structure_type": "Bulk 3D",
+      "structure_type": "2D Monolayer",
       "mp_id": "",
       "materials_project_id": "",
       "a": 6.5943,
