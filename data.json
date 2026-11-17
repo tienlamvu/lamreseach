@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-17T11:50:40.573Z",
+  "exported_at": "2026-11-17T11:51:00.471Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -3856,7 +3856,7 @@
       "emailVerified": true,
       "verifiedAt": "2026-11-16 11:31",
       "passwordlessGoogle": false,
-      "authProvider": "Verified Email + Google Linked",
+      "authProvider": "Email + Google Linked",
       "googleLinked": true,
       "googleEmail": "lamvt.sep@gmail.com",
       "passwordPlainHint": "••••••••",
@@ -3864,7 +3864,7 @@
       "registeredAt": "2026-11-16 11:31",
       "lastLoginAt": "2026-11-17 20:50",
       "lastUpdatedAt": "2026-11-17 20:50",
-      "updatedAtMs": 1794916239520,
+      "updatedAtMs": 1794916259994,
       "workspace": {
         "papers": [
           {
@@ -4186,6 +4186,12 @@
       "activityLog": [
         {
           "timestamp": "2026-11-17 20:50",
+          "category": "Profile",
+          "action": "Profile & Groups Updated by Administrator",
+          "detail": "Updated profile (Independent Researcher — Researcher) and group assignments."
+        },
+        {
+          "timestamp": "2026-11-17 20:50",
           "category": "Session",
           "action": "Signed In (Email & Password)",
           "detail": "Authenticated as Tien Lam (lamvt.sep@gmail.com)"
@@ -4215,7 +4221,9 @@
           "detail": "Tien Lam (Independent Researcher) verified email lamvt.sep@gmail.com and linked Google Sign-In."
         }
       ],
-      "groups": [],
+      "groups": [
+        "grp_dft_team_gun1"
+      ],
       "picture": "https://lh3.googleusercontent.com/a/ACg8ocJ5aVyRlpWSljVC2OJusM1rb39s2jSKUTJqGBroVnc79VyzoEsF=s96-c"
     },
     "tlamvux@gmail.com": {
@@ -4587,9 +4595,10 @@
       "color": "blue",
       "description": "User group created by Administrator",
       "members": [
-        "tlamvux@gmail.com"
+        "tlamvux@gmail.com",
+        "lamvt.sep@gmail.com"
       ],
-      "updatedAtMs": 1794874505783
+      "updatedAtMs": 1794916259994
     }
   },
   "deleted_users": [
