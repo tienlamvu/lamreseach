@@ -313,6 +313,7 @@ function switchTab(tabId, btnEl) {
 
   if (tabId === "calendar") {
     renderMonthlyCalendar();
+    updateCalendarActiveAccountDisplay();
   } else if (tabId === "structures") {
     renderStructuresList();
   } else if (tabId === "toolkit") {
@@ -2404,6 +2405,18 @@ function initAuthSession() {
     }
   }
 
+  try {
+    const rawTok = localStorage.getItem("matsci_google_oauth_token_v1");
+    if (rawTok) {
+      const tokObj = JSON.parse(rawTok);
+      if (tokObj && tokObj.access_token) {
+        STATE.auth.googleAccessToken = tokObj.access_token;
+        STATE.auth.googleTokenExpiresAt = tokObj.expires_at || 0;
+        STATE.auth.googleTokenScope = tokObj.scope || "";
+      }
+    }
+  } catch(e) {}
+
   // Default initial state: Public Read-Only Visitor Mode
   STATE.auth.isLoggedIn = false;
   STATE.auth.isAdmin = false;
@@ -3590,6 +3603,126 @@ async function confirmSelfPasswordReset() {
   await syncDatabaseToCloudInstant(`Self Password Reset (${targetEmail})`, true);
 }
 
+
+// ============================================================================
+// Google Calendar Live Integration & Token Management
+// ============================================================================
+
+function requestGoogleCalendarToken(targetEmail = "", forceConsent = false) {
+  return new Promise((resolve, reject) => {
+    const clientId = getGoogleOAuthClientId();
+    if (!clientId) {
+      openGoogleOAuthConfigModal();
+      return reject(new Error("Please configure Google OAuth Client ID first."));
+    }
+
+    if (
+      window.google &&
+      window.google.accounts &&
+      window.google.accounts.oauth2 &&
+      typeof window.google.accounts.oauth2.initTokenClient === "function"
+    ) {
+      try {
+        const tokenClient = window.google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: "openid email profile https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events",
+          prompt: forceConsent ? "consent" : "",
+          hint: targetEmail || (STATE.auth && (STATE.auth.googleEmail || STATE.auth.email)) || "",
+          callback: (tokenResp) => {
+            if (tokenResp && tokenResp.error) {
+              return reject(new Error(tokenResp.error_description || tokenResp.error));
+            }
+            if (tokenResp && tokenResp.access_token) {
+              const expiresIn = Number(tokenResp.expires_in || 3599);
+              const expiresAt = Date.now() + Math.max(60, expiresIn) * 1000;
+              if (STATE.auth) {
+                STATE.auth.googleAccessToken = tokenResp.access_token;
+                STATE.auth.googleTokenExpiresAt = expiresAt;
+                STATE.auth.googleTokenScope = tokenResp.scope || "";
+                if (targetEmail && !STATE.auth.googleEmail) {
+                  STATE.auth.googleEmail = normalizeEmail(targetEmail);
+                  STATE.auth.googleLinked = true;
+                }
+              }
+              try {
+                localStorage.setItem("matsci_google_oauth_token_v1", JSON.stringify({
+                  access_token: tokenResp.access_token,
+                  expires_at: expiresAt,
+                  scope: tokenResp.scope || "",
+                  email: targetEmail || (STATE.auth && STATE.auth.email) || ""
+                }));
+                const savedSession = localStorage.getItem("matsci_admin_session_v4");
+                if (savedSession) {
+                  const parsed = JSON.parse(savedSession);
+                  parsed.googleAccessToken = tokenResp.access_token;
+                  parsed.googleTokenExpiresAt = expiresAt;
+                  localStorage.setItem("matsci_admin_session_v4", JSON.stringify(parsed));
+                }
+              } catch(e) {}
+              updateCalendarActiveAccountDisplay();
+              return resolve(tokenResp.access_token);
+            }
+            reject(new Error("No access token returned from Google."));
+          },
+          error_callback: (err) => {
+            reject(new Error(err && err.message ? err.message : "Google OAuth window was closed or blocked."));
+          }
+        });
+
+        tokenClient.requestAccessToken({ prompt: forceConsent ? "consent" : "" });
+        return;
+      } catch (err) {
+        console.warn("GIS tokenClient invocation error:", err);
+      }
+    }
+
+    // Direct fallback
+    launchDirectGoogleOAuth2Url(clientId, "popup");
+    reject(new Error("Opened Google OAuth authorization window. Please grant permissions and sync again."));
+  });
+}
+window.requestGoogleCalendarToken = requestGoogleCalendarToken;
+
+function updateCalendarActiveAccountDisplay() {
+  const activeUserEmail = getActivePersonalWorkspaceEmail();
+  let targetCalEmail = OWNER_GOOGLE_EMAIL;
+  if (activeUserEmail && STATE.usersRegistry[activeUserEmail]) {
+    const u = STATE.usersRegistry[activeUserEmail];
+    targetCalEmail = u.googleEmail || u.email || OWNER_GOOGLE_EMAIL;
+  } else if (STATE.auth && (STATE.auth.googleEmail || STATE.auth.email)) {
+    targetCalEmail = STATE.auth.googleEmail || STATE.auth.email;
+  }
+
+  const calEmailLabel = document.getElementById("calendar-active-email-label");
+  if (calEmailLabel) calEmailLabel.textContent = targetCalEmail;
+
+  const gcalTitleEmail = document.getElementById("gcal-embed-title-email");
+  if (gcalTitleEmail) gcalTitleEmail.textContent = targetCalEmail;
+
+  const iframe = document.getElementById("gcal-embed-iframe");
+  if (iframe) {
+    const srcUrl = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(targetCalEmail)}&ctz=Asia%2FSeoul&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=1&showCalendars=0`;
+    if (iframe.src !== srcUrl) iframe.src = srcUrl;
+  }
+
+  const badgeEl = document.getElementById("cal-sync-status-badge");
+  if (badgeEl) {
+    const hasToken = Boolean(STATE.auth && STATE.auth.googleAccessToken && (!STATE.auth.googleTokenExpiresAt || Date.now() < STATE.auth.googleTokenExpiresAt));
+    if (hasToken) {
+      badgeEl.textContent = `🔗 Live Synced (${targetCalEmail})`;
+      badgeEl.style.background = "#059669";
+      badgeEl.style.color = "#ecfdf5";
+      badgeEl.style.border = "1px solid #10b981";
+    } else {
+      badgeEl.textContent = "⚡ Sync Status: Ready";
+      badgeEl.style.background = "rgba(255,255,255,0.15)";
+      badgeEl.style.color = "#cbd5e1";
+      badgeEl.style.border = "1px solid rgba(255,255,255,0.25)";
+    }
+  }
+}
+window.updateCalendarActiveAccountDisplay = updateCalendarActiveAccountDisplay;
+
 // ============================================================================
 // Google OAuth 2.0 Sign-In (Real accounts.google.com Popup & Redirect Flow)
 // ============================================================================
@@ -3600,7 +3733,7 @@ const GOOGLE_OAUTH_CONFIG = {
   AUTH_ENDPOINT: "https://accounts.google.com/o/oauth2/v2/auth",
   USERINFO_ENDPOINT: "https://www.googleapis.com/oauth2/v3/userinfo",
   REVOKE_ENDPOINT: "https://oauth2.googleapis.com/revoke",
-  SCOPES: "openid email profile https://www.googleapis.com/auth/calendar.events",
+  SCOPES: "openid email profile https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events",
   PROMPT: "select_account consent"
 };
 
@@ -4077,6 +4210,12 @@ window.receiveGoogleOAuth2PopupResult = async function (payload) {
   const fullName = (payload.name || email.split("@")[0]).trim();
   const picture = payload.picture || "";
   const password = (payload.password || "").trim();
+  const accessToken = payload.access_token || "";
+
+  if (accessToken && STATE.auth) {
+    STATE.auth.googleAccessToken = accessToken;
+    STATE.auth.googleTokenExpiresAt = Date.now() + 3600 * 1000;
+  }
 
   try {
     localStorage.removeItem("matsci_oauth2_callback_result_v2");
@@ -4085,6 +4224,9 @@ window.receiveGoogleOAuth2PopupResult = async function (payload) {
   // Administrator login via Google OAuth 2.0
   if (email === OWNER_GOOGLE_EMAIL) {
     completeOwnerLogin(OWNER_GOOGLE_EMAIL, fullName || "Vu Tien Lam", picture);
+    setTimeout(() => {
+      syncWithGoogleCalendarApi({ silent: false, autoOnLogin: true });
+    }, 400);
     return;
   }
 
@@ -4125,6 +4267,9 @@ window.receiveGoogleOAuth2PopupResult = async function (payload) {
     completePersonalUserLogin(existingUser, "Google OAuth 2.0");
     showToast(`✅ Signed in with Google as ${existingUser.name} (${email})!`, "success");
     await syncDatabaseToCloudInstant(`Google OAuth 2.0 Login (${email})`, true);
+    setTimeout(() => {
+      syncWithGoogleCalendarApi({ silent: false, autoOnLogin: true });
+    }, 400);
     return;
   }
 
@@ -4197,6 +4342,9 @@ window.receiveGoogleOAuth2PopupResult = async function (payload) {
   completePersonalUserLogin(newGoogleUser, "Google OAuth 2.0");
   showToast(`✅ Signed in with Google as ${fullName} (${email})!`, "success");
   await syncDatabaseToCloudInstant(`Google OAuth 2.0 Registration (${email})`, true);
+  setTimeout(() => {
+    syncWithGoogleCalendarApi({ silent: false, autoOnLogin: true });
+  }, 400);
 };
 
 // Listen for postMessage from Google OAuth 2.0 popup window
@@ -4212,6 +4360,8 @@ function handleContinueWithGoogle() {
 
 function completeOwnerLogin(email, name, picture) {
   STATE.adminPreviewUserEmail = null;
+  const existingGTok = (STATE.auth && STATE.auth.googleAccessToken) || "";
+  const existingGExp = (STATE.auth && STATE.auth.googleTokenExpiresAt) || 0;
   STATE.auth = {
     ...STATE.auth,
     isLoggedIn: true,
@@ -4220,7 +4370,9 @@ function completeOwnerLogin(email, name, picture) {
     email: OWNER_GOOGLE_EMAIL,
     name: name || "Vu Tien Lam",
     picture: picture || "",
-    ownerEmail: OWNER_GOOGLE_EMAIL
+    ownerEmail: OWNER_GOOGLE_EMAIL,
+    googleAccessToken: existingGTok,
+    googleTokenExpiresAt: existingGExp
   };
   localStorage.setItem("matsci_admin_session_v4", JSON.stringify(STATE.auth));
   document.body.classList.add("is-admin", "is-logged-in");
@@ -4266,6 +4418,8 @@ function completePersonalUserLogin(userObj, loginMethod = "Account") {
   persistUsersRegistryLocal();
 
   STATE.adminPreviewUserEmail = null;
+  const existingGTok = (STATE.auth && STATE.auth.googleAccessToken) || "";
+  const existingGExp = (STATE.auth && STATE.auth.googleTokenExpiresAt) || 0;
   STATE.auth = {
     ...STATE.auth,
     isLoggedIn: true,
@@ -4278,7 +4432,9 @@ function completePersonalUserLogin(userObj, loginMethod = "Account") {
     googleLinked: Boolean(userObj.googleLinked),
     googleEmail: userObj.googleEmail || "",
     picture: userObj.picture || "",
-    ownerEmail: OWNER_GOOGLE_EMAIL
+    ownerEmail: OWNER_GOOGLE_EMAIL,
+    googleAccessToken: existingGTok,
+    googleTokenExpiresAt: existingGExp
   };
   localStorage.setItem("matsci_admin_session_v4", JSON.stringify(STATE.auth));
   document.body.classList.add("is-logged-in", "is-user");
@@ -6075,17 +6231,36 @@ function toggleGoogleCalendarEmbed() {
 
 function setCalendarDisplayMode(mode) {
   const gcalEmbed = document.getElementById("gcal-embed-card");
-  const bInteractive = document.getElementById("btn-cal-interactive");
-  const bGcal = document.getElementById("btn-cal-gcal");
+  const bGrid = document.getElementById("btn-view-grid") || document.getElementById("btn-cal-interactive");
+  const bGcal = document.getElementById("btn-view-gcal") || document.getElementById("btn-cal-gcal");
+
+  updateCalendarActiveAccountDisplay();
+
   if (mode === "gcal") {
     if (gcalEmbed) gcalEmbed.style.display = "block";
-    if (bInteractive) bInteractive.style.background = "rgba(255,255,255,0.1)";
-    if (bGcal) bGcal.style.background = "rgba(255,255,255,0.28)";
+    if (bGrid) {
+      bGrid.style.background = "transparent";
+      bGrid.style.color = "#cbd5e1";
+      bGrid.style.fontWeight = "600";
+    }
+    if (bGcal) {
+      bGcal.style.background = "rgba(255,255,255,0.28)";
+      bGcal.style.color = "#fff";
+      bGcal.style.fontWeight = "700";
+    }
     gcalEmbed?.scrollIntoView({ behavior: "smooth", block: "start" });
   } else {
     if (gcalEmbed) gcalEmbed.style.display = "none";
-    if (bInteractive) bInteractive.style.background = "rgba(255,255,255,0.28)";
-    if (bGcal) bGcal.style.background = "rgba(255,255,255,0.1)";
+    if (bGrid) {
+      bGrid.style.background = "rgba(255,255,255,0.28)";
+      bGrid.style.color = "#fff";
+      bGrid.style.fontWeight = "700";
+    }
+    if (bGcal) {
+      bGcal.style.background = "transparent";
+      bGcal.style.color = "#cbd5e1";
+      bGcal.style.fontWeight = "600";
+    }
   }
 }
 
@@ -6215,8 +6390,16 @@ async function handleGcalIcsUrlFetch() {
   }
 }
 
-async function syncWithGoogleCalendarApi() {
-  if (!requireAdminAuth()) return;
+async function syncWithGoogleCalendarApi(options = {}) {
+  const { silent = false, autoOnLogin = false } = (typeof options === "object" && options) ? options : {};
+  if (!STATE.auth || !STATE.auth.isLoggedIn) {
+    if (!silent) {
+      showToast("🔑 Please sign in or create a personal account (or Sign in with Google) to sync Google Calendar.", "info");
+      openAuthModal("signin");
+    }
+    return;
+  }
+
   const btnSync = document.getElementById("btn-sync-google-cal");
   const origBtnHtml = btnSync ? btnSync.innerHTML : "";
   if (btnSync) {
@@ -6224,103 +6407,194 @@ async function syncWithGoogleCalendarApi() {
     btnSync.innerHTML = `<span class="loading-spinner"></span> Syncing Google Calendar...`;
   }
 
-  const targetCalEmail = (STATE.auth && (STATE.auth.googleEmail || STATE.auth.email)) || OWNER_GOOGLE_EMAIL;
+  const badgeEl = document.getElementById("cal-sync-status-badge");
+  if (badgeEl) {
+    badgeEl.textContent = "🔄 Connecting Google API...";
+    badgeEl.style.background = "rgba(59, 130, 246, 0.35)";
+    badgeEl.style.color = "#fff";
+  }
 
-  if (STATE.auth.googleAccessToken) {
+  const activeUserEmail = getActivePersonalWorkspaceEmail();
+  let targetCalEmail = OWNER_GOOGLE_EMAIL;
+  if (activeUserEmail && STATE.usersRegistry[activeUserEmail]) {
+    const u = STATE.usersRegistry[activeUserEmail];
+    targetCalEmail = u.googleEmail || u.email || OWNER_GOOGLE_EMAIL;
+  } else if (STATE.auth && (STATE.auth.googleEmail || STATE.auth.email)) {
+    targetCalEmail = STATE.auth.googleEmail || STATE.auth.email;
+  }
+
+  updateCalendarActiveAccountDisplay();
+
+  async function fetchEventsWithToken(token) {
+    const dMin = new Date(Date.now() - 60 * 86400000).toISOString();
+    const dMax = new Date(Date.now() + 180 * 86400000).toISOString();
+    const res = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(dMin)}&timeMax=${encodeURIComponent(dMax)}&singleEvents=true&orderBy=startTime&maxResults=250`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!res.ok) {
+      const errText = await res.text();
+      let msg = `HTTP ${res.status}`;
+      try {
+        const errJson = JSON.parse(errText);
+        msg = errJson?.error?.message || msg;
+      } catch(e) {}
+      const err = new Error(msg);
+      err.status = res.status;
+      throw err;
+    }
+    return await res.json();
+  }
+
+  let token = STATE.auth ? STATE.auth.googleAccessToken : "";
+  const isExpired = !STATE.auth || !STATE.auth.googleTokenExpiresAt || (Date.now() >= (STATE.auth.googleTokenExpiresAt - 30000));
+
+  // If token is missing or expired, attempt token acquisition
+  if (!token || isExpired) {
     try {
-      // Query events from past 60 days to next 180 days
-      const dMin = new Date(Date.now() - 60 * 86400000).toISOString();
-      const dMax = new Date(Date.now() + 180 * 86400000).toISOString();
-      const res = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(dMin)}&timeMax=${encodeURIComponent(dMax)}&singleEvents=true&orderBy=startTime&maxResults=100`,
-        { headers: { Authorization: `Bearer ${STATE.auth.googleAccessToken}` } }
-      );
-      if (!res.ok) throw new Error("Google Calendar authorization expired. Please re-authenticate.");
-      const data = await res.json();
-      let imported = 0;
-      let updated = 0;
-
-      const items = data.items || [];
-      for (const item of items) {
-        const startRaw = item.start?.dateTime || item.start?.date || "";
-        if (!startRaw) continue;
-        const startDate = startRaw.slice(0, 10);
-        const startTime = startRaw.length > 10 ? startRaw.slice(11, 16) : "09:00";
-
-        const endRaw = item.end?.dateTime || item.end?.date || "";
-        let endDate = endRaw ? endRaw.slice(0, 10) : startDate;
-        let endTime = endRaw.length > 10 ? endRaw.slice(11, 16) : "18:00";
-
-        // For all-day multi-day events in Google Calendar, end.date is exclusive (the day after)
-        if (!item.end?.dateTime && item.end?.date && endDate > startDate) {
-          try {
-            const dEnd = new Date(endDate + "T00:00:00");
-            dEnd.setDate(dEnd.getDate() - 1);
-            const prevY = dEnd.getFullYear();
-            const prevM = String(dEnd.getMonth() + 1).padStart(2, "0");
-            const prevD = String(dEnd.getDate()).padStart(2, "0");
-            endDate = `${prevY}-${prevM}-${prevD}`;
-          } catch(e) {}
+      token = await requestGoogleCalendarToken(targetCalEmail, false);
+    } catch (authErr) {
+      console.warn("Could not acquire fresh Google Calendar token without prompt:", authErr);
+      if (!silent) {
+        // If not silent, prompt user for consent
+        try {
+          token = await requestGoogleCalendarToken(targetCalEmail, true);
+        } catch (consentErr) {
+          if (btnSync) {
+            btnSync.disabled = false;
+            btnSync.innerHTML = origBtnHtml;
+          }
+          if (badgeEl) {
+            badgeEl.textContent = "⚠️ Authorization Needed";
+            badgeEl.style.background = "rgba(239, 68, 68, 0.25)";
+            badgeEl.style.color = "#fca5a5";
+          }
+          showToast("Google Calendar Authorization: " + consentErr.message, "warn");
+          return;
         }
-
-        const title = item.summary || "Google Calendar Event";
-        const gEventId = item.id;
-
-        // Check if event already exists by googleEventId or title+start_date
-        const existingIdx = STATE.schedule.findIndex(s => s.googleEventId === gEventId || (s.title === title && s.start_date === startDate));
-
-        const evPayload = {
-          title,
-          event_type: "Google Calendar Sync",
-          instrument_or_location: item.location || "Google Calendar",
-          start_date: startDate,
-          end_date: endDate,
-          start_time: startTime,
-          end_time: endTime,
-          syncedWithGoogle: true,
-          googleEventId: gEventId,
-          priority: "High",
-          status: "Scheduled",
-          sample_id: "",
-          description: item.description || `Synced live from Google Calendar (${targetCalEmail})`,
-          in_weekly_report: 1
-        };
-
-        if (existingIdx >= 0) {
-          STATE.schedule[existingIdx] = { ...STATE.schedule[existingIdx], ...evPayload };
-          updated++;
-        } else {
-          STATE.schedule.unshift({ ...evPayload, id: Date.now() + Math.floor(Math.random() * 10000) });
-          imported++;
+      } else {
+        if (btnSync) {
+          btnSync.disabled = false;
+          btnSync.innerHTML = origBtnHtml;
         }
-      }
-
-      saveStaticDb();
-      renderMonthlyCalendar();
-      renderScheduleList();
-      renderDashboardSchedule();
-
-      showToast(`✅ Synced with Google Calendar (${targetCalEmail}): ${imported} new, ${updated} updated!`, "success");
-      return;
-    } catch (err) {
-      console.warn("Google Calendar API sync error:", err);
-      showToast(err.message, "warn");
-    } finally {
-      if (btnSync) {
-        btnSync.disabled = false;
-        btnSync.innerHTML = origBtnHtml;
+        return;
       }
     }
   }
 
-  // If no direct OAuth token available, prompt user to authorize or link Google Calendar
-  if (btnSync) {
-    btnSync.disabled = false;
-    btnSync.innerHTML = origBtnHtml;
+  // Fetch events from Google Calendar API
+  try {
+    let data;
+    try {
+      data = await fetchEventsWithToken(token);
+    } catch (fetchErr) {
+      if (fetchErr.status === 401 || fetchErr.status === 403) {
+        console.log("Token invalid or expired (HTTP " + fetchErr.status + "). Prompting for re-authorization...");
+        token = await requestGoogleCalendarToken(targetCalEmail, true);
+        data = await fetchEventsWithToken(token);
+      } else {
+        throw fetchErr;
+      }
+    }
+
+    let imported = 0;
+    let updated = 0;
+    const items = (data && data.items) || [];
+
+    for (const item of items) {
+      const startRaw = item.start?.dateTime || item.start?.date || "";
+      if (!startRaw) continue;
+      const startDate = startRaw.slice(0, 10);
+      const startTime = startRaw.length > 10 ? startRaw.slice(11, 16) : "09:00";
+
+      const endRaw = item.end?.dateTime || item.end?.date || "";
+      let endDate = endRaw ? endRaw.slice(0, 10) : startDate;
+      let endTime = endRaw.length > 10 ? endRaw.slice(11, 16) : "18:00";
+
+      if (!item.end?.dateTime && item.end?.date && endDate > startDate) {
+        try {
+          const dEnd = new Date(endDate + "T00:00:00");
+          dEnd.setDate(dEnd.getDate() - 1);
+          const prevY = dEnd.getFullYear();
+          const prevM = String(dEnd.getMonth() + 1).padStart(2, "0");
+          const prevD = String(dEnd.getDate()).padStart(2, "0");
+          endDate = `${prevY}-${prevM}-${prevD}`;
+        } catch(e) {}
+      }
+
+      const title = item.summary || "Google Calendar Event";
+      const gEventId = item.id;
+
+      const existingIdx = STATE.schedule.findIndex(s => s.googleEventId === gEventId || (s.title === title && s.start_date === startDate));
+
+      const evPayload = {
+        title,
+        event_type: "Google Calendar Sync",
+        instrument_or_location: item.location || "Google Calendar",
+        start_date: startDate,
+        end_date: endDate,
+        start_time: startTime,
+        end_time: endTime,
+        syncedWithGoogle: true,
+        googleEventId: gEventId,
+        priority: "High",
+        status: "Scheduled",
+        sample_id: "",
+        description: item.description || `Synced live from Google Calendar (${targetCalEmail})`,
+        in_weekly_report: 1
+      };
+
+      if (existingIdx >= 0) {
+        STATE.schedule[existingIdx] = { ...STATE.schedule[existingIdx], ...evPayload };
+        updated++;
+      } else {
+        STATE.schedule.unshift({ ...evPayload, id: Date.now() + Math.floor(Math.random() * 10000) });
+        imported++;
+      }
+    }
+
+    if (activeUserEmail && STATE.usersRegistry[activeUserEmail]) {
+      const u = STATE.usersRegistry[activeUserEmail];
+      u.workspace = u.workspace || {};
+      u.workspace.schedule = STATE.schedule.filter(s => !s._sharedFromAdmin);
+      persistUsersRegistryLocal();
+      syncDatabaseToCloudInstant(`Sync Google Calendar (${targetCalEmail})`, true);
+    } else {
+      saveStaticDb();
+    }
+
+    renderMonthlyCalendar();
+    renderScheduleList();
+    renderDashboardSchedule();
+
+    if (badgeEl) {
+      badgeEl.textContent = `🔗 Live Synced (${targetCalEmail})`;
+      badgeEl.style.background = "#059669";
+      badgeEl.style.color = "#ecfdf5";
+      badgeEl.style.border = "1px solid #10b981";
+    }
+
+    if (!silent) {
+      showToast(`✅ Synced with Google Calendar (${targetCalEmail}): ${imported} new, ${updated} updated!`, "success");
+    }
+  } catch (err) {
+    console.error("Google Calendar API sync error:", err);
+    if (badgeEl) {
+      badgeEl.textContent = "⚠️ Sync Error";
+      badgeEl.style.background = "rgba(239, 68, 68, 0.25)";
+      badgeEl.style.color = "#fca5a5";
+    }
+    if (!silent) {
+      showToast("Google Calendar Sync failed: " + err.message, "warn");
+    }
+  } finally {
+    if (btnSync) {
+      btnSync.disabled = false;
+      btnSync.innerHTML = origBtnHtml;
+    }
   }
-  showToast(`💡 To sync live events directly into this calendar, click "Sign in with Google" or import your .ics file!`, "info");
-  toggleIcsImportBox();
 }
+window.syncWithGoogleCalendarApi = syncWithGoogleCalendarApi;
 
 // ============================================================================
 // Duplicate DOI Protection & Literature Management
