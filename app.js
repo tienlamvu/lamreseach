@@ -7987,7 +7987,7 @@ function populateStructureModalWithParsed(p, rawCif, filename) {
 // Crystal Structures Database View Modes, Folders & Literature Association
 // ============================================================================
 
-STATE.structViewMode = localStorage.getItem("matsci_struct_view_mode") || "cards";
+STATE.structViewMode = localStorage.getItem("matsci_struct_view_mode") || "details";
 STATE.structSortBy = "default";
 STATE.structGroupBy = "project";
 STATE.structCollapsedFolders = new Set();
@@ -8544,7 +8544,7 @@ function renderStructuresList() {
     const totalCount = STATE.structures.length;
     const withPaperCount = filtered.filter(s => Boolean(s.associated_paper_title || s.associated_paper_doi || s.associated_paper_id)).length;
     const distinctFolders = getExistingProjectFolders();
-    statsEl.innerHTML = `📊 <strong>${filtered.length}</strong> / ${totalCount} structures &bull; <span style="color:#7c3aed; font-weight:700;">📁 ${distinctFolders.length} Projects</span> &bull; <span style="color:#0f766e; font-weight:700;">📄 ${withPaperCount} Linked Papers</span>`;
+    statsEl.innerHTML = `📊 <strong>${filtered.length}</strong> / ${totalCount}`;
   }
 
   updateStructBatchBar(filtered);
@@ -8686,20 +8686,20 @@ function renderStructuresList() {
     const allSelected = filtered.length > 0 && filtered.every(s => STATE.selectedStructureIds.has(Number(s.id)));
 
     let tableHtml = `
-      <table class="struct-details-table">
+      <table class="struct-details-table struct-single-row-table">
         <thead>
           <tr>
-            <th style="width:36px; text-align:center;">
-              <input type="checkbox" ${allSelected ? "checked" : ""} onchange="toggleSelectAllStructures(this.checked)" style="width:16px; height:16px; accent-color:#2563eb; cursor:pointer;" />
+            <th style="width:34px; text-align:center;">
+              <input type="checkbox" id="struct-select-all-cb" ${allSelected ? "checked" : ""} onchange="toggleSelectAllStructures(this.checked)" style="width:15px; height:15px; accent-color:#2563eb; cursor:pointer;" title="Select / Deselect All" />
             </th>
-            <th class="sortable-th" onclick="document.getElementById('struct-sort-by').value='name-asc'; renderStructuresList();" title="Click to sort by Name">Material &amp; Formula ↕</th>
-            <th class="sortable-th" onclick="document.getElementById('struct-sort-by').value='default'; renderStructuresList();">Folder &amp; Classification</th>
-            <th>Space Group</th>
-            <th class="sortable-th" onclick="document.getElementById('struct-sort-by').value='vol-asc'; renderStructuresList();" title="Click to sort by Cell Volume">Lattice (a, b, c) &amp; Vol ↕</th>
-            <th class="sortable-th" onclick="document.getElementById('struct-sort-by').value='bandgap-asc'; renderStructuresList();" title="Click to sort by Bandgap">DFT &amp; Eg (eV) ↕</th>
-            <th style="min-width:180px;">📄 Associated Publication</th>
-            <th>Audience</th>
-            <th style="text-align:right; min-width:140px;">Actions</th>
+            <th class="sortable-th" onclick="document.getElementById('struct-sort-by').value='formula-asc'; renderStructuresList();" style="min-width:180px;">Material &amp; Formula ↕</th>
+            <th style="min-width:130px;">Folder</th>
+            <th style="min-width:110px;">System &amp; Group</th>
+            <th style="min-width:140px;">Lattice (a, b, c) &amp; Vol</th>
+            <th style="min-width:90px;">Bandgap Eg</th>
+            <th style="min-width:120px;">Publication</th>
+            <th style="min-width:80px;">Audience</th>
+            <th style="text-align:right; min-width:125px;">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -8710,64 +8710,48 @@ function renderStructuresList() {
       const canModifyItem = Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin;
       const paperDoi = s.associated_paper_doi || "";
       const paperTitle = s.associated_paper_title || "";
-      const paperId = s.associated_paper_id;
       const sFolder = s.project_folder || "General Research";
 
       tableHtml += `
-        <tr class="${isSelected ? 'selected-row' : ''}">
+        <tr class="struct-single-row ${isSelected ? 'selected-row' : ''}">
           <td style="text-align:center;">
-            ${canModifyItem ? `<input type="checkbox" class="struct-select-cb" data-id="${s.id}" ${isSelected ? "checked" : ""} onchange="toggleSelectStructure(${s.id}, this.checked)" style="width:16px; height:16px; accent-color:#2563eb; cursor:pointer;" />` : ""}
+            ${canModifyItem ? `<input type="checkbox" class="struct-select-cb" data-id="${s.id}" ${isSelected ? "checked" : ""} onchange="toggleSelectStructure(${s.id}, this.checked)" style="width:15px; height:15px; accent-color:#2563eb; cursor:pointer;" />` : ""}
           </td>
-          <td>
-            <div style="font-weight:700; color:#0f172a; font-size:13px;">${escapeHtml(s.name)}</div>
-            <div style="font-family:monospace; color:var(--primary); font-size:13px; font-weight:600;">
-              ${formatFormulaHtml(s.chemical_formula || s.formula)}
-            </div>
-            ${s.mp_id ? `<span class="badge badge-slate" style="font-size:10px; margin-top:2px;">${escapeHtml(s.mp_id)}</span>` : ""}
+          <td class="nowrap-cell" title="${escapeHtml(s.name)} [${s.chemical_formula || s.formula}]">
+            <span class="struct-row-formula">${formatFormulaHtml(s.chemical_formula || s.formula)}</span>
+            <span class="struct-row-name">${escapeHtml(s.name)}</span>
           </td>
-          <td>
-            <div>
-              <span class="struct-folder-badge" onclick="filterStructuresByFolder('${escapeHtml(sFolder).replace(/'/g, "\\'")}')" style="font-size:10.5px; padding:2px 7px;" title="Filter by folder: ${escapeHtml(sFolder)}">📁 ${escapeHtml(sFolder)}</span>
-            </div>
-            <div style="margin-top:3px; display:flex; gap:4px; align-items:center;">
-              <span class="badge badge-purple" style="font-size:10.5px;">${escapeHtml(s.crystal_system || "Cubic")}</span>
-              <span class="badge badge-blue" style="font-size:10px;">${escapeHtml(s.structure_type || "Bulk 3D")}</span>
-            </div>
+          <td class="nowrap-cell">
+            <span class="struct-folder-badge-mini" onclick="filterStructuresByFolder('${escapeHtml(sFolder).replace(/'/g, "\\'")}')" title="Filter: ${escapeHtml(sFolder)}">📁 ${escapeHtml(sFolder)}</span>
           </td>
-          <td>
-            <code style="font-size:11.5px; font-weight:600; color:#334155;">${escapeHtml(s.space_group || "P1")}</code>
+          <td class="nowrap-cell" style="font-size:12px; color:#475569;">
+            <span>${escapeHtml(s.crystal_system || "Cubic")}</span>
+            <code style="font-size:11px; margin-left:4px; color:#64748b;">${escapeHtml(s.space_group || "P1")}</code>
           </td>
-          <td>
-            <div class="struct-param-mono">${Number(s.a || 0).toFixed(2)} &times; ${Number(s.b || 0).toFixed(2)} &times; ${Number(s.c || 0).toFixed(2)} Å</div>
-            <div style="font-size:11px; color:#64748b; margin-top:2px;">Vol: <strong>${Number(s.volume || 0).toFixed(1)}</strong> Å³ (${s.natoms || 0} atoms)</div>
+          <td class="nowrap-cell" style="font-family:monospace; font-size:11.5px; color:#334155;">
+            ${Number(s.a || 0).toFixed(2)}×${Number(s.b || 0).toFixed(2)}×${Number(s.c || 0).toFixed(2)} Å <span style="color:#64748b; font-size:11px;">(${Number(s.volume || 0).toFixed(0)} Å³)</span>
           </td>
-          <td>
-            <span class="badge ${s.bandgap_ev > 0 ? 'badge-green' : 'badge-amber'}" style="font-size:11px;">
-              ${Number(s.bandgap_ev || 0).toFixed(2)} eV (${escapeHtml(s.bandgap_type || "Dir")})
+          <td class="nowrap-cell">
+            <span class="badge ${s.bandgap_ev > 0 ? 'badge-green' : 'badge-amber'}" style="font-size:11px; font-weight:700; padding:1px 6px;">
+              ${Number(s.bandgap_ev || 0).toFixed(2)} eV
             </span>
-            <div style="font-size:10.5px; color:#64748b; margin-top:2px;">${escapeHtml(s.dft_code || "VASP")} (${escapeHtml(s.dft_functional || "PBE")})</div>
           </td>
-          <td>
-            ${paperTitle ? `
-              <div style="max-width:240px;">
-                <div style="font-weight:600; color:#0f766e; font-size:11.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(paperTitle)}">
-                  📄 ${escapeHtml(paperTitle)}
-                </div>
-                ${paperDoi ? `<a href="https://doi.org/${encodeURIComponent(paperDoi)}" target="_blank" class="struct-doi-pill" style="margin-top:2px;">DOI: ${escapeHtml(paperDoi)} ↗</a>` : ""}
-              </div>
-            ` : `<span style="color:#94a3b8; font-size:11.5px; font-style:italic;">None linked</span>`}
+          <td class="nowrap-cell">
+            ${paperDoi ? `<a href="https://doi.org/${encodeURIComponent(paperDoi)}" target="_blank" class="struct-doi-pill" style="font-size:10.5px; padding:1px 5px;">DOI ↗</a>` : (paperTitle ? `<span style="font-size:11px; color:#0f766e;" title="${escapeHtml(paperTitle)}">📄 ${escapeHtml(paperTitle.slice(0, 15))}...</span>` : `<span style="color:#cbd5e1;">—</span>`)}
           </td>
-          <td>
+          <td class="nowrap-cell">
             ${renderVisibilityBadgeHtml(s)}
           </td>
-          <td style="text-align:right; white-space:nowrap;">
-            <button class="btn btn-primary btn-xs" onclick="viewCifModal(${s.id})" title="View CIF / POSCAR" style="padding:3px 7px; font-size:11px;">👁️</button>
-            <button class="btn btn-outline btn-xs" onclick="downloadCifById(${s.id})" title="Download CIF" style="padding:3px 7px; font-size:11px;">📥</button>
-            <button class="btn btn-teal btn-xs" onclick="downloadPoscarById(${s.id})" title="Download POSCAR" style="padding:3px 7px; font-size:11px;">⚡</button>
-            ${canModifyItem ? `
-              <button class="btn btn-outline btn-xs" onclick="openStructureModal(${s.id})" title="Edit" style="padding:3px 7px; font-size:11px;">✏️</button>
-              <button class="btn btn-danger btn-xs" onclick="deleteStructureItem(${s.id})" title="Delete" style="padding:3px 7px; font-size:11px;">🗑️</button>
-            ` : ""}
+          <td class="nowrap-cell" style="text-align:right;">
+            <div style="display:inline-flex; gap:3px; align-items:center;">
+              <button type="button" class="struct-mini-btn" onclick="viewCifModal(${s.id})" title="View CIF / 3D POSCAR">👁️</button>
+              <button type="button" class="struct-mini-btn" onclick="downloadCifById(${s.id})" title="Download .cif">📥</button>
+              <button type="button" class="struct-mini-btn" onclick="downloadPoscarById(${s.id})" title="Download POSCAR">⚡</button>
+              ${canModifyItem ? `
+                <button type="button" class="struct-mini-btn" onclick="openStructureModal(${s.id})" title="Edit">✏️</button>
+                <button type="button" class="struct-mini-btn struct-mini-btn-del" onclick="deleteStructureItem(${s.id})" title="Delete">🗑️</button>
+              ` : ""}
+            </div>
           </td>
         </tr>
       `;
@@ -8922,6 +8906,7 @@ function updateStructBatchBar(filtered = null) {
   if (!STATE.selectedStructureIds) STATE.selectedStructureIds = new Set();
   const countTextEl = document.getElementById("struct-batch-count-text");
   const customControls = document.getElementById("struct-batch-custom-controls");
+  const batchBar = document.getElementById("struct-batch-bar");
   const delCountEl = document.getElementById("struct-batch-delete-count");
   const selectAllCb = document.getElementById("struct-select-all-cb");
   const specBox = document.getElementById("batch-struct-specific-box");
@@ -8933,6 +8918,7 @@ function updateStructBatchBar(filtered = null) {
   if (countTextEl) countTextEl.textContent = `• ${count} selected`;
   if (delCountEl) delCountEl.textContent = count;
   if (customControls) customControls.style.display = count > 0 ? "flex" : "none";
+  if (batchBar) batchBar.style.display = count > 0 ? "flex" : "none";
 
   if (specBox) {
     const m = visSel ? normalizeVisibilityMode(visSel.value) : "Public";
