@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261117_v77_tidy_buttons_explorer" onerror="this.href='/static/styles.css?v=20261117_v77_tidy_buttons_explorer'" />
+  <link rel="stylesheet" href="styles.css?v=20261117_v78_single_row_everything" onerror="this.href='/static/styles.css?v=20261117_v78_single_row_everything'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -649,206 +649,154 @@
         <!-- Structures List & Filters -->
         <div class="card">
           <!-- Structured Top Control Panel: Row 1 Search & Primary Actions, Row 2 Clean Filter Ribbon -->
-          <div class="struct-control-panel">
-            <!-- Row 1: Search Bar & Primary Actions -->
-            <div class="struct-search-action-row">
-              <div class="struct-search-box-wrap">
-                <span class="struct-search-icon">🔍</span>
-                <input
-                  type="text"
-                  id="struct-search"
-                  placeholder="Search formula (e.g. BaTiO3, MoS2), material name, space group, or ID..."
-                  oninput="renderStructuresList()"
-                  autocomplete="off"
-                />
-                <button type="button" id="struct-search-clear" onclick="clearStructSearch()" title="Clear search" style="display:none;">✕</button>
-              </div>
-
-              <div class="struct-primary-action-group">
-                <button type="button" class="btn btn-outline btn-sm admin-only struct-action-btn-folder" onclick="openManageFoldersModal()" title="Manage and organize research project folders">
-                  📁 Manage Folders
-                </button>
-                <button type="button" class="btn btn-primary btn-sm admin-only struct-action-btn-new" onclick="openStructureModal()" title="Add new crystal structure or drop CIF file">
-                  <span style="font-size:15px; font-weight:800; line-height:1;">+</span> New Structure
-                </button>
-              </div>
+          <!-- Crystal Structures Consolidated Single-Row Controls Toolbar -->
+          <div class="struct-single-bar" id="struct-single-bar">
+            <!-- 1. Search Box with Icon and Clear -->
+            <div class="struct-bar-search">
+              <span class="struct-bar-search-icon">🔍</span>
+              <input
+                type="text"
+                id="struct-search"
+                placeholder="Search formula, material, ID..."
+                oninput="renderStructuresList()"
+                autocomplete="off"
+              />
+              <button type="button" id="struct-search-clear" onclick="clearStructSearch()" title="Clear search" style="display:none;">✕</button>
             </div>
 
-            <!-- Row 2: Clean, Uniform Filter Ribbon -->
-            <div class="struct-filter-ribbon">
-              <div class="struct-filter-item" title="Filter crystal structures by Research Project Folder">
-                <label for="struct-project-filter" class="struct-filter-label">📁 Folder:</label>
-                <select id="struct-project-filter" onchange="renderStructuresList()" class="struct-filter-select struct-filter-select-folder">
-                  <option value="ALL">All Project Folders</option>
+            <!-- 2. Project Folder Filter -->
+            <select id="struct-project-filter" onchange="renderStructuresList()" class="struct-bar-select struct-bar-select-folder" title="Filter by Research Project Folder">
+              <option value="ALL">📁 All Folders</option>
+            </select>
+
+            <!-- 3. Crystal System Filter -->
+            <select id="struct-system-filter" onchange="renderStructuresList()" class="struct-bar-select" title="Filter by Crystal System">
+              <option value="ALL">💎 All Systems</option>
+              <option value="Cubic">Cubic</option>
+              <option value="Tetragonal">Tetragonal</option>
+              <option value="Hexagonal">Hexagonal</option>
+              <option value="Orthorhombic">Orthorhombic</option>
+              <option value="Monoclinic">Monoclinic</option>
+              <option value="Triclinic">Triclinic</option>
+            </select>
+
+            <!-- Hidden compatibility selectors -->
+            <select id="struct-type-filter" onchange="renderStructuresList()" style="display:none;">
+              <option value="ALL">All Structure Types</option>
+            </select>
+            <select id="struct-paper-filter" onchange="renderStructuresList()" style="display:none;">
+              <option value="ALL">All Literature Links</option>
+            </select>
+            <select id="struct-audience-filter" class="strict-admin-only audience-group-filter-select" onchange="renderStructuresList()" style="display:none;">
+              <option value="ALL">All Audiences</option>
+            </select>
+
+            <!-- 4. Sort Dropdown -->
+            <select id="struct-sort-by" onchange="renderStructuresList()" class="struct-bar-select" title="Sort structures">
+              <option value="default">↕ Sort: Newest</option>
+              <option value="name-asc">Name (A → Z)</option>
+              <option value="name-desc">Name (Z → A)</option>
+              <option value="formula-asc">Formula (A → Z)</option>
+              <option value="bandgap-asc">Eg (Lowest)</option>
+              <option value="bandgap-desc">Eg (Highest)</option>
+              <option value="vol-asc">Vol (Smallest)</option>
+              <option value="vol-desc">Vol (Largest)</option>
+            </select>
+
+            <!-- Group by selector (for grouped view) -->
+            <div id="struct-group-by-wrap" style="display:none;">
+              <select id="struct-group-by" onchange="renderStructuresList()" class="struct-bar-select">
+                <option value="project" selected>📁 By Project</option>
+                <option value="system">💎 By System</option>
+                <option value="type">🧊 By Type</option>
+                <option value="paper">📄 By Paper</option>
+              </select>
+            </div>
+
+            <!-- 5. View Mode Switcher: Compact Icons -->
+            <div class="struct-view-btn-group" id="struct-view-btn-group">
+              <button type="button" class="struct-view-btn active" id="btn-struct-view-details" onclick="setStructureDisplayMode('details')" title="1-Row Details Table">📋 Table</button>
+              <button type="button" class="struct-view-btn" id="btn-struct-view-cards" onclick="setStructureDisplayMode('cards')" title="Cards Grid">📱 Cards</button>
+              <button type="button" class="struct-view-btn" id="btn-struct-view-grouped" onclick="setStructureDisplayMode('grouped')" title="Folder Groups">📁 Folders</button>
+              <button type="button" class="struct-view-btn" id="btn-struct-view-compact" onclick="setStructureDisplayMode('compact')" style="display:none;">📄 Compact</button>
+            </div>
+
+            <!-- 6. Database Stats Pill -->
+            <div id="struct-db-stats" class="struct-bar-stats" title="Database count">
+              📊 12
+            </div>
+
+            <!-- 7. Action Buttons -->
+            <div class="struct-bar-actions">
+              <button type="button" class="btn btn-outline btn-sm admin-only struct-bar-btn-folder" onclick="openManageFoldersModal()" title="Manage Project Folders">
+                📁 Folders
+              </button>
+              <button type="button" class="btn btn-primary btn-sm admin-only struct-bar-btn-new" onclick="openStructureModal()" title="Add New Structure">
+                <span style="font-size:14px; font-weight:800; line-height:1;">+</span> New
+              </button>
+            </div>
+          </div>
+
+          <!-- Batch Action Bar: Only shows when 1 or more structures are selected! -->
+          <div class="batch-action-bar admin-only" id="struct-batch-bar" style="display:none; align-items:center; justify-content:space-between; gap:10px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:6px 12px; margin-bottom:10px; font-size:12.5px; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span id="struct-batch-count-text" style="color:#1d4ed8; font-weight:700;">• 0 selected</span>
+              <button type="button" class="btn btn-outline btn-xs" onclick="clearSelectedStructures()" style="background:#fff; padding:2px 7px;">Clear</button>
+            </div>
+
+            <div id="struct-batch-custom-controls" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <!-- Batch Move Folder -->
+              <div style="display:inline-flex; align-items:center; gap:4px; background:#faf5ff; border:1px solid #ddd6fe; padding:2px 6px; border-radius:6px;">
+                <span style="font-size:11px; font-weight:700; color:#6b21a8;">📁 Move:</span>
+                <select id="batch-struct-folder" style="padding:2px 6px; border-radius:4px; border:1px solid #c4b5fd; font-size:11.5px; background:#fff; max-width:140px;">
                 </select>
+                <button type="button" class="btn btn-sm" style="padding:2px 7px; font-size:11px; background:#7c3aed; color:#fff; border:none; font-weight:600; border-radius:4px; cursor:pointer;" onclick="applyBatchStructuresFolder()">Move</button>
               </div>
 
-              <div class="struct-filter-item" title="Filter by Crystal System">
-                <label for="struct-system-filter" class="struct-filter-label">💎 System:</label>
-                <select id="struct-system-filter" onchange="renderStructuresList()" class="struct-filter-select">
-                  <option value="ALL">All Crystal Systems</option>
-                  <option value="Cubic">Cubic</option>
-                  <option value="Tetragonal">Tetragonal</option>
-                  <option value="Hexagonal">Hexagonal</option>
-                  <option value="Orthorhombic">Orthorhombic</option>
-                  <option value="Monoclinic">Monoclinic</option>
-                  <option value="Triclinic">Triclinic</option>
-                </select>
-              </div>
-
-              <div class="struct-filter-item" title="Filter by Structure Type">
-                <label for="struct-type-filter" class="struct-filter-label">🧊 Type:</label>
-                <select id="struct-type-filter" onchange="renderStructuresList()" class="struct-filter-select">
-                  <option value="ALL">All Structure Types</option>
-                  <option value="Bulk 3D">Bulk 3D Crystal</option>
-                  <option value="2D Monolayer">2D Monolayer / Layered</option>
+              <!-- Batch Type -->
+              <div style="display:inline-flex; align-items:center; gap:4px; background:#f1f5f9; border:1px solid #cbd5e1; padding:2px 6px; border-radius:6px;">
+                <span style="font-size:11px; font-weight:700; color:#334155;">🧊 Type:</span>
+                <select id="batch-struct-type" style="padding:2px 6px; border-radius:4px; border:1px solid #cbd5e1; font-size:11.5px; background:#fff;">
+                  <option value="Bulk 3D">Bulk 3D</option>
+                  <option value="2D Monolayer">2D Monolayer</option>
                   <option value="Surface Slab">Surface Slab</option>
                   <option value="Defect Supercell">Defect Supercell</option>
                 </select>
+                <button type="button" class="btn btn-outline btn-sm" style="padding:2px 7px; font-size:11px; background:#fff;" onclick="applyBatchStructuresField('structure_type')">Apply</button>
               </div>
 
-              <div class="struct-filter-item" title="Filter by linked literature publication">
-                <label for="struct-paper-filter" class="struct-filter-label">📄 Paper:</label>
-                <select id="struct-paper-filter" onchange="renderStructuresList()" class="struct-filter-select">
-                  <option value="ALL">All Literature Links</option>
-                  <option value="WITH_PAPER">✅ Has Linked Paper</option>
-                  <option value="NO_PAPER">⚪ No Linked Paper</option>
+              <!-- Batch DFT Functional -->
+              <div style="display:inline-flex; align-items:center; gap:4px; background:#f1f5f9; border:1px solid #cbd5e1; padding:2px 6px; border-radius:6px;">
+                <span style="font-size:11px; font-weight:700; color:#334155;">⚡ Functional:</span>
+                <select id="batch-struct-functional" style="padding:2px 6px; border-radius:4px; border:1px solid #cbd5e1; font-size:11.5px; background:#fff;">
+                  <option value="PBE">PBE</option>
+                  <option value="HSE06">HSE06</option>
+                  <option value="PBE+U">PBE+U</option>
+                  <option value="PBE + DFT-D3">PBE + DFT-D3</option>
+                  <option value="SCAN">SCAN</option>
                 </select>
+                <button type="button" class="btn btn-outline btn-sm" style="padding:2px 7px; font-size:11px; background:#fff;" onclick="applyBatchStructuresField('dft_functional')">Apply</button>
               </div>
 
-              <div class="struct-filter-item strict-admin-only" title="Filter by Audience Access Control">
-                <label for="struct-audience-filter" class="struct-filter-label" style="color:#1e3a8a;">🛡️ Visibility:</label>
-                <select id="struct-audience-filter" class="struct-filter-select audience-group-filter-select" onchange="renderStructuresList()" style="color:#1e3a8a; font-weight:700;">
-                  <option value="ALL">All Audiences &amp; Groups</option>
+              <!-- Batch Visibility -->
+              <div class="strict-admin-only" style="display:inline-flex; align-items:center; gap:4px; background:#eff6ff; border:1px solid #bfdbfe; padding:2px 6px; border-radius:6px;">
+                <span style="font-size:11px; font-weight:700; color:#1e3a8a;">🛡️ Visibility:</span>
+                <select id="batch-struct-visibility" onchange="handleVisibilitySelectChange('batch-struct')" style="padding:2px 6px; border-radius:4px; border:1px solid #93c5fd; font-size:11.5px; background:#fff;">
+                  <option value="Public">🌍 Public</option>
+                  <option value="Users">👥 All Users</option>
+                  <option value="Groups">🏷️ Groups...</option>
+                  <option value="Specific">🎯 Specific...</option>
+                  <option value="Private">🔒 Private</option>
                 </select>
+                <button type="button" class="btn btn-primary btn-sm" style="padding:2px 7px; font-size:11px;" onclick="applyBatchStructuresVisibility()">Apply</button>
               </div>
 
-              <button type="button" class="struct-filter-reset-btn" id="btn-struct-reset-filters" onclick="resetAllStructureFilters()" title="Reset all filters and search query to show all structures">
-                ↺ Reset Filters
+              <button type="button" class="btn btn-danger btn-sm" style="font-weight:700; background:#dc2626; color:#ffffff; border:none; display:inline-flex; align-items:center; gap:3px; padding:3px 9px; font-size:11.5px; border-radius:5px;" onclick="deleteSelectedStructures()">
+                🗑️ Delete (<span id="struct-batch-delete-count">0</span>)
               </button>
-            </div>
-          </div>
-
-          <!-- Crystal Structures Batch Action Toolbar (Admin & Personal Users) -->
-          <div class="batch-action-bar admin-only" id="struct-batch-bar" style="display:flex; flex-direction:column; gap:10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:13px;">
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; width:100%;">
-              <div style="display:flex; align-items:center; gap:10px;">
-                <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-weight:700; color:#1e293b; margin:0;">
-                  <input type="checkbox" id="struct-select-all-cb" onchange="toggleSelectAllStructures(this.checked)" style="width:16px; height:16px; accent-color:var(--primary); cursor:pointer;" />
-                  Select All Structures
-                </label>
-                <span id="struct-batch-count-text" style="color:#64748b; font-size:12.5px; font-weight:600;">• 0 selected</span>
-              </div>
-
-              <div id="struct-batch-custom-controls" style="display:none; align-items:center; gap:8px; flex-wrap:wrap;">
-                <!-- 1. Batch Visibility (Strict Admin Only) -->
-                <div class="strict-admin-only" style="display:inline-flex; align-items:center; gap:5px; background:#eff6ff; border:1px solid #bfdbfe; padding:4px 8px; border-radius:7px;">
-                  <span style="font-size:11.5px; font-weight:700; color:#1e3a8a;">🛡️ Visibility:</span>
-                  <select id="batch-struct-visibility" onchange="handleVisibilitySelectChange('batch-struct')" style="padding:4px 8px; border-radius:5px; border:1px solid #93c5fd; font-size:12px; background:#fff; color:#0f172a; font-weight:600;">
-                    <option value="Public">🌍 Public</option>
-                    <option value="Users">👥 All Users</option>
-                    <option value="Groups">🏷️ User Group(s)...</option>
-                    <option value="Specific">🎯 Specific User(s) / Group(s)...</option>
-                    <option value="Private">🔒 Private</option>
-                  </select>
-                  <button type="button" class="btn btn-primary btn-sm" style="padding:4px 9px; font-size:11.5px;" onclick="applyBatchStructuresVisibility()">Apply</button>
-                </div>
-
-                <!-- 2. Batch Structure Type -->
-                <div style="display:inline-flex; align-items:center; gap:5px; background:#f1f5f9; border:1px solid #cbd5e1; padding:4px 8px; border-radius:7px;">
-                  <span style="font-size:11.5px; font-weight:700; color:#334155;">🧊 Type:</span>
-                  <select id="batch-struct-type" style="padding:4px 8px; border-radius:5px; border:1px solid #cbd5e1; font-size:12px; background:#fff; color:#0f172a;">
-                    <option value="Bulk 3D">Bulk 3D</option>
-                    <option value="2D Monolayer">2D Monolayer</option>
-                    <option value="Surface Slab">Surface Slab</option>
-                    <option value="Defect Supercell">Defect Supercell</option>
-                  </select>
-                  <button type="button" class="btn btn-outline btn-sm" style="padding:4px 9px; font-size:11.5px; background:#fff;" onclick="applyBatchStructuresField('structure_type')">Apply</button>
-                </div>
-
-                <!-- 3. Batch DFT Functional -->
-                <div style="display:inline-flex; align-items:center; gap:5px; background:#f1f5f9; border:1px solid #cbd5e1; padding:4px 8px; border-radius:7px;">
-                  <span style="font-size:11.5px; font-weight:700; color:#334155;">⚡ Functional:</span>
-                  <select id="batch-struct-functional" style="padding:4px 8px; border-radius:5px; border:1px solid #cbd5e1; font-size:12px; background:#fff; color:#0f172a;">
-                    <option value="PBE">PBE</option>
-                    <option value="HSE06">HSE06</option>
-                    <option value="PBE+U">PBE+U</option>
-                    <option value="PBE + DFT-D3">PBE + DFT-D3</option>
-                    <option value="SCAN">SCAN</option>
-                  </select>
-                  <button type="button" class="btn btn-outline btn-sm" style="padding:4px 9px; font-size:11.5px; background:#fff;" onclick="applyBatchStructuresField('dft_functional')">Apply</button>
-                </div>
-
-                <!-- 4. Batch Move to Project Folder -->
-                <div style="display:inline-flex; align-items:center; gap:5px; background:#faf5ff; border:1px solid #ddd6fe; padding:4px 8px; border-radius:7px;">
-                  <span style="font-size:11.5px; font-weight:700; color:#6b21a8;">📁 Move to:</span>
-                  <select id="batch-struct-folder" style="padding:4px 8px; border-radius:5px; border:1px solid #c4b5fd; font-size:12px; background:#fff; color:#0f172a; max-width:180px;">
-                  </select>
-                  <button type="button" class="btn btn-sm" style="padding:4px 9px; font-size:11.5px; background:#7c3aed; color:#fff; border:none; font-weight:600; border-radius:5px; cursor:pointer;" onclick="applyBatchStructuresFolder()">Move</button>
-                </div>
-
-                <button type="button" class="btn btn-outline btn-sm" style="padding:5px 10px; font-size:12px;" onclick="clearSelectedStructures()">Clear Selection</button>
-                <button type="button" class="btn btn-danger btn-sm" style="font-weight:700; background:#dc2626; color:#ffffff; border:none; display:inline-flex; align-items:center; gap:4px; padding:5px 11px; font-size:12px;" onclick="deleteSelectedStructures()">
-                  🗑️ Delete Selected (<span id="struct-batch-delete-count">0</span>)
-                </button>
-              </div>
             </div>
             <div id="batch-struct-specific-box" class="specific-users-picker-wrap strict-admin-only" style="display:none; width:100%;"></div>
           </div>
-
-        <!-- Crystal Structures Database View Modes & Management Toolbar (File-Explorer Styles) -->
-        <div class="struct-view-toolbar" id="struct-view-toolbar">
-          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-            <span style="font-size:12px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.5px;">📁 View Mode:</span>
-            <div class="struct-view-btn-group" id="struct-view-btn-group">
-              <button type="button" class="struct-view-btn active" id="btn-struct-view-cards" onclick="setStructureDisplayMode('cards')" title="Large Icons / Interactive Cards Grid">
-                📱 Cards
-              </button>
-              <button type="button" class="struct-view-btn" id="btn-struct-view-details" onclick="setStructureDisplayMode('details')" title="Details / Scientific Spreadsheet Table View">
-                📋 Details Table
-              </button>
-              <button type="button" class="struct-view-btn" id="btn-struct-view-compact" onclick="setStructureDisplayMode('compact')" title="Compact List / Small Icons View">
-                📄 Compact List
-              </button>
-              <button type="button" class="struct-view-btn" id="btn-struct-view-grouped" onclick="setStructureDisplayMode('grouped')" title="Group by Folder / System / Publication">
-                📁 Grouped Folders
-              </button>
-            </div>
-
-            <!-- Grouping Criterion Selector (visible when in grouped mode) -->
-            <div id="struct-group-by-wrap" style="display:none; align-items:center; gap:6px;">
-              <span style="font-size:11.5px; font-weight:600; color:#64748b;">Group by:</span>
-              <select id="struct-group-by" onchange="renderStructuresList()" style="padding:4px 8px; border-radius:6px; border:1px solid #cbd5e1; font-size:12px; background:#fff; color:#1e293b; font-weight:600;">
-                <option value="project" selected>📁 Project / Research Folder (Default)</option>
-                <option value="system">💎 Crystal System (Cubic, Hex, ...)</option>
-                <option value="type">🧊 Structure Type (Bulk 3D, 2D Monolayer, ...)</option>
-                <option value="paper">📄 Associated Literature / Paper</option>
-              </select>
-            </div>
-          </div>
-
-          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-            <div style="display:flex; align-items:center; gap:6px;">
-              <span style="font-size:12px; font-weight:600; color:#64748b;">Sort:</span>
-              <select id="struct-sort-by" onchange="renderStructuresList()" style="padding:5px 10px; border-radius:6px; border:1px solid #cbd5e1; font-size:12px; background:#fff; color:#0f172a; font-weight:600;">
-                <option value="default">Default (Newest First)</option>
-                <option value="name-asc">Name (A &rarr; Z)</option>
-                <option value="name-desc">Name (Z &rarr; A)</option>
-                <option value="formula-asc">Formula (A &rarr; Z)</option>
-                <option value="bandgap-asc">Bandgap Eg (Lowest &rarr; Highest)</option>
-                <option value="bandgap-desc">Bandgap Eg (Highest &rarr; Lowest)</option>
-                <option value="vol-asc">Cell Volume (Small &rarr; Large)</option>
-                <option value="vol-desc">Cell Volume (Large &rarr; Small)</option>
-                <option value="atoms-desc">Atom Count (High &rarr; Low)</option>
-                <option value="paper-first">📄 Has Linked Paper First</option>
-              </select>
-            </div>
-
-            <div id="struct-db-stats" style="font-size:12px; color:#475569; background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:4px 10px; font-weight:600; white-space:nowrap;">
-              📊 12 structures
-            </div>
-          </div>
-        </div>
 
           <div id="structures-list-container" class="struct-grid"></div>
         </div>
@@ -3722,8 +3670,8 @@
     </div>
   </div>
 
-<script src="matsci_tools.js?v=20261117_v77_tidy_buttons_explorer" onerror="this.src='/static/matsci_tools.js?v=20261117_v77_tidy_buttons_explorer'"></script>
-  <script src="app.js?v=20261117_v77_tidy_buttons_explorer" onerror="this.src='/static/app.js?v=20261117_v77_tidy_buttons_explorer'"></script>
+<script src="matsci_tools.js?v=20261117_v78_single_row_everything" onerror="this.src='/static/matsci_tools.js?v=20261117_v78_single_row_everything'"></script>
+  <script src="app.js?v=20261117_v78_single_row_everything" onerror="this.src='/static/app.js?v=20261117_v78_single_row_everything'"></script>
 
     <!-- Google Calendar Verification / 403 Access Blocked Helper Modal -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
