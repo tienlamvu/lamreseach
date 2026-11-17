@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-17T06:12:18.552Z",
+  "exported_at": "2026-11-17T06:14:10.428Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -1930,6 +1930,24 @@
       ],
       "allowed_groups": [],
       "id": 1794805779333
+    },
+    {
+      "title": "International Materials Conference 2026",
+      "event_type": "Group Meeting / PI Meeting",
+      "instrument_or_location": "SKKU Cluster / Office",
+      "start_date": "2026-11-18",
+      "end_date": "2026-11-21",
+      "start_time": "09:00",
+      "end_time": "17:30",
+      "priority": "High",
+      "status": "Scheduled",
+      "sample_id": "",
+      "description": "",
+      "in_weekly_report": 1,
+      "visibility": "Public",
+      "allowed_users": [],
+      "allowed_groups": [],
+      "id": 1794896049348
     }
   ],
   "users_registry": {
