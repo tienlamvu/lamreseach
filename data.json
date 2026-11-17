@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-17T11:46:27.941Z",
+  "exported_at": "2026-11-17T11:46:39.431Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -908,9 +908,13 @@
         }
       ],
       "in_weekly_report": 0,
-      "visibility": "Public",
-      "allowed_users": [],
-      "allowed_groups": [],
+      "visibility": "Specific",
+      "allowed_users": [
+        "group:grp_dft_team_gun1"
+      ],
+      "allowed_groups": [
+        "grp_dft_team_gun1"
+      ],
       "id": 1794915986867
     },
     {
