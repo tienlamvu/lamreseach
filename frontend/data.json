@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-17T11:54:10.957Z",
+  "exported_at": "2026-11-17T11:54:20.017Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -4178,9 +4178,9 @@
       "passwordPlainHint": "••••••••",
       "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
       "registeredAt": "2026-11-16 11:31",
-      "lastLoginAt": "2026-11-17 20:50",
-      "lastUpdatedAt": "2026-11-17 20:50",
-      "updatedAtMs": 1794916259994,
+      "lastLoginAt": "2026-11-17 20:54",
+      "lastUpdatedAt": "2026-11-17 20:54",
+      "updatedAtMs": 1794916458939,
       "workspace": {
         "papers": [
           {
@@ -4500,6 +4500,12 @@
         ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-17 20:54",
+          "category": "Session",
+          "action": "Signed In (Email & Password)",
+          "detail": "Authenticated as Tien Lam (lamvt.sep@gmail.com)"
+        },
         {
           "timestamp": "2026-11-17 20:50",
           "category": "Profile",
