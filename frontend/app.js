@@ -5110,6 +5110,16 @@ function renderAdminInspectorContent() {
             ${p.doi ? ` | DOI: <a href="https://doi.org/${encodeURI(p.doi)}" target="_blank">${escapeHtml(p.doi)}</a>` : ""}
           </div>
           ${p.notes ? `<div style="font-size:12px; color:#1e3a8a; background:#eff6ff; padding:6px 8px; border-radius:6px; margin-top:5px;"><strong>User Note:</strong> ${escapeHtml(p.notes)}</div>` : ""}
+        ${(() => {
+          const linkedStructs = (STATE.structures || []).filter(st => st.associated_paper_id === p.id || (p.doi && st.associated_paper_doi && st.associated_paper_doi.toLowerCase() === p.doi.toLowerCase()));
+          if (!linkedStructs || linkedStructs.length === 0) return "";
+          return `
+            <div style="margin-top:8px; padding:6px 10px; background:#f0fdfa; border:1px solid #99f6e4; border-radius:6px; font-size:12px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <span class="badge badge-teal" style="font-size:10.5px; font-weight:700;">💎 ${linkedStructs.length} Linked Crystal Structure${linkedStructs.length > 1 ? 's' : ''}:</span>
+              ${linkedStructs.map(ls => `<a href="javascript:void(0)" onclick="filterStructuresByPaper(${p.id}, '${escapeHtml(p.title).replace(/'/g, "\\'")}')" class="badge badge-blue" style="text-decoration:none; font-size:11px; cursor:pointer;" title="Click to filter this structure in Crystal Structures tab">${escapeHtml(ls.name || ls.chemical_formula)}</a>`).join(" ")}
+            </div>
+          `;
+        })()}
         </div>
       `).join("");
     }
@@ -7972,21 +7982,231 @@ function populateStructureModalWithParsed(p, rawCif, filename) {
   renderModalAtomsTable(p.atoms || []);
 }
 
+
+// ============================================================================
+// Crystal Structures Database View Modes & Literature Association
+// ============================================================================
+
+STATE.structViewMode = localStorage.getItem("matsci_struct_view_mode") || "cards";
+STATE.structSortBy = "default";
+STATE.structGroupBy = "system";
+STATE.structCollapsedFolders = new Set();
+
+function setStructureDisplayMode(mode) {
+  STATE.structViewMode = mode;
+  try {
+    localStorage.setItem("matsci_struct_view_mode", mode);
+  } catch (e) {}
+
+  const modes = ["cards", "details", "compact", "grouped"];
+  modes.forEach(m => {
+    const btn = document.getElementById(`btn-struct-view-${m}`);
+    if (btn) {
+      if (m === mode) {
+        btn.classList.add("active");
+        btn.style.background = "#2563eb";
+        btn.style.color = "#ffffff";
+        btn.style.fontWeight = "700";
+      } else {
+        btn.classList.remove("active");
+        btn.style.background = "#ffffff";
+        btn.style.color = "#475569";
+        btn.style.fontWeight = "600";
+      }
+    }
+  });
+
+  const groupWrap = document.getElementById("struct-group-by-wrap");
+  if (groupWrap) {
+    groupWrap.style.display = (mode === "grouped") ? "inline-flex" : "none";
+  }
+
+  renderStructuresList();
+}
+window.setStructureDisplayMode = setStructureDisplayMode;
+
+function toggleStructFolder(folderKey) {
+  if (STATE.structCollapsedFolders.has(folderKey)) {
+    STATE.structCollapsedFolders.delete(folderKey);
+  } else {
+    STATE.structCollapsedFolders.add(folderKey);
+  }
+  const body = document.getElementById(`folder-body-${folderKey}`);
+  const arrow = document.getElementById(`folder-arrow-${folderKey}`);
+  if (body) {
+    body.style.display = STATE.structCollapsedFolders.has(folderKey) ? "none" : "block";
+  }
+  if (arrow) {
+    arrow.textContent = STATE.structCollapsedFolders.has(folderKey) ? "▶" : "▼";
+  }
+}
+window.toggleStructFolder = toggleStructFolder;
+
+function sortStructuresList(list, sortBy = "default") {
+  const sorted = [...list];
+  switch (sortBy) {
+    case "name-asc":
+      return sorted.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    case "name-desc":
+      return sorted.sort((a, b) => (b.name || "").localeCompare(a.name || ""));
+    case "formula-asc":
+      return sorted.sort((a, b) => (a.chemical_formula || a.formula || "").localeCompare(b.chemical_formula || b.formula || ""));
+    case "bandgap-asc":
+      return sorted.sort((a, b) => Number(a.bandgap_ev || 0) - Number(b.bandgap_ev || 0));
+    case "bandgap-desc":
+      return sorted.sort((a, b) => Number(b.bandgap_ev || 0) - Number(a.bandgap_ev || 0));
+    case "vol-asc":
+      return sorted.sort((a, b) => Number(a.volume || 0) - Number(b.volume || 0));
+    case "vol-desc":
+      return sorted.sort((a, b) => Number(b.volume || 0) - Number(a.volume || 0));
+    case "atoms-desc":
+      return sorted.sort((a, b) => Number(b.natoms || 0) - Number(a.natoms || 0));
+    case "paper-first":
+      return sorted.sort((a, b) => {
+        const hasA = Boolean(a.associated_paper_title || a.associated_paper_doi || a.associated_paper_id);
+        const hasB = Boolean(b.associated_paper_title || b.associated_paper_doi || b.associated_paper_id);
+        if (hasA && !hasB) return -1;
+        if (!hasA && hasB) return 1;
+        return (a.name || "").localeCompare(b.name || "");
+      });
+    default:
+      return sorted;
+  }
+}
+
+function jumpToPaperInLiterature(paperIdOrDoi) {
+  if (typeof switchTabByName === "function") {
+    switchTabByName("literature");
+  } else if (typeof switchTab === "function") {
+    switchTab("literature");
+  }
+  const paper = (STATE.papers || []).find(p => p.id === Number(paperIdOrDoi) || (p.doi && p.doi.toLowerCase() === String(paperIdOrDoi).toLowerCase()));
+  const searchInput = document.getElementById("paper-search");
+  if (searchInput && paper) {
+    searchInput.value = paper.doi || paper.title;
+    if (typeof renderPapersList === "function") renderPapersList();
+  }
+  showToast(`📄 Jumped to associated publication: ${paper ? paper.title : paperIdOrDoi}`, "info");
+}
+window.jumpToPaperInLiterature = jumpToPaperInLiterature;
+
+function filterStructuresByPaper(paperId, paperTitle = "") {
+  if (typeof switchTabByName === "function") {
+    switchTabByName("structures");
+  } else if (typeof switchTab === "function") {
+    switchTab("structures");
+  }
+  const searchInput = document.getElementById("struct-search");
+  const paperFilter = document.getElementById("struct-paper-filter");
+  if (paperFilter) paperFilter.value = "WITH_PAPER";
+  if (searchInput) searchInput.value = paperTitle || "";
+  renderStructuresList();
+  showToast(`💎 Filtered structures for publication: ${paperTitle || ("Paper #" + paperId)}`, "info");
+}
+window.filterStructuresByPaper = filterStructuresByPaper;
+
+function populateModalPaperDropdown(selectedId = null, customTitle = "", customDoi = "") {
+  const selectEl = document.getElementById("struct-paper-select");
+  if (!selectEl) return;
+  const customWrap = document.getElementById("struct-paper-custom-wrap");
+  const titleInput = document.getElementById("struct-paper-title");
+  const doiInput = document.getElementById("struct-paper-doi");
+
+  let optsHtml = `<option value="">-- None (No Linked Publication) --</option>`;
+  optsHtml += `<option value="__custom__">➕ Custom / External DOI or Title</option>`;
+
+  const papers = Array.isArray(STATE.papers) ? STATE.papers : [];
+  papers.forEach(p => {
+    const yr = p.year ? `[${p.year}] ` : "";
+    const shortTitle = p.title.length > 55 ? p.title.slice(0, 52) + "..." : p.title;
+    optsHtml += `<option value="${p.id}">📄 ${yr}${escapeHtml(shortTitle)} (${escapeHtml(p.doi || p.journal || "Ref")})</option>`;
+  });
+
+  selectEl.innerHTML = optsHtml;
+
+  if (selectedId && papers.some(p => p.id === Number(selectedId))) {
+    selectEl.value = String(selectedId);
+    if (customWrap) customWrap.style.display = "none";
+  } else if (customTitle || customDoi) {
+    selectEl.value = "__custom__";
+    if (customWrap) customWrap.style.display = "flex";
+    if (titleInput) titleInput.value = customTitle || "";
+    if (doiInput) doiInput.value = customDoi || "";
+  } else {
+    selectEl.value = "";
+    if (customWrap) customWrap.style.display = "none";
+    if (titleInput) titleInput.value = "";
+    if (doiInput) doiInput.value = "";
+  }
+}
+window.populateModalPaperDropdown = populateModalPaperDropdown;
+
+function handleStructPaperSelectChange() {
+  const selectEl = document.getElementById("struct-paper-select");
+  if (!selectEl) return;
+  const val = selectEl.value;
+  const customWrap = document.getElementById("struct-paper-custom-wrap");
+  const titleInput = document.getElementById("struct-paper-title");
+  const doiInput = document.getElementById("struct-paper-doi");
+
+  if (val === "__custom__") {
+    if (customWrap) customWrap.style.display = "flex";
+  } else if (val) {
+    if (customWrap) customWrap.style.display = "none";
+    const p = (STATE.papers || []).find(x => x.id === Number(val));
+    if (p) {
+      if (titleInput) titleInput.value = p.title || "";
+      if (doiInput) doiInput.value = p.doi || "";
+    }
+  } else {
+    if (customWrap) customWrap.style.display = "none";
+    if (titleInput) titleInput.value = "";
+    if (doiInput) doiInput.value = "";
+  }
+}
+window.handleStructPaperSelectChange = handleStructPaperSelectChange;
+
 function renderStructuresList() {
   if (!STATE.selectedStructureIds) STATE.selectedStructureIds = new Set();
-  const query = (document.getElementById("struct-search")?.value || "").toLowerCase();
+  const query = (document.getElementById("struct-search")?.value || "").toLowerCase().trim();
   const systemFilter = document.getElementById("struct-system-filter")?.value || "ALL";
   const typeFilter = document.getElementById("struct-type-filter")?.value || "ALL";
   const audienceFilter = document.getElementById("struct-audience-filter")?.value || "ALL";
+  const paperFilter = document.getElementById("struct-paper-filter")?.value || "ALL";
+  const sortBy = document.getElementById("struct-sort-by")?.value || "default";
+  const groupBy = document.getElementById("struct-group-by")?.value || "system";
 
-  const filtered = STATE.structures.filter(s => {
+  STATE.structSortBy = sortBy;
+  STATE.structGroupBy = groupBy;
+
+  const currentMode = STATE.structViewMode || "cards";
+
+  // Filter structures
+  let filtered = STATE.structures.filter(s => {
     if (systemFilter !== "ALL" && s.crystal_system !== systemFilter) return false;
     if (typeFilter !== "ALL" && s.structure_type !== typeFilter) return false;
     if (!doesItemMatchAudienceFilter(s, audienceFilter)) return false;
+
+    // Filter by Literature link
+    const hasPaper = Boolean(s.associated_paper_title || s.associated_paper_doi || s.associated_paper_id);
+    if (paperFilter === "WITH_PAPER" && !hasPaper) return false;
+    if (paperFilter === "NO_PAPER" && hasPaper) return false;
+
     if (!query) return true;
-    const hay = `${s.name} ${s.chemical_formula} ${s.space_group} ${s.mp_id} ${s.dft_code} ${s.dft_functional} ${s.notes}`.toLowerCase();
+    const hay = `${s.name} ${s.chemical_formula} ${s.formula} ${s.space_group} ${s.mp_id} ${s.dft_code} ${s.dft_functional} ${s.notes} ${s.associated_paper_title || ""} ${s.associated_paper_doi || ""}`.toLowerCase();
     return hay.includes(query);
   });
+
+  // Sort structures
+  filtered = sortStructuresList(filtered, sortBy);
+
+  // Update Database Summary Statistics Pill
+  const statsEl = document.getElementById("struct-db-stats");
+  if (statsEl) {
+    const totalCount = STATE.structures.length;
+    const withPaperCount = filtered.filter(s => Boolean(s.associated_paper_title || s.associated_paper_doi || s.associated_paper_id)).length;
+    statsEl.innerHTML = `📊 <strong>${filtered.length}</strong> / ${totalCount} structures &bull; <span style="color:#0f766e; font-weight:700;">${withPaperCount} Linked Papers</span>`;
+  }
 
   updateStructBatchBar(filtered);
 
@@ -7994,97 +8214,347 @@ function renderStructuresList() {
   if (!container) return;
 
   if (filtered.length === 0) {
-    container.innerHTML = `<div style="padding:24px; text-align:center; color:var(--text-muted); grid-column:1/-1;">No matching crystal structures found. Drag &amp; drop a *.cif file or click "+ New Structure"!</div>`;
+    container.className = "struct-grid";
+    container.innerHTML = `<div style="padding:32px; text-align:center; color:var(--text-muted); grid-column:1/-1; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:10px;">
+      <div style="font-size:32px; margin-bottom:8px;">💎</div>
+      <div style="font-weight:700; font-size:15px; color:#334155;">No matching crystal structures found</div>
+      <div style="font-size:12.5px; margin-top:4px;">Try clearing search keywords or filters, drop a *.cif file, or click "+ New Structure"!</div>
+    </div>`;
     return;
   }
 
-  container.innerHTML = filtered.map(s => {
+  // Helper to render linked paper snippet
+  function renderLinkedPaperHtml(s) {
+    const hasPaper = Boolean(s.associated_paper_title || s.associated_paper_doi || s.associated_paper_id);
+    if (!hasPaper) return "";
+    const paperDoi = s.associated_paper_doi || "";
+    const paperTitle = s.associated_paper_title || "Associated Research Publication";
+    const paperId = s.associated_paper_id;
+
+    return `
+      <div class="struct-linked-paper-badge">
+        <span class="badge badge-teal" style="font-size:10.5px; font-weight:700;">📄 Linked Paper</span>
+        <span class="struct-paper-title-text" title="${escapeHtml(paperTitle)}">${escapeHtml(paperTitle)}</span>
+        ${paperDoi ? `<a href="https://doi.org/${encodeURIComponent(paperDoi)}" target="_blank" class="struct-doi-pill" title="Open DOI in new tab">DOI: ${escapeHtml(paperDoi)} ↗</a>` : ""}
+        ${paperId ? `<button type="button" class="btn btn-outline btn-xs" onclick="jumpToPaperInLiterature(${paperId})" style="padding:2px 7px; font-size:11px; background:#fff; color:#0f766e; border-color:#5eead4; border-radius:4px; font-weight:600; cursor:pointer;" title="View Paper in Literature Library">📖 View Paper</button>` : ""}
+      </div>
+    `;
+  }
+
+  // Helper to render individual card (used in Mode 1 & Mode 4)
+  function renderSingleCardHtml(s) {
     const canModifyItem = Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin;
     const isSelected = STATE.selectedStructureIds && STATE.selectedStructureIds.has(Number(s.id));
+
     return `
-    <div class="struct-card" id="struct-card-${s.id}" style="${isSelected ? 'border-color:#2563eb; background:#f0f7ff; box-shadow:0 0 0 2px rgba(37,99,235,0.18);' : ''}">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
-        <div style="display:flex; gap:10px; align-items:flex-start; flex:1;">
-          ${canModifyItem ? `
-          <div class="admin-only" style="padding-top:2px;">
-            <input type="checkbox" class="struct-select-cb" data-id="${s.id}" ${isSelected ? "checked" : ""} onchange="toggleSelectStructure(${s.id}, this.checked)" style="width:17px; height:17px; accent-color:#2563eb; cursor:pointer;" title="Select structure for batch actions" />
-          </div>` : ""}
-          <div style="flex:1;">
-            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:4px;">
-              <span class="badge badge-purple">${escapeHtml(s.crystal_system || "Cubic")}</span>
-              <span class="badge badge-blue">${escapeHtml(s.structure_type || "Bulk 3D")}</span>
-              ${s.mp_id ? `<span class="badge badge-slate">${escapeHtml(s.mp_id)}</span>` : ""}
-              ${renderVisibilityBadgeHtml(s)}
-            </div>
-            <div class="struct-title">${escapeHtml(s.name)}</div>
-            <div style="font-size:13px; color:var(--text-secondary); margin-top:2px;">
-              Formula: <strong style="color:var(--primary); font-family:monospace; font-size:14px;">${formatFormulaHtml(s.chemical_formula || s.formula)}</strong>
-              &nbsp;|&nbsp; Space Group: <code>${escapeHtml(s.space_group || "P1")}</code>
+      <div class="struct-card" id="struct-card-${s.id}" style="${isSelected ? 'border-color:#2563eb; background:#f0f7ff; box-shadow:0 0 0 2px rgba(37,99,235,0.18);' : ''}">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+          <div style="display:flex; gap:10px; align-items:flex-start; flex:1;">
+            ${canModifyItem ? `
+            <div class="admin-only" style="padding-top:2px;">
+              <input type="checkbox" class="struct-select-cb" data-id="${s.id}" ${isSelected ? "checked" : ""} onchange="toggleSelectStructure(${s.id}, this.checked)" style="width:17px; height:17px; accent-color:#2563eb; cursor:pointer;" title="Select structure for batch actions" />
+            </div>` : ""}
+            <div style="flex:1;">
+              <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:4px;">
+                <span class="badge badge-purple">${escapeHtml(s.crystal_system || "Cubic")}</span>
+                <span class="badge badge-blue">${escapeHtml(s.structure_type || "Bulk 3D")}</span>
+                ${s.mp_id ? `<span class="badge badge-slate">${escapeHtml(s.mp_id)}</span>` : ""}
+                ${renderVisibilityBadgeHtml(s)}
+              </div>
+              <div class="struct-title" style="font-size:15px; font-weight:700; color:#0f172a;">${escapeHtml(s.name)}</div>
+              <div style="font-size:13px; color:var(--text-secondary); margin-top:2px;">
+                Formula: <strong style="color:var(--primary); font-family:monospace; font-size:14px;">${formatFormulaHtml(s.chemical_formula || s.formula)}</strong>
+                &nbsp;|&nbsp; Space Group: <code>${escapeHtml(s.space_group || "P1")}</code>
+              </div>
             </div>
           </div>
+
+          ${canModifyItem ? `
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-outline btn-sm owner-only-btn admin-only" onclick="openStructureModal(${s.id})" title="Edit Structure">✏️</button>
+            <button class="btn btn-danger btn-sm owner-only-btn admin-only" onclick="deleteStructureItem(${s.id})" title="Delete Structure">🗑️</button>
+          </div>
+          ` : ""}
         </div>
 
-        ${canModifyItem ? `
-        <div style="display:flex; gap:6px;">
-          <button class="btn btn-outline btn-sm owner-only-btn admin-only" onclick="openStructureModal(${s.id})">✏️</button>
-          <button class="btn btn-danger btn-sm owner-only-btn admin-only" onclick="deleteStructureItem(${s.id})">🗑️</button>
+        <!-- Lattice Parameters Grid Table -->
+        <table class="struct-lattice-table">
+          <thead>
+            <tr>
+              <th>a (Å)</th>
+              <th>b (Å)</th>
+              <th>c (Å)</th>
+              <th>α (°)</th>
+              <th>β (°)</th>
+              <th>γ (°)</th>
+              <th>Vol (Å³)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>${Number(s.a || 0).toFixed(3)}</td>
+              <td>${Number(s.b || 0).toFixed(3)}</td>
+              <td>${Number(s.c || 0).toFixed(3)}</td>
+              <td>${Number(s.alpha || 0).toFixed(1)}</td>
+              <td>${Number(s.beta || 0).toFixed(1)}</td>
+              <td>${Number(s.gamma || 0).toFixed(1)}</td>
+              <td><strong>${Number(s.volume || 0).toFixed(2)}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- DFT Calculation Details -->
+        <div class="struct-dft-badges" style="display:flex; gap:6px; flex-wrap:wrap; font-size:11px;">
+          <span class="badge badge-teal">💻 ${escapeHtml(s.dft_code || "VASP")} (${escapeHtml(s.dft_functional || "PBE")})</span>
+          <span class="badge badge-blue">Cutoff: ${s.cutoff_energy || 520} eV</span>
+          <span class="badge badge-slate">K-mesh: ${escapeHtml(s.kpoints || "8x8x8")}</span>
+          <span class="badge ${s.bandgap_ev > 0 ? 'badge-green' : 'badge-amber'}">
+            Eg: ${Number(s.bandgap_ev || 0).toFixed(2)} eV (${escapeHtml(s.bandgap_type || "Direct")})
+          </span>
+          ${s.total_energy_per_atom ? `<span class="badge badge-rose">E: ${Number(s.total_energy_per_atom).toFixed(2)} eV/atom</span>` : ""}
         </div>
-        ` : ""}
+
+        ${renderLinkedPaperHtml(s)}
+
+        ${s.notes ? `<div style="font-size:12px; color:var(--text-secondary); margin-top:4px; line-height:1.45; background:#f8fafc; padding:6px 10px; border-radius:6px;"><strong>Simulation Insight:</strong> ${escapeHtml(s.notes)}</div>` : ""}
+
+        <div class="struct-actions" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+          <button class="btn btn-primary btn-sm" onclick="viewCifModal(${s.id})">
+            👁️ View CIF / POSCAR
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="downloadCifById(${s.id})">
+            📥 .cif
+          </button>
+          <button class="btn btn-teal btn-sm" onclick="downloadPoscarById(${s.id})">
+            ⚡ POSCAR
+          </button>
+        </div>
       </div>
+    `;
+  }
 
-      <!-- Lattice Parameters Grid Table -->
-      <table class="struct-lattice-table">
+  // RENDER BASED ON ACTIVE VIEW MODE:
+  if (currentMode === "cards") {
+    container.className = "struct-grid";
+    container.innerHTML = filtered.map(renderSingleCardHtml).join("");
+    return;
+  }
+
+  if (currentMode === "details") {
+    container.className = "struct-table-wrapper";
+    const allSelected = filtered.length > 0 && filtered.every(s => STATE.selectedStructureIds.has(Number(s.id)));
+
+    let tableHtml = `
+      <table class="struct-details-table">
         <thead>
           <tr>
-            <th>a (Å)</th>
-            <th>b (Å)</th>
-            <th>c (Å)</th>
-            <th>α (°)</th>
-            <th>β (°)</th>
-            <th>γ (°)</th>
-            <th>Vol (Å³)</th>
+            <th style="width:36px; text-align:center;">
+              <input type="checkbox" ${allSelected ? "checked" : ""} onchange="toggleSelectAllStructures(this.checked)" style="width:16px; height:16px; accent-color:#2563eb; cursor:pointer;" />
+            </th>
+            <th class="sortable-th" onclick="document.getElementById('struct-sort-by').value='name-asc'; renderStructuresList();" title="Click to sort by Name">Material &amp; Formula ↕</th>
+            <th class="sortable-th" onclick="document.getElementById('struct-sort-by').value='default'; renderStructuresList();">System &amp; Type</th>
+            <th>Space Group</th>
+            <th class="sortable-th" onclick="document.getElementById('struct-sort-by').value='vol-asc'; renderStructuresList();" title="Click to sort by Cell Volume">Lattice (a, b, c) &amp; Vol ↕</th>
+            <th class="sortable-th" onclick="document.getElementById('struct-sort-by').value='bandgap-asc'; renderStructuresList();" title="Click to sort by Bandgap">DFT &amp; Eg (eV) ↕</th>
+            <th style="min-width:180px;">📄 Associated Publication</th>
+            <th>Audience</th>
+            <th style="text-align:right; min-width:140px;">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td>${Number(s.a || 0).toFixed(3)}</td>
-            <td>${Number(s.b || 0).toFixed(3)}</td>
-            <td>${Number(s.c || 0).toFixed(3)}</td>
-            <td>${Number(s.alpha || 0).toFixed(1)}</td>
-            <td>${Number(s.beta || 0).toFixed(1)}</td>
-            <td>${Number(s.gamma || 0).toFixed(1)}</td>
-            <td><strong>${Number(s.volume || 0).toFixed(2)}</strong></td>
-          </tr>
-        </tbody>
-      </table>
+    `;
 
-      <!-- DFT Calculation Details -->
-      <div class="struct-dft-badges">
-        <span class="badge badge-teal">💻 ${escapeHtml(s.dft_code || "VASP")} (${escapeHtml(s.dft_functional || "PBE")})</span>
-        <span class="badge badge-blue">Cutoff: ${s.cutoff_energy || 520} eV</span>
-        <span class="badge badge-slate">K-mesh: ${escapeHtml(s.kpoints || "8x8x8")}</span>
-        <span class="badge ${s.bandgap_ev > 0 ? 'badge-green' : 'badge-amber'}">
-          Eg: ${Number(s.bandgap_ev || 0).toFixed(2)} eV (${escapeHtml(s.bandgap_type || "Direct")})
-        </span>
-        ${s.total_energy_per_atom ? `<span class="badge badge-rose">E: ${Number(s.total_energy_per_atom).toFixed(2)} eV/atom</span>` : ""}
-      </div>
+    filtered.forEach(s => {
+      const isSelected = STATE.selectedStructureIds && STATE.selectedStructureIds.has(Number(s.id));
+      const canModifyItem = Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin;
+      const paperDoi = s.associated_paper_doi || "";
+      const paperTitle = s.associated_paper_title || "";
+      const paperId = s.associated_paper_id;
 
-      ${s.notes ? `<div style="font-size:12px; color:var(--text-secondary); margin-top:8px; line-height:1.45; background:#f8fafc; padding:6px 10px; border-radius:6px;"><strong>Simulation Insight:</strong> ${escapeHtml(s.notes)}</div>` : ""}
+      tableHtml += `
+        <tr class="${isSelected ? 'selected-row' : ''}">
+          <td style="text-align:center;">
+            ${canModifyItem ? `<input type="checkbox" class="struct-select-cb" data-id="${s.id}" ${isSelected ? "checked" : ""} onchange="toggleSelectStructure(${s.id}, this.checked)" style="width:16px; height:16px; accent-color:#2563eb; cursor:pointer;" />` : ""}
+          </td>
+          <td>
+            <div style="font-weight:700; color:#0f172a; font-size:13px;">${escapeHtml(s.name)}</div>
+            <div style="font-family:monospace; color:var(--primary); font-size:13px; font-weight:600;">
+              ${formatFormulaHtml(s.chemical_formula || s.formula)}
+            </div>
+            ${s.mp_id ? `<span class="badge badge-slate" style="font-size:10px; margin-top:2px;">${escapeHtml(s.mp_id)}</span>` : ""}
+          </td>
+          <td>
+            <span class="badge badge-purple" style="font-size:11px;">${escapeHtml(s.crystal_system || "Cubic")}</span>
+            <div style="font-size:11px; color:#64748b; margin-top:2px;">${escapeHtml(s.structure_type || "Bulk 3D")}</div>
+          </td>
+          <td>
+            <code style="font-size:11.5px; font-weight:600; color:#334155;">${escapeHtml(s.space_group || "P1")}</code>
+          </td>
+          <td>
+            <div class="struct-param-mono">${Number(s.a || 0).toFixed(2)} &times; ${Number(s.b || 0).toFixed(2)} &times; ${Number(s.c || 0).toFixed(2)} Å</div>
+            <div style="font-size:11px; color:#64748b; margin-top:2px;">Vol: <strong>${Number(s.volume || 0).toFixed(1)}</strong> Å³ (${s.natoms || 0} atoms)</div>
+          </td>
+          <td>
+            <span class="badge ${s.bandgap_ev > 0 ? 'badge-green' : 'badge-amber'}" style="font-size:11px;">
+              ${Number(s.bandgap_ev || 0).toFixed(2)} eV (${escapeHtml(s.bandgap_type || "Dir")})
+            </span>
+            <div style="font-size:10.5px; color:#64748b; margin-top:2px;">${escapeHtml(s.dft_code || "VASP")} (${escapeHtml(s.dft_functional || "PBE")})</div>
+          </td>
+          <td>
+            ${paperTitle ? `
+              <div style="max-width:240px;">
+                <div style="font-weight:600; color:#0f766e; font-size:11.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(paperTitle)}">
+                  📄 ${escapeHtml(paperTitle)}
+                </div>
+                ${paperDoi ? `<a href="https://doi.org/${encodeURIComponent(paperDoi)}" target="_blank" class="struct-doi-pill" style="margin-top:2px;">DOI: ${escapeHtml(paperDoi)} ↗</a>` : ""}
+              </div>
+            ` : `<span style="color:#94a3b8; font-size:11.5px; font-style:italic;">None linked</span>`}
+          </td>
+          <td>
+            ${renderVisibilityBadgeHtml(s)}
+          </td>
+          <td style="text-align:right; white-space:nowrap;">
+            <button class="btn btn-primary btn-xs" onclick="viewCifModal(${s.id})" title="View CIF / POSCAR" style="padding:3px 7px; font-size:11px;">👁️</button>
+            <button class="btn btn-outline btn-xs" onclick="downloadCifById(${s.id})" title="Download CIF" style="padding:3px 7px; font-size:11px;">📥</button>
+            <button class="btn btn-teal btn-xs" onclick="downloadPoscarById(${s.id})" title="Download POSCAR" style="padding:3px 7px; font-size:11px;">⚡</button>
+            ${canModifyItem ? `
+              <button class="btn btn-outline btn-xs" onclick="openStructureModal(${s.id})" title="Edit" style="padding:3px 7px; font-size:11px;">✏️</button>
+              <button class="btn btn-danger btn-xs" onclick="deleteStructureItem(${s.id})" title="Delete" style="padding:3px 7px; font-size:11px;">🗑️</button>
+            ` : ""}
+          </td>
+        </tr>
+      `;
+    });
 
-      <div class="struct-actions">
-        <button class="btn btn-primary btn-sm" onclick="viewCifModal(${s.id})">
-          👁️ View CIF / POSCAR
-        </button>
-        <button class="btn btn-outline btn-sm" onclick="downloadCifById(${s.id})">
-          📥 .cif
-        </button>
-        <button class="btn btn-teal btn-sm" onclick="downloadPoscarById(${s.id})">
-          ⚡ POSCAR
-        </button>
-      </div>
-    </div>
-  `;
-  }).join("");
+    tableHtml += `</tbody></table>`;
+    container.innerHTML = tableHtml;
+    return;
+  }
+
+  if (currentMode === "compact") {
+    container.className = "struct-compact-list";
+    let listHtml = "";
+
+    filtered.forEach(s => {
+      const isSelected = STATE.selectedStructureIds && STATE.selectedStructureIds.has(Number(s.id));
+      const canModifyItem = Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin;
+      const paperDoi = s.associated_paper_doi || "";
+      const paperTitle = s.associated_paper_title || "";
+      const paperId = s.associated_paper_id;
+
+      listHtml += `
+        <div class="struct-compact-item ${isSelected ? 'selected-item' : ''}" id="struct-compact-${s.id}">
+          <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:240px;">
+            ${canModifyItem ? `<input type="checkbox" class="struct-select-cb" data-id="${s.id}" ${isSelected ? "checked" : ""} onchange="toggleSelectStructure(${s.id}, this.checked)" style="width:16px; height:16px; accent-color:#2563eb; cursor:pointer;" />` : ""}
+            <span style="font-size:18px;">💎</span>
+            <div>
+              <div style="font-weight:700; color:#0f172a; font-size:13.5px; display:flex; align-items:center; gap:8px;">
+                <span>${escapeHtml(s.name)}</span>
+                <span style="color:var(--primary); font-family:monospace; font-size:13px; font-weight:700;">[${formatFormulaHtml(s.chemical_formula || s.formula)}]</span>
+              </div>
+              <div style="font-size:11.5px; color:#64748b; margin-top:2px;">
+                <span>${escapeHtml(s.crystal_system || "Cubic")}</span> &bull;
+                <code>${escapeHtml(s.space_group || "P1")}</code> &bull;
+                <span>${Number(s.volume || 0).toFixed(1)} Å³</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span class="badge ${s.bandgap_ev > 0 ? 'badge-green' : 'badge-amber'}" style="font-size:11px;">
+              Eg: ${Number(s.bandgap_ev || 0).toFixed(2)} eV
+            </span>
+            <span class="badge badge-slate" style="font-size:11px;">${escapeHtml(s.dft_functional || "PBE")}</span>
+            ${paperTitle ? `
+              <span class="badge badge-teal" style="font-size:11px; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(paperTitle)}">
+                📄 ${paperDoi ? escapeHtml(paperDoi) : escapeHtml(paperTitle)}
+              </span>
+            ` : ""}
+            ${renderVisibilityBadgeHtml(s)}
+          </div>
+
+          <div style="display:flex; gap:5px; align-items:center;">
+            <button class="btn btn-primary btn-sm" onclick="viewCifModal(${s.id})" style="padding:4px 9px; font-size:12px;">👁️ View</button>
+            <button class="btn btn-outline btn-sm" onclick="downloadCifById(${s.id})" style="padding:4px 9px; font-size:12px;">📥 CIF</button>
+            <button class="btn btn-teal btn-sm" onclick="downloadPoscarById(${s.id})" style="padding:4px 9px; font-size:12px;">⚡ POSCAR</button>
+            ${canModifyItem ? `
+              <button class="btn btn-outline btn-sm" onclick="openStructureModal(${s.id})" style="padding:4px 8px; font-size:12px;" title="Edit">✏️</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteStructureItem(${s.id})" style="padding:4px 8px; font-size:12px;" title="Delete">🗑️</button>
+            ` : ""}
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = listHtml;
+    return;
+  }
+
+  if (currentMode === "grouped") {
+    container.className = "struct-grouped-container";
+
+    // Build groups mapping
+    const groupsMap = new Map();
+
+    filtered.forEach(s => {
+      let gKey = "Uncategorized";
+      let gTitle = "Uncategorized Structures";
+      let gIcon = "📁";
+
+      if (groupBy === "system") {
+        gKey = s.crystal_system || "Other";
+        gTitle = `${gKey} Crystal System`;
+        gIcon = "💎";
+      } else if (groupBy === "type") {
+        gKey = s.structure_type || "Other";
+        gTitle = `${gKey}`;
+        gIcon = "🧊";
+      } else if (groupBy === "paper") {
+        if (s.associated_paper_title || s.associated_paper_doi) {
+          gKey = s.associated_paper_doi || String(s.associated_paper_id) || s.associated_paper_title;
+          gTitle = s.associated_paper_title || s.associated_paper_doi;
+          gIcon = "📄";
+        } else {
+          gKey = "__unlinked__";
+          gTitle = "Standalone / Unlinked Structures";
+          gIcon = "📁";
+        }
+      }
+
+      if (!groupsMap.has(gKey)) {
+        groupsMap.set(gKey, { key: gKey, title: gTitle, icon: gIcon, items: [] });
+      }
+      groupsMap.get(gKey).items.push(s);
+    });
+
+    let groupedHtml = "";
+    groupsMap.forEach(group => {
+      const isCollapsed = STATE.structCollapsedFolders.has(group.key);
+      const safeKey = group.key.replace(/[^a-zA-Z0-9_-]/g, "_");
+
+      groupedHtml += `
+        <div class="struct-folder-card" id="folder-card-${safeKey}">
+          <div class="struct-folder-header" onclick="toggleStructFolder('${safeKey}')">
+            <div class="struct-folder-title">
+              <span id="folder-arrow-${safeKey}" style="font-size:12px; color:#64748b;">${isCollapsed ? '▶' : '▼'}</span>
+              <span>${group.icon}</span>
+              <span>${escapeHtml(group.title)}</span>
+              <span class="badge badge-slate" style="font-size:11px; margin-left:6px;">${group.items.length} structure${group.items.length > 1 ? 's' : ''}</span>
+            </div>
+            <div style="font-size:12px; color:#64748b;">Click to ${isCollapsed ? 'expand' : 'collapse'}</div>
+          </div>
+          <div class="struct-folder-body" id="folder-body-${safeKey}" style="display:${isCollapsed ? 'none' : 'block'};">
+            <div class="struct-grid" style="margin-top:0;">
+              ${group.items.map(renderSingleCardHtml).join("")}
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = groupedHtml;
+    return;
+  }
 }
 
 function updateStructBatchBar(filtered = null) {
@@ -8322,6 +8792,7 @@ function openStructureModal(structId = null, options = {}) {
       atoms = parsed.atoms || [];
     }
     renderModalAtomsTable(atoms);
+    populateModalPaperDropdown(s.associated_paper_id, s.associated_paper_title || "", s.associated_paper_doi || "");
   } else if (!options.skipReset) {
     document.getElementById("struct-modal-title").textContent = "Add Crystal Structure (*.cif)";
     document.getElementById("struct-id").value = "";
@@ -8409,10 +8880,32 @@ async function saveStructureFromModal() {
     ? getVisibilityControlValues("struct")
     : {};
 
+  // Associated Literature / Publication link
+  const paperSelect = document.getElementById("struct-paper-select");
+  const paperSelectVal = paperSelect ? paperSelect.value : "";
+  let assocPaperId = null;
+  let assocPaperTitle = "";
+  let assocPaperDoi = "";
+
+  if (paperSelectVal === "__custom__") {
+    assocPaperTitle = (document.getElementById("struct-paper-title")?.value || "").trim();
+    assocPaperDoi = (document.getElementById("struct-paper-doi")?.value || "").trim();
+  } else if (paperSelectVal) {
+    assocPaperId = Number(paperSelectVal);
+    const p = (STATE.papers || []).find(x => x.id === assocPaperId);
+    if (p) {
+      assocPaperTitle = p.title || "";
+      assocPaperDoi = p.doi || "";
+    }
+  }
+
   const payload = {
     name,
     formula,
     chemical_formula: formula,
+    associated_paper_id: assocPaperId,
+    associated_paper_title: assocPaperTitle,
+    associated_paper_doi: assocPaperDoi,
     crystal_system: crystalSystem,
     space_group: spaceGroup,
     structure_type: structureType,
