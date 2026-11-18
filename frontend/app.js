@@ -8292,6 +8292,7 @@ function resetAllStructureFilters() {
   const clearBtn = document.getElementById("struct-search-clear");
   if (clearBtn) clearBtn.style.display = "none";
 
+  STATE.structCurrentPage = 1;
   renderStructuresList();
   showToast("Filters reset.", "info");
 }
@@ -8467,6 +8468,113 @@ function exportStructuresTableCsv() {
   showToast(`Exported ${list.length} materials to CSV.`, "success");
 }
 window.exportStructuresTableCsv = exportStructuresTableCsv;
+
+/* ============================================================================
+   Crystal Structures Scientific Pagination (5 / 20 / 50 / 100 / ... per page)
+   ============================================================================ */
+const STRUCT_PAGE_SIZE_PRESETS = {
+  details: { options: [5, 20, 50, 100, 200, 300, 500, 1000], defaultSize: 20 },
+  cards:   { options: [6, 12, 24, 48, 96], defaultSize: 12 },
+  grouped: { options: [5, 10, 20, 50, 100], defaultSize: 10 },
+  compact: { options: [10, 20, 50, 100, 200], defaultSize: 20 }
+};
+
+function getStructPageSize(mode) {
+  const m = STRUCT_PAGE_SIZE_PRESETS[mode] ? mode : "details";
+  if (!STATE.structPageSizes) STATE.structPageSizes = {};
+  if (STATE.structPageSizes[m]) return STATE.structPageSizes[m];
+  try {
+    const saved = parseInt(localStorage.getItem(`matsci_struct_pagesize_${m}`), 10);
+    if (saved && STRUCT_PAGE_SIZE_PRESETS[m].options.includes(saved)) {
+      STATE.structPageSizes[m] = saved;
+      return saved;
+    }
+  } catch (e) {}
+  STATE.structPageSizes[m] = STRUCT_PAGE_SIZE_PRESETS[m].defaultSize;
+  return STATE.structPageSizes[m];
+}
+
+function setStructPageSize(size) {
+  const mode = STATE.structViewMode || "details";
+  const m = STRUCT_PAGE_SIZE_PRESETS[mode] ? mode : "details";
+  if (!STATE.structPageSizes) STATE.structPageSizes = {};
+  STATE.structPageSizes[m] = Number(size);
+  STATE.structCurrentPage = 1;
+  try {
+    localStorage.setItem(`matsci_struct_pagesize_${m}`, String(size));
+  } catch (e) {}
+  renderStructuresList();
+}
+window.setStructPageSize = setStructPageSize;
+
+function setStructPage(pageNum) {
+  const n = parseInt(pageNum, 10);
+  if (!Number.isNaN(n)) {
+    STATE.structCurrentPage = Math.max(1, n);
+  }
+  renderStructuresList();
+  const shell = document.getElementById("mp-explorer-shell");
+  if (shell) shell.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+window.setStructPage = setStructPage;
+
+function jumpToStructPageFromInput() {
+  const inp = document.getElementById("struct-page-jump-input");
+  if (!inp) return;
+  setStructPage(inp.value);
+}
+window.jumpToStructPageFromInput = jumpToStructPageFromInput;
+
+function renderStructPaginationBar(totalItems, currentPage, pageSize, mode) {
+  const bar = document.getElementById("struct-pagination-bar");
+  if (!bar) return;
+  if (totalItems === 0) {
+    bar.style.display = "none";
+    bar.innerHTML = "";
+    return;
+  }
+
+  const m = STRUCT_PAGE_SIZE_PRESETS[mode] ? mode : "details";
+  const options = STRUCT_PAGE_SIZE_PRESETS[m].options;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const isFirst = currentPage <= 1;
+  const isLast = currentPage >= totalPages;
+  const startItem = (currentPage - 1) * pageSize + 1;
+  const endItem = Math.min(totalItems, currentPage * pageSize);
+
+  const sizeLinksHtml = options.map(opt => {
+    if (opt === pageSize) {
+      return `<span class="mp-pg-size-active">${opt}</span>`;
+    }
+    return `<button type="button" class="mp-pg-link mp-pg-size-btn" onclick="setStructPageSize(${opt})">${opt}</button>`;
+  }).join(" ");
+
+  bar.style.display = "flex";
+  bar.innerHTML = `
+    <div class="mp-pg-nav">
+      <button type="button" class="mp-pg-link ${isFirst ? "disabled" : ""}" ${isFirst ? "disabled" : `onclick="setStructPage(1)"`}>◀◀ First</button>
+      <span class="mp-pg-sep">|</span>
+      <button type="button" class="mp-pg-link ${isFirst ? "disabled" : ""}" ${isFirst ? "disabled" : `onclick="setStructPage(${currentPage - 1})"`}>◀ Previous ${pageSize}</button>
+      <span class="mp-pg-sep">|</span>
+      <span class="mp-pg-jump">
+        <button type="button" class="mp-pg-go-btn" onclick="jumpToStructPageFromInput()">Page</button>
+        <input type="number" id="struct-page-jump-input" class="mp-pg-input" min="1" max="${totalPages}" value="${currentPage}" onkeydown="if(event.key==='Enter'){jumpToStructPageFromInput();}" aria-label="Page number" />
+        <span>of <strong>${totalPages}</strong></span>
+      </span>
+      <span class="mp-pg-sep">|</span>
+      <button type="button" class="mp-pg-link ${isLast ? "disabled" : ""}" ${isLast ? "disabled" : `onclick="setStructPage(${currentPage + 1})"`}>Next ${pageSize} ▶</button>
+      <span class="mp-pg-sep">|</span>
+      <button type="button" class="mp-pg-link ${isLast ? "disabled" : ""}" ${isLast ? "disabled" : `onclick="setStructPage(${totalPages})"`}>Last ▶▶</button>
+      <span class="mp-pg-sep">|</span>
+      <span class="mp-pg-display">
+        <span>Display</span>
+        ${sizeLinksHtml}
+        <span>entries per page</span>
+      </span>
+    </div>
+    <div class="mp-pg-summary">Showing ${startItem}–${endItem} of ${totalItems}</div>
+  `;
+}
 
 function getExistingProjectFolders() {
   const folders = new Set();
@@ -8723,6 +8831,7 @@ window.toggleSelectAllInFolder = toggleSelectAllInFolder;
 
 function setStructureDisplayMode(mode) {
   STATE.structViewMode = mode;
+  STATE.structCurrentPage = 1;
   try {
     localStorage.setItem("matsci_struct_view_mode", mode);
   } catch (e) {}
@@ -8981,6 +9090,7 @@ function renderStructuresList() {
   if (!container) return;
 
   if (filtered.length === 0) {
+    renderStructPaginationBar(0, 1, getStructPageSize(currentMode), currentMode);
     container.className = "mp-empty-state";
     container.innerHTML = `<div style="padding:48px 20px; text-align:center; color:#64748b;">
       <div style="font-weight:600; font-size:14px; color:#334155; margin-bottom:4px;">No matching materials found</div>
@@ -8988,6 +9098,15 @@ function renderStructuresList() {
     </div>`;
     return;
   }
+
+  // Compute Pagination Slice (Per-View-Mode Page Size: Table 5/20/50/..., Cards 6/12/24/..., Folders 5/10/20/...)
+  const pageSize = getStructPageSize(currentMode);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(Math.max(1, Number(STATE.structCurrentPage || 1)), totalPages);
+  STATE.structCurrentPage = currentPage;
+  const pageStart = (currentPage - 1) * pageSize;
+  const paged = filtered.slice(pageStart, pageStart + pageSize);
+  renderStructPaginationBar(filtered.length, currentPage, pageSize, currentMode);
 
   // Helper to render linked paper snippet
   function renderLinkedPaperHtml(s) {
@@ -9104,13 +9223,13 @@ function renderStructuresList() {
   // RENDER BASED ON ACTIVE VIEW MODE:
   if (currentMode === "cards") {
     container.className = "struct-grid";
-    container.innerHTML = filtered.map(renderSingleCardHtml).join("");
+    container.innerHTML = paged.map(renderSingleCardHtml).join("");
     return;
   }
 
   if (currentMode === "details") {
     container.className = "mp-table-wrap";
-    const allSelected = filtered.length > 0 && filtered.every(s => STATE.selectedStructureIds.has(Number(s.id)));
+    const allSelected = paged.length > 0 && paged.every(s => STATE.selectedStructureIds.has(Number(s.id)));
     const cols = mpGetVisibleColumns();
     const curSort = STATE.structSortBy || "default";
 
@@ -9125,7 +9244,7 @@ function renderStructuresList() {
     const svgEdit = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
     const svgTrash = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
 
-    const canAnyModify = Boolean(STATE.auth && STATE.auth.isLoggedIn) && filtered.some(s => Boolean(STATE.auth.isAdmin) || !s._sharedFromAdmin);
+    const canAnyModify = Boolean(STATE.auth && STATE.auth.isLoggedIn) && paged.some(s => Boolean(STATE.auth.isAdmin) || !s._sharedFromAdmin);
 
     let thHtml = "";
     if (canAnyModify) {
@@ -9145,7 +9264,7 @@ function renderStructuresList() {
     thHtml += `<th class="mp-th-actions ${canAnyModify ? 'mp-th-actions-wide' : ''}"></th>`;
 
     let rowsHtml = "";
-    filtered.forEach(s => {
+    paged.forEach(s => {
       const isSelected = STATE.selectedStructureIds && STATE.selectedStructureIds.has(Number(s.id));
       const canModifyItem = Boolean(STATE.auth && STATE.auth.isLoggedIn) && (Boolean(STATE.auth.isAdmin) || !s._sharedFromAdmin);
       const paperDoi = s.associated_paper_doi || "";
@@ -9229,7 +9348,7 @@ function renderStructuresList() {
     container.className = "struct-compact-list";
     let listHtml = "";
 
-    filtered.forEach(s => {
+    paged.forEach(s => {
       const isSelected = STATE.selectedStructureIds && STATE.selectedStructureIds.has(Number(s.id));
       const canModifyItem = Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin;
       const paperDoi = s.associated_paper_doi || "";
@@ -9292,7 +9411,7 @@ function renderStructuresList() {
     // Build groups mapping
     const groupsMap = new Map();
 
-    filtered.forEach(s => {
+    paged.forEach(s => {
       let gKey = "General Research";
       let gTitle = "General Research";
       let gIcon = "📁";
