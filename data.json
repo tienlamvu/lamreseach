@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T11:29:31.110Z",
+  "exported_at": "2026-11-18T11:29:55.767Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -458,6 +458,27 @@
     "weekly_report_allowed_users": []
   },
   "papers": [
+    {
+      "id": 1795001237985,
+      "doi": "10.1103/physrevb.106.235414",
+      "title": "Structural defects in a Janus MoSSe monolayer: A density functional theory study",
+      "authors": "Hamid Mehdipour, Peter Kratzer",
+      "journal": "Physical Review B",
+      "year": 2022,
+      "volume": "106",
+      "pages": "",
+      "abstract": "",
+      "citation_count": 30,
+      "material_system": "Perovskite / 2D Material",
+      "synthesis_method": "First-principles DFT",
+      "characterization_tags": "DFT, VASP, XRD",
+      "status": "To Read",
+      "notes": "",
+      "in_weekly_report": 1,
+      "visibility": "Public",
+      "allowed_users": [],
+      "allowed_groups": []
+    },
     {
       "id": 1794980221631,
       "doi": "10.1103/physrevb.104.035409",
@@ -5851,13 +5872,13 @@
     }
   },
   "deleted_users": [
+    "test.researcher@skku.edu",
+    "aaa@gmail.com",
     "jhpark.matsci@skku.edu",
+    "temp.delete.test@gmail.com",
     "minseo.kim@gmail.com",
     "ssk@gmail.com",
     "las@gmail.com",
-    "test.researcher@skku.edu",
-    "aaa@gmail.com",
-    "temp.delete.test@gmail.com",
     "test.relay.otp@skku.edu",
     "linh@gmail.com",
     "a@gmail.com",
@@ -5865,13 +5886,13 @@
     "jaewon@skku.edu"
   ],
   "deleted_users_map": {
+    "test.researcher@skku.edu": 1794983284716,
+    "aaa@gmail.com": 1794983284716,
     "jhpark.matsci@skku.edu": 1794983284716,
+    "temp.delete.test@gmail.com": 1794983284716,
     "minseo.kim@gmail.com": 1794983284716,
     "ssk@gmail.com": 1794983284716,
     "las@gmail.com": 1794983284716,
-    "test.researcher@skku.edu": 1794983284716,
-    "aaa@gmail.com": 1794983284716,
-    "temp.delete.test@gmail.com": 1794983284716,
     "test.relay.otp@skku.edu": 1794983284716,
     "linh@gmail.com": 1794983284716,
     "a@gmail.com": 1794983284716,
