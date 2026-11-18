@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T06:27:12.319Z",
+  "exported_at": "2026-11-18T06:27:32.083Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -3923,7 +3923,14 @@
       "id": 1794571475791,
       "project_folder": "2D Tellurium & Anisotropic Semicond.",
       "structural_id": "CD-0005",
-      "calc_status": "Relaxed"
+      "calc_status": "Relaxed",
+      "is_starred": false,
+      "associated_paper_id": null,
+      "associated_paper_title": "",
+      "associated_paper_doi": "",
+      "visibility": "Public",
+      "allowed_users": [],
+      "allowed_groups": []
     },
     {
       "name": "MoSSe",
