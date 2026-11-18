@@ -5674,19 +5674,22 @@ body.is-admin #cv-exclusive-owner-notice {
   vertical-align: middle;
 }
 
-.mp-col-mat     { width: 21%; }
-.mp-col-formula { width: 12.5%; }
-.mp-col-sys     { width: 11.5%; }
-.mp-col-sg      { width: 12.5%; }
-.mp-col-lat     { width: 15%; }
-.mp-col-vol     { width: 10.5%; }
-.mp-col-eg      { width: 12%; }
-.mp-col-dft     { width: 11%; }
-.mp-col-folder  { width: 15%; }
-.mp-col-paper   { width: 9%; }
+.mp-col-sid     { width: 12%; }
+.mp-col-mat     { width: 17%; }
+.mp-col-formula { width: 11.5%; }
+.mp-col-sys     { width: 10.5%; }
+.mp-col-sg      { width: 11.5%; }
+.mp-col-lat     { width: 14%; }
+.mp-col-vol     { width: 9.5%; }
+.mp-col-eg      { width: 11%; }
+.mp-col-status  { width: 9.5%; }
+.mp-col-dft     { width: 10.5%; }
+.mp-col-mpid    { width: 9%; }
+.mp-col-folder  { width: 13.5%; }
+.mp-col-paper   { width: 8.5%; }
 .mp-col-aud     { width: 8%; }
-.mp-th-actions  { width: 64px; text-align: right !important; }
-.mp-th-actions-wide { width: 112px; }
+.mp-th-actions  { width: 62px; text-align: right !important; }
+.mp-th-actions-wide { width: 108px; }
 
 /* Table Rows */
 .mp-tr {
@@ -5971,4 +5974,143 @@ body.is-admin #cv-exclusive-owner-notice {
     width: 100%;
     text-align: right;
   }
+}
+
+/* ============================================================================
+   Smart Structural ID, Starred Pins, Duplicate Indicator & Workflow Status (v86)
+   ============================================================================ */
+.mp-td-sid {
+  padding-left: 8px !important;
+  padding-right: 4px !important;
+}
+
+.mp-sid-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.mp-star-btn {
+  border: none;
+  background: transparent;
+  padding: 0 2px;
+  font-size: 13px;
+  line-height: 1;
+  color: #cbbba6;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.12s, transform 0.12s;
+}
+
+.mp-tr:hover .mp-star-btn {
+  color: #a68c74;
+}
+
+.mp-star-btn:hover {
+  color: #d97706 !important;
+  transform: scale(1.15);
+}
+
+.mp-star-btn.starred {
+  color: #d97706 !important;
+}
+
+.mp-sid-link {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: #9a3412;
+  text-decoration: none;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+}
+
+.mp-sid-link:hover {
+  color: #7c2d12;
+  text-decoration: underline;
+}
+
+.mp-copy-sid-btn {
+  border: none;
+  background: transparent;
+  padding: 2px;
+  color: #b5a391;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  opacity: 0;
+  flex-shrink: 0;
+  transition: opacity 0.12s, color 0.12s, background 0.12s;
+}
+
+.mp-tr:hover .mp-copy-sid-btn,
+.mp-copy-sid-btn:focus {
+  opacity: 1;
+}
+
+.mp-copy-sid-btn:hover {
+  background: #eee4d6;
+  color: #3d2b1f;
+}
+
+.mp-dup-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #b83b32;
+  flex-shrink: 0;
+}
+
+.mp-card-sid {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #7c2d12;
+  background: #faecd4;
+  border: 1px solid #e2c598;
+  border-radius: 4px;
+  padding: 1px 6px;
+  cursor: pointer;
+}
+
+.mp-card-sid:hover {
+  background: #f5dfb8;
+}
+
+.mp-status-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.mp-status-relaxed   { background: #f5ece0; color: #78350f; }
+.mp-status-unrelaxed { background: #f2ece4; color: #5c493c; }
+.mp-status-scfdos    { background: #fef3c7; color: #92400e; }
+.mp-status-running   { background: #fce6e2; color: #9f2b22; }
+.mp-status-published { background: #faecd4; color: #8c3b14; border: 1px solid #e2c598; }
+
+.mp-smart-summary {
+  font-size: 11px;
+  color: #847062;
+  margin-top: 6px;
+}
+
+.mp-dup-alert {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  background: #fdf2f0;
+  border: 1px solid #ecc0ba;
+  color: #8c2620;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  margin-bottom: 12px;
 }
