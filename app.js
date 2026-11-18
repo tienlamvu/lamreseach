@@ -8886,29 +8886,29 @@ function renderStructuresList() {
     const svgEdit = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
     const svgTrash = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
 
-    const canAnyModify = filtered.some(s => Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin);
+    const canAnyModify = Boolean(STATE.auth && STATE.auth.isLoggedIn) && filtered.some(s => Boolean(STATE.auth.isAdmin) || !s._sharedFromAdmin);
 
     let thHtml = "";
     if (canAnyModify) {
       thHtml += `<th class="mp-th-cb"><input type="checkbox" id="struct-select-all-cb" ${allSelected ? "checked" : ""} onchange="toggleSelectAllStructures(this.checked)" title="Select / Deselect All" /></th>`;
     }
-    thHtml += `<th class="mp-th-sortable mp-col-mat" onclick="mpSortByColumn('name')" title="Click to sort by Material">Material ${sortIcon('name-asc', 'name-desc')}</th>`;
-    if (cols.formula)    thHtml += `<th class="mp-th-sortable mp-col-formula" onclick="mpSortByColumn('formula')" title="Click to sort by Formula">Formula ${sortIcon('formula-asc', '__none')}</th>`;
+    thHtml += `<th class="mp-th-sortable mp-col-mat" onclick="mpSortByColumn('name')" title="Click to sort by Material"><div class="mp-th-inner"><span>Material</span>${sortIcon('name-asc', 'name-desc')}</div></th>`;
+    if (cols.formula)    thHtml += `<th class="mp-th-sortable mp-col-formula" onclick="mpSortByColumn('formula')" title="Click to sort by Formula"><div class="mp-th-inner"><span>Formula</span>${sortIcon('formula-asc', '__none')}</div></th>`;
     if (cols.system)     thHtml += `<th class="mp-col-sys">Crystal System</th>`;
     if (cols.spacegroup) thHtml += `<th class="mp-col-sg">Space Group</th>`;
     if (cols.lattice)    thHtml += `<th class="mp-col-lat">Lattice (a, b, c)</th>`;
-    if (cols.volume)     thHtml += `<th class="mp-th-sortable mp-col-vol" onclick="mpSortByColumn('volume')" title="Click to sort by Volume">Volume (Å³) ${sortIcon('vol-asc', 'vol-desc')}</th>`;
-    if (cols.bandgap)    thHtml += `<th class="mp-th-sortable mp-col-eg" onclick="mpSortByColumn('bandgap')" title="Click to sort by Band Gap">Band Gap (eV) ${sortIcon('bandgap-asc', 'bandgap-desc')}</th>`;
+    if (cols.volume)     thHtml += `<th class="mp-th-sortable mp-col-vol" onclick="mpSortByColumn('volume')" title="Click to sort by Volume"><div class="mp-th-inner"><span>Volume (Å³)</span>${sortIcon('vol-asc', 'vol-desc')}</div></th>`;
+    if (cols.bandgap)    thHtml += `<th class="mp-th-sortable mp-col-eg" onclick="mpSortByColumn('bandgap')" title="Click to sort by Band Gap"><div class="mp-th-inner"><span>Band Gap (eV)</span>${sortIcon('bandgap-asc', 'bandgap-desc')}</div></th>`;
     if (cols.dft)        thHtml += `<th class="mp-col-dft">DFT Method</th>`;
     if (cols.folder)     thHtml += `<th class="mp-col-folder">Project Folder</th>`;
     if (cols.paper)      thHtml += `<th class="mp-col-paper">Publication</th>`;
     if (cols.audience)   thHtml += `<th class="mp-col-aud">Visibility</th>`;
-    thHtml += `<th class="mp-th-actions"></th>`;
+    thHtml += `<th class="mp-th-actions ${canAnyModify ? 'mp-th-actions-wide' : ''}"></th>`;
 
     let rowsHtml = "";
     filtered.forEach(s => {
       const isSelected = STATE.selectedStructureIds && STATE.selectedStructureIds.has(Number(s.id));
-      const canModifyItem = Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin;
+      const canModifyItem = Boolean(STATE.auth && STATE.auth.isLoggedIn) && (Boolean(STATE.auth.isAdmin) || !s._sharedFromAdmin);
       const paperDoi = s.associated_paper_doi || "";
       const paperTitle = s.associated_paper_title || "";
       const hasPaper = Boolean(paperDoi || paperTitle || s.associated_paper_id);
