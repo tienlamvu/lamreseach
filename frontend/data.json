@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T11:09:08.732Z",
+  "exported_at": "2026-11-18T11:10:26.175Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -4561,9 +4561,9 @@
       "passwordPlainHint": "••••••••",
       "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
       "registeredAt": "2026-11-16 11:31",
-      "lastLoginAt": "2026-11-18 09:29",
-      "lastUpdatedAt": "2026-11-18 20:01",
-      "updatedAtMs": 1794999711543,
+      "lastLoginAt": "2026-11-18 20:09",
+      "lastUpdatedAt": "2026-11-18 20:10",
+      "updatedAtMs": 1795000225249,
       "workspace": {
         "papers": [
           {
@@ -5130,6 +5130,12 @@
         ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-18 20:09",
+          "category": "Session",
+          "action": "Signed In (Email & Password)",
+          "detail": "Authenticated as Tien Lam (lamvt.sep@gmail.com)"
+        },
         {
           "timestamp": "2026-11-18 15:37",
           "category": "Crystal Structures",
@@ -5964,36 +5970,36 @@
       "color": "blue",
       "description": "User group created by Administrator",
       "members": [
-        "lamvt.sep@gmail.com",
         "tlamvux@gmail.com",
+        "lamvt.sep@gmail.com",
         "lamvt@g.skku.edu"
       ],
       "updatedAtMs": 1794998976113
     }
   },
   "deleted_users": [
-    "test.researcher@skku.edu",
-    "aaa@gmail.com",
-    "a@gmail.com",
     "jhpark.matsci@skku.edu",
-    "temp.delete.test@gmail.com",
     "minseo.kim@gmail.com",
     "ssk@gmail.com",
     "las@gmail.com",
+    "test.researcher@skku.edu",
+    "aaa@gmail.com",
+    "temp.delete.test@gmail.com",
     "test.relay.otp@skku.edu",
-    "linh@gmail.com"
+    "linh@gmail.com",
+    "a@gmail.com"
   ],
   "deleted_users_map": {
-    "test.researcher@skku.edu": 1794983284716,
-    "aaa@gmail.com": 1794983284716,
-    "a@gmail.com": 1794983284716,
     "jhpark.matsci@skku.edu": 1794983284716,
-    "temp.delete.test@gmail.com": 1794983284716,
     "minseo.kim@gmail.com": 1794983284716,
     "ssk@gmail.com": 1794983284716,
     "las@gmail.com": 1794983284716,
+    "test.researcher@skku.edu": 1794983284716,
+    "aaa@gmail.com": 1794983284716,
+    "temp.delete.test@gmail.com": 1794983284716,
     "test.relay.otp@skku.edu": 1794983284716,
-    "linh@gmail.com": 1794983284716
+    "linh@gmail.com": 1794983284716,
+    "a@gmail.com": 1794983284716
   },
   "deleted_groups": [
     "grp_external_collab",
