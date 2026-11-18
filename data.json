@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T11:09:07.757Z",
+  "exported_at": "2026-11-18T11:09:08.732Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -4446,7 +4446,7 @@
             "project_folder": "User: Jaewon Kim",
             "owner_email": "jaewon@skku.edu",
             "owner_name": "Jaewon Kim",
-            "id": 1795000135977
+            "id": 1795000148122
           }
         ],
         "structures": [
@@ -4498,7 +4498,7 @@
             "allowed_groups": [],
             "owner_email": "jaewon@skku.edu",
             "owner_name": "Jaewon Kim",
-            "id": 1795000135977
+            "id": 1795000148122
           }
         ],
         "schedule": [],
@@ -4514,21 +4514,21 @@
       },
       "activityLog": [
         {
-          "timestamp": "2026-11-18 20:08",
+          "timestamp": "2026-11-18 20:09",
           "category": "References",
           "action": "Added Paper",
           "detail": "User A Secret Paper on FeSiO (Nano Lett.)"
         },
         {
-          "timestamp": "2026-11-18 20:08",
+          "timestamp": "2026-11-18 20:09",
           "category": "Crystal Structures",
           "action": "Added Structure",
           "detail": "KNaFeSi4O10 — KNaFe(Si2O5)2 (Pm-3m (221))"
         }
       ],
       "groups": [],
-      "lastUpdatedAt": "2026-11-18 20:08",
-      "updatedAtMs": 1795000135977
+      "lastUpdatedAt": "2026-11-18 20:09",
+      "updatedAtMs": 1795000148122
     },
     "alice@skku.edu": {
       "email": "alice@skku.edu",
