@@ -1554,7 +1554,11 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
       papers: masterPapers,
       structures: masterStructures,
       schedule: masterSchedule,
-      event_categories: getEventCategoriesList(),
+      event_categories: isStrictAdmin
+        ? ensureEventCategoriesInitialized()
+        : ((remoteDb && Array.isArray(remoteDb.event_categories) && remoteDb.event_categories.length > 0)
+            ? remoteDb.event_categories
+            : ensureEventCategoriesInitialized()),
       users_registry: sanitizedCloudUsers,
       user_groups: STATE.userGroups || {},
       deleted_users: Object.keys(deletedMap).filter(em => !sanitizedCloudUsers[em] && (!STATE.auth || normalizeEmail(STATE.auth.email) !== em)),
@@ -2540,7 +2544,10 @@ function applyActiveWorkspaceData() {
     const ownStructures = (Array.isArray(u.workspace.structures) ? u.workspace.structures : [])
       .filter(x => !x._sharedFromAdmin)
       .map(s => {
-        s.project_folder = userFolder;
+        const ownFolder = (s.project_folder && typeof s.project_folder === "string" && s.project_folder.trim() && !isPersonalUserFolderName(s.project_folder))
+          ? s.project_folder.trim()
+          : "General Research";
+        s.project_folder = ownFolder;
         s.visibility = "Private";
         s.allowed_users = [];
         s.owner_email = activeUserEmail;
@@ -2602,11 +2609,19 @@ function applyActiveWorkspaceData() {
           userPapersAll.push({ ...p, _fromUserEmail: normEmail, _fromUserName: u.name || normEmail });
         });
         (Array.isArray(ws.structures) ? ws.structures : []).filter(s => !s._sharedFromAdmin).forEach(s => {
-          s.project_folder = userFolder;
-          s.visibility = "Private";
-          s.owner_email = normEmail;
-          s.owner_name = u.name || normEmail;
-          userStructuresAll.push({ ...s, _fromUserEmail: normEmail, _fromUserName: u.name || normEmail });
+          const origFolder = (s.project_folder && typeof s.project_folder === "string" && s.project_folder.trim() && !isPersonalUserFolderName(s.project_folder))
+            ? s.project_folder.trim()
+            : "General Research";
+          userStructuresAll.push({
+            ...s,
+            _originalUserFolder: origFolder,
+            project_folder: userFolder,
+            visibility: "Private",
+            owner_email: normEmail,
+            owner_name: u.name || normEmail,
+            _fromUserEmail: normEmail,
+            _fromUserName: u.name || normEmail
+          });
         });
       });
 
@@ -9245,7 +9260,7 @@ async function handleBatchCifFiles(fileList) {
   ensureStructuralIds();
   const isAdminNow = isStrictAdminSession();
   const curPersonalUser = !isAdminNow ? getCurrentPersonalUserRecord() : null;
-  const lockedUserFolder = !isAdminNow ? getPersonalUserFolderName(curPersonalUser) : null;
+  const userEditableFolders = !isAdminNow ? getPersonalUserEditableFolders() : [];
   const visMeta = isAdminNow
     ? getVisibilityControlValues("cif-upload")
     : {
@@ -9290,8 +9305,10 @@ async function handleBatchCifFiles(fileList) {
       if (dups.length > 0) dupCount++;
 
       const structuralId = generateNextStructuralId();
-      const autoFolder = lockedUserFolder
-        ? lockedUserFolder
+      const autoFolder = !isAdminNow
+        ? ((activeFolderFilter && activeFolderFilter !== "ALL" && userEditableFolders.includes(activeFolderFilter))
+            ? activeFolderFilter
+            : "General Research")
         : ((activeFolderFilter && activeFolderFilter !== "ALL" && !isPersonalUserFolderName(activeFolderFilter))
             ? activeFolderFilter
             : autoCategorizeStructureFolder(candidate));
@@ -10996,88 +11013,150 @@ function paginateListSlice(key, items) {
   return items.slice(start, start + pageSize);
 }
 
+function ensurePersonalUserCustomFolders(u) {
+  if (!u || typeof u !== "object") return [];
+  u.workspace = u.workspace || { schedule: [], papers: [], structures: [], expReportRows: [], litReportRows: [] };
+  if (!Array.isArray(u.workspace.customFolders)) {
+    u.workspace.customFolders = [];
+  }
+  return u.workspace.customFolders;
+}
+
+function getPersonalUserEditableFolders() {
+  const folderSet = new Set(["General Research"]);
+  const activeEmail = getActivePersonalWorkspaceEmail();
+  const u = (activeEmail && STATE.usersRegistry) ? STATE.usersRegistry[activeEmail] : null;
+  if (u) {
+    ensurePersonalUserCustomFolders(u).forEach(f => {
+      const trimmed = (f && typeof f === "string") ? f.trim() : "";
+      if (trimmed && !isPersonalUserFolderName(trimmed)) folderSet.add(trimmed);
+    });
+  }
+  (STATE.structures || []).forEach(s => {
+    if (s._sharedFromAdmin || s._fromUserEmail) return;
+    const f = (s.project_folder && typeof s.project_folder === "string") ? s.project_folder.trim() : "";
+    if (f && !isPersonalUserFolderName(f)) folderSet.add(f);
+  });
+  return Array.from(folderSet).sort((a, b) => a.localeCompare(b));
+}
+window.getPersonalUserEditableFolders = getPersonalUserEditableFolders;
+
+function getEditableProjectFolders() {
+  if (!isStrictAdminSession()) {
+    return getPersonalUserEditableFolders();
+  }
+  const adminFolders = new Set();
+  (STATE.structures || []).forEach(s => {
+    if (s._fromUserEmail) return;
+    const f = (s.project_folder && typeof s.project_folder === "string") ? s.project_folder.trim() : "";
+    if (f && !isPersonalUserFolderName(f)) adminFolders.add(f);
+  });
+  if (STATE.masterData && Array.isArray(STATE.masterData.structures)) {
+    STATE.masterData.structures.forEach(s => {
+      const f = (s.project_folder && typeof s.project_folder === "string") ? s.project_folder.trim() : "";
+      if (f && !isPersonalUserFolderName(f)) adminFolders.add(f);
+    });
+  }
+  if (STATE.customProjectFolders) {
+    STATE.customProjectFolders.forEach(f => {
+      const trimmed = (f && typeof f === "string") ? f.trim() : "";
+      if (trimmed && !isPersonalUserFolderName(trimmed)) adminFolders.add(trimmed);
+    });
+  }
+  if (adminFolders.size === 0) adminFolders.add("General Research");
+  return Array.from(adminFolders).sort((a, b) => a.localeCompare(b));
+}
+window.getEditableProjectFolders = getEditableProjectFolders;
+
 function getExistingProjectFolders() {
   const isAdmin = isStrictAdminSession();
-  const adminFolders = new Set();
-  const userFolders = new Set();
-
-  (STATE.structures || []).forEach(s => {
-    const f = (s.project_folder && typeof s.project_folder === "string") ? s.project_folder.trim() : "";
-    if (!f) return;
-    if (isPersonalUserFolderName(f)) {
-      // Non-admin only sees their own folder (already filtered by STATE.structures)
-      userFolders.add(f);
-    } else {
-      adminFolders.add(f);
-    }
-  });
-
   if (isAdmin) {
-    if (STATE.masterData && Array.isArray(STATE.masterData.structures)) {
-      STATE.masterData.structures.forEach(s => {
-        const f = (s.project_folder && typeof s.project_folder === "string") ? s.project_folder.trim() : "";
-        if (f && !isPersonalUserFolderName(f)) adminFolders.add(f);
-      });
-    }
-    if (STATE.customProjectFolders) {
-      STATE.customProjectFolders.forEach(f => {
-        const trimmed = (f && typeof f === "string") ? f.trim() : "";
-        if (trimmed && !isPersonalUserFolderName(trimmed)) adminFolders.add(trimmed);
-      });
-    }
+    const adminFolders = new Set(getEditableProjectFolders());
+    const userFolders = new Set();
     // Include every registered user's dedicated private folder for Admin screening
     Object.values(STATE.usersRegistry || {}).forEach(u => {
       if (u && u.email) {
         userFolders.add(getPersonalUserFolderName(u));
       }
     });
+    (STATE.structures || []).forEach(s => {
+      const f = (s.project_folder && typeof s.project_folder === "string") ? s.project_folder.trim() : "";
+      if (f && isPersonalUserFolderName(f)) userFolders.add(f);
+    });
+    const sortedAdmin = Array.from(adminFolders).sort((a, b) => a.localeCompare(b));
+    const sortedUsers = Array.from(userFolders).sort((a, b) => a.localeCompare(b));
+    return [...sortedAdmin, ...sortedUsers];
   }
 
-  if (adminFolders.size === 0 && userFolders.size === 0) {
-    adminFolders.add("General Research");
-  }
-  const sortedAdmin = Array.from(adminFolders).sort((a, b) => a.localeCompare(b));
-  const sortedUsers = Array.from(userFolders).sort((a, b) => a.localeCompare(b));
-  return [...sortedAdmin, ...sortedUsers];
+  // Personal User (or Public Visitor): own editable folders + any shared Admin folders visible on loaded structures
+  const activeEmail = getActivePersonalWorkspaceEmail();
+  const visibleFolders = new Set(activeEmail ? getPersonalUserEditableFolders() : []);
+  (STATE.structures || []).forEach(s => {
+    const f = (s.project_folder && typeof s.project_folder === "string") ? s.project_folder.trim() : "";
+    if (f && !isPersonalUserFolderName(f)) visibleFolders.add(f);
+  });
+  if (visibleFolders.size === 0) visibleFolders.add("General Research");
+  return Array.from(visibleFolders).sort((a, b) => a.localeCompare(b));
 }
 window.getExistingProjectFolders = getExistingProjectFolders;
 
 function populateProjectFolderDropdowns(selectedForModal = null) {
   const isAdmin = isStrictAdminSession();
   const folders = getExistingProjectFolders();
-  const adminFolders = folders.filter(f => !isPersonalUserFolderName(f));
-  const userFolders = folders.filter(f => isPersonalUserFolderName(f));
+  const editableFolders = getEditableProjectFolders();
 
   // 1. Filter dropdown: #struct-project-filter (Clean text, Materials Project style)
   const filterSel = document.getElementById("struct-project-filter");
   if (filterSel) {
     const curVal = filterSel.value || "ALL";
     let optHtml = `<option value="ALL">All Folders (${folders.length})</option>`;
-    adminFolders.forEach(f => {
-      const count = (STATE.structures || []).filter(s => (s.project_folder || "General Research") === f).length;
-      optHtml += `<option value="${escapeHtml(f)}"${curVal === f ? " selected" : ""}>${escapeHtml(f)} (${count})</option>`;
-    });
-    if (userFolders.length > 0) {
-      if (isAdmin) {
-        optHtml += `<optgroup label="User Private Folders (Admin Only)">`;
-      }
-      userFolders.forEach(f => {
+    if (isAdmin) {
+      const adminFolders = folders.filter(f => !isPersonalUserFolderName(f));
+      const userFolders = folders.filter(f => isPersonalUserFolderName(f));
+      adminFolders.forEach(f => {
         const count = (STATE.structures || []).filter(s => (s.project_folder || "General Research") === f).length;
         optHtml += `<option value="${escapeHtml(f)}"${curVal === f ? " selected" : ""}>${escapeHtml(f)} (${count})</option>`;
       });
-      if (isAdmin) {
+      if (userFolders.length > 0) {
+        optHtml += `<optgroup label="User Private Folders (Admin Only)">`;
+        userFolders.forEach(f => {
+          const count = (STATE.structures || []).filter(s => (s.project_folder || "General Research") === f).length;
+          optHtml += `<option value="${escapeHtml(f)}"${curVal === f ? " selected" : ""}>${escapeHtml(f)} (${count})</option>`;
+        });
         optHtml += `</optgroup>`;
       }
+    } else if (getActivePersonalWorkspaceEmail()) {
+      const editableSet = new Set(editableFolders);
+      const sharedOnlyFolders = folders.filter(f => !editableSet.has(f));
+      optHtml += `<optgroup label="My Folders">`;
+      editableFolders.forEach(f => {
+        const count = (STATE.structures || []).filter(s => (s.project_folder || "General Research") === f).length;
+        optHtml += `<option value="${escapeHtml(f)}"${curVal === f ? " selected" : ""}>${escapeHtml(f)} (${count})</option>`;
+      });
+      optHtml += `</optgroup>`;
+      if (sharedOnlyFolders.length > 0) {
+        optHtml += `<optgroup label="Shared Library Folders">`;
+        sharedOnlyFolders.forEach(f => {
+          const count = (STATE.structures || []).filter(s => (s.project_folder || "General Research") === f).length;
+          optHtml += `<option value="${escapeHtml(f)}"${curVal === f ? " selected" : ""}>${escapeHtml(f)} (${count})</option>`;
+        });
+        optHtml += `</optgroup>`;
+      }
+    } else {
+      folders.forEach(f => {
+        const count = (STATE.structures || []).filter(s => (s.project_folder || "General Research") === f).length;
+        optHtml += `<option value="${escapeHtml(f)}"${curVal === f ? " selected" : ""}>${escapeHtml(f)} (${count})</option>`;
+      });
     }
     filterSel.innerHTML = optHtml;
   }
 
-  // 2. Batch Move dropdown: #batch-struct-folder (Strict Admin Only — Admin folders only)
+  // 2. Batch Move dropdown: #batch-struct-folder (Editable folders isolated per Admin or Personal User)
   const batchSel = document.getElementById("batch-struct-folder");
   if (batchSel) {
     const curVal = batchSel.value;
     let optHtml = "";
-    (adminFolders.length > 0 ? adminFolders : ["General Research"]).forEach(f => {
+    (editableFolders.length > 0 ? editableFolders : ["General Research"]).forEach(f => {
       optHtml += `<option value="${escapeHtml(f)}"${curVal === f ? " selected" : ""}>${escapeHtml(f)}</option>`;
     });
     batchSel.innerHTML = optHtml;
@@ -11094,25 +11173,8 @@ function populateModalFolderDropdown(selectedVal = null) {
   const customInput = document.getElementById("struct-folder-custom");
   const helpEl = document.getElementById("struct-folder-help-text");
 
-  // Personal Users CANNOT change or add Crystal Structure folders — strictly locked to their personal private folder
-  if (!isStrictAdminSession()) {
-    const curUser = getCurrentPersonalUserRecord();
-    const userFolder = getPersonalUserFolderName(curUser);
-    modalSel.innerHTML = `<option value="${escapeHtml(userFolder)}" selected>${escapeHtml(userFolder)} (Personal Private Folder — Locked)</option>`;
-    modalSel.value = userFolder;
-    modalSel.disabled = true;
-    if (customInput) {
-      customInput.style.display = "none";
-      customInput.value = "";
-    }
-    if (helpEl) {
-      helpEl.textContent = "Your uploaded crystal structures are automatically stored in your dedicated private folder (visible only to you and the Administrator).";
-    }
-    return;
-  }
-
-  // Admin editing a user-uploaded structure keeps it in that user's private folder
-  if (selectedVal && isPersonalUserFolderName(selectedVal)) {
+  // Admin editing a user-uploaded structure keeps it in that user's private screening folder
+  if (isStrictAdminSession() && selectedVal && isPersonalUserFolderName(selectedVal)) {
     modalSel.innerHTML = `<option value="${escapeHtml(selectedVal)}" selected>${escapeHtml(selectedVal)} (User Private Folder — Locked)</option>`;
     modalSel.value = selectedVal;
     modalSel.disabled = true;
@@ -11126,20 +11188,31 @@ function populateModalFolderDropdown(selectedVal = null) {
     return;
   }
 
-  const adminFolders = getExistingProjectFolders().filter(f => !isPersonalUserFolderName(f));
-  if (adminFolders.length === 0) adminFolders.push("General Research");
-  const curVal = (selectedVal !== null && !isPersonalUserFolderName(selectedVal)) ? selectedVal : (modalSel.value && !isPersonalUserFolderName(modalSel.value) ? modalSel.value : "General Research");
+  const editableFolders = getEditableProjectFolders();
+  if (editableFolders.length === 0) editableFolders.push("General Research");
+  const cleanSelected = (selectedVal !== null && !isPersonalUserFolderName(selectedVal)) ? selectedVal : null;
+  if (cleanSelected && cleanSelected !== "__new__" && !editableFolders.includes(cleanSelected)) {
+    editableFolders.push(cleanSelected);
+    editableFolders.sort((a, b) => a.localeCompare(b));
+  }
+  const curVal = cleanSelected
+    ? cleanSelected
+    : (modalSel.value && !isPersonalUserFolderName(modalSel.value) && (modalSel.value === "__new__" || editableFolders.includes(modalSel.value))
+        ? modalSel.value
+        : "General Research");
 
   modalSel.disabled = false;
   let optHtml = "";
-  adminFolders.forEach(f => {
+  editableFolders.forEach(f => {
     optHtml += `<option value="${escapeHtml(f)}"${curVal === f ? " selected" : ""}>${escapeHtml(f)}</option>`;
   });
   optHtml += `<option value="__new__"${curVal === "__new__" ? " selected" : ""}>+ Create New Project Folder...</option>`;
   modalSel.innerHTML = optHtml;
 
   if (helpEl) {
-    helpEl.textContent = "Assign this crystal structure to a dedicated research project or material cluster for organized navigation.";
+    helpEl.textContent = isStrictAdminSession()
+      ? "Assign this crystal structure to a dedicated research project or material cluster for organized navigation."
+      : "Organize your private crystal structures into your own personal folders. Changes here are independent and do not affect the Administrator or other users.";
   }
   if (customInput) {
     customInput.style.display = curVal === "__new__" ? "block" : "none";
@@ -11151,11 +11224,6 @@ function handleStructFolderSelectChange() {
   const modalSel = document.getElementById("struct-folder-select");
   const customInput = document.getElementById("struct-folder-custom");
   if (!modalSel || !customInput) return;
-  if (!isStrictAdminSession()) {
-    customInput.style.display = "none";
-    customInput.value = "";
-    return;
-  }
   if (modalSel.value === "__new__") {
     customInput.style.display = "block";
     customInput.focus();
@@ -11167,9 +11235,18 @@ function handleStructFolderSelectChange() {
 window.handleStructFolderSelectChange = handleStructFolderSelectChange;
 
 function openManageFoldersModal() {
-  if (!requireStrictAdminAuth()) return;
+  if (!requireAdminAuth()) return;
   const modal = document.getElementById("manage-folders-modal");
   if (!modal) return;
+  const titleEl = document.getElementById("manage-folders-modal-title");
+  const descEl = document.getElementById("manage-folders-modal-desc");
+  if (isStrictAdminSession()) {
+    if (titleEl) titleEl.textContent = "Manage Research Project Folders";
+    if (descEl) descEl.textContent = "Organize your crystal structures and simulations by research topic, funding grant, or material family.";
+  } else {
+    if (titleEl) titleEl.textContent = "Manage My Crystal Structure Folders";
+    if (descEl) descEl.textContent = "Create, rename, or remove your own personal folders. Your folders are completely independent and never change the Administrator's or other users' folders.";
+  }
   renderManageFoldersList();
   modal.classList.add("open");
 }
@@ -11178,7 +11255,8 @@ window.openManageFoldersModal = openManageFoldersModal;
 function renderManageFoldersList() {
   const container = document.getElementById("manage-folders-list");
   if (!container) return;
-  const folders = getExistingProjectFolders();
+  const isAdmin = isStrictAdminSession();
+  const folders = isAdmin ? getExistingProjectFolders() : getPersonalUserEditableFolders();
 
   if (folders.length === 0) {
     container.innerHTML = `<div style="text-align:center; padding:16px; color:#64748b; font-size:12.5px;">No folders created yet. Type a folder name above to create one.</div>`;
@@ -11187,7 +11265,10 @@ function renderManageFoldersList() {
 
   let html = "";
   folders.forEach(f => {
-    const structuresInFolder = (STATE.structures || []).filter(s => (s.project_folder || "General Research") === f);
+    const structuresInFolder = (STATE.structures || []).filter(s => {
+      if (!isAdmin && s._sharedFromAdmin) return false;
+      return (s.project_folder || "General Research") === f;
+    });
     const count = structuresInFolder.length;
     const isUserPrivFolder = isPersonalUserFolderName(f);
 
@@ -11219,7 +11300,7 @@ function renderManageFoldersList() {
 window.renderManageFoldersList = renderManageFoldersList;
 
 function createNewProjectFolderFromInput() {
-  if (!requireStrictAdminAuth()) return;
+  if (!requireAdminAuth()) return;
   const input = document.getElementById("new-folder-name-input");
   const folderName = (input?.value || "").trim();
   if (!folderName) {
@@ -11227,26 +11308,37 @@ function createNewProjectFolderFromInput() {
     return;
   }
   if (isPersonalUserFolderName(folderName)) {
-    showToast('Folder names starting with "User:" are reserved for personal user private folders.', "warn");
+    showToast('Folder names starting with "User:" are reserved.', "warn");
     return;
   }
-  if (!STATE.customProjectFolders) STATE.customProjectFolders = new Set();
-  STATE.customProjectFolders.add(folderName);
+
+  if (isStrictAdminSession()) {
+    if (!STATE.customProjectFolders) STATE.customProjectFolders = new Set();
+    STATE.customProjectFolders.add(folderName);
+  } else {
+    const activeEmail = getActivePersonalWorkspaceEmail();
+    const u = activeEmail && STATE.usersRegistry ? STATE.usersRegistry[activeEmail] : null;
+    if (!u) return;
+    const customList = ensurePersonalUserCustomFolders(u);
+    if (!customList.includes(folderName)) customList.push(folderName);
+    persistUsersRegistryLocal();
+    saveStaticDb();
+  }
 
   input.value = "";
   populateProjectFolderDropdowns();
   renderManageFoldersList();
-  showToast(`Created project folder "${folderName}"!`, "success");
+  showToast(`Created folder "${folderName}"!`, "success");
 }
 window.createNewProjectFolderFromInput = createNewProjectFolderFromInput;
 
 function promptProjectFolderRename(oldName) {
-  if (!requireStrictAdminAuth()) return;
+  if (!requireAdminAuth()) return;
   if (isPersonalUserFolderName(oldName)) {
     showToast("Personal user private folders are managed automatically and cannot be renamed.", "warn");
     return;
   }
-  const newName = prompt(`Enter new name for project folder "${oldName}":`, oldName);
+  const newName = prompt(`Enter new name for folder "${oldName}":`, oldName);
   if (!newName || newName.trim() === "" || newName.trim() === oldName) return;
   renameProjectFolder(oldName, newName.trim());
 }
@@ -11254,33 +11346,54 @@ window.promptProjectFolderRename = promptProjectFolderRename;
 window.renameFolderPrompt = promptProjectFolderRename;
 
 function renameProjectFolder(oldName, newName) {
-  if (!requireStrictAdminAuth()) return;
+  if (!requireAdminAuth()) return;
   if (isPersonalUserFolderName(oldName) || isPersonalUserFolderName(newName)) {
-    showToast('Cannot rename personal user private folders or use the reserved "User:" prefix.', "warn");
+    showToast('Cannot rename system folders or use the reserved "User:" prefix.', "warn");
     return;
   }
   let updatedCount = 0;
-  (STATE.structures || []).forEach(s => {
-    if (!s._fromUserEmail && (s.project_folder || "General Research") === oldName) {
-      s.project_folder = newName;
-      updatedCount++;
-    }
-  });
-  if (STATE.masterData && Array.isArray(STATE.masterData.structures)) {
-    STATE.masterData.structures.forEach(s => {
-      if ((s.project_folder || "General Research") === oldName) {
+
+  if (isStrictAdminSession()) {
+    (STATE.structures || []).forEach(s => {
+      if (!s._fromUserEmail && (s.project_folder || "General Research") === oldName) {
         s.project_folder = newName;
+        updatedCount++;
       }
     });
-  }
-  if (STATE.customProjectFolders) {
-    if (STATE.customProjectFolders.has(oldName)) {
-      STATE.customProjectFolders.delete(oldName);
-      STATE.customProjectFolders.add(newName);
+    if (STATE.masterData && Array.isArray(STATE.masterData.structures)) {
+      STATE.masterData.structures.forEach(s => {
+        if ((s.project_folder || "General Research") === oldName) {
+          s.project_folder = newName;
+        }
+      });
+    }
+    if (STATE.customProjectFolders) {
+      if (STATE.customProjectFolders.has(oldName)) {
+        STATE.customProjectFolders.delete(oldName);
+        STATE.customProjectFolders.add(newName);
+      }
+    }
+  } else {
+    // Strictly isolated: only rename the user's own customFolders and own (!s._sharedFromAdmin) structures
+    const activeEmail = getActivePersonalWorkspaceEmail();
+    const u = activeEmail && STATE.usersRegistry ? STATE.usersRegistry[activeEmail] : null;
+    if (!u) return;
+    (STATE.structures || []).forEach(s => {
+      if (!s._sharedFromAdmin && !s._fromUserEmail && (s.project_folder || "General Research") === oldName) {
+        s.project_folder = newName;
+        updatedCount++;
+      }
+    });
+    const customList = ensurePersonalUserCustomFolders(u);
+    const idx = customList.indexOf(oldName);
+    if (idx >= 0) {
+      customList.splice(idx, 1);
+    }
+    if (!customList.includes(newName) && newName !== "General Research") {
+      customList.push(newName);
     }
   }
 
-  saveUserData();
   saveStaticDb();
   populateProjectFolderDropdowns();
   renderManageFoldersList();
@@ -11291,33 +11404,56 @@ function renameProjectFolder(oldName, newName) {
 window.renameProjectFolder = renameProjectFolder;
 
 function deleteProjectFolder(folderName, count) {
-  if (!requireStrictAdminAuth()) return;
+  if (!requireAdminAuth()) return;
   if (isPersonalUserFolderName(folderName)) {
     showToast("Personal user private folders cannot be deleted manually.", "warn");
     return;
   }
-  if (count > 0) {
-    if (!confirm(`Folder "${folderName}" contains ${count} structure(s).\n\nDeleting this folder will reassign all its structures to "General Research". Proceed?`)) {
-      return;
-    }
-    (STATE.structures || []).forEach(s => {
-      if (!s._fromUserEmail && s.project_folder === folderName) {
-        s.project_folder = "General Research";
+  if (folderName === "General Research") {
+    showToast('"General Research" is the default folder and cannot be deleted.', "warn");
+    return;
+  }
+
+  if (isStrictAdminSession()) {
+    if (count > 0) {
+      if (!confirm(`Folder "${folderName}" contains ${count} structure(s).\n\nDeleting this folder will reassign all its structures to "General Research". Proceed?`)) {
+        return;
       }
-    });
-    if (STATE.masterData && Array.isArray(STATE.masterData.structures)) {
-      STATE.masterData.structures.forEach(s => {
-        if (s.project_folder === folderName) {
+      (STATE.structures || []).forEach(s => {
+        if (!s._fromUserEmail && s.project_folder === folderName) {
           s.project_folder = "General Research";
         }
       });
+      if (STATE.masterData && Array.isArray(STATE.masterData.structures)) {
+        STATE.masterData.structures.forEach(s => {
+          if (s.project_folder === folderName) {
+            s.project_folder = "General Research";
+          }
+        });
+      }
+      saveStaticDb();
     }
-    saveUserData();
+    if (STATE.customProjectFolders) {
+      STATE.customProjectFolders.delete(folderName);
+    }
+  } else {
+    // Strictly isolated: only affect this user's own (!s._sharedFromAdmin) structures and customFolders
+    const activeEmail = getActivePersonalWorkspaceEmail();
+    const u = activeEmail && STATE.usersRegistry ? STATE.usersRegistry[activeEmail] : null;
+    if (!u) return;
+    const ownInFolder = (STATE.structures || []).filter(s => !s._sharedFromAdmin && !s._fromUserEmail && s.project_folder === folderName);
+    if (ownInFolder.length > 0) {
+      if (!confirm(`Folder "${folderName}" contains ${ownInFolder.length} of your structure(s).\n\nDeleting this folder will move them back to "General Research". Proceed?`)) {
+        return;
+      }
+      ownInFolder.forEach(s => {
+        s.project_folder = "General Research";
+      });
+    }
+    const customList = ensurePersonalUserCustomFolders(u);
+    const idx = customList.indexOf(folderName);
+    if (idx >= 0) customList.splice(idx, 1);
     saveStaticDb();
-  }
-
-  if (STATE.customProjectFolders) {
-    STATE.customProjectFolders.delete(folderName);
   }
 
   populateProjectFolderDropdowns();
@@ -12040,8 +12176,8 @@ function renderStructuresList() {
             </div>
             <div style="display:flex; align-items:center; gap:8px;" onclick="event.stopPropagation()">
               <button type="button" class="struct-folder-action-btn admin-only" onclick="toggleSelectAllInFolder('${escapeHtml(group.key).replace(/'/g, "\\'")}', true)" title="Select all structures in this folder">☑ Select All</button>
-              ${(groupBy === "project" || !groupBy) && group.key !== "__unlinked__" && !isPersonalUserFolderName(group.key) ? `
-                <button type="button" class="struct-folder-action-btn strict-admin-only" onclick="promptProjectFolderRename('${escapeHtml(group.key).replace(/'/g, "\\'")}')" title="Rename Folder">Rename</button>
+              ${(groupBy === "project" || !groupBy) && group.key !== "__unlinked__" && !isPersonalUserFolderName(group.key) && (isStrictAdminSession() || group.items.some(item => !item._sharedFromAdmin)) ? `
+                <button type="button" class="struct-folder-action-btn admin-only" onclick="promptProjectFolderRename('${escapeHtml(group.key).replace(/'/g, "\\'")}')" title="Rename Folder">Rename</button>
               ` : ""}
               <div style="font-size:12px; color:#64748b; margin-left:4px; cursor:pointer;" onclick="toggleStructFolder('${safeKey}')">
                 ${isCollapsed ? '▶ Expand' : '▼ Collapse'}
@@ -12195,7 +12331,7 @@ async function applyBatchStructuresVisibility() {
 
 
 async function applyBatchStructuresFolder() {
-  if (!requireStrictAdminAuth()) return;
+  if (!requireAdminAuth()) return;
   if (!STATE.selectedStructureIds || STATE.selectedStructureIds.size === 0) {
     showToast("No structures selected. Please check the structures you wish to move.", "warn");
     return;
@@ -12203,32 +12339,46 @@ async function applyBatchStructuresFolder() {
   const folderSelect = document.getElementById("batch-struct-folder");
   const targetFolder = (folderSelect ? folderSelect.value : "").trim() || "General Research";
   if (isPersonalUserFolderName(targetFolder)) {
-    showToast("Cannot move structures into a personal user private folder.", "warn");
+    showToast("Cannot move structures into a reserved user folder.", "warn");
     return;
   }
   const ids = new Set(Array.from(STATE.selectedStructureIds).map(Number));
   let updatedCount = 0;
 
-  STATE.structures.forEach(s => {
-    if (ids.has(Number(s.id)) && !s._fromUserEmail) {
-      s.project_folder = targetFolder;
-      updatedCount++;
-    }
-  });
-  if (STATE.masterData && Array.isArray(STATE.masterData.structures)) {
-    STATE.masterData.structures.forEach(s => {
-      if (ids.has(Number(s.id))) {
+  if (isStrictAdminSession()) {
+    STATE.structures.forEach(s => {
+      if (ids.has(Number(s.id)) && !s._fromUserEmail) {
         s.project_folder = targetFolder;
+        updatedCount++;
       }
     });
+    if (STATE.masterData && Array.isArray(STATE.masterData.structures)) {
+      STATE.masterData.structures.forEach(s => {
+        if (ids.has(Number(s.id))) {
+          s.project_folder = targetFolder;
+        }
+      });
+    }
+  } else {
+    // Personal User: move ONLY own structures (!s._sharedFromAdmin)
+    STATE.structures.forEach(s => {
+      if (ids.has(Number(s.id)) && !s._sharedFromAdmin && !s._fromUserEmail) {
+        s.project_folder = targetFolder;
+        updatedCount++;
+      }
+    });
+    if (updatedCount === 0) {
+      showToast("Shared library structures cannot be moved. Please select your own uploaded structures.", "warn");
+      return;
+    }
   }
 
   saveStaticDb();
   applyActiveWorkspaceData();
   populateProjectFolderDropdowns();
   refreshAllWorkspaceViews();
-  recordUserActivity("Crystal Structures", "Moved to Folder", `Moved ${updatedCount} structure(s) to project folder "${targetFolder}".`);
-  showToast(`📁 Successfully moved ${updatedCount} structure(s) to folder "${targetFolder}"!`, "success");
+  recordUserActivity("Crystal Structures", "Moved to Folder", `Moved ${updatedCount} structure(s) to folder "${targetFolder}".`);
+  showToast(`Moved ${updatedCount} structure(s) to folder "${targetFolder}"!`, "success");
 }
 window.applyBatchStructuresFolder = applyBatchStructuresFolder;
 
@@ -12401,10 +12551,11 @@ function openStructureModal(structId = null, options = {}) {
 
     renderModalAtomsTable([]);
     populateModalPaperDropdown(null, "", "");
+    const curFilterVal = document.getElementById("struct-project-filter")?.value;
     if (!isStrictAdminSession()) {
-      populateModalFolderDropdown(getPersonalUserFolderName(getCurrentPersonalUserRecord()));
+      const editableUserFolders = getPersonalUserEditableFolders();
+      populateModalFolderDropdown(curFilterVal && curFilterVal !== "ALL" && editableUserFolders.includes(curFilterVal) ? curFilterVal : "General Research");
     } else {
-      const curFilterVal = document.getElementById("struct-project-filter")?.value;
       populateModalFolderDropdown(curFilterVal && curFilterVal !== "ALL" && !isPersonalUserFolderName(curFilterVal) ? curFilterVal : "General Research");
     }
   } else {
@@ -12417,10 +12568,11 @@ function openStructureModal(structId = null, options = {}) {
     }
     const statusEl = document.getElementById("struct-calc-status");
     if (statusEl && !statusEl.value) statusEl.value = "Unrelaxed";
+    const curFilterVal = document.getElementById("struct-project-filter")?.value;
     if (!isStrictAdminSession()) {
-      populateModalFolderDropdown(getPersonalUserFolderName(getCurrentPersonalUserRecord()));
+      const editableUserFolders = getPersonalUserEditableFolders();
+      populateModalFolderDropdown(curFilterVal && curFilterVal !== "ALL" && editableUserFolders.includes(curFilterVal) ? curFilterVal : "General Research");
     } else {
-      const curFilterVal = document.getElementById("struct-project-filter")?.value;
       populateModalFolderDropdown(curFilterVal && curFilterVal !== "ALL" && !isPersonalUserFolderName(curFilterVal) ? curFilterVal : "General Research");
     }
   }
@@ -12490,7 +12642,8 @@ async function saveStructureFromModal() {
         owner_email: existingStruct._fromUserEmail,
         owner_name: existingStruct._fromUserName || existingStruct.owner_name || "",
         _fromUserEmail: existingStruct._fromUserEmail,
-        _fromUserName: existingStruct._fromUserName || ""
+        _fromUserName: existingStruct._fromUserName || "",
+        _originalUserFolder: existingStruct._originalUserFolder || "General Research"
       };
     } else {
       visMeta = getVisibilityControlValues("struct");
@@ -12524,12 +12677,9 @@ async function saveStructureFromModal() {
     }
   }
 
-  // Project / Research Folder assignment
-  // Personal Users are strictly locked to their dedicated private folder ("User: <Name>")
+  // Project / Research Folder assignment (Strictly isolated between Admin and each Personal User)
   let assignedFolder = "General Research";
-  if (!isAdminNow) {
-    assignedFolder = getPersonalUserFolderName(curPersonalUser);
-  } else if (existingStruct && existingStruct._fromUserEmail) {
+  if (isAdminNow && existingStruct && existingStruct._fromUserEmail) {
     assignedFolder = existingStruct.project_folder || getPersonalUserFolderName(existingStruct._fromUserEmail);
   } else {
     const folderSelect = document.getElementById("struct-folder-select");
@@ -12539,6 +12689,13 @@ async function saveStructureFromModal() {
     }
     if (!assignedFolder || isPersonalUserFolderName(assignedFolder)) {
       assignedFolder = "General Research";
+    }
+    if (!isAdminNow && curPersonalUser && assignedFolder !== "General Research") {
+      const uCustom = ensurePersonalUserCustomFolders(curPersonalUser);
+      if (!uCustom.includes(assignedFolder)) uCustom.push(assignedFolder);
+    } else if (isAdminNow && assignedFolder !== "General Research") {
+      if (!STATE.customProjectFolders) STATE.customProjectFolders = new Set();
+      STATE.customProjectFolders.add(assignedFolder);
     }
   }
 
@@ -14128,7 +14285,42 @@ function ensureEventCategoriesInitialized(remoteList = null) {
 }
 
 function getEventCategoriesList() {
+  if (!isStrictAdminSession()) {
+    const activeEmail = getActivePersonalWorkspaceEmail();
+    if (activeEmail && STATE.usersRegistry && STATE.usersRegistry[activeEmail]) {
+      const u = STATE.usersRegistry[activeEmail];
+      u.workspace = u.workspace || { schedule: [], papers: [], structures: [], expReportRows: [], litReportRows: [] };
+      if (!Array.isArray(u.workspace.eventCategories) || u.workspace.eventCategories.length === 0) {
+        u.workspace.eventCategories = [...DEFAULT_EVENT_CATEGORIES];
+      }
+      return u.workspace.eventCategories;
+    }
+  }
   return ensureEventCategoriesInitialized();
+}
+
+function saveActiveEventCategoriesList(nextCats) {
+  const cleaned = Array.from(new Set((Array.isArray(nextCats) ? nextCats : []).map(x => String(x || "").trim()).filter(Boolean)));
+  const finalCats = cleaned.length > 0 ? cleaned : [...DEFAULT_EVENT_CATEGORIES];
+  if (!isStrictAdminSession()) {
+    const activeEmail = getActivePersonalWorkspaceEmail();
+    if (activeEmail && STATE.usersRegistry && STATE.usersRegistry[activeEmail]) {
+      const u = STATE.usersRegistry[activeEmail];
+      u.workspace = u.workspace || { schedule: [], papers: [], structures: [], expReportRows: [], litReportRows: [] };
+      u.workspace.eventCategories = finalCats;
+      u.lastUpdatedAt = getGmt9NowStr();
+      u.updatedAtMs = Date.now();
+      persistUsersRegistryLocal();
+      saveStaticDb();
+      if (typeof renderMonthlyCalendar === "function") renderMonthlyCalendar();
+      return finalCats;
+    }
+  }
+  STATE.eventCategories = finalCats;
+  persistEventCategoriesLocal();
+  saveStaticDb();
+  if (typeof renderMonthlyCalendar === "function") renderMonthlyCalendar();
+  return finalCats;
 }
 
 function persistEventCategoriesLocal() {
@@ -14154,9 +14346,15 @@ function populateEventCategoryDropdown(selectedVal = null) {
 window.populateEventCategoryDropdown = populateEventCategoryDropdown;
 
 function toggleEventCategoryManager() {
-  if (!requireStrictAdminAuth()) return;
+  if (!requireAdminAuth()) return;
   const box = document.getElementById("sm-cat-manager-box");
   if (!box) return;
+  const titleEl = document.getElementById("sm-cat-manager-title");
+  if (titleEl) {
+    titleEl.textContent = isStrictAdminSession()
+      ? "Manage Event Categories (Admin)"
+      : "Manage My Event Categories (Personal)";
+  }
   const isOpen = box.style.display !== "none";
   box.style.display = isOpen ? "none" : "block";
   if (!isOpen) {
@@ -14182,32 +14380,30 @@ function renderEventCategoryManagerList() {
 }
 
 function addEventCategoryByAdmin() {
-  if (!requireStrictAdminAuth()) return;
+  if (!requireAdminAuth()) return;
   const inp = document.getElementById("sm-new-cat-input");
   const name = (inp ? inp.value : "").trim();
   if (!name) {
     showToast("Please enter a category name.", "warn");
     return;
   }
-  const cats = getEventCategoriesList();
+  const cats = [...getEventCategoriesList()];
   if (cats.some(c => c.toLowerCase() === name.toLowerCase())) {
     showToast(`Category "${name}" already exists.`, "warn");
     return;
   }
   cats.push(name);
-  STATE.eventCategories = cats;
-  persistEventCategoriesLocal();
+  saveActiveEventCategoriesList(cats);
   if (inp) inp.value = "";
   populateEventCategoryDropdown(name);
   renderEventCategoryManagerList();
-  saveStaticDb();
   showToast(`Added Event Category: "${name}"`, "success");
 }
 window.addEventCategoryByAdmin = addEventCategoryByAdmin;
 
 function renameEventCategoryByAdmin(idx) {
-  if (!requireStrictAdminAuth()) return;
-  const cats = getEventCategoriesList();
+  if (!requireAdminAuth()) return;
+  const cats = [...getEventCategoriesList()];
   const oldName = cats[idx];
   if (!oldName) return;
   const next = prompt(`Rename Event Category "${oldName}" to:`, oldName);
@@ -14218,19 +14414,17 @@ function renameEventCategoryByAdmin(idx) {
     return;
   }
   cats[idx] = trimmed;
-  STATE.eventCategories = cats;
-  persistEventCategoriesLocal();
+  saveActiveEventCategoriesList(cats);
   const curSel = document.getElementById("sm-type")?.value;
   populateEventCategoryDropdown(curSel === oldName ? trimmed : curSel);
   renderEventCategoryManagerList();
-  saveStaticDb();
   showToast(`Renamed category to "${trimmed}"`, "success");
 }
 window.renameEventCategoryByAdmin = renameEventCategoryByAdmin;
 
 function deleteEventCategoryByAdmin(idx) {
-  if (!requireStrictAdminAuth()) return;
-  const cats = getEventCategoriesList();
+  if (!requireAdminAuth()) return;
+  const cats = [...getEventCategoriesList()];
   if (cats.length <= 1) {
     showToast("At least one Event Category must remain.", "warn");
     return;
@@ -14238,12 +14432,10 @@ function deleteEventCategoryByAdmin(idx) {
   const removed = cats[idx];
   if (!removed) return;
   cats.splice(idx, 1);
-  STATE.eventCategories = cats;
-  persistEventCategoriesLocal();
+  saveActiveEventCategoriesList(cats);
   const curSel = document.getElementById("sm-type")?.value;
   populateEventCategoryDropdown(curSel === removed ? cats[0] : curSel);
   renderEventCategoryManagerList();
-  saveStaticDb();
   showToast(`Removed Event Category "${removed}"`, "info");
 }
 window.deleteEventCategoryByAdmin = deleteEventCategoryByAdmin;
@@ -14398,6 +14590,11 @@ function toggleScheduleParticipantSuggestions() {
   const sug = document.getElementById("sm-participant-suggestions");
   const inp = document.getElementById("sm-participant-search");
   if (!sug) return;
+  if (!isStrictAdminSession()) {
+    sug.style.display = "none";
+    sug.innerHTML = "";
+    return;
+  }
   if (sug.style.display !== "none") {
     sug.style.display = "none";
   } else {
@@ -14411,6 +14608,11 @@ function renderScheduleParticipantSuggestions(openDropdown = true) {
   const sug = document.getElementById("sm-participant-suggestions");
   const inp = document.getElementById("sm-participant-search");
   if (!sug) return;
+  if (!isStrictAdminSession()) {
+    sug.style.display = "none";
+    sug.innerHTML = "";
+    return;
+  }
   ensureUserGroupsInitialized();
 
   const rawQuery = (inp ? inp.value : "").trim();
@@ -14542,6 +14744,7 @@ document.addEventListener("click", (e) => {
 });
 
 function syncEventToParticipantsWorkspaces(eventObj, options = {}) {
+  if (!isStrictAdminSession()) return 0;
   if (!eventObj || !eventObj.id) return 0;
   const isDeleted = Boolean(options && options.deleted);
   const eventId = Number(eventObj.id);
@@ -14653,6 +14856,18 @@ function openScheduleModal(itemId = null, prefillDate = null, prefillStartTime =
   const catMgrBox = document.getElementById("sm-cat-manager-box");
   if (catMgrBox) catMgrBox.style.display = "none";
 
+  const isAdminNow = isStrictAdminSession();
+  const adminPartBox = document.getElementById("sm-participants-admin-box");
+  const userPartBox = document.getElementById("sm-participants-user-box");
+  const userPartInput = document.getElementById("sm-participant-text-input");
+  const sugBox = document.getElementById("sm-participant-suggestions");
+  if (adminPartBox) adminPartBox.style.display = isAdminNow ? "block" : "none";
+  if (userPartBox) userPartBox.style.display = isAdminNow ? "none" : "block";
+  if (sugBox) {
+    sugBox.style.display = "none";
+    sugBox.innerHTML = "";
+  }
+
   let todayStr = "";
   try {
     todayStr = prefillDate || new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
@@ -14665,7 +14880,7 @@ function openScheduleModal(itemId = null, prefillDate = null, prefillStartTime =
   if (itemId) {
     const s = STATE.schedule.find(x => x.id === itemId);
     if (!s) return;
-    if ((s._sharedFromAdmin || s._isParticipantSync) && !isStrictAdminSession()) {
+    if ((s._sharedFromAdmin || s._isParticipantSync) && !isAdminNow) {
       showToast("This is a synced/shared calendar event (Read-Only).", "info");
       return;
     }
@@ -14681,7 +14896,19 @@ function openScheduleModal(itemId = null, prefillDate = null, prefillStartTime =
 
     document.getElementById("sm-start").value = s.start_time || "09:00";
     document.getElementById("sm-end").value = s.end_time || "11:30";
-    setScheduleModalParticipants(s.participants || []);
+    if (isAdminNow) {
+      setScheduleModalParticipants(s.participants || []);
+      if (userPartInput) userPartInput.value = "";
+    } else {
+      setScheduleModalParticipants([]);
+      if (userPartInput) {
+        userPartInput.value = (Array.isArray(s.participants) ? s.participants : [])
+          .map(p => (p && typeof p === "object") ? (p.label || "") : String(p || ""))
+          .map(x => x.trim())
+          .filter(Boolean)
+          .join(", ");
+      }
+    }
     document.getElementById("sm-status").value = s.status || "Scheduled";
     document.getElementById("sm-desc").value = s.description || "";
     updateScheduleDurationBadge();
@@ -14701,6 +14928,7 @@ function openScheduleModal(itemId = null, prefillDate = null, prefillStartTime =
     document.getElementById("sm-start").value = prefillStartTime || "10:00";
     document.getElementById("sm-end").value = prefillEndTime || "12:00";
     setScheduleModalParticipants([]);
+    if (userPartInput) userPartInput.value = "";
     document.getElementById("sm-status").value = "Scheduled";
     document.getElementById("sm-desc").value = "";
     updateScheduleDurationBadge();
@@ -14713,8 +14941,9 @@ async function saveScheduleFromModal() {
   if (!requireAdminAuth()) return;
   const id = document.getElementById("sm-id").value;
   const openGcal = document.getElementById("sm-open-gcal")?.checked;
+  const isAdminNow = isStrictAdminSession();
 
-  const visMeta = isStrictAdminSession()
+  const visMeta = isAdminNow
     ? getVisibilityControlValues("sm")
     : { visibility: "Private", allowed_users: [] };
 
@@ -14732,9 +14961,22 @@ async function saveScheduleFromModal() {
     return;
   }
 
-  const participantsCopy = _smSelectedParticipants.map(p => ({ ...p }));
-  const participantEmails = resolveParticipantEmails(participantsCopy);
-  const participantGroups = participantsCopy.filter(p => p.type === "group").map(p => p.id);
+  let participantsCopy = [];
+  let participantEmails = [];
+  let participantGroups = [];
+  if (isAdminNow) {
+    participantsCopy = _smSelectedParticipants.map(p => ({ ...p }));
+    participantEmails = resolveParticipantEmails(participantsCopy);
+    participantGroups = participantsCopy.filter(p => p.type === "group").map(p => p.id);
+  } else {
+    const rawPartText = (document.getElementById("sm-participant-text-input")?.value || "").trim();
+    const names = rawPartText
+      ? Array.from(new Set(rawPartText.split(/[,;\n]+/).map(x => x.trim()).filter(Boolean)))
+      : [];
+    participantsCopy = names.map(n => ({ type: "custom", id: n, label: n, email: "" }));
+    participantEmails = [];
+    participantGroups = [];
+  }
 
   const payload = {
     title: document.getElementById("sm-title").value.trim(),
@@ -14785,7 +15027,9 @@ async function saveScheduleFromModal() {
       STATE.schedule.push(savedEventObj);
       recordUserActivity("Calendar", "Scheduled Event", `${payload.title}${durationDesc}`);
     }
-    syncedUsersCount = syncEventToParticipantsWorkspaces(savedEventObj, { deleted: false });
+    if (isAdminNow) {
+      syncedUsersCount = syncEventToParticipantsWorkspaces(savedEventObj, { deleted: false });
+    }
     saveStaticDb();
     closeModal("schedule-modal");
     applyActiveWorkspaceData();
@@ -15599,6 +15843,7 @@ function saveStaticDb(options = {}) {
     const u = STATE.usersRegistry[activePersonalEmail];
     const userFolder = getPersonalUserFolderName(u);
     u.workspace = {
+      ...(u.workspace || {}),
       papers: (STATE.papers || []).filter(p => !p._sharedFromAdmin && !p._fromUserEmail).map(p => ({
         ...p,
         project_folder: userFolder,
@@ -15609,7 +15854,9 @@ function saveStaticDb(options = {}) {
       })),
       structures: (STATE.structures || []).filter(s => !s._sharedFromAdmin && !s._fromUserEmail).map(s => ({
         ...s,
-        project_folder: userFolder,
+        project_folder: (s.project_folder && typeof s.project_folder === "string" && s.project_folder.trim() && !isPersonalUserFolderName(s.project_folder))
+          ? s.project_folder.trim()
+          : "General Research",
         visibility: "Private",
         allowed_users: [],
         owner_email: activePersonalEmail,
@@ -15644,9 +15891,13 @@ function saveStaticDb(options = {}) {
           .filter(s => s._fromUserEmail === normEmail)
           .map(s => {
             const copy = { ...s };
+            const restoredFolder = (copy._originalUserFolder && typeof copy._originalUserFolder === "string" && copy._originalUserFolder.trim() && !isPersonalUserFolderName(copy._originalUserFolder))
+              ? copy._originalUserFolder.trim()
+              : "General Research";
             delete copy._fromUserEmail;
             delete copy._fromUserName;
-            copy.project_folder = userFolder;
+            delete copy._originalUserFolder;
+            copy.project_folder = restoredFolder;
             copy.visibility = "Private";
             copy.allowed_users = [];
             copy.owner_email = normEmail;
