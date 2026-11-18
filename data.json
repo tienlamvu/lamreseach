@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T12:37:06.724Z",
+  "exported_at": "2026-11-18T12:37:10.107Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -5116,9 +5116,9 @@
       "passwordPlainHint": "••••••••",
       "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
       "registeredAt": "2026-11-16 11:31",
-      "lastLoginAt": "2026-11-18 20:09",
-      "lastUpdatedAt": "2026-11-18 20:43",
-      "updatedAtMs": 1795002220517,
+      "lastLoginAt": "2026-11-18 21:37",
+      "lastUpdatedAt": "2026-11-18 21:37",
+      "updatedAtMs": 1795005429042,
       "workspace": {
         "papers": [
           {
@@ -5619,7 +5619,8 @@
             "_syncedEventId": 1795002220516,
             "_isParticipantSync": true,
             "_syncedFromEmail": "lamvt.skku@gmail.com",
-            "_syncedFromName": "Vu Tien Lam"
+            "_syncedFromName": "Vu Tien Lam",
+            "owner_email": "lamvt.sep@gmail.com"
           },
           {
             "id": 1794828715723,
@@ -5722,6 +5723,12 @@
         ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-18 21:37",
+          "category": "Session",
+          "action": "Signed In (Email & Password)",
+          "detail": "Authenticated as Tien Lam (lamvt.sep@gmail.com)"
+        },
         {
           "timestamp": "2026-11-18 20:43",
           "category": "Calendar",
