@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T10:50:06.846Z",
+  "exported_at": "2026-11-18T10:50:19.889Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -5421,17 +5421,199 @@
         "grp_dft_team_gun1"
       ],
       "registeredAt": "2026-11-18 19:49",
-      "lastLoginAt": "2026-11-18 19:49",
-      "lastUpdatedAt": "2026-11-18 19:49",
-      "updatedAtMs": 1794998976113,
+      "lastLoginAt": "2026-11-18 19:50",
+      "lastUpdatedAt": "2026-11-18 19:50",
+      "updatedAtMs": 1794999018775,
       "workspace": {
-        "schedule": [],
         "papers": [],
         "structures": [],
-        "expReportRows": [],
-        "litReportRows": []
+        "schedule": [],
+        "expReportRows": [
+          {
+            "sample_id": "Mo2Si5N4P3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "a=6.5943 Å, Vol=947.16 Å³"
+          },
+          {
+            "sample_id": "Mo2Si5N3P4",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "a=6.5943 Å, Vol=947.16 Å³"
+          },
+          {
+            "sample_id": "Mo2Si3N4P5",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "a=6.5943 Å, Vol=947.16 Å³"
+          },
+          {
+            "sample_id": "Mo2Si4N3P5",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "a=6.5943 Å, Vol=947.16 Å³"
+          },
+          {
+            "sample_id": "Mo2Si4N3P5",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "a=6.5943 Å, Vol=947.16 Å³"
+          },
+          {
+            "sample_id": "Mo2Si3N5P4",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "a=6.5943 Å, Vol=947.16 Å³"
+          },
+          {
+            "sample_id": "Mo2Si4N5P3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "a=6.5943 Å, Vol=947.16 Å³"
+          },
+          {
+            "sample_id": "Mo2Si4N5P3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "a=6.5943 Å, Vol=947.16 Å³"
+          },
+          {
+            "sample_id": "Mo2Si3N4P4",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "a=6.5943 Å, Vol=947.16 Å³"
+          },
+          {
+            "sample_id": "Mo2Si4N4P3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "a=6.5943 Å, Vol=947.16 Å³"
+          },
+          {
+            "sample_id": "Mo2Si4N4P3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "a=6.5943 Å, Vol=947.16 Å³"
+          },
+          {
+            "sample_id": "Mo2Si4N3P4",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "a=6.5943 Å, Vol=947.16 Å³"
+          },
+          {
+            "sample_id": "Mo2Si4N3P4",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "a=6.5943 Å, Vol=947.16 Å³"
+          },
+          {
+            "sample_id": "MoSi4N4P4",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "a=6.5943 Å, Vol=947.16 Å³"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N4",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2P4",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "Te",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSSe",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "Na0.5TiBi0.5O3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Non-relaxed"
+          },
+          {
+            "sample_id": "Na0.5TiBi0.5O3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Non-relaxed"
+          },
+          {
+            "sample_id": "Na0.5TiBi0.5O3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Non-relaxed"
+          }
+        ],
+        "litReportRows": [
+          {
+            "title": "Intraband Lifshitz transition and Stoner ferromagnetism in Janus PA₂As (A = Si, Ge, Sn, and Pb) monolayers",
+            "journal": "Physical Review B (2021) | DOI: 10.1103/physrevb.104.035409",
+            "material": "Perovskite / 2D Material",
+            "takeaway": ""
+          },
+          {
+            "title": "Charge doping and electric field tunable ferromagnetism and Curie temperature of the MnS\n                    <sub>2</sub>\n                    monolayer",
+            "journal": "Physical Chemistry Chemical Physics (2024) | DOI: 10.1039/d3cp04382g",
+            "material": "Perovskite / 2D Material",
+            "takeaway": "Two-dimensional ferromagnets with a long-range ferromagnetic ordering at finite temperature present a bright prospect fo"
+          },
+          {
+            "title": "Antisite defect qubits in monolayer transition metal dichalcogenides",
+            "journal": "Nature Communications (2022) | DOI: 10.1038/s41467-022-28133-x",
+            "material": "Perovskite / 2D Material",
+            "takeaway": "Good reference for antisite defects in TMDs."
+          },
+          {
+            "title": "Y-decorated MoS2 monolayer for promising hydrogen storage: A DFT study",
+            "journal": "International Journal of Hydrogen Energy (2022) | DOI: 10.1016/j.ijhydene.2022.01.236",
+            "material": "Perovskite / 2D Material",
+            "takeaway": ""
+          }
+        ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-18 19:50",
+          "category": "Session",
+          "action": "Signed In (Email & Password)",
+          "detail": "Authenticated as Jaewon Kim (lamvt@g.skku.edu)"
+        },
         {
           "timestamp": "2026-11-18 19:49",
           "category": "Account",
