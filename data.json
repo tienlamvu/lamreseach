@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T06:48:32.738Z",
+  "exported_at": "2026-11-18T06:53:53.776Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -4427,7 +4427,6 @@
       "status": "Active",
       "emailVerified": true,
       "verifiedAt": "2026-11-16 11:31",
-      "passwordlessGoogle": false,
       "authProvider": "Verified Email + Google Linked",
       "googleLinked": true,
       "googleEmail": "lamvt.sep@gmail.com",
@@ -5043,7 +5042,8 @@
       "groups": [
         "grp_dft_team_gun1"
       ],
-      "picture": "https://lh3.googleusercontent.com/a/ACg8ocJ5aVyRlpWSljVC2OJusM1rb39s2jSKUTJqGBroVnc79VyzoEsF=s96-c"
+      "picture": "https://lh3.googleusercontent.com/a/ACg8ocJ5aVyRlpWSljVC2OJusM1rb39s2jSKUTJqGBroVnc79VyzoEsF=s96-c",
+      "passwordlessGoogle": false
     },
     "tlamvux@gmail.com": {
       "email": "tlamvux@gmail.com",
@@ -5421,27 +5421,27 @@
     }
   },
   "deleted_users": [
-    "test.researcher@skku.edu",
-    "aaa@gmail.com",
     "jhpark.matsci@skku.edu",
-    "temp.delete.test@gmail.com",
     "minseo.kim@gmail.com",
     "ssk@gmail.com",
     "las@gmail.com",
     "lamvt@g.skku.edu",
+    "test.researcher@skku.edu",
+    "aaa@gmail.com",
+    "temp.delete.test@gmail.com",
     "test.relay.otp@skku.edu",
     "linh@gmail.com",
     "a@gmail.com"
   ],
   "deleted_users_map": {
-    "test.researcher@skku.edu": 1794983284716,
-    "aaa@gmail.com": 1794983284716,
     "jhpark.matsci@skku.edu": 1794983284716,
-    "temp.delete.test@gmail.com": 1794983284716,
     "minseo.kim@gmail.com": 1794983284716,
     "ssk@gmail.com": 1794983284716,
     "las@gmail.com": 1794983284716,
     "lamvt@g.skku.edu": 1794983284716,
+    "test.researcher@skku.edu": 1794983284716,
+    "aaa@gmail.com": 1794983284716,
+    "temp.delete.test@gmail.com": 1794983284716,
     "test.relay.otp@skku.edu": 1794983284716,
     "linh@gmail.com": 1794983284716,
     "a@gmail.com": 1794983284716
