@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T10:55:48.277Z",
+  "exported_at": "2026-11-18T11:01:51.221Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -4434,8 +4434,8 @@
       "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
       "registeredAt": "2026-11-16 11:31",
       "lastLoginAt": "2026-11-18 09:29",
-      "lastUpdatedAt": "2026-11-18 19:53",
-      "updatedAtMs": 1794999232937,
+      "lastUpdatedAt": "2026-11-18 20:01",
+      "updatedAtMs": 1794999710126,
       "workspace": {
         "papers": [
           {
@@ -4455,8 +4455,11 @@
             "status": "To Read",
             "notes": "",
             "in_weekly_report": 1,
-            "visibility": "Public",
-            "allowed_users": []
+            "visibility": "Private",
+            "allowed_users": [],
+            "project_folder": "User: Tien Lam",
+            "owner_email": "lamvt.sep@gmail.com",
+            "owner_name": "Tien Lam"
           },
           {
             "id": 1794791207173,
@@ -4475,9 +4478,12 @@
             "status": "To Read",
             "notes": "Good reference for antisite defects in TMDs.",
             "in_weekly_report": 0,
-            "visibility": "Public",
+            "visibility": "Private",
             "allowed_users": [],
-            "allowed_groups": []
+            "allowed_groups": [],
+            "project_folder": "User: Tien Lam",
+            "owner_email": "lamvt.sep@gmail.com",
+            "owner_name": "Tien Lam"
           }
         ],
         "structures": [
@@ -4487,7 +4493,7 @@
             "name": "J1+4 +2",
             "formula": "J+4",
             "chemical_formula": "J+4",
-            "project_folder": "General Research",
+            "project_folder": "User: Tien Lam",
             "crystal_system": "Triclinic",
             "space_group": "P1 (1)",
             "structure_type": "2D Monolayer",
@@ -4576,7 +4582,7 @@
             "poscar_content": "J+4 Triclinic P1 (1)\n1.0\n       3.29710000     0.00000000     0.00000000\n      -1.64855000     2.85537236     0.00000000\n       0.00000000     0.00000000    25.15090000\n   Mo    P    N   Si\n    1    2    2    2\nDirect\n    0.00000000   0.00000000   0.52959000\n    0.33333000   0.66667000   0.47057000\n    0.66667000   0.33333000   0.33866000\n    0.33333000   0.66667000   0.57570000\n    0.66667000   0.33333000   0.66126000\n    0.33333000   0.66667000   0.64581000\n    0.33333000   0.66667000   0.38238000\n",
             "in_weekly_report": 0,
             "uploaded_at": "2026-11-18 15:14",
-            "visibility": "Public",
+            "visibility": "Private",
             "allowed_users": [],
             "associated_paper_id": null,
             "associated_paper_title": "",
@@ -4584,7 +4590,9 @@
             "functional": "PBE",
             "ecut": 520,
             "bandgap": 3.2,
-            "energy_per_atom": -6.85
+            "energy_per_atom": -6.85,
+            "owner_email": "lamvt.sep@gmail.com",
+            "owner_name": "Tien Lam"
           },
           {
             "id": 1794982490510,
@@ -4592,7 +4600,7 @@
             "name": "J1+4 +1",
             "formula": "J+4",
             "chemical_formula": "J+4",
-            "project_folder": "General Research",
+            "project_folder": "User: Tien Lam",
             "crystal_system": "Triclinic",
             "space_group": "P1 (1)",
             "structure_type": "2D Monolayer",
@@ -4681,8 +4689,10 @@
             "poscar_content": "J+4 Triclinic P1 (1)\n1.0\n       3.29710000     0.00000000     0.00000000\n      -1.64855000     2.85537236     0.00000000\n       0.00000000     0.00000000    25.15090000\n   Mo    P    N   Si\n    1    2    2    2\nDirect\n    0.00000000   0.00000000   0.52955000\n    0.33333000   0.66667000   0.47052000\n    0.66667000   0.33333000   0.33861000\n    0.33333000   0.66667000   0.57566000\n    0.66667000   0.33333000   0.66131000\n    0.33333000   0.66667000   0.64573000\n    0.33333000   0.66667000   0.38230000\n",
             "in_weekly_report": 0,
             "uploaded_at": "2026-11-18 15:14",
-            "visibility": "Public",
-            "allowed_users": []
+            "visibility": "Private",
+            "allowed_users": [],
+            "owner_email": "lamvt.sep@gmail.com",
+            "owner_name": "Tien Lam"
           },
           {
             "name": "A",
@@ -4777,13 +4787,15 @@
               }
             ],
             "in_weekly_report": 0,
-            "visibility": "Public",
+            "visibility": "Private",
             "allowed_users": [],
             "allowed_groups": [],
             "id": 1794807861185,
-            "project_folder": "2D Janus MA2Z4 & Layered TMDs",
+            "project_folder": "User: Tien Lam",
             "structural_id": "CD-0028",
-            "calc_status": "Relaxed"
+            "calc_status": "Relaxed",
+            "owner_email": "lamvt.sep@gmail.com",
+            "owner_name": "Tien Lam"
           },
           {
             "name": "MoSi2N2P2 Janus 4",
@@ -4879,9 +4891,13 @@
             ],
             "in_weekly_report": 0,
             "id": 1794571683470,
-            "project_folder": "2D Janus MA2Z4 & Layered TMDs",
+            "project_folder": "User: Tien Lam",
             "structural_id": "CD-0027",
-            "calc_status": "Relaxed"
+            "calc_status": "Relaxed",
+            "visibility": "Private",
+            "allowed_users": [],
+            "owner_email": "lamvt.sep@gmail.com",
+            "owner_name": "Tien Lam"
           }
         ],
         "schedule": [
@@ -4897,7 +4913,9 @@
             "status": "Scheduled",
             "sample_id": "INIT-01",
             "description": "Personal schedule initialized for Tien Lam (lamvt.sep@gmail.com).",
-            "in_weekly_report": 1
+            "in_weekly_report": 1,
+            "visibility": "Private",
+            "owner_email": "lamvt.sep@gmail.com"
           }
         ],
         "expReportRows": [
@@ -5827,25 +5845,25 @@
     }
   },
   "deleted_users": [
-    "test.researcher@skku.edu",
-    "aaa@gmail.com",
     "jhpark.matsci@skku.edu",
-    "temp.delete.test@gmail.com",
     "minseo.kim@gmail.com",
     "ssk@gmail.com",
     "las@gmail.com",
+    "test.researcher@skku.edu",
+    "aaa@gmail.com",
+    "temp.delete.test@gmail.com",
     "test.relay.otp@skku.edu",
     "linh@gmail.com",
     "a@gmail.com"
   ],
   "deleted_users_map": {
-    "test.researcher@skku.edu": 1794983284716,
-    "aaa@gmail.com": 1794983284716,
     "jhpark.matsci@skku.edu": 1794983284716,
-    "temp.delete.test@gmail.com": 1794983284716,
     "minseo.kim@gmail.com": 1794983284716,
     "ssk@gmail.com": 1794983284716,
     "las@gmail.com": 1794983284716,
+    "test.researcher@skku.edu": 1794983284716,
+    "aaa@gmail.com": 1794983284716,
+    "temp.delete.test@gmail.com": 1794983284716,
     "test.relay.otp@skku.edu": 1794983284716,
     "linh@gmail.com": 1794983284716,
     "a@gmail.com": 1794983284716
