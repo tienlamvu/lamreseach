@@ -7010,49 +7010,181 @@ const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
 ];
+const SHORT_MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const WEEKDAY_NAMES_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WEEKDAY_NAMES_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+function getKstTodayIso() {
+  try {
+    return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  } catch (e) {
+    return new Date().toISOString().split("T")[0];
+  }
+}
+
+function getKstCurrentMinutes() {
+  try {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false
+    }).formatToParts(new Date());
+    const h = parseInt(parts.find(p => p.type === "hour")?.value || "0", 10);
+    const m = parseInt(parts.find(p => p.type === "minute")?.value || "0", 10);
+    return h * 60 + m;
+  } catch (e) {
+    const d = new Date();
+    return d.getHours() * 60 + d.getMinutes();
+  }
+}
+
+function parseIsoDateLocal(iso) {
+  const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return new Date();
+  return new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
+}
+
+function formatIsoDateLocal(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function getCalendarFocusDateIso() {
+  if (!STATE.calendarFocusDate) {
+    const todayIso = getKstTodayIso();
+    const tParts = parseIsoDateLocal(todayIso);
+    if (STATE.calendarYear === tParts.getFullYear() && STATE.calendarMonth === tParts.getMonth()) {
+      STATE.calendarFocusDate = todayIso;
+    } else {
+      STATE.calendarFocusDate = `${STATE.calendarYear}-${String(STATE.calendarMonth + 1).padStart(2, "0")}-01`;
+    }
+  }
+  return STATE.calendarFocusDate;
+}
+
+function setCalendarFocusDateIso(iso) {
+  const d = parseIsoDateLocal(iso);
+  STATE.calendarFocusDate = formatIsoDateLocal(d);
+  STATE.calendarYear = d.getFullYear();
+  STATE.calendarMonth = d.getMonth();
+}
+
+function getCalendarViewMode() {
+  if (!STATE.calendarViewMode) {
+    try {
+      const saved = localStorage.getItem("matsci_cal_view_mode");
+      STATE.calendarViewMode = ["month", "week", "day", "agenda"].includes(saved) ? saved : "month";
+    } catch (e) {
+      STATE.calendarViewMode = "month";
+    }
+  }
+  return STATE.calendarViewMode;
+}
+
+function setCalendarViewMode(mode) {
+  if (!["month", "week", "day", "agenda"].includes(mode)) mode = "month";
+  STATE.calendarViewMode = mode;
+  try { localStorage.setItem("matsci_cal_view_mode", mode); } catch (e) {}
+  renderMonthlyCalendar();
+}
+window.setCalendarViewMode = setCalendarViewMode;
+
+function navigateCalendar(delta) {
+  const mode = getCalendarViewMode();
+  const focus = parseIsoDateLocal(getCalendarFocusDateIso());
+  if (mode === "week") {
+    focus.setDate(focus.getDate() + delta * 7);
+    setCalendarFocusDateIso(formatIsoDateLocal(focus));
+  } else if (mode === "day") {
+    focus.setDate(focus.getDate() + delta);
+    setCalendarFocusDateIso(formatIsoDateLocal(focus));
+  } else {
+    // Month or Agenda: step by 1 month
+    let m = STATE.calendarMonth + delta;
+    let y = STATE.calendarYear;
+    if (m < 0) { m = 11; y -= 1; }
+    else if (m > 11) { m = 0; y += 1; }
+    STATE.calendarYear = y;
+    STATE.calendarMonth = m;
+    STATE.calendarFocusDate = `${y}-${String(m + 1).padStart(2, "0")}-01`;
+  }
+  renderMonthlyCalendar();
+}
+window.navigateCalendar = navigateCalendar;
 
 function changeCalendarMonth(delta) {
-  STATE.calendarMonth += delta;
-  if (STATE.calendarMonth < 0) {
-    STATE.calendarMonth = 11;
-    STATE.calendarYear -= 1;
-  } else if (STATE.calendarMonth > 11) {
-    STATE.calendarMonth = 0;
-    STATE.calendarYear += 1;
-  }
-  renderMonthlyCalendar();
+  navigateCalendar(delta);
 }
+window.changeCalendarMonth = changeCalendarMonth;
 
 function resetCalendarToday() {
-  const t = new Date();
-  STATE.calendarYear = t.getFullYear();
-  STATE.calendarMonth = t.getMonth();
+  setCalendarFocusDateIso(getKstTodayIso());
   renderMonthlyCalendar();
 }
+window.resetCalendarToday = resetCalendarToday;
 
-function renderMonthlyCalendar() {
-  const grid = document.getElementById("monthly-calendar-grid");
-  const titleEl = document.getElementById("cal-month-title");
-  if (!grid || !titleEl) return;
-
-  const year = STATE.calendarYear;
-  const month = STATE.calendarMonth;
-  titleEl.textContent = `${MONTH_NAMES[month]} ${year}`;
-
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const prevMonthDays = new Date(year, month, 0).getDate();
-  let todayIso = "";
-  try {
-    todayIso = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-  } catch (e) {
-    todayIso = new Date().toISOString().split("T")[0];
+function jumpCalendarToDay(isoDate, keepMode = false) {
+  setCalendarFocusDateIso(isoDate);
+  if (!keepMode) {
+    STATE.calendarViewMode = "day";
+    try { localStorage.setItem("matsci_cal_view_mode", "day"); } catch (e) {}
   }
+  renderMonthlyCalendar();
+}
+window.jumpCalendarToDay = jumpCalendarToDay;
 
-  // Group events by date, distributing multi-day events across all covered dates
+function toggleCalendarLegendCategory(catVal) {
+  const sel = document.getElementById("cal-category-filter");
+  if (!sel) return;
+  sel.value = (sel.value === catVal) ? "ALL" : catVal;
+  renderMonthlyCalendar();
+}
+window.toggleCalendarLegendCategory = toggleCalendarLegendCategory;
+
+function getCalendarEventColorClass(ev) {
+  const isGoogle = Boolean(ev.syncedWithGoogle || ev.googleEventId || (ev.event_type || "").includes("Google Calendar"));
+  if (isGoogle) return { cls: "cat-gcal", dot: "#0369a1" };
+  const t = String(ev.event_type || "").toLowerCase();
+  if (t.includes("synthesis") || t.includes("furnace")) return { cls: "cat-synth", dot: "#d97706" };
+  if (t.includes("characterization") || t.includes("xrd") || t.includes("sem")) return { cls: "cat-char", dot: "#2f6f5e" };
+  if (t.includes("meeting") || t.includes("pi")) return { cls: "cat-meet", dot: "#9a3412" };
+  if (t.includes("electrochem")) return { cls: "cat-elec", dot: "#7c5a2b" };
+  if (t.includes("data") || t.includes("manuscript") || t.includes("writing")) return { cls: "cat-data", dot: "#4f5d75" };
+  return { cls: "cat-custom", dot: "#7c3f58" };
+}
+
+function parseTimeToMinutes(timeStr, fallbackMin = 540) {
+  const m = String(timeStr || "").match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return fallbackMin;
+  return Math.min(24 * 60, Math.max(0, parseInt(m[1], 10) * 60 + parseInt(m[2], 10)));
+}
+
+function getCalendarFilteredEvents() {
+  const q = (document.getElementById("cal-search-input")?.value || "").toLowerCase().trim();
+  const catFilter = document.getElementById("cal-category-filter")?.value || "ALL";
+  const statusFilter = document.getElementById("cal-status-filter")?.value || "ALL";
+
+  return (STATE.schedule || []).filter(ev => {
+    if (catFilter !== "ALL") {
+      if (catFilter === "__GCAL__") {
+        const isG = Boolean(ev.syncedWithGoogle || ev.googleEventId || (ev.event_type || "").includes("Google Calendar"));
+        if (!isG) return false;
+      } else if ((ev.event_type || "") !== catFilter) {
+        return false;
+      }
+    }
+    if (statusFilter !== "ALL" && (ev.status || "Scheduled") !== statusFilter) return false;
+    if (q) {
+      const partText = typeof formatEventParticipantsSummary === "function" ? formatEventParticipantsSummary(ev) : "";
+      const hay = `${ev.title || ""} ${ev.event_type || ""} ${ev.instrument_or_location || ""} ${ev.description || ""} ${partText}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function buildEventsByDateMap(eventsList) {
   const eventsByDate = {};
-  (STATE.schedule || []).forEach(item => {
+  (eventsList || []).forEach(item => {
     const sDate = item.start_date;
+    if (!sDate) return;
     const eDate = item.end_date || item.start_date;
     const range = getDatesInRange(sDate, eDate);
     const totalDays = range.length;
@@ -7064,15 +7196,87 @@ function renderMonthlyCalendar() {
         ...item,
         isMultiDay: isMulti,
         dayIndex: dayIndex + 1,
-        totalDays: totalDays,
+        totalDays,
         isFirstDay: dayIndex === 0,
         isLastDay: dayIndex === totalDays - 1
       });
     });
   });
+  Object.values(eventsByDate).forEach(arr => {
+    arr.sort((a, b) => {
+      if (a.isMultiDay !== b.isMultiDay) return a.isMultiDay ? -1 : 1;
+      return parseTimeToMinutes(a.start_time) - parseTimeToMinutes(b.start_time);
+    });
+  });
+  return eventsByDate;
+}
 
-  let cellsHtml = "";
+function renderMonthlyCalendar() {
+  const stage = document.getElementById("calendar-view-stage");
+  const titleEl = document.getElementById("cal-month-title");
+  if (!stage || !titleEl) return;
+
+  const mode = getCalendarViewMode();
+  const todayIso = getKstTodayIso();
+  const focusIso = getCalendarFocusDateIso();
+  const focusDate = parseIsoDateLocal(focusIso);
+
+  // Sync mode segmented buttons
+  ["month", "week", "day", "agenda"].forEach(m => {
+    const btn = document.getElementById(`btn-cal-mode-${m}`);
+    if (btn) btn.classList.toggle("active", m === mode);
+  });
+
+  // Sync Category Filter dropdown with Admin-configured Event Categories
+  const catSel = document.getElementById("cal-category-filter");
+  const activeCat = catSel ? (catSel.value || "ALL") : "ALL";
+  const allCats = typeof getEventCategoriesList === "function" ? getEventCategoriesList() : [];
+  if (catSel) {
+    let opts = `<option value="ALL">All Categories</option>`;
+    allCats.forEach(c => {
+      opts += `<option value="${escapeHtml(c)}"${activeCat === c ? " selected" : ""}>${escapeHtml(c)}</option>`;
+    });
+    opts += `<option value="__GCAL__"${activeCat === "__GCAL__" ? " selected" : ""}>Google Calendar</option>`;
+    catSel.innerHTML = opts;
+  }
+
+  // Render dynamic clickable Category Legend
+  const legendBar = document.getElementById("cal-legend-items");
+  const countBadge = document.getElementById("cal-active-count-label");
+  const filteredEvents = getCalendarFilteredEvents();
+  const eventsByDate = buildEventsByDateMap(filteredEvents);
+
+  if (legendBar) {
+    legendBar.innerHTML = allCats.map(c => {
+      const col = getCalendarEventColorClass({ event_type: c });
+      const safeC = escapeHtml(c).replace(/'/g, "\\'");
+      return `<button type="button" class="cal-legend-dot-btn ${activeCat === c ? "active" : ""}" onclick="toggleCalendarLegendCategory('${safeC}')"><span class="cal-legend-dot" style="background:${col.dot};"></span>${escapeHtml(c)}</button>`;
+    }).join("") + `<button type="button" class="cal-legend-dot-btn ${activeCat === "__GCAL__" ? "active" : ""}" onclick="toggleCalendarLegendCategory('__GCAL__')"><span class="cal-legend-dot" style="background:#0369a1;"></span>Google Calendar</button>`;
+  }
+
+  if (mode === "month") {
+    _renderCalendarMonthView(stage, titleEl, countBadge, eventsByDate, todayIso);
+  } else if (mode === "week") {
+    _renderCalendarWeekView(stage, titleEl, countBadge, focusDate, eventsByDate, todayIso);
+  } else if (mode === "day") {
+    _renderCalendarDayView(stage, titleEl, countBadge, focusDate, focusIso, eventsByDate, todayIso);
+  } else {
+    _renderCalendarAgendaView(stage, titleEl, countBadge, eventsByDate, todayIso);
+  }
+}
+
+function _renderCalendarMonthView(stage, titleEl, countBadge, eventsByDate, todayIso) {
+  const year = STATE.calendarYear;
+  const month = STATE.calendarMonth;
+  titleEl.textContent = `${MONTH_NAMES[month]} ${year}`;
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const prevMonthDays = new Date(year, month, 0).getDate();
   const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
+
+  let monthEventIds = new Set();
+  let cellsHtml = "";
 
   for (let i = 0; i < totalCells; i++) {
     let cellYear = year;
@@ -7096,74 +7300,384 @@ function renderMonthlyCalendar() {
 
     const isoDate = `${cellYear}-${String(cellMonth + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
     const isToday = isoDate === todayIso;
+    const dow = i % 7;
+    const isWeekend = dow === 0 || dow === 6;
     const dayEvents = eventsByDate[isoDate] || [];
+    if (!isOtherMonth) dayEvents.forEach(ev => monthEventIds.add(ev.id));
 
-    const eventsHtml = dayEvents.map(ev => {
-      let typeClass = "";
-      const isGoogleEvent = Boolean(ev.syncedWithGoogle || ev.googleEventId || (ev.event_type || "").includes("Google Calendar"));
+    const maxVisible = 3;
+    const visibleEvents = dayEvents.slice(0, maxVisible);
+    const hiddenCount = dayEvents.length - visibleEvents.length;
 
-      if (isGoogleEvent) typeClass = "type-gcal";
-      else if ((ev.event_type || "").includes("Synthesis")) typeClass = "type-synth";
-      else if ((ev.event_type || "").includes("Characterization")) typeClass = "type-char";
-      else if ((ev.event_type || "").includes("Meeting")) typeClass = "type-meet";
-
-      let multiClass = "";
-      let multiLabel = "";
-      if (ev.isMultiDay) {
-        if (ev.isFirstDay) {
-          multiClass = "multi-day-start";
-          multiLabel = `<span style="opacity:0.9;">🚩 (${ev.dayIndex}/${ev.totalDays})</span> `;
-        } else if (ev.isLastDay) {
-          multiClass = "multi-day-end";
-          multiLabel = `<span style="opacity:0.9;">🏁 (${ev.totalDays}/${ev.totalDays})</span> `;
-        } else {
-          multiClass = "multi-day-mid";
-          multiLabel = `<span style="opacity:0.9;">↔️ (${ev.dayIndex}/${ev.totalDays})</span> `;
-        }
-      }
-
-      const doneClass = ev.status === "Completed" ? "done" : "";
-      const gcalIcon = isGoogleEvent ? "🌐 " : "";
-      const timeDisplay = ev.isMultiDay
-        ? (ev.isFirstDay ? (ev.start_time || "09:00") : (ev.isLastDay ? (ev.end_time || "18:00") : "All Day"))
+    const eventsHtml = visibleEvents.map(ev => {
+      const col = getCalendarEventColorClass(ev);
+      const doneClass = ev.status === "Completed" ? "is-done" : "";
+      const timeLabel = ev.isMultiDay
+        ? (ev.isFirstDay ? `${ev.start_time || "09:00"} · D1/${ev.totalDays}` : `Day ${ev.dayIndex}/${ev.totalDays}`)
         : (ev.start_time || "09:00");
-
-      const tooltipText = ev.isMultiDay
-        ? `${ev.title} [${ev.start_date} ${ev.start_time || ""} → ${ev.end_date} ${ev.end_time || ""}] (${ev.totalDays} Days - Day ${ev.dayIndex})`
-        : `${ev.start_time || ""}–${ev.end_time || ""}: ${ev.title}`;
-
+      const partSummary = typeof formatEventParticipantsSummary === "function" ? formatEventParticipantsSummary(ev) : "";
+      const tip = `${ev.title} (${ev.event_type || "Event"})\n${ev.start_date} ${ev.start_time || ""} – ${ev.end_date || ev.start_date} ${ev.end_time || ""}${partSummary ? `\nParticipants: ${partSummary}` : ""}`;
       return `
-        <div
-          class="cal-event-chip ${typeClass} ${multiClass} ${doneClass}"
-          onclick="event.stopPropagation(); openScheduleModal(${ev.id})"
-          title="${escapeHtml(tooltipText)}"
-        >
-          ${gcalIcon}${multiLabel}${escapeHtml(timeDisplay)}: ${escapeHtml(ev.title)}
+        <div class="cal-ev-pill ${col.cls} ${doneClass}" onclick="event.stopPropagation(); openScheduleModal(${ev.id})" title="${escapeHtml(tip)}">
+          <span style="opacity:0.82; font-variant-numeric:tabular-nums;">${escapeHtml(timeLabel)}</span> ${escapeHtml(ev.title)}
         </div>
       `;
     }).join("");
 
+    const moreHtml = hiddenCount > 0
+      ? `<button type="button" class="cal-m-more-btn" onclick="event.stopPropagation(); jumpCalendarToDay('${isoDate}')">+${hiddenCount} more</button>`
+      : "";
+
     cellsHtml += `
-      <div
-        class="cal-day-cell ${isOtherMonth ? "other-month" : ""} ${isToday ? "is-today" : ""}"
-        onclick="openScheduleModalForDate('${isoDate}')"
-        title="Click to schedule on ${isoDate}"
-      >
-        <div class="cal-day-num">
-          <span>${dayNum}</span>
-          ${isToday ? `<span class="badge badge-blue" style="font-size:9px; padding:1px 6px;">Today</span>` : ""}
+      <div class="cal-m-cell ${isOtherMonth ? "other-month" : ""} ${isWeekend ? "is-weekend" : ""} ${isToday ? "is-today" : ""}" onclick="openScheduleModalForDate('${isoDate}')" title="Click to add event on ${isoDate}">
+        <div class="cal-m-cell-head">
+          <button type="button" class="cal-m-day-btn" onclick="event.stopPropagation(); jumpCalendarToDay('${isoDate}')" title="Open Day View for ${isoDate}">${dayNum}</button>
+          <span class="cal-m-add-hint admin-only">+</span>
         </div>
         ${eventsHtml}
+        ${moreHtml}
       </div>
     `;
   }
 
-  grid.innerHTML = cellsHtml;
+  if (countBadge) countBadge.textContent = `${monthEventIds.size} event${monthEventIds.size === 1 ? "" : "s"} in ${SHORT_MONTH_NAMES[month]}`;
+
+  stage.innerHTML = `
+    <div class="cal-month-shell">
+      <div class="cal-month-weekdays">
+        ${WEEKDAY_NAMES_SHORT.map((d, idx) => `<div class="cal-month-weekday ${(idx === 0 || idx === 6) ? "is-weekend" : ""}">${d}</div>`).join("")}
+      </div>
+      <div id="monthly-calendar-grid" class="cal-month-grid">${cellsHtml}</div>
+    </div>
+  `;
 }
-function openScheduleModalForDate(isoDate) {
+
+function _buildHourlyColumnEventsHtml(dayEvents, isoDate, startHour, endHour, hourHeightPx) {
+  const timed = dayEvents.filter(ev => !ev.isMultiDay);
+  if (timed.length === 0) return "";
+
+  const startMinBound = startHour * 60;
+  const endMinBound = (endHour + 1) * 60;
+
+  const normalized = timed.map(ev => {
+    const sMin = Math.max(startMinBound, parseTimeToMinutes(ev.start_time, 9 * 60));
+    let eMin = parseTimeToMinutes(ev.end_time, sMin + 60);
+    if (eMin <= sMin) eMin = sMin + 45;
+    eMin = Math.min(endMinBound, Math.max(sMin + 30, eMin));
+    return { ev, sMin, eMin };
+  }).sort((a, b) => a.sMin - b.sMin || b.eMin - a.eMin);
+
+  // Simple overlap column placement
+  const columns = [];
+  normalized.forEach(item => {
+    let placed = false;
+    for (let c = 0; c < columns.length; c++) {
+      const last = columns[c][columns[c].length - 1];
+      if (last.eMin <= item.sMin) {
+        columns[c].push(item);
+        item.colIdx = c;
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) {
+      item.colIdx = columns.length;
+      columns.push([item]);
+    }
+  });
+  const totalCols = Math.max(1, columns.length);
+
+  return normalized.map(item => {
+    const { ev, sMin, eMin, colIdx } = item;
+    const topPx = ((sMin - startMinBound) / 60) * hourHeightPx;
+    const heightPx = Math.max(24, ((eMin - sMin) / 60) * hourHeightPx - 2);
+    const widthPct = 100 / totalCols;
+    const leftPct = colIdx * widthPct;
+    const col = getCalendarEventColorClass(ev);
+    const doneClass = ev.status === "Completed" ? "is-done" : "";
+    const partSummary = typeof formatEventParticipantsSummary === "function" ? formatEventParticipantsSummary(ev) : "";
+    return `
+      <div class="cal-tg-event-block cal-ev-pill ${col.cls} ${doneClass}"
+           style="top:${topPx}px; height:${heightPx}px; left:calc(${leftPct}% + 2px); width:calc(${widthPct}% - 4px); white-space:normal;"
+           onclick="event.stopPropagation(); openScheduleModal(${ev.id})"
+           title="${escapeHtml(`${ev.title} (${ev.start_time || ""}–${ev.end_time || ""})`)}">
+        <div style="font-weight:700; line-height:1.2; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(ev.title)}</div>
+        <div style="font-size:10px; opacity:0.85; margin-top:1px;">${escapeHtml(ev.start_time || "09:00")}–${escapeHtml(ev.end_time || "10:00")}${ev.instrument_or_location ? ` · ${escapeHtml(ev.instrument_or_location)}` : ""}</div>
+        ${(heightPx >= 54 && partSummary) ? `<div style="font-size:10px; opacity:0.85; margin-top:2px;">Participants: ${escapeHtml(partSummary)}</div>` : ""}
+      </div>
+    `;
+  }).join("");
+}
+
+function _renderCalendarWeekView(stage, titleEl, countBadge, focusDate, eventsByDate, todayIso) {
+  const startOfWeek = new Date(focusDate.getFullYear(), focusDate.getMonth(), focusDate.getDate() - focusDate.getDay());
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate() + i);
+    days.push({ date: d, iso: formatIsoDateLocal(d), isToday: formatIsoDateLocal(d) === todayIso });
+  }
+
+  const first = days[0].date;
+  const last = days[6].date;
+  titleEl.textContent = first.getMonth() === last.getMonth()
+    ? `${SHORT_MONTH_NAMES[first.getMonth()]} ${first.getDate()} – ${last.getDate()}, ${first.getFullYear()}`
+    : `${SHORT_MONTH_NAMES[first.getMonth()]} ${first.getDate()} – ${SHORT_MONTH_NAMES[last.getMonth()]} ${last.getDate()}, ${last.getFullYear()}`;
+
+  const weekEventIds = new Set();
+  days.forEach(day => (eventsByDate[day.iso] || []).forEach(ev => weekEventIds.add(ev.id)));
+  if (countBadge) countBadge.textContent = `${weekEventIds.size} event${weekEventIds.size === 1 ? "" : "s"} this week`;
+
+  const startHour = 6;
+  const endHour = 22;
+  const hourHeightPx = 52;
+  const nowMin = getKstCurrentMinutes();
+  const nowTopPx = ((nowMin - startHour * 60) / 60) * hourHeightPx;
+  const showNowLine = nowMin >= startHour * 60 && nowMin <= (endHour + 1) * 60;
+
+  let hoursColHtml = "";
+  for (let h = startHour; h <= endHour; h++) {
+    hoursColHtml += `<div class="cal-tg-hour-label">${String(h).padStart(2, "0")}:00</div>`;
+  }
+
+  const allDayCellsHtml = days.map(day => {
+    const multiEvs = (eventsByDate[day.iso] || []).filter(ev => ev.isMultiDay);
+    return `
+      <div class="cal-allday-cell">
+        ${multiEvs.map(ev => {
+          const col = getCalendarEventColorClass(ev);
+          return `<div class="cal-ev-pill ${col.cls} ${ev.status === "Completed" ? "is-done" : ""}" onclick="event.stopPropagation(); openScheduleModal(${ev.id})" title="${escapeHtml(ev.title)}">${escapeHtml(ev.title)} (D${ev.dayIndex}/${ev.totalDays})</div>`;
+        }).join("")}
+      </div>
+    `;
+  }).join("");
+
+  const dayColsHtml = days.map(day => {
+    let slotsHtml = "";
+    for (let h = startHour; h <= endHour; h++) {
+      const sTime = `${String(h).padStart(2, "0")}:00`;
+      const eTime = `${String(Math.min(23, h + 1)).padStart(2, "0")}:00`;
+      slotsHtml += `<div class="cal-tg-slot" onclick="openScheduleModalForDate('${day.iso}', '${sTime}', '${eTime}')" title="Click to schedule ${day.iso} at ${sTime}"></div>`;
+    }
+    const evBlocksHtml = _buildHourlyColumnEventsHtml(eventsByDate[day.iso] || [], day.iso, startHour, endHour, hourHeightPx);
+    const nowLineHtml = (day.isToday && showNowLine) ? `<div class="cal-tg-now-line" style="top:${nowTopPx}px;" title="Current KST Time"></div>` : "";
+    return `
+      <div class="cal-tg-day-col ${day.isToday ? "is-today" : ""}">
+        ${slotsHtml}
+        ${evBlocksHtml}
+        ${nowLineHtml}
+      </div>
+    `;
+  }).join("");
+
+  stage.innerHTML = `
+    <div class="cal-timegrid-wrap">
+      <div class="cal-week-head-row">
+        <div class="cal-tg-corner">GMT+9</div>
+        ${days.map(day => `
+          <div class="cal-tg-day-hdr ${day.isToday ? "is-today" : ""}" onclick="jumpCalendarToDay('${day.iso}')" title="Switch to Day View (${day.iso})">
+            <div class="cal-tg-day-dow">${WEEKDAY_NAMES_SHORT[day.date.getDay()]}</div>
+            <div class="cal-tg-day-num">${day.date.getDate()}</div>
+          </div>
+        `).join("")}
+      </div>
+      <div class="cal-allday-row mode-week">
+        <div class="cal-tg-corner">Multi</div>
+        ${allDayCellsHtml}
+      </div>
+      <div class="cal-tg-body mode-week" id="monthly-calendar-grid">
+        <div class="cal-tg-hours-col">${hoursColHtml}</div>
+        ${dayColsHtml}
+      </div>
+    </div>
+  `;
+}
+
+function _renderCalendarDayView(stage, titleEl, countBadge, focusDate, focusIso, eventsByDate, todayIso) {
+  const isToday = focusIso === todayIso;
+  titleEl.textContent = `${WEEKDAY_NAMES_FULL[focusDate.getDay()]}, ${SHORT_MONTH_NAMES[focusDate.getMonth()]} ${focusDate.getDate()}, ${focusDate.getFullYear()}${isToday ? " (Today)" : ""}`;
+
+  const dayEvents = eventsByDate[focusIso] || [];
+  if (countBadge) countBadge.textContent = `${dayEvents.length} event${dayEvents.length === 1 ? "" : "s"} on ${focusIso}`;
+
+  const startHour = 6;
+  const endHour = 22;
+  const hourHeightPx = 52;
+  const nowMin = getKstCurrentMinutes();
+  const nowTopPx = ((nowMin - startHour * 60) / 60) * hourHeightPx;
+  const showNowLine = isToday && nowMin >= startHour * 60 && nowMin <= (endHour + 1) * 60;
+
+  let hoursColHtml = "";
+  let slotsHtml = "";
+  for (let h = startHour; h <= endHour; h++) {
+    const sTime = `${String(h).padStart(2, "0")}:00`;
+    const eTime = `${String(Math.min(23, h + 1)).padStart(2, "0")}:00`;
+    hoursColHtml += `<div class="cal-tg-hour-label">${sTime}</div>`;
+    slotsHtml += `<div class="cal-tg-slot" onclick="openScheduleModalForDate('${focusIso}', '${sTime}', '${eTime}')" title="Click to schedule ${focusIso} at ${sTime}"></div>`;
+  }
+
+  const multiEvs = dayEvents.filter(ev => ev.isMultiDay);
+  const evBlocksHtml = _buildHourlyColumnEventsHtml(dayEvents, focusIso, startHour, endHour, hourHeightPx);
+  const nowLineHtml = showNowLine ? `<div class="cal-tg-now-line" style="top:${nowTopPx}px;"></div>` : "";
+
+  // Mini Month Navigator for right sidebar
+  const mYear = focusDate.getFullYear();
+  const mMonth = focusDate.getMonth();
+  const firstDow = new Date(mYear, mMonth, 1).getDay();
+  const daysInMon = new Date(mYear, mMonth + 1, 0).getDate();
+  const prevMonDays = new Date(mYear, mMonth, 0).getDate();
+  const totalMini = Math.ceil((firstDow + daysInMon) / 7) * 7;
+  let miniCells = WEEKDAY_NAMES_SHORT.map(d => `<div class="cal-mini-dow">${d[0]}</div>`).join("");
+  for (let i = 0; i < totalMini; i++) {
+    let cy = mYear, cm = mMonth, dn = 0, other = false;
+    if (i < firstDow) {
+      dn = prevMonDays - firstDow + i + 1; cm = mMonth - 1; if (cm < 0) { cm = 11; cy--; } other = true;
+    } else if (i >= firstDow + daysInMon) {
+      dn = i - (firstDow + daysInMon) + 1; cm = mMonth + 1; if (cm > 11) { cm = 0; cy++; } other = true;
+    } else {
+      dn = i - firstDow + 1;
+    }
+    const iso = `${cy}-${String(cm + 1).padStart(2, "0")}-${String(dn).padStart(2, "0")}`;
+    const hasEv = (eventsByDate[iso] || []).length > 0;
+    miniCells += `<button type="button" class="cal-mini-day ${other ? "other-month" : ""} ${iso === todayIso ? "is-today" : ""} ${iso === focusIso ? "is-selected" : ""} ${hasEv ? "has-ev" : ""}" onclick="jumpCalendarToDay('${iso}')">${dn}</button>`;
+  }
+
+  const sideSummaryHtml = dayEvents.length === 0
+    ? `<div style="font-size:12px; color:#786354; padding:8px 0;">No events scheduled for this day. Click any time slot to schedule.</div>`
+    : dayEvents.map(ev => {
+        const col = getCalendarEventColorClass(ev);
+        const partSummary = typeof formatEventParticipantsSummary === "function" ? formatEventParticipantsSummary(ev) : "";
+        return `
+          <div style="padding:7px 8px; background:#fffdf9; border:1px solid #e4d8c8; border-left:3px solid ${col.dot}; border-radius:6px; margin-bottom:6px; cursor:pointer;" onclick="openScheduleModal(${ev.id})">
+            <div style="font-weight:700; font-size:12px; color:#2a1f18;">${escapeHtml(ev.title)}</div>
+            <div style="font-size:11px; color:#786354; margin-top:2px;">${escapeHtml(ev.start_time || "09:00")}–${escapeHtml(ev.end_time || "10:00")} · ${escapeHtml(ev.event_type || "Event")}</div>
+            ${partSummary ? `<div style="font-size:10.5px; color:#8c3d0c; margin-top:2px;">Participants: ${escapeHtml(partSummary)}</div>` : ""}
+          </div>
+        `;
+      }).join("");
+
+  stage.innerHTML = `
+    <div class="cal-day-layout">
+      <div class="cal-timegrid-wrap">
+        <div class="cal-day-head-row">
+          <div class="cal-tg-corner">GMT+9</div>
+          <div class="cal-tg-day-hdr ${isToday ? "is-today" : ""}" style="text-align:left; padding:8px 12px; cursor:default;">
+            <span style="font-weight:800; color:#2a1f18; font-size:13.5px;">${WEEKDAY_NAMES_FULL[focusDate.getDay()]}</span>
+            <span style="font-size:12px; color:#786354; margin-left:8px;">${focusIso}</span>
+          </div>
+        </div>
+        <div class="cal-allday-row mode-day">
+          <div class="cal-tg-corner">Multi</div>
+          <div class="cal-allday-cell">
+            ${multiEvs.length === 0
+              ? `<span style="font-size:11px; color:#9b8b7c; padding:2px 4px;">No multi-day events</span>`
+              : multiEvs.map(ev => {
+                  const col = getCalendarEventColorClass(ev);
+                  return `<div class="cal-ev-pill ${col.cls}" onclick="openScheduleModal(${ev.id})">${escapeHtml(ev.title)} (Day ${ev.dayIndex}/${ev.totalDays})</div>`;
+                }).join("")}
+          </div>
+        </div>
+        <div class="cal-tg-body mode-day" id="monthly-calendar-grid">
+          <div class="cal-tg-hours-col">${hoursColHtml}</div>
+          <div class="cal-tg-day-col ${isToday ? "is-today" : ""}">
+            ${slotsHtml}
+            ${evBlocksHtml}
+            ${nowLineHtml}
+          </div>
+        </div>
+      </div>
+
+      <div class="cal-mini-sidebar">
+        <div class="cal-mini-box">
+          <div style="display:flex; justify-content:space-between; align-items:center; font-size:12.5px; font-weight:800; color:#2a1f18;">
+            <span>${MONTH_NAMES[mMonth]} ${mYear}</span>
+            <button type="button" class="mp-btn-xs" onclick="setCalendarViewMode('month')">Month →</button>
+          </div>
+          <div class="cal-mini-grid">${miniCells}</div>
+        </div>
+
+        <div class="cal-mini-box">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="font-size:12.5px; font-weight:800; color:#2a1f18;">Day Schedule (${dayEvents.length})</span>
+            <button type="button" class="mp-btn-xs mp-btn-xs-teal admin-only" onclick="openScheduleModalForDate('${focusIso}')">+ Add</button>
+          </div>
+          ${sideSummaryHtml}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function _renderCalendarAgendaView(stage, titleEl, countBadge, eventsByDate, todayIso) {
+  const year = STATE.calendarYear;
+  const month = STATE.calendarMonth;
+  const monthPrefix = `${year}-${String(month + 1).padStart(2, "0")}-`;
+  titleEl.textContent = `Agenda · ${MONTH_NAMES[month]} ${year}`;
+
+  const matchingDates = Object.keys(eventsByDate)
+    .filter(d => d.startsWith(monthPrefix) && eventsByDate[d].length > 0)
+    .sort();
+
+  const uniqIds = new Set();
+  matchingDates.forEach(d => eventsByDate[d].forEach(ev => uniqIds.add(ev.id)));
+  if (countBadge) countBadge.textContent = `${uniqIds.size} event${uniqIds.size === 1 ? "" : "s"} in ${SHORT_MONTH_NAMES[month]}`;
+
+  if (matchingDates.length === 0) {
+    stage.innerHTML = `
+      <div id="monthly-calendar-grid" style="padding:36px 20px; text-align:center; color:#786354; border:1px dashed #d9bf9f; border-radius:8px; background:#faf6ef;">
+        <div style="font-weight:700; color:#3d2b1f; margin-bottom:4px;">No events scheduled in ${MONTH_NAMES[month]} ${year}</div>
+        <div style="font-size:12.5px;">Switch months or click <strong>+ Add Event</strong> to schedule a new lab session or meeting.</div>
+      </div>
+    `;
+    return;
+  }
+
+  stage.innerHTML = `
+    <div id="monthly-calendar-grid" class="cal-agenda-list">
+      ${matchingDates.map(iso => {
+        const dObj = parseIsoDateLocal(iso);
+        const isToday = iso === todayIso;
+        const evs = eventsByDate[iso];
+        return `
+          <div class="cal-agenda-day-group">
+            <div class="cal-agenda-day-header ${isToday ? "is-today" : ""}">
+              <span style="cursor:pointer;" onclick="jumpCalendarToDay('${iso}')">${WEEKDAY_NAMES_FULL[dObj.getDay()]}, ${SHORT_MONTH_NAMES[dObj.getMonth()]} ${dObj.getDate()}, ${dObj.getFullYear()} ${isToday ? `<span class="badge badge-amber" style="font-size:10px; margin-left:6px;">Today</span>` : ""}</span>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <span style="font-size:11.5px; font-weight:600; color:#786354;">${evs.length} event${evs.length === 1 ? "" : "s"}</span>
+                <button type="button" class="mp-btn-xs admin-only" onclick="openScheduleModalForDate('${iso}')">+ Add</button>
+              </div>
+            </div>
+            ${evs.map(ev => {
+              const col = getCalendarEventColorClass(ev);
+              const partBadges = typeof renderEventParticipantsBadgesHtml === "function" ? renderEventParticipantsBadgesHtml(ev) : "";
+              const timeStr = ev.isMultiDay ? `Day ${ev.dayIndex}/${ev.totalDays}` : `${ev.start_time || "09:00"} – ${ev.end_time || "10:00"}`;
+              return `
+                <div class="cal-agenda-row" onclick="openScheduleModal(${ev.id})">
+                  <div class="cal-agenda-time" style="border-left:3px solid ${col.dot}; padding-left:8px;">${escapeHtml(timeStr)}</div>
+                  <div style="flex:1; min-width:0;">
+                    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                      <strong style="color:#2a1f18; font-size:13px;">${escapeHtml(ev.title)}</strong>
+                      <span class="badge badge-slate" style="font-size:10.5px;">${escapeHtml(ev.event_type || "Event")}</span>
+                      <span class="badge ${ev.status === "Completed" ? "badge-green" : ev.status === "In Progress" ? "badge-amber" : "badge-blue"}" style="font-size:10.5px;">${escapeHtml(ev.status || "Scheduled")}</span>
+                      ${partBadges}
+                    </div>
+                    ${(ev.instrument_or_location || ev.description) ? `<div style="font-size:12px; color:#5c493c; margin-top:3px;">${ev.instrument_or_location ? `📍 ${escapeHtml(ev.instrument_or_location)}` : ""}${ev.instrument_or_location && ev.description ? " · " : ""}${ev.description ? escapeHtml(ev.description.slice(0, 120)) : ""}</div>` : ""}
+                  </div>
+                  <button type="button" class="mp-btn-xs" onclick="event.stopPropagation(); pushSingleEventToGoogleCalendar(${ev.id})" title="Push to Google Calendar">+GCal</button>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function openScheduleModalForDate(isoDate, startTime = null, endTime = null) {
   if (!requireAdminAuth()) return;
-  openScheduleModal(null, isoDate);
+  openScheduleModal(null, isoDate, startTime, endTime);
 }
+window.openScheduleModalForDate = openScheduleModalForDate;
 
 function buildGoogleCalendarTemplateUrl(item) {
   const sDateClean = (item.start_date || new Date().toISOString().split("T")[0]).replace(/-/g, "");
@@ -13802,7 +14316,7 @@ function syncEventToParticipantsWorkspaces(eventObj, options = {}) {
   return syncedCount;
 }
 
-function openScheduleModal(itemId = null, prefillDate = null) {
+function openScheduleModal(itemId = null, prefillDate = null, prefillStartTime = null, prefillEndTime = null) {
   if (!requireAdminAuth()) return;
   const modal = document.getElementById("schedule-modal");
   const catMgrBox = document.getElementById("sm-cat-manager-box");
@@ -13842,7 +14356,7 @@ function openScheduleModal(itemId = null, prefillDate = null) {
     updateScheduleDurationBadge();
     setVisibilityControlValues("sm", s.visibility || "Public", s.allowed_users || []);
   } else {
-    document.getElementById("schedule-modal-title").textContent = `Schedule Event / Task (${todayStr})`;
+    document.getElementById("schedule-modal-title").textContent = `Schedule Event / Task (${todayStr}${prefillStartTime ? ` · ${prefillStartTime}` : ""})`;
     document.getElementById("sm-id").value = "";
     document.getElementById("sm-title").value = "";
     const defaultCats = getEventCategoriesList();
@@ -13853,8 +14367,8 @@ function openScheduleModal(itemId = null, prefillDate = null) {
     const endDateEl = document.getElementById("sm-end-date");
     if (endDateEl) endDateEl.value = todayStr;
 
-    document.getElementById("sm-start").value = "10:00";
-    document.getElementById("sm-end").value = "12:00";
+    document.getElementById("sm-start").value = prefillStartTime || "10:00";
+    document.getElementById("sm-end").value = prefillEndTime || "12:00";
     setScheduleModalParticipants([]);
     document.getElementById("sm-status").value = "Scheduled";
     document.getElementById("sm-desc").value = "";
