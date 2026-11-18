@@ -344,9 +344,241 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;");
 }
 
+const _UNICODE_SUB_MAP = {
+  "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄", "5": "₅", "6": "₆", "7": "₇", "8": "₈", "9": "₉",
+  "+": "₊", "-": "₋", "−": "₋", "=": "₌", "(": "₍", ")": "₎",
+  "a": "ₐ", "e": "ₑ", "h": "ₕ", "i": "ᵢ", "j": "ⱼ", "k": "ₖ", "l": "ₗ", "m": "ₘ",
+  "n": "ₙ", "o": "ₒ", "p": "ₚ", "r": "ᵣ", "s": "ₛ", "t": "ₜ", "u": "ᵤ", "v": "ᵥ", "x": "ₓ"
+};
+
+const _UNICODE_SUP_MAP = {
+  "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹",
+  "+": "⁺", "-": "⁻", "−": "⁻", "=": "⁼", "(": "⁽", ")": "⁾", "i": "ⁱ", "n": "ⁿ"
+};
+
+function _toUnicodeSub(str) {
+  return String(str || "").split("").map(ch => _UNICODE_SUB_MAP[ch] || ch).join("");
+}
+
+function _toUnicodeSup(str) {
+  return String(str || "").split("").map(ch => _UNICODE_SUP_MAP[ch] || ch).join("");
+}
+
+function _normalizeSubSupForSearch(str) {
+  const rev = {
+    "₀": "0", "₁": "1", "₂": "2", "₃": "3", "₄": "4", "₅": "5", "₆": "6", "₇": "7", "₈": "8", "₉": "9",
+    "⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4", "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9",
+    "₊": "+", "₋": "-", "⁺": "+", "⁻": "-", "ₓ": "x", "ₐ": "a", "ₑ": "e", "ᵢ": "i", "ₙ": "n", "ₒ": "o"
+  };
+  return String(str || "").replace(/[₀-₉⁰-⁹₊₋⁺⁻ₓₐₑᵢₙₒ]/g, ch => rev[ch] || ch);
+}
+
+function _walkMathMlNode(node, inScript = false) {
+  if (!node) return "";
+  if (node.nodeType === 3) {
+    return (node.nodeValue || "").replace(/\s+/g, " ").trim();
+  }
+  if (node.nodeType !== 1) return "";
+
+  const tag = (node.localName || node.tagName || "").toLowerCase().replace(/^mml:/, "");
+  if (tag === "annotation" || tag === "annotation-xml") return "";
+  if (tag === "mspace") return " ";
+
+  const elChildren = Array.from(node.children || []);
+  const walkAll = (subScript = inScript) => {
+    if (elChildren.length > 0) {
+      return elChildren.map(c => _walkMathMlNode(c, subScript)).join("");
+    }
+    return Array.from(node.childNodes || []).map(c => _walkMathMlNode(c, subScript)).join("");
+  };
+
+  if (tag === "mi" || tag === "mn" || tag === "mtext" || tag === "ms") {
+    return (node.textContent || "").replace(/\s+/g, " ").trim();
+  }
+  if (tag === "mo") {
+    const op = (node.textContent || "").trim();
+    if (!op) return "";
+    if (op === "," || op === ";") return op + " ";
+    if (/^[=+−\-±×→↔≈≤≥<>∼~∈]$/.test(op)) {
+      return inScript ? op : ` ${op} `;
+    }
+    return op;
+  }
+  if (tag === "msub" && elChildren.length >= 2) {
+    const base = _walkMathMlNode(elChildren[0], inScript);
+    const sub = _walkMathMlNode(elChildren[1], true).trim();
+    return sub ? `${base}<sub>${sub}</sub>` : base;
+  }
+  if (tag === "msup" && elChildren.length >= 2) {
+    const base = _walkMathMlNode(elChildren[0], inScript);
+    const sup = _walkMathMlNode(elChildren[1], true).trim();
+    return sup ? `${base}<sup>${sup}</sup>` : base;
+  }
+  if (tag === "msubsup" && elChildren.length >= 3) {
+    const base = _walkMathMlNode(elChildren[0], inScript);
+    const sub = _walkMathMlNode(elChildren[1], true).trim();
+    const sup = _walkMathMlNode(elChildren[2], true).trim();
+    return `${base}${sub ? `<sub>${sub}</sub>` : ""}${sup ? `<sup>${sup}</sup>` : ""}`;
+  }
+  if (tag === "mfrac" && elChildren.length >= 2) {
+    const num = _walkMathMlNode(elChildren[0], true).trim();
+    const den = _walkMathMlNode(elChildren[1], true).trim();
+    return `${num}/${den}`;
+  }
+  if (tag === "msqrt") {
+    return `√(${walkAll(true).trim()})`;
+  }
+  if (tag === "mover" && elChildren.length >= 2) {
+    const base = _walkMathMlNode(elChildren[0], inScript);
+    const over = (elChildren[1].textContent || "").trim();
+    if (over === "¯" || over === "-" || over === "−" || over === "―" || over === "‾") {
+      return `${base}\u0304`;
+    }
+    return base;
+  }
+  if (tag === "munder" && elChildren.length >= 2) {
+    return _walkMathMlNode(elChildren[0], inScript);
+  }
+  if (tag === "mfenced") {
+    const open = node.getAttribute("open") ?? "(";
+    const close = node.getAttribute("close") ?? ")";
+    const sep = (node.getAttribute("separators") ?? ",").charAt(0) || ",";
+    return `${open}${elChildren.map(c => _walkMathMlNode(c, inScript)).join(sep + " ")}${close}`;
+  }
+  return walkAll(inScript);
+}
+
+function _convertInlineLatex(tex) {
+  let t = String(tex || "").trim();
+  const cmdMap = {
+    "\\alpha": "α", "\\beta": "β", "\\gamma": "γ", "\\delta": "δ", "\\epsilon": "ε", "\\varepsilon": "ε",
+    "\\zeta": "ζ", "\\eta": "η", "\\theta": "θ", "\\kappa": "κ", "\\lambda": "λ", "\\mu": "μ",
+    "\\nu": "ν", "\\xi": "ξ", "\\pi": "π", "\\rho": "ρ", "\\sigma": "σ", "\\tau": "τ",
+    "\\phi": "φ", "\\varphi": "φ", "\\chi": "χ", "\\psi": "ψ", "\\omega": "ω",
+    "\\Gamma": "Γ", "\\Delta": "Δ", "\\Theta": "Θ", "\\Lambda": "Λ", "\\Pi": "Π", "\\Sigma": "Σ",
+    "\\Phi": "Φ", "\\Psi": "Ψ", "\\Omega": "Ω",
+    "\\times": "×", "\\cdot": "·", "\\pm": "±", "\\mp": "∓", "\\sim": "~", "\\approx": "≈",
+    "\\leq": "≤", "\\le": "≤", "\\geq": "≥", "\\ge": "≥", "\\neq": "≠", "\\rightarrow": "→",
+    "\\to": "→", "\\leftrightarrow": "↔", "\\infty": "∞", "\\AA": "Å", "\\circ": "°",
+    "\\,": " ", "\\;": " ", "\\:": " ", "\\quad": " ", "\\ ": " "
+  };
+  // Unwrap \mathrm{...}, \text{...}, \textbf{...}, \mathit{...}, \mathbf{...}
+  for (let i = 0; i < 4; i++) {
+    t = t.replace(/\\(?:mathrm|text|textbf|textit|mathit|mathbf|mathsf|rm|bf)\s*\{([^{}]*)\}/g, "$1");
+  }
+  t = t.replace(/\\[A-Za-z]+|\\[,;: ]/g, m => (cmdMap[m] !== undefined ? cmdMap[m] : ""));
+  // Subscripts & superscripts
+  t = t.replace(/_\{([^{}]+)\}/g, "<sub>$1</sub>");
+  t = t.replace(/_([A-Za-z0-9α-ωΑ-Ωδ])/g, "<sub>$1</sub>");
+  t = t.replace(/\^\{([^{}]+)\}/g, "<sup>$1</sup>");
+  t = t.replace(/\^([A-Za-z0-9+\-−])/g, "<sup>$1</sup>");
+  t = t.replace(/[{}]/g, "");
+  return t;
+}
+
+function normalizeScientificMarkup(rawText) {
+  if (rawText === null || rawText === undefined) return "";
+  let s = String(rawText);
+
+  // 1. Decode HTML-encoded XML/MathML/JATS tags if double-escaped
+  if (/&lt;\s*\/?\s*(?:mml:|jats:|ce:|math|sub|sup|inf|i|b|em|strong)/i.test(s)) {
+    s = s.replace(/&lt;(\/?(?:mml:[a-z]+|jats:[a-z\-]+|ce:[a-z]+|math|mrow|msub|msup|msubsup|mi|mn|mo|mtext|mspace|mfrac|msqrt|mover|munder|mfenced|sub|sup|inf|i|b|em|strong|scp|inline-formula|alternatives|tex-math)(?:\s+[^&]*?)?)&gt;/gi, "<$1>");
+  }
+
+  // 2. If <alternatives> wraps both MathML and <tex-math>, drop <tex-math> to avoid duplicating formula
+  s = s.replace(/<alternatives\b[^>]*>([\s\S]*?)<\/alternatives>/gi, (m, inner) => {
+    if (/<(?:mml:)?math\b/i.test(inner)) {
+      return inner.replace(/<(?:jats:)?tex-math\b[^>]*>[\s\S]*?<\/(?:jats:)?tex-math>/gi, "");
+    }
+    return inner;
+  });
+
+  // 3. Parse and convert <mml:math ...>...</mml:math> and <math ...>...</math> via DOMParser
+  if (/<(?:mml:)?math\b/i.test(s) && typeof DOMParser !== "undefined") {
+    s = s.replace(/<(?:mml:)?math\b[^>]*>[\s\S]*?<\/(?:mml:)?math>/gi, (mathBlock) => {
+      try {
+        const cleanedXml = mathBlock
+          .replace(/<(\/?)mml:/gi, "<$1")
+          .replace(/\s+xmlns(?::[a-z0-9_-]+)?="[^"]*"/gi, "");
+        const doc = new DOMParser().parseFromString(`<div>${cleanedXml}</div>`, "text/html");
+        const mathEl = doc.querySelector("math");
+        if (mathEl) {
+          return _walkMathMlNode(mathEl, false);
+        }
+      } catch (e) {}
+      return mathBlock.replace(/<[^>]+>/g, "");
+    });
+  }
+
+  // 4. Convert JATS / Elsevier / ACS / Wiley inline tags into standard HTML sub/sup/i/b
+  s = s
+    .replace(/<(?:jats:sub|ce:inf|inf)\b[^>]*>/gi, "<sub>")
+    .replace(/<\/(?:jats:sub|ce:inf|inf)>/gi, "</sub>")
+    .replace(/<(?:jats:sup|ce:sup)\b[^>]*>/gi, "<sup>")
+    .replace(/<\/(?:jats:sup|ce:sup)>/gi, "</sup>")
+    .replace(/<(?:jats:italic|ce:italic)\b[^>]*>/gi, "<i>")
+    .replace(/<\/(?:jats:italic|ce:italic)>/gi, "</i>")
+    .replace(/<(?:jats:bold|ce:bold)\b[^>]*>/gi, "<b>")
+    .replace(/<\/(?:jats:bold|ce:bold)>/gi, "</b>");
+
+  // 5. Convert standalone <tex-math> or inline LaTeX $...$
+  s = s.replace(/<(?:jats:)?tex-math\b[^>]*>([\s\S]*?)<\/(?:jats:)?tex-math>/gi, (_, tex) => _convertInlineLatex(tex.replace(/^\$+|\$+$/g, "")));
+  if (s.includes("$")) {
+    s = s.replace(/\$([^$\n]{1,120})\$/g, (m, inner) => {
+      // Avoid touching currency like "$100 to $200"
+      if (/^\d+(?:[.,]\d+)?\s*(?:million|billion|k|M|B)?$/.test(inner.trim())) return m;
+      return _convertInlineLatex(inner);
+    });
+  }
+
+  // 6. Strip remaining unknown XML/HTML wrapper tags while preserving sub/sup/i/b/em/strong
+  s = s.replace(/<(\/?)(?!(?:sub|sup|i|b|em|strong)\b)[a-zA-Z0-9:_-]+(?:\s+[^>]*)?\/?>/g, "");
+
+  // 7. Decode HTML entities safely (keeping whitelisted tags intact)
+  if (/&(?:#\d+|#x[0-9a-fA-F]+|[a-zA-Z]+);/.test(s) && typeof document !== "undefined") {
+    const tagBag = [];
+    const masked = s.replace(/<\/?(?:sub|sup|i|b|em|strong)>/gi, (m) => {
+      tagBag.push(m.toLowerCase());
+      return `___SCITAG${tagBag.length - 1}___`;
+    });
+    const ta = document.createElement("textarea");
+    ta.innerHTML = masked;
+    s = ta.value;
+    for (let i = 0; i < tagBag.length; i++) {
+      s = s.replace(`___SCITAG${i}___`, tagBag[i]);
+    }
+  }
+
+  // 8. Clean up whitespace & punctuation spacing artifacts from XML indentation
+  s = s
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\u2009|\u200a|\u00a0/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+(<\/?(?:sub|sup)>)/gi, "$1")
+    .replace(/(<(?:sub|sup)>)\s+/gi, "$1")
+    .replace(/\s+(<\/(?:sub|sup)>)/gi, "$1")
+    .replace(/\(\s+/g, "(")
+    .replace(/\[\s+/g, "[")
+    .replace(/\s+([,.;:)\]])/g, "$1")
+    .trim();
+
+  return s;
+}
+window.normalizeScientificMarkup = normalizeScientificMarkup;
+
+function cleanScientificPlainText(rawText) {
+  let s = normalizeScientificMarkup(rawText);
+  if (!s) return "";
+  s = s.replace(/<sub>([\s\S]*?)<\/sub>/gi, (_, inner) => _toUnicodeSub(inner));
+  s = s.replace(/<sup>([\s\S]*?)<\/sup>/gi, (_, inner) => _toUnicodeSup(inner));
+  s = s.replace(/<\/?(?:i|b|em|strong|sub|sup)>/gi, "");
+  return s.replace(/\s{2,}/g, " ").trim();
+}
+window.cleanScientificPlainText = cleanScientificPlainText;
+
 function renderScientificTitle(rawTitle) {
   if (rawTitle === null || rawTitle === undefined) return "";
-  let s = String(rawTitle);
+  let s = normalizeScientificMarkup(rawTitle);
 
   // 1. Decode common encoded chemical/scientific tags if already escaped
   s = s.replace(/&lt;(\/?)sub&gt;/gi, '<$1sub>')
@@ -6783,9 +7015,9 @@ async function importPaperByDoiCommon(rawDoiInput) {
     const crRes = await fetch(`https://api.crossref.org/works/${encodeURIComponent(cleaned)}`);
     if (!crRes.ok) throw new Error(`DOI '${cleaned}' not found on Crossref.`);
     const msg = (await crRes.json()).message || {};
-    const title = (msg.title && msg.title[0]) || "Untitled Paper";
+    const title = cleanScientificPlainText((msg.title && msg.title[0]) || "Untitled Paper") || "Untitled Paper";
     const authors = (msg.author || []).map(a => `${a.given || ""} ${a.family || ""}`.trim()).slice(0, 5).join(", ") || "Unknown";
-    const journal = (msg["container-title"] && msg["container-title"][0]) || msg.publisher || "Journal";
+    const journal = cleanScientificPlainText((msg["container-title"] && msg["container-title"][0]) || msg.publisher || "Journal");
     const year = msg.issued?.["date-parts"]?.[0]?.[0] || 2026;
     const visMeta = (STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail)
       ? getVisibilityControlValues("lit-doi")
@@ -6799,7 +7031,7 @@ async function importPaperByDoiCommon(rawDoiInput) {
       year,
       volume: msg.volume || "",
       pages: msg.page || "",
-      abstract: (msg.abstract || "").replace(/<[^>]+>/g, ""),
+      abstract: cleanScientificPlainText(msg.abstract || ""),
       citation_count: msg["is-referenced-by-count"] || 0,
       material_system: "Perovskite / 2D Material",
       synthesis_method: "First-principles DFT",
@@ -6819,7 +7051,7 @@ async function importPaperByDoiCommon(rawDoiInput) {
 }
 
 function renderPapersList() {
-  const query = (document.getElementById("paper-search")?.value || "").toLowerCase();
+  const query = _normalizeSubSupForSearch((document.getElementById("paper-search")?.value || "").toLowerCase());
   const statusFilter = document.getElementById("paper-status-filter")?.value || "ALL";
   const audienceFilter = document.getElementById("paper-audience-filter")?.value || "ALL";
 
@@ -6827,7 +7059,8 @@ function renderPapersList() {
     if (statusFilter !== "ALL" && p.status !== statusFilter) return false;
     if (!doesItemMatchAudienceFilter(p, audienceFilter)) return false;
     if (!query) return true;
-    const hay = `${p.title} ${p.authors} ${p.journal} ${p.doi} ${p.material_system} ${p.characterization_tags} ${p.notes}`.toLowerCase();
+    const cleanTitle = cleanScientificPlainText(p.title || "");
+    const hay = _normalizeSubSupForSearch(`${cleanTitle} ${p.authors} ${p.journal} ${p.doi} ${p.material_system} ${p.characterization_tags} ${p.notes}`.toLowerCase());
     return hay.includes(query);
   });
 
@@ -6876,7 +7109,7 @@ function renderPapersList() {
         </div>
       </div>
 
-      ${p.abstract ? `<div style="font-size:12.5px; color:var(--text-secondary); margin:8px 0; line-height:1.45;">${escapeHtml(p.abstract.slice(0, 320))}${p.abstract.length > 320 ? "..." : ""}</div>` : ""}
+      ${p.abstract ? `<div style="font-size:12.5px; color:var(--text-secondary); margin:8px 0; line-height:1.45;">${renderScientificTitle(cleanScientificPlainText(p.abstract).slice(0, 320))}${cleanScientificPlainText(p.abstract).length > 320 ? "..." : ""}</div>` : ""}
 
       ${p.notes ? `<div style="background:#f8fafc; border-left:3px solid var(--primary); padding:8px 12px; font-size:12.5px; margin:8px 0; border-radius:4px;"><strong>PhD Takeaway / Note:</strong> ${escapeHtml(p.notes)}</div>` : ""}
 
@@ -7128,9 +7361,9 @@ function openPaperModal(paperId = null) {
     }
     document.getElementById("paper-modal-title").textContent = "Edit Paper Details & Research Notes";
     document.getElementById("pm-id").value = p.id;
-    document.getElementById("pm-title").value = p.title || "";
+    document.getElementById("pm-title").value = cleanScientificPlainText(p.title || "");
     document.getElementById("pm-authors").value = p.authors || "";
-    document.getElementById("pm-journal").value = p.journal || "";
+    document.getElementById("pm-journal").value = cleanScientificPlainText(p.journal || "");
     document.getElementById("pm-year").value = p.year || 2026;
     document.getElementById("pm-doi").value = p.doi || "";
     document.getElementById("pm-material").value = p.material_system || "";
@@ -7138,7 +7371,7 @@ function openPaperModal(paperId = null) {
     document.getElementById("pm-char").value = p.characterization_tags || "";
     document.getElementById("pm-status").value = p.status || "To Read";
     document.getElementById("pm-notes").value = p.notes || "";
-    document.getElementById("pm-abstract").value = p.abstract || "";
+    document.getElementById("pm-abstract").value = cleanScientificPlainText(p.abstract || "");
     document.getElementById("pm-weekly").checked = Boolean(p.in_weekly_report);
     setVisibilityControlValues("pm", p.visibility || "Public", p.allowed_users || []);
   } else {
@@ -7267,13 +7500,19 @@ async function deletePaperItem(id) {
 function copyPaperBibtex(id) {
   const p = STATE.papers.find(x => x.id === id);
   if (!p) return;
-  const bib = p.bibtex || `@article{ref${p.id},\n  title={${p.title}},\n  author={${p.authors}},\n  journal={${p.journal}},\n  year={${p.year}},\n  doi={${p.doi}}\n}`;
+  const cleanTitle = cleanScientificPlainText(p.title || "");
+  const cleanJournal = cleanScientificPlainText(p.journal || "");
+  const bib = p.bibtex || `@article{ref${p.id},\n  title={${cleanTitle}},\n  author={${p.authors}},\n  journal={${cleanJournal}},\n  year={${p.year}},\n  doi={${p.doi}}\n}`;
   navigator.clipboard.writeText(bib);
   showToast("Copied BibTeX citation to clipboard!");
 }
 
 function exportAllBibtex() {
-  const allBib = STATE.papers.map(p => p.bibtex || `@article{ref${p.id},\n  title={${p.title}},\n  author={${p.authors}},\n  journal={${p.journal}},\n  year={${p.year}},\n  doi={${p.doi}}\n}`).join("\n\n");
+  const allBib = STATE.papers.map(p => {
+    const cleanTitle = cleanScientificPlainText(p.title || "");
+    const cleanJournal = cleanScientificPlainText(p.journal || "");
+    return p.bibtex || `@article{ref${p.id},\n  title={${cleanTitle}},\n  author={${p.authors}},\n  journal={${cleanJournal}},\n  year={${p.year}},\n  doi={${p.doi}}\n}`;
+  }).join("\n\n");
   navigator.clipboard.writeText(allBib);
   showToast(`Copied ${STATE.papers.length} BibTeX entries to clipboard!`);
 }
@@ -13185,10 +13424,11 @@ async function handleOwnPubDoiFetch() {
       if (crossrefResp.ok) {
         const cData = await crossrefResp.json();
         const msg = cData.message || {};
-        const title = Array.isArray(msg.title) ? msg.title[0] : (msg.title || "");
+        const rawTitle = Array.isArray(msg.title) ? msg.title[0] : (msg.title || "");
+        const title = cleanScientificPlainText(rawTitle);
         const authorsList = (msg.author || []).map(a => `${a.given || ""} ${a.family || ""}`.trim()).filter(Boolean);
         const authors = authorsList.length > 0 ? authorsList.join("; ") : (STATE.profile.full_name || "Vu Tien Lam");
-        const journal = Array.isArray(msg["container-title"]) ? msg["container-title"][0] : (msg["container-title"] || "Academic Journal");
+        const journal = cleanScientificPlainText(Array.isArray(msg["container-title"]) ? msg["container-title"][0] : (msg["container-title"] || "Academic Journal"));
         const year = msg.issued?.["date-parts"]?.[0]?.[0] || 2026;
         meta = {
           title,
@@ -14904,7 +15144,7 @@ async function handleSyncOrcid() {
         const pc = String(ws["put-code"] || "");
         const work = workDetailsMap.get(pc) || ws;
 
-        const titleVal = work.title?.title?.value || ws.title?.title?.value || "";
+        const titleVal = cleanScientificPlainText(work.title?.title?.value || ws.title?.title?.value || "");
         if (!titleVal) continue;
 
         // Extract DOI
