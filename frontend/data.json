@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T14:09:36.577Z",
+  "exported_at": "2026-11-18T14:24:50.200Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -5095,6 +5095,13 @@
       "participant_groups": []
     }
   ],
+  "event_categories": [
+    "Synthesis / Furnace",
+    "Characterization (XRD/SEM/TEM/XPS)",
+    "Group Meeting / PI Meeting",
+    "Electrochemical Testing",
+    "Data Analysis / Manuscript Writing"
+  ],
   "users_registry": {
     "lamvt.sep@gmail.com": {
       "email": "lamvt.sep@gmail.com",
@@ -5112,8 +5119,8 @@
       "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
       "registeredAt": "2026-11-16 11:31",
       "lastLoginAt": "2026-11-18 21:42",
-      "lastUpdatedAt": "2026-11-18 22:01",
-      "updatedAtMs": 1795006875328,
+      "lastUpdatedAt": "2026-11-18 23:24",
+      "updatedAtMs": 1795011889600,
       "workspace": {
         "papers": [
           {
@@ -5572,7 +5579,7 @@
               }
             ],
             "in_weekly_report": 0,
-            "id": 1794571683470,
+            "id": 1794571683471,
             "project_folder": "2D Janus MA2Z4 & Layered TMDs",
             "structural_id": "CD-0027",
             "calc_status": "Relaxed",
@@ -5971,7 +5978,7 @@
             "visibility": "Private",
             "allowed_users": [],
             "allowed_groups": [],
-            "id": 1794807861185,
+            "id": 1794807861186,
             "project_folder": "User: Vu Tien Lam",
             "owner_email": "tlamvux@gmail.com",
             "owner_name": "Vu Tien Lam",
@@ -6071,7 +6078,7 @@
               }
             ],
             "in_weekly_report": 0,
-            "id": 1794571683470,
+            "id": 1794571683472,
             "project_folder": "User: Vu Tien Lam",
             "visibility": "Private",
             "owner_email": "tlamvux@gmail.com",
