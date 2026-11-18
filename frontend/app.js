@@ -4140,7 +4140,7 @@ const GOOGLE_OAUTH_CONFIG = {
   USERINFO_ENDPOINT: "https://www.googleapis.com/oauth2/v3/userinfo",
   REVOKE_ENDPOINT: "https://oauth2.googleapis.com/revoke",
   BASIC_SCOPES: "openid email profile",
-  SCOPES: "openid email profile https://www.googleapis.com/auth/calendar.readonly",
+  SCOPES: "openid email profile",
   CALENDAR_SCOPES: "https://www.googleapis.com/auth/calendar.readonly",
   PROMPT: "select_account"
 };
@@ -4528,11 +4528,10 @@ async function handleGoogleOAuth2AccessToken(tokenInput, providerName = "google_
     renderWorkspaceBanner();
     updateCalendarActiveAccountDisplay();
 
-    // Auto-sync user's Google Calendar immediately when Calendar permission was granted during Google Sign-In!
-    const grantedScope = String((tokenObj && tokenObj.scope) || (STATE.auth && STATE.auth.googleTokenScope) || "");
-    if (grantedScope.includes("calendar") && typeof syncWithGoogleCalendarApi === "function") {
+    // Auto-sync user's Google Calendar immediately after Google Sign-In!
+    if (typeof syncWithGoogleCalendarApi === "function") {
       setTimeout(() => {
-        syncWithGoogleCalendarApi({ silent: false, forceToken: accessToken });
+        syncWithGoogleCalendarApi({ silent: true, forceToken: accessToken });
       }, 250);
     }
   } catch (e) {
@@ -7840,99 +7839,261 @@ function setCalendarDisplayMode(mode) {
   updateCalendarActiveAccountDisplay();
 }
 
-function toggleIcsImportBox() {
+function toggleIcsImportBox(prefillEmail = "") {
   const drawer = document.getElementById("gcal-import-drawer");
   if (!drawer) return;
-  drawer.style.display = drawer.style.display === "none" ? "block" : "none";
+  const isHidden = drawer.style.display === "none";
+  drawer.style.display = isHidden ? "block" : "none";
+  if (isHidden) {
+    const activeEmail = prefillEmail || document.getElementById("calendar-active-email-label")?.textContent || OWNER_GOOGLE_EMAIL;
+    const emailSpan = document.getElementById("gcal-drawer-email-label");
+    if (emailSpan) emailSpan.textContent = activeEmail;
+    const inp = document.getElementById("gcal-ics-url-input");
+    if (inp) {
+      const savedUrl = getSavedGoogleCalendarIcsUrl(activeEmail);
+      if (savedUrl && !inp.value) inp.value = savedUrl;
+      inp.focus();
+    }
+  }
 }
 
-function parseIcsContentAndMerge(icsText) {
-  const events = [];
-  const eventBlocks = icsText.split(/BEGIN:VEVENT/i).slice(1);
+function getSavedGoogleCalendarIcsUrl(email) {
+  const norm = normalizeEmail(email || "");
+  if (norm && STATE.usersRegistry && STATE.usersRegistry[norm] && STATE.usersRegistry[norm].gcalIcsUrl) {
+    return STATE.usersRegistry[norm].gcalIcsUrl;
+  }
+  if ((!norm || norm === normalizeEmail(OWNER_GOOGLE_EMAIL)) && STATE.profile && STATE.profile.gcal_ics_url) {
+    return STATE.profile.gcal_ics_url;
+  }
+  try {
+    return (localStorage.getItem(`matsci_gcal_ics_url_${norm || "admin"}`) || "").trim();
+  } catch (e) {
+    return "";
+  }
+}
+
+function saveGoogleCalendarIcsUrl(email, rawUrl) {
+  const norm = normalizeEmail(email || "");
+  const clean = String(rawUrl || "").trim();
+  try {
+    if (clean) localStorage.setItem(`matsci_gcal_ics_url_${norm || "admin"}`, clean);
+    else localStorage.removeItem(`matsci_gcal_ics_url_${norm || "admin"}`);
+  } catch (e) {}
+  if (norm && STATE.usersRegistry && STATE.usersRegistry[norm]) {
+    STATE.usersRegistry[norm].gcalIcsUrl = clean;
+    persistUsersRegistryLocal();
+  }
+  if (!norm || norm === normalizeEmail(OWNER_GOOGLE_EMAIL)) {
+    if (STATE.profile) STATE.profile.gcal_ics_url = clean;
+    if (STATE.masterData && STATE.masterData.profile) STATE.masterData.profile.gcal_ics_url = clean;
+  }
+}
+
+async function fetchGoogleIcsViaCorsRelay(rawInputUrl) {
+  if (!rawInputUrl) return null;
+  let url = String(rawInputUrl).trim();
+  if (url.startsWith("webcal://")) {
+    url = "https://" + url.slice(9);
+  } else if (!url.startsWith("http://") && !url.startsWith("https://") && url.includes("@")) {
+    url = `https://calendar.google.com/calendar/ical/${encodeURIComponent(url)}/public/basic.ics`;
+  }
+
+  // Extract calendar ID if user pasted a Google Calendar embed URL (?src=...)
+  if (url.includes("calendar.google.com/calendar/embed") && url.includes("src=")) {
+    try {
+      const uObj = new URL(url);
+      const srcParam = uObj.searchParams.get("src");
+      if (srcParam) {
+        url = `https://calendar.google.com/calendar/ical/${encodeURIComponent(srcParam)}/public/basic.ics`;
+      }
+    } catch (e) {}
+  }
+
+  // 1. Try direct fetch first (works if local proxy or CORS-enabled URL)
+  try {
+    const directRes = await fetch(url);
+    if (directRes.ok) {
+      const txt = await directRes.text();
+      if (txt && txt.includes("BEGIN:VCALENDAR")) return txt;
+    }
+  } catch (e) {}
+
+  // 2. Fetch via CORS-enabled r.jina.ai relay (double-encoding % so %23 and %40 survive intact)
+  try {
+    const relayTarget = url.replace(/%/g, "%25");
+    const relayUrl = `https://r.jina.ai/${relayTarget}`;
+    const relayRes = await fetch(relayUrl);
+    if (relayRes.ok) {
+      const rawTxt = await relayRes.text();
+      const vcalStart = rawTxt.indexOf("BEGIN:VCALENDAR");
+      if (vcalStart !== -1) {
+        return rawTxt.slice(vcalStart);
+      }
+    }
+  } catch (e) {}
+
+  return null;
+}
+
+function parseIcsContentAndMerge(icsText, options = {}) {
+  if (!icsText || !icsText.includes("BEGIN:VCALENDAR")) {
+    if (!options.silent) showToast("No valid Google Calendar iCal data found.", "warn");
+    return { imported: 0, updated: 0, total: 0 };
+  }
+
+  // Unfold RFC 5545 folded lines (CRLF followed by space or tab)
+  const unfolded = icsText.replace(/\r?\n[ \t]/g, "");
+  const calNameMatch = unfolded.match(/X-WR-CALNAME:(.*)/i);
+  const calendarLabel = calNameMatch ? calNameMatch[1].trim() : (options.calendarName || "Google Calendar");
+
+  const nowMs = Date.now();
+  const minWindowMs = nowMs - 90 * 86400000;
+  const maxWindowMs = nowMs + 270 * 86400000;
+
+  const parsedAll = [];
+  const eventBlocks = unfolded.split(/BEGIN:VEVENT/i).slice(1);
+
   for (const block of eventBlocks) {
-    const summaryMatch = block.match(/SUMMARY(?::|;[^:]*:)(.*)/i);
-    const dtstartMatch = block.match(/DTSTART(?::|;[^:]*:)(.*)/i);
-    const dtendMatch = block.match(/DTEND(?::|;[^:]*:)(.*)/i);
-    const descMatch = block.match(/DESCRIPTION(?::|;[^:]*:)(.*)/i);
-    const locMatch = block.match(/LOCATION(?::|;[^:]*:)(.*)/i);
+    const endIdx = block.search(/END:VEVENT/i);
+    const body = endIdx !== -1 ? block.slice(0, endIdx) : block;
 
-    const title = summaryMatch ? summaryMatch[1].trim().replace(/\\,/g, ",").replace(/\\;/g, ";") : "Google Calendar Event";
-    const rawStart = dtstartMatch ? dtstartMatch[1].trim() : "";
-    const rawEnd = dtendMatch ? dtendMatch[1].trim() : "";
-    const desc = descMatch ? descMatch[1].trim().replace(/\\n/g, "\n").replace(/\\,/g, ",") : "";
-    const loc = locMatch ? locMatch[1].trim().replace(/\\,/g, ",") : "Lab";
+    const uidMatch = body.match(/^UID(?::|;[^:\r\n]*:)(.+)$/im);
+    const summaryMatch = body.match(/^SUMMARY(?::|;[^:\r\n]*:)(.+)$/im);
+    const dtstartMatch = body.match(/^DTSTART(?::|;([^:\r\n]*):)(.+)$/im);
+    const dtendMatch = body.match(/^DTEND(?::|;([^:\r\n]*):)(.+)$/im);
+    const descMatch = body.match(/^DESCRIPTION(?::|;[^:\r\n]*:)(.+)$/im);
+    const locMatch = body.match(/^LOCATION(?::|;[^:\r\n]*:)(.+)$/im);
+    const statusMatch = body.match(/^STATUS(?::|;[^:\r\n]*:)(.+)$/im);
 
-    let startDate = new Date().toISOString().split("T")[0];
-    let endDate = startDate;
-    let startTime = "09:00";
-    let endTime = "10:30";
+    if (statusMatch && statusMatch[1].trim().toUpperCase() === "CANCELLED") continue;
 
-    if (rawStart) {
-      const cleanStart = rawStart.replace(/[^0-9T]/g, "");
-      if (cleanStart.length >= 8) {
-        const y = cleanStart.slice(0, 4);
-        const m = cleanStart.slice(4, 6);
-        const d = cleanStart.slice(6, 8);
-        startDate = `${y}-${m}-${d}`;
-        if (cleanStart.includes("T") && cleanStart.length >= 13) {
-          const tIdx = cleanStart.indexOf("T");
-          startTime = `${cleanStart.slice(tIdx + 1, tIdx + 3)}:${cleanStart.slice(tIdx + 3, tIdx + 5)}`;
-        }
+    const uid = uidMatch ? uidMatch[1].trim() : "";
+    const title = summaryMatch
+      ? summaryMatch[1].trim().replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\n/gi, " ")
+      : "Google Calendar Event";
+    const rawStart = dtstartMatch ? dtstartMatch[2].trim() : "";
+    const rawEnd = dtendMatch ? dtendMatch[2].trim() : "";
+    if (!rawStart) continue;
+
+    const desc = descMatch
+      ? descMatch[1].trim().replace(/\\n/gi, "\n").replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/<[^>]+>/g, " ").trim().slice(0, 400)
+      : `Synced from ${calendarLabel}`;
+    const loc = locMatch
+      ? locMatch[1].trim().replace(/\\,/g, ",").replace(/\\;/g, ";")
+      : calendarLabel;
+
+    function parseIcsDateTimeToKst(rawVal, defaultTime) {
+      const clean = rawVal.replace(/[^0-9TZ]/gi, "").toUpperCase();
+      if (clean.length < 8) return { date: getKstTodayIso(), time: defaultTime, isDateOnly: true };
+      const y = clean.slice(0, 4);
+      const m = clean.slice(4, 6);
+      const d = clean.slice(6, 8);
+      if (!clean.includes("T") || clean.length < 13) {
+        return { date: `${y}-${m}-${d}`, time: defaultTime, isDateOnly: true };
       }
+      const tIdx = clean.indexOf("T");
+      const hh = clean.slice(tIdx + 1, tIdx + 3);
+      const mm = clean.slice(tIdx + 3, tIdx + 5);
+      const ss = clean.slice(tIdx + 5, tIdx + 7) || "00";
+      if (clean.endsWith("Z")) {
+        const isoUtc = `${y}-${m}-${d}T${hh}:${mm}:${ss}Z`;
+        return formatGcalIsoToKstParts(isoUtc, defaultTime);
+      }
+      return { date: `${y}-${m}-${d}`, time: `${hh}:${mm}`, isDateOnly: false };
     }
-    if (rawEnd) {
-      const cleanEnd = rawEnd.replace(/[^0-9T]/g, "");
-      if (cleanEnd.length >= 8) {
-        const ey = cleanEnd.slice(0, 4);
-        const em = cleanEnd.slice(4, 6);
-        const ed = cleanEnd.slice(6, 8);
-        endDate = `${ey}-${em}-${ed}`;
-      }
-      if (cleanEnd.includes("T") && cleanEnd.length >= 13) {
-        const tIdx = cleanEnd.indexOf("T");
-        endTime = `${cleanEnd.slice(tIdx + 1, tIdx + 3)}:${cleanEnd.slice(tIdx + 3, tIdx + 5)}`;
-      }
-    }
 
-    events.push({
-      title,
-      event_type: "Google Calendar Sync",
-      instrument_or_location: loc,
-      start_date: startDate,
-      end_date: endDate,
-      start_time: startTime,
-      end_time: endTime,
-      syncedWithGoogle: true,
-      priority: "Medium",
-      status: "Scheduled",
-      sample_id: "",
-      description: desc,
-      in_weekly_report: 1
+    const sParts = parseIcsDateTimeToKst(rawStart, "09:00");
+    const eParts = rawEnd ? parseIcsDateTimeToKst(rawEnd, "18:00") : { ...sParts, time: "10:30" };
+    const startDate = sParts.date;
+    let endDate = eParts.date || startDate;
+    const startTime = sParts.time;
+    const endTime = eParts.time;
+
+    // Exclusive DTEND adjustment for all-day events
+    if (sParts.isDateOnly && endDate > startDate) {
+      try {
+        const dEnd = parseIsoDateLocal(endDate);
+        dEnd.setDate(dEnd.getDate() - 1);
+        endDate = formatIsoDateLocal(dEnd);
+      } catch (e) {}
+    }
+    if (endDate < startDate) endDate = startDate;
+
+    const eventStartMs = parseIsoDateLocal(startDate).getTime();
+
+    parsedAll.push({
+      eventStartMs,
+      payload: {
+        title,
+        event_type: "Google Calendar Sync",
+        instrument_or_location: loc || calendarLabel,
+        start_date: startDate,
+        end_date: endDate,
+        start_time: startTime,
+        end_time: endTime,
+        syncedWithGoogle: true,
+        googleEventId: uid || `${title}_${startDate}`,
+        googleCalendarName: calendarLabel,
+        priority: "Medium",
+        status: "Scheduled",
+        description: desc,
+        visibility: "Private",
+        allowed_users: [],
+        in_weekly_report: 0
+      }
     });
   }
 
-  if (events.length === 0) {
-    showToast("No valid VEVENT blocks found in .ics file.", "warn");
-    return 0;
+  // Filter to active time window (-90d to +270d), or fallback to all if custom export
+  let filteredEvents = parsedAll.filter(x => x.eventStartMs >= minWindowMs && x.eventStartMs <= maxWindowMs).map(x => x.payload);
+  if (filteredEvents.length === 0 && parsedAll.length > 0 && !options.strictWindow) {
+    filteredEvents = parsedAll.slice(-100).map(x => x.payload);
   }
 
-  let added = 0;
-  const existingKeys = new Set(STATE.schedule.map(s => `${s.title}_${s.start_date}`));
-  for (const ev of events) {
-    const key = `${ev.title}_${ev.start_date}`;
-    if (!existingKeys.has(key)) {
-      STATE.schedule.unshift({ ...ev, id: Date.now() + Math.floor(Math.random() * 1000) });
-      existingKeys.add(key);
-      added++;
+  let imported = 0;
+  let updated = 0;
+  for (const evPayload of filteredEvents) {
+    const existingIdx = STATE.schedule.findIndex(s =>
+      (evPayload.googleEventId && s.googleEventId === evPayload.googleEventId) ||
+      (s.syncedWithGoogle && s.title === evPayload.title && s.start_date === evPayload.start_date)
+    );
+    if (existingIdx >= 0) {
+      STATE.schedule[existingIdx] = { ...STATE.schedule[existingIdx], ...evPayload };
+      updated++;
+    } else {
+      STATE.schedule.unshift({ ...evPayload, id: Date.now() + Math.floor(Math.random() * 100000) });
+      imported++;
     }
   }
 
-  saveStaticDb();
+  const activeUserEmail = getActivePersonalWorkspaceEmail();
+  if (activeUserEmail && STATE.usersRegistry[activeUserEmail]) {
+    const u = STATE.usersRegistry[activeUserEmail];
+    u.workspace = u.workspace || {};
+    u.workspace.schedule = STATE.schedule.filter(s => !s._sharedFromAdmin);
+    persistUsersRegistryLocal();
+    if (!options.skipCloud) syncDatabaseToCloudInstant(`Sync Google Calendar (${activeUserEmail})`, true);
+  } else {
+    saveStaticDb({ skipCloudPush: Boolean(options.skipCloud) });
+  }
+
+  applyActiveWorkspaceData();
   renderMonthlyCalendar();
   renderScheduleList();
-  renderDashboardSchedule();
-  showToast(`Synced ${added} events from Google Calendar into PhD Schedule!`, "success");
-  return added;
+  if (typeof renderDashboardSchedule === "function") renderDashboardSchedule();
+
+  const badgeEl = document.getElementById("cal-sync-status-badge");
+  if (badgeEl) {
+    badgeEl.textContent = "Live Synced";
+    badgeEl.style.background = "#e6f4ea";
+    badgeEl.style.color = "#166534";
+    badgeEl.style.border = "1px solid #a7d7b8";
+  }
+
+  if (!options.silent) {
+    showToast(`Synced ${imported + updated} event(s) from ${calendarLabel} (${imported} new, ${updated} updated)!`, "success");
+  }
+  return { imported, updated, total: filteredEvents.length };
 }
 
 function handleGcalIcsFile(event) {
@@ -7942,28 +8103,31 @@ function handleGcalIcsFile(event) {
   reader.onload = (e) => {
     parseIcsContentAndMerge(e.target.result);
     event.target.value = "";
+    const drawer = document.getElementById("gcal-import-drawer");
+    if (drawer) drawer.style.display = "none";
   };
   reader.readAsText(file);
 }
 
 async function handleGcalIcsUrlFetch() {
-  let url = document.getElementById("gcal-ics-url-input")?.value.trim();
-  if (!url) {
-    showToast("Please enter an .ics URL or webcal feed link.", "warn");
+  const inp = document.getElementById("gcal-ics-url-input");
+  const rawUrl = (inp ? inp.value : "").trim();
+  if (!rawUrl) {
+    showToast("Please paste your Google Calendar .ics link (or email) first.", "warn");
+    if (inp) inp.focus();
     return;
   }
-  if (url.startsWith("webcal://")) {
-    url = "https://" + url.slice(9);
+  const activeEmail = document.getElementById("calendar-active-email-label")?.textContent || OWNER_GOOGLE_EMAIL;
+  showToast("Connecting to Google Calendar feed...", "info");
+  const icsText = await fetchGoogleIcsViaCorsRelay(rawUrl);
+  if (!icsText) {
+    showToast("Could not read that calendar link. If your calendar is private, copy the 'Secret address in iCal format' from Google Calendar Settings.", "warn");
+    return;
   }
-  showToast("Fetching Google Calendar feed...");
-  try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Could not fetch URL directly (CORS). Export .ics file from Google Calendar instead.");
-    const text = await res.text();
-    parseIcsContentAndMerge(text);
-  } catch (err) {
-    showToast(`Notice: Google Calendar feed requires direct .ics file download due to browser security. Please upload the .ics file.`, "warn");
-  }
+  saveGoogleCalendarIcsUrl(activeEmail, rawUrl);
+  parseIcsContentAndMerge(icsText, { calendarName: `Google Calendar (${activeEmail})` });
+  const drawer = document.getElementById("gcal-import-drawer");
+  if (drawer) drawer.style.display = "none";
 }
 
 function formatGcalIsoToKstParts(rawIso, fallbackTime = "09:00") {
@@ -8106,96 +8270,122 @@ async function syncWithGoogleCalendarApi(options = {}) {
   }
 
   let token = (options && options.forceToken) || (STATE.auth ? STATE.auth.googleAccessToken : "");
-  const hasCalScope = Boolean(options && options.forceToken) || String((STATE.auth && STATE.auth.googleTokenScope) || "").includes("calendar");
+  const hasCalScope = String((STATE.auth && STATE.auth.googleTokenScope) || "").includes("calendar");
   const isExpired = !token || !STATE.auth || !STATE.auth.googleTokenExpiresAt || (Date.now() >= (STATE.auth.googleTokenExpiresAt - 30000));
 
   try {
-    // Directly authorize Google Calendar access if token is missing, expired, or lacks calendar.readonly scope
-    if (!token || isExpired || !hasCalScope) {
-      if (silent) {
-        if (badgeEl) {
-          badgeEl.textContent = "Sync Ready";
-          badgeEl.style.background = "#faf4ea";
-          badgeEl.style.color = "#8c3d0c";
-          badgeEl.style.border = "1px solid #e3c8a4";
+    let totalImported = 0;
+    let totalUpdated = 0;
+    let personalCalendarSynced = false;
+
+    // Channel 1: If we ALREADY have a valid OAuth token with calendar.readonly scope, try Google REST API silently (no popup!)
+    if (token && !isExpired && hasCalScope) {
+      try {
+        const data = await fetchAllCalendarsEventsWithToken(token);
+        const items = (data && data.items) || [];
+        for (const item of items) {
+          const startRaw = item.start?.dateTime || item.start?.date || "";
+          if (!startRaw) continue;
+          const startParts = formatGcalIsoToKstParts(startRaw, "09:00");
+          const startDate = startParts.date;
+          const startTime = startParts.time;
+
+          const endRaw = item.end?.dateTime || item.end?.date || "";
+          const endParts = formatGcalIsoToKstParts(endRaw, "18:00");
+          let endDate = endParts.date || startDate;
+          const endTime = endParts.time || "18:00";
+
+          if (endParts.isDateOnly && endDate > startDate) {
+            try {
+              const dEnd = parseIsoDateLocal(endDate);
+              dEnd.setDate(dEnd.getDate() - 1);
+              endDate = formatIsoDateLocal(dEnd);
+            } catch (e) {}
+          }
+          if (endDate < startDate) endDate = startDate;
+
+          const title = item.summary || "Google Calendar Event";
+          const gEventId = item.id;
+          const calLabel = item._gcalCalendarName || "Google Calendar";
+          const existingIdx = STATE.schedule.findIndex(s =>
+            (gEventId && s.googleEventId === gEventId) || (s.syncedWithGoogle && s.title === title && s.start_date === startDate)
+          );
+          const evPayload = {
+            title,
+            event_type: "Google Calendar Sync",
+            instrument_or_location: item.location || calLabel,
+            start_date: startDate,
+            end_date: endDate,
+            start_time: startTime,
+            end_time: endTime,
+            syncedWithGoogle: true,
+            googleEventId: gEventId,
+            googleCalendarName: calLabel,
+            priority: "High",
+            status: "Scheduled",
+            description: item.description ? item.description.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 400) : `Synced live from ${calLabel} (${targetCalEmail})`,
+            visibility: "Private",
+            allowed_users: [],
+            in_weekly_report: 0
+          };
+          if (existingIdx >= 0) {
+            STATE.schedule[existingIdx] = { ...STATE.schedule[existingIdx], ...evPayload };
+            totalUpdated++;
+          } else {
+            STATE.schedule.unshift({ ...evPayload, id: Date.now() + Math.floor(Math.random() * 100000) });
+            totalImported++;
+          }
         }
-        return;
-      }
-      token = await requestGoogleCalendarToken(targetCalEmail, false);
-    }
-
-    let data;
-    try {
-      data = await fetchAllCalendarsEventsWithToken(token);
-    } catch (fetchErr) {
-      if (fetchErr.status === 401 || fetchErr.status === 403) {
-        token = await requestGoogleCalendarToken(targetCalEmail, true);
-        data = await fetchAllCalendarsEventsWithToken(token);
-      } else {
-        throw fetchErr;
+        personalCalendarSynced = true;
+      } catch (apiErr) {
+        console.info("OAuth REST calendar probe skipped, falling back to live iCal relay:", apiErr.message);
       }
     }
 
-    let imported = 0;
-    let updated = 0;
-    const items = (data && data.items) || [];
-
-    for (const item of items) {
-      const startRaw = item.start?.dateTime || item.start?.date || "";
-      if (!startRaw) continue;
-      const startParts = formatGcalIsoToKstParts(startRaw, "09:00");
-      const startDate = startParts.date;
-      const startTime = startParts.time;
-
-      const endRaw = item.end?.dateTime || item.end?.date || "";
-      const endParts = formatGcalIsoToKstParts(endRaw, "18:00");
-      let endDate = endParts.date || startDate;
-      const endTime = endParts.time || "18:00";
-
-      // Google Calendar all-day end date is exclusive (next day); subtract 1 day
-      if (endParts.isDateOnly && endDate > startDate) {
-        try {
-          const dEnd = parseIsoDateLocal(endDate);
-          dEnd.setDate(dEnd.getDate() - 1);
-          endDate = formatIsoDateLocal(dEnd);
-        } catch (e) {}
+    // Channel 2: Check user's saved Google Calendar iCal Feed URL (Secret or Public .ics link)
+    const savedIcsUrl = getSavedGoogleCalendarIcsUrl(targetCalEmail);
+    if (!personalCalendarSynced && savedIcsUrl) {
+      const icsText = await fetchGoogleIcsViaCorsRelay(savedIcsUrl);
+      if (icsText) {
+        const res = parseIcsContentAndMerge(icsText, {
+          silent: true,
+          skipCloud: true,
+          calendarName: `Google Calendar (${targetCalEmail})`
+        });
+        totalImported += res.imported;
+        totalUpdated += res.updated;
+        personalCalendarSynced = true;
       }
-      if (endDate < startDate) endDate = startDate;
+    }
 
-      const title = item.summary || "Google Calendar Event";
-      const gEventId = item.id;
-      const calLabel = item._gcalCalendarName || "Google Calendar";
-
-      const existingIdx = STATE.schedule.findIndex(s =>
-        (gEventId && s.googleEventId === gEventId) || (s.syncedWithGoogle && s.title === title && s.start_date === startDate)
-      );
-
-      const evPayload = {
-        title,
-        event_type: "Google Calendar Sync",
-        instrument_or_location: item.location || calLabel,
-        start_date: startDate,
-        end_date: endDate,
-        start_time: startTime,
-        end_time: endTime,
-        syncedWithGoogle: true,
-        googleEventId: gEventId,
-        googleCalendarName: calLabel,
-        priority: "High",
-        status: "Scheduled",
-        description: item.description ? item.description.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 400) : `Synced live from ${calLabel} (${targetCalEmail})`,
-        visibility: "Private",
-        allowed_users: [],
-        in_weekly_report: 0
-      };
-
-      if (existingIdx >= 0) {
-        STATE.schedule[existingIdx] = { ...STATE.schedule[existingIdx], ...evPayload };
-        updated++;
-      } else {
-        STATE.schedule.unshift({ ...evPayload, id: Date.now() + Math.floor(Math.random() * 100000) });
-        imported++;
+    // Channel 3: Auto-probe public iCal feed for the signed-in Google email (works automatically if user ticked "Make available to public")
+    if (!personalCalendarSynced && targetCalEmail) {
+      const publicEmailIcsUrl = `https://calendar.google.com/calendar/ical/${encodeURIComponent(targetCalEmail)}/public/basic.ics`;
+      const pubIcsText = await fetchGoogleIcsViaCorsRelay(publicEmailIcsUrl);
+      if (pubIcsText) {
+        const res = parseIcsContentAndMerge(pubIcsText, {
+          silent: true,
+          skipCloud: true,
+          calendarName: `Google Calendar (${targetCalEmail})`
+        });
+        totalImported += res.imported;
+        totalUpdated += res.updated;
+        personalCalendarSynced = true;
       }
+    }
+
+    // Channel 4: Always sync live Google Calendar Academic & Public Holidays feed (Korea / KST) so calendar is immediately populated
+    const krHolidayIcsUrl = "https://calendar.google.com/calendar/ical/en.south_korea%23holiday%40group.v.calendar.google.com/public/basic.ics";
+    const krIcsText = await fetchGoogleIcsViaCorsRelay(krHolidayIcsUrl);
+    if (krIcsText) {
+      const res = parseIcsContentAndMerge(krIcsText, {
+        silent: true,
+        skipCloud: true,
+        strictWindow: true,
+        calendarName: "Google Calendar (KR)"
+      });
+      totalImported += res.imported;
+      totalUpdated += res.updated;
     }
 
     if (activeUserEmail && STATE.usersRegistry[activeUserEmail]) {
@@ -8221,24 +8411,27 @@ async function syncWithGoogleCalendarApi(options = {}) {
     }
 
     if (!silent) {
-      showToast(`Synced Google Calendar (${targetCalEmail}): ${imported} new, ${updated} updated across ${data.calendarCount || 1} calendar(s)!`, "success");
+      if (personalCalendarSynced) {
+        showToast(`Synced Google Calendar (${targetCalEmail}): ${totalImported} new, ${totalUpdated} updated!`, "success");
+      } else {
+        // Open the clean inline connection drawer so the user can link their private calendar in 10 seconds (without any OAuth 403 error!)
+        const drawer = document.getElementById("gcal-import-drawer");
+        if (drawer && drawer.style.display === "none") {
+          toggleIcsImportBox(targetCalEmail);
+        }
+        showToast(`Synced ${totalImported + totalUpdated} Google Calendar events! To include private events from ${targetCalEmail}, paste your iCal link below.`, "info");
+      }
     }
   } catch (err) {
-    console.error("Google Calendar API sync error:", err);
+    console.error("Google Calendar sync error:", err);
     if (badgeEl) {
-      badgeEl.textContent = "Sync Needed";
-      badgeEl.style.background = "#fce6e2";
-      badgeEl.style.color = "#9f2b22";
-      badgeEl.style.border = "1px solid #e7ada6";
+      badgeEl.textContent = "Sync Ready";
+      badgeEl.style.background = "#faf4ea";
+      badgeEl.style.color = "#8c3d0c";
+      badgeEl.style.border = "1px solid #e3c8a4";
     }
-    const errMsg = String((err && err.message) || err || "");
-    const isAuthBlocked = errMsg.includes("access_denied") || err.status === 403 || errMsg.toLowerCase().includes("not been used") || errMsg.toLowerCase().includes("insufficient");
     if (!silent) {
-      if (isAuthBlocked) {
-        openGoogleCalendarVerificationHelperModal(targetCalEmail, errMsg);
-      } else {
-        showToast("Google Calendar Sync: " + errMsg, "warn");
-      }
+      showToast("Google Calendar Sync: " + (err.message || err), "warn");
     }
   } finally {
     if (btnSync) {
