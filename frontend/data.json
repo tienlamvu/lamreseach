@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T05:36:56.089Z",
+  "exported_at": "2026-11-18T05:37:00.423Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -458,27 +458,6 @@
     "weekly_report_allowed_users": []
   },
   "papers": [
-    {
-      "id": 1794980191504,
-      "doi": "10.1103/physrevb.104.035409",
-      "title": "Intraband Lifshitz transition and Stoner ferromagnetism in Janus\n                    <mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\">\n                      <mml:mrow>\n                        <mml:mi mathvariant=\"normal\">P</mml:mi>\n                        <mml:msub>\n                          <mml:mi>A</mml:mi>\n                          <mml:mn>2</mml:mn>\n                        </mml:msub>\n                        <mml:mi>As</mml:mi>\n                      </mml:mrow>\n                    </mml:math>\n                    (\n                    <mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\">\n                      <mml:mrow>\n                        <mml:mi>A</mml:mi>\n                        <mml:mo>=</mml:mo>\n                        <mml:mi>Si</mml:mi>\n                        <mml:mo>,</mml:mo>\n                        <mml:mspace width=\"0.16em\"/>\n                        <mml:mi>Ge</mml:mi>\n                        <mml:mo>,</mml:mo>\n                        <mml:mspace width=\"0.16em\"/>\n                        <mml:mi>Sn</mml:mi>\n                      </mml:mrow>\n                    </mml:math>\n                    , and Pb) monolayers",
-      "authors": "Ming-Yang Liu, Long Gong, Yao He, Chao Cao",
-      "journal": "Physical Review B",
-      "year": 2021,
-      "volume": "104",
-      "pages": "",
-      "abstract": "",
-      "citation_count": 30,
-      "material_system": "Perovskite / 2D Material",
-      "synthesis_method": "First-principles DFT",
-      "characterization_tags": "DFT, VASP, XRD",
-      "status": "To Read",
-      "notes": "",
-      "in_weekly_report": 1,
-      "visibility": "Public",
-      "allowed_users": [],
-      "allowed_groups": []
-    },
     {
       "id": 1794966757448,
       "doi": "10.1038/s41524-022-00916-2",
