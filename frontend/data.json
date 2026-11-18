@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T11:43:14.899Z",
+  "exported_at": "2026-11-18T11:43:41.776Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -4437,6 +4437,39 @@
       "allowed_users": [],
       "allowed_groups": [],
       "id": 1794897404421
+    },
+    {
+      "title": "DFT Discussion",
+      "event_type": "Group Meeting / PI Meeting",
+      "instrument_or_location": "SKKU Cluster / Office",
+      "start_date": "2026-11-24",
+      "end_date": "2026-11-24",
+      "start_time": "10:00",
+      "end_time": "12:00",
+      "priority": "High",
+      "status": "Scheduled",
+      "participants": [
+        {
+          "type": "group",
+          "id": "grp_dft_team_gun1",
+          "label": "DFT Team",
+          "email": ""
+        }
+      ],
+      "participant_emails": [
+        "tlamvux@gmail.com",
+        "lamvt.sep@gmail.com",
+        "lamvt@g.skku.edu"
+      ],
+      "participant_groups": [
+        "grp_dft_team_gun1"
+      ],
+      "description": "",
+      "in_weekly_report": 1,
+      "visibility": "Public",
+      "allowed_users": [],
+      "allowed_groups": [],
+      "id": 1795002220516
     }
   ],
   "event_categories": [
@@ -4463,8 +4496,8 @@
       "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
       "registeredAt": "2026-11-16 11:31",
       "lastLoginAt": "2026-11-18 20:09",
-      "lastUpdatedAt": "2026-11-18 20:37",
-      "updatedAtMs": 1795001868000,
+      "lastUpdatedAt": "2026-11-18 20:43",
+      "updatedAtMs": 1795002220517,
       "workspace": {
         "papers": [
           {
@@ -4931,6 +4964,43 @@
         ],
         "schedule": [
           {
+            "title": "DFT Discussion",
+            "event_type": "Group Meeting / PI Meeting",
+            "instrument_or_location": "SKKU Cluster / Office",
+            "start_date": "2026-11-24",
+            "end_date": "2026-11-24",
+            "start_time": "10:00",
+            "end_time": "12:00",
+            "priority": "High",
+            "status": "Scheduled",
+            "participants": [
+              {
+                "type": "group",
+                "id": "grp_dft_team_gun1",
+                "label": "DFT Team",
+                "email": ""
+              }
+            ],
+            "participant_emails": [
+              "tlamvux@gmail.com",
+              "lamvt.sep@gmail.com",
+              "lamvt@g.skku.edu"
+            ],
+            "participant_groups": [
+              "grp_dft_team_gun1"
+            ],
+            "description": "",
+            "in_weekly_report": 1,
+            "visibility": "Private",
+            "allowed_users": [],
+            "allowed_groups": [],
+            "id": 1795002220516,
+            "_syncedEventId": 1795002220516,
+            "_isParticipantSync": true,
+            "_syncedFromEmail": "lamvt.skku@gmail.com",
+            "_syncedFromName": "Vu Tien Lam"
+          },
+          {
             "id": 1794828715723,
             "title": "Welcome Research Session — Tien Lam's Workspace",
             "event_type": "Group Meeting / PI Meeting",
@@ -5032,6 +5102,12 @@
       },
       "activityLog": [
         {
+          "timestamp": "2026-11-18 20:43",
+          "category": "Calendar",
+          "action": "Synced Event Invitation",
+          "detail": "DFT Discussion (2026-11-24) — assigned by Vu Tien Lam"
+        },
+        {
           "timestamp": "2026-11-18 20:09",
           "category": "Session",
           "action": "Signed In (Email & Password)",
@@ -5114,8 +5190,8 @@
       "passwordHash": "d2fb761fdc23a442de155300e60284390cb87b20b815d03786da83b76d145932",
       "registeredAt": "2026-11-17 00:09",
       "lastLoginAt": "2026-11-17 00:09",
-      "lastUpdatedAt": "2026-11-17 00:15",
-      "updatedAtMs": 1794874505783,
+      "lastUpdatedAt": "2026-11-18 20:43",
+      "updatedAtMs": 1795002220517,
       "workspace": {
         "papers": [
           {
@@ -5135,9 +5211,12 @@
             "status": "To Read",
             "notes": "Good reference for antisite defects in TMDs.",
             "in_weekly_report": 0,
-            "visibility": "Public",
+            "visibility": "Private",
             "allowed_users": [],
-            "allowed_groups": []
+            "allowed_groups": [],
+            "project_folder": "User: Vu Tien Lam",
+            "owner_email": "tlamvux@gmail.com",
+            "owner_name": "Vu Tien Lam"
           }
         ],
         "structures": [
@@ -5234,10 +5313,15 @@
               }
             ],
             "in_weekly_report": 0,
-            "visibility": "Public",
+            "visibility": "Private",
             "allowed_users": [],
             "allowed_groups": [],
-            "id": 1794807861185
+            "id": 1794807861185,
+            "project_folder": "User: Vu Tien Lam",
+            "owner_email": "tlamvux@gmail.com",
+            "owner_name": "Vu Tien Lam",
+            "structural_id": "CD-0031",
+            "calc_status": "Relaxed"
           },
           {
             "name": "MoSi2N2P2 Janus 4",
@@ -5332,10 +5416,54 @@
               }
             ],
             "in_weekly_report": 0,
-            "id": 1794571683470
+            "id": 1794571683470,
+            "project_folder": "User: Vu Tien Lam",
+            "visibility": "Private",
+            "owner_email": "tlamvux@gmail.com",
+            "owner_name": "Vu Tien Lam",
+            "structural_id": "CD-0030",
+            "calc_status": "Relaxed",
+            "allowed_users": []
           }
         ],
         "schedule": [
+          {
+            "title": "DFT Discussion",
+            "event_type": "Group Meeting / PI Meeting",
+            "instrument_or_location": "SKKU Cluster / Office",
+            "start_date": "2026-11-24",
+            "end_date": "2026-11-24",
+            "start_time": "10:00",
+            "end_time": "12:00",
+            "priority": "High",
+            "status": "Scheduled",
+            "participants": [
+              {
+                "type": "group",
+                "id": "grp_dft_team_gun1",
+                "label": "DFT Team",
+                "email": ""
+              }
+            ],
+            "participant_emails": [
+              "tlamvux@gmail.com",
+              "lamvt.sep@gmail.com",
+              "lamvt@g.skku.edu"
+            ],
+            "participant_groups": [
+              "grp_dft_team_gun1"
+            ],
+            "description": "",
+            "in_weekly_report": 1,
+            "visibility": "Private",
+            "allowed_users": [],
+            "allowed_groups": [],
+            "id": 1795002220516,
+            "_syncedEventId": 1795002220516,
+            "_isParticipantSync": true,
+            "_syncedFromEmail": "lamvt.skku@gmail.com",
+            "_syncedFromName": "Vu Tien Lam"
+          },
           {
             "id": 1794874163483,
             "title": "Google Calendar Synced Session — Vu Tien Lam",
@@ -5436,6 +5564,12 @@
       },
       "activityLog": [
         {
+          "timestamp": "2026-11-18 20:43",
+          "category": "Calendar",
+          "action": "Synced Event Invitation",
+          "detail": "DFT Discussion (2026-11-24) — assigned by Vu Tien Lam"
+        },
+        {
           "timestamp": "2026-11-17 00:15",
           "category": "Profile",
           "action": "Profile & Groups Updated by Administrator",
@@ -5474,8 +5608,8 @@
       ],
       "registeredAt": "2026-11-18 19:49",
       "lastLoginAt": "2026-11-18 19:50",
-      "lastUpdatedAt": "2026-11-18 20:16",
-      "updatedAtMs": 1795000563706,
+      "lastUpdatedAt": "2026-11-18 20:43",
+      "updatedAtMs": 1795002220517,
       "workspace": {
         "papers": [],
         "structures": [
@@ -5486,7 +5620,7 @@
             "name": "KNaFe(Si2O5)2",
             "formula": "KNaFeSi4O10",
             "chemical_formula": "KNaFeSi4O10",
-            "project_folder": "General Research",
+            "project_folder": "User: Jaewon Kim",
             "associated_paper_id": null,
             "associated_paper_title": "",
             "associated_paper_doi": "",
@@ -5659,10 +5793,52 @@
               }
             ],
             "in_weekly_report": 0,
-            "id": 1794999222943
+            "id": 1794999222943,
+            "visibility": "Private",
+            "owner_email": "lamvt@g.skku.edu",
+            "owner_name": "Jaewon Kim",
+            "allowed_users": []
           }
         ],
-        "schedule": [],
+        "schedule": [
+          {
+            "title": "DFT Discussion",
+            "event_type": "Group Meeting / PI Meeting",
+            "instrument_or_location": "SKKU Cluster / Office",
+            "start_date": "2026-11-24",
+            "end_date": "2026-11-24",
+            "start_time": "10:00",
+            "end_time": "12:00",
+            "priority": "High",
+            "status": "Scheduled",
+            "participants": [
+              {
+                "type": "group",
+                "id": "grp_dft_team_gun1",
+                "label": "DFT Team",
+                "email": ""
+              }
+            ],
+            "participant_emails": [
+              "tlamvux@gmail.com",
+              "lamvt.sep@gmail.com",
+              "lamvt@g.skku.edu"
+            ],
+            "participant_groups": [
+              "grp_dft_team_gun1"
+            ],
+            "description": "",
+            "in_weekly_report": 1,
+            "visibility": "Private",
+            "allowed_users": [],
+            "allowed_groups": [],
+            "id": 1795002220516,
+            "_syncedEventId": 1795002220516,
+            "_isParticipantSync": true,
+            "_syncedFromEmail": "lamvt.skku@gmail.com",
+            "_syncedFromName": "Vu Tien Lam"
+          }
+        ],
         "expReportRows": [
           {
             "sample_id": "Mo2Si5N4P3",
@@ -5843,6 +6019,12 @@
         ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-18 20:43",
+          "category": "Calendar",
+          "action": "Synced Event Invitation",
+          "detail": "DFT Discussion (2026-11-24) — assigned by Vu Tien Lam"
+        },
         {
           "timestamp": "2026-11-18 19:53",
           "category": "Crystal Structures",
