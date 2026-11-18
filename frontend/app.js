@@ -8037,6 +8037,8 @@ function resetAllStructureFilters() {
   const paperSel = document.getElementById("struct-paper-filter");
   const audSel = document.getElementById("struct-audience-filter");
   const sortSel = document.getElementById("struct-sort-by");
+  const egMinInp = document.getElementById("struct-eg-min");
+  const egMaxInp = document.getElementById("struct-eg-max");
 
   if (searchInp) searchInp.value = "";
   if (sysSel) sysSel.value = "ALL";
@@ -8045,14 +8047,187 @@ function resetAllStructureFilters() {
   if (paperSel) paperSel.value = "ALL";
   if (audSel) audSel.value = "ALL";
   if (sortSel) sortSel.value = "default";
+  if (egMinInp) egMinInp.value = "";
+  if (egMaxInp) egMaxInp.value = "";
 
   const clearBtn = document.getElementById("struct-search-clear");
   if (clearBtn) clearBtn.style.display = "none";
 
   renderStructuresList();
-  showToast("↺ All crystal structure filters and search queries reset.", "info");
+  showToast("Filters reset.", "info");
 }
 window.resetAllStructureFilters = resetAllStructureFilters;
+
+/* ============================================================================
+   Materials Project-Inspired Explorer Controls (Drawer, Columns, CSV Export)
+   ============================================================================ */
+const MP_COLUMN_DEFS = [
+  { key: "formula",    label: "Formula",         defaultOn: true },
+  { key: "system",     label: "Crystal System",  defaultOn: true },
+  { key: "spacegroup", label: "Space Group",     defaultOn: true },
+  { key: "volume",     label: "Volume (Å³)",     defaultOn: true },
+  { key: "bandgap",    label: "Band Gap (eV)",   defaultOn: true },
+  { key: "folder",     label: "Project Folder",  defaultOn: true },
+  { key: "lattice",    label: "Lattice (a,b,c)", defaultOn: false },
+  { key: "dft",        label: "DFT Method",      defaultOn: false },
+  { key: "paper",      label: "Publication",     defaultOn: false },
+  { key: "audience",   label: "Visibility",      defaultOn: false }
+];
+
+function mpGetVisibleColumns() {
+  if (STATE.mpVisibleCols) return STATE.mpVisibleCols;
+  const cols = {};
+  MP_COLUMN_DEFS.forEach(c => { cols[c.key] = c.defaultOn; });
+  try {
+    const saved = localStorage.getItem("matsci_mp_cols_v1");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      MP_COLUMN_DEFS.forEach(c => {
+        if (typeof parsed[c.key] === "boolean") cols[c.key] = parsed[c.key];
+      });
+    }
+  } catch (e) {}
+  STATE.mpVisibleCols = cols;
+  return cols;
+}
+
+function mpSaveVisibleColumns(cols) {
+  STATE.mpVisibleCols = cols;
+  try {
+    localStorage.setItem("matsci_mp_cols_v1", JSON.stringify(cols));
+  } catch (e) {}
+}
+
+function mpRenderColumnsChecklist() {
+  const listEl = document.getElementById("mp-columns-checklist");
+  if (!listEl) return;
+  const cols = mpGetVisibleColumns();
+  listEl.innerHTML = MP_COLUMN_DEFS.map(c => `
+    <label class="mp-col-check-item">
+      <input type="checkbox" ${cols[c.key] ? "checked" : ""} onchange="mpToggleColumn('${c.key}', this.checked)" />
+      <span>${escapeHtml(c.label)}</span>
+    </label>
+  `).join("");
+}
+
+function mpToggleColumn(colKey, isChecked) {
+  const cols = mpGetVisibleColumns();
+  cols[colKey] = Boolean(isChecked);
+  mpSaveVisibleColumns(cols);
+  renderStructuresList();
+}
+window.mpToggleColumn = mpToggleColumn;
+
+function mpResetDefaultColumns() {
+  const cols = {};
+  MP_COLUMN_DEFS.forEach(c => { cols[c.key] = c.defaultOn; });
+  mpSaveVisibleColumns(cols);
+  mpRenderColumnsChecklist();
+  renderStructuresList();
+}
+window.mpResetDefaultColumns = mpResetDefaultColumns;
+
+function mpToggleDrawerTab(tabName) {
+  const drawer = document.getElementById("mp-side-drawer");
+  const filterPanel = document.getElementById("mp-drawer-filters");
+  const colPanel = document.getElementById("mp-drawer-columns");
+  const filterTab = document.getElementById("mp-rail-filters");
+  const colTab = document.getElementById("mp-rail-columns");
+  if (!drawer) return;
+
+  const isClosed = drawer.classList.contains("collapsed");
+  const activeTab = STATE.mpDrawerTab || "filters";
+
+  if (!isClosed && activeTab === tabName) {
+    // Clicking the active open tab collapses the drawer for full-width grid view
+    drawer.classList.add("collapsed");
+    if (filterTab) filterTab.classList.remove("active");
+    if (colTab) colTab.classList.remove("active");
+    STATE.mpDrawerTab = null;
+    return;
+  }
+
+  drawer.classList.remove("collapsed");
+  STATE.mpDrawerTab = tabName;
+
+  if (filterPanel) filterPanel.style.display = (tabName === "filters") ? "block" : "none";
+  if (colPanel) colPanel.style.display = (tabName === "columns") ? "block" : "none";
+  if (filterTab) filterTab.classList.toggle("active", tabName === "filters");
+  if (colTab) colTab.classList.toggle("active", tabName === "columns");
+
+  if (tabName === "columns") {
+    mpRenderColumnsChecklist();
+  }
+}
+window.mpToggleDrawerTab = mpToggleDrawerTab;
+
+function mpToggleAccordion(headerBtn) {
+  if (!headerBtn) return;
+  const sec = headerBtn.closest(".mp-acc-section");
+  if (!sec) return;
+  const isOpen = sec.classList.toggle("open");
+  const caret = headerBtn.querySelector(".mp-acc-caret");
+  if (caret) caret.textContent = isOpen ? "▾" : "▸";
+}
+window.mpToggleAccordion = mpToggleAccordion;
+
+function toggleCifUploadPanel() {
+  const panel = document.getElementById("cif-upload-panel");
+  if (!panel) return;
+  panel.style.display = (panel.style.display === "none" || !panel.style.display) ? "block" : "none";
+}
+window.toggleCifUploadPanel = toggleCifUploadPanel;
+
+function mpSortByColumn(colKey) {
+  const sortSel = document.getElementById("struct-sort-by");
+  if (!sortSel) return;
+  const cur = sortSel.value || "default";
+  let next = "default";
+  if (colKey === "name") next = (cur === "name-asc") ? "name-desc" : "name-asc";
+  else if (colKey === "formula") next = "formula-asc";
+  else if (colKey === "volume") next = (cur === "vol-asc") ? "vol-desc" : "vol-asc";
+  else if (colKey === "bandgap") next = (cur === "bandgap-asc") ? "bandgap-desc" : "bandgap-asc";
+  sortSel.value = next;
+  renderStructuresList();
+}
+window.mpSortByColumn = mpSortByColumn;
+
+function exportStructuresTableCsv() {
+  const list = STATE._lastFilteredStructures || STATE.structures || [];
+  if (list.length === 0) {
+    showToast("No structures to export.", "info");
+    return;
+  }
+  const headers = ["Material", "Formula", "Crystal System", "Space Group", "a (A)", "b (A)", "c (A)", "Volume (A3)", "Band Gap (eV)", "DFT Method", "Project Folder", "DOI"];
+  const esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const rows = list.map(s => [
+    s.name || "",
+    s.chemical_formula || s.formula || "",
+    s.crystal_system || "",
+    s.space_group || "",
+    Number(s.a || 0).toFixed(3),
+    Number(s.b || 0).toFixed(3),
+    Number(s.c || 0).toFixed(3),
+    Number(s.volume || 0).toFixed(2),
+    Number(s.bandgap_ev || 0).toFixed(3),
+    `${s.dft_code || "VASP"} (${s.dft_functional || "PBE"})`,
+    s.project_folder || "General Research",
+    s.associated_paper_doi || ""
+  ].map(esc).join(","));
+
+  const csv = [headers.map(esc).join(","), ...rows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `crystal_structures_${list.length}_materials.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast(`Exported ${list.length} materials to CSV.`, "success");
+}
+window.exportStructuresTableCsv = exportStructuresTableCsv;
 
 function getExistingProjectFolders() {
   const folders = new Set();
@@ -8083,14 +8258,14 @@ window.getExistingProjectFolders = getExistingProjectFolders;
 function populateProjectFolderDropdowns(selectedForModal = null) {
   const folders = getExistingProjectFolders();
 
-  // 1. Filter dropdown: #struct-project-filter
+  // 1. Filter dropdown: #struct-project-filter (Clean text, Materials Project style)
   const filterSel = document.getElementById("struct-project-filter");
   if (filterSel) {
     const curVal = filterSel.value || "ALL";
-    let optHtml = `<option value="ALL">📁 All Project Folders (${folders.length})</option>`;
+    let optHtml = `<option value="ALL">All Folders (${folders.length})</option>`;
     folders.forEach(f => {
       const count = (STATE.structures || []).filter(s => (s.project_folder || "General Research") === f).length;
-      optHtml += `<option value="${escapeHtml(f)}"${curVal === f ? " selected" : ""}>📁 ${escapeHtml(f)} (${count})</option>`;
+      optHtml += `<option value="${escapeHtml(f)}"${curVal === f ? " selected" : ""}>${escapeHtml(f)} (${count})</option>`;
     });
     filterSel.innerHTML = optHtml;
   }
@@ -8101,7 +8276,7 @@ function populateProjectFolderDropdowns(selectedForModal = null) {
     const curVal = batchSel.value;
     let optHtml = "";
     folders.forEach(f => {
-      optHtml += `<option value="${escapeHtml(f)}"${curVal === f ? " selected" : ""}>📁 ${escapeHtml(f)}</option>`;
+      optHtml += `<option value="${escapeHtml(f)}"${curVal === f ? " selected" : ""}>${escapeHtml(f)}</option>`;
     });
     batchSel.innerHTML = optHtml;
   }
@@ -8317,23 +8492,16 @@ function setStructureDisplayMode(mode) {
   modes.forEach(m => {
     const btn = document.getElementById(`btn-struct-view-${m}`);
     if (btn) {
-      if (m === mode) {
-        btn.classList.add("active");
-        btn.style.background = "#2563eb";
-        btn.style.color = "#ffffff";
-        btn.style.fontWeight = "700";
-      } else {
-        btn.classList.remove("active");
-        btn.style.background = "#ffffff";
-        btn.style.color = "#475569";
-        btn.style.fontWeight = "600";
-      }
+      btn.classList.toggle("active", m === mode);
+      btn.style.background = "";
+      btn.style.color = "";
+      btn.style.fontWeight = "";
     }
   });
 
   const groupWrap = document.getElementById("struct-group-by-wrap");
   if (groupWrap) {
-    groupWrap.style.display = (mode === "grouped") ? "inline-flex" : "none";
+    groupWrap.style.display = (mode === "grouped") ? "block" : "none";
   }
 
   renderStructuresList();
@@ -8509,15 +8677,32 @@ function renderStructuresList() {
   const paperFilter = document.getElementById("struct-paper-filter")?.value || "ALL";
   const sortBy = document.getElementById("struct-sort-by")?.value || "default";
   const groupBy = document.getElementById("struct-group-by")?.value || "project";
+  const egMinRaw = document.getElementById("struct-eg-min")?.value;
+  const egMaxRaw = document.getElementById("struct-eg-max")?.value;
+  const egMin = (egMinRaw !== undefined && egMinRaw !== "") ? Number(egMinRaw) : null;
+  const egMax = (egMaxRaw !== undefined && egMaxRaw !== "") ? Number(egMaxRaw) : null;
+
+  // Auto-collapse left drawer on narrow mobile screens on initial render
+  if (!STATE._mpDrawerInit) {
+    STATE._mpDrawerInit = true;
+    const drawer = document.getElementById("mp-side-drawer");
+    if (drawer && window.innerWidth <= 900) {
+      drawer.classList.add("collapsed");
+      const ft = document.getElementById("mp-rail-filters");
+      if (ft) ft.classList.remove("active");
+      STATE.mpDrawerTab = null;
+    } else {
+      STATE.mpDrawerTab = "filters";
+    }
+  }
 
   STATE.structSortBy = sortBy;
   STATE.structGroupBy = groupBy;
 
-  const currentMode = STATE.structViewMode || "cards";
+  const currentMode = STATE.structViewMode || "details";
 
   // Filter structures
   let filtered = STATE.structures.filter(s => {
-    // Project Folder Filter
     const sFolder = s.project_folder || "General Research";
     if (folderFilter !== "ALL" && sFolder !== folderFilter) return false;
 
@@ -8525,7 +8710,10 @@ function renderStructuresList() {
     if (typeFilter !== "ALL" && s.structure_type !== typeFilter) return false;
     if (!doesItemMatchAudienceFilter(s, audienceFilter)) return false;
 
-    // Filter by Literature link
+    const egVal = Number(s.bandgap_ev ?? 0);
+    if (egMin !== null && !Number.isNaN(egMin) && egVal < egMin) return false;
+    if (egMax !== null && !Number.isNaN(egMax) && egVal > egMax) return false;
+
     const hasPaper = Boolean(s.associated_paper_title || s.associated_paper_doi || s.associated_paper_id);
     if (paperFilter === "WITH_PAPER" && !hasPaper) return false;
     if (paperFilter === "NO_PAPER" && hasPaper) return false;
@@ -8537,14 +8725,15 @@ function renderStructuresList() {
 
   // Sort structures
   filtered = sortStructuresList(filtered, sortBy);
+  STATE._lastFilteredStructures = filtered;
 
-  // Update Database Summary Statistics Pill
+  // Update Materials Project dark counter pill
   const statsEl = document.getElementById("struct-db-stats");
   if (statsEl) {
     const totalCount = STATE.structures.length;
-    const withPaperCount = filtered.filter(s => Boolean(s.associated_paper_title || s.associated_paper_doi || s.associated_paper_id)).length;
-    const distinctFolders = getExistingProjectFolders();
-    statsEl.innerHTML = `📊 <strong>${filtered.length}</strong> / ${totalCount}`;
+    statsEl.textContent = (filtered.length === totalCount)
+      ? `${totalCount} material${totalCount === 1 ? "" : "s"}`
+      : `${filtered.length} / ${totalCount} materials`;
   }
 
   updateStructBatchBar(filtered);
@@ -8553,11 +8742,10 @@ function renderStructuresList() {
   if (!container) return;
 
   if (filtered.length === 0) {
-    container.className = "struct-grid";
-    container.innerHTML = `<div style="padding:32px; text-align:center; color:var(--text-muted); grid-column:1/-1; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:10px;">
-      <div style="font-size:32px; margin-bottom:8px;">💎</div>
-      <div style="font-weight:700; font-size:15px; color:#334155;">No matching crystal structures found</div>
-      <div style="font-size:12.5px; margin-top:4px;">Try clearing search keywords or filters, drop a *.cif file, or click "+ New Structure"!</div>
+    container.className = "mp-empty-state";
+    container.innerHTML = `<div style="padding:48px 20px; text-align:center; color:#64748b;">
+      <div style="font-weight:600; font-size:14px; color:#334155; margin-bottom:4px;">No matching materials found</div>
+      <div style="font-size:12.5px;">Try adjusting your search or clicking <strong>Reset</strong> to clear active filters.</div>
     </div>`;
     return;
   }
@@ -8682,96 +8870,119 @@ function renderStructuresList() {
   }
 
   if (currentMode === "details") {
-    container.className = "struct-table-wrapper";
+    container.className = "mp-table-wrap";
     const allSelected = filtered.length > 0 && filtered.every(s => STATE.selectedStructureIds.has(Number(s.id)));
+    const cols = mpGetVisibleColumns();
+    const curSort = STATE.structSortBy || "default";
 
-    let tableHtml = `
-      <table class="struct-single-row-table">
-        <colgroup>
-          <col style="width: 32px;" />
-          <col style="width: 25%;" />
-          <col style="width: 14%;" />
-          <col style="width: 12%;" />
-          <col style="width: 15%;" />
-          <col style="width: 7%;" />
-          <col style="width: 6%;" />
-          <col style="width: 8%;" />
-          <col style="width: 114px;" />
-        </colgroup>
-        <thead>
-          <tr>
-            <th style="text-align:center;">
-              <input type="checkbox" id="struct-select-all-cb" ${allSelected ? "checked" : ""} onchange="toggleSelectAllStructures(this.checked)" style="width:14px; height:14px; accent-color:#2563eb; cursor:pointer;" title="Select / Deselect All" />
-            </th>
-            <th class="sortable-th" onclick="document.getElementById('struct-sort-by').value='formula-asc'; renderStructuresList();" title="Sort by Formula">Material &amp; Formula ↕</th>
-            <th>Folder</th>
-            <th>System &amp; Group</th>
-            <th>Lattice &amp; Vol</th>
-            <th style="text-align:center;">Eg (eV)</th>
-            <th style="text-align:center;">Paper</th>
-            <th style="text-align:center;">Audience</th>
-            <th style="text-align:right;">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-    `;
+    const sortIcon = (ascKey, descKey) => {
+      if (curSort === ascKey) return `<span class="mp-sort-ind active">↑</span>`;
+      if (curSort === descKey) return `<span class="mp-sort-ind active">↓</span>`;
+      return `<span class="mp-sort-ind">≡</span>`;
+    };
 
+    const svgDownload = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+    const svgPoscar = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`;
+    const svgEdit = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+    const svgTrash = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
+
+    const canAnyModify = filtered.some(s => Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin);
+
+    let thHtml = "";
+    if (canAnyModify) {
+      thHtml += `<th class="mp-th-cb"><input type="checkbox" id="struct-select-all-cb" ${allSelected ? "checked" : ""} onchange="toggleSelectAllStructures(this.checked)" title="Select / Deselect All" /></th>`;
+    }
+    thHtml += `<th class="mp-th-sortable mp-col-mat" onclick="mpSortByColumn('name')" title="Click to sort by Material">Material ${sortIcon('name-asc', 'name-desc')}</th>`;
+    if (cols.formula)    thHtml += `<th class="mp-th-sortable mp-col-formula" onclick="mpSortByColumn('formula')" title="Click to sort by Formula">Formula ${sortIcon('formula-asc', '__none')}</th>`;
+    if (cols.system)     thHtml += `<th class="mp-col-sys">Crystal System</th>`;
+    if (cols.spacegroup) thHtml += `<th class="mp-col-sg">Space Group</th>`;
+    if (cols.lattice)    thHtml += `<th class="mp-col-lat">Lattice (a, b, c)</th>`;
+    if (cols.volume)     thHtml += `<th class="mp-th-sortable mp-col-vol" onclick="mpSortByColumn('volume')" title="Click to sort by Volume">Volume (Å³) ${sortIcon('vol-asc', 'vol-desc')}</th>`;
+    if (cols.bandgap)    thHtml += `<th class="mp-th-sortable mp-col-eg" onclick="mpSortByColumn('bandgap')" title="Click to sort by Band Gap">Band Gap (eV) ${sortIcon('bandgap-asc', 'bandgap-desc')}</th>`;
+    if (cols.dft)        thHtml += `<th class="mp-col-dft">DFT Method</th>`;
+    if (cols.folder)     thHtml += `<th class="mp-col-folder">Project Folder</th>`;
+    if (cols.paper)      thHtml += `<th class="mp-col-paper">Publication</th>`;
+    if (cols.audience)   thHtml += `<th class="mp-col-aud">Visibility</th>`;
+    thHtml += `<th class="mp-th-actions"></th>`;
+
+    let rowsHtml = "";
     filtered.forEach(s => {
       const isSelected = STATE.selectedStructureIds && STATE.selectedStructureIds.has(Number(s.id));
       const canModifyItem = Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin;
       const paperDoi = s.associated_paper_doi || "";
       const paperTitle = s.associated_paper_title || "";
+      const hasPaper = Boolean(paperDoi || paperTitle || s.associated_paper_id);
       const sFolder = s.project_folder || "General Research";
+      const displayName = s.name || s.mp_id || s.chemical_formula || "Untitled";
+      const sgDisplay = s.space_group || "P1";
 
-      tableHtml += `
-        <tr class="struct-single-row ${isSelected ? 'selected-row' : ''}">
-          <td style="text-align:center;">
-            ${canModifyItem ? `<input type="checkbox" class="struct-select-cb" data-id="${s.id}" ${isSelected ? "checked" : ""} onchange="toggleSelectStructure(${s.id}, this.checked)" style="width:14px; height:14px; accent-color:#2563eb; cursor:pointer;" />` : ""}
-          </td>
-          <td class="nowrap-cell" title="${escapeHtml(s.name)} [${s.chemical_formula || s.formula}]">
-            <div class="struct-cell-flex">
-              <span class="struct-row-formula">${formatFormulaHtml(s.chemical_formula || s.formula)}</span>
-              <span class="struct-row-name">${escapeHtml(s.name)}</span>
-            </div>
-          </td>
-          <td class="nowrap-cell">
-            <span class="struct-folder-badge-mini" onclick="filterStructuresByFolder('${escapeHtml(sFolder).replace(/'/g, "\\'")}')" title="Folder: ${escapeHtml(sFolder)}">📁 ${escapeHtml(sFolder)}</span>
-          </td>
-          <td class="nowrap-cell" style="font-size:12px; color:#475569;" title="${escapeHtml(s.crystal_system || 'Cubic')} ${escapeHtml(s.space_group || 'P1')}">
-            <span>${escapeHtml(s.crystal_system || "Cubic")}</span>
-            <code style="font-size:10.5px; margin-left:3px; color:#64748b;">${escapeHtml(s.space_group || "P1")}</code>
-          </td>
-          <td class="nowrap-cell" style="font-family:monospace; font-size:11px; color:#334155;" title="a=${s.a}, b=${s.b}, c=${s.c} Å | Vol=${s.volume} Å³">
-            ${Number(s.a || 0).toFixed(2)}×${Number(s.b || 0).toFixed(2)}×${Number(s.c || 0).toFixed(2)} <span style="color:#64748b; font-size:10px;">(${Number(s.volume || 0).toFixed(0)} Å³)</span>
-          </td>
-          <td class="nowrap-cell" style="text-align:center;">
-            <span class="badge ${s.bandgap_ev > 0 ? 'badge-green' : 'badge-amber'}" style="font-size:11px; font-weight:700; padding:1px 5px; white-space:nowrap;">
-              ${Number(s.bandgap_ev || 0).toFixed(2)} eV
-            </span>
-          </td>
-          <td class="nowrap-cell" style="text-align:center;">
-            ${paperDoi ? `<a href="https://doi.org/${encodeURIComponent(paperDoi)}" target="_blank" class="struct-doi-pill" style="font-size:10px; padding:1px 5px;" title="${escapeHtml(paperTitle || paperDoi)}">DOI ↗</a>` : (paperTitle ? `<span style="font-size:10.5px; color:#0f766e; max-width:100%; overflow:hidden; text-overflow:ellipsis; display:inline-block; vertical-align:middle;" title="${escapeHtml(paperTitle)}">📄 Paper</span>` : `<span style="color:#cbd5e1;">—</span>`)}
-          </td>
-          <td class="nowrap-cell struct-cell-audience" style="text-align:center;">
-            ${renderVisibilityBadgeHtml(s)}
-          </td>
-          <td class="nowrap-cell" style="text-align:right;">
-            <div style="display:inline-flex; gap:2px; align-items:center; justify-content:flex-end;">
-              <button type="button" class="struct-mini-btn" onclick="viewCifModal(${s.id})" title="View CIF / 3D POSCAR">👁️</button>
-              <button type="button" class="struct-mini-btn" onclick="downloadCifById(${s.id})" title="Download .cif">📥</button>
-              <button type="button" class="struct-mini-btn" onclick="downloadPoscarById(${s.id})" title="Download POSCAR">⚡</button>
-              ${canModifyItem ? `
-                <button type="button" class="struct-mini-btn" onclick="openStructureModal(${s.id})" title="Edit">✏️</button>
-                <button type="button" class="struct-mini-btn struct-mini-btn-del" onclick="deleteStructureItem(${s.id})" title="Delete">🗑️</button>
-              ` : ""}
-            </div>
-          </td>
-        </tr>
+      let tdHtml = "";
+      if (canAnyModify) {
+        tdHtml += `<td class="mp-td-cb">${canModifyItem ? `<input type="checkbox" class="struct-select-cb" data-id="${s.id}" ${isSelected ? "checked" : ""} onchange="toggleSelectStructure(${s.id}, this.checked)" />` : ""}</td>`;
+      }
+
+      // Material Link (Blue clickable link just like Materials Project mp-ID!)
+      tdHtml += `
+        <td class="mp-td mp-td-mat" title="${escapeHtml(displayName)}${s.mp_id ? ' (' + escapeHtml(s.mp_id) + ')' : ''}">
+          <a href="javascript:void(0)" class="mp-mat-link" onclick="viewCifModal(${s.id})">${escapeHtml(displayName)}</a>${hasPaper ? `<span class="mp-paper-dot" title="Linked paper: ${escapeHtml(paperTitle || paperDoi)}"></span>` : ""}
+        </td>
       `;
+
+      if (cols.formula) {
+        tdHtml += `<td class="mp-td mp-td-formula" title="${escapeHtml(s.chemical_formula || s.formula || '')}">${formatFormulaHtml(s.chemical_formula || s.formula)}</td>`;
+      }
+      if (cols.system) {
+        tdHtml += `<td class="mp-td">${escapeHtml(s.crystal_system || "Cubic")}</td>`;
+      }
+      if (cols.spacegroup) {
+        tdHtml += `<td class="mp-td mp-td-sg" title="${escapeHtml(sgDisplay)}">${escapeHtml(sgDisplay)}</td>`;
+      }
+      if (cols.lattice) {
+        tdHtml += `<td class="mp-td mp-td-num" title="a=${s.a}, b=${s.b}, c=${s.c} Å">${Number(s.a || 0).toFixed(2)} × ${Number(s.b || 0).toFixed(2)} × ${Number(s.c || 0).toFixed(2)}</td>`;
+      }
+      if (cols.volume) {
+        tdHtml += `<td class="mp-td mp-td-num">${Number(s.volume || 0).toFixed(1)}</td>`;
+      }
+      if (cols.bandgap) {
+        tdHtml += `<td class="mp-td mp-td-num">${Number(s.bandgap_ev || 0).toFixed(3)}</td>`;
+      }
+      if (cols.dft) {
+        tdHtml += `<td class="mp-td">${escapeHtml(s.dft_code || "VASP")} · ${escapeHtml(s.dft_functional || "PBE")}</td>`;
+      }
+      if (cols.folder) {
+        tdHtml += `<td class="mp-td mp-td-folder" title="Filter by folder: ${escapeHtml(sFolder)}"><span class="mp-folder-text" onclick="filterStructuresByFolder('${escapeHtml(sFolder).replace(/'/g, "\\'")}')">${escapeHtml(sFolder)}</span></td>`;
+      }
+      if (cols.paper) {
+        tdHtml += `<td class="mp-td">${paperDoi ? `<a href="https://doi.org/${encodeURIComponent(paperDoi)}" target="_blank" class="mp-mat-link" title="${escapeHtml(paperTitle || paperDoi)}">DOI</a>` : (paperTitle ? `<span title="${escapeHtml(paperTitle)}">${escapeHtml(paperTitle)}</span>` : `<span style="color:#cbd5e1;">-</span>`)}</td>`;
+      }
+      if (cols.audience) {
+        const vis = normalizeVisibilityMode(s.visibility);
+        tdHtml += `<td class="mp-td mp-td-muted">${escapeHtml(vis)}</td>`;
+      }
+
+      // Ultra-minimal monochrome row actions (no boxes, no emojis)
+      tdHtml += `
+        <td class="mp-td mp-td-actions">
+          <div class="mp-row-actions">
+            <button type="button" class="mp-icon-btn" onclick="downloadCifById(${s.id})" title="Download CIF">${svgDownload}</button>
+            <button type="button" class="mp-icon-btn" onclick="downloadPoscarById(${s.id})" title="Download VASP POSCAR">${svgPoscar}</button>
+            ${canModifyItem ? `
+              <button type="button" class="mp-icon-btn" onclick="openStructureModal(${s.id})" title="Edit Structure">${svgEdit}</button>
+              <button type="button" class="mp-icon-btn mp-icon-btn-del" onclick="deleteStructureItem(${s.id})" title="Delete Structure">${svgTrash}</button>
+            ` : ""}
+          </div>
+        </td>
+      `;
+
+      rowsHtml += `<tr class="mp-tr ${isSelected ? "selected" : ""}">${tdHtml}</tr>`;
     });
 
-    tableHtml += `</tbody></table>`;
-    container.innerHTML = tableHtml;
+    container.innerHTML = `
+      <table class="mp-data-table">
+        <thead><tr>${thHtml}</tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    `;
     return;
   }
 
