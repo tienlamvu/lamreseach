@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T11:50:11.889Z",
+  "exported_at": "2026-11-18T11:51:17.497Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -4376,13 +4376,20 @@
       "instrument_or_location": "SKKU Cluster / Office",
       "start_date": "2026-11-20",
       "start_time": "10:00",
-      "end_time": "12:00",
+      "end_time": "22:00",
       "priority": "High",
       "status": "Scheduled",
       "sample_id": "",
       "description": "",
       "in_weekly_report": 1,
-      "id": 1794551462746
+      "id": 1794551462746,
+      "end_date": "2026-11-20",
+      "participants": [],
+      "participant_emails": [],
+      "participant_groups": [],
+      "visibility": "Public",
+      "allowed_users": [],
+      "allowed_groups": []
     },
     {
       "title": "Weekly Subgroup & PI Progress Meeting",
