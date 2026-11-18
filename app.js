@@ -2472,6 +2472,42 @@ function recordUserActivity(category, action, detail) {
   persistUsersRegistryLocal();
 }
 
+function isStrictAdminSession() {
+  return Boolean(STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail);
+}
+window.isStrictAdminSession = isStrictAdminSession;
+
+function getPersonalUserFolderName(userOrEmail) {
+  if (!userOrEmail) return "User: Researcher";
+  if (typeof userOrEmail === "object") {
+    const nm = String(userOrEmail.name || "").trim();
+    if (nm) return `User: ${nm}`;
+    const em = String(userOrEmail.email || "").trim();
+    if (em) return `User: ${em.split("@")[0]}`;
+    return "User: Researcher";
+  }
+  const norm = normalizeEmail(String(userOrEmail));
+  const rec = STATE.usersRegistry && STATE.usersRegistry[norm];
+  if (rec && rec.name && rec.name.trim()) return `User: ${rec.name.trim()}`;
+  return `User: ${norm.split("@")[0] || "Researcher"}`;
+}
+window.getPersonalUserFolderName = getPersonalUserFolderName;
+
+function isPersonalUserFolderName(folderName) {
+  return /^User:\s+/i.test(String(folderName || "").trim());
+}
+
+function getCurrentPersonalUserRecord() {
+  const email = getActivePersonalWorkspaceEmail();
+  if (email && STATE.usersRegistry && STATE.usersRegistry[email]) {
+    return STATE.usersRegistry[email];
+  }
+  if (STATE.auth && STATE.auth.isLoggedIn && !STATE.auth.isAdmin) {
+    return { name: STATE.auth.name || STATE.auth.email?.split("@")[0] || "Researcher", email: normalizeEmail(STATE.auth.email || "") };
+  }
+  return null;
+}
+
 function applyActiveWorkspaceData() {
   // Academic CV & Profile ALWAYS belong exclusively to Administrator Vu Tien Lam
   if (STATE.masterData && STATE.masterData.profile && Object.keys(STATE.masterData.profile).length > 0) {
@@ -2479,12 +2515,40 @@ function applyActiveWorkspaceData() {
   }
 
   const activeUserEmail = getActivePersonalWorkspaceEmail();
+  STATE._adminMergedUserEmails = null;
   if (activeUserEmail && STATE.usersRegistry[activeUserEmail]) {
     const u = STATE.usersRegistry[activeUserEmail];
+    const userFolder = getPersonalUserFolderName(u);
     u.workspace = u.workspace || { schedule: [], papers: [], structures: [], expReportRows: [], litReportRows: [] };
-    const ownPapers = (Array.isArray(u.workspace.papers) ? u.workspace.papers : []).filter(x => !x._sharedFromAdmin);
-    const ownStructures = (Array.isArray(u.workspace.structures) ? u.workspace.structures : []).filter(x => !x._sharedFromAdmin);
-    const ownSchedule = (Array.isArray(u.workspace.schedule) ? u.workspace.schedule : []).filter(x => !x._sharedFromAdmin);
+
+    // Enforce dedicated private folder & Private visibility (only Owner User & Admin can see)
+    const ownPapers = (Array.isArray(u.workspace.papers) ? u.workspace.papers : [])
+      .filter(x => !x._sharedFromAdmin)
+      .map(p => {
+        p.project_folder = userFolder;
+        p.visibility = "Private";
+        p.allowed_users = [];
+        p.owner_email = activeUserEmail;
+        p.owner_name = u.name || activeUserEmail;
+        return p;
+      });
+    const ownStructures = (Array.isArray(u.workspace.structures) ? u.workspace.structures : [])
+      .filter(x => !x._sharedFromAdmin)
+      .map(s => {
+        s.project_folder = userFolder;
+        s.visibility = "Private";
+        s.allowed_users = [];
+        s.owner_email = activeUserEmail;
+        s.owner_name = u.name || activeUserEmail;
+        return s;
+      });
+    const ownSchedule = (Array.isArray(u.workspace.schedule) ? u.workspace.schedule : [])
+      .filter(x => !x._sharedFromAdmin)
+      .map(ev => {
+        ev.visibility = "Private";
+        ev.owner_email = activeUserEmail;
+        return ev;
+      });
 
     // Include Admin Master items visible to this viewer ("Public", "Users", "Groups", or matching "Specific")
     const sharedMasterPapers = ((STATE.masterData && STATE.masterData.papers) || []).filter(mp => {
@@ -2508,14 +2572,46 @@ function applyActiveWorkspaceData() {
     STATE.expReportRows = Array.isArray(u.workspace.expReportRows) ? u.workspace.expReportRows : [];
     STATE.litReportRows = Array.isArray(u.workspace.litReportRows) ? u.workspace.litReportRows : [];
   } else if (STATE.masterData) {
-    const rawPapers = Array.isArray(STATE.masterData.papers) ? STATE.masterData.papers : STATE.papers;
-    const rawStructures = Array.isArray(STATE.masterData.structures) ? STATE.masterData.structures : STATE.structures;
-    const rawSchedule = Array.isArray(STATE.masterData.schedule) ? STATE.masterData.schedule : STATE.schedule;
+    const rawPapers = (Array.isArray(STATE.masterData.papers) ? STATE.masterData.papers : STATE.papers).filter(x => !x._fromUserEmail);
+    const rawStructures = (Array.isArray(STATE.masterData.structures) ? STATE.masterData.structures : STATE.structures).filter(x => !x._fromUserEmail);
+    const rawSchedule = (Array.isArray(STATE.masterData.schedule) ? STATE.masterData.schedule : STATE.schedule).filter(x => !x._fromUserEmail);
 
-    // Filter by visibility for Public Visitors vs Administrator
-    STATE.papers = rawPapers.filter(canCurrentViewerSeeItem);
-    STATE.structures = rawStructures.filter(canCurrentViewerSeeItem);
-    STATE.schedule = rawSchedule.filter(canCurrentViewerSeeItem);
+    if (isStrictAdminSession()) {
+      // Strict Admin sees Admin Master items + ALL personal users' private folders for screening!
+      const userPapersAll = [];
+      const userStructuresAll = [];
+      STATE._adminMergedUserEmails = new Set();
+      Object.values(STATE.usersRegistry || {}).forEach(u => {
+        if (!u || !u.email) return;
+        const normEmail = normalizeEmail(u.email);
+        STATE._adminMergedUserEmails.add(normEmail);
+        const userFolder = getPersonalUserFolderName(u);
+        const ws = u.workspace || {};
+        (Array.isArray(ws.papers) ? ws.papers : []).filter(p => !p._sharedFromAdmin).forEach(p => {
+          p.project_folder = userFolder;
+          p.visibility = "Private";
+          p.owner_email = normEmail;
+          p.owner_name = u.name || normEmail;
+          userPapersAll.push({ ...p, _fromUserEmail: normEmail, _fromUserName: u.name || normEmail });
+        });
+        (Array.isArray(ws.structures) ? ws.structures : []).filter(s => !s._sharedFromAdmin).forEach(s => {
+          s.project_folder = userFolder;
+          s.visibility = "Private";
+          s.owner_email = normEmail;
+          s.owner_name = u.name || normEmail;
+          userStructuresAll.push({ ...s, _fromUserEmail: normEmail, _fromUserName: u.name || normEmail });
+        });
+      });
+
+      STATE.papers = [...rawPapers, ...userPapersAll];
+      STATE.structures = [...rawStructures, ...userStructuresAll];
+      STATE.schedule = [...rawSchedule];
+    } else {
+      // Public Visitor: ONLY Admin's Public items (NEVER any user-uploaded files!)
+      STATE.papers = rawPapers.filter(canCurrentViewerSeeItem);
+      STATE.structures = rawStructures.filter(canCurrentViewerSeeItem);
+      STATE.schedule = rawSchedule.filter(canCurrentViewerSeeItem);
+    }
   }
 
   // Update Calendar Linked Account Label & Google Calendar Embed
@@ -4773,6 +4869,8 @@ function refreshAllWorkspaceViews() {
     upcoming_schedule: STATE.schedule.slice(0, 6),
     profile: STATE.profile
   };
+  if (typeof populateProjectFolderDropdowns === "function") populateProjectFolderDropdowns();
+  if (typeof populatePaperFolderFilterDropdown === "function") populatePaperFolderFilterDropdown();
   if (typeof renderDashboard === "function") renderDashboard(dashData);
   if (typeof renderStructuresList === "function") renderStructuresList();
   if (typeof renderPapersList === "function") renderPapersList();
@@ -5004,82 +5102,524 @@ function importPublicStarterDataToUser() {
 // Administrator User Directory, Profile/Password Editor & User Groups Manager
 // ============================================================================
 
+function getAdminDashUsersViewMode() {
+  if (!STATE.adminDashUsersViewMode) {
+    try {
+      const saved = localStorage.getItem("matsci_admin_users_view_mode");
+      if (saved === "cards" || saved === "list" || saved === "analytics") {
+        STATE.adminDashUsersViewMode = saved;
+      } else {
+        STATE.adminDashUsersViewMode = "cards";
+      }
+    } catch (e) {
+      STATE.adminDashUsersViewMode = "cards";
+    }
+  }
+  return STATE.adminDashUsersViewMode;
+}
+
+function setAdminDashUsersViewMode(mode) {
+  if (!["cards", "list", "analytics"].includes(mode)) mode = "cards";
+  STATE.adminDashUsersViewMode = mode;
+  try { localStorage.setItem("matsci_admin_users_view_mode", mode); } catch (e) {}
+  ["cards", "list", "analytics"].forEach(m => {
+    const btn = document.getElementById(`btn-admin-users-view-${m}`);
+    if (btn) btn.classList.toggle("active", m === mode);
+  });
+  renderDashboardAdminUsersSummary();
+}
+window.setAdminDashUsersViewMode = setAdminDashUsersViewMode;
+
+async function quickToggleUserStatusByAdmin(email) {
+  if (!requireStrictAdminAuth()) return;
+  const norm = normalizeEmail(email);
+  const u = STATE.usersRegistry && STATE.usersRegistry[norm];
+  if (!u) return;
+  const nextStatus = (u.status === "Suspended") ? "Active" : "Suspended";
+  const ok = await confirmAction(
+    `${nextStatus === "Suspended" ? "Suspend" : "Reactivate"} account for ${u.name}?`,
+    nextStatus === "Suspended"
+      ? `${u.email} will be temporarily prevented from signing in until reactivated.`
+      : `${u.email} will regain full access to their personal workspace.`
+  );
+  if (!ok) return;
+  const nowStr = getGmt9NowStr();
+  u.status = nextStatus;
+  u.lastUpdatedAt = nowStr;
+  u.updatedAtMs = Date.now();
+  u.activityLog = u.activityLog || [];
+  u.activityLog.unshift({
+    timestamp: nowStr,
+    category: "Admin",
+    action: nextStatus === "Suspended" ? "Account Suspended by Admin" : "Account Reactivated by Admin",
+    detail: `Status changed to ${nextStatus} by Administrator.`
+  });
+  persistUsersRegistryLocal();
+  saveStaticDb({ skipCloudPush: true, skipUserWorkspaceSync: true });
+  renderDashboardAdminUsersSummary();
+  if (document.getElementById("admin-users-modal")?.classList.contains("open")) {
+    renderAdminUsersDirectory();
+  }
+  showToast(`Account ${u.name} is now ${nextStatus}.`, "success");
+  await syncDatabaseToCloudInstant(`Admin set ${u.email} status to ${nextStatus}`, true);
+}
+window.quickToggleUserStatusByAdmin = quickToggleUserStatusByAdmin;
+
+function exportAdminUsersStatsCsv() {
+  if (!requireStrictAdminAuth()) return;
+  ensureUserGroupsInitialized();
+  const usersList = Object.values(STATE.usersRegistry || {});
+  if (usersList.length === 0) {
+    showToast("No registered user accounts to export.", "warn");
+    return;
+  }
+  const csvEsc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const headers = [
+    "Name", "Email", "Academic Role", "Affiliation", "Groups", "Auth Method",
+    "Status", "Private Folder", "Crystal Structures", "Reference Papers",
+    "Calendar Events", "Weekly Report Rows", "Total Contributions",
+    "Registered At (GMT+9)", "Last Sign-In (GMT+9)", "Last Activity (GMT+9)"
+  ];
+  const rows = [headers.map(csvEsc).join(",")];
+  usersList.forEach(u => {
+    const norm = normalizeEmail(u.email);
+    const ws = u.workspace || {};
+    const sCnt = (ws.structures || []).length;
+    const pCnt = (ws.papers || []).length;
+    const eCnt = (ws.schedule || []).length;
+    const rCnt = (ws.expReportRows || []).length + (ws.litReportRows || []).length;
+    const groups = getGroupsForUserEmail(norm).map(g => g.name).join("; ") || "Ungrouped";
+    rows.push([
+      u.name || "",
+      norm,
+      u.academicRole || "Researcher",
+      u.affiliation || "",
+      groups,
+      u.googleLinked ? "Google Linked" : "Email Auth",
+      u.status || "Active",
+      getPersonalUserFolderName(u),
+      sCnt,
+      pCnt,
+      eCnt,
+      rCnt,
+      sCnt + pCnt + eCnt + rCnt,
+      formatToGmt9(u.registeredAt),
+      formatToGmt9(u.lastLoginAt),
+      formatToGmt9(u.lastUpdatedAt || u.lastLoginAt, u.updatedAtMs)
+    ].map(csvEsc).join(","));
+  });
+  const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `admin_users_statistics_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showToast(`Exported statistics for ${usersList.length} user(s) (${a.download})`, "success");
+}
+window.exportAdminUsersStatsCsv = exportAdminUsersStatsCsv;
+
 function renderDashboardAdminUsersSummary() {
   const container = document.getElementById("dashboard-admin-users-summary");
+  const kpiContainer = document.getElementById("dashboard-admin-users-kpi");
   updateHeaderUsersCountBadge();
   if (!container) return;
 
   ensureUserGroupsInitialized();
   const usersList = Object.values(STATE.usersRegistry || {});
   const groupsList = Object.values(STATE.userGroups || {});
-  if (usersList.length === 0) {
-    container.innerHTML = `<div style="padding:12px; color:var(--text-muted); font-size:13px;">No personal user accounts registered yet.</div>`;
-    return;
+  const viewMode = getAdminDashUsersViewMode();
+
+  ["cards", "list", "analytics"].forEach(m => {
+    const btn = document.getElementById(`btn-admin-users-view-${m}`);
+    if (btn) btn.classList.toggle("active", m === viewMode);
+  });
+
+  // Populate Group Filter dropdown while preserving selection
+  const groupFilterEl = document.getElementById("admin-dash-users-group-filter");
+  if (groupFilterEl) {
+    const prevGroup = groupFilterEl.value || "ALL";
+    let gHtml = `<option value="ALL">All Groups (${usersList.length})</option>`;
+    groupsList.forEach(g => {
+      const mCnt = usersList.filter(u => getGroupsForUserEmail(normalizeEmail(u.email)).some(x => x.id === g.id)).length;
+      gHtml += `<option value="${escapeHtml(g.id)}"${prevGroup === g.id ? " selected" : ""}>${escapeHtml(g.name)} (${mCnt})</option>`;
+    });
+    const ungroupedCnt = usersList.filter(u => getGroupsForUserEmail(normalizeEmail(u.email)).length === 0).length;
+    gHtml += `<option value="__UNGROUPED__"${prevGroup === "__UNGROUPED__" ? " selected" : ""}>Ungrouped (${ungroupedCnt})</option>`;
+    groupFilterEl.innerHTML = gHtml;
   }
 
+  // Aggregate global statistics
   let totalEvents = 0;
   let totalPapers = 0;
   let totalStructs = 0;
+  let totalReports = 0;
   let googleLinkedCount = 0;
+  let activeCount = 0;
+  let suspendedCount = 0;
 
-  usersList.forEach(u => {
-    if (u.googleLinked) googleLinkedCount++;
+  const enrichedUsers = usersList.map(u => {
+    const normEmail = normalizeEmail(u.email);
     const ws = u.workspace || {};
-    totalEvents += (ws.schedule || []).length;
-    totalPapers += (ws.papers || []).length;
-    totalStructs += (ws.structures || []).length;
+    const evCount = (ws.schedule || []).length;
+    const pCount = (ws.papers || []).length;
+    const sCount = (ws.structures || []).length;
+    const rCount = (ws.expReportRows || []).length + (ws.litReportRows || []).length;
+    const totalContrib = sCount + pCount + evCount + rCount;
+    const isSuspended = u.status === "Suspended";
+    const userGroups = getGroupsForUserEmail(normEmail);
+    const updatedMs = Number(u.updatedAtMs || (u.lastUpdatedAt ? new Date(u.lastUpdatedAt).getTime() : 0) || (u.lastLoginAt ? new Date(u.lastLoginAt).getTime() : 0) || 0);
+    const regMs = Number(u.registeredAt ? new Date(u.registeredAt).getTime() : 0) || 0;
+
+    if (u.googleLinked) googleLinkedCount++;
+    if (isSuspended) suspendedCount++; else activeCount++;
+    totalEvents += evCount;
+    totalPapers += pCount;
+    totalStructs += sCount;
+    totalReports += rCount;
+
+    return {
+      u, normEmail, ws, evCount, pCount, sCount, rCount, totalContrib,
+      isSuspended, userGroups, updatedMs, regMs,
+      folderName: getPersonalUserFolderName(u),
+      latestAct: (u.activityLog && u.activityLog[0])
+        ? `${u.activityLog[0].action}: ${u.activityLog[0].detail}`
+        : "Workspace active"
+    };
   });
 
-  container.innerHTML = `
-    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; font-size:12.5px; align-items:center;">
-      <span class="badge badge-blue">👥 Registered Users: <strong>${usersList.length}</strong></span>
-      <span class="badge badge-purple" style="cursor:pointer;" onclick="openAdminGroupsModal()" title="Click to manage User Groups">🏷️ User Groups: <strong>${groupsList.length}</strong></span>
-      <span class="badge badge-green">🌐 Google Account Linked: <strong>${googleLinkedCount}</strong></span>
-      <span class="badge badge-teal">📅 User Calendar Events: <strong>${totalEvents}</strong></span>
-      <span class="badge badge-amber">📚 User Reference Papers: <strong>${totalPapers}</strong></span>
-      <span class="badge badge-slate">💎 User Crystal Structures: <strong>${totalStructs}</strong></span>
+  // Always render crisp KPI strip
+  const googlePct = usersList.length > 0 ? Math.round((googleLinkedCount / usersList.length) * 100) : 0;
+  const kpiHtml = `
+    <div class="admin-kpi-strip">
+      <div class="admin-kpi-tile">
+        <div class="admin-kpi-label">Registered Users</div>
+        <div class="admin-kpi-value">${usersList.length}</div>
+        <div class="admin-kpi-sub">${activeCount} Active${suspendedCount > 0 ? ` · <span style="color:#9f2b22;">${suspendedCount} Suspended</span>` : ""}</div>
+      </div>
+      <div class="admin-kpi-tile" style="cursor:pointer;" onclick="openAdminGroupsModal()" title="Manage User Groups">
+        <div class="admin-kpi-label">User Groups</div>
+        <div class="admin-kpi-value">${groupsList.length}</div>
+        <div class="admin-kpi-sub">Click to organize →</div>
+      </div>
+      <div class="admin-kpi-tile">
+        <div class="admin-kpi-label">Google Linked</div>
+        <div class="admin-kpi-value">${googleLinkedCount} <span style="font-size:12px; font-weight:600; color:#786354;">(${googlePct}%)</span></div>
+        <div class="admin-kpi-sub">${usersList.length - googleLinkedCount} Email Auth</div>
+      </div>
+      <div class="admin-kpi-tile" style="cursor:pointer;" onclick="switchTab('structures')" title="View Crystal Structures">
+        <div class="admin-kpi-label">User CIF Structures</div>
+        <div class="admin-kpi-value" style="color:#9a3412;">${totalStructs}</div>
+        <div class="admin-kpi-sub">Private user folders</div>
+      </div>
+      <div class="admin-kpi-tile" style="cursor:pointer;" onclick="switchTab('literature')" title="View Reference Papers">
+        <div class="admin-kpi-label">User Papers</div>
+        <div class="admin-kpi-value" style="color:#8c3d0c;">${totalPapers}</div>
+        <div class="admin-kpi-sub">Private references</div>
+      </div>
+      <div class="admin-kpi-tile">
+        <div class="admin-kpi-label">Events &amp; Reports</div>
+        <div class="admin-kpi-value">${totalEvents} <span style="font-size:12px; font-weight:600; color:#786354;">/ ${totalReports}</span></div>
+        <div class="admin-kpi-sub">Schedule / Report rows</div>
+      </div>
     </div>
-    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(290px, 1fr)); gap:10px;">
-      ${usersList.map(u => {
-        const normEmail = normalizeEmail(u.email);
-        const ws = u.workspace || {};
-        const evCount = (ws.schedule || []).length;
-        const pCount = (ws.papers || []).length;
-        const sCount = (ws.structures || []).length;
-        const latestAct = (u.activityLog && u.activityLog[0])
-          ? `${u.activityLog[0].action}: ${u.activityLog[0].detail}`
-          : "Workspace active";
+  `;
+  if (kpiContainer) kpiContainer.innerHTML = kpiHtml;
+
+  if (usersList.length === 0) {
+    container.innerHTML = `<div style="padding:18px; text-align:center; color:var(--text-muted); font-size:13px;">No personal user accounts registered yet.</div>`;
+    return;
+  }
+
+  // Apply Search, Group, Status/Auth & Sort Filters
+  const searchQuery = (document.getElementById("admin-dash-users-search")?.value || "").toLowerCase().trim();
+  const groupFilter = document.getElementById("admin-dash-users-group-filter")?.value || "ALL";
+  const statusFilter = document.getElementById("admin-dash-users-status-filter")?.value || "ALL";
+  const sortMode = document.getElementById("admin-dash-users-sort")?.value || "recent";
+
+  let filtered = enrichedUsers.filter(item => {
+    if (groupFilter === "__UNGROUPED__" && item.userGroups.length > 0) return false;
+    if (groupFilter !== "ALL" && groupFilter !== "__UNGROUPED__" && !item.userGroups.some(g => g.id === groupFilter)) return false;
+    if (statusFilter === "ACTIVE" && item.isSuspended) return false;
+    if (statusFilter === "SUSPENDED" && !item.isSuspended) return false;
+    if (statusFilter === "GOOGLE" && !item.u.googleLinked) return false;
+    if (statusFilter === "EMAIL" && item.u.googleLinked) return false;
+    if (searchQuery) {
+      const hay = `${item.u.name} ${item.normEmail} ${item.u.affiliation || ""} ${item.u.academicRole || ""} ${item.userGroups.map(g => g.name).join(" ")}`.toLowerCase();
+      if (!hay.includes(searchQuery)) return false;
+    }
+    return true;
+  });
+
+  if (sortMode === "recent") {
+    filtered.sort((a, b) => b.updatedMs - a.updatedMs);
+  } else if (sortMode === "uploads") {
+    filtered.sort((a, b) => b.totalContrib - a.totalContrib || b.sCount - a.sCount);
+  } else if (sortMode === "cifs") {
+    filtered.sort((a, b) => b.sCount - a.sCount || b.pCount - a.pCount);
+  } else if (sortMode === "name") {
+    filtered.sort((a, b) => String(a.u.name || "").localeCompare(String(b.u.name || "")));
+  } else if (sortMode === "registered") {
+    filtered.sort((a, b) => b.regMs - a.regMs);
+  }
+
+  const countNoteEl = document.getElementById("admin-dash-users-filter-count");
+  if (countNoteEl) {
+    countNoteEl.textContent = filtered.length === enrichedUsers.length
+      ? `${enrichedUsers.length} user${enrichedUsers.length === 1 ? "" : "s"}`
+      : `${filtered.length} / ${enrichedUsers.length} users`;
+  }
+
+  // MODE 3: STATISTICS & ANALYTICS DASHBOARD
+  if (viewMode === "analytics") {
+    const ranked = [...filtered].sort((a, b) => b.totalContrib - a.totalContrib || b.sCount - a.sCount);
+    const maxContrib = Math.max(1, ...ranked.map(x => x.totalContrib));
+
+    // Group distribution
+    const groupCounts = groupsList.map(g => ({
+      name: g.name,
+      count: enrichedUsers.filter(x => x.userGroups.some(ug => ug.id === g.id)).length
+    }));
+    const ungroupedCount = enrichedUsers.filter(x => x.userGroups.length === 0).length;
+    if (ungroupedCount > 0) groupCounts.push({ name: "Ungrouped", count: ungroupedCount });
+
+    // Role distribution
+    const roleMap = {};
+    enrichedUsers.forEach(x => {
+      const r = (x.u.academicRole || "Researcher").trim();
+      roleMap[r] = (roleMap[r] || 0) + 1;
+    });
+    const roleEntries = Object.entries(roleMap).sort((a, b) => b[1] - a[1]);
+
+    // Aggregated Recent Activity across all filtered users
+    const allActivities = [];
+    filtered.forEach(x => {
+      (x.u.activityLog || []).slice(0, 6).forEach(act => {
+        allActivities.push({
+          userName: x.u.name || x.normEmail,
+          userEmail: x.normEmail,
+          timestamp: act.timestamp || x.u.lastUpdatedAt || "",
+          category: act.category || "Update",
+          action: act.action || "Activity",
+          detail: act.detail || ""
+        });
+      });
+    });
+    allActivities.sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
+    const topActivities = allActivities.slice(0, 8);
+
+    container.innerHTML = `
+      <div class="admin-analytics-grid">
+        <!-- Left: Contribution Leaderboard -->
+        <div class="admin-analytics-panel">
+          <div class="admin-analytics-title">
+            <span>Contribution Statistics by Researcher</span>
+            <div class="admin-legend-row">
+              <span class="admin-legend-item"><i style="background:#b45309;"></i>CIFs</span>
+              <span class="admin-legend-item"><i style="background:#9a3412;"></i>Papers</span>
+              <span class="admin-legend-item"><i style="background:#5c6b57;"></i>Events</span>
+              <span class="admin-legend-item"><i style="background:#9b7e5c;"></i>Reports</span>
+            </div>
+          </div>
+          ${ranked.length === 0 ? `<div style="padding:14px; color:#786354; font-size:12.5px;">No matching users.</div>` : ranked.map(x => {
+            const safeEmail = escapeHtml(x.normEmail).replace(/'/g, "\\'");
+            const sPct = (x.sCount / maxContrib) * 100;
+            const pPct = (x.pCount / maxContrib) * 100;
+            const ePct = (x.evCount / maxContrib) * 100;
+            const rPct = (x.rCount / maxContrib) * 100;
+            return `
+              <div class="admin-bar-row">
+                <div class="admin-bar-meta">
+                  <div>
+                    <strong style="color:#2a1f18; cursor:pointer;" onclick="openAdminUsersModal('${safeEmail}')">${escapeHtml(x.u.name)}</strong>
+                    <span style="font-size:11px; color:#786354; font-family:monospace; margin-left:6px;">${escapeHtml(x.normEmail)}</span>
+                  </div>
+                  <div style="font-size:11.5px; color:#5c493c; font-weight:700;">
+                    ${x.totalContrib} total <span style="font-weight:500; color:#786354;">(${x.sCount} CIF · ${x.pCount} Paper · ${x.evCount} Evt · ${x.rCount} Rep)</span>
+                  </div>
+                </div>
+                <div class="admin-stacked-track" title="CIFs: ${x.sCount}, Papers: ${x.pCount}, Events: ${x.evCount}, Reports: ${x.rCount}">
+                  ${x.sCount > 0 ? `<div class="admin-stacked-seg" style="width:${sPct}%; background:#b45309;"></div>` : ""}
+                  ${x.pCount > 0 ? `<div class="admin-stacked-seg" style="width:${pPct}%; background:#9a3412;"></div>` : ""}
+                  ${x.evCount > 0 ? `<div class="admin-stacked-seg" style="width:${ePct}%; background:#5c6b57;"></div>` : ""}
+                  ${x.rCount > 0 ? `<div class="admin-stacked-seg" style="width:${rPct}%; background:#9b7e5c;"></div>` : ""}
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+
+        <!-- Right: Account & Group Distribution + Live Activity Feed -->
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div class="admin-analytics-panel">
+            <div class="admin-analytics-title"><span>Directory Breakdown (Groups, Roles &amp; Auth)</span></div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:12px;">
+              <div>
+                <div style="font-weight:700; color:#5c493c; margin-bottom:6px; font-size:11.5px; text-transform:uppercase; letter-spacing:0.3px;">By User Group</div>
+                ${groupCounts.map(gc => {
+                  const pct = Math.round((gc.count / Math.max(1, usersList.length)) * 100);
+                  return `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <span style="color:#2a1f18;">${escapeHtml(gc.name)}</span>
+                    <span class="badge badge-amber" style="font-size:10.5px;">${gc.count} (${pct}%)</span>
+                  </div>`;
+                }).join("")}
+              </div>
+              <div>
+                <div style="font-weight:700; color:#5c493c; margin-bottom:6px; font-size:11.5px; text-transform:uppercase; letter-spacing:0.3px;">By Academic Role</div>
+                ${roleEntries.map(([rName, cnt]) => {
+                  const pct = Math.round((cnt / Math.max(1, usersList.length)) * 100);
+                  return `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <span style="color:#2a1f18;">${escapeHtml(rName)}</span>
+                    <span class="badge badge-slate" style="font-size:10.5px;">${cnt} (${pct}%)</span>
+                  </div>`;
+                }).join("")}
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-analytics-panel">
+            <div class="admin-analytics-title">
+              <span>Recent Activity Feed (All Users · GMT+9)</span>
+              <span style="font-size:11px; color:#786354; font-weight:500;">Top ${topActivities.length} events</span>
+            </div>
+            ${topActivities.length === 0
+              ? `<div style="font-size:12px; color:#786354;">No user activity recorded yet.</div>`
+              : `<div class="admin-activity-feed">${topActivities.map(act => `
+                  <div class="admin-activity-item">
+                    <div style="display:flex; justify-content:space-between; gap:8px; align-items:center;">
+                      <strong style="color:#2a1f18; font-size:12px;">${escapeHtml(act.userName)}</strong>
+                      <span style="font-size:10.5px; color:#786354; font-family:monospace;">${escapeHtml(act.timestamp || "")}</span>
+                    </div>
+                    <div style="font-size:11.5px; color:#5c493c; margin-top:2px;">
+                      <span class="badge badge-amber" style="font-size:9.5px; padding:1px 5px;">${escapeHtml(act.category)}</span>
+                      <strong>${escapeHtml(act.action)}</strong> — ${escapeHtml(act.detail.slice(0, 80))}${act.detail.length > 80 ? "..." : ""}
+                    </div>
+                  </div>
+                `).join("")}</div>`}
+          </div>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div style="padding:20px; text-align:center; color:#786354; font-size:13px; background:#fffdf9; border:1px dashed #d9bf9f; border-radius:8px;">No user accounts match the current search or filter criteria.</div>`;
+    return;
+  }
+
+  // MODE 2: COMPACT LIST / TABLE VIEW
+  if (viewMode === "list") {
+    container.innerHTML = `
+      <div class="admin-users-table-wrap">
+        <table class="admin-users-table">
+          <thead>
+            <tr>
+              <th>Researcher &amp; Email</th>
+              <th>Role &amp; Affiliation</th>
+              <th>Groups</th>
+              <th>Status / Auth</th>
+              <th>Private Uploads</th>
+              <th>Last Activity (GMT+9)</th>
+              <th style="text-align:right;">Quick Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filtered.map(x => {
+              const safeEmail = escapeHtml(x.normEmail).replace(/'/g, "\\'");
+              const safeFolder = escapeHtml(x.folderName).replace(/'/g, "\\'");
+              const isPreviewing = STATE.adminPreviewUserEmail === x.normEmail;
+              return `
+                <tr class="${isPreviewing ? 'is-previewing' : ''} ${x.isSuspended ? 'is-suspended' : ''}">
+                  <td>
+                    <div style="font-weight:700; color:#2a1f18; font-size:13px;">${escapeHtml(x.u.name)}</div>
+                    <div style="font-size:11.5px; color:#8c3d0c; font-family:monospace;">${escapeHtml(x.normEmail)}</div>
+                  </td>
+                  <td>
+                    <div style="font-size:12px; color:#2a1f18; font-weight:600;">${escapeHtml(x.u.academicRole || "Researcher")}</div>
+                    <div style="font-size:11px; color:#786354;">${escapeHtml(x.u.affiliation || "Not specified")}</div>
+                  </td>
+                  <td>
+                    <div style="display:flex; gap:4px; flex-wrap:wrap;">${renderUserGroupBadgesHtml(x.normEmail)}</div>
+                  </td>
+                  <td>
+                    <div style="display:flex; flex-direction:column; gap:3px; align-items:flex-start;">
+                      ${x.isSuspended ? `<span class="badge badge-rose" style="font-size:10px;">Suspended</span>` : `<span class="badge badge-green" style="font-size:10px;">Active</span>`}
+                      <span style="font-size:10.5px; color:#786354;">${x.u.googleLinked ? "Google Linked" : "Email Auth"}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div style="display:flex; gap:5px; flex-wrap:wrap; align-items:center;">
+                      <button type="button" class="admin-count-chip" onclick="adminJumpToUserFolder('structures', '${safeFolder}')" title="Screen ${escapeHtml(x.u.name)}'s CIF structures in Crystal Structures tab"><strong>${x.sCount}</strong> CIF</button>
+                      <button type="button" class="admin-count-chip" onclick="adminJumpToUserFolder('literature', '${safeFolder}')" title="Screen ${escapeHtml(x.u.name)}'s papers in References tab"><strong>${x.pCount}</strong> Paper</button>
+                      <span class="admin-count-chip is-static" title="Calendar Events / Weekly Report Rows">${x.evCount} Evt · ${x.rCount} Rep</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div style="font-size:11.5px; font-weight:600; color:#2a1f18; white-space:nowrap;">${escapeHtml(formatToGmt9(x.u.lastUpdatedAt || x.u.lastLoginAt, x.u.updatedAtMs))}</div>
+                    <div style="font-size:11px; color:#786354; max-width:210px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(x.latestAct)}">${escapeHtml(x.latestAct)}</div>
+                  </td>
+                  <td style="text-align:right; white-space:nowrap;">
+                    <div style="display:inline-flex; gap:4px; align-items:center;">
+                      <button type="button" class="mp-btn-xs mp-btn-xs-teal" onclick="openAdminUsersModal('${safeEmail}')" title="Inspect uploaded files, CIFs, papers &amp; report directly">Inspect</button>
+                      <button type="button" class="mp-btn-xs" onclick="openAdminEditUserModal('${safeEmail}')" title="Edit Profile, Groups or Password">Edit</button>
+                      <button type="button" class="mp-btn-xs" onclick="startAdminUserPreview('${safeEmail}')" title="Enter User's Live Workspace">Workspace</button>
+                      <button type="button" class="mp-btn-xs" style="color:${x.isSuspended ? '#2f6f4e' : '#9f2b22'};" onclick="quickToggleUserStatusByAdmin('${safeEmail}')" title="${x.isSuspended ? 'Reactivate Account' : 'Suspend Account'}">${x.isSuspended ? "Activate" : "Suspend"}</button>
+                    </div>
+                  </td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+    return;
+  }
+
+  // MODE 1: REFINED CARDS VIEW (Default)
+  container.innerHTML = `
+    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(290px, 1fr)); gap:10px;">
+      ${filtered.map(x => {
+        const u = x.u;
+        const normEmail = x.normEmail;
+        const safeEmail = escapeHtml(normEmail).replace(/'/g, "\\'");
+        const safeFolder = escapeHtml(x.folderName).replace(/'/g, "\\'");
         const isPreviewing = STATE.adminPreviewUserEmail === normEmail;
-        const isSuspended = u.status === "Suspended";
         return `
-          <div style="background:#ffffff; border:1px solid ${isPreviewing ? '#f59e0b' : (isSuspended ? '#fca5a5' : '#e2e8f0')}; border-radius:10px; padding:12px; display:flex; flex-direction:column; justify-content:space-between; gap:8px;">
+          <div style="background:#fffdf9; border:1px solid ${isPreviewing ? '#b45309' : (x.isSuspended ? '#e7ada6' : '#e4d8c8')}; border-radius:10px; padding:12px; display:flex; flex-direction:column; justify-content:space-between; gap:8px;">
             <div>
               <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:6px;">
-                <div style="font-weight:700; font-size:13.5px; color:#0f172a;">
-                  👤 ${escapeHtml(u.name)}
-                  ${isSuspended ? `<span class="badge badge-rose" style="font-size:10px; margin-left:4px;">Suspended</span>` : ""}
+                <div style="font-weight:700; font-size:13.5px; color:#2a1f18;">
+                  ${escapeHtml(u.name)}
+                  ${x.isSuspended ? `<span class="badge badge-rose" style="font-size:10px; margin-left:4px;">Suspended</span>` : ""}
                 </div>
-                ${u.googleLinked ? `<span class="badge badge-blue" style="font-size:10.5px;">🌐 Google Linked</span>` : `<span class="badge badge-slate" style="font-size:10.5px;">Email Auth</span>`}
+                ${u.googleLinked ? `<span class="badge badge-amber" style="font-size:10.5px;">Google Linked</span>` : `<span class="badge badge-slate" style="font-size:10.5px;">Email Auth</span>`}
               </div>
-              <div style="font-size:12px; color:#2563eb; font-family:monospace;">${escapeHtml(u.email)}</div>
-              <div style="font-size:11.5px; color:#64748b; margin-top:2px;">🏛️ ${escapeHtml(u.affiliation || "Researcher")} (${escapeHtml(u.academicRole || "Member")})</div>
+              <div style="font-size:12px; color:#8c3d0c; font-family:monospace;">${escapeHtml(u.email)}</div>
+              <div style="font-size:11.5px; color:#786354; margin-top:2px;">${escapeHtml(u.affiliation || "Researcher")} (${escapeHtml(u.academicRole || "Member")})</div>
               <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:6px;">
                 ${renderUserGroupBadgesHtml(normEmail)}
               </div>
-              <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; font-size:11px;">
-                <span class="badge badge-slate">📅 ${evCount} Events</span>
-                <span class="badge badge-slate">📚 ${pCount} Papers</span>
-                <span class="badge badge-slate">💎 ${sCount} CIFs</span>
+              <div style="display:flex; gap:5px; flex-wrap:wrap; margin-top:7px;">
+                <button type="button" class="admin-count-chip" onclick="adminJumpToUserFolder('structures', '${safeFolder}')" title="Open Crystal Structures filtered to ${escapeHtml(x.folderName)}"><strong>${x.sCount}</strong> CIFs</button>
+                <button type="button" class="admin-count-chip" onclick="adminJumpToUserFolder('literature', '${safeFolder}')" title="Open References filtered to ${escapeHtml(x.folderName)}"><strong>${x.pCount}</strong> Papers</button>
+                <span class="admin-count-chip is-static">${x.evCount} Events · ${x.rCount} Rep</span>
               </div>
-              <div style="font-size:11.5px; color:#475569; background:#f8fafc; padding:6px 8px; border-radius:6px; margin-top:8px; border-left:3px solid #3b82f6;">
-                <strong>Latest Update (${escapeHtml(formatToGmt9(u.lastUpdatedAt || u.lastLoginAt, u.updatedAtMs))} <span style="font-size:10px; color:#2563eb;">GMT+9</span>):</strong><br/>
-                ${escapeHtml(latestAct.slice(0, 90))}${latestAct.length > 90 ? "..." : ""}
+              <div style="font-size:11.5px; color:#5c493c; background:#faf4ea; padding:6px 8px; border-radius:6px; margin-top:8px; border-left:3px solid #b45309;">
+                <strong>Latest (${escapeHtml(formatToGmt9(u.lastUpdatedAt || u.lastLoginAt, u.updatedAtMs))} GMT+9):</strong><br/>
+                ${escapeHtml(x.latestAct.slice(0, 88))}${x.latestAct.length > 88 ? "..." : ""}
               </div>
             </div>
-            <div style="display:flex; justify-content:flex-end; gap:5px; margin-top:4px; flex-wrap:wrap;">
-              <button class="btn btn-outline btn-sm" style="font-size:11px; padding:4px 8px;" onclick="openAdminEditUserModal('${escapeHtml(normEmail)}')">✏️ Edit / Password</button>
-              <button class="btn btn-outline btn-sm" style="font-size:11px; padding:4px 8px;" onclick="openAdminUsersModal('${escapeHtml(normEmail)}')">🔍 Inspect</button>
-              <button class="btn btn-primary btn-sm" style="font-size:11px; padding:4px 8px;" onclick="startAdminUserPreview('${escapeHtml(normEmail)}')">👁️ Workspace</button>
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:5px; margin-top:4px; flex-wrap:wrap;">
+              <button type="button" class="mp-btn-xs" style="color:${x.isSuspended ? '#2f6f4e' : '#9f2b22'};" onclick="quickToggleUserStatusByAdmin('${safeEmail}')" title="${x.isSuspended ? 'Reactivate Account' : 'Suspend Account'}">${x.isSuspended ? "Activate" : "Suspend"}</button>
+              <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                <button type="button" class="btn btn-outline btn-sm" style="font-size:11px; padding:4px 8px;" onclick="openAdminEditUserModal('${safeEmail}')">Edit / Pass</button>
+                <button type="button" class="btn btn-outline btn-sm" style="font-size:11px; padding:4px 8px;" onclick="openAdminUsersModal('${safeEmail}')">Inspect</button>
+                <button type="button" class="btn btn-primary btn-sm" style="font-size:11px; padding:4px 8px;" onclick="startAdminUserPreview('${safeEmail}')">Workspace</button>
+              </div>
             </div>
           </div>
         `;
@@ -5331,65 +5871,102 @@ function renderAdminInspectorContent() {
       `).join("");
     }
   } else if (tab === "papers") {
+    const userFolderName = getPersonalUserFolderName(u);
     if (papersList.length === 0) {
-      tabBodyHtml = `<div style="padding:20px; text-align:center; color:#64748b;">No reference papers in this user's library yet.</div>`;
+      tabBodyHtml = `<div style="padding:20px; text-align:center; color:#786354;">No reference papers uploaded by this user yet.</div>`;
     } else {
-      tabBodyHtml = papersList.map(p => `
+      const safeEmailJs = escapeHtml(email).replace(/'/g, "\\'");
+      tabBodyHtml = `
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px; padding:7px 10px; background:#faf4ea; border:1px solid #e4d8c8; border-radius:6px; font-size:12px; color:#5c493c;">
+          <span>Dedicated Private Folder: <strong style="color:#7c2d12;">${escapeHtml(userFolderName)}</strong> &middot; <em>Visible to Admin &amp; ${escapeHtml(u.name)} only</em></span>
+          <button type="button" class="mp-btn-xs" onclick="adminJumpToUserFolder('literature', '${escapeHtml(userFolderName).replace(/'/g, "\\'")}')">Filter in References Tab →</button>
+        </div>
+      ` + papersList.map(p => `
         <div class="item-card" style="margin-bottom:8px; padding:10px 12px;">
-          <div style="font-weight:700; font-size:13.5px; color:#0f172a;">${renderScientificTitle(p.title)}</div>
-          <div style="font-size:12px; color:#475569; margin-top:3px;">
-            ${escapeHtml(p.authors)} — <strong>${escapeHtml(p.journal)}</strong> (${p.year})
-            ${p.doi ? ` | DOI: <a href="https://doi.org/${encodeURI(p.doi)}" target="_blank">${escapeHtml(p.doi)}</a>` : ""}
-          </div>
-          ${p.notes ? `<div style="font-size:12px; color:#1e3a8a; background:#eff6ff; padding:6px 8px; border-radius:6px; margin-top:5px;"><strong>User Note:</strong> ${escapeHtml(p.notes)}</div>` : ""}
-        ${(() => {
-          const linkedStructs = (STATE.structures || []).filter(st => st.associated_paper_id === p.id || (p.doi && st.associated_paper_doi && st.associated_paper_doi.toLowerCase() === p.doi.toLowerCase()));
-          if (!linkedStructs || linkedStructs.length === 0) return "";
-          return `
-            <div style="margin-top:8px; padding:6px 10px; background:#f0fdfa; border:1px solid #99f6e4; border-radius:6px; font-size:12px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-              <span class="badge badge-teal" style="font-size:10.5px; font-weight:700;">💎 ${linkedStructs.length} Linked Crystal Structure${linkedStructs.length > 1 ? 's' : ''}:</span>
-              ${linkedStructs.map(ls => `<a href="javascript:void(0)" onclick="filterStructuresByPaper(${p.id}, '${escapeHtml(p.title).replace(/'/g, "\\'")}')" class="badge badge-blue" style="text-decoration:none; font-size:11px; cursor:pointer;" title="Click to filter this structure in Crystal Structures tab">${escapeHtml(ls.name || ls.chemical_formula)}</a>`).join(" ")}
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:200px;">
+              <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:4px;">
+                <span class="badge badge-rose" style="font-size:10.5px;">Private (User &amp; Admin)</span>
+                <span class="badge badge-amber" style="font-size:10.5px;">${escapeHtml(userFolderName)}</span>
+                ${p.status ? `<span class="badge badge-slate" style="font-size:10.5px;">${escapeHtml(p.status)}</span>` : ""}
+              </div>
+              <div style="font-weight:700; font-size:13.5px; color:#2a1f18;">${renderScientificTitle(p.title)}</div>
+              <div style="font-size:12px; color:#5c493c; margin-top:3px;">
+                ${escapeHtml(p.authors)} — <strong>${escapeHtml(p.journal)}</strong> (${p.year || ""})
+                ${p.doi ? ` | DOI: <a href="https://doi.org/${encodeURIComponent(p.doi)}" target="_blank" style="color:#9a3412; font-weight:600;">${escapeHtml(p.doi)} ↗</a>` : ""}
+              </div>
             </div>
-          `;
-        })()}
+            <div style="display:flex; gap:5px; align-items:center; flex-shrink:0;">
+              <button type="button" class="mp-btn-xs" onclick="adminCopyUserPaperBibtex('${safeEmailJs}', ${Number(p.id)})" title="Copy BibTeX citation">BibTeX</button>
+              ${p.doi ? `<a href="https://doi.org/${encodeURIComponent(p.doi)}" target="_blank" class="mp-btn-xs mp-btn-xs-teal" style="text-decoration:none; display:inline-flex; align-items:center;">Open DOI ↗</a>` : ""}
+            </div>
+          </div>
+          ${p.abstract ? `<details style="margin-top:6px; font-size:12px; color:#5c493c;"><summary style="cursor:pointer; font-weight:600; color:#8c3d0c;">View Abstract</summary><div style="margin-top:4px; line-height:1.45; padding:6px 8px; background:#faf6f0; border-radius:5px;">${renderScientificTitle(cleanScientificPlainText(p.abstract))}</div></details>` : ""}
+          ${p.notes ? `<div style="font-size:12px; color:#5c493c; background:#faf4ea; border-left:3px solid #b45309; padding:6px 8px; border-radius:4px; margin-top:6px;"><strong>User Note:</strong> ${escapeHtml(p.notes)}</div>` : ""}
         </div>
       `).join("");
     }
   } else if (tab === "structures") {
+    const userFolderName = getPersonalUserFolderName(u);
+    ensureStructuralIds(structsList);
     if (structsList.length === 0) {
-      tabBodyHtml = `<div style="padding:20px; text-align:center; color:#64748b;">No crystal structures uploaded by this user yet.</div>`;
+      tabBodyHtml = `<div style="padding:20px; text-align:center; color:#786354;">No crystal structures uploaded by this user yet.</div>`;
     } else {
-      tabBodyHtml = structsList.map(s => `
-        <div class="item-card" style="margin-bottom:8px; padding:10px 12px;">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div>
-              <span class="badge badge-purple">${escapeHtml(s.chemical_formula)}</span>
-              <strong style="font-size:13.5px; margin-left:6px;">${escapeHtml(s.name)}</strong>
-            </div>
-            <span class="badge badge-teal">${escapeHtml(s.crystal_system)} | ${escapeHtml(s.space_group)}</span>
-          </div>
-          <div style="font-size:12px; color:#475569; margin-top:4px;">
-            Lattice: a=${s.a} Å, b=${s.b} Å, c=${s.c} Å | Bandgap: <strong>${s.bandgap_ev} eV</strong> (${escapeHtml(s.dft_code || "VASP")} / ${escapeHtml(s.dft_functional || "PBE")})
-          </div>
-          ${s.notes ? `<div style="font-size:12px; color:#64748b; margin-top:3px;">${escapeHtml(s.notes)}</div>` : ""}
+      const safeEmailJs = escapeHtml(email).replace(/'/g, "\\'");
+      tabBodyHtml = `
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px; padding:7px 10px; background:#faf4ea; border:1px solid #e4d8c8; border-radius:6px; font-size:12px; color:#5c493c;">
+          <span>Dedicated Private Folder: <strong style="color:#7c2d12;">${escapeHtml(userFolderName)}</strong> &middot; <em>Visible to Admin &amp; ${escapeHtml(u.name)} only</em></span>
+          <button type="button" class="mp-btn-xs" onclick="adminJumpToUserFolder('structures', '${escapeHtml(userFolderName).replace(/'/g, "\\'")}')">Filter in Structures Tab →</button>
         </div>
-      `).join("");
+      ` + structsList.map(s => {
+        const sid = s.structural_id || _formatStructuralIdNum(s.id || 1);
+        return `
+        <div class="item-card" style="margin-bottom:8px; padding:10px 12px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px;">
+            <div style="flex:1; min-width:200px;">
+              <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                <span class="mp-card-sid" onclick="copyStructuralId('${escapeHtml(sid)}', event)" title="Copy Structure ID">${escapeHtml(sid)}</span>
+                <span class="badge badge-amber">${formatFormulaHtml(s.chemical_formula || s.formula)}</span>
+                <strong style="font-size:13.5px; color:#2a1f18;">${escapeHtml(s.name)}</strong>
+                <span class="badge badge-rose" style="font-size:10px;">Private</span>
+              </div>
+              <div style="font-size:12px; color:#5c493c; margin-top:4px;">
+                ${escapeHtml(s.crystal_system || "Cubic")} | <code>${escapeHtml(s.space_group || "P1")}</code> &middot;
+                Lattice: a=${Number(s.a || 0).toFixed(2)}, b=${Number(s.b || 0).toFixed(2)}, c=${Number(s.c || 0).toFixed(2)} Å (${Number(s.volume || 0).toFixed(1)} Å³) &middot;
+                Eg: <strong>${Number(s.bandgap_ev || 0).toFixed(2)} eV</strong> (${escapeHtml(s.dft_code || "VASP")} / ${escapeHtml(s.dft_functional || "PBE")})
+              </div>
+              ${s.notes ? `<div style="font-size:11.5px; color:#786354; margin-top:3px;">${escapeHtml(s.notes)}</div>` : ""}
+            </div>
+            <div style="display:flex; gap:5px; align-items:center; flex-shrink:0;">
+              <button type="button" class="mp-btn-xs mp-btn-xs-teal" onclick="adminInspectUserStructure('${safeEmailJs}', ${Number(s.id)})" title="Inspect 3D Crystal, POSCAR &amp; CIF directly">3D / CIF</button>
+              <button type="button" class="mp-btn-xs" onclick="adminDownloadUserCif('${safeEmailJs}', ${Number(s.id)})" title="Download *.cif file">.cif</button>
+              <button type="button" class="mp-btn-xs" onclick="adminDownloadUserPoscar('${safeEmailJs}', ${Number(s.id)})" title="Download VASP POSCAR">POSCAR</button>
+            </div>
+          </div>
+        </div>
+      `;
+      }).join("");
     }
   } else if (tab === "report") {
+    const safeEmailJs = escapeHtml(email).replace(/'/g, "\\'");
     tabBodyHtml = `
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px; padding:7px 10px; background:#faf4ea; border:1px solid #e4d8c8; border-radius:6px; font-size:12px; color:#5c493c;">
+        <span>Weekly Report Records: <strong>${expRows.length}</strong> simulation rows &middot; <strong>${litRows.length}</strong> literature rows <em>(Private to User &amp; Admin)</em></span>
+        ${(expRows.length + litRows.length) > 0 ? `<button type="button" class="mp-btn-xs mp-btn-xs-teal" onclick="adminExportUserReportCsv('${safeEmailJs}')">Export Report (.csv)</button>` : ""}
+      </div>
       <div style="margin-bottom:12px;">
-        <div style="font-weight:700; font-size:13px; color:#0f172a; margin-bottom:6px;">🧪 Simulation / Experimental Rows (${expRows.length})</div>
-        ${expRows.length === 0 ? `<div style="font-size:12px; color:#64748b;">No simulation report rows added.</div>` : expRows.map(r => `
-          <div style="font-size:12px; background:#f8fafc; border:1px solid #e2e8f0; padding:8px 10px; border-radius:6px; margin-bottom:6px;">
-            <strong>${escapeHtml(r.sample_id)}</strong> — ${escapeHtml(r.material)} (${escapeHtml(r.conditions)}): ${escapeHtml(r.findings)}
+        <div style="font-weight:700; font-size:13px; color:#2a1f18; margin-bottom:6px;">Simulation / Experimental Rows (${expRows.length})</div>
+        ${expRows.length === 0 ? `<div style="font-size:12px; color:#786354;">No simulation report rows added.</div>` : expRows.map(r => `
+          <div style="font-size:12px; background:#fffdf9; border:1px solid #e4d8c8; padding:8px 10px; border-radius:6px; margin-bottom:6px; color:#3d2b1f;">
+            <strong>${escapeHtml(r.sample_id || r.id || "Task")}</strong> — ${escapeHtml(r.material || "")} ${r.conditions ? `(${escapeHtml(r.conditions)})` : ""}: ${escapeHtml(r.findings || r.result || "")}
           </div>
         `).join("")}
       </div>
       <div>
-        <div style="font-weight:700; font-size:13px; color:#0f172a; margin-bottom:6px;">📚 Literature Review Rows (${litRows.length})</div>
-        ${litRows.length === 0 ? `<div style="font-size:12px; color:#64748b;">No literature report rows added.</div>` : litRows.map(r => `
-          <div style="font-size:12px; background:#f8fafc; border:1px solid #e2e8f0; padding:8px 10px; border-radius:6px; margin-bottom:6px;">
-            <strong>${escapeHtml(r.title)}</strong> (${escapeHtml(r.journal)}): ${escapeHtml(r.takeaway)}
+        <div style="font-weight:700; font-size:13px; color:#2a1f18; margin-bottom:6px;">Literature Review Rows (${litRows.length})</div>
+        ${litRows.length === 0 ? `<div style="font-size:12px; color:#786354;">No literature report rows added.</div>` : litRows.map(r => `
+          <div style="font-size:12px; background:#fffdf9; border:1px solid #e4d8c8; padding:8px 10px; border-radius:6px; margin-bottom:6px; color:#3d2b1f;">
+            <strong>${renderScientificTitle(r.title || "")}</strong> ${r.journal ? `(${escapeHtml(r.journal)})` : ""}: ${escapeHtml(r.takeaway || r.notes || "")}
           </div>
         `).join("")}
       </div>
@@ -5502,7 +6079,7 @@ async function quickSetUserPasswordFromInspector(email) {
   });
 
   persistUsersRegistryLocal();
-  saveStaticDb({ skipCloudPush: true });
+  saveStaticDb({ skipCloudPush: true, skipUserWorkspaceSync: true });
   renderAdminUsersDirectory();
   showToast(`🔑 Updated password for ${u.name} (${u.email})!`, "success");
   await syncDatabaseToCloudInstant(`Admin updated password for ${u.email}`, true);
@@ -5530,11 +6107,151 @@ async function quickResetUserPasswordFromInspector(email) {
 
   try { navigator.clipboard?.writeText(defaultPass); } catch (e) {}
   persistUsersRegistryLocal();
-  saveStaticDb({ skipCloudPush: true });
+  saveStaticDb({ skipCloudPush: true, skipUserWorkspaceSync: true });
   renderAdminUsersDirectory();
   showToast(`🔄 Password for ${u.name} reset to "${defaultPass}" (copied to clipboard)!`, "success");
   await syncDatabaseToCloudInstant(`Admin reset password for ${u.email}`, true);
 }
+
+// ============================================================================
+// Admin Direct File Inspector Helpers (View/Download inside #admin-users-modal)
+// ============================================================================
+
+function _findUserWorkspaceItem(email, listKey, itemId) {
+  const norm = normalizeEmail(email);
+  const u = STATE.usersRegistry && STATE.usersRegistry[norm];
+  if (!u || !u.workspace) return { user: null, item: null };
+  const list = Array.isArray(u.workspace[listKey]) ? u.workspace[listKey] : [];
+  const item = list.find(x => Number(x.id) === Number(itemId)) || null;
+  return { user: u, item };
+}
+
+function adminInspectUserStructure(email, structId) {
+  if (!requireStrictAdminAuth()) return;
+  const { user, item } = _findUserWorkspaceItem(email, "structures", structId);
+  if (!item) {
+    showToast("Crystal structure not found in this user's workspace.", "warn");
+    return;
+  }
+  const userFolder = getPersonalUserFolderName(user);
+  const enriched = {
+    ...item,
+    project_folder: userFolder,
+    visibility: "Private",
+    owner_email: normalizeEmail(email),
+    owner_name: user.name || email
+  };
+  viewCifModalWithObject(enriched);
+}
+window.adminInspectUserStructure = adminInspectUserStructure;
+
+function adminDownloadUserCif(email, structId) {
+  if (!requireStrictAdminAuth()) return;
+  const { item } = _findUserWorkspaceItem(email, "structures", structId);
+  if (!item) {
+    showToast("Crystal structure not found.", "warn");
+    return;
+  }
+  downloadCifByObject(item);
+}
+window.adminDownloadUserCif = adminDownloadUserCif;
+
+function adminDownloadUserPoscar(email, structId) {
+  if (!requireStrictAdminAuth()) return;
+  const { item } = _findUserWorkspaceItem(email, "structures", structId);
+  if (!item) {
+    showToast("Crystal structure not found.", "warn");
+    return;
+  }
+  downloadPoscarByObject(item);
+}
+window.adminDownloadUserPoscar = adminDownloadUserPoscar;
+
+function adminCopyUserPaperBibtex(email, paperId) {
+  if (!requireStrictAdminAuth()) return;
+  const { item: p } = _findUserWorkspaceItem(email, "papers", paperId);
+  if (!p) {
+    showToast("Reference paper not found.", "warn");
+    return;
+  }
+  const cleanTitle = cleanScientificPlainText(p.title || "");
+  const cleanJournal = cleanScientificPlainText(p.journal || "");
+  const bib = p.bibtex || `@article{ref${p.id},\n  title={${cleanTitle}},\n  author={${p.authors || ""}},\n  journal={${cleanJournal}},\n  year={${p.year || ""}},\n  doi={${p.doi || ""}}\n}`;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(bib).then(() => {
+      showToast("Copied user paper BibTeX to clipboard!", "success");
+    }).catch(() => {});
+  } else {
+    prompt("Copy BibTeX:", bib);
+  }
+}
+window.adminCopyUserPaperBibtex = adminCopyUserPaperBibtex;
+
+function adminExportUserReportCsv(email) {
+  if (!requireStrictAdminAuth()) return;
+  const norm = normalizeEmail(email);
+  const u = STATE.usersRegistry && STATE.usersRegistry[norm];
+  if (!u || !u.workspace) return;
+  const expRows = Array.isArray(u.workspace.expReportRows) ? u.workspace.expReportRows : [];
+  const litRows = Array.isArray(u.workspace.litReportRows) ? u.workspace.litReportRows : [];
+  const csvEsc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const lines = [
+    ["Section", "Title / Sample ID", "Material / Journal", "Conditions / Metadata", "Findings / Takeaway"].map(csvEsc).join(",")
+  ];
+  expRows.forEach(r => {
+    lines.push([
+      "Simulation / Experimental",
+      r.sample_id || r.id || "Task",
+      r.material || "",
+      r.conditions || "",
+      r.findings || r.result || ""
+    ].map(csvEsc).join(","));
+  });
+  litRows.forEach(r => {
+    lines.push([
+      "Literature Review",
+      cleanScientificPlainText(r.title || ""),
+      cleanScientificPlainText(r.journal || ""),
+      r.year || "",
+      r.takeaway || r.notes || ""
+    ].map(csvEsc).join(","));
+  });
+  const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const slug = String(u.name || norm.split("@")[0] || "user").replace(/[^A-Za-z0-9_-]+/g, "_");
+  a.href = url;
+  a.download = `weekly_report_${slug}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showToast(`Exported weekly report for ${u.name} (${a.download})`, "success");
+}
+window.adminExportUserReportCsv = adminExportUserReportCsv;
+
+function adminJumpToUserFolder(tabName, folderName) {
+  if (!requireStrictAdminAuth()) return;
+  closeModal("admin-users-modal");
+  if (typeof switchTab === "function") {
+    switchTab(tabName);
+  }
+  if (tabName === "structures") {
+    populateProjectFolderDropdowns();
+    const sel = document.getElementById("struct-project-filter");
+    if (sel) sel.value = folderName;
+    STATE.structCurrentPage = 1;
+    renderStructuresList();
+    showToast(`Filtered Crystal Structures by "${folderName}"`, "info");
+  } else if (tabName === "literature") {
+    populatePaperFolderFilterDropdown();
+    const sel = document.getElementById("paper-folder-filter");
+    if (sel) sel.value = folderName;
+    renderPapersList();
+    showToast(`Filtered Reference Papers by "${folderName}"`, "info");
+  }
+}
+window.adminJumpToUserFolder = adminJumpToUserFolder;
 
 // ============================================================================
 // Admin Create / Edit User Profile, Groups & Password Modal (#admin-edit-user-modal)
@@ -7019,9 +7736,17 @@ async function importPaperByDoiCommon(rawDoiInput) {
     const authors = (msg.author || []).map(a => `${a.given || ""} ${a.family || ""}`.trim()).slice(0, 5).join(", ") || "Unknown";
     const journal = cleanScientificPlainText((msg["container-title"] && msg["container-title"][0]) || msg.publisher || "Journal");
     const year = msg.issued?.["date-parts"]?.[0]?.[0] || 2026;
-    const visMeta = (STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail)
+    const curPersonalUser = !isStrictAdminSession() ? getCurrentPersonalUserRecord() : null;
+    const visMeta = isStrictAdminSession()
       ? getVisibilityControlValues("lit-doi")
-      : { visibility: "Public", allowed_users: [] };
+      : {
+          visibility: "Private",
+          allowed_users: [],
+          allowed_groups: [],
+          project_folder: getPersonalUserFolderName(curPersonalUser),
+          owner_email: curPersonalUser ? normalizeEmail(curPersonalUser.email || "") : "",
+          owner_name: curPersonalUser ? (curPersonalUser.name || "") : ""
+        };
     const newPaper = {
       id: Date.now(),
       doi: cleaned,
@@ -7050,17 +7775,58 @@ async function importPaperByDoiCommon(rawDoiInput) {
   }
 }
 
+function populatePaperFolderFilterDropdown() {
+  const sel = document.getElementById("paper-folder-filter");
+  if (!sel) return;
+  if (!isStrictAdminSession()) {
+    sel.innerHTML = `<option value="ALL">All Folders</option>`;
+    sel.value = "ALL";
+    return;
+  }
+  const curVal = sel.value || "ALL";
+  const adminCount = (STATE.papers || []).filter(p => !p._fromUserEmail && !isPersonalUserFolderName(p.project_folder)).length;
+  const userFolders = new Set();
+  (STATE.papers || []).forEach(p => {
+    if (p.project_folder && isPersonalUserFolderName(p.project_folder)) {
+      userFolders.add(p.project_folder.trim());
+    }
+  });
+  Object.values(STATE.usersRegistry || {}).forEach(u => {
+    if (u && u.email) userFolders.add(getPersonalUserFolderName(u));
+  });
+  const sortedUserFolders = Array.from(userFolders).sort((a, b) => a.localeCompare(b));
+
+  let html = `<option value="ALL"${curVal === "ALL" ? " selected" : ""}>All Folders (${(STATE.papers || []).length})</option>`;
+  html += `<option value="__ADMIN__"${curVal === "__ADMIN__" ? " selected" : ""}>Admin Library (${adminCount})</option>`;
+  if (sortedUserFolders.length > 0) {
+    html += `<optgroup label="User Private Folders (Admin Only)">`;
+    sortedUserFolders.forEach(f => {
+      const cnt = (STATE.papers || []).filter(p => (p.project_folder || "") === f).length;
+      html += `<option value="${escapeHtml(f)}"${curVal === f ? " selected" : ""}>${escapeHtml(f)} (${cnt})</option>`;
+    });
+    html += `</optgroup>`;
+  }
+  sel.innerHTML = html;
+}
+window.populatePaperFolderFilterDropdown = populatePaperFolderFilterDropdown;
+
 function renderPapersList() {
   const query = _normalizeSubSupForSearch((document.getElementById("paper-search")?.value || "").toLowerCase());
   const statusFilter = document.getElementById("paper-status-filter")?.value || "ALL";
   const audienceFilter = document.getElementById("paper-audience-filter")?.value || "ALL";
+  const folderFilter = isStrictAdminSession() ? (document.getElementById("paper-folder-filter")?.value || "ALL") : "ALL";
 
   const filtered = STATE.papers.filter(p => {
     if (statusFilter !== "ALL" && p.status !== statusFilter) return false;
     if (!doesItemMatchAudienceFilter(p, audienceFilter)) return false;
+    if (folderFilter === "__ADMIN__") {
+      if (p._fromUserEmail || isPersonalUserFolderName(p.project_folder)) return false;
+    } else if (folderFilter !== "ALL") {
+      if ((p.project_folder || "") !== folderFilter) return false;
+    }
     if (!query) return true;
     const cleanTitle = cleanScientificPlainText(p.title || "");
-    const hay = _normalizeSubSupForSearch(`${cleanTitle} ${p.authors} ${p.journal} ${p.doi} ${p.material_system} ${p.characterization_tags} ${p.notes}`.toLowerCase());
+    const hay = _normalizeSubSupForSearch(`${cleanTitle} ${p.authors} ${p.journal} ${p.doi} ${p.material_system} ${p.characterization_tags} ${p.notes} ${p.project_folder || ""}`.toLowerCase());
     return hay.includes(query);
   });
 
@@ -7088,6 +7854,7 @@ function renderPapersList() {
             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
               <span class="badge ${p.status === 'Key Reference' ? 'badge-rose' : p.status === 'Read' ? 'badge-green' : 'badge-blue'}">${escapeHtml(p.status)}</span>
               ${renderVisibilityBadgeHtml(p)}
+              ${(p.project_folder && isPersonalUserFolderName(p.project_folder)) ? `<span class="badge badge-amber" style="font-size:11px;">${escapeHtml(p.project_folder)}</span>` : ""}
               ${p.in_weekly_report ? `<span class="badge badge-amber">📽️ In Weekly Report</span>` : ""}
               <span style="font-size:12px; color:var(--text-muted);">📈 Citations: <strong>${p.citation_count || 0}</strong></span>
               ${p.doi ? `<a href="https://doi.org/${encodeURIComponent(p.doi)}" target="_blank" style="font-size:12px; color:var(--primary); text-decoration:none; font-weight:600;">DOI: ${escapeHtml(p.doi)} ↗</a>` : ""}
@@ -7179,7 +7946,7 @@ async function applyBatchPapersVisibility() {
   let updatedCount = 0;
 
   STATE.papers.forEach(p => {
-    if (ids.has(Number(p.id))) {
+    if (ids.has(Number(p.id)) && !p._fromUserEmail) {
       p.visibility = visMeta.visibility;
       p.allowed_users = visMeta.allowed_users;
       p.allowed_groups = visMeta.allowed_groups;
@@ -7285,15 +8052,21 @@ function toggleSelectPaper(id, isChecked) {
 
 function toggleSelectAllPapers(isChecked) {
   if (!STATE.selectedPaperIds) STATE.selectedPaperIds = new Set();
-  const query = (document.getElementById("paper-search")?.value || "").toLowerCase();
+  const query = _normalizeSubSupForSearch((document.getElementById("paper-search")?.value || "").toLowerCase());
   const statusFilter = document.getElementById("paper-status-filter")?.value || "ALL";
   const audienceFilter = document.getElementById("paper-audience-filter")?.value || "ALL";
+  const folderFilter = isStrictAdminSession() ? (document.getElementById("paper-folder-filter")?.value || "ALL") : "ALL";
 
   const filtered = STATE.papers.filter(p => {
     if (statusFilter !== "ALL" && p.status !== statusFilter) return false;
     if (!doesItemMatchAudienceFilter(p, audienceFilter)) return false;
+    if (folderFilter === "__ADMIN__") {
+      if (p._fromUserEmail || isPersonalUserFolderName(p.project_folder)) return false;
+    } else if (folderFilter !== "ALL") {
+      if ((p.project_folder || "") !== folderFilter) return false;
+    }
     if (!query) return true;
-    const hay = `${p.title} ${p.authors} ${p.journal} ${p.doi} ${p.material_system} ${p.characterization_tags} ${p.notes}`.toLowerCase();
+    const hay = _normalizeSubSupForSearch(`${cleanScientificPlainText(p.title || "")} ${p.authors} ${p.journal} ${p.doi} ${p.material_system} ${p.characterization_tags} ${p.notes} ${p.project_folder || ""}`.toLowerCase());
     return hay.includes(query);
   });
 
@@ -7409,9 +8182,33 @@ async function savePaperFromModal() {
     }
   }
 
-  const visMeta = (STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail)
-    ? getVisibilityControlValues("pm")
-    : {};
+  const curPersonalUser = !isStrictAdminSession() ? getCurrentPersonalUserRecord() : null;
+  let visMeta;
+  if (isStrictAdminSession()) {
+    if (existing && existing._fromUserEmail) {
+      visMeta = {
+        visibility: "Private",
+        allowed_users: [],
+        allowed_groups: [],
+        project_folder: existing.project_folder || getPersonalUserFolderName(existing._fromUserEmail),
+        owner_email: existing._fromUserEmail,
+        owner_name: existing._fromUserName || existing.owner_name || "",
+        _fromUserEmail: existing._fromUserEmail,
+        _fromUserName: existing._fromUserName || ""
+      };
+    } else {
+      visMeta = getVisibilityControlValues("pm");
+    }
+  } else {
+    visMeta = {
+      visibility: "Private",
+      allowed_users: [],
+      allowed_groups: [],
+      project_folder: getPersonalUserFolderName(curPersonalUser),
+      owner_email: curPersonalUser ? normalizeEmail(curPersonalUser.email || "") : "",
+      owner_name: curPersonalUser ? (curPersonalUser.name || "") : ""
+    };
+  }
 
   const payload = {
     ...existing,
@@ -7576,9 +8373,18 @@ async function handleBatchCifFiles(fileList) {
     return;
   }
   ensureStructuralIds();
-  const visMeta = (STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail)
+  const isAdminNow = isStrictAdminSession();
+  const curPersonalUser = !isAdminNow ? getCurrentPersonalUserRecord() : null;
+  const lockedUserFolder = !isAdminNow ? getPersonalUserFolderName(curPersonalUser) : null;
+  const visMeta = isAdminNow
     ? getVisibilityControlValues("cif-upload")
-    : { visibility: "Public", allowed_users: [] };
+    : {
+        visibility: "Private",
+        allowed_users: [],
+        allowed_groups: [],
+        owner_email: curPersonalUser ? normalizeEmail(curPersonalUser.email || "") : "",
+        owner_name: curPersonalUser ? (curPersonalUser.name || "") : ""
+      };
   const activeFolderFilter = document.getElementById("struct-project-filter")?.value;
 
   const addedIds = [];
@@ -7614,9 +8420,11 @@ async function handleBatchCifFiles(fileList) {
       if (dups.length > 0) dupCount++;
 
       const structuralId = generateNextStructuralId();
-      const autoFolder = (activeFolderFilter && activeFolderFilter !== "ALL")
-        ? activeFolderFilter
-        : autoCategorizeStructureFolder(candidate);
+      const autoFolder = lockedUserFolder
+        ? lockedUserFolder
+        : ((activeFolderFilter && activeFolderFilter !== "ALL" && !isPersonalUserFolderName(activeFolderFilter))
+            ? activeFolderFilter
+            : autoCategorizeStructureFolder(candidate));
       const poscarText = generatePoscarFromLatticeAndAtoms(formula, a, b, c, alpha, beta, gamma, atoms, sg, sys);
 
       const newStruct = {
@@ -8629,7 +9437,9 @@ function _collectAllActiveStructuralIds(extraPool = null) {
   if (STATE.usersRegistry && typeof STATE.usersRegistry === "object") {
     const activeEmail = typeof getActivePersonalWorkspaceEmail === "function" ? getActivePersonalWorkspaceEmail() : null;
     Object.keys(STATE.usersRegistry).forEach(email => {
-      if (activeEmail && email === activeEmail) return; // Active user's live list is already in STATE.structures
+      const normEm = normalizeEmail(email);
+      if (activeEmail && normEm === activeEmail) return; // Active user's live list is already in STATE.structures
+      if (isStrictAdmin && STATE._adminMergedUserEmails && STATE._adminMergedUserEmails.has(normEm)) return; // Already merged in STATE.structures
       const ws = STATE.usersRegistry[email]?.workspace;
       if (ws && Array.isArray(ws.structures)) {
         pools.push(ws.structures);
@@ -8671,7 +9481,9 @@ function ensureStructuralIds(list = null) {
   if (!list && STATE.usersRegistry && typeof STATE.usersRegistry === "object") {
     const activeEmail = typeof getActivePersonalWorkspaceEmail === "function" ? getActivePersonalWorkspaceEmail() : null;
     Object.keys(STATE.usersRegistry).forEach(email => {
-      if (activeEmail && email === activeEmail) return;
+      const normEm = normalizeEmail(email);
+      if (activeEmail && normEm === activeEmail) return;
+      if (isStrictAdmin && STATE._adminMergedUserEmails && STATE._adminMergedUserEmails.has(normEm)) return;
       const ws = STATE.usersRegistry[email]?.workspace;
       if (ws && Array.isArray(ws.structures)) {
         ws.structures.forEach(s => {
@@ -9116,52 +9928,87 @@ function renderStructPaginationBar(totalItems, currentPage, pageSize, mode) {
 }
 
 function getExistingProjectFolders() {
-  const folders = new Set();
+  const isAdmin = isStrictAdminSession();
+  const adminFolders = new Set();
+  const userFolders = new Set();
+
   (STATE.structures || []).forEach(s => {
-    if (s.project_folder && typeof s.project_folder === "string" && s.project_folder.trim()) {
-      folders.add(s.project_folder.trim());
+    const f = (s.project_folder && typeof s.project_folder === "string") ? s.project_folder.trim() : "";
+    if (!f) return;
+    if (isPersonalUserFolderName(f)) {
+      // Non-admin only sees their own folder (already filtered by STATE.structures)
+      userFolders.add(f);
+    } else {
+      adminFolders.add(f);
     }
   });
-  if (STATE.masterData && Array.isArray(STATE.masterData.structures)) {
-    STATE.masterData.structures.forEach(s => {
-      if (s.project_folder && typeof s.project_folder === "string" && s.project_folder.trim()) {
-        folders.add(s.project_folder.trim());
+
+  if (isAdmin) {
+    if (STATE.masterData && Array.isArray(STATE.masterData.structures)) {
+      STATE.masterData.structures.forEach(s => {
+        const f = (s.project_folder && typeof s.project_folder === "string") ? s.project_folder.trim() : "";
+        if (f && !isPersonalUserFolderName(f)) adminFolders.add(f);
+      });
+    }
+    if (STATE.customProjectFolders) {
+      STATE.customProjectFolders.forEach(f => {
+        const trimmed = (f && typeof f === "string") ? f.trim() : "";
+        if (trimmed && !isPersonalUserFolderName(trimmed)) adminFolders.add(trimmed);
+      });
+    }
+    // Include every registered user's dedicated private folder for Admin screening
+    Object.values(STATE.usersRegistry || {}).forEach(u => {
+      if (u && u.email) {
+        userFolders.add(getPersonalUserFolderName(u));
       }
     });
   }
-  if (STATE.customProjectFolders) {
-    STATE.customProjectFolders.forEach(f => {
-      if (f && typeof f === "string" && f.trim()) folders.add(f.trim());
-    });
+
+  if (adminFolders.size === 0 && userFolders.size === 0) {
+    adminFolders.add("General Research");
   }
-  if (folders.size === 0) {
-    folders.add("General Research");
-  }
-  return Array.from(folders).sort((a, b) => a.localeCompare(b));
+  const sortedAdmin = Array.from(adminFolders).sort((a, b) => a.localeCompare(b));
+  const sortedUsers = Array.from(userFolders).sort((a, b) => a.localeCompare(b));
+  return [...sortedAdmin, ...sortedUsers];
 }
 window.getExistingProjectFolders = getExistingProjectFolders;
 
 function populateProjectFolderDropdowns(selectedForModal = null) {
+  const isAdmin = isStrictAdminSession();
   const folders = getExistingProjectFolders();
+  const adminFolders = folders.filter(f => !isPersonalUserFolderName(f));
+  const userFolders = folders.filter(f => isPersonalUserFolderName(f));
 
   // 1. Filter dropdown: #struct-project-filter (Clean text, Materials Project style)
   const filterSel = document.getElementById("struct-project-filter");
   if (filterSel) {
     const curVal = filterSel.value || "ALL";
     let optHtml = `<option value="ALL">All Folders (${folders.length})</option>`;
-    folders.forEach(f => {
+    adminFolders.forEach(f => {
       const count = (STATE.structures || []).filter(s => (s.project_folder || "General Research") === f).length;
       optHtml += `<option value="${escapeHtml(f)}"${curVal === f ? " selected" : ""}>${escapeHtml(f)} (${count})</option>`;
     });
+    if (userFolders.length > 0) {
+      if (isAdmin) {
+        optHtml += `<optgroup label="User Private Folders (Admin Only)">`;
+      }
+      userFolders.forEach(f => {
+        const count = (STATE.structures || []).filter(s => (s.project_folder || "General Research") === f).length;
+        optHtml += `<option value="${escapeHtml(f)}"${curVal === f ? " selected" : ""}>${escapeHtml(f)} (${count})</option>`;
+      });
+      if (isAdmin) {
+        optHtml += `</optgroup>`;
+      }
+    }
     filterSel.innerHTML = optHtml;
   }
 
-  // 2. Batch Move dropdown: #batch-struct-folder
+  // 2. Batch Move dropdown: #batch-struct-folder (Strict Admin Only — Admin folders only)
   const batchSel = document.getElementById("batch-struct-folder");
   if (batchSel) {
     const curVal = batchSel.value;
     let optHtml = "";
-    folders.forEach(f => {
+    (adminFolders.length > 0 ? adminFolders : ["General Research"]).forEach(f => {
       optHtml += `<option value="${escapeHtml(f)}"${curVal === f ? " selected" : ""}>${escapeHtml(f)}</option>`;
     });
     batchSel.innerHTML = optHtml;
@@ -9175,17 +10022,56 @@ window.populateProjectFolderDropdowns = populateProjectFolderDropdowns;
 function populateModalFolderDropdown(selectedVal = null) {
   const modalSel = document.getElementById("struct-folder-select");
   if (!modalSel) return;
-  const folders = getExistingProjectFolders();
-  const curVal = selectedVal !== null ? selectedVal : (modalSel.value || "General Research");
+  const customInput = document.getElementById("struct-folder-custom");
+  const helpEl = document.getElementById("struct-folder-help-text");
 
+  // Personal Users CANNOT change or add Crystal Structure folders — strictly locked to their personal private folder
+  if (!isStrictAdminSession()) {
+    const curUser = getCurrentPersonalUserRecord();
+    const userFolder = getPersonalUserFolderName(curUser);
+    modalSel.innerHTML = `<option value="${escapeHtml(userFolder)}" selected>${escapeHtml(userFolder)} (Personal Private Folder — Locked)</option>`;
+    modalSel.value = userFolder;
+    modalSel.disabled = true;
+    if (customInput) {
+      customInput.style.display = "none";
+      customInput.value = "";
+    }
+    if (helpEl) {
+      helpEl.textContent = "Your uploaded crystal structures are automatically stored in your dedicated private folder (visible only to you and the Administrator).";
+    }
+    return;
+  }
+
+  // Admin editing a user-uploaded structure keeps it in that user's private folder
+  if (selectedVal && isPersonalUserFolderName(selectedVal)) {
+    modalSel.innerHTML = `<option value="${escapeHtml(selectedVal)}" selected>${escapeHtml(selectedVal)} (User Private Folder — Locked)</option>`;
+    modalSel.value = selectedVal;
+    modalSel.disabled = true;
+    if (customInput) {
+      customInput.style.display = "none";
+      customInput.value = "";
+    }
+    if (helpEl) {
+      helpEl.textContent = "This structure belongs to a user's dedicated private folder (visible only to that user and the Administrator).";
+    }
+    return;
+  }
+
+  const adminFolders = getExistingProjectFolders().filter(f => !isPersonalUserFolderName(f));
+  if (adminFolders.length === 0) adminFolders.push("General Research");
+  const curVal = (selectedVal !== null && !isPersonalUserFolderName(selectedVal)) ? selectedVal : (modalSel.value && !isPersonalUserFolderName(modalSel.value) ? modalSel.value : "General Research");
+
+  modalSel.disabled = false;
   let optHtml = "";
-  folders.forEach(f => {
-    optHtml += `<option value="${escapeHtml(f)}"${curVal === f ? " selected" : ""}>📁 ${escapeHtml(f)}</option>`;
+  adminFolders.forEach(f => {
+    optHtml += `<option value="${escapeHtml(f)}"${curVal === f ? " selected" : ""}>${escapeHtml(f)}</option>`;
   });
-  optHtml += `<option value="__new__"${curVal === "__new__" ? " selected" : ""}>➕ Create New Project Folder...</option>`;
+  optHtml += `<option value="__new__"${curVal === "__new__" ? " selected" : ""}>+ Create New Project Folder...</option>`;
   modalSel.innerHTML = optHtml;
 
-  const customInput = document.getElementById("struct-folder-custom");
+  if (helpEl) {
+    helpEl.textContent = "Assign this crystal structure to a dedicated research project or material cluster for organized navigation.";
+  }
   if (customInput) {
     customInput.style.display = curVal === "__new__" ? "block" : "none";
   }
@@ -9196,6 +10082,11 @@ function handleStructFolderSelectChange() {
   const modalSel = document.getElementById("struct-folder-select");
   const customInput = document.getElementById("struct-folder-custom");
   if (!modalSel || !customInput) return;
+  if (!isStrictAdminSession()) {
+    customInput.style.display = "none";
+    customInput.value = "";
+    return;
+  }
   if (modalSel.value === "__new__") {
     customInput.style.display = "block";
     customInput.focus();
@@ -9207,7 +10098,7 @@ function handleStructFolderSelectChange() {
 window.handleStructFolderSelectChange = handleStructFolderSelectChange;
 
 function openManageFoldersModal() {
-  if (!requireAdminAuth()) return;
+  if (!requireStrictAdminAuth()) return;
   const modal = document.getElementById("manage-folders-modal");
   if (!modal) return;
   renderManageFoldersList();
@@ -9229,21 +10120,25 @@ function renderManageFoldersList() {
   folders.forEach(f => {
     const structuresInFolder = (STATE.structures || []).filter(s => (s.project_folder || "General Research") === f);
     const count = structuresInFolder.length;
+    const isUserPrivFolder = isPersonalUserFolderName(f);
 
     html += `
       <div class="manage-folder-row" id="manage-folder-row-${encodeURIComponent(f)}">
         <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
-          <span style="font-size:16px;">📁</span>
+          <span style="font-size:15px;">${isUserPrivFolder ? "🔒" : "📁"}</span>
           <span style="font-weight:700; color:#1e293b; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(f)}">
             ${escapeHtml(f)}
           </span>
-          <span class="badge badge-purple" style="font-size:11px; white-space:nowrap;">${count} structure${count === 1 ? '' : 's'}</span>
+          ${isUserPrivFolder ? `<span class="badge badge-rose" style="font-size:10px; white-space:nowrap;">User Private</span>` : ""}
+          <span class="badge badge-amber" style="font-size:11px; white-space:nowrap;">${count} structure${count === 1 ? '' : 's'}</span>
         </div>
         <div style="display:flex; align-items:center; gap:6px;">
-          <button type="button" class="btn btn-outline btn-xs" onclick="promptProjectFolderRename('${escapeHtml(f).replace(/'/g, "\\'")}')" style="padding:3px 8px; font-size:11.5px; background:#fff; font-weight:600;" title="Rename Folder">✏️ Rename</button>
-          <button type="button" class="btn btn-outline btn-xs" onclick="filterStructuresByFolder('${escapeHtml(f).replace(/'/g, "\\'")}') ; closeModal('manage-folders-modal');" style="padding:3px 8px; font-size:11.5px; background:#fff; color:#2563eb; font-weight:600;" title="View Structures in this folder">👁️ View</button>
-          ${f !== "General Research" ? `
-            <button type="button" class="btn btn-danger btn-xs" onclick="deleteProjectFolder('${escapeHtml(f).replace(/'/g, "\\'")}', ${count})" style="padding:3px 7px; font-size:11.5px;" title="Delete or Dissolve folder">🗑️</button>
+          ${!isUserPrivFolder ? `
+            <button type="button" class="btn btn-outline btn-xs" onclick="promptProjectFolderRename('${escapeHtml(f).replace(/'/g, "\\'")}')" style="padding:3px 8px; font-size:11.5px; background:#fff; font-weight:600;" title="Rename Folder">Rename</button>
+          ` : ""}
+          <button type="button" class="btn btn-outline btn-xs" onclick="filterStructuresByFolder('${escapeHtml(f).replace(/'/g, "\\'")}') ; closeModal('manage-folders-modal');" style="padding:3px 8px; font-size:11.5px; background:#fff; color:#8c3d0c; font-weight:600;" title="View Structures in this folder">View</button>
+          ${!isUserPrivFolder && f !== "General Research" ? `
+            <button type="button" class="btn btn-danger btn-xs" onclick="deleteProjectFolder('${escapeHtml(f).replace(/'/g, "\\'")}', ${count})" style="padding:3px 7px; font-size:11.5px;" title="Delete or Dissolve folder">Delete</button>
           ` : ""}
         </div>
       </div>
@@ -9255,10 +10150,15 @@ function renderManageFoldersList() {
 window.renderManageFoldersList = renderManageFoldersList;
 
 function createNewProjectFolderFromInput() {
+  if (!requireStrictAdminAuth()) return;
   const input = document.getElementById("new-folder-name-input");
   const folderName = (input?.value || "").trim();
   if (!folderName) {
     showToast("Please enter a valid folder name.", "warn");
+    return;
+  }
+  if (isPersonalUserFolderName(folderName)) {
+    showToast('Folder names starting with "User:" are reserved for personal user private folders.', "warn");
     return;
   }
   if (!STATE.customProjectFolders) STATE.customProjectFolders = new Set();
@@ -9267,11 +10167,16 @@ function createNewProjectFolderFromInput() {
   input.value = "";
   populateProjectFolderDropdowns();
   renderManageFoldersList();
-  showToast(`📁 Created project folder "${folderName}"!`, "success");
+  showToast(`Created project folder "${folderName}"!`, "success");
 }
 window.createNewProjectFolderFromInput = createNewProjectFolderFromInput;
 
 function promptProjectFolderRename(oldName) {
+  if (!requireStrictAdminAuth()) return;
+  if (isPersonalUserFolderName(oldName)) {
+    showToast("Personal user private folders are managed automatically and cannot be renamed.", "warn");
+    return;
+  }
   const newName = prompt(`Enter new name for project folder "${oldName}":`, oldName);
   if (!newName || newName.trim() === "" || newName.trim() === oldName) return;
   renameProjectFolder(oldName, newName.trim());
@@ -9280,9 +10185,14 @@ window.promptProjectFolderRename = promptProjectFolderRename;
 window.renameFolderPrompt = promptProjectFolderRename;
 
 function renameProjectFolder(oldName, newName) {
+  if (!requireStrictAdminAuth()) return;
+  if (isPersonalUserFolderName(oldName) || isPersonalUserFolderName(newName)) {
+    showToast('Cannot rename personal user private folders or use the reserved "User:" prefix.', "warn");
+    return;
+  }
   let updatedCount = 0;
   (STATE.structures || []).forEach(s => {
-    if ((s.project_folder || "General Research") === oldName) {
+    if (!s._fromUserEmail && (s.project_folder || "General Research") === oldName) {
       s.project_folder = newName;
       updatedCount++;
     }
@@ -9307,17 +10217,22 @@ function renameProjectFolder(oldName, newName) {
   renderManageFoldersList();
   renderStructuresList();
   recordUserActivity("Crystal Structures", "Renamed Folder", `Renamed folder "${oldName}" to "${newName}" (${updatedCount} structures updated).`);
-  showToast(`📁 Renamed folder to "${newName}" (${updatedCount} structures updated)!`, "success");
+  showToast(`Renamed folder to "${newName}" (${updatedCount} structures updated)!`, "success");
 }
 window.renameProjectFolder = renameProjectFolder;
 
 function deleteProjectFolder(folderName, count) {
+  if (!requireStrictAdminAuth()) return;
+  if (isPersonalUserFolderName(folderName)) {
+    showToast("Personal user private folders cannot be deleted manually.", "warn");
+    return;
+  }
   if (count > 0) {
     if (!confirm(`Folder "${folderName}" contains ${count} structure(s).\n\nDeleting this folder will reassign all its structures to "General Research". Proceed?`)) {
       return;
     }
     (STATE.structures || []).forEach(s => {
-      if (s.project_folder === folderName) {
+      if (!s._fromUserEmail && s.project_folder === folderName) {
         s.project_folder = "General Research";
       }
     });
@@ -9339,7 +10254,7 @@ function deleteProjectFolder(folderName, count) {
   populateProjectFolderDropdowns();
   renderManageFoldersList();
   renderStructuresList();
-  showToast(`🗑️ Folder "${folderName}" removed.`, "info");
+  showToast(`Folder "${folderName}" removed.`, "info");
 }
 window.deleteProjectFolder = deleteProjectFolder;
 
@@ -10056,8 +10971,8 @@ function renderStructuresList() {
             </div>
             <div style="display:flex; align-items:center; gap:8px;" onclick="event.stopPropagation()">
               <button type="button" class="struct-folder-action-btn admin-only" onclick="toggleSelectAllInFolder('${escapeHtml(group.key).replace(/'/g, "\\'")}', true)" title="Select all structures in this folder">☑ Select All</button>
-              ${(groupBy === "project" || !groupBy) && group.key !== "__unlinked__" ? `
-                <button type="button" class="struct-folder-action-btn admin-only" onclick="promptProjectFolderRename('${escapeHtml(group.key).replace(/'/g, "\\'")}')" title="Rename Folder">✏️ Rename</button>
+              ${(groupBy === "project" || !groupBy) && group.key !== "__unlinked__" && !isPersonalUserFolderName(group.key) ? `
+                <button type="button" class="struct-folder-action-btn strict-admin-only" onclick="promptProjectFolderRename('${escapeHtml(group.key).replace(/'/g, "\\'")}')" title="Rename Folder">Rename</button>
               ` : ""}
               <div style="font-size:12px; color:#64748b; margin-left:4px; cursor:pointer;" onclick="toggleStructFolder('${safeKey}')">
                 ${isCollapsed ? '▶ Expand' : '▼ Collapse'}
@@ -10186,7 +11101,7 @@ async function applyBatchStructuresVisibility() {
   let updatedCount = 0;
 
   STATE.structures.forEach(s => {
-    if (ids.has(Number(s.id))) {
+    if (ids.has(Number(s.id)) && !s._fromUserEmail) {
       s.visibility = visMeta.visibility;
       s.allowed_users = visMeta.allowed_users;
       s.allowed_groups = visMeta.allowed_groups;
@@ -10211,18 +11126,22 @@ async function applyBatchStructuresVisibility() {
 
 
 async function applyBatchStructuresFolder() {
-  if (!requireAdminAuth()) return;
+  if (!requireStrictAdminAuth()) return;
   if (!STATE.selectedStructureIds || STATE.selectedStructureIds.size === 0) {
     showToast("No structures selected. Please check the structures you wish to move.", "warn");
     return;
   }
   const folderSelect = document.getElementById("batch-struct-folder");
   const targetFolder = (folderSelect ? folderSelect.value : "").trim() || "General Research";
+  if (isPersonalUserFolderName(targetFolder)) {
+    showToast("Cannot move structures into a personal user private folder.", "warn");
+    return;
+  }
   const ids = new Set(Array.from(STATE.selectedStructureIds).map(Number));
   let updatedCount = 0;
 
   STATE.structures.forEach(s => {
-    if (ids.has(Number(s.id)) && (!s._sharedFromAdmin || (STATE.auth && STATE.auth.isAdmin))) {
+    if (ids.has(Number(s.id)) && !s._fromUserEmail) {
       s.project_folder = targetFolder;
       updatedCount++;
     }
@@ -10413,8 +11332,12 @@ function openStructureModal(structId = null, options = {}) {
 
     renderModalAtomsTable([]);
     populateModalPaperDropdown(null, "", "");
-    const curFilterVal = document.getElementById("struct-project-filter")?.value;
-    populateModalFolderDropdown(curFilterVal && curFilterVal !== "ALL" ? curFilterVal : "General Research");
+    if (!isStrictAdminSession()) {
+      populateModalFolderDropdown(getPersonalUserFolderName(getCurrentPersonalUserRecord()));
+    } else {
+      const curFilterVal = document.getElementById("struct-project-filter")?.value;
+      populateModalFolderDropdown(curFilterVal && curFilterVal !== "ALL" && !isPersonalUserFolderName(curFilterVal) ? curFilterVal : "General Research");
+    }
   } else {
     // skipReset (e.g. CIF upload): always show read-only auto-assigned preview
     const sidEl = document.getElementById("struct-structural-id");
@@ -10425,6 +11348,12 @@ function openStructureModal(structId = null, options = {}) {
     }
     const statusEl = document.getElementById("struct-calc-status");
     if (statusEl && !statusEl.value) statusEl.value = "Unrelaxed";
+    if (!isStrictAdminSession()) {
+      populateModalFolderDropdown(getPersonalUserFolderName(getCurrentPersonalUserRecord()));
+    } else {
+      const curFilterVal = document.getElementById("struct-project-filter")?.value;
+      populateModalFolderDropdown(curFilterVal && curFilterVal !== "ALL" && !isPersonalUserFolderName(curFilterVal) ? curFilterVal : "General Research");
+    }
   }
   modal.classList.add("open");
   setTimeout(checkModalStructureDuplicate, 60);
@@ -10478,9 +11407,34 @@ async function saveStructureFromModal() {
 
   const poscarText = generatePoscarFromLatticeAndAtoms(formula, a, b, c, alpha, beta, gamma, atoms, spaceGroup, crystalSystem);
 
-  const visMeta = (STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail)
-    ? getVisibilityControlValues("struct")
-    : {};
+  const existingStruct = id ? STATE.structures.find(x => x.id === Number(id)) : null;
+  const isAdminNow = isStrictAdminSession();
+  const curPersonalUser = !isAdminNow ? getCurrentPersonalUserRecord() : null;
+
+  let visMeta;
+  if (isAdminNow) {
+    if (existingStruct && existingStruct._fromUserEmail) {
+      visMeta = {
+        visibility: "Private",
+        allowed_users: [],
+        allowed_groups: [],
+        owner_email: existingStruct._fromUserEmail,
+        owner_name: existingStruct._fromUserName || existingStruct.owner_name || "",
+        _fromUserEmail: existingStruct._fromUserEmail,
+        _fromUserName: existingStruct._fromUserName || ""
+      };
+    } else {
+      visMeta = getVisibilityControlValues("struct");
+    }
+  } else {
+    visMeta = {
+      visibility: "Private",
+      allowed_users: [],
+      allowed_groups: [],
+      owner_email: curPersonalUser ? normalizeEmail(curPersonalUser.email || "") : "",
+      owner_name: curPersonalUser ? (curPersonalUser.name || "") : ""
+    };
+  }
 
   // Associated Literature / Publication link
   const paperSelect = document.getElementById("struct-paper-select");
@@ -10502,14 +11456,23 @@ async function saveStructureFromModal() {
   }
 
   // Project / Research Folder assignment
-  const folderSelect = document.getElementById("struct-folder-select");
-  let assignedFolder = folderSelect ? folderSelect.value : "General Research";
-  if (assignedFolder === "__new__") {
-    assignedFolder = (document.getElementById("struct-folder-custom")?.value || "").trim() || "General Research";
+  // Personal Users are strictly locked to their dedicated private folder ("User: <Name>")
+  let assignedFolder = "General Research";
+  if (!isAdminNow) {
+    assignedFolder = getPersonalUserFolderName(curPersonalUser);
+  } else if (existingStruct && existingStruct._fromUserEmail) {
+    assignedFolder = existingStruct.project_folder || getPersonalUserFolderName(existingStruct._fromUserEmail);
+  } else {
+    const folderSelect = document.getElementById("struct-folder-select");
+    assignedFolder = folderSelect ? folderSelect.value : "General Research";
+    if (assignedFolder === "__new__") {
+      assignedFolder = (document.getElementById("struct-folder-custom")?.value || "").trim() || "General Research";
+    }
+    if (!assignedFolder || isPersonalUserFolderName(assignedFolder)) {
+      assignedFolder = "General Research";
+    }
   }
-  if (!assignedFolder) assignedFolder = "General Research";
 
-  const existingStruct = id ? STATE.structures.find(x => x.id === Number(id)) : null;
   // Strictly immutable & unique: existing structure ALWAYS keeps its permanent ID;
   // newly uploaded/created structure ALWAYS receives the lowest unused CD-XXXX slot automatically!
   const structuralId = (existingStruct && existingStruct.structural_id)
@@ -10857,7 +11820,12 @@ function switchCvmTab(tab) {
 }
 
 function viewCifModal(id) {
-  const s = STATE.structures.find(x => x.id === id);
+  const s = STATE.structures.find(x => Number(x.id) === Number(id));
+  if (!s) return;
+  viewCifModalWithObject(s);
+}
+
+function viewCifModalWithObject(s) {
   if (!s) return;
   STATE.currentViewingStructure = s;
 
@@ -11680,17 +12648,16 @@ function copyCurrentCif() {
 function downloadCurrentCif() {
   const s = STATE.currentViewingStructure;
   if (!s) return;
-  downloadCifById(s.id);
+  downloadCifByObject(s);
 }
 
 function downloadCurrentPoscar() {
   const s = STATE.currentViewingStructure;
   if (!s) return;
-  downloadPoscarById(s.id);
+  downloadPoscarByObject(s);
 }
 
-function downloadCifById(id) {
-  const s = STATE.structures.find(x => x.id === id);
+function downloadCifByObject(s) {
   if (!s) return;
   const formula = s.chemical_formula || s.formula || "Crystal";
   const sid = s.structural_id || _formatStructuralIdNum(s.id || 1);
@@ -11709,9 +12676,15 @@ function downloadCifById(id) {
   URL.revokeObjectURL(url);
   showToast(`Downloaded ${a.download}`);
 }
+window.downloadCifByObject = downloadCifByObject;
 
-function downloadPoscarById(id) {
-  const s = STATE.structures.find(x => x.id === id);
+function downloadCifById(id) {
+  const s = STATE.structures.find(x => Number(x.id) === Number(id));
+  if (!s) return;
+  downloadCifByObject(s);
+}
+
+function downloadPoscarByObject(s) {
   if (!s) return;
   const formula = s.chemical_formula || s.formula || "Crystal";
   const sid = s.structural_id || _formatStructuralIdNum(s.id || 1);
@@ -11726,6 +12699,13 @@ function downloadPoscarById(id) {
   a.remove();
   URL.revokeObjectURL(url);
   showToast(`Exported VASP ${a.download}`);
+}
+window.downloadPoscarByObject = downloadPoscarByObject;
+
+function downloadPoscarById(id) {
+  const s = STATE.structures.find(x => Number(x.id) === Number(id));
+  if (!s) return;
+  downloadPoscarByObject(s);
 }
 
 // ============================================================================
@@ -12915,6 +13895,8 @@ async function loadStaticFallbackData() {
   ensureUserGroupsInitialized();
   applyActiveWorkspaceData();
   refreshAudienceFilterDropdowns();
+  if (typeof populateProjectFolderDropdowns === "function") populateProjectFolderDropdowns();
+  if (typeof populatePaperFolderFilterDropdown === "function") populatePaperFolderFilterDropdown();
 
   const dashData = {
     stats: {
@@ -12953,10 +13935,25 @@ function saveStaticDb(options = {}) {
   const activePersonalEmail = getActivePersonalWorkspaceEmail();
   if (activePersonalEmail && STATE.usersRegistry && STATE.usersRegistry[activePersonalEmail]) {
     const u = STATE.usersRegistry[activePersonalEmail];
+    const userFolder = getPersonalUserFolderName(u);
     u.workspace = {
-      papers: (STATE.papers || []).filter(p => !p._sharedFromAdmin),
-      structures: (STATE.structures || []).filter(s => !s._sharedFromAdmin),
-      schedule: (STATE.schedule || []).filter(ev => !ev._sharedFromAdmin),
+      papers: (STATE.papers || []).filter(p => !p._sharedFromAdmin && !p._fromUserEmail).map(p => ({
+        ...p,
+        project_folder: userFolder,
+        visibility: "Private",
+        allowed_users: [],
+        owner_email: activePersonalEmail,
+        owner_name: u.name || activePersonalEmail
+      })),
+      structures: (STATE.structures || []).filter(s => !s._sharedFromAdmin && !s._fromUserEmail).map(s => ({
+        ...s,
+        project_folder: userFolder,
+        visibility: "Private",
+        allowed_users: [],
+        owner_email: activePersonalEmail,
+        owner_name: u.name || activePersonalEmail
+      })),
+      schedule: (STATE.schedule || []).filter(ev => !ev._sharedFromAdmin && !ev._fromUserEmail),
       expReportRows: STATE.expReportRows || [],
       litReportRows: STATE.litReportRows || []
     };
@@ -12964,17 +13961,65 @@ function saveStaticDb(options = {}) {
     u.updatedAtMs = Date.now();
     persistUsersRegistryLocal();
   } else if (STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail) {
+    // Separate Admin Master items from User-Uploaded Private items (never leak user uploads into masterData!)
     STATE.masterData = {
-      papers: STATE.papers || [],
-      structures: STATE.structures || [],
-      schedule: STATE.schedule || [],
+      papers: (STATE.papers || []).filter(p => !p._fromUserEmail),
+      structures: (STATE.structures || []).filter(s => !s._fromUserEmail),
+      schedule: (STATE.schedule || []).filter(ev => !ev._fromUserEmail),
       profile: STATE.profile || {}
     };
+
+    // Sync any Admin edits/deletions to user-owned structures/papers cleanly back to their user workspace
+    if (!options.skipUserWorkspaceSync && STATE._adminMergedUserEmails && STATE.usersRegistry && typeof STATE.usersRegistry === "object") {
+      let usersModified = false;
+      Object.keys(STATE.usersRegistry).forEach(email => {
+        const u = STATE.usersRegistry[email];
+        if (!u || !u.workspace) return;
+        const normEmail = normalizeEmail(email);
+        if (!STATE._adminMergedUserEmails.has(normEmail)) return;
+        const userFolder = getPersonalUserFolderName(u);
+        const liveUserStructs = (STATE.structures || [])
+          .filter(s => s._fromUserEmail === normEmail)
+          .map(s => {
+            const copy = { ...s };
+            delete copy._fromUserEmail;
+            delete copy._fromUserName;
+            copy.project_folder = userFolder;
+            copy.visibility = "Private";
+            copy.allowed_users = [];
+            copy.owner_email = normEmail;
+            copy.owner_name = u.name || normEmail;
+            return copy;
+          });
+        const liveUserPapers = (STATE.papers || [])
+          .filter(p => p._fromUserEmail === normEmail)
+          .map(p => {
+            const copy = { ...p };
+            delete copy._fromUserEmail;
+            delete copy._fromUserName;
+            copy.project_folder = userFolder;
+            copy.visibility = "Private";
+            copy.allowed_users = [];
+            copy.owner_email = normEmail;
+            copy.owner_name = u.name || normEmail;
+            return copy;
+          });
+        if (JSON.stringify(u.workspace.structures || []) !== JSON.stringify(liveUserStructs)) {
+          u.workspace.structures = liveUserStructs;
+          usersModified = true;
+        }
+        if (JSON.stringify(u.workspace.papers || []) !== JSON.stringify(liveUserPapers)) {
+          u.workspace.papers = liveUserPapers;
+          usersModified = true;
+        }
+      });
+      if (usersModified) persistUsersRegistryLocal();
+    }
   } else if (!STATE.masterData) {
     STATE.masterData = {
-      papers: STATE.papers || [],
-      structures: STATE.structures || [],
-      schedule: STATE.schedule || [],
+      papers: (STATE.papers || []).filter(p => !p._fromUserEmail),
+      structures: (STATE.structures || []).filter(s => !s._fromUserEmail),
+      schedule: (STATE.schedule || []).filter(ev => !ev._fromUserEmail),
       profile: STATE.profile || {}
     };
   }
