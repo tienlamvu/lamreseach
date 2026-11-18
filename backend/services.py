@@ -31,12 +31,97 @@ def clean_doi(raw_input: str) -> str:
     return s
 
 
+_UNICODE_SUB_MAP = str.maketrans(
+    "0123456789+-−=()aehijklmnoprstuvx",
+    "₀₁₂₃₄₅₆₇₈₉₊₋₋₌₍₎ₐₑₕᵢⱼₖₗₘₙₒₚᵣₛₜᵤᵥₓ",
+)
+_UNICODE_SUP_MAP = str.maketrans(
+    "0123456789+-−=()in",
+    "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁻⁼⁽⁾ⁱⁿ",
+)
+
+
+def _walk_mathml_soup(node, in_script: bool = False) -> str:
+    if node is None:
+        return ""
+    if isinstance(node, str):
+        return re.sub(r"\s+", " ", node).strip()
+    tag = (getattr(node, "name", None) or "").lower().split(":")[-1]
+    if tag in ("annotation", "annotation-xml"):
+        return ""
+    if tag == "mspace":
+        return " "
+    el_children = [c for c in node.children if getattr(c, "name", None)]
+    if tag in ("mi", "mn", "mtext", "ms"):
+        return re.sub(r"\s+", " ", node.get_text()).strip()
+    if tag == "mo":
+        op = node.get_text().strip()
+        if not op:
+            return ""
+        if op in (",", ";"):
+            return op + " "
+        if re.match(r"^[=+−\-±×→↔≈≤≥<>∼~∈]$", op):
+            return op if in_script else f" {op} "
+        return op
+    if tag == "msub" and len(el_children) >= 2:
+        base = _walk_mathml_soup(el_children[0], in_script)
+        sub = _walk_mathml_soup(el_children[1], True).strip().translate(_UNICODE_SUB_MAP)
+        return f"{base}{sub}"
+    if tag == "msup" and len(el_children) >= 2:
+        base = _walk_mathml_soup(el_children[0], in_script)
+        sup = _walk_mathml_soup(el_children[1], True).strip().translate(_UNICODE_SUP_MAP)
+        return f"{base}{sup}"
+    if tag == "msubsup" and len(el_children) >= 3:
+        base = _walk_mathml_soup(el_children[0], in_script)
+        sub = _walk_mathml_soup(el_children[1], True).strip().translate(_UNICODE_SUB_MAP)
+        sup = _walk_mathml_soup(el_children[2], True).strip().translate(_UNICODE_SUP_MAP)
+        return f"{base}{sub}{sup}"
+    if tag == "mfrac" and len(el_children) >= 2:
+        return f"{_walk_mathml_soup(el_children[0], True).strip()}/{_walk_mathml_soup(el_children[1], True).strip()}"
+    if tag == "mover" and len(el_children) >= 2:
+        base = _walk_mathml_soup(el_children[0], in_script)
+        over = el_children[1].get_text().strip()
+        return f"{base}\u0304" if over in ("¯", "-", "−", "―", "‾") else base
+    if el_children:
+        return "".join(_walk_mathml_soup(c, in_script) for c in el_children)
+    return "".join(_walk_mathml_soup(c, in_script) for c in node.children)
+
+
 def strip_xml_tags(text: str) -> str:
+    """Clean Crossref/OpenAlex MathML, JATS, Elsevier XML, and HTML entities into crisp Unicode text."""
     if not text:
         return ""
-    cleaned = re.sub(r"<[^>]+>", " ", text)
+    s = str(text)
+    # 1. Convert <mml:math> / <math> blocks cleanly
+    if re.search(r"<(?:mml:)?math\b", s, flags=re.IGNORECASE):
+        def _repl_math(m):
+            block = re.sub(r"<(/?)mml:", r"<\1", m.group(0), flags=re.IGNORECASE)
+            soup = BeautifulSoup(block, "html.parser")
+            math_el = soup.find("math")
+            return _walk_mathml_soup(math_el, False) if math_el else re.sub(r"<[^>]+>", "", block)
+        s = re.sub(r"<(?:mml:)?math\b[^>]*>[\s\S]*?</(?:mml:)?math>", _repl_math, s, flags=re.IGNORECASE)
+
+    # 2. Convert JATS / Elsevier / HTML sub & sup to Unicode
+    s = re.sub(
+        r"<(?:jats:sub|ce:inf|inf|sub)\b[^>]*>([\s\S]*?)</(?:jats:sub|ce:inf|inf|sub)>",
+        lambda m: re.sub(r"<[^>]+>", "", m.group(1)).strip().translate(_UNICODE_SUB_MAP),
+        s,
+        flags=re.IGNORECASE,
+    )
+    s = re.sub(
+        r"<(?:jats:sup|ce:sup|sup)\b[^>]*>([\s\S]*?)</(?:jats:sup|ce:sup|sup)>",
+        lambda m: re.sub(r"<[^>]+>", "", m.group(1)).strip().translate(_UNICODE_SUP_MAP),
+        s,
+        flags=re.IGNORECASE,
+    )
+    # 3. Strip remaining tags and decode entities
+    cleaned = re.sub(r"<[^>]+>", "", s)
     cleaned = html.unescape(cleaned)
-    return re.sub(r"\s+", " ", cleaned).strip()
+    cleaned = re.sub(r"[\r\n\t]+|\u2009|\u200a|\u00a0", " ", cleaned)
+    cleaned = re.sub(r"\s{2,}", " ", cleaned)
+    cleaned = re.sub(r"\(\s+", "(", cleaned)
+    cleaned = re.sub(r"\s+([,.;:)\]])", r"\1", cleaned)
+    return cleaned.strip()
 
 
 def auto_detect_matsci_metadata(title: str, abstract: str) -> dict:
@@ -179,7 +264,7 @@ def fetch_doi_metadata(raw_doi: str) -> dict:
         if resp.status_code == 200:
             msg = resp.json().get("message", {})
             titles = msg.get("title", [])
-            title = titles[0] if titles else ""
+            title = strip_xml_tags(titles[0]) if titles else ""
 
             for a in msg.get("author", []):
                 given = a.get("given", "")
@@ -189,7 +274,7 @@ def fetch_doi_metadata(raw_doi: str) -> dict:
                     authors_list.append(full)
 
             containers = msg.get("container-title", [])
-            journal = containers[0] if containers else msg.get("publisher", "")
+            journal = strip_xml_tags(containers[0]) if containers else strip_xml_tags(msg.get("publisher", ""))
 
             # Extract publication year
             for date_field in ["published-print", "published-online", "issued", "created"]:
