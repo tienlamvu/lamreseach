@@ -8489,7 +8489,11 @@ function collectModalAtoms() {
 function populateStructureModalWithParsed(p, rawCif, filename) {
   document.getElementById("struct-id").value = "";
   const sidEl = document.getElementById("struct-structural-id");
-  if (sidEl && !sidEl.value) sidEl.value = generateNextStructuralId();
+  if (sidEl) {
+    sidEl.value = `Auto-assigned on upload (${generateNextStructuralId()})`;
+    sidEl.readOnly = true;
+    sidEl.disabled = true;
+  }
   let cleanName = getCleanBasename(filename || p.name);
   if (!cleanName || ["input", "structure", "crystal", "cif", "data", "upload", "soc"].includes(cleanName.toLowerCase())) {
     cleanName = p.chemical_formula || p.name || "Crystal Structure";
@@ -8611,40 +8615,98 @@ function _parseStructuralIdNum(sid) {
   return m ? parseInt(m[1], 10) : 0;
 }
 
+function _collectAllActiveStructuralIds(extraPool = null) {
+  const used = new Set();
+  const pools = [];
+  if (Array.isArray(extraPool)) pools.push(extraPool);
+  if (Array.isArray(STATE.structures)) pools.push(STATE.structures);
+  // Include masterData structures ONLY if we are not in Admin mode (for Admin, STATE.structures IS masterData.structures)
+  const isStrictAdmin = Boolean(STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail);
+  if (!isStrictAdmin && STATE.masterData && Array.isArray(STATE.masterData.structures)) {
+    pools.push(STATE.masterData.structures);
+  }
+  // Include all personal user workspaces to ensure zero cross-user ID collision
+  if (STATE.usersRegistry && typeof STATE.usersRegistry === "object") {
+    const activeEmail = typeof getActivePersonalWorkspaceEmail === "function" ? getActivePersonalWorkspaceEmail() : null;
+    Object.keys(STATE.usersRegistry).forEach(email => {
+      if (activeEmail && email === activeEmail) return; // Active user's live list is already in STATE.structures
+      const ws = STATE.usersRegistry[email]?.workspace;
+      if (ws && Array.isArray(ws.structures)) {
+        pools.push(ws.structures);
+      }
+    });
+  }
+  pools.forEach(pool => {
+    pool.forEach(s => {
+      if (s && s.structural_id && typeof s.structural_id === "string" && /^CD-\d+$/i.test(s.structural_id.trim())) {
+        used.add(s.structural_id.trim().toUpperCase());
+      }
+    });
+  });
+  return used;
+}
+
+function _findLowestFreeStructuralId(usedSet) {
+  let n = 1;
+  while (usedSet.has(_formatStructuralIdNum(n))) {
+    n++;
+  }
+  return _formatStructuralIdNum(n);
+}
+
 function ensureStructuralIds(list = null) {
   const targets = list || STATE.structures || [];
   if (!Array.isArray(targets) || targets.length === 0) return;
 
-  // Gather all currently assigned numbers across active & master lists
-  let maxNum = 0;
-  const usedIds = new Set();
-  const allPools = [targets];
-  if (!list && STATE.masterData && Array.isArray(STATE.masterData.structures)) {
-    allPools.push(STATE.masterData.structures);
-  }
-  allPools.forEach(pool => {
-    pool.forEach(s => {
-      if (s && s.structural_id && typeof s.structural_id === "string" && s.structural_id.trim()) {
-        const clean = s.structural_id.trim().toUpperCase();
-        s.structural_id = clean;
-        usedIds.add(clean);
-        const n = _parseStructuralIdNum(clean);
-        if (n > maxNum) maxNum = n;
+  // Collect IDs from OTHER pools first so we never collide across workspaces
+  const externalUsed = new Set();
+  const isStrictAdmin = Boolean(STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail);
+  if (!list && !isStrictAdmin && STATE.masterData && Array.isArray(STATE.masterData.structures)) {
+    STATE.masterData.structures.forEach(s => {
+      if (s && s.structural_id && /^CD-\d+$/i.test(String(s.structural_id).trim())) {
+        externalUsed.add(String(s.structural_id).trim().toUpperCase());
       }
     });
+  }
+  if (!list && STATE.usersRegistry && typeof STATE.usersRegistry === "object") {
+    const activeEmail = typeof getActivePersonalWorkspaceEmail === "function" ? getActivePersonalWorkspaceEmail() : null;
+    Object.keys(STATE.usersRegistry).forEach(email => {
+      if (activeEmail && email === activeEmail) return;
+      const ws = STATE.usersRegistry[email]?.workspace;
+      if (ws && Array.isArray(ws.structures)) {
+        ws.structures.forEach(s => {
+          if (s && s.structural_id && /^CD-\d+$/i.test(String(s.structural_id).trim())) {
+            externalUsed.add(String(s.structural_id).trim().toUpperCase());
+          }
+        });
+      }
+    });
+  }
+
+  // First pass: validate existing IDs in `targets` (ordered oldest-first) and detect any missing or duplicate IDs
+  const ordered = [...targets].filter(Boolean).sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
+  const seenInTargets = new Set();
+  const needsAssignment = [];
+
+  ordered.forEach(s => {
+    const raw = (s.structural_id && typeof s.structural_id === "string") ? s.structural_id.trim().toUpperCase() : "";
+    const isValid = /^CD-\d+$/.test(raw);
+    const isSharedFromAdmin = Boolean(s._sharedFromAdmin);
+    if (isValid && !seenInTargets.has(raw) && (isSharedFromAdmin || !externalUsed.has(raw))) {
+      s.structural_id = raw;
+      seenInTargets.add(raw);
+    } else {
+      needsAssignment.push(s);
+    }
   });
 
-  // Assign deterministic sequential CD-XXXX IDs to any structure lacking one (ordered by numeric id)
-  const missing = targets.filter(s => s && !(s.structural_id && s.structural_id.trim()));
-  if (missing.length > 0) {
-    missing.sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
-    missing.forEach(s => {
-      do {
-        maxNum++;
-      } while (usedIds.has(_formatStructuralIdNum(maxNum)));
-      const newSid = _formatStructuralIdNum(maxNum);
-      s.structural_id = newSid;
-      usedIds.add(newSid);
+  // Second pass: assign lowest available unused CD-XXXX to any missing or duplicate entries
+  if (needsAssignment.length > 0) {
+    const allUsed = new Set([...externalUsed, ...seenInTargets]);
+    needsAssignment.forEach(s => {
+      const nextSid = _findLowestFreeStructuralId(allUsed);
+      s.structural_id = nextSid;
+      allUsed.add(nextSid);
     });
   }
 
@@ -8659,26 +8721,9 @@ window.ensureStructuralIds = ensureStructuralIds;
 
 function generateNextStructuralId() {
   ensureStructuralIds();
-  let maxNum = 0;
-  const used = new Set();
-  const pools = [STATE.structures || []];
-  if (STATE.masterData && Array.isArray(STATE.masterData.structures)) {
-    pools.push(STATE.masterData.structures);
-  }
-  pools.forEach(pool => {
-    pool.forEach(s => {
-      if (s && s.structural_id) {
-        const clean = String(s.structural_id).trim().toUpperCase();
-        used.add(clean);
-        const n = _parseStructuralIdNum(clean);
-        if (n > maxNum) maxNum = n;
-      }
-    });
-  });
-  do {
-    maxNum++;
-  } while (used.has(_formatStructuralIdNum(maxNum)));
-  return _formatStructuralIdNum(maxNum);
+  const used = _collectAllActiveStructuralIds();
+  // Always pick the lowest free CD-XXXX slot (automatically recycles IDs freed by deleted structures!)
+  return _findLowestFreeStructuralId(used);
 }
 window.generateNextStructuralId = generateNextStructuralId;
 
@@ -10285,7 +10330,11 @@ function openStructureModal(structId = null, options = {}) {
     document.getElementById("struct-modal-title").textContent = `Edit Structure · ${sid} (${s.name})`;
     document.getElementById("struct-id").value = s.id;
     const sidEl = document.getElementById("struct-structural-id");
-    if (sidEl) sidEl.value = sid;
+    if (sidEl) {
+      sidEl.value = sid;
+      sidEl.readOnly = true;
+      sidEl.disabled = true;
+    }
     const statusEl = document.getElementById("struct-calc-status");
     if (statusEl) statusEl.value = s.calc_status || "Relaxed";
     document.getElementById("struct-name").value = s.name || "";
@@ -10325,10 +10374,14 @@ function openStructureModal(structId = null, options = {}) {
     populateModalFolderDropdown(s.project_folder || "General Research");
   } else if (!options.skipReset) {
     const nextSid = generateNextStructuralId();
-    document.getElementById("struct-modal-title").textContent = `Add Crystal Structure · ${nextSid}`;
+    document.getElementById("struct-modal-title").textContent = "Add Crystal Structure (*.cif)";
     document.getElementById("struct-id").value = "";
     const sidEl = document.getElementById("struct-structural-id");
-    if (sidEl) sidEl.value = nextSid;
+    if (sidEl) {
+      sidEl.value = `Auto-assigned on upload (${nextSid})`;
+      sidEl.readOnly = true;
+      sidEl.disabled = true;
+    }
     const statusEl = document.getElementById("struct-calc-status");
     if (statusEl) statusEl.value = "Relaxed";
     document.getElementById("struct-name").value = "";
@@ -10363,9 +10416,13 @@ function openStructureModal(structId = null, options = {}) {
     const curFilterVal = document.getElementById("struct-project-filter")?.value;
     populateModalFolderDropdown(curFilterVal && curFilterVal !== "ALL" ? curFilterVal : "General Research");
   } else {
-    // skipReset (e.g. CIF upload): ensure next Structure ID is pre-filled
+    // skipReset (e.g. CIF upload): always show read-only auto-assigned preview
     const sidEl = document.getElementById("struct-structural-id");
-    if (sidEl && !sidEl.value) sidEl.value = generateNextStructuralId();
+    if (sidEl) {
+      sidEl.value = `Auto-assigned on upload (${generateNextStructuralId()})`;
+      sidEl.readOnly = true;
+      sidEl.disabled = true;
+    }
     const statusEl = document.getElementById("struct-calc-status");
     if (statusEl && !statusEl.value) statusEl.value = "Unrelaxed";
   }
@@ -10453,8 +10510,11 @@ async function saveStructureFromModal() {
   if (!assignedFolder) assignedFolder = "General Research";
 
   const existingStruct = id ? STATE.structures.find(x => x.id === Number(id)) : null;
-  const rawSid = (document.getElementById("struct-structural-id")?.value || "").trim().toUpperCase();
-  const structuralId = rawSid || (existingStruct && existingStruct.structural_id) || generateNextStructuralId();
+  // Strictly immutable & unique: existing structure ALWAYS keeps its permanent ID;
+  // newly uploaded/created structure ALWAYS receives the lowest unused CD-XXXX slot automatically!
+  const structuralId = (existingStruct && existingStruct.structural_id)
+    ? existingStruct.structural_id
+    : generateNextStructuralId();
   const calcStatus = document.getElementById("struct-calc-status")?.value || (existingStruct && existingStruct.calc_status) || "Relaxed";
 
   const payload = {
@@ -10559,12 +10619,13 @@ async function deleteStructureItem(id) {
       console.warn("Backend delete failed, removing locally:", e);
     }
   }
+  const freedSid = s && s.structural_id ? s.structural_id : "";
   STATE.structures = STATE.structures.filter(x => x.id !== id);
-  recordUserActivity("Crystal Structures", "Deleted Structure", sName);
+  recordUserActivity("Crystal Structures", "Deleted Structure", `${freedSid ? freedSid + " · " : ""}${sName}`);
   saveStaticDb();
   applyActiveWorkspaceData();
   refreshAllWorkspaceViews();
-  showToast("Deleted crystal structure.");
+  showToast(freedSid ? `Deleted ${freedSid}. ID ${freedSid} is now available for reuse.` : "Deleted crystal structure.");
 }
 
 // ============================================================================
