@@ -4093,15 +4093,15 @@ function updateCalendarActiveAccountDisplay() {
   if (badgeEl) {
     const hasToken = Boolean(STATE.auth && STATE.auth.googleAccessToken && (!STATE.auth.googleTokenExpiresAt || Date.now() < STATE.auth.googleTokenExpiresAt));
     if (hasToken) {
-      badgeEl.textContent = `🔗 Live Synced (${targetCalEmail})`;
-      badgeEl.style.background = "#059669";
-      badgeEl.style.color = "#ecfdf5";
-      badgeEl.style.border = "1px solid #10b981";
+      badgeEl.textContent = `Live Synced`;
+      badgeEl.style.background = "#e6f4ea";
+      badgeEl.style.color = "#166534";
+      badgeEl.style.border = "1px solid #a7d7b8";
     } else {
-      badgeEl.textContent = "⚡ Sync Status: Ready";
-      badgeEl.style.background = "rgba(255,255,255,0.15)";
-      badgeEl.style.color = "#cbd5e1";
-      badgeEl.style.border = "1px solid rgba(255,255,255,0.25)";
+      badgeEl.textContent = "Sync Ready";
+      badgeEl.style.background = "#faf4ea";
+      badgeEl.style.color = "#8c3d0c";
+      badgeEl.style.border = "1px solid #e3c8a4";
     }
   }
 }
@@ -7765,39 +7765,24 @@ function toggleGoogleCalendarEmbed() {
   card.style.display = card.style.display === "none" ? "block" : "none";
 }
 
-function setCalendarDisplayMode(mode) {
-  const gcalEmbed = document.getElementById("gcal-embed-card");
-  const bGrid = document.getElementById("btn-view-grid") || document.getElementById("btn-cal-interactive");
-  const bGcal = document.getElementById("btn-view-gcal") || document.getElementById("btn-cal-gcal");
+function toggleCalMoreMenu(evt) {
+  if (evt) evt.stopPropagation();
+  const menu = document.getElementById("cal-more-menu");
+  if (!menu) return;
+  menu.classList.toggle("open");
+}
+window.toggleCalMoreMenu = toggleCalMoreMenu;
 
-  updateCalendarActiveAccountDisplay();
-
-  if (mode === "gcal") {
-    if (gcalEmbed) gcalEmbed.style.display = "block";
-    if (bGrid) {
-      bGrid.style.background = "transparent";
-      bGrid.style.color = "#cbd5e1";
-      bGrid.style.fontWeight = "600";
-    }
-    if (bGcal) {
-      bGcal.style.background = "rgba(255,255,255,0.28)";
-      bGcal.style.color = "#fff";
-      bGcal.style.fontWeight = "700";
-    }
-    gcalEmbed?.scrollIntoView({ behavior: "smooth", block: "start" });
-  } else {
-    if (gcalEmbed) gcalEmbed.style.display = "none";
-    if (bGrid) {
-      bGrid.style.background = "rgba(255,255,255,0.28)";
-      bGrid.style.color = "#fff";
-      bGrid.style.fontWeight = "700";
-    }
-    if (bGcal) {
-      bGcal.style.background = "transparent";
-      bGcal.style.color = "#cbd5e1";
-      bGcal.style.fontWeight = "600";
-    }
+document.addEventListener("click", (e) => {
+  const wrap = document.getElementById("cal-more-wrap");
+  const menu = document.getElementById("cal-more-menu");
+  if (menu && menu.classList.contains("open") && wrap && !wrap.contains(e.target)) {
+    menu.classList.remove("open");
   }
+});
+
+function setCalendarDisplayMode(mode) {
+  updateCalendarActiveAccountDisplay();
 }
 
 function toggleIcsImportBox() {
