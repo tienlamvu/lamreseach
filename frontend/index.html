@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261118_v86_smart_structural_id" onerror="this.href='/static/styles.css?v=20261118_v86_smart_structural_id'" />
+  <link rel="stylesheet" href="styles.css?v=20261118_v87_auto_formula_from_atoms" onerror="this.href='/static/styles.css?v=20261118_v87_auto_formula_from_atoms'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -753,6 +753,7 @@
                 <button type="button" class="mp-btn-xs mp-btn-xs-teal" onclick="applyBatchStructuresVisibility()">Apply</button>
               </div>
 
+              <button type="button" class="mp-btn-xs" onclick="recalculateFormulasFromStructures(true, false)" title="Auto-fill exact formula from atomic coordinates for selected structures">Auto-fill Formula</button>
               <button type="button" class="mp-btn-xs mp-btn-xs-danger" onclick="deleteSelectedStructures()">
                 Delete (<span id="struct-batch-delete-count">0</span>)
               </button>
@@ -848,6 +849,7 @@
                       <option value="Published">Published</option>
                     </select>
                     <div id="mp-smart-summary" class="mp-smart-summary">★ 0 starred · 0 duplicates</div>
+                    <button type="button" class="mp-btn-outline admin-only" style="width:100%; justify-content:center; height:28px; font-size:11.5px; margin-top:8px;" onclick="recalculateFormulasFromStructures(false, false)" title="Auto-recalculate Chemical Formula from atomic coordinates for all structures">Auto-fill All Formulas</button>
                   </div>
                 </div>
 
@@ -3240,8 +3242,15 @@
           <input type="text" id="struct-name" placeholder="e.g., BaTiO3 (Cubic Perovskite)" />
         </div>
         <div class="form-group">
-          <label>Chemical Formula *</label>
+          <div class="mp-formula-label-row">
+            <label for="struct-formula">Chemical Formula *</label>
+            <div class="mp-formula-tools">
+              <button type="button" class="mp-formula-btn" onclick="autoFillModalFormula(false)" title="Auto-fill exact unit-cell formula from atomic composition">Auto-fill</button>
+              <button type="button" class="mp-formula-btn" onclick="autoFillModalFormula(true)" title="Fill GCD-reduced empirical formula from atoms">Reduced</button>
+            </div>
+          </div>
           <input type="text" id="struct-formula" placeholder="e.g., BaTiO3" onblur="autoSortModalFormula(); checkModalStructureDuplicate()" oninput="checkModalStructureDuplicate()" />
+          <div id="struct-formula-auto-hint" class="mp-formula-hint"></div>
         </div>
         <div class="form-group">
           <label>Crystal System</label>
@@ -3826,8 +3835,8 @@
     </div>
   </div>
 
-<script src="matsci_tools.js?v=20261118_v86_smart_structural_id" onerror="this.src='/static/matsci_tools.js?v=20261118_v86_smart_structural_id'"></script>
-  <script src="app.js?v=20261118_v86_smart_structural_id" onerror="this.src='/static/app.js?v=20261118_v86_smart_structural_id'"></script>
+<script src="matsci_tools.js?v=20261118_v87_auto_formula_from_atoms" onerror="this.src='/static/matsci_tools.js?v=20261118_v87_auto_formula_from_atoms'"></script>
+  <script src="app.js?v=20261118_v87_auto_formula_from_atoms" onerror="this.src='/static/app.js?v=20261118_v87_auto_formula_from_atoms'"></script>
 
     <!-- Google Calendar Verification / 403 Access Blocked Helper Modal -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
