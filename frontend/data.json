@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T11:08:55.716Z",
+  "exported_at": "2026-11-18T11:08:56.587Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -4419,6 +4419,133 @@
     }
   ],
   "users_registry": {
+    "jaewon@skku.edu": {
+      "email": "jaewon@skku.edu",
+      "name": "Jaewon Kim",
+      "affiliation": "SKKU",
+      "academicRole": "Researcher",
+      "status": "Active",
+      "workspace": {
+        "papers": [
+          {
+            "title": "User A Secret Paper on FeSiO",
+            "authors": "Jaewon Kim",
+            "journal": "Nano Lett.",
+            "year": 2026,
+            "doi": "",
+            "material_system": "",
+            "synthesis_method": "First-principles DFT",
+            "characterization_tags": "DFT, VASP, XRD",
+            "status": "To Read",
+            "notes": "",
+            "abstract": "",
+            "in_weekly_report": 1,
+            "visibility": "Private",
+            "allowed_users": [],
+            "allowed_groups": [],
+            "project_folder": "User: Jaewon Kim",
+            "owner_email": "jaewon@skku.edu",
+            "owner_name": "Jaewon Kim",
+            "id": 1795000135977
+          }
+        ],
+        "structures": [
+          {
+            "structural_id": "CD-0002",
+            "calc_status": "Relaxed",
+            "is_starred": false,
+            "name": "KNaFe(Si2O5)2",
+            "formula": "KNaFeSi4O10",
+            "chemical_formula": "KNaFeSi4O10",
+            "project_folder": "User: Jaewon Kim",
+            "associated_paper_id": null,
+            "associated_paper_title": "",
+            "associated_paper_doi": "",
+            "crystal_system": "Cubic",
+            "space_group": "Pm-3m (221)",
+            "structure_type": "Bulk 3D",
+            "mp_id": "",
+            "materials_project_id": "",
+            "a": 4.006,
+            "b": 4.006,
+            "c": 4.006,
+            "alpha": 90,
+            "beta": 90,
+            "gamma": 90,
+            "volume": 64.29,
+            "natoms": 5,
+            "dft_code": "VASP",
+            "functional": "PBE",
+            "dft_functional": "PBE",
+            "ecut": 520,
+            "cutoff_energy": 520,
+            "kpoints": "8x8x8",
+            "bandgap": 3.2,
+            "bandgap_ev": 3.2,
+            "bandgap_type": "Direct",
+            "energy_per_atom": -6.85,
+            "total_energy_per_atom": -6.85,
+            "magnetic_state": "NM",
+            "notes": "",
+            "raw_cif": "",
+            "cif_content": "",
+            "poscar_text": "KNaFeSi4O10 Cubic Pm-3m (221)\n1.0\n       4.00600000     0.00000000     0.00000000\n       0.00000000     4.00600000     0.00000000\n       0.00000000     0.00000000     4.00600000\n KNaFeSi4O10\n 1\nDirect\n   0.00000000   0.00000000   0.00000000\n",
+            "poscar_content": "KNaFeSi4O10 Cubic Pm-3m (221)\n1.0\n       4.00600000     0.00000000     0.00000000\n       0.00000000     4.00600000     0.00000000\n       0.00000000     0.00000000     4.00600000\n KNaFeSi4O10\n 1\nDirect\n   0.00000000   0.00000000   0.00000000\n",
+            "atoms": [],
+            "in_weekly_report": 1,
+            "visibility": "Private",
+            "allowed_users": [],
+            "allowed_groups": [],
+            "owner_email": "jaewon@skku.edu",
+            "owner_name": "Jaewon Kim",
+            "id": 1795000135977
+          }
+        ],
+        "schedule": [],
+        "expReportRows": [
+          {
+            "sample_id": "JW-01",
+            "material": "KNaFe(Si2O5)2",
+            "conditions": "PBE 520eV",
+            "findings": "Bandgap 3.2 eV"
+          }
+        ],
+        "litReportRows": []
+      },
+      "activityLog": [
+        {
+          "timestamp": "2026-11-18 20:08",
+          "category": "References",
+          "action": "Added Paper",
+          "detail": "User A Secret Paper on FeSiO (Nano Lett.)"
+        },
+        {
+          "timestamp": "2026-11-18 20:08",
+          "category": "Crystal Structures",
+          "action": "Added Structure",
+          "detail": "KNaFeSi4O10 — KNaFe(Si2O5)2 (Pm-3m (221))"
+        }
+      ],
+      "groups": [],
+      "lastUpdatedAt": "2026-11-18 20:08",
+      "updatedAtMs": 1795000135977
+    },
+    "alice@skku.edu": {
+      "email": "alice@skku.edu",
+      "name": "Alice Park",
+      "affiliation": "SKKU",
+      "academicRole": "PhD Student",
+      "status": "Active",
+      "workspace": {
+        "papers": [],
+        "structures": [],
+        "schedule": [],
+        "expReportRows": [],
+        "litReportRows": []
+      },
+      "activityLog": [],
+      "groups": []
+    },
     "lamvt.sep@gmail.com": {
       "email": "lamvt.sep@gmail.com",
       "name": "Tien Lam",
@@ -5837,8 +5964,8 @@
       "color": "blue",
       "description": "User group created by Administrator",
       "members": [
-        "tlamvux@gmail.com",
         "lamvt.sep@gmail.com",
+        "tlamvux@gmail.com",
         "lamvt@g.skku.edu"
       ],
       "updatedAtMs": 1794998976113
