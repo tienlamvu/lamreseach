@@ -7544,7 +7544,9 @@ function initCifDropZone() {
   dropZone.addEventListener("drop", (e) => {
     const dt = e.dataTransfer;
     const files = dt.files;
-    if (files && files.length > 0) {
+    if (files && files.length > 1) {
+      handleBatchCifFiles(Array.from(files));
+    } else if (files && files.length === 1) {
       handleCifFile(files[0]);
     }
   });
@@ -7556,12 +7558,120 @@ function triggerCifFileInput() {
 }
 
 function handleCifFileSelect(event) {
-  const file = event.target.files?.[0];
-  if (file) {
-    handleCifFile(file);
+  const files = event.target.files ? Array.from(event.target.files) : [];
+  if (files.length > 1) {
+    handleBatchCifFiles(files);
+    event.target.value = "";
+  } else if (files.length === 1) {
+    handleCifFile(files[0]);
     event.target.value = "";
   }
 }
+
+async function handleBatchCifFiles(fileList) {
+  if (!requireAdminAuth()) return;
+  const cifFiles = fileList.filter(f => /\.(cif|txt)$/i.test(f.name));
+  if (cifFiles.length === 0) {
+    showToast("Please select valid *.cif files.", "warn");
+    return;
+  }
+  ensureStructuralIds();
+  const visMeta = (STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail)
+    ? getVisibilityControlValues("cif-upload")
+    : { visibility: "Public", allowed_users: [] };
+  const activeFolderFilter = document.getElementById("struct-project-filter")?.value;
+
+  const addedIds = [];
+  let dupCount = 0;
+
+  for (const file of cifFiles) {
+    try {
+      const text = await file.text();
+      const parsed = parseCifTextClient(text, file.name);
+      const formula = cleanAndSortChemicalFormula(parsed.chemical_formula || parsed.formula || file.name.replace(/\.cif$/i, ""));
+      const a = Number(parsed.a || 4.0);
+      const b = Number(parsed.b || 4.0);
+      const c = Number(parsed.c || 4.0);
+      const alpha = Number(parsed.alpha || 90.0);
+      const beta = Number(parsed.beta || 90.0);
+      const gamma = Number(parsed.gamma || 90.0);
+      const vol = Number(parsed.volume || (a * b * c));
+      const atoms = parsed.atoms || [];
+      const sg = parsed.space_group || "P 1";
+      const sys = parsed.crystal_system || "Cubic";
+      const name = (parsed.name || file.name.replace(/\.cif$/i, "") || formula).trim();
+      const autoType = (c >= 15.0 && (a < 10.0 || b < 10.0)) ? "2D Monolayer" : "Bulk 3D";
+
+      const candidate = {
+        name,
+        formula,
+        chemical_formula: formula,
+        crystal_system: sys,
+        space_group: sg,
+        a, b, c, volume: vol
+      };
+      const dups = findDuplicateStructures(candidate, null);
+      if (dups.length > 0) dupCount++;
+
+      const structuralId = generateNextStructuralId();
+      const autoFolder = (activeFolderFilter && activeFolderFilter !== "ALL")
+        ? activeFolderFilter
+        : autoCategorizeStructureFolder(candidate);
+      const poscarText = generatePoscarFromLatticeAndAtoms(formula, a, b, c, alpha, beta, gamma, atoms, sg, sys);
+
+      const newStruct = {
+        id: Date.now() + Math.floor(Math.random() * 10000),
+        structural_id: structuralId,
+        name,
+        formula,
+        chemical_formula: formula,
+        project_folder: autoFolder,
+        crystal_system: sys,
+        space_group: sg,
+        structure_type: autoType,
+        calc_status: "Unrelaxed",
+        is_starred: false,
+        mp_id: "",
+        materials_project_id: "",
+        a, b, c, alpha, beta, gamma,
+        volume: Math.round(vol * 100) / 100,
+        natoms: atoms.length || parsed.natoms || 1,
+        atoms,
+        dft_code: "VASP",
+        dft_functional: "PBE",
+        cutoff_energy: 520,
+        kpoints: "8x8x8",
+        bandgap_ev: 0.0,
+        bandgap_type: "Direct",
+        total_energy_per_atom: 0,
+        magnetic_state: "NM",
+        notes: `Batch uploaded from ${file.name}`,
+        raw_cif: text,
+        cif_content: text,
+        poscar_text: poscarText,
+        poscar_content: poscarText,
+        in_weekly_report: 0,
+        uploaded_at: getGmt9NowStr(),
+        ...visMeta
+      };
+      STATE.structures.unshift(newStruct);
+      addedIds.push(structuralId);
+    } catch (err) {
+      console.warn("Failed to parse CIF in batch:", file.name, err);
+    }
+  }
+
+  if (addedIds.length > 0) {
+    saveStaticDb();
+    populateProjectFolderDropdowns();
+    refreshAllWorkspaceViews();
+    const rangeLabel = addedIds.length === 1 ? addedIds[0] : `${addedIds[0]} – ${addedIds[addedIds.length - 1]}`;
+    const dupNote = dupCount > 0 ? ` (${dupCount} potential duplicate${dupCount > 1 ? "s" : ""} flagged)` : "";
+    showToast(`Uploaded ${addedIds.length} CIF structures (${rangeLabel})${dupNote}.`, "success");
+    recordUserActivity("Crystal Structures", "Batch Uploaded CIFs", `${addedIds.length} structures (${rangeLabel})`);
+  }
+}
+window.handleBatchCifFiles = handleBatchCifFiles;
 
 // ============================================================================
 // Computational Materials Science: CIF Parser & Element Colors
@@ -8288,6 +8398,10 @@ function resetAllStructureFilters() {
   if (sortSel) sortSel.value = "default";
   if (egMinInp) egMinInp.value = "";
   if (egMaxInp) egMaxInp.value = "";
+  const smartSel = document.getElementById("struct-smart-filter");
+  if (smartSel) smartSel.value = "ALL";
+  const statusSel = document.getElementById("struct-status-filter");
+  if (statusSel) statusSel.value = "ALL";
 
   const clearBtn = document.getElementById("struct-search-clear");
   if (clearBtn) clearBtn.style.display = "none";
@@ -8299,6 +8413,191 @@ function resetAllStructureFilters() {
 window.resetAllStructureFilters = resetAllStructureFilters;
 
 /* ============================================================================
+   Smart Structural ID Registry, Fingerprint Duplicate Detection & Starred Pins
+   ============================================================================ */
+function _formatStructuralIdNum(num) {
+  return `CD-${String(Math.max(1, num)).padStart(4, "0")}`;
+}
+
+function _parseStructuralIdNum(sid) {
+  const m = String(sid || "").match(/^CD-(\d+)$/i);
+  return m ? parseInt(m[1], 10) : 0;
+}
+
+function ensureStructuralIds(list = null) {
+  const targets = list || STATE.structures || [];
+  if (!Array.isArray(targets) || targets.length === 0) return;
+
+  // Gather all currently assigned numbers across active & master lists
+  let maxNum = 0;
+  const usedIds = new Set();
+  const allPools = [targets];
+  if (!list && STATE.masterData && Array.isArray(STATE.masterData.structures)) {
+    allPools.push(STATE.masterData.structures);
+  }
+  allPools.forEach(pool => {
+    pool.forEach(s => {
+      if (s && s.structural_id && typeof s.structural_id === "string" && s.structural_id.trim()) {
+        const clean = s.structural_id.trim().toUpperCase();
+        s.structural_id = clean;
+        usedIds.add(clean);
+        const n = _parseStructuralIdNum(clean);
+        if (n > maxNum) maxNum = n;
+      }
+    });
+  });
+
+  // Assign deterministic sequential CD-XXXX IDs to any structure lacking one (ordered by numeric id)
+  const missing = targets.filter(s => s && !(s.structural_id && s.structural_id.trim()));
+  if (missing.length > 0) {
+    missing.sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
+    missing.forEach(s => {
+      do {
+        maxNum++;
+      } while (usedIds.has(_formatStructuralIdNum(maxNum)));
+      const newSid = _formatStructuralIdNum(maxNum);
+      s.structural_id = newSid;
+      usedIds.add(newSid);
+    });
+  }
+
+  // Ensure default calc_status
+  targets.forEach(s => {
+    if (s && !s.calc_status) {
+      s.calc_status = (s.associated_paper_doi || s.associated_paper_title) ? "Published" : "Relaxed";
+    }
+  });
+}
+window.ensureStructuralIds = ensureStructuralIds;
+
+function generateNextStructuralId() {
+  ensureStructuralIds();
+  let maxNum = 0;
+  const used = new Set();
+  const pools = [STATE.structures || []];
+  if (STATE.masterData && Array.isArray(STATE.masterData.structures)) {
+    pools.push(STATE.masterData.structures);
+  }
+  pools.forEach(pool => {
+    pool.forEach(s => {
+      if (s && s.structural_id) {
+        const clean = String(s.structural_id).trim().toUpperCase();
+        used.add(clean);
+        const n = _parseStructuralIdNum(clean);
+        if (n > maxNum) maxNum = n;
+      }
+    });
+  });
+  do {
+    maxNum++;
+  } while (used.has(_formatStructuralIdNum(maxNum)));
+  return _formatStructuralIdNum(maxNum);
+}
+window.generateNextStructuralId = generateNextStructuralId;
+
+function copyStructuralId(sid, evt) {
+  if (evt) {
+    evt.preventDefault();
+    evt.stopPropagation();
+  }
+  if (!sid) return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(sid).then(() => {
+      showToast(`Copied Structure ID: ${sid}`, "info");
+    }).catch(() => {});
+  }
+}
+window.copyStructuralId = copyStructuralId;
+
+function computeStructureFingerprint(s) {
+  if (!s) return "";
+  const formula = (s.chemical_formula || s.formula || "").replace(/\s+/g, "").toLowerCase();
+  const sys = (s.crystal_system || "").trim().toLowerCase();
+  const sgRaw = String(s.space_group || "").trim();
+  const sgNumMatch = sgRaw.match(/\((\d+)\)/);
+  const sgKey = sgNumMatch ? sgNumMatch[1] : sgRaw.replace(/\s+/g, "").toLowerCase();
+  const dims = [Number(s.a || 0), Number(s.b || 0), Number(s.c || 0)]
+    .map(v => Math.round(v * 20) / 20) // 0.05 A tolerance
+    .sort((x, y) => x - y)
+    .map(v => v.toFixed(2))
+    .join("x");
+  const vol = Math.round(Number(s.volume || 0));
+  return `${formula}|${sys}|${sgKey}|${dims}|${vol}`;
+}
+
+function findDuplicateStructures(candidate, excludeId = null) {
+  const fp = computeStructureFingerprint(candidate);
+  if (!fp) return [];
+  ensureStructuralIds();
+  return (STATE.structures || []).filter(s => {
+    if (excludeId !== null && Number(s.id) === Number(excludeId)) return false;
+    return computeStructureFingerprint(s) === fp;
+  });
+}
+window.findDuplicateStructures = findDuplicateStructures;
+
+function getDuplicateStructureIdSet(list = null) {
+  const targets = list || STATE.structures || [];
+  const fpCount = new Map();
+  targets.forEach(s => {
+    const fp = computeStructureFingerprint(s);
+    if (!fp) return;
+    fpCount.set(fp, (fpCount.get(fp) || 0) + 1);
+  });
+  const dupIds = new Set();
+  targets.forEach(s => {
+    const fp = computeStructureFingerprint(s);
+    if (fp && (fpCount.get(fp) || 0) > 1) {
+      dupIds.add(Number(s.id));
+    }
+  });
+  return dupIds;
+}
+
+function toggleStarStructure(id, evt) {
+  if (evt) {
+    evt.preventDefault();
+    evt.stopPropagation();
+  }
+  const s = (STATE.structures || []).find(x => Number(x.id) === Number(id));
+  if (!s) return;
+  s.is_starred = !Boolean(s.is_starred);
+  saveStaticDb();
+  renderStructuresList();
+  showToast(s.is_starred ? `Pinned ${s.structural_id || s.name} to Starred Structures` : `Unpinned ${s.structural_id || s.name}`, "info");
+}
+window.toggleStarStructure = toggleStarStructure;
+
+function checkModalStructureDuplicate() {
+  const warnEl = document.getElementById("struct-dup-warning");
+  if (!warnEl) return;
+  const excludeIdRaw = document.getElementById("struct-id")?.value;
+  const excludeId = excludeIdRaw ? Number(excludeIdRaw) : null;
+  const candidate = {
+    chemical_formula: (document.getElementById("struct-formula")?.value || "").trim(),
+    crystal_system: document.getElementById("struct-system")?.value || "",
+    space_group: (document.getElementById("struct-spacegroup")?.value || "").trim(),
+    a: parseFloat(document.getElementById("struct-a")?.value) || 0,
+    b: parseFloat(document.getElementById("struct-b")?.value) || 0,
+    c: parseFloat(document.getElementById("struct-c")?.value) || 0,
+    volume: parseFloat(document.getElementById("struct-vol")?.value) || 0
+  };
+  if (!candidate.chemical_formula) {
+    warnEl.style.display = "none";
+    return;
+  }
+  const dups = findDuplicateStructures(candidate, excludeId);
+  if (dups.length > 0) {
+    const first = dups[0];
+    warnEl.style.display = "flex";
+    warnEl.innerHTML = `<span>Potential duplicate crystallographic fingerprint detected: matches <strong>${escapeHtml(first.structural_id || "")}</strong> (${escapeHtml(first.name)}). You can still save if this is a distinct calculation.</span>`;
+  } else {
+    warnEl.style.display = "none";
+  }
+}
+window.checkModalStructureDuplicate = checkModalStructureDuplicate;
+
+/* ============================================================================
    Materials Project-Inspired Explorer Controls (Drawer, Columns, CSV Export)
    ============================================================================ */
 const MP_COLUMN_DEFS = [
@@ -8308,8 +8607,10 @@ const MP_COLUMN_DEFS = [
   { key: "volume",     label: "Volume (Å³)",     defaultOn: true },
   { key: "bandgap",    label: "Band Gap (eV)",   defaultOn: true },
   { key: "folder",     label: "Project Folder",  defaultOn: true },
+  { key: "status",     label: "Workflow Status", defaultOn: false },
   { key: "lattice",    label: "Lattice (a,b,c)", defaultOn: false },
   { key: "dft",        label: "DFT Method",      defaultOn: false },
+  { key: "mpid",       label: "MP / COD ID",     defaultOn: false },
   { key: "paper",      label: "Publication",     defaultOn: false },
   { key: "audience",   label: "Visibility",      defaultOn: false }
 ];
@@ -8423,7 +8724,8 @@ function mpSortByColumn(colKey) {
   if (!sortSel) return;
   const cur = sortSel.value || "default";
   let next = "default";
-  if (colKey === "name") next = (cur === "name-asc") ? "name-desc" : "name-asc";
+  if (colKey === "id") next = (cur === "id-asc") ? "id-desc" : "id-asc";
+  else if (colKey === "name") next = (cur === "name-asc") ? "name-desc" : "name-asc";
   else if (colKey === "formula") next = "formula-asc";
   else if (colKey === "volume") next = (cur === "vol-asc") ? "vol-desc" : "vol-asc";
   else if (colKey === "bandgap") next = (cur === "bandgap-asc") ? "bandgap-desc" : "bandgap-asc";
@@ -8438,20 +8740,25 @@ function exportStructuresTableCsv() {
     showToast("No structures to export.", "info");
     return;
   }
-  const headers = ["Material", "Formula", "Crystal System", "Space Group", "a (A)", "b (A)", "c (A)", "Volume (A3)", "Band Gap (eV)", "DFT Method", "Project Folder", "DOI"];
+  ensureStructuralIds(list);
+  const headers = ["Structure ID", "Material", "Formula", "Crystal System", "Space Group", "Workflow Status", "a (A)", "b (A)", "c (A)", "Volume (A3)", "Band Gap (eV)", "DFT Method", "MP / COD ID", "Project Folder", "Starred", "DOI"];
   const esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const rows = list.map(s => [
+    s.structural_id || "",
     s.name || "",
     s.chemical_formula || s.formula || "",
     s.crystal_system || "",
     s.space_group || "",
+    s.calc_status || "Relaxed",
     Number(s.a || 0).toFixed(3),
     Number(s.b || 0).toFixed(3),
     Number(s.c || 0).toFixed(3),
     Number(s.volume || 0).toFixed(2),
     Number(s.bandgap_ev || 0).toFixed(3),
     `${s.dft_code || "VASP"} (${s.dft_functional || "PBE"})`,
+    s.mp_id || "",
     s.project_folder || "General Research",
+    s.is_starred ? "Yes" : "No",
     s.associated_paper_doi || ""
   ].map(esc).join(","));
 
@@ -8876,6 +9183,12 @@ window.toggleStructFolder = toggleStructFolder;
 function sortStructuresList(list, sortBy = "default") {
   const sorted = [...list];
   switch (sortBy) {
+    case "id-asc":
+      return sorted.sort((a, b) => (_parseStructuralIdNum(a.structural_id) - _parseStructuralIdNum(b.structural_id)) || String(a.structural_id || "").localeCompare(String(b.structural_id || "")));
+    case "id-desc":
+      return sorted.sort((a, b) => (_parseStructuralIdNum(b.structural_id) - _parseStructuralIdNum(a.structural_id)) || String(b.structural_id || "").localeCompare(String(a.structural_id || "")));
+    case "starred-first":
+      return sorted.sort((a, b) => (Number(Boolean(b.is_starred)) - Number(Boolean(a.is_starred))) || (_parseStructuralIdNum(a.structural_id) - _parseStructuralIdNum(b.structural_id)));
     case "name-asc":
       return sorted.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
     case "name-desc":
@@ -9017,18 +9330,30 @@ function renderStructuresList() {
     populateProjectFolderDropdowns();
   }
 
-  const query = (document.getElementById("struct-search")?.value || "").toLowerCase().trim();
+  ensureStructuralIds(STATE.structures);
+  const dupIdSet = getDuplicateStructureIdSet(STATE.structures);
+
+  const query = _normalizeSubSupForSearch((document.getElementById("struct-search")?.value || "").toLowerCase().trim());
   const folderFilter = document.getElementById("struct-project-filter")?.value || "ALL";
   const systemFilter = document.getElementById("struct-system-filter")?.value || "ALL";
   const typeFilter = document.getElementById("struct-type-filter")?.value || "ALL";
   const audienceFilter = document.getElementById("struct-audience-filter")?.value || "ALL";
   const paperFilter = document.getElementById("struct-paper-filter")?.value || "ALL";
+  const smartFilter = document.getElementById("struct-smart-filter")?.value || "ALL";
+  const statusFilter = document.getElementById("struct-status-filter")?.value || "ALL";
   const sortBy = document.getElementById("struct-sort-by")?.value || "default";
   const groupBy = document.getElementById("struct-group-by")?.value || "project";
   const egMinRaw = document.getElementById("struct-eg-min")?.value;
   const egMaxRaw = document.getElementById("struct-eg-max")?.value;
   const egMin = (egMinRaw !== undefined && egMinRaw !== "") ? Number(egMinRaw) : null;
   const egMax = (egMaxRaw !== undefined && egMaxRaw !== "") ? Number(egMaxRaw) : null;
+
+  // Update Smart Registry live counts in sidebar
+  const smartSummaryEl = document.getElementById("mp-smart-summary");
+  if (smartSummaryEl) {
+    const starCount = (STATE.structures || []).filter(s => Boolean(s.is_starred)).length;
+    smartSummaryEl.textContent = `★ ${starCount} starred · ${dupIdSet.size} duplicate${dupIdSet.size === 1 ? "" : "s"}`;
+  }
 
   // Auto-collapse left drawer on narrow mobile screens on initial render
   if (!STATE._mpDrawerInit) {
@@ -9058,6 +9383,10 @@ function renderStructuresList() {
     if (typeFilter !== "ALL" && s.structure_type !== typeFilter) return false;
     if (!doesItemMatchAudienceFilter(s, audienceFilter)) return false;
 
+    if (smartFilter === "STARRED" && !s.is_starred) return false;
+    if (smartFilter === "DUPLICATES" && !dupIdSet.has(Number(s.id))) return false;
+    if (statusFilter !== "ALL" && (s.calc_status || "Relaxed") !== statusFilter) return false;
+
     const egVal = Number(s.bandgap_ev ?? 0);
     if (egMin !== null && !Number.isNaN(egMin) && egVal < egMin) return false;
     if (egMax !== null && !Number.isNaN(egMax) && egVal > egMax) return false;
@@ -9067,7 +9396,7 @@ function renderStructuresList() {
     if (paperFilter === "NO_PAPER" && hasPaper) return false;
 
     if (!query) return true;
-    const hay = `${s.name} ${s.chemical_formula} ${s.formula} ${s.project_folder || ""} ${s.space_group} ${s.mp_id} ${s.dft_code} ${s.dft_functional} ${s.notes} ${s.associated_paper_title || ""} ${s.associated_paper_doi || ""}`.toLowerCase();
+    const hay = _normalizeSubSupForSearch(`${s.structural_id || ""} ${s.name} ${s.chemical_formula} ${s.formula} ${s.project_folder || ""} ${s.space_group} ${s.mp_id} ${s.calc_status || ""} ${s.dft_code} ${s.dft_functional} ${s.notes} ${s.associated_paper_title || ""} ${s.associated_paper_doi || ""}`.toLowerCase());
     return hay.includes(query);
   });
 
@@ -9128,23 +9457,30 @@ function renderStructuresList() {
 
   // Helper to render individual card (used in Mode 1 & Mode 4)
   function renderSingleCardHtml(s) {
-    const canModifyItem = Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin;
+    const canModifyItem = Boolean(STATE.auth && STATE.auth.isLoggedIn) && (Boolean(STATE.auth.isAdmin) || !s._sharedFromAdmin);
     const isSelected = STATE.selectedStructureIds && STATE.selectedStructureIds.has(Number(s.id));
     const sFolder = s.project_folder || "General Research";
+    const sid = s.structural_id || _formatStructuralIdNum(s.id || 1);
+    const isStarred = Boolean(s.is_starred);
+    const isDup = dupIdSet.has(Number(s.id));
+    const calcStatus = s.calc_status || "Relaxed";
 
     return `
-      <div class="struct-card" id="struct-card-${s.id}" style="${isSelected ? 'border-color:#2563eb; background:#f0f7ff; box-shadow:0 0 0 2px rgba(37,99,235,0.18);' : ''}">
+      <div class="struct-card" id="struct-card-${s.id}" style="${isSelected ? 'border-color:#b45309; background:#fdf8ee; box-shadow:0 0 0 2px rgba(180,83,9,0.18);' : ''}">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
           <div style="display:flex; gap:10px; align-items:flex-start; flex:1;">
             ${canModifyItem ? `
             <div class="admin-only" style="padding-top:2px;">
-              <input type="checkbox" class="struct-select-cb" data-id="${s.id}" ${isSelected ? "checked" : ""} onchange="toggleSelectStructure(${s.id}, this.checked)" style="width:17px; height:17px; accent-color:#2563eb; cursor:pointer;" title="Select structure for batch actions" />
+              <input type="checkbox" class="struct-select-cb" data-id="${s.id}" ${isSelected ? "checked" : ""} onchange="toggleSelectStructure(${s.id}, this.checked)" style="width:16px; height:16px; accent-color:#b45309; cursor:pointer;" title="Select structure for batch actions" />
             </div>` : ""}
             <div style="flex:1;">
               <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:4px;">
-                <span class="struct-folder-badge" onclick="filterStructuresByFolder('${escapeHtml(sFolder).replace(/'/g, "\\'")}')" title="Filter by Project Folder: ${escapeHtml(sFolder)}">📁 ${escapeHtml(sFolder)}</span>
-                <span class="badge badge-purple">${escapeHtml(s.crystal_system || "Cubic")}</span>
-                <span class="badge badge-blue">${escapeHtml(s.structure_type || "Bulk 3D")}</span>
+                <button type="button" class="mp-star-btn ${isStarred ? 'starred' : ''}" onclick="toggleStarStructure(${s.id}, event)" title="${isStarred ? 'Unpin starred structure' : 'Pin key structure (★)'}">${isStarred ? '★' : '☆'}</button>
+                <span class="mp-card-sid" onclick="copyStructuralId('${escapeHtml(sid)}', event)" title="Click to copy Structure ID: ${escapeHtml(sid)}">${escapeHtml(sid)}</span>
+                <span class="mp-status-tag mp-status-${calcStatus.toLowerCase().replace(/[^a-z]/g, '')}">${escapeHtml(calcStatus)}</span>
+                ${isDup ? `<span class="badge badge-rose" style="font-size:10.5px;" title="Duplicate crystallographic fingerprint detected">Duplicate</span>` : ""}
+                <span class="struct-folder-badge" onclick="filterStructuresByFolder('${escapeHtml(sFolder).replace(/'/g, "\\'")}')" title="Filter by Project Folder: ${escapeHtml(sFolder)}">${escapeHtml(sFolder)}</span>
+                <span class="badge badge-slate">${escapeHtml(s.crystal_system || "Cubic")}</span>
                 ${s.mp_id ? `<span class="badge badge-slate">${escapeHtml(s.mp_id)}</span>` : ""}
                 ${renderVisibilityBadgeHtml(s)}
               </div>
@@ -9243,6 +9579,7 @@ function renderStructuresList() {
     const svgPoscar = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`;
     const svgEdit = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
     const svgTrash = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
+    const svgCopy = `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
 
     const canAnyModify = Boolean(STATE.auth && STATE.auth.isLoggedIn) && paged.some(s => Boolean(STATE.auth.isAdmin) || !s._sharedFromAdmin);
 
@@ -9250,6 +9587,7 @@ function renderStructuresList() {
     if (canAnyModify) {
       thHtml += `<th class="mp-th-cb"><input type="checkbox" id="struct-select-all-cb" ${allSelected ? "checked" : ""} onchange="toggleSelectAllStructures(this.checked)" title="Select / Deselect All" /></th>`;
     }
+    thHtml += `<th class="mp-th-sortable mp-col-sid" onclick="mpSortByColumn('id')" title="Click to sort by Structure ID"><div class="mp-th-inner"><span>Structure ID</span>${sortIcon('id-asc', 'id-desc')}</div></th>`;
     thHtml += `<th class="mp-th-sortable mp-col-mat" onclick="mpSortByColumn('name')" title="Click to sort by Material"><div class="mp-th-inner"><span>Material</span>${sortIcon('name-asc', 'name-desc')}</div></th>`;
     if (cols.formula)    thHtml += `<th class="mp-th-sortable mp-col-formula" onclick="mpSortByColumn('formula')" title="Click to sort by Formula"><div class="mp-th-inner"><span>Formula</span>${sortIcon('formula-asc', '__none')}</div></th>`;
     if (cols.system)     thHtml += `<th class="mp-col-sys">Crystal System</th>`;
@@ -9257,7 +9595,9 @@ function renderStructuresList() {
     if (cols.lattice)    thHtml += `<th class="mp-col-lat">Lattice (a, b, c)</th>`;
     if (cols.volume)     thHtml += `<th class="mp-th-sortable mp-col-vol" onclick="mpSortByColumn('volume')" title="Click to sort by Volume"><div class="mp-th-inner"><span>Volume (Å³)</span>${sortIcon('vol-asc', 'vol-desc')}</div></th>`;
     if (cols.bandgap)    thHtml += `<th class="mp-th-sortable mp-col-eg" onclick="mpSortByColumn('bandgap')" title="Click to sort by Band Gap"><div class="mp-th-inner"><span>Band Gap (eV)</span>${sortIcon('bandgap-asc', 'bandgap-desc')}</div></th>`;
+    if (cols.status)     thHtml += `<th class="mp-col-status">Status</th>`;
     if (cols.dft)        thHtml += `<th class="mp-col-dft">DFT Method</th>`;
+    if (cols.mpid)       thHtml += `<th class="mp-col-mpid">MP / COD</th>`;
     if (cols.folder)     thHtml += `<th class="mp-col-folder">Project Folder</th>`;
     if (cols.paper)      thHtml += `<th class="mp-col-paper">Publication</th>`;
     if (cols.audience)   thHtml += `<th class="mp-col-aud">Visibility</th>`;
@@ -9271,15 +9611,31 @@ function renderStructuresList() {
       const paperTitle = s.associated_paper_title || "";
       const hasPaper = Boolean(paperDoi || paperTitle || s.associated_paper_id);
       const sFolder = s.project_folder || "General Research";
+      const sid = s.structural_id || _formatStructuralIdNum(s.id || 1);
       const displayName = s.name || s.mp_id || s.chemical_formula || "Untitled";
       const sgDisplay = s.space_group || "P1";
+      const isDup = dupIdSet.has(Number(s.id));
+      const isStarred = Boolean(s.is_starred);
+      const calcStatus = s.calc_status || "Relaxed";
 
       let tdHtml = "";
       if (canAnyModify) {
         tdHtml += `<td class="mp-td-cb">${canModifyItem ? `<input type="checkbox" class="struct-select-cb" data-id="${s.id}" ${isSelected ? "checked" : ""} onchange="toggleSelectStructure(${s.id}, this.checked)" />` : ""}</td>`;
       }
 
-      // Material Link (Blue clickable link just like Materials Project mp-ID!)
+      // Column 1: Smart Structural ID (CD-XXXX) + Materials Project ★ Star Pin + 1-click Copy + Duplicate indicator
+      tdHtml += `
+        <td class="mp-td mp-td-sid" title="Structure ID: ${escapeHtml(sid)}${isDup ? ' (Potential duplicate crystallographic fingerprint)' : ''}">
+          <div class="mp-sid-cell">
+            <button type="button" class="mp-star-btn ${isStarred ? 'starred' : ''}" onclick="toggleStarStructure(${s.id}, event)" title="${isStarred ? 'Unpin starred structure' : 'Pin key structure (★)'}">${isStarred ? '★' : '☆'}</button>
+            <a href="javascript:void(0)" class="mp-sid-link" onclick="viewCifModal(${s.id})">${escapeHtml(sid)}</a>
+            <button type="button" class="mp-copy-sid-btn" onclick="copyStructuralId('${escapeHtml(sid)}', event)" title="Copy Structure ID (${escapeHtml(sid)})">${svgCopy}</button>
+            ${isDup ? `<span class="mp-dup-dot" title="Duplicate crystallographic fingerprint detected"></span>` : ""}
+          </div>
+        </td>
+      `;
+
+      // Column 2: Material Name (clickable to inspect CIF/3D)
       tdHtml += `
         <td class="mp-td mp-td-mat" title="${escapeHtml(displayName)}${s.mp_id ? ' (' + escapeHtml(s.mp_id) + ')' : ''}">
           <a href="javascript:void(0)" class="mp-mat-link" onclick="viewCifModal(${s.id})">${escapeHtml(displayName)}</a>${hasPaper ? `<span class="mp-paper-dot" title="Linked paper: ${escapeHtml(paperTitle || paperDoi)}"></span>` : ""}
@@ -9304,8 +9660,14 @@ function renderStructuresList() {
       if (cols.bandgap) {
         tdHtml += `<td class="mp-td mp-td-num">${Number(s.bandgap_ev || 0).toFixed(3)}</td>`;
       }
+      if (cols.status) {
+        tdHtml += `<td class="mp-td"><span class="mp-status-tag mp-status-${calcStatus.toLowerCase().replace(/[^a-z]/g, '')}">${escapeHtml(calcStatus)}</span></td>`;
+      }
       if (cols.dft) {
         tdHtml += `<td class="mp-td">${escapeHtml(s.dft_code || "VASP")} · ${escapeHtml(s.dft_functional || "PBE")}</td>`;
+      }
+      if (cols.mpid) {
+        tdHtml += `<td class="mp-td mp-td-muted">${s.mp_id ? escapeHtml(s.mp_id) : '<span style="color:#cbbba6;">-</span>'}</td>`;
       }
       if (cols.folder) {
         tdHtml += `<td class="mp-td mp-td-folder" title="Filter by folder: ${escapeHtml(sFolder)}"><span class="mp-folder-text" onclick="filterStructuresByFolder('${escapeHtml(sFolder).replace(/'/g, "\\'")}')">${escapeHtml(sFolder)}</span></td>`;
@@ -9678,7 +10040,17 @@ async function applyBatchStructuresField(fieldName) {
       }
     });
     recordUserActivity("Crystal Structures", "Batch Updated DFT Functional", `Set DFT functional to "${newVal}" for ${updatedCount} structure(s).`);
-    showToast(`⚡ Updated DFT functional to "${newVal}" for ${updatedCount} selected structure(s)!`, "success");
+    showToast(`Updated DFT functional to "${newVal}" for ${updatedCount} selected structure(s).`, "success");
+  } else if (fieldName === "calc_status") {
+    const newVal = document.getElementById("batch-struct-status")?.value || "Relaxed";
+    STATE.structures.forEach(s => {
+      if (ids.has(Number(s.id)) && (!s._sharedFromAdmin || (STATE.auth && STATE.auth.isAdmin))) {
+        s.calc_status = newVal;
+        updatedCount++;
+      }
+    });
+    recordUserActivity("Crystal Structures", "Batch Updated Status", `Set workflow status to "${newVal}" for ${updatedCount} structure(s).`);
+    showToast(`Updated workflow status to "${newVal}" for ${updatedCount} selected structure(s).`, "success");
   }
 
   saveStaticDb();
@@ -9717,12 +10089,18 @@ function openStructureModal(structId = null, options = {}) {
   if (!modal) return;
 
   initModalCifDropzone();
+  ensureStructuralIds();
 
   if (structId) {
     const s = STATE.structures.find(x => x.id === structId);
     if (!s) return;
-    document.getElementById("struct-modal-title").textContent = `Edit Crystal Structure: ${s.name}`;
+    const sid = s.structural_id || generateNextStructuralId();
+    document.getElementById("struct-modal-title").textContent = `Edit Structure · ${sid} (${s.name})`;
     document.getElementById("struct-id").value = s.id;
+    const sidEl = document.getElementById("struct-structural-id");
+    if (sidEl) sidEl.value = sid;
+    const statusEl = document.getElementById("struct-calc-status");
+    if (statusEl) statusEl.value = s.calc_status || "Relaxed";
     document.getElementById("struct-name").value = s.name || "";
     document.getElementById("struct-formula").value = s.chemical_formula || "";
     document.getElementById("struct-system").value = s.crystal_system || "Cubic";
@@ -9759,8 +10137,13 @@ function openStructureModal(structId = null, options = {}) {
     populateModalPaperDropdown(s.associated_paper_id, s.associated_paper_title || "", s.associated_paper_doi || "");
     populateModalFolderDropdown(s.project_folder || "General Research");
   } else if (!options.skipReset) {
-    document.getElementById("struct-modal-title").textContent = "Add Crystal Structure (*.cif)";
+    const nextSid = generateNextStructuralId();
+    document.getElementById("struct-modal-title").textContent = `Add Crystal Structure · ${nextSid}`;
     document.getElementById("struct-id").value = "";
+    const sidEl = document.getElementById("struct-structural-id");
+    if (sidEl) sidEl.value = nextSid;
+    const statusEl = document.getElementById("struct-calc-status");
+    if (statusEl) statusEl.value = "Relaxed";
     document.getElementById("struct-name").value = "";
     document.getElementById("struct-formula").value = "";
     document.getElementById("struct-system").value = "Cubic";
@@ -9792,8 +10175,15 @@ function openStructureModal(structId = null, options = {}) {
     populateModalPaperDropdown(null, "", "");
     const curFilterVal = document.getElementById("struct-project-filter")?.value;
     populateModalFolderDropdown(curFilterVal && curFilterVal !== "ALL" ? curFilterVal : "General Research");
+  } else {
+    // skipReset (e.g. CIF upload): ensure next Structure ID is pre-filled
+    const sidEl = document.getElementById("struct-structural-id");
+    if (sidEl && !sidEl.value) sidEl.value = generateNextStructuralId();
+    const statusEl = document.getElementById("struct-calc-status");
+    if (statusEl && !statusEl.value) statusEl.value = "Unrelaxed";
   }
   modal.classList.add("open");
+  setTimeout(checkModalStructureDuplicate, 60);
 }
 
 async function saveStructureFromModal() {
@@ -9875,7 +10265,15 @@ async function saveStructureFromModal() {
   }
   if (!assignedFolder) assignedFolder = "General Research";
 
+  const existingStruct = id ? STATE.structures.find(x => x.id === Number(id)) : null;
+  const rawSid = (document.getElementById("struct-structural-id")?.value || "").trim().toUpperCase();
+  const structuralId = rawSid || (existingStruct && existingStruct.structural_id) || generateNextStructuralId();
+  const calcStatus = document.getElementById("struct-calc-status")?.value || (existingStruct && existingStruct.calc_status) || "Relaxed";
+
   const payload = {
+    structural_id: structuralId,
+    calc_status: calcStatus,
+    is_starred: existingStruct ? Boolean(existingStruct.is_starred) : false,
     name,
     formula,
     chemical_formula: formula,
@@ -10216,10 +10614,11 @@ function viewCifModal(id) {
   STATE.currentViewingStructure = s;
 
   const formula = s.chemical_formula || s.formula || "Crystal";
+  const sid = s.structural_id || _formatStructuralIdNum(s.id || 1);
   const titleEl = document.getElementById("cvm-title");
   const subEl = document.getElementById("cvm-subtitle");
-  if (titleEl) titleEl.textContent = `${s.name} (${formula})`;
-  if (subEl) subEl.textContent = `${s.crystal_system} • Space Group: ${s.space_group} • a=${s.a}Å, b=${s.b}Å, c=${s.c}Å • ${s.dft_code || "VASP"} ${s.dft_functional || s.functional || "PBE"}`;
+  if (titleEl) titleEl.textContent = `${sid} · ${s.name} (${formula})`;
+  if (subEl) subEl.textContent = `${s.crystal_system} • Space Group: ${s.space_group} • Status: ${s.calc_status || "Relaxed"} • a=${s.a}Å, b=${s.b}Å, c=${s.c}Å • ${s.dft_code || "VASP"} ${s.dft_functional || s.functional || "PBE"}`;
 
   // Resolve atoms with multi-stage fallback:
   // 1) Existing parsed atoms in object
@@ -11046,15 +11445,16 @@ function downloadCifById(id) {
   const s = STATE.structures.find(x => x.id === id);
   if (!s) return;
   const formula = s.chemical_formula || s.formula || "Crystal";
+  const sid = s.structural_id || _formatStructuralIdNum(s.id || 1);
   let text = s.raw_cif || s.cif_content;
   if (!text) {
-    text = `# CIF file generated by MatSci Nexus\ndata_${formula.replace(/[^A-Za-z0-9]/g, "_")}\n_chemical_name_common '${s.name}'\n_chemical_formula_sum '${formula}'\n_symmetry_space_group_name_H-M '${s.space_group}'\n_cell_length_a ${s.a}\n_cell_length_b ${s.b}\n_cell_length_c ${s.c}\n_cell_angle_alpha ${s.alpha}\n_cell_angle_beta ${s.beta}\n_cell_angle_gamma ${s.gamma}\n_cell_volume ${s.volume}\n`;
+    text = `# CIF file generated by Computational Database (${sid})\ndata_${sid}_${formula.replace(/[^A-Za-z0-9]/g, "_")}\n_database_code_CD '${sid}'\n_chemical_name_common '${s.name}'\n_chemical_formula_sum '${formula}'\n_symmetry_space_group_name_H-M '${s.space_group}'\n_cell_length_a ${s.a}\n_cell_length_b ${s.b}\n_cell_length_c ${s.c}\n_cell_angle_alpha ${s.alpha}\n_cell_angle_beta ${s.beta}\n_cell_angle_gamma ${s.gamma}\n_cell_volume ${s.volume}\n`;
   }
   const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${formula.replace(/[^A-Za-z0-9]/g, "_")}.cif`;
+  a.download = `${sid}_${formula.replace(/[^A-Za-z0-9]/g, "_")}.cif`;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -11066,12 +11466,13 @@ function downloadPoscarById(id) {
   const s = STATE.structures.find(x => x.id === id);
   if (!s) return;
   const formula = s.chemical_formula || s.formula || "Crystal";
+  const sid = s.structural_id || _formatStructuralIdNum(s.id || 1);
   const poscar = s.poscar_text || s.poscar_content || generatePoscarFromLatticeAndAtoms(formula, s.a, s.b, s.c, s.alpha, s.beta, s.gamma, s.atoms || [], s.space_group, s.crystal_system);
   const blob = new Blob([poscar], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `POSCAR_${formula.replace(/[^A-Za-z0-9]/g, "_")}`;
+  a.download = `POSCAR_${sid}_${formula.replace(/[^A-Za-z0-9]/g, "_")}`;
   document.body.appendChild(a);
   a.click();
   a.remove();
