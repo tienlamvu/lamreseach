@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T06:40:41.902Z",
+  "exported_at": "2026-11-18T06:41:12.975Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -4435,8 +4435,8 @@
       "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
       "registeredAt": "2026-11-16 11:31",
       "lastLoginAt": "2026-11-18 09:29",
-      "lastUpdatedAt": "2026-11-18 15:40",
-      "updatedAtMs": 1794984041592,
+      "lastUpdatedAt": "2026-11-18 15:41",
+      "updatedAtMs": 1794984072350,
       "workspace": {
         "papers": [
           {
@@ -4783,7 +4783,7 @@
             "allowed_groups": [],
             "id": 1794807861185,
             "project_folder": "2D Janus MA2Z4 & Layered TMDs",
-            "structural_id": "CD-0012",
+            "structural_id": "CD-0028",
             "calc_status": "Relaxed"
           },
           {
@@ -4881,7 +4881,7 @@
             "in_weekly_report": 0,
             "id": 1794571683470,
             "project_folder": "2D Janus MA2Z4 & Layered TMDs",
-            "structural_id": "CD-0011",
+            "structural_id": "CD-0027",
             "calc_status": "Relaxed"
           }
         ],
