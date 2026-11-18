@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T12:16:59.704Z",
+  "exported_at": "2026-11-18T12:17:03.778Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -4429,7 +4429,7 @@
     },
     {
       "title": "Dormitory for Winter vacation 2026",
-      "event_type": "Group Meeting / PI Meeting",
+      "event_type": "Others",
       "instrument_or_location": "https://dorm.skku.edu/dorm_suwon_eng/notice/notice_en.jsp?mode=view&article_no=89496&board_wrapper=%2Fdorm_suwon_eng%2Fnotice%2Fnotice_en.jsp&pager.offset=0&board_no=16&default:category_id=102&no=981",
       "start_date": "2026-11-19",
       "end_date": "2026-11-23",
@@ -4443,7 +4443,10 @@
       "visibility": "Private",
       "allowed_users": [],
       "allowed_groups": [],
-      "id": 1794897404421
+      "id": 1794897404421,
+      "participants": [],
+      "participant_emails": [],
+      "participant_groups": []
     }
   ],
   "event_categories": [
