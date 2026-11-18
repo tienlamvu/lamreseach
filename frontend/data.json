@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T01:50:32.384Z",
+  "exported_at": "2026-11-18T01:51:15.526Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -458,27 +458,6 @@
     "weekly_report_allowed_users": []
   },
   "papers": [
-    {
-      "id": 1794966631324,
-      "doi": "10.1103/physrevb.110.024413",
-      "title": "Flat-band ferromagnetism in the quasi-one-dimensional electride\n                    <mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\">\n                      <mml:mrow>\n                        <mml:msub>\n                          <mml:mi mathvariant=\"normal\">Y</mml:mi>\n                          <mml:mn>2</mml:mn>\n                        </mml:msub>\n                        <mml:msub>\n                          <mml:mi>Cl</mml:mi>\n                          <mml:mn>3</mml:mn>\n                        </mml:msub>\n                      </mml:mrow>\n                    </mml:math>\n                    induced by hole doping",
-      "authors": "Shuyuan Liu, Chongze Wang, Bing Wang, Yu Jia, J. Cho",
-      "journal": "Physical Review B",
-      "year": 2024,
-      "volume": "110",
-      "pages": "",
-      "abstract": "",
-      "citation_count": 6,
-      "material_system": "Perovskite / 2D Material",
-      "synthesis_method": "First-principles DFT",
-      "characterization_tags": "DFT, VASP, XRD",
-      "status": "To Read",
-      "notes": "",
-      "in_weekly_report": 1,
-      "visibility": "Private",
-      "allowed_users": [],
-      "allowed_groups": []
-    },
     {
       "id": 1794966617977,
       "doi": "10.1039/d5cp03138a",
