@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T01:49:51.910Z",
+  "exported_at": "2026-11-18T01:50:19.076Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -458,6 +458,27 @@
     "weekly_report_allowed_users": []
   },
   "papers": [
+    {
+      "id": 1794966617977,
+      "doi": "10.1039/d5cp03138a",
+      "title": "A first-principles study on the effects of 3d transition metal dopants on the valleytronic properties of Janus-type 2H-MoSeTe monolayers",
+      "authors": "Kai Cheng, Peng Wu, Haoran Cui, Shijie Guo, Jianpei Xing",
+      "journal": "Physical Chemistry Chemical Physics",
+      "year": 2025,
+      "volume": "27",
+      "pages": "23127-23138",
+      "abstract": "3d transition metal doping significantly modulates valley splitting and Berry curvature in 2H-MoSeTe, promoting the realization of the anomalous valley Hall effect.",
+      "citation_count": 5,
+      "material_system": "Perovskite / 2D Material",
+      "synthesis_method": "First-principles DFT",
+      "characterization_tags": "DFT, VASP, XRD",
+      "status": "To Read",
+      "notes": "",
+      "in_weekly_report": 1,
+      "visibility": "Private",
+      "allowed_users": [],
+      "allowed_groups": []
+    },
     {
       "id": 1794966590683,
       "doi": "10.1039/d3cp04382g",
