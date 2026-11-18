@@ -6499,3 +6499,221 @@ body.is-admin #cv-exclusive-owner-notice {
   border-left: 3px solid #b45309;
   border-radius: 6px;
 }
+
+/* ============================================================================
+   Schedule Modal: Admin Event Category Manager & Participants Autocomplete Picker
+   ============================================================================ */
+
+.sm-cat-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+
+.sm-cat-label-row label {
+  margin-bottom: 0 !important;
+}
+
+.sm-cat-manager-box {
+  margin-top: 8px;
+  padding: 9px 10px;
+  background: #faf4ea;
+  border: 1px solid #dfc9ae;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.sm-cat-add-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.sm-cat-add-row input {
+  flex: 1;
+  height: 30px;
+  padding: 0 9px;
+  border: 1px solid #d4bfa4;
+  border-radius: 6px;
+  font-size: 12px;
+  background: #fffdf9;
+}
+
+.sm-cat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.sm-cat-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 8px;
+  background: #fffdf9;
+  border: 1px solid #e6d9c7;
+  border-radius: 5px;
+  color: #2a1f18;
+  font-size: 12px;
+}
+
+.sm-participants-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 7px;
+}
+
+.sm-participants-chips:empty {
+  display: none;
+  margin-bottom: 0;
+}
+
+.sm-participant-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #faf0df;
+  border: 1px solid #dfb983;
+  color: #7c2d12;
+}
+
+.sm-participant-chip.is-group {
+  background: #f2e8da;
+  border-color: #c8a27a;
+  color: #5c3214;
+}
+
+.sm-participant-chip.is-custom {
+  background: #f5efe6;
+  border-color: #d6c5b0;
+  color: #4a382c;
+}
+
+.sm-participant-chip button {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  opacity: 0.75;
+}
+
+.sm-participant-chip button:hover {
+  opacity: 1;
+}
+
+.sm-participant-search-wrap {
+  position: relative;
+}
+
+.sm-participant-search-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sm-participant-search-input {
+  flex: 1;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #d4c3ad !important;
+  border-radius: 7px !important;
+  font-size: 13px !important;
+  background: #ffffff !important;
+  color: #2a1f18 !important;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.sm-participant-search-input::placeholder {
+  font-style: italic;
+  color: #8f7c6d;
+}
+
+.sm-participant-search-input:focus {
+  outline: none;
+  border-color: #b45309 !important;
+  box-shadow: 0 0 0 2px rgba(180, 83, 9, 0.15);
+}
+
+.sm-participant-search-btn {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #fffdf9;
+  border: 1px solid #d4c3ad;
+  border-radius: 7px;
+  color: #9a3412;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.sm-participant-search-btn:hover {
+  background: #faf0df;
+  border-color: #b45309;
+  color: #7c2d12;
+}
+
+.sm-participant-suggestions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 1050;
+  background: #fffdf9;
+  border: 1px solid #d4bfa4;
+  border-radius: 8px;
+  box-shadow: 0 10px 26px rgba(36, 25, 19, 0.16);
+  max-height: 230px;
+  overflow-y: auto;
+  padding: 5px;
+}
+
+.sm-suggest-section-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #786354;
+  padding: 4px 8px 3px;
+}
+
+.sm-suggest-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12.5px;
+  color: #2a1f18;
+  transition: background 0.12s;
+}
+
+.sm-suggest-item:hover {
+  background: #faf0df;
+}
+
+.sm-suggest-item.is-selected {
+  background: #f5e6cf;
+}
+
+.sm-suggest-sub {
+  font-size: 11px;
+  color: #786354;
+}
