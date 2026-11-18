@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T11:13:41.854Z",
+  "exported_at": "2026-11-18T11:13:45.654Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -5978,25 +5978,25 @@
     }
   },
   "deleted_users": [
+    "test.researcher@skku.edu",
+    "aaa@gmail.com",
     "jhpark.matsci@skku.edu",
+    "temp.delete.test@gmail.com",
     "minseo.kim@gmail.com",
     "ssk@gmail.com",
     "las@gmail.com",
-    "test.researcher@skku.edu",
-    "aaa@gmail.com",
-    "temp.delete.test@gmail.com",
     "test.relay.otp@skku.edu",
     "linh@gmail.com",
     "a@gmail.com"
   ],
   "deleted_users_map": {
+    "test.researcher@skku.edu": 1794983284716,
+    "aaa@gmail.com": 1794983284716,
     "jhpark.matsci@skku.edu": 1794983284716,
+    "temp.delete.test@gmail.com": 1794983284716,
     "minseo.kim@gmail.com": 1794983284716,
     "ssk@gmail.com": 1794983284716,
     "las@gmail.com": 1794983284716,
-    "test.researcher@skku.edu": 1794983284716,
-    "aaa@gmail.com": 1794983284716,
-    "temp.delete.test@gmail.com": 1794983284716,
     "test.relay.otp@skku.edu": 1794983284716,
     "linh@gmail.com": 1794983284716,
     "a@gmail.com": 1794983284716
