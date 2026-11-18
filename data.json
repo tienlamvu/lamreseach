@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T01:52:16.874Z",
+  "exported_at": "2026-11-18T01:52:38.521Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -458,6 +458,27 @@
     "weekly_report_allowed_users": []
   },
   "papers": [
+    {
+      "id": 1794966757448,
+      "doi": "10.1038/s41524-022-00916-2",
+      "title": "Hole-doping induced ferromagnetism in 2D materials",
+      "authors": "Ruishen Meng, Lino da Costa Pereira, Jean-Pierre Locquet, Valeri Afanas’ev, Geoffrey Pourtois",
+      "journal": "npj Computational Materials",
+      "year": 2022,
+      "volume": "8",
+      "pages": "",
+      "abstract": "Abstract\n                  Two-dimensional (2D) ferromagnetic materials are considered as promising candidates for the future generations of spintronic devices. Yet, 2D materials with intrinsic ferromagnetism are scarce. Hereby, high-throughput first-principles simulations are performed to screen 2D materials that present a non-magnetic to a ferromagnetic transition upon hole doping. A global evolutionary search is subsequently performed to identify alternative possible atomic structures of the eligible candidates, and 122 materials exhibiting a hole-doping induced ferromagnetism are identified. Their energetic and dynamic stability, as well as magnetic properties under hole doping are investigated systematically. Half of these 2D materials are metal halides, followed by chalcogenides, oxides, and nitrides, some of them having predicted Curie temperatures above 300 K. The exchange interactions responsible for the ferromagnetic order are also discussed. This work not only provides theoretical insights into hole-doped 2D ferromagnetic materials, but also enriches the family of 2D magnetic materials for possible spintronic applications.",
+      "citation_count": 52,
+      "material_system": "Perovskite / 2D Material",
+      "synthesis_method": "First-principles DFT",
+      "characterization_tags": "DFT, VASP, XRD",
+      "status": "To Read",
+      "notes": "",
+      "in_weekly_report": 1,
+      "visibility": "Private",
+      "allowed_users": [],
+      "allowed_groups": []
+    },
     {
       "id": 1794966735670,
       "doi": "10.1103/physrevmaterials.9.054003",
