@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261118_v89_admin_user_inspector_and_private_folders" onerror="this.href='/static/styles.css?v=20261118_v89_admin_user_inspector_and_private_folders'" />
+  <link rel="stylesheet" href="styles.css?v=20261118_v90_unified_pagination" onerror="this.href='/static/styles.css?v=20261118_v90_unified_pagination'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -189,6 +189,7 @@
             </div>
           </div>
           <div id="dashboard-admin-users-summary"></div>
+          <div id="dashboard-admin-users-pagination-bar" class="mp-pagination-bar standalone" style="display:none;"></div>
         </div>
 
         <div class="grid-2">
@@ -385,6 +386,7 @@
           </div>
 
           <div id="papers-list-container"></div>
+          <div id="papers-pagination-bar" class="mp-pagination-bar standalone" style="display:none;"></div>
         </div>
       </section>
 
@@ -622,6 +624,7 @@
           </div>
 
           <div id="schedule-list-container"></div>
+          <div id="schedule-pagination-bar" class="mp-pagination-bar standalone" style="display:none;"></div>
         </div>
       </section>
 
@@ -2028,6 +2031,7 @@
               </div>
             </div>
             <div id="prof-publications-list"></div>
+            <div id="prof-publications-pagination-bar" class="mp-pagination-bar standalone no-print" style="display:none;"></div>
           </div>
         </div>
       </section>
@@ -2455,6 +2459,7 @@
             </div>
           </div>
           <div class="admin-user-list-panel" id="admin-users-list-panel"></div>
+          <div id="admin-users-modal-pagination-bar" class="mp-pagination-bar standalone compact" style="display:none;"></div>
         </div>
 
         <!-- Right Column: Selected User's Detailed Content & Activity Log -->
@@ -3870,8 +3875,8 @@
     </div>
   </div>
 
-<script src="matsci_tools.js?v=20261118_v89_admin_user_inspector_and_private_folders" onerror="this.src='/static/matsci_tools.js?v=20261118_v89_admin_user_inspector_and_private_folders'"></script>
-  <script src="app.js?v=20261118_v89_admin_user_inspector_and_private_folders" onerror="this.src='/static/app.js?v=20261118_v89_admin_user_inspector_and_private_folders'"></script>
+<script src="matsci_tools.js?v=20261118_v90_unified_pagination" onerror="this.src='/static/matsci_tools.js?v=20261118_v90_unified_pagination'"></script>
+  <script src="app.js?v=20261118_v90_unified_pagination" onerror="this.src='/static/app.js?v=20261118_v90_unified_pagination'"></script>
 
     <!-- Google Calendar Verification / 403 Access Blocked Helper Modal -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
