@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T10:48:38.501Z",
+  "exported_at": "2026-11-18T10:48:47.764Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -3125,7 +3125,7 @@
       "project_folder": "General Research",
       "structural_id": "CD-0013",
       "calc_status": "Relaxed",
-      "is_starred": false,
+      "is_starred": true,
       "associated_paper_id": null,
       "associated_paper_title": "",
       "associated_paper_doi": ""
