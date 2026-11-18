@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T01:52:50.677Z",
+  "exported_at": "2026-11-18T01:53:02.255Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -5093,19 +5093,6 @@
     "linh@gmail.com",
     "a@gmail.com"
   ],
-  "deleted_users_map": {
-    "test.researcher@skku.edu": 1794916443733,
-    "aaa@gmail.com": 1794916443733,
-    "jhpark.matsci@skku.edu": 1794916443733,
-    "temp.delete.test@gmail.com": 1794916443733,
-    "minseo.kim@gmail.com": 1794916443733,
-    "ssk@gmail.com": 1794916443733,
-    "las@gmail.com": 1794916443733,
-    "lamvt@g.skku.edu": 1794916443733,
-    "test.relay.otp@skku.edu": 1794916443733,
-    "linh@gmail.com": 1794916443733,
-    "a@gmail.com": 1794916443733
-  },
   "deleted_groups": [
     "grp_external_collab",
     "grp_dft_team",
