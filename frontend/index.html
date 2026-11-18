@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261118_v95_zero403_live_gcal_relay" onerror="this.href='/static/styles.css?v=20261118_v95_zero403_live_gcal_relay'" />
+  <link rel="stylesheet" href="styles.css?v=20261118_v96_user_isolated_categories_folders_participants" onerror="this.href='/static/styles.css?v=20261118_v96_user_isolated_categories_folders_participants'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -692,7 +692,7 @@
               <button type="button" class="mp-btn-outline admin-only" onclick="toggleCifUploadPanel()" title="Upload *.cif file">
                 Upload CIF
               </button>
-              <button type="button" class="mp-btn-outline strict-admin-only" onclick="openManageFoldersModal()" title="Manage Project Folders (Admin Only)">
+              <button type="button" class="mp-btn-outline admin-only" onclick="openManageFoldersModal()" title="Manage Project Folders">
                 Folders
               </button>
               <button type="button" class="mp-btn-primary admin-only" onclick="openStructureModal()" title="Add New Crystal Structure">
@@ -709,7 +709,7 @@
             </div>
 
             <div id="struct-batch-custom-controls" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              <div class="mp-batch-group strict-admin-only">
+              <div class="mp-batch-group admin-only">
                 <span>Folder:</span>
                 <select id="batch-struct-folder" class="mp-select-xs" style="max-width:140px;"></select>
                 <button type="button" class="mp-btn-xs mp-btn-xs-teal" onclick="applyBatchStructuresFolder()">Move</button>
@@ -3180,10 +3180,10 @@
   <div id="manage-folders-modal" class="modal-backdrop">
     <div class="modal-box" style="max-width:560px;">
       <div class="card-header">
-        <div class="card-title">📁 Manage Research Project Folders</div>
+        <div class="card-title" id="manage-folders-modal-title">Manage Research Project Folders</div>
         <button class="btn btn-outline btn-sm" onclick="closeModal('manage-folders-modal')">✕ Close</button>
       </div>
-      <div style="font-size:13px; color:var(--text-secondary); margin-bottom:14px;">
+      <div id="manage-folders-modal-desc" style="font-size:13px; color:var(--text-secondary); margin-bottom:14px;">
         Organize your crystal structures and simulations by research topic, funding grant, or material family.
       </div>
 
@@ -3298,7 +3298,7 @@
             <label style="font-weight:700; color:#6b21a8; display:flex; align-items:center; gap:6px; font-size:13px; margin:0;">
               <span>📁</span> Research Project / Classification Folder
             </label>
-            <button type="button" class="btn btn-outline btn-xs strict-admin-only" onclick="openManageFoldersModal()" style="background:#fff; border-color:#d8b4fe; color:#6b21a8; font-size:11px; padding:2px 8px;">
+            <button type="button" class="btn btn-outline btn-xs admin-only" onclick="openManageFoldersModal()" style="background:#fff; border-color:#d8b4fe; color:#6b21a8; font-size:11px; padding:2px 8px;">
               Manage All Folders
             </button>
           </div>
@@ -3610,7 +3610,7 @@
         <div class="form-group">
           <div class="sm-cat-label-row">
             <label for="sm-type">Event Category</label>
-            <button type="button" class="mp-formula-btn strict-admin-only" onclick="toggleEventCategoryManager()" title="Add, rename, or remove Event Categories (Admin Only)">Manage</button>
+            <button type="button" class="mp-formula-btn admin-only" onclick="toggleEventCategoryManager()" title="Add, rename, or remove Event Categories">Manage</button>
           </div>
           <select id="sm-type">
             <option value="Synthesis / Furnace">Synthesis / Furnace</option>
@@ -3619,8 +3619,8 @@
             <option value="Electrochemical Testing">Electrochemical Testing</option>
             <option value="Data Analysis / Manuscript Writing">Data Analysis / Manuscript Writing</option>
           </select>
-          <div id="sm-cat-manager-box" class="sm-cat-manager-box strict-admin-only" style="display:none;">
-            <div style="font-weight:700; color:#7c2d12; margin-bottom:6px;">Manage Event Categories (Admin)</div>
+          <div id="sm-cat-manager-box" class="sm-cat-manager-box admin-only" style="display:none;">
+            <div id="sm-cat-manager-title" style="font-weight:700; color:#7c2d12; margin-bottom:6px;">Manage Event Categories</div>
             <div class="sm-cat-add-row">
               <input type="text" id="sm-new-cat-input" placeholder="New category name..." onkeydown="if(event.key==='Enter'){event.preventDefault(); addEventCategoryByAdmin();}" />
               <button type="button" class="mp-btn-xs mp-btn-xs-teal" onclick="addEventCategoryByAdmin()">+ Add</button>
@@ -3653,19 +3653,28 @@
           </div>
         </div>
         <div class="form-group full">
-          <label style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
-            <span>Participants (Users or User Groups)</span>
-            <span style="font-size:11px; color:#786354; font-weight:500;">Automatically synced to selected participants' calendars</span>
-          </label>
-          <div id="sm-participants-chips" class="sm-participants-chips"></div>
-          <div class="sm-participant-search-wrap">
-            <div class="sm-participant-search-row">
-              <input type="text" id="sm-participant-search" class="sm-participant-search-input" placeholder="Search participant by name, email, or User Group..." autocomplete="off" onfocus="renderScheduleParticipantSuggestions(true)" oninput="renderScheduleParticipantSuggestions(true)" onkeydown="handleScheduleParticipantKeydown(event)" />
-              <button type="button" class="sm-participant-search-btn" onclick="toggleScheduleParticipantSuggestions()" title="Search registered users &amp; groups">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              </button>
+          <div id="sm-participants-admin-box">
+            <label style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+              <span>Participants (Users or User Groups)</span>
+              <span style="font-size:11px; color:#786354; font-weight:500;">Automatically synced to selected participants' calendars</span>
+            </label>
+            <div id="sm-participants-chips" class="sm-participants-chips"></div>
+            <div class="sm-participant-search-wrap">
+              <div class="sm-participant-search-row">
+                <input type="text" id="sm-participant-search" class="sm-participant-search-input" placeholder="Search participant by name, email, or User Group..." autocomplete="off" onfocus="renderScheduleParticipantSuggestions(true)" oninput="renderScheduleParticipantSuggestions(true)" onkeydown="handleScheduleParticipantKeydown(event)" />
+                <button type="button" class="sm-participant-search-btn" onclick="toggleScheduleParticipantSuggestions()" title="Search registered users &amp; groups">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                </button>
+              </div>
+              <div id="sm-participant-suggestions" class="sm-participant-suggestions" style="display:none;"></div>
             </div>
-            <div id="sm-participant-suggestions" class="sm-participant-suggestions" style="display:none;"></div>
+          </div>
+          <div id="sm-participants-user-box" style="display:none;">
+            <label style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+              <span>Participants</span>
+              <span style="font-size:11px; color:#786354; font-weight:500;">Enter names separated by commas (personal note only)</span>
+            </label>
+            <input type="text" id="sm-participant-text-input" placeholder="e.g., Prof. Kim, Dr. Park, Research Subgroup" autocomplete="off" />
           </div>
         </div>
         <div class="form-group full">
@@ -3869,8 +3878,8 @@
     </div>
   </div>
 
-<script src="matsci_tools.js?v=20261118_v95_zero403_live_gcal_relay" onerror="this.src='/static/matsci_tools.js?v=20261118_v95_zero403_live_gcal_relay'"></script>
-  <script src="app.js?v=20261118_v95_zero403_live_gcal_relay" onerror="this.src='/static/app.js?v=20261118_v95_zero403_live_gcal_relay'"></script>
+<script src="matsci_tools.js?v=20261118_v96_user_isolated_categories_folders_participants" onerror="this.src='/static/matsci_tools.js?v=20261118_v96_user_isolated_categories_folders_participants'"></script>
+  <script src="app.js?v=20261118_v96_user_isolated_categories_folders_participants" onerror="this.src='/static/app.js?v=20261118_v96_user_isolated_categories_folders_participants'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
