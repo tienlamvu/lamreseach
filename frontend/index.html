@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261118_v88_immutable_recycled_sid" onerror="this.href='/static/styles.css?v=20261118_v88_immutable_recycled_sid'" />
+  <link rel="stylesheet" href="styles.css?v=20261118_v89_admin_user_inspector_and_private_folders" onerror="this.href='/static/styles.css?v=20261118_v89_admin_user_inspector_and_private_folders'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -156,6 +156,38 @@
               <button class="btn btn-primary btn-sm" onclick="openAdminUsersModal()">🔍 Inspect All Users &amp; Manage →</button>
             </div>
           </div>
+          <div id="dashboard-admin-users-kpi"></div>
+          <div class="admin-dash-users-toolbar">
+            <div class="admin-dash-users-filters">
+              <input type="text" id="admin-dash-users-search" class="admin-dash-users-search" placeholder="Search users by name, email, role, group..." oninput="renderDashboardAdminUsersSummary()" />
+              <select id="admin-dash-users-group-filter" class="admin-dash-users-select" onchange="renderDashboardAdminUsersSummary()" title="Filter users by group">
+                <option value="ALL">All Groups</option>
+              </select>
+              <select id="admin-dash-users-status-filter" class="admin-dash-users-select" onchange="renderDashboardAdminUsersSummary()" title="Filter users by account status or auth method">
+                <option value="ALL">All Statuses</option>
+                <option value="ACTIVE">Active Only</option>
+                <option value="SUSPENDED">Suspended Only</option>
+                <option value="GOOGLE">Google Linked</option>
+                <option value="EMAIL">Email Auth Only</option>
+              </select>
+              <select id="admin-dash-users-sort" class="admin-dash-users-select" onchange="renderDashboardAdminUsersSummary()" title="Sort users">
+                <option value="recent">Sort: Recent Activity</option>
+                <option value="uploads">Sort: Most Uploads</option>
+                <option value="cifs">Sort: Most CIFs</option>
+                <option value="name">Sort: Name (A–Z)</option>
+                <option value="registered">Sort: Newest Joined</option>
+              </select>
+            </div>
+            <div class="admin-dash-users-controls">
+              <span id="admin-dash-users-filter-count" style="font-size:11.5px; font-weight:700; color:#786354;"></span>
+              <div class="mp-view-segmented">
+                <button type="button" class="mp-seg-btn active" id="btn-admin-users-view-cards" onclick="setAdminDashUsersViewMode('cards')" title="Card Grid View">Cards</button>
+                <button type="button" class="mp-seg-btn" id="btn-admin-users-view-list" onclick="setAdminDashUsersViewMode('list')" title="Compact Table List View">List</button>
+                <button type="button" class="mp-seg-btn" id="btn-admin-users-view-analytics" onclick="setAdminDashUsersViewMode('analytics')" title="User Statistics &amp; Contribution Analytics">Analytics</button>
+              </div>
+              <button type="button" class="mp-btn-xs" onclick="exportAdminUsersStatsCsv()" title="Export user directory &amp; upload statistics as CSV">Export CSV</button>
+            </div>
+          </div>
           <div id="dashboard-admin-users-summary"></div>
         </div>
 
@@ -284,6 +316,9 @@
               </select>
               <select id="paper-audience-filter" class="strict-admin-only audience-group-filter-select" onchange="renderPapersList()" style="padding:8px 12px; border:1px solid #93c5fd; background:#eff6ff; color:#1e3a8a; font-weight:600; border-radius:8px; font-size:13px;" title="Filter displayed papers by Visibility Mode or Target User Group">
                 <option value="ALL">🛡️ All Audiences &amp; Groups</option>
+              </select>
+              <select id="paper-folder-filter" class="strict-admin-only" onchange="renderPapersList()" style="padding:8px 12px; border:1px solid #d9bf9f; background:#faf4ea; color:#7c2d12; font-weight:600; border-radius:8px; font-size:13px;" title="Filter displayed papers by Admin Library or User Private Folder (Admin Only)">
+                <option value="ALL">All Folders</option>
               </select>
             </div>
             <button class="btn btn-outline btn-sm" onclick="exportAllBibtex()">📋 Copy All BibTeX</button>
@@ -683,7 +718,7 @@
               <button type="button" class="mp-btn-outline admin-only" onclick="toggleCifUploadPanel()" title="Upload *.cif file">
                 Upload CIF
               </button>
-              <button type="button" class="mp-btn-outline admin-only" onclick="openManageFoldersModal()" title="Manage Project Folders">
+              <button type="button" class="mp-btn-outline strict-admin-only" onclick="openManageFoldersModal()" title="Manage Project Folders (Admin Only)">
                 Folders
               </button>
               <button type="button" class="mp-btn-primary admin-only" onclick="openStructureModal()" title="Add New Crystal Structure">
@@ -700,7 +735,7 @@
             </div>
 
             <div id="struct-batch-custom-controls" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              <div class="mp-batch-group">
+              <div class="mp-batch-group strict-admin-only">
                 <span>Folder:</span>
                 <select id="batch-struct-folder" class="mp-select-xs" style="max-width:140px;"></select>
                 <button type="button" class="mp-btn-xs mp-btn-xs-teal" onclick="applyBatchStructuresFolder()">Move</button>
@@ -3287,11 +3322,11 @@
             <label style="font-weight:700; color:#6b21a8; display:flex; align-items:center; gap:6px; font-size:13px; margin:0;">
               <span>📁</span> Research Project / Classification Folder
             </label>
-            <button type="button" class="btn btn-outline btn-xs" onclick="openManageFoldersModal()" style="background:#fff; border-color:#d8b4fe; color:#6b21a8; font-size:11px; padding:2px 8px;">
-              📁 Manage All Folders
+            <button type="button" class="btn btn-outline btn-xs strict-admin-only" onclick="openManageFoldersModal()" style="background:#fff; border-color:#d8b4fe; color:#6b21a8; font-size:11px; padding:2px 8px;">
+              Manage All Folders
             </button>
           </div>
-          <div style="font-size:12px; color:#581c87; margin-bottom:8px;">
+          <div id="struct-folder-help-text" style="font-size:12px; color:#581c87; margin-bottom:8px;">
             Assign this crystal structure to a dedicated research project or material cluster for organized navigation.
           </div>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -3835,8 +3870,8 @@
     </div>
   </div>
 
-<script src="matsci_tools.js?v=20261118_v88_immutable_recycled_sid" onerror="this.src='/static/matsci_tools.js?v=20261118_v88_immutable_recycled_sid'"></script>
-  <script src="app.js?v=20261118_v88_immutable_recycled_sid" onerror="this.src='/static/app.js?v=20261118_v88_immutable_recycled_sid'"></script>
+<script src="matsci_tools.js?v=20261118_v89_admin_user_inspector_and_private_folders" onerror="this.src='/static/matsci_tools.js?v=20261118_v89_admin_user_inspector_and_private_folders'"></script>
+  <script src="app.js?v=20261118_v89_admin_user_inspector_and_private_folders" onerror="this.src='/static/app.js?v=20261118_v89_admin_user_inspector_and_private_folders'"></script>
 
     <!-- Google Calendar Verification / 403 Access Blocked Helper Modal -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
