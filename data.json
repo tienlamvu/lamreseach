@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T01:50:32.384Z",
+  "exported_at": "2026-11-18T01:51:18.534Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -459,7 +459,7 @@
   },
   "papers": [
     {
-      "id": 1794966631324,
+      "id": 1794966676188,
       "doi": "10.1103/physrevb.110.024413",
       "title": "Flat-band ferromagnetism in the quasi-one-dimensional electride\n                    <mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\">\n                      <mml:mrow>\n                        <mml:msub>\n                          <mml:mi mathvariant=\"normal\">Y</mml:mi>\n                          <mml:mn>2</mml:mn>\n                        </mml:msub>\n                        <mml:msub>\n                          <mml:mi>Cl</mml:mi>\n                          <mml:mn>3</mml:mn>\n                        </mml:msub>\n                      </mml:mrow>\n                    </mml:math>\n                    induced by hole doping",
       "authors": "Shuyuan Liu, Chongze Wang, Bing Wang, Yu Jia, J. Cho",
