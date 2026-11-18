@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261118_v92_upgraded_calendar_views" onerror="this.href='/static/styles.css?v=20261118_v92_upgraded_calendar_views'" />
+  <link rel="stylesheet" href="styles.css?v=20261118_v93_clean_calendar_header" onerror="this.href='/static/styles.css?v=20261118_v93_clean_calendar_header'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -405,98 +405,61 @@
           </div>
         </div>
 
-        <!-- Google Calendar Sync Control Bar -->
-        <div class="card" style="background: linear-gradient(135deg, #2e1d14, #63361c); color:#fffdf9; border:none; margin-bottom:16px;">
-          <div class="card-header" style="margin-bottom:0; flex-wrap:wrap; gap:12px;">
-            <div>
-              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
-                <div style="display:inline-flex; border:1px solid rgba(255,255,255,0.25); border-radius:6px; overflow:hidden; background:rgba(0,0,0,0.2);">
-                  <button id="btn-view-grid" class="btn btn-sm" onclick="setCalendarDisplayMode('interactive')" style="background:rgba(255,255,255,0.28); color:#fff; border:none; font-weight:700; padding:5px 12px; cursor:pointer;">
-                    📅 Unified Schedule Grid
-                  </button>
-                  <button id="btn-view-gcal" class="btn btn-sm" onclick="setCalendarDisplayMode('gcal')" style="background:transparent; color:#cbd5e1; border:none; font-weight:600; padding:5px 12px; cursor:pointer;">
-                    🌐 Live Google Calendar View
-                  </button>
-                </div>
-                <span id="cal-sync-status-badge" class="badge" style="background:rgba(255,255,255,0.15); color:#cbd5e1; font-size:11px; border:1px solid rgba(255,255,255,0.25);">⚡ Sync Status: Ready</span>
-                <span class="badge badge-blue" style="background:rgba(255,255,255,0.16); border:1px solid rgba(255,255,255,0.3); color:#fff; font-size:11px;">KST • GMT+9</span>
-              </div>
-              <div class="card-title" style="color:#fff; font-size:17.5px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                <span>📅 Unified Research &amp; Google Calendar</span>
-              </div>
-              <div style="font-size:12.5px; color:#cbd5e1; margin-top:3px;">
-                Website simulation tasks &amp; Google Calendar events are unified into a single live schedule grid. Google Account: <strong id="calendar-active-email-label">lamvt.skku@gmail.com</strong>
-              </div>
+        <!-- Minimal Professional Calendar Header Bar (Single Unified Calendar + Google Sync) -->
+        <div class="cal-header-bar">
+          <div class="cal-header-info">
+            <div class="cal-header-title-row">
+              <h2 class="cal-header-title">Research Calendar</h2>
+              <span class="cal-header-pill">KST &middot; GMT+9</span>
+              <span id="cal-sync-status-badge" class="cal-header-pill is-status">Sync Ready</span>
             </div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-              <button class="btn btn-primary owner-only-btn admin-only" onclick="openScheduleModal()" style="font-weight:700;">
-                ➕ Add Event (Single &amp; Multi-Day)
+            <div class="cal-header-sub">
+              Synced with Google Calendar (<strong id="calendar-active-email-label">lamvt.skku@gmail.com</strong>)
+            </div>
+          </div>
+
+          <div class="cal-header-actions">
+            <button type="button" class="cal-act-btn cal-act-btn-primary owner-only-btn admin-only" onclick="openScheduleModal()">
+              + Add Event
+            </button>
+            <button type="button" class="cal-act-btn cal-act-btn-sync" id="btn-sync-google-cal" onclick="syncWithGoogleCalendarApi()" title="Sync Google Calendar events into this schedule">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              Sync Google
+            </button>
+            <div class="cal-more-wrap" id="cal-more-wrap">
+              <button type="button" class="cal-act-btn cal-act-btn-ghost" onclick="toggleCalMoreMenu(event)" title="Import / Export .ics &amp; Google Calendar">
+                More ▾
               </button>
-              <button class="btn btn-sm btn-outline" id="btn-sync-google-cal" style="background:#2563eb; color:#fff; border-color:#3b82f6; font-weight:700; display:inline-flex; align-items:center; gap:5px;" onclick="syncWithGoogleCalendarApi()" title="Fetch &amp; sync Google Calendar events directly into this unified calendar">
-                🔄 Sync with Google Calendar
-              </button>
-              <button class="btn btn-sm btn-outline" style="background:rgba(255,255,255,0.1); color:#fff; border-color:#64748b;" onclick="toggleIcsImportBox()">
-                📥 Import GCal (.ics)
-              </button>
-              <button class="btn btn-sm btn-outline" style="background:rgba(255,255,255,0.1); color:#fff; border-color:#64748b;" onclick="exportScheduleToIcs()" title="Export all events as iCalendar .ics file">
-                📤 Export .ics
-              </button>
-              <a href="https://calendar.google.com/calendar/u/0/r" target="_blank" class="btn btn-sm btn-outline" style="background:rgba(255,255,255,0.1); color:#fff; border-color:#64748b; text-decoration:none;">
-                Open Google Calendar ↗
-              </a>
+              <div class="cal-more-menu" id="cal-more-menu">
+                <button type="button" class="cal-more-item" onclick="toggleCalMoreMenu(); toggleIcsImportBox();">
+                  Import GCal (.ics)
+                </button>
+                <button type="button" class="cal-more-item" onclick="toggleCalMoreMenu(); exportScheduleToIcs();">
+                  Export Schedule (.ics)
+                </button>
+                <a href="https://calendar.google.com/calendar/u/0/r" target="_blank" rel="noopener noreferrer" class="cal-more-item" onclick="toggleCalMoreMenu();">
+                  Open Google Calendar ↗
+                </a>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- 2-Way Import Box from Google Calendar (.ics file or feed URL) -->
-        <div id="gcal-import-drawer" class="card" style="display:none; background:#f8fafc; border:1px solid #bfdbfe; margin-bottom:16px;">
+        <!-- 2-Way Import Drawer from Google Calendar (.ics file or feed URL) -->
+        <div id="gcal-import-drawer" class="card" style="display:none; background:#faf5ec; border:1px solid #d9bf9f; margin-bottom:14px;">
           <div class="card-header" style="margin-bottom:8px;">
             <div>
-              <div class="card-title" style="font-size:14.5px; color:#1e3a8a;">📥 Import Events from Google Calendar (.ics file / feed)</div>
-              <div style="font-size:12px; color:var(--text-muted);">Drop your Google Calendar <code>.ics</code> file here or upload to sync your lab meetings &amp; seminar events into the website.</div>
+              <div class="card-title" style="font-size:14px; color:#7c2d12;">Import Events from Google Calendar (.ics)</div>
+              <div style="font-size:12px; color:#786354;">Upload a Google Calendar <code>.ics</code> file or paste an iCal feed URL to merge events into your unified schedule.</div>
             </div>
-            <button class="btn btn-outline btn-sm" onclick="toggleIcsImportBox()">✕ Close</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="toggleIcsImportBox()">Close</button>
           </div>
-          <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
             <input type="file" id="gcal-ics-file-input" accept=".ics" style="display:none;" onchange="handleGcalIcsFile(event)" />
-            <button class="btn btn-teal btn-sm" onclick="document.getElementById('gcal-ics-file-input').click()">📂 Select Google Calendar .ics File</button>
-            <span style="font-size:12px; color:var(--text-muted);">or paste iCal feed text / URL below:</span>
-            <input type="text" id="gcal-ics-url-input" placeholder="Paste .ics webcal:// or https:// URL..." style="flex:1; min-width:200px; padding:6px 10px; border:1px solid var(--border-color); border-radius:6px; font-size:12.5px;" />
-            <button class="btn btn-primary btn-sm" onclick="handleGcalIcsUrlFetch()">🔄 Fetch &amp; Sync Events</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('gcal-ics-file-input').click()">Select .ics File</button>
+            <input type="text" id="gcal-ics-url-input" placeholder="Or paste .ics webcal:// or https:// URL..." style="flex:1; min-width:180px; padding:6px 10px; border:1px solid #d4bfa4; border-radius:6px; font-size:12.5px; background:#fffdf9;" />
+            <button type="button" class="btn btn-primary btn-sm" onclick="handleGcalIcsUrlFetch()">Fetch &amp; Sync</button>
           </div>
-        </div>
-
-        <!-- Live Google Calendar Embedded View -->
-        <div id="gcal-embed-card" class="card" style="display:none; margin-bottom:16px; border:2px solid #3b82f6; box-shadow:0 4px 12px rgba(59,130,246,0.12);">
-          <div class="card-header" style="flex-wrap:wrap; gap:10px; background:#f0f9ff; padding:12px 16px; border-bottom:1px solid #bae6fd;">
-            <div>
-              <div class="card-title" style="color:#0369a1; display:flex; align-items:center; gap:8px;">
-                <span>🌐 Live Google Calendar View</span>
-                <span class="badge" style="background:#e0f2fe; color:#0284c7; border:1px solid #7dd3fc; font-size:11px;"><span id="gcal-embed-title-email">lamvt.skku@gmail.com</span> &bull; Asia/Seoul</span>
-              </div>
-              <div style="font-size:12px; color:#64748b; margin-top:2px;">
-                Official Google Calendar web view for this Google account. Sign in with Google to view your personal calendar directly.
-              </div>
-            </div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-              <button class="btn btn-sm btn-primary" onclick="syncWithGoogleCalendarApi()" style="font-weight:700;">
-                🔄 Sync These Events to Grid
-              </button>
-              <a href="https://calendar.google.com/calendar/u/0/r" target="_blank" class="btn btn-outline btn-sm" style="font-weight:600;">
-                Open in Full Google Calendar ↗
-              </a>
-              <button class="btn btn-outline btn-sm" onclick="setCalendarDisplayMode('interactive')" style="font-weight:600;">
-                📅 Back to Schedule Grid
-              </button>
-            </div>
-          </div>
-          <iframe
-            id="gcal-embed-iframe"
-            src="https://calendar.google.com/calendar/embed?src=lamvt.skku%40gmail.com&ctz=Asia%2FSeoul&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=1&showCalendars=0"
-            style="border: none; width: 100%; height: 680px; border-radius: 0 0 10px 10px;"
-            frameborder="0"
-            scrolling="no"
-          ></iframe>
         </div>
 
         <!-- Upgraded Multi-View Interactive Calendar (Month / Week / Day / Agenda) -->
@@ -3903,8 +3866,8 @@
     </div>
   </div>
 
-<script src="matsci_tools.js?v=20261118_v92_upgraded_calendar_views" onerror="this.src='/static/matsci_tools.js?v=20261118_v92_upgraded_calendar_views'"></script>
-  <script src="app.js?v=20261118_v92_upgraded_calendar_views" onerror="this.src='/static/app.js?v=20261118_v92_upgraded_calendar_views'"></script>
+<script src="matsci_tools.js?v=20261118_v93_clean_calendar_header" onerror="this.src='/static/matsci_tools.js?v=20261118_v93_clean_calendar_header'"></script>
+  <script src="app.js?v=20261118_v93_clean_calendar_header" onerror="this.src='/static/app.js?v=20261118_v93_clean_calendar_header'"></script>
 
     <!-- Google Calendar Verification / 403 Access Blocked Helper Modal -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
