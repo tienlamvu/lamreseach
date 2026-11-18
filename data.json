@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T06:08:02.874Z",
+  "exported_at": "2026-11-18T06:08:24.409Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -4320,7 +4320,7 @@
       "registeredAt": "2026-11-16 11:31",
       "lastLoginAt": "2026-11-18 09:29",
       "lastUpdatedAt": "2026-11-18 15:08",
-      "updatedAtMs": 1794982081806,
+      "updatedAtMs": 1794982103343,
       "workspace": {
         "papers": [
           {
@@ -4463,7 +4463,9 @@
             "allowed_users": [],
             "allowed_groups": [],
             "id": 1794807861185,
-            "project_folder": "2D Janus MA2Z4 & Layered TMDs"
+            "project_folder": "2D Janus MA2Z4 & Layered TMDs",
+            "structural_id": "CD-0012",
+            "calc_status": "Relaxed"
           },
           {
             "name": "MoSi2N2P2 Janus 4",
@@ -4559,7 +4561,9 @@
             ],
             "in_weekly_report": 0,
             "id": 1794571683470,
-            "project_folder": "2D Janus MA2Z4 & Layered TMDs"
+            "project_folder": "2D Janus MA2Z4 & Layered TMDs",
+            "structural_id": "CD-0011",
+            "calc_status": "Relaxed"
           }
         ],
         "schedule": [
