@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261118_v93_clean_calendar_header" onerror="this.href='/static/styles.css?v=20261118_v93_clean_calendar_header'" />
+  <link rel="stylesheet" href="styles.css?v=20261118_v94_direct_gcal_oauth_sync" onerror="this.href='/static/styles.css?v=20261118_v94_direct_gcal_oauth_sync'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -3866,69 +3866,47 @@
     </div>
   </div>
 
-<script src="matsci_tools.js?v=20261118_v93_clean_calendar_header" onerror="this.src='/static/matsci_tools.js?v=20261118_v93_clean_calendar_header'"></script>
-  <script src="app.js?v=20261118_v93_clean_calendar_header" onerror="this.src='/static/app.js?v=20261118_v93_clean_calendar_header'"></script>
+<script src="matsci_tools.js?v=20261118_v94_direct_gcal_oauth_sync" onerror="this.src='/static/matsci_tools.js?v=20261118_v94_direct_gcal_oauth_sync'"></script>
+  <script src="app.js?v=20261118_v94_direct_gcal_oauth_sync" onerror="this.src='/static/app.js?v=20261118_v94_direct_gcal_oauth_sync'"></script>
 
-    <!-- Google Calendar Verification / 403 Access Blocked Helper Modal -->
+    <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
-      <div class="modal-box" style="max-width:560px; padding:24px 28px; text-align:left; border-radius:12px; background:#fff;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; border-bottom:1px solid #fee2e2; padding-bottom:12px;">
-          <div style="display:flex; align-items:center; gap:10px;">
-            <div style="font-size:26px;">⚠️</div>
-            <div>
-              <h3 style="margin:0; font-size:17.5px; font-weight:700; color:#991b1b;">Google Calendar Verification Required</h3>
-              <div style="font-size:12px; color:#b91c1c;">Google Cloud OAuth 2.0 Security Policy (Error 403: access_denied)</div>
-            </div>
+      <div class="modal-box" style="max-width:540px; padding:22px 26px; text-align:left; border-radius:12px; background:#fffdf9;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; border-bottom:1px solid #e6d9c7; padding-bottom:10px;">
+          <div>
+            <h3 style="margin:0; font-size:16.5px; font-weight:800; color:#7c2d12;">Google Calendar Permission Needed</h3>
+            <div style="font-size:12px; color:#786354; margin-top:2px;">Direct sync for <strong id="gcal-blocked-email-hint">lamvt.skku@gmail.com</strong></div>
           </div>
-          <button class="modal-close-btn" onclick="closeModal('google-cal-unverified-modal')" style="background:none; border:none; font-size:18px; cursor:pointer; color:#94a3b8;">✕</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('google-cal-unverified-modal')">Close</button>
         </div>
 
-        <div style="font-size:13px; line-height:1.6; color:#334155; margin-bottom:16px;">
-          Google Cloud classifies the Google Calendar API as a <strong>Sensitive Scope</strong>. Because this Google Cloud App is currently in <em>Testing mode</em>, Google blocks direct API access unless the account is added as a developer-approved tester, or you view it via Google's official embed view below.
+        <div id="gcal-error-reason" style="display:none; font-size:12px; color:#9f2b22; background:#fce6e2; border:1px solid #e7ada6; border-radius:6px; padding:8px 10px; margin-bottom:12px; font-family:monospace;"></div>
+
+        <div style="font-size:12.5px; line-height:1.55; color:#4a382c; margin-bottom:14px;">
+          Google blocked direct read access to this account's calendar. Please check the quick steps below, then click <strong>Authorize Google Calendar</strong> again:
         </div>
 
-        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:12px 14px; margin-bottom:14px;">
-          <div style="font-weight:700; color:#166534; font-size:13px; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-            <span>💡</span> Option 1 (Instant — No Setup Required): Use Live Google Calendar View
+        <div style="background:#faf4ea; border:1px solid #dfc9ae; border-radius:8px; padding:12px 14px; margin-bottom:12px;">
+          <div style="font-weight:700; color:#7c2d12; font-size:12.5px; margin-bottom:6px;">
+            1. Administrator Google Cloud Console Checklist (One-Time Setup)
           </div>
-          <div style="font-size:12px; color:#15803d; line-height:1.5; margin-bottom:8px;">
-            You can view and interact with your personal Google Calendar directly inside this website:
-          </div>
-          <button class="btn btn-sm btn-primary" onclick="closeModal('google-cal-unverified-modal'); setCalendarDisplayMode('gcal');" style="background:#059669; border-color:#047857; font-weight:700; cursor:pointer;">
-            🌐 Open Live Google Calendar View Now
-          </button>
+          <ol style="margin:0 0 0 18px; padding:0; font-size:12px; color:#5c493c; line-height:1.6;">
+            <li>Open <a href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com" target="_blank" rel="noopener noreferrer" style="color:#9a3412; font-weight:600; text-decoration:underline;">Google Calendar API</a> and ensure it is <strong>Enabled</strong>.</li>
+            <li>Open <a href="https://console.cloud.google.com/apis/credentials/consent" target="_blank" rel="noopener noreferrer" style="color:#9a3412; font-weight:600; text-decoration:underline;">OAuth Consent Screen</a> &rarr; add <code id="gcal-blocked-email-code">lamvt.skku@gmail.com</code> under <strong>Test users</strong> (or click <strong>Publish App</strong> so all Google users can sync).</li>
+            <li>If Google shows an "unverified app" warning, click <strong>Advanced &rarr; Go to app</strong> and check the Calendar permission box.</li>
+          </ol>
         </div>
 
-        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 14px; margin-bottom:14px;">
-          <div style="font-weight:700; color:#1e293b; font-size:13px; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-            <span>📥</span> Option 2: Import Google Calendar (.ics) File
+        <div style="background:#f7f1e8; border:1px solid #e4d8c8; border-radius:8px; padding:11px 14px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+          <div style="font-size:12px; color:#5c493c; flex:1; min-width:180px;">
+            <strong style="color:#2a1f18;">Alternative:</strong> Export your calendar as <code>.ics</code> from Google Calendar Settings and import it directly here.
           </div>
-          <div style="font-size:12px; color:#64748b; line-height:1.5; margin-bottom:8px;">
-            Export your calendar from Google Calendar (Settings &rarr; Import &amp; Export &rarr; Export) and upload the <code>.ics</code> file to import all your meetings and deadlines into the schedule grid.
-          </div>
-          <button class="btn btn-sm btn-outline" onclick="closeModal('google-cal-unverified-modal'); toggleIcsImportBox();" style="font-weight:600; cursor:pointer;">
-            📂 Open .ics File Importer
-          </button>
-        </div>
-
-        <div style="background:#fffbeb; border:1px solid #fef3c7; border-radius:8px; padding:12px 14px; margin-bottom:16px;">
-          <div style="font-weight:700; color:#92400e; font-size:13px; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
-            <span>🛠️</span> Option 3: Enable Direct Live Sync (Google Cloud Console)
-          </div>
-          <div style="font-size:12px; color:#78350f; line-height:1.5;">
-            To authorize your account (<strong id="gcal-blocked-email-hint">lamvt.skku@gmail.com</strong>) in Google Cloud Console:
-            <ol style="margin:4px 0 0 18px; padding:0;">
-              <li>Open <a href="https://console.cloud.google.com/apis/credentials/consent" target="_blank" style="color:#b45309; text-decoration:underline;">Google Cloud Console &rarr; OAuth consent screen</a>.</li>
-              <li>Scroll down to <strong>Test users</strong> and click <strong>+ ADD USERS</strong>.</li>
-              <li>Add your email: <code id="gcal-blocked-email-code">lamvt.skku@gmail.com</code> and click <strong>Save</strong>.</li>
-              <li>Return here and click "Try Sync Again".</li>
-            </ol>
-          </div>
+          <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('google-cal-unverified-modal'); toggleIcsImportBox();">Import .ics File</button>
         </div>
 
         <div style="display:flex; justify-content:flex-end; gap:8px;">
-          <button class="btn btn-outline btn-sm" onclick="closeModal('google-cal-unverified-modal')">Close</button>
-          <button class="btn btn-primary btn-sm" onclick="executeGoogleOAuthCalendarConsent()" style="font-weight:700; background:#2563eb; border-color:#1d4ed8;">🚀 Proceed with Google OAuth Window</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('google-cal-unverified-modal')">Close</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="executeGoogleOAuthCalendarConsent()">Authorize Google Calendar</button>
         </div>
       </div>
     </div>
