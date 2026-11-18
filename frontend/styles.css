@@ -5965,6 +5965,43 @@ body.is-admin #cv-exclusive-owner-notice {
   white-space: nowrap;
 }
 
+.mp-pagination-bar.standalone {
+  margin-top: 12px;
+  border: 1px solid #e4d8c8;
+  border-radius: 8px;
+}
+
+.mp-pagination-bar.compact {
+  margin-top: 8px;
+  padding: 7px 9px;
+  font-size: 11.5px;
+  gap: 6px;
+}
+
+.mp-pagination-bar.compact .mp-pg-nav {
+  gap: 4px;
+}
+
+.mp-pagination-bar.compact .mp-pg-link {
+  font-size: 11.5px;
+}
+
+.mp-pagination-bar.compact .mp-pg-go-btn,
+.mp-pagination-bar.compact .mp-pg-input {
+  height: 22px;
+  font-size: 11px;
+}
+
+.mp-pagination-bar.compact .mp-pg-input {
+  width: 40px;
+}
+
+.mp-pagination-bar.compact .mp-pg-summary {
+  font-size: 11px;
+  width: 100%;
+  text-align: right;
+}
+
 @media (max-width: 768px) {
   .mp-pagination-bar {
     padding: 8px 10px;
