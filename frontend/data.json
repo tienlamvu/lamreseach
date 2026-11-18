@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T12:16:39.992Z",
+  "exported_at": "2026-11-18T12:16:59.704Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -4448,7 +4448,8 @@
   ],
   "event_categories": [
     "Group Meeting / PI Meeting",
-    "Data Analysis / Manuscript Writing"
+    "Data Analysis / Manuscript Writing",
+    "Others"
   ],
   "users_registry": {
     "lamvt.sep@gmail.com": {
