@@ -5073,3 +5073,747 @@ body.is-admin #cv-exclusive-owner-notice {
     font-size: 11px;
   }
 }
+
+/* ============================================================================
+   Materials Project-Inspired Crystal Structures Explorer (v80)
+   Clean, airy, scientific aesthetic — zero clutter, zero noisy badges
+   ============================================================================ */
+
+.mp-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mp-cif-drop {
+  background: #ffffff !important;
+  border: 1.5px dashed #cbd5e1 !important;
+  border-radius: 6px !important;
+  padding: 18px !important;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.mp-cif-drop:hover {
+  border-color: #00a39c !important;
+  background: #f0fdfa !important;
+}
+
+/* Top Minimal Bar */
+.mp-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mp-topbar-left,
+.mp-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mp-topbar-left {
+  flex: 1;
+  min-width: 280px;
+}
+
+/* Signature MP Reset + Count Split Pill */
+.mp-status-pill {
+  display: inline-flex;
+  align-items: stretch;
+  height: 32px;
+  border-radius: 4px;
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  flex-shrink: 0;
+}
+
+.mp-reset-btn {
+  background: #e64965;
+  color: #ffffff;
+  border: none;
+  padding: 0 11px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.14s ease;
+}
+
+.mp-reset-btn:hover {
+  background: #d43552;
+}
+
+.mp-count-badge {
+  background: #2f353d;
+  color: #ffffff;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Minimal Search Box */
+.mp-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 180px;
+  max-width: 310px;
+}
+
+.mp-search-svg {
+  position: absolute;
+  left: 9px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.mp-search-wrap #struct-search {
+  width: 100%;
+  height: 32px;
+  padding: 0 26px 0 30px;
+  border: 1px solid #d5dbe3;
+  border-radius: 4px;
+  font-size: 12.5px;
+  color: #1e293b;
+  background: #ffffff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.mp-search-wrap #struct-search:focus {
+  border-color: #00a39c;
+  box-shadow: 0 0 0 2px rgba(0, 163, 156, 0.14);
+  outline: none;
+}
+
+.mp-search-wrap #struct-search-clear {
+  position: absolute;
+  right: 6px;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 15px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px 4px;
+}
+
+.mp-search-wrap #struct-search-clear:hover {
+  color: #1e293b;
+}
+
+/* Clean Buttons */
+.mp-btn-outline {
+  height: 32px;
+  padding: 0 11px;
+  background: #ffffff;
+  border: 1px solid #d5dbe3;
+  border-radius: 4px;
+  color: #334155;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  transition: all 0.13s ease;
+}
+
+.mp-btn-outline:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.mp-btn-primary {
+  height: 32px;
+  padding: 0 12px;
+  background: #00a39c;
+  border: 1px solid #008f89;
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  transition: background 0.13s ease;
+}
+
+.mp-btn-primary:hover {
+  background: #008a84;
+}
+
+/* Segmented View Switcher */
+.mp-view-segmented {
+  display: inline-flex;
+  align-items: stretch;
+  height: 32px;
+  border: 1px solid #d5dbe3;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.mp-seg-btn {
+  border: none;
+  border-right: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 0 10px;
+  cursor: pointer;
+  transition: all 0.13s ease;
+  white-space: nowrap;
+}
+
+.mp-seg-btn:last-child {
+  border-right: none;
+}
+
+.mp-seg-btn:hover {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.mp-seg-btn.active {
+  background: #eef6f6;
+  color: #007d77;
+  font-weight: 600;
+}
+
+.mp-mobile-filter-btn {
+  display: none;
+}
+
+/* Batch Bar (Clean Minimal) */
+.mp-batch-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: #f0fdfa;
+  border: 1px solid #99f6e4;
+  border-radius: 5px;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.mp-batch-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #334155;
+  font-weight: 600;
+  font-size: 11.5px;
+}
+
+.mp-select-xs {
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #ffffff;
+  font-size: 11.5px;
+  color: #1e293b;
+}
+
+.mp-btn-xs {
+  height: 26px;
+  padding: 0 8px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+}
+
+.mp-btn-xs:hover {
+  background: #f1f5f9;
+}
+
+.mp-btn-xs-teal {
+  background: #00a39c;
+  border-color: #008f89;
+  color: #ffffff;
+}
+
+.mp-btn-xs-teal:hover {
+  background: #008a84;
+}
+
+.mp-btn-xs-danger {
+  background: #e11d48;
+  border-color: #be123c;
+  color: #ffffff;
+}
+
+.mp-btn-xs-danger:hover {
+  background: #be123c;
+}
+
+/* Main Materials Project Explorer Box */
+.mp-explorer-shell {
+  display: flex;
+  align-items: stretch;
+  background: #ffffff;
+  border: 1px solid #d8dee6;
+  border-radius: 4px;
+  min-height: 480px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+}
+
+/* Far-Left Vertical Rail (Exact Materials Project Look) */
+.mp-rail {
+  width: 34px;
+  flex-shrink: 0;
+  background: #f7f9fb;
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+}
+
+.mp-rail-tab {
+  width: 34px;
+  padding: 16px 0;
+  border: none;
+  border-bottom: 1px solid #e2e8f0;
+  background: transparent;
+  color: #008f89;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+.mp-rail-tab span {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  letter-spacing: 0.3px;
+}
+
+.mp-rail-tab:hover {
+  background: #edf2f7;
+}
+
+.mp-rail-tab.active {
+  background: #00b5ad;
+  color: #ffffff;
+}
+
+/* Collapsible Left Drawer */
+.mp-drawer {
+  width: 215px;
+  flex-shrink: 0;
+  background: #fafbfc;
+  border-right: 1px solid #e2e8f0;
+  overflow-y: auto;
+  transition: width 0.16s ease;
+}
+
+.mp-drawer.collapsed {
+  display: none;
+}
+
+.mp-drawer-panel {
+  padding: 4px 0;
+}
+
+.mp-acc-section {
+  border-bottom: 1px solid #edf0f4;
+}
+
+.mp-acc-header {
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #2d3748;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.12s;
+}
+
+.mp-acc-header:hover {
+  background: #f1f5f9;
+}
+
+.mp-acc-caret {
+  font-size: 11px;
+  color: #64748b;
+  width: 10px;
+  display: inline-block;
+}
+
+.mp-acc-body {
+  display: none;
+  padding: 2px 12px 12px 18px;
+}
+
+.mp-acc-section.open .mp-acc-body {
+  display: block;
+}
+
+.mp-field-label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.mp-select {
+  width: 100%;
+  height: 30px;
+  padding: 0 7px;
+  border: 1px solid #cbd5e1;
+  border-radius: 3px;
+  background: #ffffff;
+  font-size: 12px;
+  color: #1e293b;
+  outline: none;
+  cursor: pointer;
+}
+
+.mp-select:focus {
+  border-color: #00a39c;
+}
+
+.mp-input-sm {
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 3px;
+  background: #ffffff;
+  font-size: 12px;
+  color: #1e293b;
+}
+
+.mp-input-sm:focus {
+  border-color: #00a39c;
+  outline: none;
+}
+
+/* Columns Checklist Drawer */
+.mp-col-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid #edf0f4;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.mp-link-btn {
+  background: none;
+  border: none;
+  color: #008f89;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.mp-link-btn:hover {
+  text-decoration: underline;
+}
+
+.mp-col-list {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.mp-col-check-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: #334155;
+  cursor: pointer;
+  user-select: none;
+}
+
+.mp-col-check-item input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #00a39c;
+  cursor: pointer;
+}
+
+/* Main Content Area (Right side of Explorer) */
+.mp-grid-main {
+  flex: 1;
+  min-width: 0;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.mp-grid-main .struct-grid,
+.mp-grid-main .struct-grouped-container {
+  padding: 14px;
+}
+
+.mp-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* Materials Project Scientific Data Table */
+.mp-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 13px;
+  color: #1e293b;
+}
+
+.mp-data-table thead th {
+  background: #f8f9fb;
+  color: #1e293b;
+  font-weight: 600;
+  font-size: 12px;
+  text-align: left;
+  padding: 9px 10px;
+  border-bottom: 1px solid #dde3ea;
+  border-right: 1px solid #eef1f5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+
+.mp-data-table thead th:last-child {
+  border-right: none;
+}
+
+.mp-th-sortable {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.mp-th-sortable:hover {
+  background: #eff2f6;
+}
+
+.mp-sort-ind {
+  float: right;
+  color: #b0b9c6;
+  font-size: 11px;
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+.mp-sort-ind.active {
+  color: #008f89;
+  font-weight: 700;
+}
+
+/* Column Width Proportions (Clean 1-Page Fit) */
+.mp-th-cb, .mp-td-cb {
+  width: 30px;
+  text-align: center !important;
+  padding: 0 4px !important;
+}
+
+.mp-th-cb input, .mp-td-cb input {
+  width: 14px;
+  height: 14px;
+  accent-color: #00a39c;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.mp-col-mat     { width: 22%; }
+.mp-col-formula { width: 13%; }
+.mp-col-sys     { width: 12%; }
+.mp-col-sg      { width: 13%; }
+.mp-col-lat     { width: 15%; }
+.mp-col-vol     { width: 10%; }
+.mp-col-eg      { width: 10%; }
+.mp-col-dft     { width: 11%; }
+.mp-col-folder  { width: 15%; }
+.mp-col-paper   { width: 9%; }
+.mp-col-aud     { width: 8%; }
+.mp-th-actions  { width: 88px; text-align: right !important; }
+
+/* Table Rows */
+.mp-tr {
+  height: 37px;
+  border-bottom: 1px solid #f1f4f8;
+  transition: background 0.1s ease;
+}
+
+.mp-tr:hover {
+  background: #f4fbfb;
+}
+
+.mp-tr.selected {
+  background: #e6f7f6 !important;
+}
+
+.mp-td {
+  padding: 6px 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  color: #334155;
+  font-size: 12.5px;
+}
+
+/* Clean Blue Clickable Material Link (Exact MP Style) */
+.mp-mat-link {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.mp-mat-link:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.mp-paper-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #00a39c;
+  margin-left: 5px;
+  vertical-align: middle;
+}
+
+.mp-td-formula {
+  color: #0f172a;
+  font-weight: 500;
+}
+
+.mp-td-sg {
+  color: #334155;
+}
+
+.mp-td-num {
+  font-variant-numeric: tabular-nums;
+  color: #1e293b;
+}
+
+.mp-td-muted {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.mp-folder-text {
+  color: #475569;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.mp-folder-text:hover {
+  color: #008f89;
+  text-decoration: underline;
+}
+
+/* Ultra-Minimal Monochrome Row Actions */
+.mp-td-actions {
+  padding: 4px 8px;
+  text-align: right;
+  overflow: visible;
+}
+
+.mp-row-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+.mp-icon-btn {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.12s, background 0.12s;
+}
+
+.mp-tr:hover .mp-icon-btn {
+  color: #64748b;
+}
+
+.mp-icon-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a !important;
+}
+
+.mp-icon-btn-del:hover {
+  background: #fee2e2;
+  color: #dc2626 !important;
+}
+
+/* Mobile & Tablet Responsiveness */
+@media (max-width: 900px) {
+  .mp-mobile-filter-btn {
+    display: inline-flex;
+  }
+  .mp-explorer-shell {
+    flex-direction: column;
+  }
+  .mp-rail {
+    display: none;
+  }
+  .mp-drawer {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .mp-data-table {
+    table-layout: auto;
+    min-width: 660px;
+  }
+  .mp-topbar-left {
+    width: 100%;
+  }
+  .mp-search-wrap {
+    max-width: 100%;
+  }
+}
