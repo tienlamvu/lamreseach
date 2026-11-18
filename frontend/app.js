@@ -1339,6 +1339,10 @@ async function pullCloudDatabaseInstant(silent = true) {
 
     _LAST_CLOUD_PULL_MS = Date.now();
 
+    if (Array.isArray(cloudDb.event_categories) && cloudDb.event_categories.length > 0) {
+      ensureEventCategoriesInitialized(cloudDb.event_categories);
+    }
+
     // Merge deleted users tombstones, users_registry, and user_groups
     ensureUsersRegistryInitialized(
       cloudDb.users_registry || {},
@@ -1550,6 +1554,7 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
       papers: masterPapers,
       structures: masterStructures,
       schedule: masterSchedule,
+      event_categories: getEventCategoriesList(),
       users_registry: sanitizedCloudUsers,
       user_groups: STATE.userGroups || {},
       deleted_users: Object.keys(deletedMap).filter(em => !sanitizedCloudUsers[em] && (!STATE.auth || normalizeEmail(STATE.auth.email) !== em)),
@@ -2562,8 +2567,10 @@ function applyActiveWorkspaceData() {
     }).map(ms => ({ ...ms, _sharedFromAdmin: true }));
 
     const sharedMasterSchedule = ((STATE.masterData && STATE.masterData.schedule) || []).filter(mev => {
-      if (!canCurrentViewerSeeItem(mev)) return false;
-      return !ownSchedule.some(oev => oev.id === mev.id);
+      const visibleByPolicy = canCurrentViewerSeeItem(mev);
+      const visibleAsParticipant = typeof isEmailDesignatedParticipant === "function" && isEmailDesignatedParticipant(mev, activeUserEmail);
+      if (!visibleByPolicy && !visibleAsParticipant) return false;
+      return !ownSchedule.some(oev => Number(oev.id) === Number(mev.id) || (oev._syncedEventId && Number(oev._syncedEventId) === Number(mev.id)));
     }).map(mev => ({ ...mev, _sharedFromAdmin: true }));
 
     STATE.papers = [...sharedMasterPapers, ...ownPapers];
@@ -5866,20 +5873,24 @@ function renderAdminInspectorContent() {
     if (schedList.length === 0) {
       tabBodyHtml = `<div style="padding:20px; text-align:center; color:#64748b;">No calendar events added by this user yet.</div>`;
     } else {
-      tabBodyHtml = schedList.map(ev => `
+      tabBodyHtml = schedList.map(ev => {
+        const partLabels = formatEventParticipantsSummary(ev);
+        return `
         <div class="item-card" style="margin-bottom:8px; padding:10px 12px;">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
             <div>
               <span class="badge badge-blue">${escapeHtml(ev.status || "Scheduled")}</span>
               <span class="badge badge-slate">${escapeHtml(ev.event_type || "Event")}</span>
+              ${ev._isParticipantSync ? `<span class="badge badge-amber" style="font-size:10px;">Synced from ${escapeHtml(ev._syncedFromName || ev._syncedFromEmail || "Organizer")}</span>` : ""}
               <strong style="font-size:13.5px; margin-left:6px;">${escapeHtml(ev.title)}</strong>
             </div>
-            <div style="font-size:12px; color:#1e40af; font-weight:600;">📅 ${escapeHtml(ev.start_date)} (${escapeHtml(ev.start_time || "09:00")} – ${escapeHtml(ev.end_time || "10:00")})</div>
+            <div style="font-size:12px; color:#8c3d0c; font-weight:600;">📅 ${escapeHtml(ev.start_date)} (${escapeHtml(ev.start_time || "09:00")} – ${escapeHtml(ev.end_time || "10:00")})</div>
           </div>
-          <div style="font-size:12px; color:#475569; margin-top:4px;">📍 ${escapeHtml(ev.instrument_or_location || "Lab")} ${ev.sample_id ? `| Sample: <code>${escapeHtml(ev.sample_id)}</code>` : ""}</div>
-          ${ev.description ? `<div style="font-size:12px; color:#64748b; margin-top:3px;">${escapeHtml(ev.description)}</div>` : ""}
+          <div style="font-size:12px; color:#5c493c; margin-top:4px;">📍 ${escapeHtml(ev.instrument_or_location || "Lab")} ${partLabels ? `| <strong>Participants:</strong> ${escapeHtml(partLabels)}` : ""}</div>
+          ${ev.description ? `<div style="font-size:12px; color:#786354; margin-top:3px;">${escapeHtml(ev.description)}</div>` : ""}
         </div>
-      `).join("");
+      `;
+      }).join("");
     }
   } else if (tab === "papers") {
     const userFolderName = getPersonalUserFolderName(u);
@@ -12947,10 +12958,12 @@ function renderScheduleList() {
   const pagedSchedule = paginateListSlice("schedule", filtered);
 
   container.innerHTML = pagedSchedule.map(s => {
-    const canModifyItem = Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin;
+    const isSyncedFromOther = Boolean(s._isParticipantSync) && !(STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail);
+    const canModifyItem = (Boolean(STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail) || (!s._sharedFromAdmin && !isSyncedFromOther));
     const isSelected = STATE.selectedScheduleIds.has(s.id);
+    const participantsBadgesHtml = renderEventParticipantsBadgesHtml(s);
     return `
-    <div class="item-card" id="sched-card-${s.id}" style="${isSelected ? 'border-color:#2563eb; background:#f0f7ff;' : ''}">
+    <div class="item-card" id="sched-card-${s.id}" style="${isSelected ? 'border-color:#b45309; background:#fdf8ef;' : ''}">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap;">
         <div style="display:flex; gap:10px; align-items:flex-start; flex:1;">
           ${canModifyItem ? `
@@ -12962,7 +12975,8 @@ function renderScheduleList() {
             <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:5px;">
               <span class="badge ${s.status === 'Completed' ? 'badge-green' : s.status === 'In Progress' ? 'badge-amber' : 'badge-blue'}">${escapeHtml(s.status)}</span>
               <span class="badge badge-slate">${escapeHtml(s.event_type)}</span>
-              ${s.sample_id ? `<span class="badge badge-purple">${escapeHtml(s.sample_id)}</span>` : ""}
+              ${s._isParticipantSync ? `<span class="badge badge-amber" title="Automatically synced because you were assigned as a participant">Synced · ${escapeHtml(s._syncedFromName || s._syncedFromEmail || "Organizer")}</span>` : ""}
+              ${participantsBadgesHtml}
               ${s.in_weekly_report ? `<span class="badge badge-amber">📝 In Weekly Report</span>` : ""}
               ${renderVisibilityBadgeHtml(s)}
             </div>
@@ -13213,7 +13227,10 @@ async function deleteSelectedSchedule() {
   if (!ok) return;
 
   const idsToDelete = Array.from(STATE.selectedScheduleIds);
+  const eventsBeingDeleted = (STATE.schedule || []).filter(s => STATE.selectedScheduleIds.has(s.id));
   STATE.schedule = (STATE.schedule || []).filter(s => !STATE.selectedScheduleIds.has(s.id));
+  eventsBeingDeleted.forEach(ev => syncEventToParticipantsWorkspaces(ev, { deleted: true }));
+
   if (shouldUseBackendApi()) {
     for (const id of idsToDelete) {
       try {
@@ -13230,9 +13247,567 @@ async function deleteSelectedSchedule() {
   showToast(`Deleted ${count} selected event(s).`, "info");
 }
 
+// ============================================================================
+// Admin-Customizable Event Categories & Participants Autocomplete / Sync Engine
+// ============================================================================
+
+const DEFAULT_EVENT_CATEGORIES = [
+  "Synthesis / Furnace",
+  "Characterization (XRD/SEM/TEM/XPS)",
+  "Group Meeting / PI Meeting",
+  "Electrochemical Testing",
+  "Data Analysis / Manuscript Writing"
+];
+
+function ensureEventCategoriesInitialized(remoteList = null) {
+  if (Array.isArray(remoteList) && remoteList.length > 0) {
+    const cleaned = Array.from(new Set(remoteList.map(x => String(x || "").trim()).filter(Boolean)));
+    if (cleaned.length > 0) {
+      STATE.eventCategories = cleaned;
+      persistEventCategoriesLocal();
+      return STATE.eventCategories;
+    }
+  }
+  if (!Array.isArray(STATE.eventCategories) || STATE.eventCategories.length === 0) {
+    let loaded = null;
+    try {
+      const raw = localStorage.getItem("matsci_event_categories_v1");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) loaded = parsed;
+      }
+    } catch (e) {}
+    STATE.eventCategories = (loaded && loaded.length > 0) ? loaded : [...DEFAULT_EVENT_CATEGORIES];
+  }
+  return STATE.eventCategories;
+}
+
+function getEventCategoriesList() {
+  return ensureEventCategoriesInitialized();
+}
+
+function persistEventCategoriesLocal() {
+  try {
+    localStorage.setItem("matsci_event_categories_v1", JSON.stringify(STATE.eventCategories || DEFAULT_EVENT_CATEGORIES));
+  } catch (e) {}
+}
+
+function populateEventCategoryDropdown(selectedVal = null) {
+  const sel = document.getElementById("sm-type");
+  if (!sel) return;
+  const cats = getEventCategoriesList();
+  const list = [...cats];
+  if (selectedVal && !list.includes(selectedVal)) {
+    list.push(selectedVal);
+  }
+  const target = selectedVal || list[0] || "Group Meeting / PI Meeting";
+  sel.innerHTML = list.map(c =>
+    `<option value="${escapeHtml(c)}"${c === target ? " selected" : ""}>${escapeHtml(c)}</option>`
+  ).join("");
+  sel.value = target;
+}
+window.populateEventCategoryDropdown = populateEventCategoryDropdown;
+
+function toggleEventCategoryManager() {
+  if (!requireStrictAdminAuth()) return;
+  const box = document.getElementById("sm-cat-manager-box");
+  if (!box) return;
+  const isOpen = box.style.display !== "none";
+  box.style.display = isOpen ? "none" : "block";
+  if (!isOpen) {
+    renderEventCategoryManagerList();
+    document.getElementById("sm-new-cat-input")?.focus();
+  }
+}
+window.toggleEventCategoryManager = toggleEventCategoryManager;
+
+function renderEventCategoryManagerList() {
+  const container = document.getElementById("sm-cat-manager-list");
+  if (!container) return;
+  const cats = getEventCategoriesList();
+  container.innerHTML = cats.map((cat, idx) => `
+    <div class="sm-cat-item">
+      <span style="flex:1; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(cat)}">${escapeHtml(cat)}</span>
+      <div style="display:flex; gap:4px; flex-shrink:0;">
+        <button type="button" class="mp-btn-xs" onclick="renameEventCategoryByAdmin(${idx})" title="Rename category">Rename</button>
+        ${cats.length > 1 ? `<button type="button" class="mp-btn-xs" style="color:#9f2b22;" onclick="deleteEventCategoryByAdmin(${idx})" title="Delete category">×</button>` : ""}
+      </div>
+    </div>
+  `).join("");
+}
+
+function addEventCategoryByAdmin() {
+  if (!requireStrictAdminAuth()) return;
+  const inp = document.getElementById("sm-new-cat-input");
+  const name = (inp ? inp.value : "").trim();
+  if (!name) {
+    showToast("Please enter a category name.", "warn");
+    return;
+  }
+  const cats = getEventCategoriesList();
+  if (cats.some(c => c.toLowerCase() === name.toLowerCase())) {
+    showToast(`Category "${name}" already exists.`, "warn");
+    return;
+  }
+  cats.push(name);
+  STATE.eventCategories = cats;
+  persistEventCategoriesLocal();
+  if (inp) inp.value = "";
+  populateEventCategoryDropdown(name);
+  renderEventCategoryManagerList();
+  saveStaticDb();
+  showToast(`Added Event Category: "${name}"`, "success");
+}
+window.addEventCategoryByAdmin = addEventCategoryByAdmin;
+
+function renameEventCategoryByAdmin(idx) {
+  if (!requireStrictAdminAuth()) return;
+  const cats = getEventCategoriesList();
+  const oldName = cats[idx];
+  if (!oldName) return;
+  const next = prompt(`Rename Event Category "${oldName}" to:`, oldName);
+  if (!next || !next.trim() || next.trim() === oldName) return;
+  const trimmed = next.trim();
+  if (cats.some((c, i) => i !== idx && c.toLowerCase() === trimmed.toLowerCase())) {
+    showToast(`Category "${trimmed}" already exists.`, "warn");
+    return;
+  }
+  cats[idx] = trimmed;
+  STATE.eventCategories = cats;
+  persistEventCategoriesLocal();
+  const curSel = document.getElementById("sm-type")?.value;
+  populateEventCategoryDropdown(curSel === oldName ? trimmed : curSel);
+  renderEventCategoryManagerList();
+  saveStaticDb();
+  showToast(`Renamed category to "${trimmed}"`, "success");
+}
+window.renameEventCategoryByAdmin = renameEventCategoryByAdmin;
+
+function deleteEventCategoryByAdmin(idx) {
+  if (!requireStrictAdminAuth()) return;
+  const cats = getEventCategoriesList();
+  if (cats.length <= 1) {
+    showToast("At least one Event Category must remain.", "warn");
+    return;
+  }
+  const removed = cats[idx];
+  if (!removed) return;
+  cats.splice(idx, 1);
+  STATE.eventCategories = cats;
+  persistEventCategoriesLocal();
+  const curSel = document.getElementById("sm-type")?.value;
+  populateEventCategoryDropdown(curSel === removed ? cats[0] : curSel);
+  renderEventCategoryManagerList();
+  saveStaticDb();
+  showToast(`Removed Event Category "${removed}"`, "info");
+}
+window.deleteEventCategoryByAdmin = deleteEventCategoryByAdmin;
+
+// --- Participants Multi-Select Autocomplete Picker & Calendar Sync ---
+let _smSelectedParticipants = [];
+
+function resolveParticipantEmails(participantsList) {
+  ensureUserGroupsInitialized();
+  const emails = new Set();
+  (Array.isArray(participantsList) ? participantsList : []).forEach(item => {
+    if (!item) return;
+    if (item.type === "user") {
+      const em = normalizeEmail(item.email || item.id || "");
+      if (em) emails.add(em);
+    } else if (item.type === "group") {
+      const g = STATE.userGroups && STATE.userGroups[item.id];
+      if (g && Array.isArray(g.members)) {
+        g.members.forEach(m => {
+          const em = normalizeEmail(m);
+          if (em) emails.add(em);
+        });
+      }
+    }
+  });
+  return Array.from(emails);
+}
+
+function isEmailDesignatedParticipant(ev, viewerEmail) {
+  if (!ev || !viewerEmail) return false;
+  const norm = normalizeEmail(viewerEmail);
+  if (!norm) return false;
+  const uObj = STATE.usersRegistry && STATE.usersRegistry[norm];
+  const viewerGoogle = normalizeEmail((uObj && uObj.googleEmail) || "");
+  const resolved = resolveParticipantEmails(ev.participants || []);
+  const explicit = Array.isArray(ev.participant_emails) ? ev.participant_emails.map(normalizeEmail) : [];
+  const allEmails = new Set([...resolved, ...explicit]);
+  if (allEmails.has(norm) || (viewerGoogle && allEmails.has(viewerGoogle))) return true;
+  if (Array.isArray(ev.participant_groups) && ev.participant_groups.length > 0) {
+    const viewerGroups = getGroupsForUserEmail(norm);
+    if (viewerGroups.some(g => ev.participant_groups.includes(g.id))) return true;
+  }
+  return false;
+}
+
+function formatEventParticipantsSummary(ev) {
+  if (!ev || !Array.isArray(ev.participants) || ev.participants.length === 0) return "";
+  return ev.participants.map(p => p.type === "group" ? `Group: ${p.label}` : p.label).join(", ");
+}
+
+function renderEventParticipantsBadgesHtml(ev) {
+  if (!ev || !Array.isArray(ev.participants) || ev.participants.length === 0) return "";
+  return ev.participants.map(p => {
+    const cls = p.type === "group" ? "badge-amber" : "badge-slate";
+    const prefix = p.type === "group" ? "Group: " : "Participant: ";
+    return `<span class="badge ${cls}" title="${escapeHtml(p.email || p.label)}">${escapeHtml(prefix + p.label)}</span>`;
+  }).join("");
+}
+
+function setScheduleModalParticipants(list) {
+  _smSelectedParticipants = Array.isArray(list) ? list.map(x => ({ ...x })) : [];
+  renderScheduleParticipantsChips();
+  const inp = document.getElementById("sm-participant-search");
+  if (inp) inp.value = "";
+  const sug = document.getElementById("sm-participant-suggestions");
+  if (sug) sug.style.display = "none";
+}
+
+function renderScheduleParticipantsChips() {
+  const wrap = document.getElementById("sm-participants-chips");
+  if (!wrap) return;
+  if (_smSelectedParticipants.length === 0) {
+    wrap.innerHTML = "";
+    return;
+  }
+  wrap.innerHTML = _smSelectedParticipants.map((p, idx) => {
+    const cls = p.type === "group" ? "is-group" : (p.type === "custom" ? "is-custom" : "");
+    const tagText = p.type === "group"
+      ? `Group: ${p.label}`
+      : (p.type === "user" && p.email ? `${p.label} (${p.email})` : p.label);
+    return `
+      <span class="sm-participant-chip ${cls}">
+        <span>${escapeHtml(tagText)}</span>
+        <button type="button" onclick="removeScheduleParticipant(${idx})" title="Remove participant">×</button>
+      </span>
+    `;
+  }).join("");
+}
+
+function removeScheduleParticipant(idx) {
+  _smSelectedParticipants.splice(idx, 1);
+  renderScheduleParticipantsChips();
+  const sug = document.getElementById("sm-participant-suggestions");
+  if (sug && sug.style.display !== "none") {
+    renderScheduleParticipantSuggestions(true);
+  }
+}
+window.removeScheduleParticipant = removeScheduleParticipant;
+
+function _isParticipantSelected(type, id) {
+  const normId = type === "user" ? normalizeEmail(id) : String(id || "").trim().toLowerCase();
+  return _smSelectedParticipants.some(p => {
+    if (p.type !== type) return false;
+    const curId = type === "user" ? normalizeEmail(p.email || p.id) : String(p.id || "").trim().toLowerCase();
+    return curId === normId;
+  });
+}
+
+function toggleScheduleParticipantItem(type, id, label, email = "") {
+  const normId = type === "user" ? normalizeEmail(email || id) : String(id || "").trim();
+  const existIdx = _smSelectedParticipants.findIndex(p => {
+    if (p.type !== type) return false;
+    return type === "user"
+      ? normalizeEmail(p.email || p.id) === normId
+      : String(p.id || "").trim().toLowerCase() === normId.toLowerCase();
+  });
+  if (existIdx >= 0) {
+    _smSelectedParticipants.splice(existIdx, 1);
+  } else {
+    _smSelectedParticipants.push({
+      type,
+      id: normId,
+      label: label || normId,
+      email: type === "user" ? normId : ""
+    });
+  }
+  renderScheduleParticipantsChips();
+  const inp = document.getElementById("sm-participant-search");
+  if (inp) {
+    inp.value = "";
+    inp.focus();
+  }
+  renderScheduleParticipantSuggestions(true);
+}
+window.toggleScheduleParticipantItem = toggleScheduleParticipantItem;
+
+function addCustomScheduleParticipant(rawName) {
+  const name = String(rawName || "").trim();
+  if (!name) return;
+  if (!_isParticipantSelected("custom", name)) {
+    _smSelectedParticipants.push({ type: "custom", id: name, label: name, email: "" });
+  }
+  renderScheduleParticipantsChips();
+  const inp = document.getElementById("sm-participant-search");
+  if (inp) inp.value = "";
+  const sug = document.getElementById("sm-participant-suggestions");
+  if (sug) sug.style.display = "none";
+}
+window.addCustomScheduleParticipant = addCustomScheduleParticipant;
+
+function toggleScheduleParticipantSuggestions() {
+  const sug = document.getElementById("sm-participant-suggestions");
+  const inp = document.getElementById("sm-participant-search");
+  if (!sug) return;
+  if (sug.style.display !== "none") {
+    sug.style.display = "none";
+  } else {
+    if (inp) inp.focus();
+    renderScheduleParticipantSuggestions(true);
+  }
+}
+window.toggleScheduleParticipantSuggestions = toggleScheduleParticipantSuggestions;
+
+function renderScheduleParticipantSuggestions(openDropdown = true) {
+  const sug = document.getElementById("sm-participant-suggestions");
+  const inp = document.getElementById("sm-participant-search");
+  if (!sug) return;
+  ensureUserGroupsInitialized();
+
+  const rawQuery = (inp ? inp.value : "").trim();
+  const q = rawQuery.toLowerCase();
+
+  // 1. Matching User Groups
+  const groups = Object.values(STATE.userGroups || {}).filter(g => {
+    if (!g || !g.id) return false;
+    if (!q) return true;
+    return `${g.name} ${g.description || ""}`.toLowerCase().includes(q);
+  });
+
+  // 2. Matching Registered Users + Administrator
+  const candidates = [];
+  const seenEmails = new Set();
+  const adminEmail = normalizeEmail(OWNER_GOOGLE_EMAIL);
+  if (adminEmail) {
+    seenEmails.add(adminEmail);
+    candidates.push({
+      email: adminEmail,
+      name: (STATE.profile && STATE.profile.full_name) || "Vu Tien Lam",
+      role: "Administrator",
+      affiliation: "Sungkyunkwan University (SKKU)"
+    });
+  }
+  Object.values(STATE.usersRegistry || {}).forEach(u => {
+    if (!u || !u.email) return;
+    const em = normalizeEmail(u.email);
+    if (!em || seenEmails.has(em)) return;
+    seenEmails.add(em);
+    candidates.push({
+      email: em,
+      name: u.name || em.split("@")[0],
+      role: u.academicRole || "Researcher",
+      affiliation: u.affiliation || ""
+    });
+  });
+
+  const matchingUsers = candidates.filter(u => {
+    if (!q) return true;
+    const grpNames = getGroupsForUserEmail(u.email).map(g => g.name).join(" ");
+    return `${u.name} ${u.email} ${u.role} ${u.affiliation} ${grpNames}`.toLowerCase().includes(q);
+  });
+
+  let html = "";
+  if (groups.length > 0) {
+    html += `<div class="sm-suggest-section-label">User Groups (Auto-sync all members)</div>`;
+    groups.forEach(g => {
+      const mCnt = Array.isArray(g.members) ? g.members.length : 0;
+      const sel = _isParticipantSelected("group", g.id);
+      const safeId = escapeHtml(g.id).replace(/'/g, "\\'");
+      const safeName = escapeHtml(g.name).replace(/'/g, "\\'");
+      html += `
+        <div class="sm-suggest-item ${sel ? "is-selected" : ""}" onclick="toggleScheduleParticipantItem('group', '${safeId}', '${safeName}')">
+          <div>
+            <strong>Group: ${escapeHtml(g.name)}</strong>
+            <div class="sm-suggest-sub">${mCnt} member${mCnt === 1 ? "" : "s"}</div>
+          </div>
+          <span class="badge ${sel ? "badge-green" : "badge-amber"}" style="font-size:10.5px;">${sel ? "✓ Selected" : "+ Add Group"}</span>
+        </div>
+      `;
+    });
+  }
+
+  if (matchingUsers.length > 0) {
+    html += `<div class="sm-suggest-section-label">Registered Users (Auto-sync to user's calendar)</div>`;
+    matchingUsers.forEach(u => {
+      const sel = _isParticipantSelected("user", u.email);
+      const safeEmail = escapeHtml(u.email).replace(/'/g, "\\'");
+      const safeName = escapeHtml(u.name).replace(/'/g, "\\'");
+      html += `
+        <div class="sm-suggest-item ${sel ? "is-selected" : ""}" onclick="toggleScheduleParticipantItem('user', '${safeEmail}', '${safeName}', '${safeEmail}')">
+          <div>
+            <strong>${escapeHtml(u.name)}</strong> <span class="badge badge-slate" style="font-size:10px; margin-left:4px;">${escapeHtml(u.role)}</span>
+            <div class="sm-suggest-sub" style="font-family:monospace;">${escapeHtml(u.email)}${u.affiliation ? ` · ${escapeHtml(u.affiliation)}` : ""}</div>
+          </div>
+          <span class="badge ${sel ? "badge-green" : "badge-slate"}" style="font-size:10.5px;">${sel ? "✓ Selected" : "+ Add"}</span>
+        </div>
+      `;
+    });
+  }
+
+  if (rawQuery && !matchingUsers.some(u => u.name.toLowerCase() === q || u.email === q)) {
+    const safeRaw = escapeHtml(rawQuery).replace(/'/g, "\\'");
+    html += `
+      <div class="sm-suggest-section-label">External / Guest Participant</div>
+      <div class="sm-suggest-item" onclick="addCustomScheduleParticipant('${safeRaw}')">
+        <span>+ Add "<strong>${escapeHtml(rawQuery)}</strong>" as external participant</span>
+        <span class="badge badge-slate" style="font-size:10px;">Guest</span>
+      </div>
+    `;
+  }
+
+  if (!html) {
+    html = `<div style="padding:10px; text-align:center; font-size:12px; color:#786354;">No matching users or groups found.</div>`;
+  }
+
+  sug.innerHTML = html;
+  if (openDropdown) sug.style.display = "block";
+}
+window.renderScheduleParticipantSuggestions = renderScheduleParticipantSuggestions;
+
+function handleScheduleParticipantKeydown(evt) {
+  if (evt.key === "Escape") {
+    const sug = document.getElementById("sm-participant-suggestions");
+    if (sug) sug.style.display = "none";
+    return;
+  }
+  if (evt.key === "Enter") {
+    evt.preventDefault();
+    const sug = document.getElementById("sm-participant-suggestions");
+    const firstItem = sug ? sug.querySelector(".sm-suggest-item") : null;
+    if (firstItem) {
+      firstItem.click();
+    } else {
+      const val = (document.getElementById("sm-participant-search")?.value || "").trim();
+      if (val) addCustomScheduleParticipant(val);
+    }
+  }
+}
+window.handleScheduleParticipantKeydown = handleScheduleParticipantKeydown;
+
+document.addEventListener("click", (e) => {
+  const wrap = document.querySelector(".sm-participant-search-wrap");
+  const sug = document.getElementById("sm-participant-suggestions");
+  if (sug && sug.style.display !== "none" && wrap && !wrap.contains(e.target)) {
+    sug.style.display = "none";
+  }
+});
+
+function syncEventToParticipantsWorkspaces(eventObj, options = {}) {
+  if (!eventObj || !eventObj.id) return 0;
+  const isDeleted = Boolean(options && options.deleted);
+  const eventId = Number(eventObj.id);
+  const creatorEmail = normalizeEmail(
+    (STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail)
+      ? OWNER_GOOGLE_EMAIL
+      : (getActivePersonalWorkspaceEmail() || (STATE.auth && STATE.auth.email) || "")
+  );
+  const creatorName = (STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail)
+    ? ((STATE.profile && STATE.profile.full_name) || "Vu Tien Lam (Admin)")
+    : ((STATE.auth && STATE.auth.name) || creatorEmail || "Researcher");
+
+  const targetEmails = isDeleted
+    ? new Set()
+    : new Set(resolveParticipantEmails(eventObj.participants || []));
+  if (creatorEmail) targetEmails.delete(creatorEmail);
+
+  let syncedCount = 0;
+  let usersModified = false;
+  const nowStr = getGmt9NowStr();
+
+  Object.keys(STATE.usersRegistry || {}).forEach(emKey => {
+    const u = STATE.usersRegistry[emKey];
+    if (!u || !u.email) return;
+    const normEm = normalizeEmail(u.email);
+    const normGoogle = normalizeEmail(u.googleEmail || "");
+    u.workspace = u.workspace || { schedule: [], papers: [], structures: [], expReportRows: [], litReportRows: [] };
+    if (!Array.isArray(u.workspace.schedule)) u.workspace.schedule = [];
+
+    const isTargeted = !isDeleted && (targetEmails.has(normEm) || (normGoogle && targetEmails.has(normGoogle)));
+    const existingIdx = u.workspace.schedule.findIndex(ev =>
+      ev && (Number(ev._syncedEventId) === eventId || (ev._isParticipantSync && Number(ev.id) === eventId))
+    );
+
+    if (isTargeted) {
+      const syncedCopy = {
+        ...eventObj,
+        id: eventId,
+        _syncedEventId: eventId,
+        _isParticipantSync: true,
+        _syncedFromEmail: creatorEmail,
+        _syncedFromName: creatorName,
+        visibility: "Private",
+        allowed_users: []
+      };
+      delete syncedCopy._sharedFromAdmin;
+      if (existingIdx >= 0) {
+        u.workspace.schedule[existingIdx] = syncedCopy;
+      } else {
+        u.workspace.schedule.unshift(syncedCopy);
+        u.activityLog = u.activityLog || [];
+        u.activityLog.unshift({
+          timestamp: nowStr,
+          category: "Calendar",
+          action: "Synced Event Invitation",
+          detail: `${eventObj.title} (${eventObj.start_date}) — assigned by ${creatorName}`
+        });
+      }
+      u.lastUpdatedAt = nowStr;
+      u.updatedAtMs = Date.now();
+      syncedCount++;
+      usersModified = true;
+    } else if (existingIdx >= 0) {
+      u.workspace.schedule.splice(existingIdx, 1);
+      u.lastUpdatedAt = nowStr;
+      u.updatedAtMs = Date.now();
+      usersModified = true;
+    }
+  });
+
+  // Also sync into Admin master schedule if a Personal User invited the Administrator
+  const adminEmailNorm = normalizeEmail(OWNER_GOOGLE_EMAIL);
+  if (!isStrictAdminSession() && adminEmailNorm && STATE.masterData) {
+    if (!Array.isArray(STATE.masterData.schedule)) STATE.masterData.schedule = [];
+    const existingMasterIdx = STATE.masterData.schedule.findIndex(ev =>
+      ev && (Number(ev._syncedEventId) === eventId || (ev._isParticipantSync && Number(ev.id) === eventId))
+    );
+    if (!isDeleted && targetEmails.has(adminEmailNorm)) {
+      const syncedAdminCopy = {
+        ...eventObj,
+        id: eventId,
+        _syncedEventId: eventId,
+        _isParticipantSync: true,
+        _syncedFromEmail: creatorEmail,
+        _syncedFromName: creatorName,
+        visibility: "Private",
+        allowed_users: []
+      };
+      if (existingMasterIdx >= 0) {
+        STATE.masterData.schedule[existingMasterIdx] = syncedAdminCopy;
+      } else {
+        STATE.masterData.schedule.unshift(syncedAdminCopy);
+      }
+      syncedCount++;
+    } else if (existingMasterIdx >= 0) {
+      STATE.masterData.schedule.splice(existingMasterIdx, 1);
+    }
+  }
+
+  if (usersModified) {
+    persistUsersRegistryLocal();
+  }
+  return syncedCount;
+}
+
 function openScheduleModal(itemId = null, prefillDate = null) {
   if (!requireAdminAuth()) return;
   const modal = document.getElementById("schedule-modal");
+  const catMgrBox = document.getElementById("sm-cat-manager-box");
+  if (catMgrBox) catMgrBox.style.display = "none";
+
   let todayStr = "";
   try {
     todayStr = prefillDate || new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
@@ -13245,14 +13820,14 @@ function openScheduleModal(itemId = null, prefillDate = null) {
   if (itemId) {
     const s = STATE.schedule.find(x => x.id === itemId);
     if (!s) return;
-    if (s._sharedFromAdmin && !(STATE.auth && STATE.auth.isAdmin)) {
-      showToast("This is a shared Administrator event (Read-Only).", "info");
+    if ((s._sharedFromAdmin || s._isParticipantSync) && !isStrictAdminSession()) {
+      showToast("This is a synced/shared calendar event (Read-Only).", "info");
       return;
     }
     document.getElementById("schedule-modal-title").textContent = "Edit Calendar Event / Simulation Slot";
     document.getElementById("sm-id").value = s.id;
     document.getElementById("sm-title").value = s.title || "";
-    document.getElementById("sm-type").value = s.event_type || "Group Meeting / PI Meeting";
+    populateEventCategoryDropdown(s.event_type || getEventCategoriesList()[0]);
     document.getElementById("sm-location").value = s.instrument_or_location || "";
     document.getElementById("sm-date").value = s.start_date || todayStr;
 
@@ -13261,7 +13836,7 @@ function openScheduleModal(itemId = null, prefillDate = null) {
 
     document.getElementById("sm-start").value = s.start_time || "09:00";
     document.getElementById("sm-end").value = s.end_time || "11:30";
-    document.getElementById("sm-sample").value = s.sample_id || "";
+    setScheduleModalParticipants(s.participants || []);
     document.getElementById("sm-status").value = s.status || "Scheduled";
     document.getElementById("sm-desc").value = s.description || "";
     updateScheduleDurationBadge();
@@ -13270,7 +13845,8 @@ function openScheduleModal(itemId = null, prefillDate = null) {
     document.getElementById("schedule-modal-title").textContent = `Schedule Event / Task (${todayStr})`;
     document.getElementById("sm-id").value = "";
     document.getElementById("sm-title").value = "";
-    document.getElementById("sm-type").value = "Group Meeting / PI Meeting";
+    const defaultCats = getEventCategoriesList();
+    populateEventCategoryDropdown(defaultCats.includes("Group Meeting / PI Meeting") ? "Group Meeting / PI Meeting" : defaultCats[0]);
     document.getElementById("sm-location").value = "SKKU Cluster / Office";
     document.getElementById("sm-date").value = todayStr;
 
@@ -13279,7 +13855,7 @@ function openScheduleModal(itemId = null, prefillDate = null) {
 
     document.getElementById("sm-start").value = "10:00";
     document.getElementById("sm-end").value = "12:00";
-    document.getElementById("sm-sample").value = "";
+    setScheduleModalParticipants([]);
     document.getElementById("sm-status").value = "Scheduled";
     document.getElementById("sm-desc").value = "";
     updateScheduleDurationBadge();
@@ -13287,14 +13863,15 @@ function openScheduleModal(itemId = null, prefillDate = null) {
   }
   modal.classList.add("open");
 }
+
 async function saveScheduleFromModal() {
   if (!requireAdminAuth()) return;
   const id = document.getElementById("sm-id").value;
   const openGcal = document.getElementById("sm-open-gcal")?.checked;
 
-  const visMeta = (STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail)
+  const visMeta = isStrictAdminSession()
     ? getVisibilityControlValues("sm")
-    : {};
+    : { visibility: "Private", allowed_users: [] };
 
   const sDate = document.getElementById("sm-date").value;
   const eDate = document.getElementById("sm-end-date")?.value || sDate;
@@ -13310,6 +13887,10 @@ async function saveScheduleFromModal() {
     return;
   }
 
+  const participantsCopy = _smSelectedParticipants.map(p => ({ ...p }));
+  const participantEmails = resolveParticipantEmails(participantsCopy);
+  const participantGroups = participantsCopy.filter(p => p.type === "group").map(p => p.id);
+
   const payload = {
     title: document.getElementById("sm-title").value.trim(),
     event_type: document.getElementById("sm-type").value,
@@ -13320,7 +13901,9 @@ async function saveScheduleFromModal() {
     end_time: eTime,
     priority: "High",
     status: document.getElementById("sm-status").value,
-    sample_id: document.getElementById("sm-sample").value.trim(),
+    participants: participantsCopy,
+    participant_emails: participantEmails,
+    participant_groups: participantGroups,
     description: document.getElementById("sm-desc").value.trim(),
     in_weekly_report: 1,
     ...visMeta
@@ -13328,6 +13911,7 @@ async function saveScheduleFromModal() {
 
   const isMulti = eDate !== sDate;
   const durationDesc = isMulti ? ` (${sDate} -> ${eDate})` : ` (${sDate} ${sTime}–${eTime})`;
+  let syncedUsersCount = 0;
 
   if (shouldUseBackendApi()) {
     const url = id ? `/api/schedule/${id}` : "/api/schedule";
@@ -13340,14 +13924,23 @@ async function saveScheduleFromModal() {
     closeModal("schedule-modal");
     await loadAllData();
   } else {
+    let savedEventObj;
     if (id) {
       const idx = STATE.schedule.findIndex(x => x.id === Number(id));
-      if (idx >= 0) STATE.schedule[idx] = { ...STATE.schedule[idx], ...payload };
+      if (idx >= 0) {
+        STATE.schedule[idx] = { ...STATE.schedule[idx], ...payload };
+        savedEventObj = STATE.schedule[idx];
+      } else {
+        savedEventObj = { ...payload, id: Number(id) };
+        STATE.schedule.push(savedEventObj);
+      }
       recordUserActivity("Calendar", "Updated Event", `${payload.title}${durationDesc}`);
     } else {
-      STATE.schedule.push({ ...payload, id: Date.now() });
+      savedEventObj = { ...payload, id: Date.now() };
+      STATE.schedule.push(savedEventObj);
       recordUserActivity("Calendar", "Scheduled Event", `${payload.title}${durationDesc}`);
     }
+    syncedUsersCount = syncEventToParticipantsWorkspaces(savedEventObj, { deleted: false });
     saveStaticDb();
     closeModal("schedule-modal");
     applyActiveWorkspaceData();
@@ -13357,14 +13950,15 @@ async function saveScheduleFromModal() {
   if (openGcal) {
     window.open(buildGoogleCalendarTemplateUrl(payload), "_blank");
   }
-  showToast(`Calendar event saved (${payload.visibility || "Public"})${isMulti ? " [Multi-Day]" : ""}!`);
+  const syncNote = syncedUsersCount > 0 ? ` · Synced to ${syncedUsersCount} participant calendar${syncedUsersCount > 1 ? "s" : ""}` : "";
+  showToast(`Calendar event saved (${payload.visibility || "Public"})${isMulti ? " [Multi-Day]" : ""}${syncNote}!`);
 }
 async function cycleScheduleStatus(id) {
   if (!requireAdminAuth()) return;
   const s = STATE.schedule.find(x => x.id === id);
   if (!s) return;
-  if (s._sharedFromAdmin && !(STATE.auth && STATE.auth.isAdmin)) {
-    showToast("This is a shared Administrator event (Read-Only).", "info");
+  if ((s._sharedFromAdmin || s._isParticipantSync) && !isStrictAdminSession()) {
+    showToast("This is a synced/shared calendar event (Read-Only).", "info");
     return;
   }
   const order = ["Scheduled", "In Progress", "Completed"];
@@ -13378,6 +13972,7 @@ async function cycleScheduleStatus(id) {
     await loadAllData();
   } else {
     s.status = nextStatus;
+    syncEventToParticipantsWorkspaces(s, { deleted: false });
     recordUserActivity("Calendar", `Marked Event as ${nextStatus}`, `${s.title} (${s.start_date})`);
     saveStaticDb();
     applyActiveWorkspaceData();
@@ -13389,8 +13984,8 @@ async function cycleScheduleStatus(id) {
 async function deleteScheduleItem(id) {
   if (!requireAdminAuth()) return;
   const s = STATE.schedule.find(x => x.id === id);
-  if (s && s._sharedFromAdmin && !(STATE.auth && STATE.auth.isAdmin)) {
-    showToast("This is a shared Administrator event (Read-Only).", "info");
+  if (s && (s._sharedFromAdmin || s._isParticipantSync) && !isStrictAdminSession()) {
+    showToast("This is a synced/shared calendar event (Read-Only).", "info");
     return;
   }
   const sTitle = s ? (s.title || `ID #${id}`) : `ID #${id}`;
@@ -13402,6 +13997,7 @@ async function deleteScheduleItem(id) {
     await loadAllData();
   } else {
     STATE.schedule = STATE.schedule.filter(x => x.id !== id);
+    if (s) syncEventToParticipantsWorkspaces(s, { deleted: true });
     recordUserActivity("Calendar", "Deleted Event", sTitle);
     saveStaticDb();
     applyActiveWorkspaceData();
@@ -13516,6 +14112,11 @@ async function loadStaticFallbackData() {
           remoteData ? remoteData.deleted_groups : null,
           remoteData ? remoteData.deleted_users_map : null
         );
+      }
+      if (remoteData && Array.isArray(remoteData.event_categories) && remoteData.event_categories.length > 0) {
+        ensureEventCategoriesInitialized(remoteData.event_categories);
+      } else {
+        ensureEventCategoriesInitialized();
       }
       if (remoteData && remoteData.user_groups) {
         ensureUserGroupsInitialized(remoteData.user_groups);
