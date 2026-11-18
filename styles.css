@@ -5629,12 +5629,25 @@ body.is-admin #cv-exclusive-owner-notice {
   background: #eff2f6;
 }
 
+.mp-th-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.mp-th-inner > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .mp-sort-ind {
-  float: right;
   color: #b0b9c6;
   font-size: 11px;
   font-weight: 400;
-  margin-left: 4px;
+  flex-shrink: 0;
 }
 
 .mp-sort-ind.active {
@@ -5657,18 +5670,19 @@ body.is-admin #cv-exclusive-owner-notice {
   vertical-align: middle;
 }
 
-.mp-col-mat     { width: 22%; }
-.mp-col-formula { width: 13%; }
-.mp-col-sys     { width: 12%; }
-.mp-col-sg      { width: 13%; }
+.mp-col-mat     { width: 21%; }
+.mp-col-formula { width: 12.5%; }
+.mp-col-sys     { width: 11.5%; }
+.mp-col-sg      { width: 12.5%; }
 .mp-col-lat     { width: 15%; }
-.mp-col-vol     { width: 10%; }
-.mp-col-eg      { width: 10%; }
+.mp-col-vol     { width: 10.5%; }
+.mp-col-eg      { width: 12%; }
 .mp-col-dft     { width: 11%; }
 .mp-col-folder  { width: 15%; }
 .mp-col-paper   { width: 9%; }
 .mp-col-aud     { width: 8%; }
-.mp-th-actions  { width: 88px; text-align: right !important; }
+.mp-th-actions  { width: 64px; text-align: right !important; }
+.mp-th-actions-wide { width: 112px; }
 
 /* Table Rows */
 .mp-tr {
@@ -5812,8 +5826,11 @@ body.is-admin #cv-exclusive-owner-notice {
   }
   .mp-topbar-left {
     width: 100%;
+    min-width: 0;
   }
   .mp-search-wrap {
+    flex: 1 1 100%;
+    min-width: 100%;
     max-width: 100%;
   }
 }
