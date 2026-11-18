@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T11:16:18.609Z",
+  "exported_at": "2026-11-18T11:20:06.189Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -3325,8 +3325,8 @@
         {
           "element": "Mo",
           "label": "Mo1",
-          "x": -1e-05,
-          "y": -2e-05,
+          "x": -0.00001,
+          "y": -0.00002,
           "z": 0.5,
           "occupancy": 1
         },
@@ -4436,7 +4436,7 @@
       "registeredAt": "2026-11-16 11:31",
       "lastLoginAt": "2026-11-18 20:09",
       "lastUpdatedAt": "2026-11-18 20:16",
-      "updatedAtMs": 1795000578326,
+      "updatedAtMs": 1795000601551,
       "workspace": {
         "papers": [
           {
@@ -4836,8 +4836,8 @@
               {
                 "element": "Mo",
                 "label": "Mo1",
-                "x": -1e-05,
-                "y": -2e-05,
+                "x": -0.00001,
+                "y": -0.00002,
                 "z": 0.5,
                 "occupancy": 1
               },
@@ -5249,8 +5249,8 @@
               {
                 "element": "Mo",
                 "label": "Mo1",
-                "x": -1e-05,
-                "y": -2e-05,
+                "x": -0.00001,
+                "y": -0.00002,
                 "z": 0.5,
                 "occupancy": 1
               },
@@ -5851,18 +5851,18 @@
     }
   },
   "deleted_users": [
-    "a@gmail.com",
-    "aaa@gmail.com",
-    "alice@skku.edu",
-    "jaewon@skku.edu",
     "jhpark.matsci@skku.edu",
-    "las@gmail.com",
-    "linh@gmail.com",
     "minseo.kim@gmail.com",
     "ssk@gmail.com",
+    "las@gmail.com",
+    "test.researcher@skku.edu",
+    "aaa@gmail.com",
     "temp.delete.test@gmail.com",
     "test.relay.otp@skku.edu",
-    "test.researcher@skku.edu"
+    "linh@gmail.com",
+    "a@gmail.com",
+    "alice@skku.edu",
+    "jaewon@skku.edu"
   ],
   "deleted_users_map": {
     "jhpark.matsci@skku.edu": 1794983284716,
@@ -5875,8 +5875,8 @@
     "test.relay.otp@skku.edu": 1794983284716,
     "linh@gmail.com": 1794983284716,
     "a@gmail.com": 1794983284716,
-    "jaewon@skku.edu": 1795000782079,
-    "alice@skku.edu": 1795000782079
+    "alice@skku.edu": 1795000782079,
+    "jaewon@skku.edu": 1795000782079
   },
   "deleted_groups": [
     "grp_external_collab",
