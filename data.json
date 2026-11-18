@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T06:32:08.530Z",
+  "exported_at": "2026-11-18T06:32:35.316Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -4076,7 +4076,7 @@
       "id": 1794571327536,
       "project_folder": "Lead-Free Perovskite Ferroelectrics",
       "structural_id": "CD-0003",
-      "calc_status": "Relaxed"
+      "calc_status": "Published"
     },
     {
       "name": "Na0.5Bi0.5TiO3 - Orthorhombic",
@@ -4166,7 +4166,7 @@
       "id": 1794571259385,
       "project_folder": "Lead-Free Perovskite Ferroelectrics",
       "structural_id": "CD-0002",
-      "calc_status": "Relaxed"
+      "calc_status": "Published"
     },
     {
       "name": "Na0.5Bi0.5TiO3 - Rhombohedral",
@@ -4256,7 +4256,7 @@
       "id": 1794571107171,
       "project_folder": "Lead-Free Perovskite Ferroelectrics",
       "structural_id": "CD-0001",
-      "calc_status": "Relaxed"
+      "calc_status": "Published"
     }
   ],
   "schedule": [
