@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T12:46:30.039Z",
+  "exported_at": "2026-11-18T12:47:16.882Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -5117,8 +5117,8 @@
       "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
       "registeredAt": "2026-11-16 11:31",
       "lastLoginAt": "2026-11-18 21:42",
-      "lastUpdatedAt": "2026-11-18 21:46",
-      "updatedAtMs": 1795005989610,
+      "lastUpdatedAt": "2026-11-18 21:47",
+      "updatedAtMs": 1795006035798,
       "workspace": {
         "papers": [
           {
@@ -5176,7 +5176,7 @@
             "name": "J1+4 +2",
             "formula": "J+4",
             "chemical_formula": "J+4",
-            "project_folder": "General Research",
+            "project_folder": "User: Tien Lam",
             "crystal_system": "Triclinic",
             "space_group": "P1 (1)",
             "structure_type": "2D Monolayer",
@@ -5283,7 +5283,7 @@
             "name": "J1+4 +1",
             "formula": "J+4",
             "chemical_formula": "J+4",
-            "project_folder": "General Research",
+            "project_folder": "User: Tien Lam",
             "crystal_system": "Triclinic",
             "space_group": "P1 (1)",
             "structure_type": "2D Monolayer",
@@ -5474,7 +5474,7 @@
             "allowed_users": [],
             "allowed_groups": [],
             "id": 1794807861185,
-            "project_folder": "2D Janus MA2Z4 & Layered TMDs",
+            "project_folder": "User: Tien Lam",
             "structural_id": "CD-0028",
             "calc_status": "Relaxed",
             "owner_email": "lamvt.sep@gmail.com",
@@ -5574,7 +5574,7 @@
             ],
             "in_weekly_report": 0,
             "id": 1794571683470,
-            "project_folder": "2D Janus MA2Z4 & Layered TMDs",
+            "project_folder": "User: Tien Lam",
             "structural_id": "CD-0027",
             "calc_status": "Relaxed",
             "visibility": "Private",
