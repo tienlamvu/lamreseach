@@ -1352,18 +1352,21 @@ async function pullCloudDatabaseInstant(silent = true) {
       cloudDb.deleted_users_map || null
     );
 
-    // Also check if cloud masterData is newer than local masterData
+    // Also check if cloud masterData should update local masterData
+    // Personal Users & Visitors ALWAYS accept Admin's authoritative masterData from cloud!
+    const isStrictAdminNow = Boolean(STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail);
     const localSavedRaw = localStorage.getItem("matsci_static_db_v4");
-    let localUpdatedMs = 0;
+    let localMasterUpdatedMs = 0;
     if (localSavedRaw) {
       try {
         const lp = JSON.parse(localSavedRaw);
-        localUpdatedMs = lp && lp.updated_at ? new Date(lp.updated_at).getTime() : 0;
+        const masterTsStr = (lp && (lp.master_updated_at || lp.updated_at)) || "";
+        localMasterUpdatedMs = masterTsStr ? new Date(masterTsStr).getTime() : 0;
       } catch (e) {}
     }
     const cloudExportedMs = cloudDb.exported_at ? new Date(cloudDb.exported_at).getTime() : 0;
 
-    if (!isNaN(cloudExportedMs) && cloudExportedMs >= localUpdatedMs) {
+    if (!isStrictAdminNow || (!isNaN(cloudExportedMs) && cloudExportedMs >= localMasterUpdatedMs)) {
       if (Array.isArray(cloudDb.papers)) STATE.masterData.papers = cloudDb.papers;
       if (Array.isArray(cloudDb.structures)) STATE.masterData.structures = cloudDb.structures;
       if (Array.isArray(cloudDb.schedule)) STATE.masterData.schedule = cloudDb.schedule;
@@ -1380,9 +1383,12 @@ async function pullCloudDatabaseInstant(silent = true) {
       }
     }
 
-    // Persist updated state locally without triggering a push loop
-    saveStaticDb({ skipCloudPush: true });
+    // Reconcile canonical global Structure IDs & apply workspace BEFORE persisting locally (never clobber pulled cloud data!)
+    if (typeof ensureAllStructuralIdsGlobal === "function") {
+      ensureAllStructuralIdsGlobal();
+    }
     applyActiveWorkspaceData();
+    saveStaticDb({ skipCloudPush: true, preserveMasterTimestamp: !isStrictAdminNow, cloudMasterTimestamp: cloudDb.exported_at || null });
     refreshAllWorkspaceViews();
 
     const adminModal = document.getElementById("admin-users-modal");
@@ -1546,6 +1552,23 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
         sanitizedCloudUsers[k] = uCopy;
       }
     });
+
+    // Guarantee 100% globally unique, canonical Structure IDs across Admin Master + ALL Personal Users before pushing
+    if (typeof ensureAllStructuralIdsGlobal === "function") {
+      const sidChanged = ensureAllStructuralIdsGlobal(masterStructures, sanitizedCloudUsers);
+      if (sidChanged) {
+        if (STATE.masterData) STATE.masterData.structures = masterStructures;
+        Object.entries(sanitizedCloudUsers).forEach(([emKey, uCopy]) => {
+          if (STATE.usersRegistry && STATE.usersRegistry[emKey] && uCopy && uCopy.workspace && Array.isArray(uCopy.workspace.structures)) {
+            STATE.usersRegistry[emKey].workspace = STATE.usersRegistry[emKey].workspace || {};
+            STATE.usersRegistry[emKey].workspace.structures = uCopy.workspace.structures;
+          }
+        });
+        persistUsersRegistryLocal();
+        applyActiveWorkspaceData();
+        if (typeof renderStructuresList === "function") renderStructuresList();
+      }
+    }
 
     const exportObj = {
       version: "4.0",
@@ -2523,6 +2546,12 @@ function applyActiveWorkspaceData() {
     STATE.profile = STATE.masterData.profile;
   }
 
+  // Always reconcile global canonical Structure IDs across Master + ALL Users BEFORE projecting workspace views
+  // so Admin and every User ALWAYS see the exact same globally-unique CD-XXXX ID for every structure!
+  if (typeof ensureAllStructuralIdsGlobal === "function") {
+    ensureAllStructuralIdsGlobal(null, null, { skipLiveStateSync: true });
+  }
+
   const activeUserEmail = getActivePersonalWorkspaceEmail();
   STATE._adminMergedUserEmails = null;
   if (activeUserEmail && STATE.usersRegistry[activeUserEmail]) {
@@ -2570,7 +2599,8 @@ function applyActiveWorkspaceData() {
 
     const sharedMasterStructures = ((STATE.masterData && STATE.masterData.structures) || []).filter(ms => {
       if (!canCurrentViewerSeeItem(ms)) return false;
-      return !ownStructures.some(os => os.id === ms.id);
+      // Only suppress if an identical canonical Structure ID is already in ownStructures (never hide Admin's CD-0011 behind a different user ID!)
+      return !ownStructures.some(os => os.id === ms.id && os.structural_id && ms.structural_id && os.structural_id === ms.structural_id);
     }).map(ms => ({ ...ms, _sharedFromAdmin: true }));
 
     const sharedMasterSchedule = ((STATE.masterData && STATE.masterData.schedule) || []).filter(mev => {
@@ -10315,7 +10345,6 @@ function _collectAllActiveStructuralIds(extraPool = null) {
   const pools = [];
   if (Array.isArray(extraPool)) pools.push(extraPool);
   if (Array.isArray(STATE.structures)) pools.push(STATE.structures);
-  // Include masterData structures ONLY if we are not in Admin mode (for Admin, STATE.structures IS masterData.structures)
   const isStrictAdmin = Boolean(STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail);
   if (!isStrictAdmin && STATE.masterData && Array.isArray(STATE.masterData.structures)) {
     pools.push(STATE.masterData.structures);
@@ -10351,77 +10380,184 @@ function _findLowestFreeStructuralId(usedSet) {
   return _formatStructuralIdNum(n);
 }
 
-function ensureStructuralIds(list = null) {
-  const targets = list || STATE.structures || [];
-  if (!Array.isArray(targets) || targets.length === 0) return;
+/**
+ * Deterministic Single-Source-of-Truth Global Structure ID Registry.
+ * Guarantees that EVERY structure across Admin Master + ALL Personal Users has:
+ *   1. A 100% globally unique, immutable CD-XXXX structural_id.
+ *   2. The EXACT SAME CD-XXXX ID whether viewed by Admin, the Owner User, or any other viewer.
+ *   3. A globally unique numeric `id` so Admin/User view actions never target the wrong entry.
+ */
+function ensureAllStructuralIdsGlobal(masterListOverride = null, usersRegistryOverride = null, options = {}) {
+  const isOverrideMode = Boolean(masterListOverride || usersRegistryOverride);
+  const skipLiveStateSync = Boolean(options && options.skipLiveStateSync);
+  const masterStructs = Array.isArray(masterListOverride)
+    ? masterListOverride
+    : ((STATE.masterData && Array.isArray(STATE.masterData.structures)) ? STATE.masterData.structures : []);
+  const usersReg = (usersRegistryOverride && typeof usersRegistryOverride === "object")
+    ? usersRegistryOverride
+    : (STATE.usersRegistry && typeof STATE.usersRegistry === "object" ? STATE.usersRegistry : {});
 
-  // Collect IDs from OTHER pools first so we never collide across workspaces
-  const externalUsed = new Set();
-  const isStrictAdmin = Boolean(STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail);
-  if (!list && !isStrictAdmin && STATE.masterData && Array.isArray(STATE.masterData.structures)) {
-    STATE.masterData.structures.forEach(s => {
-      if (s && s.structural_id && /^CD-\d+$/i.test(String(s.structural_id).trim())) {
-        externalUsed.add(String(s.structural_id).trim().toUpperCase());
-      }
-    });
-  }
-  if (!list && STATE.usersRegistry && typeof STATE.usersRegistry === "object") {
-    const activeEmail = typeof getActivePersonalWorkspaceEmail === "function" ? getActivePersonalWorkspaceEmail() : null;
-    Object.keys(STATE.usersRegistry).forEach(email => {
-      const normEm = normalizeEmail(email);
-      if (activeEmail && normEm === activeEmail) return;
-      if (isStrictAdmin && STATE._adminMergedUserEmails && STATE._adminMergedUserEmails.has(normEm)) return;
-      const ws = STATE.usersRegistry[email]?.workspace;
-      if (ws && Array.isArray(ws.structures)) {
-        ws.structures.forEach(s => {
-          if (s && s.structural_id && /^CD-\d+$/i.test(String(s.structural_id).trim())) {
-            externalUsed.add(String(s.structural_id).trim().toUpperCase());
-          }
-        });
-      }
-    });
-  }
+  const canonicalEntries = []; // { obj, ownerKey }
+  const usedNumericIds = new Set();
+  let changed = false;
 
-  // First pass: validate existing IDs in `targets` (ordered oldest-first) and detect any missing or duplicate IDs
-  const ordered = [...targets].filter(Boolean).sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
-  const seenInTargets = new Set();
+  // Bucket 1: Admin Master structures (ordered oldest-first, deterministic regardless of who is logged in)
+  const sortedMaster = [...masterStructs]
+    .filter(s => s && !s._fromUserEmail && !s._sharedFromAdmin)
+    .sort((a, b) => (Number(a.id || 0) - Number(b.id || 0)) || String(a.structural_id || "").localeCompare(String(b.structural_id || "")));
+  sortedMaster.forEach(s => {
+    let numId = Number(s.id || 0);
+    if (!numId || usedNumericIds.has(numId)) {
+      numId = numId || Date.now();
+      while (usedNumericIds.has(numId)) numId++;
+      s.id = numId;
+      changed = true;
+    }
+    usedNumericIds.add(numId);
+    canonicalEntries.push({ obj: s, ownerKey: "__MASTER__" });
+  });
+
+  // Bucket 2: Every Personal User's own structures (sorted alphabetically by normalized email, then oldest-first)
+  const sortedEmails = Object.keys(usersReg).sort((a, b) => normalizeEmail(a).localeCompare(normalizeEmail(b)));
+  sortedEmails.forEach(emKey => {
+    const u = usersReg[emKey];
+    const ws = u && u.workspace;
+    if (!ws || !Array.isArray(ws.structures)) return;
+    const normEm = normalizeEmail(u.email || emKey);
+    const sortedUserStructs = [...ws.structures]
+      .filter(s => s && !s._sharedFromAdmin)
+      .sort((a, b) => (Number(a.id || 0) - Number(b.id || 0)) || String(a.structural_id || "").localeCompare(String(b.structural_id || "")));
+    sortedUserStructs.forEach(s => {
+      let numId = Number(s.id || 0);
+      if (!numId || usedNumericIds.has(numId)) {
+        numId = numId || Date.now();
+        while (usedNumericIds.has(numId)) numId++;
+        s.id = numId;
+        changed = true;
+      }
+      usedNumericIds.add(numId);
+      canonicalEntries.push({ obj: s, ownerKey: normEm });
+    });
+  });
+
+  // Pass 1: Lock valid, globally-unique CD-XXXX IDs (immutable once valid & unique!)
+  const globalUsed = new Set();
   const needsAssignment = [];
-
-  ordered.forEach(s => {
+  canonicalEntries.forEach(({ obj: s }) => {
     const raw = (s.structural_id && typeof s.structural_id === "string") ? s.structural_id.trim().toUpperCase() : "";
     const isValid = /^CD-\d+$/.test(raw);
-    const isSharedFromAdmin = Boolean(s._sharedFromAdmin);
-    if (isValid && !seenInTargets.has(raw) && (isSharedFromAdmin || !externalUsed.has(raw))) {
-      s.structural_id = raw;
-      seenInTargets.add(raw);
+    if (isValid && !globalUsed.has(raw)) {
+      if (s.structural_id !== raw) {
+        s.structural_id = raw;
+        changed = true;
+      }
+      globalUsed.add(raw);
     } else {
       needsAssignment.push(s);
     }
   });
 
-  // Second pass: assign lowest available unused CD-XXXX to any missing or duplicate entries
-  if (needsAssignment.length > 0) {
-    const allUsed = new Set([...externalUsed, ...seenInTargets]);
-    needsAssignment.forEach(s => {
-      const nextSid = _findLowestFreeStructuralId(allUsed);
+  // Pass 2: Assign lowest available globally-free CD-XXXX slot to any missing or colliding entries
+  needsAssignment.forEach(s => {
+    const nextSid = _findLowestFreeStructuralId(globalUsed);
+    if (s.structural_id !== nextSid) {
       s.structural_id = nextSid;
-      allUsed.add(nextSid);
-    });
-  }
+      changed = true;
+    }
+    globalUsed.add(nextSid);
+  });
 
-  // Ensure default calc_status
-  targets.forEach(s => {
+  // Pass 3: Ensure default calc_status on all canonical entries
+  canonicalEntries.forEach(({ obj: s }) => {
     if (s && !s.calc_status) {
       s.calc_status = (s.associated_paper_doi || s.associated_paper_title) ? "Published" : "Relaxed";
     }
   });
+
+  // Pass 4: Synchronize live STATE.structures shallow copies with canonical IDs (only when not in detached override mode)
+  if (!isOverrideMode && !skipLiveStateSync && Array.isArray(STATE.structures) && STATE.structures.length > 0) {
+    const canonicalObjSet = new Set(canonicalEntries.map(e => e.obj));
+    const masterSidById = new Map();
+    const userSidByKey = new Map();
+    canonicalEntries.forEach(({ obj: s, ownerKey }) => {
+      if (ownerKey === "__MASTER__") {
+        masterSidById.set(Number(s.id), s.structural_id);
+      } else {
+        userSidByKey.set(`${ownerKey}::${Number(s.id)}`, s.structural_id);
+      }
+    });
+
+    const activeEmail = typeof getActivePersonalWorkspaceEmail === "function" ? getActivePersonalWorkspaceEmail() : null;
+    STATE.structures.forEach(s => {
+      if (!s) return;
+      // Canonical objects already hold their authoritative global ID from Pass 1 & 2 — NEVER overwrite them!
+      if (canonicalObjSet.has(s)) return;
+
+      let canonicalSid = null;
+      if (s._sharedFromAdmin) {
+        canonicalSid = masterSidById.get(Number(s.id)) || null;
+      } else if (s._fromUserEmail) {
+        canonicalSid = userSidByKey.get(`${normalizeEmail(s._fromUserEmail)}::${Number(s.id)}`) || null;
+      } else if (activeEmail) {
+        canonicalSid = userSidByKey.get(`${activeEmail}::${Number(s.id)}`) || masterSidById.get(Number(s.id)) || null;
+      } else {
+        canonicalSid = masterSidById.get(Number(s.id)) || null;
+      }
+
+      if (canonicalSid) {
+        s.structural_id = canonicalSid;
+      } else {
+        // Brand-new unsaved structure in live STATE.structures: validate globally!
+        const raw = (s.structural_id && typeof s.structural_id === "string") ? s.structural_id.trim().toUpperCase() : "";
+        if (/^CD-\d+$/.test(raw) && !globalUsed.has(raw)) {
+          s.structural_id = raw;
+          globalUsed.add(raw);
+        } else {
+          const nextSid = _findLowestFreeStructuralId(globalUsed);
+          s.structural_id = nextSid;
+          globalUsed.add(nextSid);
+          changed = true;
+        }
+      }
+      if (!s.calc_status) {
+        s.calc_status = (s.associated_paper_doi || s.associated_paper_title) ? "Published" : "Relaxed";
+      }
+    });
+  }
+
+  return changed;
+}
+window.ensureAllStructuralIdsGlobal = ensureAllStructuralIdsGlobal;
+
+function ensureStructuralIds(list = null) {
+  // Always reconcile the canonical global registry first so Admin, User, Modal Inspector & CSV never diverge!
+  ensureAllStructuralIdsGlobal();
+
+  // If a detached/custom list was supplied (e.g., Admin Inspector or CSV slice), validate against ALL global IDs
+  if (Array.isArray(list) && list !== STATE.structures && list.length > 0) {
+    const globalUsed = _collectAllActiveStructuralIds();
+    list.forEach(s => {
+      if (!s) return;
+      const raw = (s.structural_id && typeof s.structural_id === "string") ? s.structural_id.trim().toUpperCase() : "";
+      if (/^CD-\d+$/.test(raw)) {
+        s.structural_id = raw;
+      } else {
+        const nextSid = _findLowestFreeStructuralId(globalUsed);
+        s.structural_id = nextSid;
+        globalUsed.add(nextSid);
+      }
+      if (!s.calc_status) {
+        s.calc_status = (s.associated_paper_doi || s.associated_paper_title) ? "Published" : "Relaxed";
+      }
+    });
+  }
 }
 window.ensureStructuralIds = ensureStructuralIds;
 
 function generateNextStructuralId() {
-  ensureStructuralIds();
+  ensureAllStructuralIdsGlobal();
   const used = _collectAllActiveStructuralIds();
-  // Always pick the lowest free CD-XXXX slot (automatically recycles IDs freed by deleted structures!)
+  // Always pick the lowest globally-free CD-XXXX slot (automatically recycles IDs freed by deleted structures!)
   return _findLowestFreeStructuralId(used);
 }
 window.generateNextStructuralId = generateNextStructuralId;
@@ -15229,10 +15365,13 @@ async function loadStaticFallbackData() {
             if (parsed && parsed.user_groups) {
               ensureUserGroupsInitialized(parsed.user_groups);
             }
-            const localTime = parsed && parsed.updated_at ? new Date(parsed.updated_at).getTime() : 0;
+            const isStrictAdminBoot = Boolean(STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail);
+            const localMasterTsStr = (parsed && (parsed.master_updated_at || parsed.updated_at)) || "";
+            const localTime = localMasterTsStr ? new Date(localMasterTsStr).getTime() : 0;
             const remoteExportedStr = (remoteData.exported_at || "").replace("20.", "20");
             const remoteTime = remoteExportedStr ? new Date(remoteExportedStr).getTime() : 0;
-            if (!isNaN(localTime) && !isNaN(remoteTime) && localTime > remoteTime) {
+            // Only let local cache override remote data.json masterData when Strict Admin has newer unsynced edits!
+            if (isStrictAdminBoot && !isNaN(localTime) && !isNaN(remoteTime) && localTime > remoteTime) {
               STATE.papers = parsed.papers || [];
               STATE.structures = parsed.structures || [];
               STATE.schedule = parsed.schedule || [];
@@ -15941,6 +16080,28 @@ function saveStaticDb(options = {}) {
     STATE.masterData.profile = STATE.profile || STATE.masterData.profile || {};
   }
 
+  // Reconcile canonical global Structure IDs right before persisting locally & syncing to cloud
+  if (typeof ensureAllStructuralIdsGlobal === "function") {
+    ensureAllStructuralIdsGlobal();
+  }
+
+  const nowIso = new Date().toISOString();
+  const isStrictAdminSave = Boolean(STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail);
+  let masterUpdatedAt = options.cloudMasterTimestamp || null;
+  if (!masterUpdatedAt) {
+    if (isStrictAdminSave && !options.preserveMasterTimestamp) {
+      masterUpdatedAt = nowIso;
+    } else {
+      try {
+        const prevRaw = localStorage.getItem("matsci_static_db_v4");
+        const prevParsed = prevRaw ? JSON.parse(prevRaw) : null;
+        masterUpdatedAt = (prevParsed && (prevParsed.master_updated_at || prevParsed.updated_at)) || "1970-01-01T00:00:00.000Z";
+      } catch (e) {
+        masterUpdatedAt = "1970-01-01T00:00:00.000Z";
+      }
+    }
+  }
+
   localStorage.setItem("matsci_static_db_v4", JSON.stringify({
     papers: (STATE.masterData && STATE.masterData.papers) || STATE.papers,
     structures: (STATE.masterData && STATE.masterData.structures) || STATE.structures,
@@ -15950,7 +16111,8 @@ function saveStaticDb(options = {}) {
     user_groups: STATE.userGroups || {},
     deleted_users: Array.from(getDeletedUsersSet()),
     deleted_groups: Array.from(getDeletedGroupsSet()),
-    updated_at: new Date().toISOString()
+    master_updated_at: masterUpdatedAt,
+    updated_at: nowIso
   }));
 
   renderDashboardAdminUsersSummary();
