@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261118_v90_unified_pagination" onerror="this.href='/static/styles.css?v=20261118_v90_unified_pagination'" />
+  <link rel="stylesheet" href="styles.css?v=20261118_v91_event_categories_and_participants_sync" onerror="this.href='/static/styles.css?v=20261118_v91_event_categories_and_participants_sync'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -3637,7 +3637,10 @@
           <input type="text" id="sm-title" placeholder="e.g., High-Resolution XPS Depth Profile" />
         </div>
         <div class="form-group">
-          <label>Event Category</label>
+          <div class="sm-cat-label-row">
+            <label for="sm-type">Event Category</label>
+            <button type="button" class="mp-formula-btn strict-admin-only" onclick="toggleEventCategoryManager()" title="Add, rename, or remove Event Categories (Admin Only)">Manage</button>
+          </div>
           <select id="sm-type">
             <option value="Synthesis / Furnace">Synthesis / Furnace</option>
             <option value="Characterization (XRD/SEM/TEM/XPS)">Characterization (XRD/SEM/TEM/XPS)</option>
@@ -3645,6 +3648,14 @@
             <option value="Electrochemical Testing">Electrochemical Testing</option>
             <option value="Data Analysis / Manuscript Writing">Data Analysis / Manuscript Writing</option>
           </select>
+          <div id="sm-cat-manager-box" class="sm-cat-manager-box strict-admin-only" style="display:none;">
+            <div style="font-weight:700; color:#7c2d12; margin-bottom:6px;">Manage Event Categories (Admin)</div>
+            <div class="sm-cat-add-row">
+              <input type="text" id="sm-new-cat-input" placeholder="New category name..." onkeydown="if(event.key==='Enter'){event.preventDefault(); addEventCategoryByAdmin();}" />
+              <button type="button" class="mp-btn-xs mp-btn-xs-teal" onclick="addEventCategoryByAdmin()">+ Add</button>
+            </div>
+            <div id="sm-cat-manager-list" class="sm-cat-list"></div>
+          </div>
         </div>
         <div class="form-group">
           <label>Instrument / Facility Location</label>
@@ -3670,11 +3681,23 @@
             <input type="time" id="sm-end" value="11:30" style="flex:1;" onchange="updateScheduleDurationBadge()" />
           </div>
         </div>
-        <div class="form-group">
-          <label>Sample Batch ID</label>
-          <input type="text" id="sm-sample" placeholder="e.g., LLZTO-2026-04" />
+        <div class="form-group full">
+          <label style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+            <span>Participants (Users or User Groups)</span>
+            <span style="font-size:11px; color:#786354; font-weight:500;">Automatically synced to selected participants' calendars</span>
+          </label>
+          <div id="sm-participants-chips" class="sm-participants-chips"></div>
+          <div class="sm-participant-search-wrap">
+            <div class="sm-participant-search-row">
+              <input type="text" id="sm-participant-search" class="sm-participant-search-input" placeholder="Search participant by name, email, or User Group..." autocomplete="off" onfocus="renderScheduleParticipantSuggestions(true)" oninput="renderScheduleParticipantSuggestions(true)" onkeydown="handleScheduleParticipantKeydown(event)" />
+              <button type="button" class="sm-participant-search-btn" onclick="toggleScheduleParticipantSuggestions()" title="Search registered users &amp; groups">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              </button>
+            </div>
+            <div id="sm-participant-suggestions" class="sm-participant-suggestions" style="display:none;"></div>
+          </div>
         </div>
-        <div class="form-group">
+        <div class="form-group full">
           <label>Status</label>
           <select id="sm-status">
             <option value="Scheduled">Scheduled</option>
@@ -3875,8 +3898,8 @@
     </div>
   </div>
 
-<script src="matsci_tools.js?v=20261118_v90_unified_pagination" onerror="this.src='/static/matsci_tools.js?v=20261118_v90_unified_pagination'"></script>
-  <script src="app.js?v=20261118_v90_unified_pagination" onerror="this.src='/static/app.js?v=20261118_v90_unified_pagination'"></script>
+<script src="matsci_tools.js?v=20261118_v91_event_categories_and_participants_sync" onerror="this.src='/static/matsci_tools.js?v=20261118_v91_event_categories_and_participants_sync'"></script>
+  <script src="app.js?v=20261118_v91_event_categories_and_participants_sync" onerror="this.src='/static/app.js?v=20261118_v91_event_categories_and_participants_sync'"></script>
 
     <!-- Google Calendar Verification / 403 Access Blocked Helper Modal -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
