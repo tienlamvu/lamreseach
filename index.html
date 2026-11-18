@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261118_v85_struct_pagination" onerror="this.href='/static/styles.css?v=20261118_v85_struct_pagination'" />
+  <link rel="stylesheet" href="styles.css?v=20261118_v86_smart_structural_id" onerror="this.href='/static/styles.css?v=20261118_v86_smart_structural_id'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -619,9 +619,9 @@
           </div>
 
           <div class="cif-drop-zone mp-cif-drop" id="cif-drop-zone" onclick="triggerCifFileInput()">
-            <input type="file" id="cif-file-input" accept=".cif,.txt" style="display:none;" onchange="handleCifFileSelect(event)" />
-            <div style="font-weight:600; font-size:13px; color:#334155;">Drop *.cif file here, or click to browse</div>
-            <div style="font-size:11.5px; color:#64748b; margin-top:2px;">Supports standard CIF format</div>
+            <input type="file" id="cif-file-input" accept=".cif,.txt" multiple style="display:none;" onchange="handleCifFileSelect(event)" />
+            <div style="font-weight:600; font-size:13px; color:#3d2b1f;">Drop one or multiple *.cif files here, or click to browse</div>
+            <div style="font-size:11.5px; color:#786354; margin-top:2px;">Auto-assigns unique Structure ID (CD-XXXX), detects duplicates &amp; classifies folders</div>
           </div>
 
           <div class="strict-admin-only" style="margin-top:10px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:12px; color:#334155;">
@@ -660,7 +660,7 @@
                   <circle cx="11" cy="11" r="7"></circle>
                   <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
-                <input type="text" id="struct-search" placeholder="Search formula, material, space group..." oninput="renderStructuresList()" autocomplete="off" />
+                <input type="text" id="struct-search" placeholder="Search ID (CD-0001), formula, material, space group..." oninput="renderStructuresList()" autocomplete="off" />
                 <button type="button" id="struct-search-clear" onclick="clearStructSearch()" title="Clear search" style="display:none;">&times;</button>
               </div>
             </div>
@@ -715,6 +715,18 @@
                   <option value="Defect Supercell">Defect Supercell</option>
                 </select>
                 <button type="button" class="mp-btn-xs" onclick="applyBatchStructuresField('structure_type')">Apply</button>
+              </div>
+
+              <div class="mp-batch-group">
+                <span>Status:</span>
+                <select id="batch-struct-status" class="mp-select-xs">
+                  <option value="Relaxed">Relaxed</option>
+                  <option value="Unrelaxed">Unrelaxed</option>
+                  <option value="SCF / DOS">SCF / DOS</option>
+                  <option value="Running">Running</option>
+                  <option value="Published">Published</option>
+                </select>
+                <button type="button" class="mp-btn-xs" onclick="applyBatchStructuresField('calc_status')">Apply</button>
               </div>
 
               <div class="mp-batch-group">
@@ -813,6 +825,32 @@
                   </div>
                 </div>
 
+                <!-- Accordion: Smart Registry (Starred, Duplicates, Workflow Status) -->
+                <div class="mp-acc-section">
+                  <button type="button" class="mp-acc-header" onclick="mpToggleAccordion(this)">
+                    <span class="mp-acc-caret">▸</span> Smart Registry
+                  </button>
+                  <div class="mp-acc-body">
+                    <label class="mp-field-label" for="struct-smart-filter">Quick View</label>
+                    <select id="struct-smart-filter" onchange="renderStructuresList()" class="mp-select" style="margin-bottom:8px;">
+                      <option value="ALL">All Structures</option>
+                      <option value="STARRED">Starred Only (★)</option>
+                      <option value="DUPLICATES">Potential Duplicates</option>
+                    </select>
+
+                    <label class="mp-field-label" for="struct-status-filter">Workflow Status</label>
+                    <select id="struct-status-filter" onchange="renderStructuresList()" class="mp-select">
+                      <option value="ALL">All Statuses</option>
+                      <option value="Relaxed">Relaxed</option>
+                      <option value="Unrelaxed">Unrelaxed</option>
+                      <option value="SCF / DOS">SCF / DOS</option>
+                      <option value="Running">Running</option>
+                      <option value="Published">Published</option>
+                    </select>
+                    <div id="mp-smart-summary" class="mp-smart-summary">★ 0 starred · 0 duplicates</div>
+                  </div>
+                </div>
+
                 <!-- Accordion 3: Electronic Structure (Band Gap) -->
                 <div class="mp-acc-section">
                   <button type="button" class="mp-acc-header" onclick="mpToggleAccordion(this)">
@@ -862,6 +900,9 @@
                   <div class="mp-acc-body">
                     <select id="struct-sort-by" onchange="renderStructuresList()" class="mp-select">
                       <option value="default">Default (Newest)</option>
+                      <option value="id-asc">Structure ID (CD-0001 → ...)</option>
+                      <option value="id-desc">Structure ID (Latest → First)</option>
+                      <option value="starred-first">Starred First (★)</option>
                       <option value="name-asc">Material (A → Z)</option>
                       <option value="name-desc">Material (Z → A)</option>
                       <option value="formula-asc">Formula (A → Z)</option>
@@ -3177,14 +3218,30 @@
         </div>
       </div>
 
+      <div id="struct-dup-warning" class="mp-dup-alert"></div>
+
       <div class="form-grid">
+        <div class="form-group">
+          <label>Structure ID (Auto-Assigned)</label>
+          <input type="text" id="struct-structural-id" placeholder="e.g., CD-0001" style="font-family:monospace; font-weight:700; color:#9a3412;" />
+        </div>
+        <div class="form-group">
+          <label>Workflow Status</label>
+          <select id="struct-calc-status">
+            <option value="Relaxed">Relaxed</option>
+            <option value="Unrelaxed">Unrelaxed</option>
+            <option value="SCF / DOS">SCF / DOS</option>
+            <option value="Running">Running</option>
+            <option value="Published">Published</option>
+          </select>
+        </div>
         <div class="form-group">
           <label>Material Name *</label>
           <input type="text" id="struct-name" placeholder="e.g., BaTiO3 (Cubic Perovskite)" />
         </div>
         <div class="form-group">
           <label>Chemical Formula *</label>
-          <input type="text" id="struct-formula" placeholder="e.g., BaTiO3" onblur="autoSortModalFormula()" />
+          <input type="text" id="struct-formula" placeholder="e.g., BaTiO3" onblur="autoSortModalFormula(); checkModalStructureDuplicate()" oninput="checkModalStructureDuplicate()" />
         </div>
         <div class="form-group">
           <label>Crystal System</label>
@@ -3199,7 +3256,7 @@
         </div>
         <div class="form-group">
           <label>Space Group</label>
-          <input type="text" id="struct-spacegroup" placeholder="e.g., Pm-3m (221)" />
+          <input type="text" id="struct-spacegroup" placeholder="e.g., Pm-3m (221)" oninput="checkModalStructureDuplicate()" />
         </div>
         <div class="form-group">
           <label>Structure Type</label>
@@ -3769,8 +3826,8 @@
     </div>
   </div>
 
-<script src="matsci_tools.js?v=20261118_v85_struct_pagination" onerror="this.src='/static/matsci_tools.js?v=20261118_v85_struct_pagination'"></script>
-  <script src="app.js?v=20261118_v85_struct_pagination" onerror="this.src='/static/app.js?v=20261118_v85_struct_pagination'"></script>
+<script src="matsci_tools.js?v=20261118_v86_smart_structural_id" onerror="this.src='/static/matsci_tools.js?v=20261118_v86_smart_structural_id'"></script>
+  <script src="app.js?v=20261118_v86_smart_structural_id" onerror="this.src='/static/app.js?v=20261118_v86_smart_structural_id'"></script>
 
     <!-- Google Calendar Verification / 403 Access Blocked Helper Modal -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
