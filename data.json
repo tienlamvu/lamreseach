@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T11:37:49.757Z",
+  "exported_at": "2026-11-18T11:40:17.171Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -4438,6 +4438,13 @@
       "allowed_groups": [],
       "id": 1794897404421
     }
+  ],
+  "event_categories": [
+    "Synthesis / Furnace",
+    "Characterization (XRD/SEM/TEM/XPS)",
+    "Group Meeting / PI Meeting",
+    "Electrochemical Testing",
+    "Data Analysis / Manuscript Writing"
   ],
   "users_registry": {
     "lamvt.sep@gmail.com": {
