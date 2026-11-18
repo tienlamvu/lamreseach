@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T11:43:50.820Z",
+  "exported_at": "2026-11-18T11:44:07.508Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -5607,9 +5607,9 @@
         "grp_dft_team_gun1"
       ],
       "registeredAt": "2026-11-18 19:49",
-      "lastLoginAt": "2026-11-18 19:50",
-      "lastUpdatedAt": "2026-11-18 20:43",
-      "updatedAtMs": 1795002220517,
+      "lastLoginAt": "2026-11-18 20:44",
+      "lastUpdatedAt": "2026-11-18 20:44",
+      "updatedAtMs": 1795002246374,
       "workspace": {
         "papers": [],
         "structures": [
@@ -5836,7 +5836,8 @@
             "_syncedEventId": 1795002220516,
             "_isParticipantSync": true,
             "_syncedFromEmail": "lamvt.skku@gmail.com",
-            "_syncedFromName": "Vu Tien Lam"
+            "_syncedFromName": "Vu Tien Lam",
+            "owner_email": "lamvt@g.skku.edu"
           }
         ],
         "expReportRows": [
@@ -6019,6 +6020,12 @@
         ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-18 20:44",
+          "category": "Session",
+          "action": "Signed In (Email & Password)",
+          "detail": "Authenticated as Jaewon Kim (lamvt@g.skku.edu)"
+        },
         {
           "timestamp": "2026-11-18 20:43",
           "category": "Calendar",
