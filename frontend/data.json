@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T06:31:49.745Z",
+  "exported_at": "2026-11-18T06:31:55.087Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -1034,7 +1034,7 @@
       "associated_paper_doi": "",
       "project_folder": "General Research",
       "structural_id": "CD-0026",
-      "calc_status": "Unrelaxed",
+      "calc_status": "Relaxed",
       "is_starred": false
     },
     {
@@ -1196,7 +1196,7 @@
       "id": 1794916417728,
       "project_folder": "General Research",
       "structural_id": "CD-0025",
-      "calc_status": "Unrelaxed",
+      "calc_status": "Relaxed",
       "is_starred": false,
       "associated_paper_id": null,
       "associated_paper_title": "",
@@ -1361,7 +1361,7 @@
       "id": 1794916204898,
       "project_folder": "General Research",
       "structural_id": "CD-0024",
-      "calc_status": "Unrelaxed",
+      "calc_status": "Relaxed",
       "is_starred": false,
       "associated_paper_id": null,
       "associated_paper_title": "",
@@ -1526,7 +1526,7 @@
       "id": 1794916190122,
       "project_folder": "General Research",
       "structural_id": "CD-0023",
-      "calc_status": "Unrelaxed",
+      "calc_status": "Relaxed",
       "is_starred": false,
       "associated_paper_id": null,
       "associated_paper_title": "",
@@ -1691,7 +1691,7 @@
       "id": 1794916177922,
       "project_folder": "General Research",
       "structural_id": "CD-0022",
-      "calc_status": "Unrelaxed",
+      "calc_status": "Relaxed",
       "is_starred": false,
       "associated_paper_id": null,
       "associated_paper_title": "",
@@ -1856,7 +1856,7 @@
       "id": 1794916165066,
       "project_folder": "General Research",
       "structural_id": "CD-0021",
-      "calc_status": "Unrelaxed",
+      "calc_status": "Relaxed",
       "is_starred": false,
       "associated_paper_id": null,
       "associated_paper_title": "",
@@ -2021,7 +2021,7 @@
       "id": 1794916149442,
       "project_folder": "General Research",
       "structural_id": "CD-0020",
-      "calc_status": "Unrelaxed",
+      "calc_status": "Relaxed",
       "is_starred": false,
       "associated_paper_id": null,
       "associated_paper_title": "",
@@ -2186,7 +2186,7 @@
       "id": 1794916136770,
       "project_folder": "General Research",
       "structural_id": "CD-0019",
-      "calc_status": "Unrelaxed",
+      "calc_status": "Relaxed",
       "is_starred": false,
       "associated_paper_id": null,
       "associated_paper_title": "",
@@ -2343,7 +2343,7 @@
       "id": 1794916122658,
       "project_folder": "General Research",
       "structural_id": "CD-0018",
-      "calc_status": "Unrelaxed",
+      "calc_status": "Relaxed",
       "is_starred": false,
       "associated_paper_id": null,
       "associated_paper_title": "",
@@ -2496,7 +2496,7 @@
       "id": 1794916108842,
       "project_folder": "General Research",
       "structural_id": "CD-0017",
-      "calc_status": "Unrelaxed",
+      "calc_status": "Relaxed",
       "is_starred": false,
       "associated_paper_id": null,
       "associated_paper_title": "",
@@ -2653,7 +2653,7 @@
       "id": 1794916066074,
       "project_folder": "General Research",
       "structural_id": "CD-0016",
-      "calc_status": "Unrelaxed",
+      "calc_status": "Relaxed",
       "is_starred": false,
       "associated_paper_id": null,
       "associated_paper_title": "",
@@ -2810,7 +2810,7 @@
       "id": 1794916050563,
       "project_folder": "General Research",
       "structural_id": "CD-0015",
-      "calc_status": "Unrelaxed",
+      "calc_status": "Relaxed",
       "is_starred": false,
       "associated_paper_id": null,
       "associated_paper_title": "",
@@ -2967,7 +2967,7 @@
       "id": 1794916033307,
       "project_folder": "General Research",
       "structural_id": "CD-0014",
-      "calc_status": "Unrelaxed",
+      "calc_status": "Relaxed",
       "is_starred": false,
       "associated_paper_id": null,
       "associated_paper_title": "",
@@ -3124,7 +3124,7 @@
       "id": 1794915986867,
       "project_folder": "General Research",
       "structural_id": "CD-0013",
-      "calc_status": "Unrelaxed",
+      "calc_status": "Relaxed",
       "is_starred": false,
       "associated_paper_id": null,
       "associated_paper_title": "",
@@ -3281,7 +3281,7 @@
       "id": 1794915826092,
       "project_folder": "General Research",
       "structural_id": "CD-0012",
-      "calc_status": "Unrelaxed",
+      "calc_status": "Relaxed",
       "is_starred": false,
       "associated_paper_id": null,
       "associated_paper_title": "",
@@ -3383,7 +3383,7 @@
       "id": 1794571683470,
       "project_folder": "2D Janus MA2Z4 & Layered TMDs",
       "structural_id": "CD-0011",
-      "calc_status": "Unrelaxed"
+      "calc_status": "Relaxed"
     },
     {
       "name": "MoSi2N2P2 Janus 3",
@@ -3481,7 +3481,7 @@
       "id": 1794571666118,
       "project_folder": "2D Janus MA2Z4 & Layered TMDs",
       "structural_id": "CD-0010",
-      "calc_status": "Unrelaxed"
+      "calc_status": "Relaxed"
     },
     {
       "name": "MoSi2N2P2 Janus 2",
@@ -3579,7 +3579,7 @@
       "id": 1794571655351,
       "project_folder": "2D Janus MA2Z4 & Layered TMDs",
       "structural_id": "CD-0009",
-      "calc_status": "Unrelaxed"
+      "calc_status": "Relaxed"
     },
     {
       "name": "MoSi2N2P2 Janus 1",
@@ -3677,7 +3677,7 @@
       "id": 1794571634351,
       "project_folder": "2D Janus MA2Z4 & Layered TMDs",
       "structural_id": "CD-0008",
-      "calc_status": "Unrelaxed"
+      "calc_status": "Relaxed"
     },
     {
       "name": "MoSi2N4",
@@ -3775,7 +3775,7 @@
       "id": 1794571560271,
       "project_folder": "2D Janus MA2Z4 & Layered TMDs",
       "structural_id": "CD-0007",
-      "calc_status": "Unrelaxed"
+      "calc_status": "Relaxed"
     },
     {
       "name": "MoSi2P4",
@@ -3873,7 +3873,7 @@
       "id": 1794571538527,
       "project_folder": "2D Janus MA2Z4 & Layered TMDs",
       "structural_id": "CD-0006",
-      "calc_status": "Unrelaxed"
+      "calc_status": "Relaxed"
     },
     {
       "name": "Te supercell",
@@ -3923,7 +3923,7 @@
       "id": 1794571475791,
       "project_folder": "2D Tellurium & Anisotropic Semicond.",
       "structural_id": "CD-0005",
-      "calc_status": "Unrelaxed",
+      "calc_status": "Relaxed",
       "is_starred": false,
       "associated_paper_id": null,
       "associated_paper_title": "",
@@ -4002,7 +4002,7 @@
       "allowed_users": [],
       "allowed_groups": [],
       "structural_id": "CD-0004",
-      "calc_status": "Unrelaxed"
+      "calc_status": "Relaxed"
     },
     {
       "name": "Na0.5Bi0.5TiO3 - Cubic",
@@ -4076,7 +4076,7 @@
       "id": 1794571327536,
       "project_folder": "Lead-Free Perovskite Ferroelectrics",
       "structural_id": "CD-0003",
-      "calc_status": "Unrelaxed"
+      "calc_status": "Relaxed"
     },
     {
       "name": "Na0.5Bi0.5TiO3 - Orthorhombic",
@@ -4166,7 +4166,7 @@
       "id": 1794571259385,
       "project_folder": "Lead-Free Perovskite Ferroelectrics",
       "structural_id": "CD-0002",
-      "calc_status": "Unrelaxed"
+      "calc_status": "Relaxed"
     },
     {
       "name": "Na0.5Bi0.5TiO3 - Rhombohedral",
@@ -4256,7 +4256,7 @@
       "id": 1794571107171,
       "project_folder": "Lead-Free Perovskite Ferroelectrics",
       "structural_id": "CD-0001",
-      "calc_status": "Unrelaxed"
+      "calc_status": "Relaxed"
     }
   ],
   "schedule": [
