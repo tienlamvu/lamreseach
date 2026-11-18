@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T01:51:18.534Z",
+  "exported_at": "2026-11-18T01:52:16.874Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -458,6 +458,27 @@
     "weekly_report_allowed_users": []
   },
   "papers": [
+    {
+      "id": 1794966735670,
+      "doi": "10.1103/physrevmaterials.9.054003",
+      "title": "Emergence of half-metallic ferromagnetism and valley polarization in transition metal substituted WSTe monolayer",
+      "authors": "Shivani Kumawat, Chandan Kumar Vishwakarma, Mohd Zeeshan, Indranil Mal, Sunil Kumar",
+      "journal": "Physical Review Materials",
+      "year": 2025,
+      "volume": "9",
+      "pages": "",
+      "abstract": "",
+      "citation_count": 2,
+      "material_system": "Perovskite / 2D Material",
+      "synthesis_method": "First-principles DFT",
+      "characterization_tags": "DFT, VASP, XRD",
+      "status": "To Read",
+      "notes": "",
+      "in_weekly_report": 1,
+      "visibility": "Private",
+      "allowed_users": [],
+      "allowed_groups": []
+    },
     {
       "id": 1794966676188,
       "doi": "10.1103/physrevb.110.024413",
