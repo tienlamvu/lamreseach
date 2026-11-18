@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T10:48:53.105Z",
+  "exported_at": "2026-11-18T10:49:37.120Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -5405,6 +5405,40 @@
       "groups": [
         "grp_dft_team_gun1"
       ]
+    },
+    "lamvt@g.skku.edu": {
+      "email": "lamvt@g.skku.edu",
+      "name": "Jaewon Kim",
+      "affiliation": "Sungkyunkwan University (SKKU)",
+      "academicRole": "Researcher",
+      "status": "Active",
+      "authProvider": "Email + Google Linked",
+      "googleLinked": true,
+      "googleEmail": "lamvt@g.skku.edu",
+      "passwordPlainHint": "••••••••",
+      "passwordHash": "441d52fbb490008fa860a41b38fe03e0b7f6fb06b56336922f7d7a95562f51dd",
+      "groups": [
+        "grp_dft_team_gun1"
+      ],
+      "registeredAt": "2026-11-18 19:49",
+      "lastLoginAt": "2026-11-18 19:49",
+      "lastUpdatedAt": "2026-11-18 19:49",
+      "updatedAtMs": 1794998976113,
+      "workspace": {
+        "schedule": [],
+        "papers": [],
+        "structures": [],
+        "expReportRows": [],
+        "litReportRows": []
+      },
+      "activityLog": [
+        {
+          "timestamp": "2026-11-18 19:49",
+          "category": "Account",
+          "action": "Created by Administrator",
+          "detail": "Administrator created personal account for Jaewon Kim (lamvt@g.skku.edu)."
+        }
+      ]
     }
   },
   "user_groups": {
@@ -5415,9 +5449,10 @@
       "description": "User group created by Administrator",
       "members": [
         "tlamvux@gmail.com",
-        "lamvt.sep@gmail.com"
+        "lamvt.sep@gmail.com",
+        "lamvt@g.skku.edu"
       ],
-      "updatedAtMs": 1794916259994
+      "updatedAtMs": 1794998976113
     }
   },
   "deleted_users": [
@@ -5428,7 +5463,6 @@
     "minseo.kim@gmail.com",
     "ssk@gmail.com",
     "las@gmail.com",
-    "lamvt@g.skku.edu",
     "test.relay.otp@skku.edu",
     "linh@gmail.com",
     "a@gmail.com"
@@ -5441,7 +5475,6 @@
     "minseo.kim@gmail.com": 1794983284716,
     "ssk@gmail.com": 1794983284716,
     "las@gmail.com": 1794983284716,
-    "lamvt@g.skku.edu": 1794983284716,
     "test.relay.otp@skku.edu": 1794983284716,
     "linh@gmail.com": 1794983284716,
     "a@gmail.com": 1794983284716
