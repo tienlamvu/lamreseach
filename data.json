@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T12:02:11.506Z",
+  "exported_at": "2026-11-18T12:02:24.925Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -4281,6 +4281,22 @@
     }
   ],
   "schedule": [
+    {
+      "title": "Happy birthday!",
+      "event_type": "Google Calendar Sync",
+      "instrument_or_location": "Lab",
+      "start_date": "1998-04-20",
+      "end_date": "1998-04-21",
+      "start_time": "09:00",
+      "end_time": "10:30",
+      "syncedWithGoogle": true,
+      "priority": "Medium",
+      "status": "Scheduled",
+      "sample_id": "",
+      "description": "This is an event reminder",
+      "in_weekly_report": 1,
+      "id": 1795003344829
+    },
     {
       "title": "Final Exam: 논문작성법및연구윤리1",
       "event_type": "Google Calendar Sync",
