@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T13:00:32.191Z",
+  "exported_at": "2026-11-18T13:01:17.561Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -5117,8 +5117,8 @@
       "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
       "registeredAt": "2026-11-16 11:31",
       "lastLoginAt": "2026-11-18 21:42",
-      "lastUpdatedAt": "2026-11-18 22:00",
-      "updatedAtMs": 1795006831996,
+      "lastUpdatedAt": "2026-11-18 22:01",
+      "updatedAtMs": 1795006875328,
       "workspace": {
         "papers": [
           {
@@ -5474,11 +5474,15 @@
             "allowed_users": [],
             "allowed_groups": [],
             "id": 1794807861185,
-            "project_folder": "2D Janus MA2Z4 & Layered TMDs",
+            "project_folder": "lam New",
             "structural_id": "CD-0028",
             "calc_status": "Relaxed",
             "owner_email": "lamvt.sep@gmail.com",
-            "owner_name": "Tien Lam"
+            "owner_name": "Tien Lam",
+            "is_starred": false,
+            "associated_paper_id": null,
+            "associated_paper_title": "",
+            "associated_paper_doi": ""
           },
           {
             "name": "MoSi2N2P2 Janus 4",
@@ -5733,6 +5737,12 @@
         ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-18 22:01",
+          "category": "Crystal Structures",
+          "action": "Updated Structure",
+          "detail": "J+4 — A (P1 (1))"
+        },
         {
           "timestamp": "2026-11-18 21:55",
           "category": "Crystal Structures",
