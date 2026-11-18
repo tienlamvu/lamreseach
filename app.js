@@ -5121,6 +5121,9 @@ function getAdminDashUsersViewMode() {
 function setAdminDashUsersViewMode(mode) {
   if (!["cards", "list", "analytics"].includes(mode)) mode = "cards";
   STATE.adminDashUsersViewMode = mode;
+  if (!STATE.listCurrentPages) STATE.listCurrentPages = {};
+  STATE.listCurrentPages.dashUsersCards = 1;
+  STATE.listCurrentPages.dashUsersList = 1;
   try { localStorage.setItem("matsci_admin_users_view_mode", mode); } catch (e) {}
   ["cards", "list", "analytics"].forEach(m => {
     const btn = document.getElementById(`btn-admin-users-view-${m}`);
@@ -5329,6 +5332,7 @@ function renderDashboardAdminUsersSummary() {
   if (kpiContainer) kpiContainer.innerHTML = kpiHtml;
 
   if (usersList.length === 0) {
+    hideUnifiedPaginationBar("dashUsersCards");
     container.innerHTML = `<div style="padding:18px; text-align:center; color:var(--text-muted); font-size:13px;">No personal user accounts registered yet.</div>`;
     return;
   }
@@ -5374,6 +5378,7 @@ function renderDashboardAdminUsersSummary() {
 
   // MODE 3: STATISTICS & ANALYTICS DASHBOARD
   if (viewMode === "analytics") {
+    hideUnifiedPaginationBar("dashUsersCards");
     const ranked = [...filtered].sort((a, b) => b.totalContrib - a.totalContrib || b.sCount - a.sCount);
     const maxContrib = Math.max(1, ...ranked.map(x => x.totalContrib));
 
@@ -5506,9 +5511,13 @@ function renderDashboardAdminUsersSummary() {
   }
 
   if (filtered.length === 0) {
+    hideUnifiedPaginationBar("dashUsersCards");
     container.innerHTML = `<div style="padding:20px; text-align:center; color:#786354; font-size:13px; background:#fffdf9; border:1px dashed #d9bf9f; border-radius:8px;">No user accounts match the current search or filter criteria.</div>`;
     return;
   }
+
+  // Paginate Dashboard Users (Cards vs List view presets)
+  const pagedUsers = paginateListSlice(viewMode === "list" ? "dashUsersList" : "dashUsersCards", filtered);
 
   // MODE 2: COMPACT LIST / TABLE VIEW
   if (viewMode === "list") {
@@ -5527,7 +5536,7 @@ function renderDashboardAdminUsersSummary() {
             </tr>
           </thead>
           <tbody>
-            ${filtered.map(x => {
+            ${pagedUsers.map(x => {
               const safeEmail = escapeHtml(x.normEmail).replace(/'/g, "\\'");
               const safeFolder = escapeHtml(x.folderName).replace(/'/g, "\\'");
               const isPreviewing = STATE.adminPreviewUserEmail === x.normEmail;
@@ -5582,7 +5591,7 @@ function renderDashboardAdminUsersSummary() {
   // MODE 1: REFINED CARDS VIEW (Default)
   container.innerHTML = `
     <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(290px, 1fr)); gap:10px;">
-      ${filtered.map(x => {
+      ${pagedUsers.map(x => {
         const u = x.u;
         const normEmail = x.normEmail;
         const safeEmail = escapeHtml(normEmail).replace(/'/g, "\\'");
@@ -5765,9 +5774,11 @@ function renderAdminUsersDirectory() {
 
   if (listPanel) {
     if (filtered.length === 0) {
+      hideUnifiedPaginationBar("inspectorUsers");
       listPanel.innerHTML = `<div style="padding:20px; text-align:center; color:#64748b; font-size:13px;">No matching user accounts found for this filter.</div>`;
     } else {
-      listPanel.innerHTML = filtered.map(u => {
+      const pagedInspectorUsers = paginateListSlice("inspectorUsers", filtered);
+      listPanel.innerHTML = pagedInspectorUsers.map(u => {
         const normEmail = normalizeEmail(u.email);
         const isActive = STATE.selectedInspectorUserEmail === normEmail;
         const isSuspended = u.status === "Suspended";
@@ -7835,11 +7846,14 @@ function renderPapersList() {
   const container = document.getElementById("papers-list-container");
   if (!container) return;
   if (filtered.length === 0) {
+    hideUnifiedPaginationBar("papers");
     container.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-muted);">No matching papers found. Paste a DOI above to auto-import!</div>`;
     return;
   }
 
-  container.innerHTML = filtered.map(p => {
+  const pagedPapers = paginateListSlice("papers", filtered);
+
+  container.innerHTML = pagedPapers.map(p => {
     const isSelected = STATE.selectedPaperIds && STATE.selectedPaperIds.has(p.id);
     const canModifyItem = Boolean(STATE.auth && STATE.auth.isAdmin) || !p._sharedFromAdmin;
     return `
@@ -9925,6 +9939,205 @@ function renderStructPaginationBar(totalItems, currentPage, pageSize, mode) {
     </div>
     <div class="mp-pg-summary">Showing ${startItem}–${endItem} of ${totalItems}</div>
   `;
+}
+
+/* ============================================================================
+   Unified Scientific Pagination Engine (Users, References, Events, Publications)
+   ============================================================================ */
+const UNIFIED_PAGINATION_CONFIG = {
+  papers: {
+    barId: "papers-pagination-bar",
+    scrollId: "papers-list-container",
+    options: [5, 10, 20, 50, 100, 200],
+    defaultSize: 10,
+    rerender: () => renderPapersList()
+  },
+  schedule: {
+    barId: "schedule-pagination-bar",
+    scrollId: "schedule-list-container",
+    options: [5, 10, 20, 50, 100],
+    defaultSize: 10,
+    rerender: () => renderScheduleList()
+  },
+  dashUsersCards: {
+    barId: "dashboard-admin-users-pagination-bar",
+    scrollId: "dashboard-admin-users-kpi",
+    options: [4, 8, 12, 24, 48],
+    defaultSize: 8,
+    rerender: () => renderDashboardAdminUsersSummary()
+  },
+  dashUsersList: {
+    barId: "dashboard-admin-users-pagination-bar",
+    scrollId: "dashboard-admin-users-kpi",
+    options: [5, 10, 20, 50, 100],
+    defaultSize: 10,
+    rerender: () => renderDashboardAdminUsersSummary()
+  },
+  inspectorUsers: {
+    barId: "admin-users-modal-pagination-bar",
+    scrollId: "admin-users-list-panel",
+    options: [5, 10, 20, 50],
+    defaultSize: 10,
+    compact: true,
+    rerender: () => renderAdminUsersDirectory()
+  },
+  publications: {
+    barId: "prof-publications-pagination-bar",
+    scrollId: "prof-publications-list",
+    options: [5, 10, 20, 50, 100],
+    defaultSize: 10,
+    rerender: () => renderProfile(STATE.profile)
+  }
+};
+
+function getUnifiedPageSize(key) {
+  const cfg = UNIFIED_PAGINATION_CONFIG[key];
+  if (!cfg) return 10;
+  if (!STATE.listPageSizes) STATE.listPageSizes = {};
+  if (STATE.listPageSizes[key]) return STATE.listPageSizes[key];
+  try {
+    const saved = parseInt(localStorage.getItem(`matsci_list_pagesize_${key}`), 10);
+    if (saved && cfg.options.includes(saved)) {
+      STATE.listPageSizes[key] = saved;
+      return saved;
+    }
+  } catch (e) {}
+  STATE.listPageSizes[key] = cfg.defaultSize;
+  return cfg.defaultSize;
+}
+
+function hideUnifiedPaginationBar(key) {
+  const cfg = UNIFIED_PAGINATION_CONFIG[key];
+  if (!cfg) return;
+  const bar = document.getElementById(cfg.barId);
+  if (bar) {
+    bar.style.display = "none";
+    bar.innerHTML = "";
+  }
+}
+
+function setUnifiedListPageSize(key, size) {
+  const cfg = UNIFIED_PAGINATION_CONFIG[key];
+  if (!cfg) return;
+  if (!STATE.listPageSizes) STATE.listPageSizes = {};
+  if (!STATE.listCurrentPages) STATE.listCurrentPages = {};
+  STATE.listPageSizes[key] = Number(size);
+  STATE.listCurrentPages[key] = 1;
+  try {
+    localStorage.setItem(`matsci_list_pagesize_${key}`, String(size));
+  } catch (e) {}
+  cfg.rerender();
+}
+window.setUnifiedListPageSize = setUnifiedListPageSize;
+
+function setUnifiedListPage(key, pageNum) {
+  const cfg = UNIFIED_PAGINATION_CONFIG[key];
+  if (!cfg) return;
+  if (!STATE.listCurrentPages) STATE.listCurrentPages = {};
+  const n = parseInt(pageNum, 10);
+  if (!Number.isNaN(n)) {
+    STATE.listCurrentPages[key] = Math.max(1, n);
+  }
+  cfg.rerender();
+  const target = document.getElementById(cfg.scrollId);
+  if (target) target.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+window.setUnifiedListPage = setUnifiedListPage;
+
+function jumpUnifiedListPageFromInput(key) {
+  const inp = document.getElementById(`pg-jump-input-${key}`);
+  if (!inp) return;
+  setUnifiedListPage(key, inp.value);
+}
+window.jumpUnifiedListPageFromInput = jumpUnifiedListPageFromInput;
+
+function renderUnifiedPaginationBar(key, totalItems, currentPage, pageSize) {
+  const cfg = UNIFIED_PAGINATION_CONFIG[key];
+  if (!cfg) return;
+  const bar = document.getElementById(cfg.barId);
+  if (!bar) return;
+  if (totalItems === 0) {
+    bar.style.display = "none";
+    bar.innerHTML = "";
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const isFirst = currentPage <= 1;
+  const isLast = currentPage >= totalPages;
+  const startItem = (currentPage - 1) * pageSize + 1;
+  const endItem = Math.min(totalItems, currentPage * pageSize);
+
+  const sizeLinksHtml = cfg.options.map(opt => {
+    if (opt === pageSize) {
+      return `<span class="mp-pg-size-active">${opt}</span>`;
+    }
+    return `<button type="button" class="mp-pg-link mp-pg-size-btn" onclick="setUnifiedListPageSize('${key}', ${opt})">${opt}</button>`;
+  }).join(" ");
+
+  bar.style.display = "flex";
+  if (cfg.compact) {
+    bar.innerHTML = `
+      <div class="mp-pg-nav">
+        <button type="button" class="mp-pg-link ${isFirst ? "disabled" : ""}" ${isFirst ? "disabled" : `onclick="setUnifiedListPage('${key}', 1)"`}>◀◀</button>
+        <button type="button" class="mp-pg-link ${isFirst ? "disabled" : ""}" ${isFirst ? "disabled" : `onclick="setUnifiedListPage('${key}', ${currentPage - 1})"`}>◀ Prev</button>
+        <span class="mp-pg-sep">|</span>
+        <span class="mp-pg-jump">
+          <button type="button" class="mp-pg-go-btn" onclick="jumpUnifiedListPageFromInput('${key}')">Page</button>
+          <input type="number" id="pg-jump-input-${key}" class="mp-pg-input" min="1" max="${totalPages}" value="${currentPage}" onkeydown="if(event.key==='Enter'){jumpUnifiedListPageFromInput('${key}');}" aria-label="Page number" />
+          <span>/ <strong>${totalPages}</strong></span>
+        </span>
+        <span class="mp-pg-sep">|</span>
+        <button type="button" class="mp-pg-link ${isLast ? "disabled" : ""}" ${isLast ? "disabled" : `onclick="setUnifiedListPage('${key}', ${currentPage + 1})"`}>Next ▶</button>
+        <button type="button" class="mp-pg-link ${isLast ? "disabled" : ""}" ${isLast ? "disabled" : `onclick="setUnifiedListPage('${key}', ${totalPages})"`}>▶▶</button>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:6px; flex-wrap:wrap;">
+        <span class="mp-pg-display"><span>Show</span> ${sizeLinksHtml}</span>
+        <span class="mp-pg-summary" style="width:auto;">${startItem}–${endItem} of ${totalItems}</span>
+      </div>
+    `;
+    return;
+  }
+
+  bar.innerHTML = `
+    <div class="mp-pg-nav">
+      <button type="button" class="mp-pg-link ${isFirst ? "disabled" : ""}" ${isFirst ? "disabled" : `onclick="setUnifiedListPage('${key}', 1)"`}>◀◀ First</button>
+      <span class="mp-pg-sep">|</span>
+      <button type="button" class="mp-pg-link ${isFirst ? "disabled" : ""}" ${isFirst ? "disabled" : `onclick="setUnifiedListPage('${key}', ${currentPage - 1})"`}>◀ Previous ${pageSize}</button>
+      <span class="mp-pg-sep">|</span>
+      <span class="mp-pg-jump">
+        <button type="button" class="mp-pg-go-btn" onclick="jumpUnifiedListPageFromInput('${key}')">Page</button>
+        <input type="number" id="pg-jump-input-${key}" class="mp-pg-input" min="1" max="${totalPages}" value="${currentPage}" onkeydown="if(event.key==='Enter'){jumpUnifiedListPageFromInput('${key}');}" aria-label="Page number" />
+        <span>of <strong>${totalPages}</strong></span>
+      </span>
+      <span class="mp-pg-sep">|</span>
+      <button type="button" class="mp-pg-link ${isLast ? "disabled" : ""}" ${isLast ? "disabled" : `onclick="setUnifiedListPage('${key}', ${currentPage + 1})"`}>Next ${pageSize} ▶</button>
+      <span class="mp-pg-sep">|</span>
+      <button type="button" class="mp-pg-link ${isLast ? "disabled" : ""}" ${isLast ? "disabled" : `onclick="setUnifiedListPage('${key}', ${totalPages})"`}>Last ▶▶</button>
+      <span class="mp-pg-sep">|</span>
+      <span class="mp-pg-display">
+        <span>Display</span>
+        ${sizeLinksHtml}
+        <span>entries per page</span>
+      </span>
+    </div>
+    <div class="mp-pg-summary">Showing ${startItem}–${endItem} of ${totalItems}</div>
+  `;
+}
+
+function paginateListSlice(key, items) {
+  if (!Array.isArray(items) || items.length === 0) {
+    hideUnifiedPaginationBar(key);
+    return [];
+  }
+  if (!STATE.listCurrentPages) STATE.listCurrentPages = {};
+  const pageSize = getUnifiedPageSize(key);
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const currentPage = Math.min(Math.max(1, Number(STATE.listCurrentPages[key] || 1)), totalPages);
+  STATE.listCurrentPages[key] = currentPage;
+  const start = (currentPage - 1) * pageSize;
+  renderUnifiedPaginationBar(key, items.length, currentPage, pageSize);
+  return items.slice(start, start + pageSize);
 }
 
 function getExistingProjectFolders() {
@@ -12725,12 +12938,15 @@ function renderScheduleList() {
   const container = document.getElementById("schedule-list-container");
   if (!container) return;
   if (filtered.length === 0) {
+    hideUnifiedPaginationBar("schedule");
     container.innerHTML = `<div style="padding:16px; text-align:center; color:var(--text-muted);">No schedule items found. Click any date on the calendar above to add an event!</div>`;
     updateScheduleBatchBar([]);
     return;
   }
 
-  container.innerHTML = filtered.map(s => {
+  const pagedSchedule = paginateListSlice("schedule", filtered);
+
+  container.innerHTML = pagedSchedule.map(s => {
     const canModifyItem = Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin;
     const isSelected = STATE.selectedScheduleIds.has(s.id);
     return `
@@ -16123,9 +16339,12 @@ function renderProfile(prof) {
   const pubContainer = document.getElementById("prof-publications-list");
   if (pubContainer) {
     if (pubs.length === 0) {
+      hideUnifiedPaginationBar("publications");
       pubContainer.innerHTML = `<div style="color:var(--text-muted); font-size:13px;">No publications listed yet. Sync with ORCID or Google Scholar above!</div>`;
     } else {
-      pubContainer.innerHTML = pubs.map((p, idx) => {
+      const indexedPubs = pubs.map((p, idx) => ({ p, idx }));
+      const pagedPubs = paginateListSlice("publications", indexedPubs);
+      pubContainer.innerHTML = pagedPubs.map(({ p, idx }) => {
         const pubKey = getPubUniqueKey(p, idx);
         const isPubSelected = STATE.selectedPubKeys && STATE.selectedPubKeys.has(pubKey);
         const doiUrl = p.doi ? (p.doi.startsWith("http") ? p.doi : `https://doi.org/${p.doi}`) : "";
