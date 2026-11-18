@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261118_v94_direct_gcal_oauth_sync" onerror="this.href='/static/styles.css?v=20261118_v94_direct_gcal_oauth_sync'" />
+  <link rel="stylesheet" href="styles.css?v=20261118_v95_zero403_live_gcal_relay" onerror="this.href='/static/styles.css?v=20261118_v95_zero403_live_gcal_relay'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -445,20 +445,23 @@
           </div>
         </div>
 
-        <!-- 2-Way Import Drawer from Google Calendar (.ics file or feed URL) -->
+        <!-- Live Google Calendar Connection Drawer (Zero-OAuth-403 Direct iCal / Public Email Sync) -->
         <div id="gcal-import-drawer" class="card" style="display:none; background:#faf5ec; border:1px solid #d9bf9f; margin-bottom:14px;">
-          <div class="card-header" style="margin-bottom:8px;">
+          <div class="card-header" style="margin-bottom:8px; flex-wrap:wrap; gap:8px;">
             <div>
-              <div class="card-title" style="font-size:14px; color:#7c2d12;">Import Events from Google Calendar (.ics)</div>
-              <div style="font-size:12px; color:#786354;">Upload a Google Calendar <code>.ics</code> file or paste an iCal feed URL to merge events into your unified schedule.</div>
+              <div class="card-title" style="font-size:14px; color:#7c2d12;">Connect Personal Google Calendar (<span id="gcal-drawer-email-label">lamvt.skku@gmail.com</span>)</div>
+              <div style="font-size:12px; color:#5c493c; line-height:1.45; margin-top:2px;">
+                <strong>Option A (Keep Calendar Private):</strong> Open <a href="https://calendar.google.com/calendar/u/0/r/settings" target="_blank" rel="noopener noreferrer" style="color:#9a3412; font-weight:700; text-decoration:underline;">Google Calendar Settings ↗</a> &rarr; click your calendar on the left &rarr; copy <strong>"Secret address in iCal format"</strong> and paste below (saved permanently for auto-sync).<br/>
+                <strong>Option B (Sync by Email Alone):</strong> In <a href="https://calendar.google.com/calendar/u/0/r/settings" target="_blank" rel="noopener noreferrer" style="color:#9a3412; font-weight:700; text-decoration:underline;">Google Calendar Settings ↗</a>, check <strong>"Make available to public"</strong> &rarr; then simply click <strong>Sync Google</strong>.
+              </div>
             </div>
             <button type="button" class="btn btn-outline btn-sm" onclick="toggleIcsImportBox()">Close</button>
           </div>
-          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <input type="text" id="gcal-ics-url-input" placeholder="Paste Google Calendar 'Secret address in iCal format' (https://calendar.google.com/calendar/ical/.../basic.ics)..." style="flex:1; min-width:220px; padding:7px 11px; border:1px solid #d4bfa4; border-radius:6px; font-size:12.5px; background:#fffdf9;" onkeydown="if(event.key==='Enter'){event.preventDefault(); handleGcalIcsUrlFetch();}" />
+            <button type="button" class="btn btn-primary btn-sm" onclick="handleGcalIcsUrlFetch()">Save &amp; Sync Live</button>
             <input type="file" id="gcal-ics-file-input" accept=".ics" style="display:none;" onchange="handleGcalIcsFile(event)" />
-            <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('gcal-ics-file-input').click()">Select .ics File</button>
-            <input type="text" id="gcal-ics-url-input" placeholder="Or paste .ics webcal:// or https:// URL..." style="flex:1; min-width:180px; padding:6px 10px; border:1px solid #d4bfa4; border-radius:6px; font-size:12.5px; background:#fffdf9;" />
-            <button type="button" class="btn btn-primary btn-sm" onclick="handleGcalIcsUrlFetch()">Fetch &amp; Sync</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('gcal-ics-file-input').click()">Upload .ics File</button>
           </div>
         </div>
 
@@ -3866,8 +3869,8 @@
     </div>
   </div>
 
-<script src="matsci_tools.js?v=20261118_v94_direct_gcal_oauth_sync" onerror="this.src='/static/matsci_tools.js?v=20261118_v94_direct_gcal_oauth_sync'"></script>
-  <script src="app.js?v=20261118_v94_direct_gcal_oauth_sync" onerror="this.src='/static/app.js?v=20261118_v94_direct_gcal_oauth_sync'"></script>
+<script src="matsci_tools.js?v=20261118_v95_zero403_live_gcal_relay" onerror="this.src='/static/matsci_tools.js?v=20261118_v95_zero403_live_gcal_relay'"></script>
+  <script src="app.js?v=20261118_v95_zero403_live_gcal_relay" onerror="this.src='/static/app.js?v=20261118_v95_zero403_live_gcal_relay'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
