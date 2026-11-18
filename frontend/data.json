@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-18T12:55:03.285Z",
+  "exported_at": "2026-11-18T12:55:30.794Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -5118,7 +5118,7 @@
       "registeredAt": "2026-11-16 11:31",
       "lastLoginAt": "2026-11-18 21:42",
       "lastUpdatedAt": "2026-11-18 21:55",
-      "updatedAtMs": 1795006502756,
+      "updatedAtMs": 1795006529241,
       "workspace": {
         "papers": [
           {
@@ -5474,11 +5474,15 @@
             "allowed_users": [],
             "allowed_groups": [],
             "id": 1794807861185,
-            "project_folder": "2D Janus MA2Z4 & Layered TMDs",
+            "project_folder": "lam New",
             "structural_id": "CD-0028",
             "calc_status": "Relaxed",
             "owner_email": "lamvt.sep@gmail.com",
-            "owner_name": "Tien Lam"
+            "owner_name": "Tien Lam",
+            "is_starred": false,
+            "associated_paper_id": null,
+            "associated_paper_title": "",
+            "associated_paper_doi": ""
           },
           {
             "name": "MoSi2N2P2 Janus 4",
@@ -6361,7 +6365,9 @@
             "takeaway": "Good reference for antisite defects in TMDs."
           }
         ],
-        "customFolders": [],
+        "customFolders": [
+          "lam New"
+        ],
         "eventCategories": [
           "Synthesis / Furnace",
           "Characterization (XRD/SEM/TEM/XPS)",
@@ -6371,6 +6377,12 @@
         ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-18 21:55",
+          "category": "Crystal Structures",
+          "action": "Updated Structure",
+          "detail": "J+4 — A (P1 (1))"
+        },
         {
           "timestamp": "2026-11-18 21:42",
           "category": "Session",
