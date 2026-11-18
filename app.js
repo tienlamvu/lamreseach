@@ -7854,6 +7854,171 @@ function autoSortModalFormula() {
   }
 }
 
+function _gcdInt(a, b) {
+  a = Math.abs(Math.round(a));
+  b = Math.abs(Math.round(b));
+  while (b) {
+    const t = b;
+    b = a % b;
+    a = t;
+  }
+  return a || 1;
+}
+
+function computeFormulaFromAtoms(atoms = [], options = {}) {
+  const reduced = Boolean(options.reduced);
+  if (!Array.isArray(atoms) || atoms.length === 0) return "";
+  const counts = {};
+  atoms.forEach(at => {
+    if (!at) return;
+    const el = resolveElementSymbol(at.element || at.label || "");
+    if (!el || el === "X") return;
+    const occRaw = Number(at.occupancy);
+    const occ = (at.occupancy != null && !Number.isNaN(occRaw) && occRaw > 0) ? occRaw : 1.0;
+    counts[el] = (counts[el] || 0) + occ;
+  });
+
+  const elems = Object.keys(counts);
+  if (elems.length === 0) return "";
+
+  elems.forEach(el => {
+    const r = Math.round(counts[el]);
+    if (Math.abs(counts[el] - r) < 1e-3) counts[el] = r;
+  });
+
+  let divisor = 1;
+  if (reduced) {
+    const allIntegers = elems.every(el => Number.isInteger(counts[el]) && counts[el] > 0);
+    if (allIntegers) {
+      divisor = elems.reduce((g, el) => _gcdInt(g, counts[el]), counts[elems[0]]);
+    } else {
+      const vals = elems.map(el => counts[el]);
+      const minVal = Math.min(...vals);
+      if (minVal > 0 && vals.every(v => Math.abs((v / minVal) - Math.round((v / minVal) * 2) / 2) < 1e-2)) {
+        divisor = minVal;
+      }
+    }
+  }
+
+  const sortedElems = elems.sort((a, b) => {
+    const orderA = ELEMENT_FORMULA_ORDER[a] != null ? ELEMENT_FORMULA_ORDER[a] : 999;
+    const orderB = ELEMENT_FORMULA_ORDER[b] != null ? ELEMENT_FORMULA_ORDER[b] : 999;
+    return orderA - orderB || a.localeCompare(b);
+  });
+
+  return sortedElems.map(el => {
+    let v = counts[el] / divisor;
+    const r = Math.round(v);
+    if (Math.abs(v - r) < 1e-3) v = r;
+    if (Math.abs(v - 1) < 1e-3) return el;
+    return `${el}${Number.isInteger(v) ? v : parseFloat(v.toFixed(3))}`;
+  }).join("");
+}
+window.computeFormulaFromAtoms = computeFormulaFromAtoms;
+
+function _getModalAtomsOrParseCif() {
+  let atoms = (STATE.pendingModalAtoms && STATE.pendingModalAtoms.length > 0) ? STATE.pendingModalAtoms : [];
+  if (atoms.length === 0) {
+    const rawCif = (document.getElementById("struct-cifcontent")?.value || "").trim();
+    if (rawCif) {
+      const parsed = parseCifTextClient(rawCif, document.getElementById("struct-name")?.value || "");
+      if (parsed && parsed.atoms && parsed.atoms.length > 0) {
+        atoms = parsed.atoms;
+        renderModalAtomsTable(atoms, { skipFormulaAutoFill: true });
+      }
+    }
+  }
+  return atoms;
+}
+
+function updateModalFormulaPreview() {
+  const hintEl = document.getElementById("struct-formula-auto-hint");
+  if (!hintEl) return;
+  const atoms = STATE.pendingModalAtoms || [];
+  if (atoms.length === 0) {
+    hintEl.style.display = "none";
+    hintEl.innerHTML = "";
+    return;
+  }
+  const fullF = computeFormulaFromAtoms(atoms, { reduced: false });
+  const redF = computeFormulaFromAtoms(atoms, { reduced: true });
+  if (!fullF) {
+    hintEl.style.display = "none";
+    return;
+  }
+  hintEl.style.display = "flex";
+  if (fullF === redF) {
+    hintEl.innerHTML = `<span>From ${atoms.length} atoms: <strong>${formatFormulaHtml(fullF)}</strong></span>`;
+  } else {
+    hintEl.innerHTML = `<span>From ${atoms.length} atoms: Full <strong>${formatFormulaHtml(fullF)}</strong> &middot; Reduced <strong>${formatFormulaHtml(redF)}</strong></span>`;
+  }
+}
+
+function autoFillModalFormula(reduced = false, silent = false) {
+  const atoms = _getModalAtomsOrParseCif();
+  const input = document.getElementById("struct-formula");
+  if (!input) return;
+  if (atoms.length === 0) {
+    if (!silent) showToast("No atomic coordinates found in structure. Upload a *.cif or add atoms first.", "warn");
+    return;
+  }
+  const computed = computeFormulaFromAtoms(atoms, { reduced: Boolean(reduced) });
+  if (computed) {
+    input.value = computed;
+    updateModalFormulaPreview();
+    if (typeof checkModalStructureDuplicate === "function") checkModalStructureDuplicate();
+    if (!silent) {
+      showToast(`Auto-filled ${reduced ? "reduced" : "full"} formula from ${atoms.length} atoms: ${computed}`, "success");
+    }
+  }
+}
+window.autoFillModalFormula = autoFillModalFormula;
+
+function recalculateFormulasFromStructures(onlySelected = false, reduced = false) {
+  if (!requireAdminAuth()) return;
+  const selectedIds = STATE.selectedStructureIds || new Set();
+  const targets = (onlySelected && selectedIds.size > 0)
+    ? (STATE.structures || []).filter(s => selectedIds.has(Number(s.id)))
+    : (STATE.structures || []);
+
+  let updatedCount = 0;
+  targets.forEach(s => {
+    const canModify = Boolean(STATE.auth && STATE.auth.isAdmin) || !s._sharedFromAdmin;
+    if (!canModify) return;
+    let atoms = (s.atoms && s.atoms.length > 0) ? s.atoms : [];
+    if (atoms.length === 0 && (s.raw_cif || s.cif_content)) {
+      const parsed = parseCifTextClient(s.raw_cif || s.cif_content, s.name);
+      if (parsed && parsed.atoms && parsed.atoms.length > 0) {
+        atoms = parsed.atoms;
+        s.atoms = atoms;
+      }
+    }
+    if (atoms.length === 0 && (s.poscar_text || s.poscar_content) && typeof parsePoscarAtomsClient === "function") {
+      atoms = parsePoscarAtomsClient(s.poscar_text || s.poscar_content);
+    }
+    if (atoms.length > 0) {
+      const computed = computeFormulaFromAtoms(atoms, { reduced: Boolean(reduced) });
+      if (computed && computed !== s.chemical_formula) {
+        s.chemical_formula = computed;
+        s.formula = computed;
+        s.natoms = atoms.length;
+        updatedCount++;
+      }
+    }
+  });
+
+  if (updatedCount > 0) {
+    saveStaticDb();
+    applyActiveWorkspaceData();
+    refreshAllWorkspaceViews();
+    showToast(`Auto-updated chemical formula for ${updatedCount} structure${updatedCount > 1 ? "s" : ""} from atomic coordinates.`, "success");
+    recordUserActivity("Crystal Structures", "Recalculated Formulas", `Updated ${updatedCount} structure formula(s) from atoms.`);
+  } else {
+    showToast("All structures already match their atomic composition (or have no coordinates).", "info");
+  }
+}
+window.recalculateFormulasFromStructures = recalculateFormulasFromStructures;
+
 function formatFormulaHtml(formula) {
   if (!formula) return "";
   const clean = cleanAndSortChemicalFormula(formula);
@@ -8100,35 +8265,36 @@ function parseCifTextClient(cifText, filename = "") {
     }
   }
 
-  // 5. Formula & Compound Name
-  let rawFormula = getTag("_chemical_formula_sum") ||
-                   getTag("_chemical_formula_structural") ||
-                   getTag("_chemical_name_common") ||
-                   getTag("_chemical_name_systematic");
-  let formula = cleanAndSortChemicalFormula(rawFormula);
+  // 5. Formula & Compound Name (Prioritize true atomic composition over data_ tag / filename!)
+  const explicitCifFormula = getTag("_chemical_formula_sum") || getTag("_chemical_formula_structural");
+  const isP1OrExpanded = /^\s*p\s*1(?:\s*\(1\))?\s*$/i.test(spaceGroup || "");
+  let formula = "";
 
+  // If explicit _chemical_formula_sum exists on a high-symmetry Wyckoff CIF (not P1), use it first
+  if (explicitCifFormula && !isP1OrExpanded) {
+    formula = cleanAndSortChemicalFormula(explicitCifFormula);
+  }
+
+  // Otherwise, compute exact stoichiometry directly from the parsed atomic coordinates & occupancies
+  if ((!formula || formula === "UnknownFormula") && atoms.length > 0) {
+    formula = computeFormulaFromAtoms(atoms, { reduced: true }) || computeFormulaFromAtoms(atoms, { reduced: false });
+  }
+
+  // Fallback to explicit CIF formula tags if atoms were not present
+  if (!formula || formula === "UnknownFormula") {
+    const rawFallback = explicitCifFormula || getTag("_chemical_name_common") || getTag("_chemical_name_systematic");
+    formula = cleanAndSortChemicalFormula(rawFallback);
+  }
+
+  // Last-resort fallback to data_ tag or filename ONLY if no atoms and no formula tag exist
   if (!formula || formula === "UnknownFormula") {
     const dataTagMatch = text.match(/data_([^\s]+)/i);
     if (dataTagMatch && dataTagMatch[1]) {
       let dTag = dataTagMatch[1].replace(/_cubic|_hex|_tetra|_ortho|_mono/gi, "");
-      // Ignore generic calculation names
       if (!["global", "cif", "data", "input", "structure", "soc", "opt", "relax", "band", "dos"].includes(dTag.toLowerCase())) {
         formula = cleanAndSortChemicalFormula(dTag);
       }
     }
-  }
-
-  if ((!formula || formula === "UnknownFormula") && atoms.length > 0) {
-    const counts = {};
-    atoms.forEach(at => {
-      counts[at.element] = (counts[at.element] || 0) + 1;
-    });
-    const sortedElems = Object.keys(counts).sort((a, b) => {
-      const orderA = ELEMENT_FORMULA_ORDER[a] != null ? ELEMENT_FORMULA_ORDER[a] : 999;
-      const orderB = ELEMENT_FORMULA_ORDER[b] != null ? ELEMENT_FORMULA_ORDER[b] : 999;
-      return orderA - orderB;
-    });
-    formula = sortedElems.map(el => `${el}${counts[el] > 1 ? counts[el] : ""}`).join("");
   }
 
   const cleanFilename = getCleanBasename(filename);
@@ -8215,7 +8381,7 @@ function generatePoscarFromLattice(formula, a, b, c, alpha, beta, gamma) {
   return generatePoscarFromLatticeAndAtoms(formula, a, b, c, alpha, beta, gamma, []);
 }
 
-function renderModalAtomsTable(atoms = []) {
+function renderModalAtomsTable(atoms = [], opts = {}) {
   STATE.pendingModalAtoms = Array.isArray(atoms) ? JSON.parse(JSON.stringify(atoms)) : [];
   const tbody = document.getElementById("struct-atoms-tbody");
   const badge = document.getElementById("struct-atoms-badge");
@@ -8224,8 +8390,12 @@ function renderModalAtomsTable(atoms = []) {
     badge.textContent = `${STATE.pendingModalAtoms.length} atoms recognized`;
     badge.className = STATE.pendingModalAtoms.length > 0 ? "badge badge-green" : "badge badge-slate";
   }
-  if (natomsInput) {
-    natomsInput.value = STATE.pendingModalAtoms.length || 5;
+  if (natomsInput && STATE.pendingModalAtoms.length > 0) {
+    natomsInput.value = STATE.pendingModalAtoms.length;
+  }
+  updateModalFormulaPreview();
+  if (opts.autoFillFormula && STATE.pendingModalAtoms.length > 0) {
+    autoFillModalFormula(false, true);
   }
   if (!tbody) return;
 
@@ -8263,10 +8433,19 @@ function renderModalAtomsTable(atoms = []) {
 
 function updatePendingAtom(idx, field, val) {
   if (!STATE.pendingModalAtoms || !STATE.pendingModalAtoms[idx]) return;
-  STATE.pendingModalAtoms[idx][field] = val;
+  if (field === "element") {
+    const resolved = resolveElementSymbol(val);
+    STATE.pendingModalAtoms[idx][field] = (resolved && resolved !== "X") ? resolved : String(val || "").trim();
+  } else {
+    STATE.pendingModalAtoms[idx][field] = val;
+  }
   if (field === "element" && (!STATE.pendingModalAtoms[idx].label || STATE.pendingModalAtoms[idx].label.length <= 2)) {
-    STATE.pendingModalAtoms[idx].label = `${val}${idx + 1}`;
-    renderModalAtomsTable(STATE.pendingModalAtoms);
+    STATE.pendingModalAtoms[idx].label = `${STATE.pendingModalAtoms[idx].element}${idx + 1}`;
+    renderModalAtomsTable(STATE.pendingModalAtoms, { autoFillFormula: true });
+    return;
+  }
+  if (field === "element" || field === "occupancy") {
+    autoFillModalFormula(false, true);
   }
 }
 
@@ -8282,7 +8461,7 @@ function addAtomRowToModal() {
     z: 0.5,
     occupancy: 1.0
   });
-  renderModalAtomsTable(STATE.pendingModalAtoms);
+  renderModalAtomsTable(STATE.pendingModalAtoms, { autoFillFormula: true });
 }
 
 async function removeAtomRowFromModal(idx) {
@@ -8292,7 +8471,7 @@ async function removeAtomRowFromModal(idx) {
   const ok = await confirmAction("Are you sure you want to remove this atom coordinate from the crystal structure?", desc);
   if (!ok) return;
   STATE.pendingModalAtoms.splice(idx, 1);
-  renderModalAtomsTable(STATE.pendingModalAtoms);
+  renderModalAtomsTable(STATE.pendingModalAtoms, { autoFillFormula: true });
 }
 
 async function clearModalAtoms() {
@@ -8309,16 +8488,23 @@ function collectModalAtoms() {
 
 function populateStructureModalWithParsed(p, rawCif, filename) {
   document.getElementById("struct-id").value = "";
+  const sidEl = document.getElementById("struct-structural-id");
+  if (sidEl && !sidEl.value) sidEl.value = generateNextStructuralId();
   let cleanName = getCleanBasename(filename || p.name);
   if (!cleanName || ["input", "structure", "crystal", "cif", "data", "upload", "soc"].includes(cleanName.toLowerCase())) {
     cleanName = p.chemical_formula || p.name || "Crystal Structure";
   }
   document.getElementById("struct-name").value = cleanName;
-  const sortedFormula = cleanAndSortChemicalFormula(p.chemical_formula || p.formula || cleanName);
+  const atomsList = Array.isArray(p.atoms) ? p.atoms : [];
+  const atomDerivedFormula = atomsList.length > 0 ? computeFormulaFromAtoms(atomsList, { reduced: true }) : "";
+  const sortedFormula = atomDerivedFormula || cleanAndSortChemicalFormula(p.chemical_formula || p.formula || cleanName);
   document.getElementById("struct-formula").value = sortedFormula;
   document.getElementById("struct-system").value = p.crystal_system || "Cubic";
   document.getElementById("struct-spacegroup").value = p.space_group || "";
-  document.getElementById("struct-type").value = p.structure_type || "Bulk 3D";
+  const cVal = Number(p.c || 0);
+  const aVal = Number(p.a || 0);
+  const autoStructType = (cVal >= 15.0 && aVal > 0 && aVal < 12.0) ? "2D Monolayer" : (p.structure_type || "Bulk 3D");
+  document.getElementById("struct-type").value = autoStructType;
   document.getElementById("struct-a").value = p.a != null ? p.a : 4.0;
   document.getElementById("struct-b").value = p.b != null ? p.b : (p.a || 4.0);
   document.getElementById("struct-c").value = p.c != null ? p.c : (p.a || 4.0);
@@ -8326,9 +8512,10 @@ function populateStructureModalWithParsed(p, rawCif, filename) {
   document.getElementById("struct-beta").value = p.beta != null ? p.beta : 90.0;
   document.getElementById("struct-gamma").value = p.gamma != null ? p.gamma : 90.0;
   document.getElementById("struct-vol").value = p.volume != null ? p.volume : 64.0;
-  document.getElementById("struct-natoms").value = p.atoms && p.atoms.length > 0 ? p.atoms.length : (p.natoms || 5);
+  document.getElementById("struct-natoms").value = atomsList.length > 0 ? atomsList.length : (p.natoms || 5);
   document.getElementById("struct-cifcontent").value = rawCif || p.raw_cif || p.cif_content || "";
-  renderModalAtomsTable(p.atoms || []);
+  renderModalAtomsTable(atomsList);
+  if (typeof checkModalStructureDuplicate === "function") checkModalStructureDuplicate();
 }
 
 
