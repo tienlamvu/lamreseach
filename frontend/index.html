@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261119_v103_clean_remove_chat" onerror="this.href='/static/styles.css?v=20261119_v103_clean_remove_chat'" />
+  <link rel="stylesheet" href="styles.css?v=20261119_v104_news_tab_rich_editor_journal_view" onerror="this.href='/static/styles.css?v=20261119_v104_news_tab_rich_editor_journal_view'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -70,6 +70,7 @@
         </div>
         <select id="mobile-tab-select" class="mobile-tab-native-select" onchange="switchTab(this.value)" aria-label="Select Navigation Tab">
           <option value="dashboard">📊 Dashboard</option>
+          <option value="news">📰 News &amp; Articles</option>
           <option value="literature">📚 References (Literature)</option>
           <option value="calendar">📅 Calendar &amp; Google Calendar</option>
           <option value="structures">💎 Crystal Structures (*.cif)</option>
@@ -92,6 +93,9 @@
       <nav class="horizontal-tabs" id="main-horizontal-nav">
         <button class="nav-btn active" data-tab="dashboard" onclick="switchTab('dashboard', this)">
           <span class="nav-icon">📊</span> Dashboard
+        </button>
+        <button class="nav-btn" data-tab="news" onclick="switchTab('news', this)">
+          <span class="nav-icon">📰</span> News
         </button>
         <button class="nav-btn" data-tab="literature" onclick="switchTab('literature', this)">
           <span class="nav-icon">📚</span> References
@@ -232,6 +236,54 @@
             </div>
           </div>
           <div id="dashboard-papers-list"></div>
+        </div>
+      </section>
+
+      <!-- ================================================================ -->
+      <!-- TAB: RESEARCH NEWS & SCIENTIFIC PUBLICATIONS                      -->
+      <!-- ================================================================ -->
+      <section id="tab-news" class="tab-pane">
+        <!-- News Header Bar -->
+        <div class="news-pane-header">
+          <div class="news-pane-titles">
+            <div class="news-eyebrow">SKKU COMPUTATIONAL MATERIALS RESEARCH</div>
+            <h2 class="news-heading">📰 Lab News &amp; Scientific Publications</h2>
+            <p class="news-subheading">Peer-reviewed publications, DFT breakthroughs, research highlights, and lab announcements from the Sungkyunkwan University Materials Simulation Lab.</p>
+          </div>
+          <div class="news-header-actions">
+            <button id="news-new-article-btn" class="btn btn-primary admin-only" onclick="openNewsEditorModal()" title="Compose &amp; publish a new research article or announcement">
+              ✍️ + New Article
+            </button>
+          </div>
+        </div>
+
+        <!-- News Control Bar: Category Filters & Real-Time Search -->
+        <div class="news-control-bar">
+          <div class="news-filter-pills" id="news-category-filters">
+            <button class="news-filter-pill active" data-category="all" onclick="filterNewsCategory('all', this)">All Topics (<span id="news-count-all">0</span>)</button>
+            <button class="news-filter-pill" data-category="Research Article" onclick="filterNewsCategory('Research Article', this)">🔬 Research Articles (<span id="news-count-research">0</span>)</button>
+            <button class="news-filter-pill" data-category="Lab Highlight" onclick="filterNewsCategory('Lab Highlight', this)">⭐ Lab Highlights (<span id="news-count-highlight">0</span>)</button>
+            <button class="news-filter-pill" data-category="Communication" onclick="filterNewsCategory('Communication', this)">⚡ Communications (<span id="news-count-comm">0</span>)</button>
+            <button class="news-filter-pill" data-category="Computational" onclick="filterNewsCategory('Computational', this)">💻 Computational DFT (<span id="news-count-comp">0</span>)</button>
+            <button class="news-filter-pill" data-category="Announcement" onclick="filterNewsCategory('Announcement', this)">📢 Announcements (<span id="news-count-ann">0</span>)</button>
+          </div>
+          <div class="news-search-wrapper">
+            <span class="news-search-icon">🔍</span>
+            <input type="text" id="news-search-input" class="news-search-input" placeholder="Search news by title, author, keyword, or content..." oninput="handleNewsSearch(this.value)">
+            <button class="news-search-clear" id="news-search-clear-btn" onclick="clearNewsSearch()" title="Clear search">✕</button>
+          </div>
+        </div>
+
+        <!-- News Articles Grid -->
+        <div id="news-articles-container" class="news-articles-grid">
+          <!-- Dynamically populated by renderNewsTab() -->
+        </div>
+
+        <!-- News Empty State -->
+        <div id="news-empty-state" class="news-empty-state" style="display:none;">
+          <div class="news-empty-icon">📰</div>
+          <div class="news-empty-title">No articles found</div>
+          <div class="news-empty-text">No articles matched your selected category filter or search keywords.</div>
         </div>
       </section>
 
@@ -3892,8 +3944,8 @@
     </div>
   </div>
 
-<script src="matsci_tools.js?v=20261119_v103_clean_remove_chat" onerror="this.src='/static/matsci_tools.js?v=20261119_v103_clean_remove_chat'"></script>
-  <script src="app.js?v=20261119_v103_clean_remove_chat" onerror="this.src='/static/app.js?v=20261119_v103_clean_remove_chat'"></script>
+<script src="matsci_tools.js?v=20261119_v104_news_tab_rich_editor_journal_view" onerror="this.src='/static/matsci_tools.js?v=20261119_v104_news_tab_rich_editor_journal_view'"></script>
+  <script src="app.js?v=20261119_v104_news_tab_rich_editor_journal_view" onerror="this.src='/static/app.js?v=20261119_v104_news_tab_rich_editor_journal_view'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
@@ -3936,6 +3988,342 @@
         </div>
       </div>
     </div>
+
+  <!-- ================================================================ -->
+  <!-- SCIENTIFIC JOURNAL ARTICLE READER MODAL                           -->
+  <!-- ================================================================ -->
+  <div id="news-journal-modal" class="modal-backdrop" onclick="if(event.target===this) closeNewsJournalModal()">
+    <div class="modal-card news-journal-modal-card">
+      <div class="journal-masthead">
+        <div class="journal-masthead-left">
+          <div class="journal-name">SKKU COMPUTATIONAL MATERIALS RESEARCH LETTERS</div>
+          <div class="journal-meta">ISSN 2765-8842 &bull; Open Access Peer-Reviewed Communication &bull; Sungkyunkwan University</div>
+        </div>
+        <div class="journal-masthead-right">
+          <button type="button" class="journal-action-btn" onclick="printNewsArticle()" title="Print / Export to PDF">🖨️ Print / PDF</button>
+          <button type="button" class="journal-action-btn" onclick="copyNewsCitation()" title="Copy Academic Citation">📋 Cite</button>
+          <button type="button" class="journal-action-btn" onclick="copyNewsShareLink()" title="Copy Link to Article">🔗 Share</button>
+          <button type="button" id="journal-admin-edit-btn" class="journal-action-btn admin-only" onclick="editCurrentJournalArticle()" title="Edit this article">✏️ Edit</button>
+          <button type="button" class="modal-close-btn" onclick="closeNewsJournalModal()" title="Close">&times;</button>
+        </div>
+      </div>
+      <article class="journal-paper-container" id="journal-paper-body">
+        <!-- Rendered dynamically by openNewsJournalModal() -->
+      </article>
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- ADMIN NEWS & SCIENTIFIC ARTICLE WYSIWYG EDITOR MODAL              -->
+  <!-- ================================================================ -->
+  <div id="news-editor-modal" class="modal-backdrop" onclick="if(event.target===this) confirmCloseNewsEditor()">
+    <div class="modal-card news-editor-modal-card">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" id="news-editor-modal-title">✍️ Compose Scientific News &amp; Article</h3>
+          <p class="modal-subtitle">Publish peer-reviewed style announcements, DFT papers, or lab communications with academic formatting.</p>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="confirmCloseNewsEditor()">&times;</button>
+      </div>
+
+      <div class="modal-body news-editor-modal-body">
+        <input type="hidden" id="news-edit-article-id" value="">
+
+        <!-- Title & Category Row -->
+        <div class="news-form-row">
+          <div class="news-form-group flex-2">
+            <label class="form-label" for="news-edit-title">Article Title <span class="required">*</span></label>
+            <input type="text" id="news-edit-title" class="form-input" placeholder="e.g. Breakthrough in 2D Janus MoSi2N4 Monolayers for Electrocatalytic HER..." required>
+          </div>
+          <div class="news-form-group flex-1">
+            <label class="form-label" for="news-edit-category">Category / Classification <span class="required">*</span></label>
+            <select id="news-edit-category" class="form-select">
+              <option value="Research Article">🔬 Research Article</option>
+              <option value="Lab Highlight">⭐ Lab Highlight</option>
+              <option value="Communication">⚡ Communication</option>
+              <option value="Computational">💻 Computational DFT</option>
+              <option value="Announcement">📢 Announcement / Seminar</option>
+              <option value="Methodology">📐 Methodology &amp; Protocol</option>
+            </select>
+          </div>
+          <div class="news-form-group" style="min-width: 140px;">
+            <label class="form-label" for="news-edit-status">Status</label>
+            <select id="news-edit-status" class="form-select">
+              <option value="Published">🚀 Published</option>
+              <option value="Draft">📝 Draft</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Authors, Affiliations & Corresponding Email Row -->
+        <div class="news-form-row">
+          <div class="news-form-group flex-2">
+            <label class="form-label" for="news-edit-authors">Authors (with superscripts) <span class="required">*</span></label>
+            <input type="text" id="news-edit-authors" class="form-input" placeholder="e.g. Vu Tien Lam¹*, Jaewon Kim¹, Jin-Woo Park²">
+          </div>
+          <div class="news-form-group flex-1">
+            <label class="form-label" for="news-edit-email">Corresponding Email</label>
+            <input type="email" id="news-edit-email" class="form-input" placeholder="e.g. lamvt.skku@gmail.com">
+          </div>
+        </div>
+
+        <div class="news-form-row">
+          <div class="news-form-group flex-1">
+            <label class="form-label" for="news-edit-affiliations">Affiliations / Institutions</label>
+            <input type="text" id="news-edit-affiliations" class="form-input" placeholder="e.g. ¹ School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU); ² KIST">
+          </div>
+        </div>
+
+        <!-- Publication Timeline Dates Row (Ngày gửi, Ngày sửa, Ngày đăng) -->
+        <div class="news-form-row news-timeline-dates-row">
+          <div class="news-form-group flex-1">
+            <label class="form-label" for="news-edit-received">📥 Received Date (Ngày gửi)</label>
+            <input type="date" id="news-edit-received" class="form-input">
+          </div>
+          <div class="news-form-group flex-1">
+            <label class="form-label" for="news-edit-revised">📝 Revised Date (Ngày sửa)</label>
+            <input type="date" id="news-edit-revised" class="form-input">
+          </div>
+          <div class="news-form-group flex-1">
+            <label class="form-label" for="news-edit-published">🚀 Published Date (Ngày đăng) <span class="required">*</span></label>
+            <input type="date" id="news-edit-published" class="form-input">
+          </div>
+          <div class="news-form-group flex-1">
+            <label class="form-label" for="news-edit-doi">DOI Identifier</label>
+            <input type="text" id="news-edit-doi" class="form-input" placeholder="e.g. 10.skku.matsci/news.2026.001">
+          </div>
+        </div>
+
+        <!-- Cover Image / Graphical Abstract & Keywords -->
+        <div class="news-form-row">
+          <div class="news-form-group flex-2">
+            <label class="form-label">Cover Image / Graphical Abstract</label>
+            <div class="news-image-input-wrap">
+              <input type="text" id="news-edit-cover-url" class="form-input" placeholder="Paste image URL (https://...) or upload below" oninput="updateNewsCoverPreview(this.value)">
+              <label class="btn btn-secondary news-upload-label" title="Upload local image file (JPG, PNG, WebP)">
+                📁 Upload Image
+                <input type="file" id="news-edit-cover-file" accept="image/*" style="display:none;" onchange="handleNewsCoverFileUpload(event)">
+              </label>
+            </div>
+            <div id="news-cover-preview-box" class="news-cover-preview-box" style="display:none;">
+              <img id="news-cover-preview-img" src="" alt="Cover preview">
+              <button type="button" class="news-remove-cover-btn" onclick="removeNewsCoverImage()">&times; Remove</button>
+            </div>
+          </div>
+          <div class="news-form-group flex-2">
+            <label class="form-label" for="news-edit-keywords">Keywords / Tags (comma separated)</label>
+            <input type="text" id="news-edit-keywords" class="form-input" placeholder="e.g. 2D Materials, MoSi2N4, DFT, Valleytronics, Electrocatalysis">
+          </div>
+        </div>
+
+        <!-- Abstract Box -->
+        <div class="news-form-group">
+          <label class="form-label" for="news-edit-abstract">Abstract / Executive Summary <span class="required">*</span></label>
+          <textarea id="news-edit-abstract" class="form-textarea" rows="3" placeholder="Provide a concise 100-250 word scientific summary highlighting problem, computational methodology, key discoveries, and impact..."></textarea>
+        </div>
+
+        <!-- WYSIWYG Rich Text Toolbar & Content -->
+        <div class="news-form-group">
+          <label class="form-label">Article Body &amp; Rich Content (Formatted Publication)</label>
+          
+          <!-- Editor Toolbar -->
+          <div class="news-editor-toolbar" id="news-editor-toolbar">
+            <!-- Font Family & Heading -->
+            <div class="toolbar-group">
+              <select class="toolbar-select" onchange="execEditorCommand('fontName', this.value); this.selectedIndex=0;" title="Font Family">
+                <option value="" disabled selected>Font</option>
+                <option value="'Merriweather', 'Georgia', serif">Academic Serif</option>
+                <option value="'Inter', -apple-system, sans-serif">Modern Sans</option>
+                <option value="'Consolas', 'Courier New', monospace">Monospace</option>
+              </select>
+              <select class="toolbar-select" onchange="execEditorFormatBlock(this.value); this.selectedIndex=0;" title="Heading / Format">
+                <option value="" disabled selected>Style</option>
+                <option value="H2">Section (H2)</option>
+                <option value="H3">Subsection (H3)</option>
+                <option value="H4">Sub-subsection (H4)</option>
+                <option value="P">Paragraph (Text)</option>
+                <option value="BLOCKQUOTE">Academic Quote</option>
+              </select>
+            </div>
+
+            <!-- Formatting Buttons -->
+            <div class="toolbar-group">
+              <button type="button" class="toolbar-btn" onclick="execEditorCommand('bold')" title="Bold (Ctrl+B)"><b>B</b></button>
+              <button type="button" class="toolbar-btn" onclick="execEditorCommand('italic')" title="Italic (Ctrl+I)"><i>I</i></button>
+              <button type="button" class="toolbar-btn" onclick="execEditorCommand('underline')" title="Underline (Ctrl+U)"><u>U</u></button>
+              <button type="button" class="toolbar-btn" onclick="execEditorCommand('strikeThrough')" title="Strikethrough"><s>S</s></button>
+            </div>
+
+            <!-- Subscript & Superscript (Crucial for Chemical Formulas & Physics) -->
+            <div class="toolbar-group">
+              <button type="button" class="toolbar-btn" onclick="execEditorCommand('subscript')" title="Subscript (e.g. H₂O, MoS₂)">X<sub>2</sub></button>
+              <button type="button" class="toolbar-btn" onclick="execEditorCommand('superscript')" title="Superscript (e.g. Å³, e⁻)">X<sup>2</sup></button>
+            </div>
+
+            <!-- Color Pickers -->
+            <div class="toolbar-group">
+              <label class="toolbar-color-btn" title="Text Color">
+                <span style="font-weight:bold; border-bottom:3px solid #8b3a1a;">A</span>
+                <input type="color" value="#1e1b18" onchange="execEditorCommand('foreColor', this.value)" style="opacity:0; width:0; height:0; position:absolute;">
+              </label>
+              <label class="toolbar-color-btn" title="Highlight / Background Color">
+                <span style="background:#fff2a8; padding:0 3px; border-radius:2px;">🖍️</span>
+                <input type="color" value="#fff2a8" onchange="execEditorCommand('hiliteColor', this.value)" style="opacity:0; width:0; height:0; position:absolute;">
+              </label>
+            </div>
+
+            <!-- Alignment -->
+            <div class="toolbar-group">
+              <button type="button" class="toolbar-btn" onclick="execEditorCommand('justifyLeft')" title="Align Left">⯬</button>
+              <button type="button" class="toolbar-btn" onclick="execEditorCommand('justifyCenter')" title="Align Center">☰</button>
+              <button type="button" class="toolbar-btn" onclick="execEditorCommand('justifyRight')" title="Align Right">⯮</button>
+              <button type="button" class="toolbar-btn" onclick="execEditorCommand('justifyFull')" title="Justify (Academic standard)">☲</button>
+            </div>
+
+            <!-- Lists -->
+            <div class="toolbar-group">
+              <button type="button" class="toolbar-btn" onclick="execEditorCommand('insertUnorderedList')" title="Bullet List">• List</button>
+              <button type="button" class="toolbar-btn" onclick="execEditorCommand('insertOrderedList')" title="Numbered List">1. List</button>
+            </div>
+
+            <!-- Academic Inserters: Table, Figure, Math Formula -->
+            <div class="toolbar-group">
+              <button type="button" class="toolbar-btn toolbar-btn-highlight" onclick="openInsertTableDialog()" title="Insert Booktabs Academic Table">📊 Table</button>
+              <button type="button" class="toolbar-btn toolbar-btn-highlight" onclick="openInsertImageDialog()" title="Insert Figure / Image with Caption">🖼️ Figure</button>
+              <button type="button" class="toolbar-btn toolbar-btn-highlight" onclick="openInsertFormulaDialog()" title="Insert Math Formula / Equation">∑ Formula</button>
+              <button type="button" class="toolbar-btn" onclick="insertCalloutBox()" title="Insert Takeaway / Callout Box">💡 Callout</button>
+              <button type="button" class="toolbar-btn" onclick="insertHorizontalRule()" title="Horizontal Divider">&horbar;</button>
+            </div>
+
+            <!-- History & Clear -->
+            <div class="toolbar-group">
+              <button type="button" class="toolbar-btn" onclick="execEditorCommand('undo')" title="Undo (Ctrl+Z)">↩️</button>
+              <button type="button" class="toolbar-btn" onclick="execEditorCommand('redo')" title="Redo (Ctrl+Y)">↪️</button>
+              <button type="button" class="toolbar-btn" onclick="execEditorCommand('removeFormat')" title="Clear Formatting">⌫</button>
+            </div>
+          </div>
+
+          <!-- Rich Editable Content Surface -->
+          <div id="news-editor-body" class="news-wysiwyg-surface" contenteditable="true" placeholder="Compose article sections here: Introduction, Computational Methods, DFT Results, Discussion, and References..."></div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="confirmCloseNewsEditor()">Cancel</button>
+        <button type="button" class="btn btn-secondary" onclick="previewCurrentEditorArticle()">👁️ Preview Layout</button>
+        <button type="button" class="btn btn-secondary" onclick="saveNewsArticleFromEditor('Draft')">💾 Save Draft</button>
+        <button type="button" class="btn btn-primary" onclick="saveNewsArticleFromEditor('Published')">🚀 Publish Article</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table Inserter Subdialog -->
+  <div id="news-table-dialog" class="news-subdialog-overlay" style="display:none;" onclick="if(event.target===this) closeSubdialog('news-table-dialog')">
+    <div class="news-subdialog-card">
+      <h4 style="margin:0 0 12px 0; color:#2b1f17; font-size:16px;">📊 Insert Academic Booktabs Table</h4>
+      <div class="form-group" style="margin-bottom:10px;">
+        <label class="form-label">Table Caption</label>
+        <input type="text" id="news-table-caption-input" class="form-input" placeholder="e.g. Table 1 | Calculated lattice constants and bandgaps">
+      </div>
+      <div style="display:flex; gap:12px; margin-bottom:16px;">
+        <div class="form-group" style="flex:1;">
+          <label class="form-label">Rows</label>
+          <input type="number" id="news-table-rows-input" class="form-input" value="3" min="1" max="25">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label class="form-label">Columns</label>
+          <input type="number" id="news-table-cols-input" class="form-input" value="4" min="1" max="12">
+        </div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:8px;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeSubdialog('news-table-dialog')">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="confirmInsertTable()">Insert Table</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Figure / Image Inserter Subdialog -->
+  <div id="news-image-dialog" class="news-subdialog-overlay" style="display:none;" onclick="if(event.target===this) closeSubdialog('news-image-dialog')">
+    <div class="news-subdialog-card">
+      <h4 style="margin:0 0 12px 0; color:#2b1f17; font-size:16px;">🖼️ Insert Scientific Figure &amp; Caption</h4>
+      <div class="form-group" style="margin-bottom:10px;">
+        <label class="form-label">Image URL or Local Upload</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="news-fig-url-input" class="form-input" placeholder="https://... or upload">
+          <label class="btn btn-secondary btn-sm news-upload-label">
+            📁 Browse
+            <input type="file" id="news-fig-file-input" accept="image/*" style="display:none;" onchange="handleNewsFigFileUpload(event)">
+          </label>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:16px;">
+        <label class="form-label">Figure Caption</label>
+        <input type="text" id="news-fig-caption-input" class="form-input" placeholder="e.g. Figure 1 | Electronic band structure and PDOS under HSE06 functional">
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:8px;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeSubdialog('news-image-dialog')">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="confirmInsertImage()">Insert Figure</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Math Formula Inserter Subdialog -->
+  <div id="news-formula-dialog" class="news-subdialog-overlay" style="display:none;" onclick="if(event.target===this) closeSubdialog('news-formula-dialog')">
+    <div class="news-subdialog-card">
+      <h4 style="margin:0 0 12px 0; color:#2b1f17; font-size:16px;">∑ Insert Mathematical Formula / Equation</h4>
+      <div class="form-group" style="margin-bottom:10px;">
+        <label class="form-label">Formula Style</label>
+        <select id="news-formula-type" class="form-select">
+          <option value="block">Display Equation Block (Centered with Number)</option>
+          <option value="inline">Inline Math (Inside Sentence)</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:6px;">
+        <label class="form-label">Formula Content</label>
+        <input type="text" id="news-formula-text-input" class="form-input" placeholder="e.g. ΔG_H* = ΔE_DFT + ΔE_ZPE - TΔS_H" style="font-family:'Cambria Math', serif; font-size:15px;">
+      </div>
+      <div style="font-size:11px; color:#6b5c4f; margin-bottom:6px;">Click any symbol below to quickly insert:</div>
+      <div class="news-math-palette">
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('α')">α</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('β')">β</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('γ')">γ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('δ')">δ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('ε')">ε</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('θ')">θ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('λ')">λ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('μ')">μ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('π')">π</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('σ')">σ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('ω')">ω</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('Δ')">Δ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('Ω')">Ω</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('Σ')">Σ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('Å')">Å</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('±')">±</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('×')">×</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('÷')">÷</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('≤')">≤</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('≥')">≥</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('≠')">≠</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('≈')">≈</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('→')">→</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('∞')">∞</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('∂')">∂</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('∇')">∇</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('ħ')">ħ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('²')">²</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('³')">³</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('⁻¹')">⁻¹</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('₀')">₀</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('₁')">₁</button>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:8px;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeSubdialog('news-formula-dialog')">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="confirmInsertFormula()">Insert Formula</button>
+      </div>
+    </div>
+  </div>
 
 </body>
 </html>
