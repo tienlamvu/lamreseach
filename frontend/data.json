@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-19T01:02:24.551Z",
+  "exported_at": "2026-11-19T01:02:31.657Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -5099,7 +5099,7 @@
       "registeredAt": "2026-11-16 11:31",
       "lastLoginAt": "2026-11-18 21:42",
       "lastUpdatedAt": "2026-11-19 10:02",
-      "updatedAtMs": 1795050144156,
+      "updatedAtMs": 1795050150574,
       "workspace": {
         "papers": [
           {
@@ -5301,6 +5301,12 @@
         ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-19 10:02",
+          "category": "Crystal Structures",
+          "action": "Added Structure",
+          "detail": "TiMoSi4N4P4H — Run (P3M1 (156))"
+        },
         {
           "timestamp": "2026-11-19 10:02",
           "category": "Crystal Structures",
