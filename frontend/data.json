@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-19T02:11:58.787Z",
+  "exported_at": "2026-11-19T02:12:11.685Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -5098,8 +5098,8 @@
       "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
       "registeredAt": "2026-11-16 11:31",
       "lastLoginAt": "2026-11-19 10:44:15",
-      "lastUpdatedAt": "2026-11-19 11:11:57",
-      "updatedAtMs": 1795054317408,
+      "lastUpdatedAt": "2026-11-19 11:12:10",
+      "updatedAtMs": 1795054330552,
       "workspace": {
         "papers": [
           {
@@ -5173,6 +5173,15 @@
                 "is_admin": false,
                 "action": "Modified Structure Parameters",
                 "details": "Updated structure properties"
+              },
+              {
+                "timestamp": "2026-11-19 11:12:10",
+                "timestampMs": 1795054330552,
+                "editor_name": "Tien Lam",
+                "editor_email": "lamvt.sep@gmail.com",
+                "is_admin": false,
+                "action": "Modified Structure Parameters",
+                "details": "Updated structure properties"
               }
             ],
             "name": "J1+4_P_N2",
@@ -5195,7 +5204,7 @@
             "gamma": 120,
             "volume": 947.16,
             "natoms": 14,
-            "dft_code": "VASP",
+            "dft_code": "Quantum ESPRESSO",
             "functional": "PBE",
             "dft_functional": "PBE",
             "ecut": 520,
@@ -5486,6 +5495,13 @@
         ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-19 11:12:10",
+          "timestampMs": 1795054330552,
+          "category": "Crystal Structures",
+          "action": "Updated Structure",
+          "detail": "Mo2Si4N3P5 — J1+4_P_N2 (P3M1 (156))"
+        },
         {
           "timestamp": "2026-11-19 11:11:57",
           "timestampMs": 1795054317408,
