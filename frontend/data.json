@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-19T00:38:54.494Z",
+  "exported_at": "2026-11-19T00:39:05.482Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -5098,8 +5098,8 @@
       "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
       "registeredAt": "2026-11-16 11:31",
       "lastLoginAt": "2026-11-18 21:42",
-      "lastUpdatedAt": "2026-11-19 09:17",
-      "updatedAtMs": 1795047462930,
+      "lastUpdatedAt": "2026-11-19 09:39",
+      "updatedAtMs": 1795048744333,
       "workspace": {
         "papers": [
           {
@@ -5150,424 +5150,7 @@
             "owner_name": "Tien Lam"
           }
         ],
-        "structures": [
-          {
-            "id": 1794982489046,
-            "structural_id": "CD-0039",
-            "name": "J1+4 +2",
-            "formula": "J+4",
-            "chemical_formula": "J+4",
-            "project_folder": "General Research",
-            "crystal_system": "Triclinic",
-            "space_group": "P1 (1)",
-            "structure_type": "2D Monolayer",
-            "calc_status": "Unrelaxed",
-            "is_starred": false,
-            "mp_id": "",
-            "materials_project_id": "",
-            "a": 3.2971,
-            "b": 3.2971,
-            "c": 25.1509,
-            "alpha": 90,
-            "beta": 90,
-            "gamma": 120,
-            "volume": 236.78,
-            "natoms": 7,
-            "atoms": [
-              {
-                "element": "Mo",
-                "label": "Mo1",
-                "x": 0,
-                "y": 0,
-                "z": 0.52959,
-                "occupancy": 1
-              },
-              {
-                "element": "P",
-                "label": "S2",
-                "x": 0.33333,
-                "y": 0.66667,
-                "z": 0.47057,
-                "occupancy": 1
-              },
-              {
-                "element": "N",
-                "label": "S3",
-                "x": 0.33333,
-                "y": 0.66667,
-                "z": 0.5757,
-                "occupancy": 1
-              },
-              {
-                "element": "Si",
-                "label": "Si4",
-                "x": 0.33333,
-                "y": 0.66667,
-                "z": 0.64581,
-                "occupancy": 1
-              },
-              {
-                "element": "Si",
-                "label": "Si5",
-                "x": 0.33333,
-                "y": 0.66667,
-                "z": 0.38238,
-                "occupancy": 1
-              },
-              {
-                "element": "N",
-                "label": "N6",
-                "x": 0.66667,
-                "y": 0.33333,
-                "z": 0.66126,
-                "occupancy": 1
-              },
-              {
-                "element": "P",
-                "label": "P7",
-                "x": 0.66667,
-                "y": 0.33333,
-                "z": 0.33866,
-                "occupancy": 1
-              }
-            ],
-            "dft_code": "VASP",
-            "dft_functional": "PBE",
-            "cutoff_energy": 520,
-            "kpoints": "8x8x8",
-            "bandgap_ev": 3.2,
-            "bandgap_type": "Direct",
-            "total_energy_per_atom": -6.85,
-            "magnetic_state": "NM",
-            "notes": "Batch uploaded from J1+4 +2.cif",
-            "raw_cif": "data_J1+4\\0.1\n_audit_creation_date              2026-10-21\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.2971\n_cell_length_b                    3.2971\n_cell_length_c                    25.1509\n_cell_angle_alpha                 90.0000\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0000\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo    0.00000   0.00000   0.52959   0.00000  Uiso   1.00\nS2     P     0.33333   0.66667   0.47057   0.00000  Uiso   1.00\nS3     N     0.33333   0.66667   0.57570   0.00000  Uiso   1.00\nSi4    Si    0.33333   0.66667   0.64581   0.00000  Uiso   1.00\nSi5    Si    0.33333   0.66667   0.38238   0.00000  Uiso   1.00\nN6     N     0.66667   0.33333   0.66126   0.00000  Uiso   1.00\nP7     P     0.66667   0.33333   0.33866   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    S2      2.414   .     S\nMo1    S2      2.414   1_445 S\nMo1    S2      2.414   1_545 S\nMo1    S3      2.229   .     S\nMo1    S3      2.229   1_445 S\nMo1    S3      2.229   1_545 S\nS2     Mo1     2.414   1_665 S\nS2     Mo1     2.414   1_565 S\nS2     Si5     2.218   .     S\nS3     Si4     1.763   .     S\nS3     Mo1     2.229   1_665 S\nS3     Mo1     2.229   1_565 S\nSi4    N6      1.943   .     S\nSi4    N6      1.943   1_565 S\nSi4    N6      1.943   1_455 S\nSi5    P7      2.198   .     S\nSi5    P7      2.198   1_565 S\nSi5    P7      2.198   1_455 S\nN6     Si4     1.943   1_545 S\nN6     Si4     1.943   1_655 S\nP7     Si5     2.198   1_545 S\nP7     Si5     2.198   1_655 S",
-            "cif_content": "data_J1+4\\0.1\n_audit_creation_date              2026-10-21\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.2971\n_cell_length_b                    3.2971\n_cell_length_c                    25.1509\n_cell_angle_alpha                 90.0000\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0000\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo    0.00000   0.00000   0.52959   0.00000  Uiso   1.00\nS2     P     0.33333   0.66667   0.47057   0.00000  Uiso   1.00\nS3     N     0.33333   0.66667   0.57570   0.00000  Uiso   1.00\nSi4    Si    0.33333   0.66667   0.64581   0.00000  Uiso   1.00\nSi5    Si    0.33333   0.66667   0.38238   0.00000  Uiso   1.00\nN6     N     0.66667   0.33333   0.66126   0.00000  Uiso   1.00\nP7     P     0.66667   0.33333   0.33866   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    S2      2.414   .     S\nMo1    S2      2.414   1_445 S\nMo1    S2      2.414   1_545 S\nMo1    S3      2.229   .     S\nMo1    S3      2.229   1_445 S\nMo1    S3      2.229   1_545 S\nS2     Mo1     2.414   1_665 S\nS2     Mo1     2.414   1_565 S\nS2     Si5     2.218   .     S\nS3     Si4     1.763   .     S\nS3     Mo1     2.229   1_665 S\nS3     Mo1     2.229   1_565 S\nSi4    N6      1.943   .     S\nSi4    N6      1.943   1_565 S\nSi4    N6      1.943   1_455 S\nSi5    P7      2.198   .     S\nSi5    P7      2.198   1_565 S\nSi5    P7      2.198   1_455 S\nN6     Si4     1.943   1_545 S\nN6     Si4     1.943   1_655 S\nP7     Si5     2.198   1_545 S\nP7     Si5     2.198   1_655 S",
-            "poscar_text": "J+4 Triclinic P1 (1)\n1.0\n       3.29710000     0.00000000     0.00000000\n      -1.64855000     2.85537236     0.00000000\n       0.00000000     0.00000000    25.15090000\n   Mo    P    N   Si\n    1    2    2    2\nDirect\n    0.00000000   0.00000000   0.52959000\n    0.33333000   0.66667000   0.47057000\n    0.66667000   0.33333000   0.33866000\n    0.33333000   0.66667000   0.57570000\n    0.66667000   0.33333000   0.66126000\n    0.33333000   0.66667000   0.64581000\n    0.33333000   0.66667000   0.38238000\n",
-            "poscar_content": "J+4 Triclinic P1 (1)\n1.0\n       3.29710000     0.00000000     0.00000000\n      -1.64855000     2.85537236     0.00000000\n       0.00000000     0.00000000    25.15090000\n   Mo    P    N   Si\n    1    2    2    2\nDirect\n    0.00000000   0.00000000   0.52959000\n    0.33333000   0.66667000   0.47057000\n    0.66667000   0.33333000   0.33866000\n    0.33333000   0.66667000   0.57570000\n    0.66667000   0.33333000   0.66126000\n    0.33333000   0.66667000   0.64581000\n    0.33333000   0.66667000   0.38238000\n",
-            "in_weekly_report": 0,
-            "uploaded_at": "2026-11-18 15:14",
-            "visibility": "Private",
-            "allowed_users": [],
-            "associated_paper_id": null,
-            "associated_paper_title": "",
-            "associated_paper_doi": "",
-            "functional": "PBE",
-            "ecut": 520,
-            "bandgap": 3.2,
-            "energy_per_atom": -6.85,
-            "owner_email": "lamvt.sep@gmail.com",
-            "owner_name": "Tien Lam"
-          },
-          {
-            "id": 1794982490510,
-            "structural_id": "CD-0037",
-            "name": "J1+4 +1",
-            "formula": "J+4",
-            "chemical_formula": "J+4",
-            "project_folder": "General Research",
-            "crystal_system": "Triclinic",
-            "space_group": "P1 (1)",
-            "structure_type": "2D Monolayer",
-            "calc_status": "Unrelaxed",
-            "is_starred": false,
-            "mp_id": "",
-            "materials_project_id": "",
-            "a": 3.2971,
-            "b": 3.2971,
-            "c": 25.1509,
-            "alpha": 90,
-            "beta": 90,
-            "gamma": 120,
-            "volume": 236.78,
-            "natoms": 7,
-            "atoms": [
-              {
-                "element": "Mo",
-                "label": "Mo1",
-                "x": 0,
-                "y": 0,
-                "z": 0.52955,
-                "occupancy": 1
-              },
-              {
-                "element": "P",
-                "label": "S2",
-                "x": 0.33333,
-                "y": 0.66667,
-                "z": 0.47052,
-                "occupancy": 1
-              },
-              {
-                "element": "N",
-                "label": "S3",
-                "x": 0.33333,
-                "y": 0.66667,
-                "z": 0.57566,
-                "occupancy": 1
-              },
-              {
-                "element": "Si",
-                "label": "Si4",
-                "x": 0.33333,
-                "y": 0.66667,
-                "z": 0.64573,
-                "occupancy": 1
-              },
-              {
-                "element": "Si",
-                "label": "Si5",
-                "x": 0.33333,
-                "y": 0.66667,
-                "z": 0.3823,
-                "occupancy": 1
-              },
-              {
-                "element": "N",
-                "label": "N6",
-                "x": 0.66667,
-                "y": 0.33333,
-                "z": 0.66131,
-                "occupancy": 1
-              },
-              {
-                "element": "P",
-                "label": "P7",
-                "x": 0.66667,
-                "y": 0.33333,
-                "z": 0.33861,
-                "occupancy": 1
-              }
-            ],
-            "dft_code": "VASP",
-            "dft_functional": "PBE",
-            "cutoff_energy": 520,
-            "kpoints": "8x8x8",
-            "bandgap_ev": 0,
-            "bandgap_type": "Direct",
-            "total_energy_per_atom": 0,
-            "magnetic_state": "NM",
-            "notes": "Batch uploaded from J1+4 +1.cif",
-            "raw_cif": "data_J1+4\\0.1\r\n_audit_creation_date              2026-10-21\r\n_audit_creation_method            'Materials Studio'\r\n_symmetry_space_group_name_H-M    'P1'\r\n_symmetry_Int_Tables_number       1\r\n_symmetry_cell_setting            triclinic\r\nloop_\r\n_symmetry_equiv_pos_as_xyz\r\n  x,y,z\r\n_cell_length_a                    3.2971\r\n_cell_length_b                    3.2971\r\n_cell_length_c                    25.1509\r\n_cell_angle_alpha                 90.0000\r\n_cell_angle_beta                  90.0000\r\n_cell_angle_gamma                 120.0000\r\nloop_\r\n_atom_site_label\r\n_atom_site_type_symbol\r\n_atom_site_fract_x\r\n_atom_site_fract_y\r\n_atom_site_fract_z\r\n_atom_site_U_iso_or_equiv\r\n_atom_site_adp_type\r\n_atom_site_occupancy\r\nMo1    Mo   -0.00000   0.00000   0.52955   0.00000  Uiso   1.00\r\nS2     P     0.33333   0.66667   0.47052   0.00000  Uiso   1.00\r\nS3     N     0.33333   0.66667   0.57566   0.00000  Uiso   1.00\r\nSi4    Si    0.33333   0.66667   0.64573   0.00000  Uiso   1.00\r\nSi5    Si    0.33333   0.66667   0.38230   0.00000  Uiso   1.00\r\nN6     N     0.66667   0.33333   0.66131   0.00000  Uiso   1.00\r\nP7     P     0.66667   0.33333   0.33861   0.00000  Uiso   1.00\r\nloop_\r\n_geom_bond_atom_site_label_1\r\n_geom_bond_atom_site_label_2\r\n_geom_bond_distance\r\n_geom_bond_site_symmetry_2\r\n_ccdc_geom_bond_type\r\nMo1    S2      2.414   .     S\r\nMo1    S2      2.414   1_445 S\r\nMo1    S2      2.414   1_545 S\r\nMo1    S3      2.229   .     S\r\nMo1    S3      2.229   1_445 S\r\nMo1    S3      2.229   1_545 S\r\nS2     Mo1     2.414   1_665 S\r\nS2     Mo1     2.414   1_565 S\r\nS2     Si5     2.219   .     S\r\nS3     Si4     1.762   .     S\r\nS3     Mo1     2.229   1_665 S\r\nS3     Mo1     2.229   1_565 S\r\nSi4    N6      1.944   .     S\r\nSi4    N6      1.944   1_565 S\r\nSi4    N6      1.944   1_455 S\r\nSi5    P7      2.198   .     S\r\nSi5    P7      2.198   1_565 S\r\nSi5    P7      2.198   1_455 S\r\nN6     Si4     1.944   1_545 S\r\nN6     Si4     1.944   1_655 S\r\nP7     Si5     2.198   1_545 S\r\nP7     Si5     2.198   1_655 S\r\n",
-            "cif_content": "data_J1+4\\0.1\r\n_audit_creation_date              2026-10-21\r\n_audit_creation_method            'Materials Studio'\r\n_symmetry_space_group_name_H-M    'P1'\r\n_symmetry_Int_Tables_number       1\r\n_symmetry_cell_setting            triclinic\r\nloop_\r\n_symmetry_equiv_pos_as_xyz\r\n  x,y,z\r\n_cell_length_a                    3.2971\r\n_cell_length_b                    3.2971\r\n_cell_length_c                    25.1509\r\n_cell_angle_alpha                 90.0000\r\n_cell_angle_beta                  90.0000\r\n_cell_angle_gamma                 120.0000\r\nloop_\r\n_atom_site_label\r\n_atom_site_type_symbol\r\n_atom_site_fract_x\r\n_atom_site_fract_y\r\n_atom_site_fract_z\r\n_atom_site_U_iso_or_equiv\r\n_atom_site_adp_type\r\n_atom_site_occupancy\r\nMo1    Mo   -0.00000   0.00000   0.52955   0.00000  Uiso   1.00\r\nS2     P     0.33333   0.66667   0.47052   0.00000  Uiso   1.00\r\nS3     N     0.33333   0.66667   0.57566   0.00000  Uiso   1.00\r\nSi4    Si    0.33333   0.66667   0.64573   0.00000  Uiso   1.00\r\nSi5    Si    0.33333   0.66667   0.38230   0.00000  Uiso   1.00\r\nN6     N     0.66667   0.33333   0.66131   0.00000  Uiso   1.00\r\nP7     P     0.66667   0.33333   0.33861   0.00000  Uiso   1.00\r\nloop_\r\n_geom_bond_atom_site_label_1\r\n_geom_bond_atom_site_label_2\r\n_geom_bond_distance\r\n_geom_bond_site_symmetry_2\r\n_ccdc_geom_bond_type\r\nMo1    S2      2.414   .     S\r\nMo1    S2      2.414   1_445 S\r\nMo1    S2      2.414   1_545 S\r\nMo1    S3      2.229   .     S\r\nMo1    S3      2.229   1_445 S\r\nMo1    S3      2.229   1_545 S\r\nS2     Mo1     2.414   1_665 S\r\nS2     Mo1     2.414   1_565 S\r\nS2     Si5     2.219   .     S\r\nS3     Si4     1.762   .     S\r\nS3     Mo1     2.229   1_665 S\r\nS3     Mo1     2.229   1_565 S\r\nSi4    N6      1.944   .     S\r\nSi4    N6      1.944   1_565 S\r\nSi4    N6      1.944   1_455 S\r\nSi5    P7      2.198   .     S\r\nSi5    P7      2.198   1_565 S\r\nSi5    P7      2.198   1_455 S\r\nN6     Si4     1.944   1_545 S\r\nN6     Si4     1.944   1_655 S\r\nP7     Si5     2.198   1_545 S\r\nP7     Si5     2.198   1_655 S\r\n",
-            "poscar_text": "J+4 Triclinic P1 (1)\n1.0\n       3.29710000     0.00000000     0.00000000\n      -1.64855000     2.85537236     0.00000000\n       0.00000000     0.00000000    25.15090000\n   Mo    P    N   Si\n    1    2    2    2\nDirect\n    0.00000000   0.00000000   0.52955000\n    0.33333000   0.66667000   0.47052000\n    0.66667000   0.33333000   0.33861000\n    0.33333000   0.66667000   0.57566000\n    0.66667000   0.33333000   0.66131000\n    0.33333000   0.66667000   0.64573000\n    0.33333000   0.66667000   0.38230000\n",
-            "poscar_content": "J+4 Triclinic P1 (1)\n1.0\n       3.29710000     0.00000000     0.00000000\n      -1.64855000     2.85537236     0.00000000\n       0.00000000     0.00000000    25.15090000\n   Mo    P    N   Si\n    1    2    2    2\nDirect\n    0.00000000   0.00000000   0.52955000\n    0.33333000   0.66667000   0.47052000\n    0.66667000   0.33333000   0.33861000\n    0.33333000   0.66667000   0.57566000\n    0.66667000   0.33333000   0.66131000\n    0.33333000   0.66667000   0.64573000\n    0.33333000   0.66667000   0.38230000\n",
-            "in_weekly_report": 0,
-            "uploaded_at": "2026-11-18 15:14",
-            "visibility": "Private",
-            "allowed_users": [],
-            "owner_email": "lamvt.sep@gmail.com",
-            "owner_name": "Tien Lam"
-          },
-          {
-            "name": "A",
-            "formula": "J+4",
-            "chemical_formula": "J+4",
-            "crystal_system": "Triclinic",
-            "space_group": "P1 (1)",
-            "structure_type": "Bulk 3D",
-            "mp_id": "",
-            "materials_project_id": "",
-            "a": 3.2971,
-            "b": 3.2971,
-            "c": 25.1509,
-            "alpha": 90,
-            "beta": 90,
-            "gamma": 120,
-            "volume": 236.78,
-            "natoms": 7,
-            "dft_code": "CASTEP",
-            "functional": "PBE",
-            "dft_functional": "PBE",
-            "ecut": 520,
-            "cutoff_energy": 520,
-            "kpoints": "8x8x8",
-            "bandgap": 3.2,
-            "bandgap_ev": 3.2,
-            "bandgap_type": "Direct",
-            "energy_per_atom": -6.85,
-            "total_energy_per_atom": -6.85,
-            "magnetic_state": "NM",
-            "notes": "Full-relaxed",
-            "raw_cif": "data_J1+4\n_audit_creation_date              2026-10-22\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.2971\n_cell_length_b                    3.2971\n_cell_length_c                    25.1509\n_cell_angle_alpha                 90.0000\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0000\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo    0.00243   0.00485   0.52961   0.00000  Uiso   1.00\nS2     P     0.33581   0.67162   0.47053   0.00000  Uiso   1.00\nS3     N     0.33574   0.67148   0.57569   0.00000  Uiso   1.00\nSi4    Si    0.33562   0.67128   0.64572   0.00000  Uiso   1.00\nSi5    Si    0.33589   0.67178   0.38228   0.00000  Uiso   1.00\nN6     N     0.66896   0.33794   0.66139   0.00000  Uiso   1.00\nP7     P     0.66923   0.33849   0.33861   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    S2      2.415   .     S\nMo1    S2      2.415   1_445 S\nMo1    S2      2.415   1_545 S\nMo1    S3      2.229   .     S\nMo1    S3      2.229   1_445 S\nMo1    S3      2.229   1_545 S\nS2     Mo1     2.415   1_665 S\nS2     Mo1     2.415   1_565 S\nS2     Si5     2.220   .     S\nS3     Si4     1.761   .     S\nS3     Mo1     2.229   1_665 S\nS3     Mo1     2.229   1_565 S\nSi4    N6      1.944   .     S\nSi4    N6      1.944   1_565 S\nSi4    N6      1.944   1_455 S\nSi5    P7      2.198   .     S\nSi5    P7      2.198   1_565 S\nSi5    P7      2.198   1_455 S\nN6     Si4     1.944   1_545 S\nN6     Si4     1.944   1_655 S\nP7     Si5     2.198   1_545 S\nP7     Si5     2.198   1_655 S",
-            "cif_content": "data_J1+4\n_audit_creation_date              2026-10-22\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.2971\n_cell_length_b                    3.2971\n_cell_length_c                    25.1509\n_cell_angle_alpha                 90.0000\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0000\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo    0.00243   0.00485   0.52961   0.00000  Uiso   1.00\nS2     P     0.33581   0.67162   0.47053   0.00000  Uiso   1.00\nS3     N     0.33574   0.67148   0.57569   0.00000  Uiso   1.00\nSi4    Si    0.33562   0.67128   0.64572   0.00000  Uiso   1.00\nSi5    Si    0.33589   0.67178   0.38228   0.00000  Uiso   1.00\nN6     N     0.66896   0.33794   0.66139   0.00000  Uiso   1.00\nP7     P     0.66923   0.33849   0.33861   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    S2      2.415   .     S\nMo1    S2      2.415   1_445 S\nMo1    S2      2.415   1_545 S\nMo1    S3      2.229   .     S\nMo1    S3      2.229   1_445 S\nMo1    S3      2.229   1_545 S\nS2     Mo1     2.415   1_665 S\nS2     Mo1     2.415   1_565 S\nS2     Si5     2.220   .     S\nS3     Si4     1.761   .     S\nS3     Mo1     2.229   1_665 S\nS3     Mo1     2.229   1_565 S\nSi4    N6      1.944   .     S\nSi4    N6      1.944   1_565 S\nSi4    N6      1.944   1_455 S\nSi5    P7      2.198   .     S\nSi5    P7      2.198   1_565 S\nSi5    P7      2.198   1_455 S\nN6     Si4     1.944   1_545 S\nN6     Si4     1.944   1_655 S\nP7     Si5     2.198   1_545 S\nP7     Si5     2.198   1_655 S",
-            "poscar_text": "J+4 Triclinic P1 (1)\n1.0\n       3.29710000     0.00000000     0.00000000\n      -1.64855000     2.85537236     0.00000000\n       0.00000000     0.00000000    25.15090000\n   Mo    P    N   Si\n    1    2    2    2\nDirect\n    0.00243000   0.00485000   0.52961000\n    0.33581000   0.67162000   0.47053000\n    0.66923000   0.33849000   0.33861000\n    0.33574000   0.67148000   0.57569000\n    0.66896000   0.33794000   0.66139000\n    0.33562000   0.67128000   0.64572000\n    0.33589000   0.67178000   0.38228000\n",
-            "poscar_content": "J+4 Triclinic P1 (1)\n1.0\n       3.29710000     0.00000000     0.00000000\n      -1.64855000     2.85537236     0.00000000\n       0.00000000     0.00000000    25.15090000\n   Mo    P    N   Si\n    1    2    2    2\nDirect\n    0.00243000   0.00485000   0.52961000\n    0.33581000   0.67162000   0.47053000\n    0.66923000   0.33849000   0.33861000\n    0.33574000   0.67148000   0.57569000\n    0.66896000   0.33794000   0.66139000\n    0.33562000   0.67128000   0.64572000\n    0.33589000   0.67178000   0.38228000\n",
-            "atoms": [
-              {
-                "element": "Mo",
-                "label": "Mo1",
-                "x": 0.00243,
-                "y": 0.00485,
-                "z": 0.52961,
-                "occupancy": 1
-              },
-              {
-                "element": "P",
-                "label": "S2",
-                "x": 0.33581,
-                "y": 0.67162,
-                "z": 0.47053,
-                "occupancy": 1
-              },
-              {
-                "element": "N",
-                "label": "S3",
-                "x": 0.33574,
-                "y": 0.67148,
-                "z": 0.57569,
-                "occupancy": 1
-              },
-              {
-                "element": "Si",
-                "label": "Si4",
-                "x": 0.33562,
-                "y": 0.67128,
-                "z": 0.64572,
-                "occupancy": 1
-              },
-              {
-                "element": "Si",
-                "label": "Si5",
-                "x": 0.33589,
-                "y": 0.67178,
-                "z": 0.38228,
-                "occupancy": 1
-              },
-              {
-                "element": "N",
-                "label": "N6",
-                "x": 0.66896,
-                "y": 0.33794,
-                "z": 0.66139,
-                "occupancy": 1
-              },
-              {
-                "element": "P",
-                "label": "P7",
-                "x": 0.66923,
-                "y": 0.33849,
-                "z": 0.33861,
-                "occupancy": 1
-              }
-            ],
-            "in_weekly_report": 0,
-            "visibility": "Private",
-            "allowed_users": [],
-            "allowed_groups": [],
-            "id": 1794807861185,
-            "project_folder": "lam New",
-            "structural_id": "CD-0028",
-            "calc_status": "Relaxed",
-            "owner_email": "lamvt.sep@gmail.com",
-            "owner_name": "Tien Lam",
-            "is_starred": false,
-            "associated_paper_id": null,
-            "associated_paper_title": "",
-            "associated_paper_doi": ""
-          },
-          {
-            "name": "MoSi2N2P2 Janus 4",
-            "formula": "MoSi2N2P2",
-            "chemical_formula": "MoSi2N2P2",
-            "crystal_system": "Triclinic",
-            "space_group": "P1 (1)",
-            "structure_type": "2D Monolayer",
-            "mp_id": "",
-            "materials_project_id": "",
-            "a": 3.0781,
-            "b": 3.075,
-            "c": 26.912,
-            "alpha": 90.0066,
-            "beta": 90,
-            "gamma": 120.0335,
-            "volume": 220.52,
-            "natoms": 7,
-            "dft_code": "CASTEP",
-            "functional": "PBE",
-            "dft_functional": "PBE",
-            "ecut": 520,
-            "cutoff_energy": 520,
-            "kpoints": "8x8x8",
-            "bandgap": 3.2,
-            "bandgap_ev": 3.2,
-            "bandgap_type": "Direct",
-            "energy_per_atom": -6.85,
-            "total_energy_per_atom": -6.85,
-            "magnetic_state": "NM",
-            "notes": "Full-relaxed",
-            "raw_cif": "data_MoSX4\n_audit_creation_date              2026-09-16\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.0781\n_cell_length_b                    3.0750\n_cell_length_c                    26.9120\n_cell_angle_alpha                 90.0066\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0335\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo   -0.00001  -0.00002   0.50000   0.00000  Uiso   1.00\nS2     P     0.33367   0.66735   0.44115   0.00000  Uiso   1.00\nS3     P     0.33372   0.66745   0.55885   0.00000  Uiso   1.00\nSi4    Si    0.33744   0.67489   0.64121   0.00000  Uiso   1.00\nSi5    Si    0.33716   0.67432   0.35879   0.00000  Uiso   1.00\nN6     N     0.67101   0.34203   0.65897   0.00000  Uiso   1.00\nN7     N     0.67070   0.34141   0.34102   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    S3      2.380   .     S\nMo1    S2      2.380   .     S\nMo1    S3      2.379   1_445 S\nMo1    S3      2.379   1_545 S\nMo1    S2      2.379   1_445 S\nMo1    S2      2.379   1_545 S\nS2     Mo1     2.379   1_665 S\nS2     Mo1     2.379   1_565 S\nS2     Si5     2.217   .     S\nS3     Mo1     2.379   1_665 S\nS3     Mo1     2.379   1_565 S\nS3     Si4     2.217   .     S\nSi4    N6      1.839   .     S\nSi4    N6      1.839   1_565 S\nSi4    N6      1.839   1_455 S\nSi5    N7      1.839   .     S\nSi5    N7      1.839   1_565 S\nSi5    N7      1.839   1_455 S\nN6     Si4     1.839   1_545 S\nN6     Si4     1.839   1_655 S\nN7     Si5     1.839   1_545 S\nN7     Si5     1.839   1_655 S",
-            "cif_content": "data_MoSX4\n_audit_creation_date              2026-09-16\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.0781\n_cell_length_b                    3.0750\n_cell_length_c                    26.9120\n_cell_angle_alpha                 90.0066\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0335\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo   -0.00001  -0.00002   0.50000   0.00000  Uiso   1.00\nS2     P     0.33367   0.66735   0.44115   0.00000  Uiso   1.00\nS3     P     0.33372   0.66745   0.55885   0.00000  Uiso   1.00\nSi4    Si    0.33744   0.67489   0.64121   0.00000  Uiso   1.00\nSi5    Si    0.33716   0.67432   0.35879   0.00000  Uiso   1.00\nN6     N     0.67101   0.34203   0.65897   0.00000  Uiso   1.00\nN7     N     0.67070   0.34141   0.34102   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    S3      2.380   .     S\nMo1    S2      2.380   .     S\nMo1    S3      2.379   1_445 S\nMo1    S3      2.379   1_545 S\nMo1    S2      2.379   1_445 S\nMo1    S2      2.379   1_545 S\nS2     Mo1     2.379   1_665 S\nS2     Mo1     2.379   1_565 S\nS2     Si5     2.217   .     S\nS3     Mo1     2.379   1_665 S\nS3     Mo1     2.379   1_565 S\nS3     Si4     2.217   .     S\nSi4    N6      1.839   .     S\nSi4    N6      1.839   1_565 S\nSi4    N6      1.839   1_455 S\nSi5    N7      1.839   .     S\nSi5    N7      1.839   1_565 S\nSi5    N7      1.839   1_455 S\nN6     Si4     1.839   1_545 S\nN6     Si4     1.839   1_655 S\nN7     Si5     1.839   1_545 S\nN7     Si5     1.839   1_655 S",
-            "poscar_text": "MoSi2N2P2 Triclinic P1 (1)\n1.0\n       3.07810000     0.00000000     0.00000000\n      -1.53905677     2.66212871     0.00000000\n       0.00000000    -0.00358083    26.91199976\n   Mo    P   Si    N\n    1    2    2    2\nDirect\n   -0.00001000  -0.00002000   0.50000000\n    0.33367000   0.66735000   0.44115000\n    0.33372000   0.66745000   0.55885000\n    0.33744000   0.67489000   0.64121000\n    0.33716000   0.67432000   0.35879000\n    0.67101000   0.34203000   0.65897000\n    0.67070000   0.34141000   0.34102000\n",
-            "poscar_content": "MoSi2N2P2 Triclinic P1 (1)\n1.0\n       3.07810000     0.00000000     0.00000000\n      -1.53905677     2.66212871     0.00000000\n       0.00000000    -0.00358083    26.91199976\n   Mo    P   Si    N\n    1    2    2    2\nDirect\n   -0.00001000  -0.00002000   0.50000000\n    0.33367000   0.66735000   0.44115000\n    0.33372000   0.66745000   0.55885000\n    0.33744000   0.67489000   0.64121000\n    0.33716000   0.67432000   0.35879000\n    0.67101000   0.34203000   0.65897000\n    0.67070000   0.34141000   0.34102000\n",
-            "atoms": [
-              {
-                "element": "Mo",
-                "label": "Mo1",
-                "x": -0.00001,
-                "y": -0.00002,
-                "z": 0.5,
-                "occupancy": 1
-              },
-              {
-                "element": "P",
-                "label": "S2",
-                "x": 0.33367,
-                "y": 0.66735,
-                "z": 0.44115,
-                "occupancy": 1
-              },
-              {
-                "element": "P",
-                "label": "S3",
-                "x": 0.33372,
-                "y": 0.66745,
-                "z": 0.55885,
-                "occupancy": 1
-              },
-              {
-                "element": "Si",
-                "label": "Si4",
-                "x": 0.33744,
-                "y": 0.67489,
-                "z": 0.64121,
-                "occupancy": 1
-              },
-              {
-                "element": "Si",
-                "label": "Si5",
-                "x": 0.33716,
-                "y": 0.67432,
-                "z": 0.35879,
-                "occupancy": 1
-              },
-              {
-                "element": "N",
-                "label": "N6",
-                "x": 0.67101,
-                "y": 0.34203,
-                "z": 0.65897,
-                "occupancy": 1
-              },
-              {
-                "element": "N",
-                "label": "N7",
-                "x": 0.6707,
-                "y": 0.34141,
-                "z": 0.34102,
-                "occupancy": 1
-              }
-            ],
-            "in_weekly_report": 0,
-            "id": 1794571683471,
-            "project_folder": "2D Janus MA2Z4 & Layered TMDs",
-            "structural_id": "CD-0027",
-            "calc_status": "Relaxed",
-            "visibility": "Private",
-            "allowed_users": [],
-            "owner_email": "lamvt.sep@gmail.com",
-            "owner_name": "Tien Lam"
-          }
-        ],
+        "structures": [],
         "schedule": [
           {
             "title": "Day off for Constitution Day",
@@ -6471,8 +6054,8 @@
       "passwordHash": "d2fb761fdc23a442de155300e60284390cb87b20b815d03786da83b76d145932",
       "registeredAt": "2026-11-17 00:09",
       "lastLoginAt": "2026-11-17 00:09",
-      "lastUpdatedAt": "2026-11-18 20:43",
-      "updatedAtMs": 1795002220517,
+      "lastUpdatedAt": "2026-11-19 09:39",
+      "updatedAtMs": 1795048744333,
       "workspace": {
         "papers": [
           {
@@ -6500,213 +6083,7 @@
             "owner_name": "Vu Tien Lam"
           }
         ],
-        "structures": [
-          {
-            "name": "A",
-            "formula": "J+4",
-            "chemical_formula": "J+4",
-            "crystal_system": "Triclinic",
-            "space_group": "P1 (1)",
-            "structure_type": "Bulk 3D",
-            "mp_id": "",
-            "materials_project_id": "",
-            "a": 3.2971,
-            "b": 3.2971,
-            "c": 25.1509,
-            "alpha": 90,
-            "beta": 90,
-            "gamma": 120,
-            "volume": 236.78,
-            "natoms": 7,
-            "dft_code": "CASTEP",
-            "functional": "PBE",
-            "dft_functional": "PBE",
-            "ecut": 520,
-            "cutoff_energy": 520,
-            "kpoints": "8x8x8",
-            "bandgap": 3.2,
-            "bandgap_ev": 3.2,
-            "bandgap_type": "Direct",
-            "energy_per_atom": -6.85,
-            "total_energy_per_atom": -6.85,
-            "magnetic_state": "NM",
-            "notes": "Full-relaxed",
-            "raw_cif": "data_J1+4\n_audit_creation_date              2026-10-22\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.2971\n_cell_length_b                    3.2971\n_cell_length_c                    25.1509\n_cell_angle_alpha                 90.0000\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0000\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo    0.00243   0.00485   0.52961   0.00000  Uiso   1.00\nS2     P     0.33581   0.67162   0.47053   0.00000  Uiso   1.00\nS3     N     0.33574   0.67148   0.57569   0.00000  Uiso   1.00\nSi4    Si    0.33562   0.67128   0.64572   0.00000  Uiso   1.00\nSi5    Si    0.33589   0.67178   0.38228   0.00000  Uiso   1.00\nN6     N     0.66896   0.33794   0.66139   0.00000  Uiso   1.00\nP7     P     0.66923   0.33849   0.33861   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    S2      2.415   .     S\nMo1    S2      2.415   1_445 S\nMo1    S2      2.415   1_545 S\nMo1    S3      2.229   .     S\nMo1    S3      2.229   1_445 S\nMo1    S3      2.229   1_545 S\nS2     Mo1     2.415   1_665 S\nS2     Mo1     2.415   1_565 S\nS2     Si5     2.220   .     S\nS3     Si4     1.761   .     S\nS3     Mo1     2.229   1_665 S\nS3     Mo1     2.229   1_565 S\nSi4    N6      1.944   .     S\nSi4    N6      1.944   1_565 S\nSi4    N6      1.944   1_455 S\nSi5    P7      2.198   .     S\nSi5    P7      2.198   1_565 S\nSi5    P7      2.198   1_455 S\nN6     Si4     1.944   1_545 S\nN6     Si4     1.944   1_655 S\nP7     Si5     2.198   1_545 S\nP7     Si5     2.198   1_655 S",
-            "cif_content": "data_J1+4\n_audit_creation_date              2026-10-22\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.2971\n_cell_length_b                    3.2971\n_cell_length_c                    25.1509\n_cell_angle_alpha                 90.0000\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0000\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo    0.00243   0.00485   0.52961   0.00000  Uiso   1.00\nS2     P     0.33581   0.67162   0.47053   0.00000  Uiso   1.00\nS3     N     0.33574   0.67148   0.57569   0.00000  Uiso   1.00\nSi4    Si    0.33562   0.67128   0.64572   0.00000  Uiso   1.00\nSi5    Si    0.33589   0.67178   0.38228   0.00000  Uiso   1.00\nN6     N     0.66896   0.33794   0.66139   0.00000  Uiso   1.00\nP7     P     0.66923   0.33849   0.33861   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    S2      2.415   .     S\nMo1    S2      2.415   1_445 S\nMo1    S2      2.415   1_545 S\nMo1    S3      2.229   .     S\nMo1    S3      2.229   1_445 S\nMo1    S3      2.229   1_545 S\nS2     Mo1     2.415   1_665 S\nS2     Mo1     2.415   1_565 S\nS2     Si5     2.220   .     S\nS3     Si4     1.761   .     S\nS3     Mo1     2.229   1_665 S\nS3     Mo1     2.229   1_565 S\nSi4    N6      1.944   .     S\nSi4    N6      1.944   1_565 S\nSi4    N6      1.944   1_455 S\nSi5    P7      2.198   .     S\nSi5    P7      2.198   1_565 S\nSi5    P7      2.198   1_455 S\nN6     Si4     1.944   1_545 S\nN6     Si4     1.944   1_655 S\nP7     Si5     2.198   1_545 S\nP7     Si5     2.198   1_655 S",
-            "poscar_text": "J+4 Triclinic P1 (1)\n1.0\n       3.29710000     0.00000000     0.00000000\n      -1.64855000     2.85537236     0.00000000\n       0.00000000     0.00000000    25.15090000\n   Mo    P    N   Si\n    1    2    2    2\nDirect\n    0.00243000   0.00485000   0.52961000\n    0.33581000   0.67162000   0.47053000\n    0.66923000   0.33849000   0.33861000\n    0.33574000   0.67148000   0.57569000\n    0.66896000   0.33794000   0.66139000\n    0.33562000   0.67128000   0.64572000\n    0.33589000   0.67178000   0.38228000\n",
-            "poscar_content": "J+4 Triclinic P1 (1)\n1.0\n       3.29710000     0.00000000     0.00000000\n      -1.64855000     2.85537236     0.00000000\n       0.00000000     0.00000000    25.15090000\n   Mo    P    N   Si\n    1    2    2    2\nDirect\n    0.00243000   0.00485000   0.52961000\n    0.33581000   0.67162000   0.47053000\n    0.66923000   0.33849000   0.33861000\n    0.33574000   0.67148000   0.57569000\n    0.66896000   0.33794000   0.66139000\n    0.33562000   0.67128000   0.64572000\n    0.33589000   0.67178000   0.38228000\n",
-            "atoms": [
-              {
-                "element": "Mo",
-                "label": "Mo1",
-                "x": 0.00243,
-                "y": 0.00485,
-                "z": 0.52961,
-                "occupancy": 1
-              },
-              {
-                "element": "P",
-                "label": "S2",
-                "x": 0.33581,
-                "y": 0.67162,
-                "z": 0.47053,
-                "occupancy": 1
-              },
-              {
-                "element": "N",
-                "label": "S3",
-                "x": 0.33574,
-                "y": 0.67148,
-                "z": 0.57569,
-                "occupancy": 1
-              },
-              {
-                "element": "Si",
-                "label": "Si4",
-                "x": 0.33562,
-                "y": 0.67128,
-                "z": 0.64572,
-                "occupancy": 1
-              },
-              {
-                "element": "Si",
-                "label": "Si5",
-                "x": 0.33589,
-                "y": 0.67178,
-                "z": 0.38228,
-                "occupancy": 1
-              },
-              {
-                "element": "N",
-                "label": "N6",
-                "x": 0.66896,
-                "y": 0.33794,
-                "z": 0.66139,
-                "occupancy": 1
-              },
-              {
-                "element": "P",
-                "label": "P7",
-                "x": 0.66923,
-                "y": 0.33849,
-                "z": 0.33861,
-                "occupancy": 1
-              }
-            ],
-            "in_weekly_report": 0,
-            "visibility": "Private",
-            "allowed_users": [],
-            "allowed_groups": [],
-            "id": 1794807861186,
-            "project_folder": "User: Vu Tien Lam",
-            "owner_email": "tlamvux@gmail.com",
-            "owner_name": "Vu Tien Lam",
-            "structural_id": "CD-0031",
-            "calc_status": "Relaxed"
-          },
-          {
-            "name": "MoSi2N2P2 Janus 4",
-            "formula": "MoSi2N2P2",
-            "chemical_formula": "MoSi2N2P2",
-            "crystal_system": "Triclinic",
-            "space_group": "P1 (1)",
-            "structure_type": "2D Monolayer",
-            "mp_id": "",
-            "materials_project_id": "",
-            "a": 3.0781,
-            "b": 3.075,
-            "c": 26.912,
-            "alpha": 90.0066,
-            "beta": 90,
-            "gamma": 120.0335,
-            "volume": 220.52,
-            "natoms": 7,
-            "dft_code": "CASTEP",
-            "functional": "PBE",
-            "dft_functional": "PBE",
-            "ecut": 520,
-            "cutoff_energy": 520,
-            "kpoints": "8x8x8",
-            "bandgap": 3.2,
-            "bandgap_ev": 3.2,
-            "bandgap_type": "Direct",
-            "energy_per_atom": -6.85,
-            "total_energy_per_atom": -6.85,
-            "magnetic_state": "NM",
-            "notes": "Full-relaxed",
-            "raw_cif": "data_MoSX4\n_audit_creation_date              2026-09-16\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.0781\n_cell_length_b                    3.0750\n_cell_length_c                    26.9120\n_cell_angle_alpha                 90.0066\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0335\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo   -0.00001  -0.00002   0.50000   0.00000  Uiso   1.00\nS2     P     0.33367   0.66735   0.44115   0.00000  Uiso   1.00\nS3     P     0.33372   0.66745   0.55885   0.00000  Uiso   1.00\nSi4    Si    0.33744   0.67489   0.64121   0.00000  Uiso   1.00\nSi5    Si    0.33716   0.67432   0.35879   0.00000  Uiso   1.00\nN6     N     0.67101   0.34203   0.65897   0.00000  Uiso   1.00\nN7     N     0.67070   0.34141   0.34102   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    S3      2.380   .     S\nMo1    S2      2.380   .     S\nMo1    S3      2.379   1_445 S\nMo1    S3      2.379   1_545 S\nMo1    S2      2.379   1_445 S\nMo1    S2      2.379   1_545 S\nS2     Mo1     2.379   1_665 S\nS2     Mo1     2.379   1_565 S\nS2     Si5     2.217   .     S\nS3     Mo1     2.379   1_665 S\nS3     Mo1     2.379   1_565 S\nS3     Si4     2.217   .     S\nSi4    N6      1.839   .     S\nSi4    N6      1.839   1_565 S\nSi4    N6      1.839   1_455 S\nSi5    N7      1.839   .     S\nSi5    N7      1.839   1_565 S\nSi5    N7      1.839   1_455 S\nN6     Si4     1.839   1_545 S\nN6     Si4     1.839   1_655 S\nN7     Si5     1.839   1_545 S\nN7     Si5     1.839   1_655 S",
-            "cif_content": "data_MoSX4\n_audit_creation_date              2026-09-16\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P1'\n_symmetry_Int_Tables_number       1\n_symmetry_cell_setting            triclinic\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n_cell_length_a                    3.0781\n_cell_length_b                    3.0750\n_cell_length_c                    26.9120\n_cell_angle_alpha                 90.0066\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0335\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo   -0.00001  -0.00002   0.50000   0.00000  Uiso   1.00\nS2     P     0.33367   0.66735   0.44115   0.00000  Uiso   1.00\nS3     P     0.33372   0.66745   0.55885   0.00000  Uiso   1.00\nSi4    Si    0.33744   0.67489   0.64121   0.00000  Uiso   1.00\nSi5    Si    0.33716   0.67432   0.35879   0.00000  Uiso   1.00\nN6     N     0.67101   0.34203   0.65897   0.00000  Uiso   1.00\nN7     N     0.67070   0.34141   0.34102   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    S3      2.380   .     S\nMo1    S2      2.380   .     S\nMo1    S3      2.379   1_445 S\nMo1    S3      2.379   1_545 S\nMo1    S2      2.379   1_445 S\nMo1    S2      2.379   1_545 S\nS2     Mo1     2.379   1_665 S\nS2     Mo1     2.379   1_565 S\nS2     Si5     2.217   .     S\nS3     Mo1     2.379   1_665 S\nS3     Mo1     2.379   1_565 S\nS3     Si4     2.217   .     S\nSi4    N6      1.839   .     S\nSi4    N6      1.839   1_565 S\nSi4    N6      1.839   1_455 S\nSi5    N7      1.839   .     S\nSi5    N7      1.839   1_565 S\nSi5    N7      1.839   1_455 S\nN6     Si4     1.839   1_545 S\nN6     Si4     1.839   1_655 S\nN7     Si5     1.839   1_545 S\nN7     Si5     1.839   1_655 S",
-            "poscar_text": "MoSi2N2P2 Triclinic P1 (1)\n1.0\n       3.07810000     0.00000000     0.00000000\n      -1.53905677     2.66212871     0.00000000\n       0.00000000    -0.00358083    26.91199976\n   Mo    P   Si    N\n    1    2    2    2\nDirect\n   -0.00001000  -0.00002000   0.50000000\n    0.33367000   0.66735000   0.44115000\n    0.33372000   0.66745000   0.55885000\n    0.33744000   0.67489000   0.64121000\n    0.33716000   0.67432000   0.35879000\n    0.67101000   0.34203000   0.65897000\n    0.67070000   0.34141000   0.34102000\n",
-            "poscar_content": "MoSi2N2P2 Triclinic P1 (1)\n1.0\n       3.07810000     0.00000000     0.00000000\n      -1.53905677     2.66212871     0.00000000\n       0.00000000    -0.00358083    26.91199976\n   Mo    P   Si    N\n    1    2    2    2\nDirect\n   -0.00001000  -0.00002000   0.50000000\n    0.33367000   0.66735000   0.44115000\n    0.33372000   0.66745000   0.55885000\n    0.33744000   0.67489000   0.64121000\n    0.33716000   0.67432000   0.35879000\n    0.67101000   0.34203000   0.65897000\n    0.67070000   0.34141000   0.34102000\n",
-            "atoms": [
-              {
-                "element": "Mo",
-                "label": "Mo1",
-                "x": -0.00001,
-                "y": -0.00002,
-                "z": 0.5,
-                "occupancy": 1
-              },
-              {
-                "element": "P",
-                "label": "S2",
-                "x": 0.33367,
-                "y": 0.66735,
-                "z": 0.44115,
-                "occupancy": 1
-              },
-              {
-                "element": "P",
-                "label": "S3",
-                "x": 0.33372,
-                "y": 0.66745,
-                "z": 0.55885,
-                "occupancy": 1
-              },
-              {
-                "element": "Si",
-                "label": "Si4",
-                "x": 0.33744,
-                "y": 0.67489,
-                "z": 0.64121,
-                "occupancy": 1
-              },
-              {
-                "element": "Si",
-                "label": "Si5",
-                "x": 0.33716,
-                "y": 0.67432,
-                "z": 0.35879,
-                "occupancy": 1
-              },
-              {
-                "element": "N",
-                "label": "N6",
-                "x": 0.67101,
-                "y": 0.34203,
-                "z": 0.65897,
-                "occupancy": 1
-              },
-              {
-                "element": "N",
-                "label": "N7",
-                "x": 0.6707,
-                "y": 0.34141,
-                "z": 0.34102,
-                "occupancy": 1
-              }
-            ],
-            "in_weekly_report": 0,
-            "id": 1794571683472,
-            "project_folder": "User: Vu Tien Lam",
-            "visibility": "Private",
-            "owner_email": "tlamvux@gmail.com",
-            "owner_name": "Vu Tien Lam",
-            "structural_id": "CD-0030",
-            "calc_status": "Relaxed",
-            "allowed_users": []
-          }
-        ],
+        "structures": [],
         "schedule": [
           {
             "title": "DFT Discussion",
@@ -6889,198 +6266,11 @@
       ],
       "registeredAt": "2026-11-18 19:49",
       "lastLoginAt": "2026-11-18 20:44",
-      "lastUpdatedAt": "2026-11-18 20:44",
-      "updatedAtMs": 1795002246374,
+      "lastUpdatedAt": "2026-11-19 09:39",
+      "updatedAtMs": 1795048744333,
       "workspace": {
         "papers": [],
-        "structures": [
-          {
-            "structural_id": "CD-0029",
-            "calc_status": "Relaxed",
-            "is_starred": false,
-            "name": "KNaFe(Si2O5)2",
-            "formula": "KNaFeSi4O10",
-            "chemical_formula": "KNaFeSi4O10",
-            "project_folder": "User: Jaewon Kim",
-            "associated_paper_id": null,
-            "associated_paper_title": "",
-            "associated_paper_doi": "",
-            "crystal_system": "Triclinic",
-            "space_group": "P-1 (2)",
-            "structure_type": "Bulk 3D",
-            "mp_id": "",
-            "materials_project_id": "",
-            "a": 7.056988,
-            "b": 8.3065943,
-            "c": 10.06901065,
-            "alpha": 105.21923465,
-            "beta": 101.12915932,
-            "gamma": 113.83963667,
-            "volume": 490.11655222,
-            "natoms": 17,
-            "dft_code": "VASP",
-            "functional": "PBE",
-            "dft_functional": "PBE",
-            "ecut": 520,
-            "cutoff_energy": 520,
-            "kpoints": "8x8x8",
-            "bandgap": 3.2,
-            "bandgap_ev": 3.2,
-            "bandgap_type": "Direct",
-            "energy_per_atom": -6.85,
-            "total_energy_per_atom": -6.85,
-            "magnetic_state": "NM",
-            "notes": "",
-            "raw_cif": "# generated using pymatgen\ndata_KNaFe(Si2O5)2\n_symmetry_space_group_name_H-M   P-1\n_cell_length_a   7.05698800\n_cell_length_b   8.30659430\n_cell_length_c   10.06901065\n_cell_angle_alpha   105.21923465\n_cell_angle_beta   101.12915932\n_cell_angle_gamma   113.83963667\n_symmetry_Int_Tables_number   2\n_chemical_formula_structural   KNaFe(Si2O5)2\n_chemical_formula_sum   'K2 Na2 Fe2 Si8 O20'\n_cell_volume   490.11655222\n_cell_formula_units_Z   2\nloop_\n _symmetry_equiv_pos_site_id\n _symmetry_equiv_pos_as_xyz\n  1  'x, y, z'\n  2  '-x, -y, -z'\nloop_\n _atom_site_type_symbol\n _atom_site_label\n _atom_site_symmetry_multiplicity\n _atom_site_fract_x\n _atom_site_fract_y\n _atom_site_fract_z\n _atom_site_occupancy\n  K  K0  2  0.17211500  0.81347000  0.01551800  1\n  Na  Na1  2  0.24815200  0.28103500  0.41001300  1\n  Fe  Fe2  2  0.24873600  0.69908800  0.59164600  1\n  Si  Si3  2  0.10530800  0.37420300  0.73019500  1\n  Si  Si4  2  0.25773000  0.09193100  0.78464700  1\n  Si  Si5  2  0.32733400  0.62650600  0.27002800  1\n  Si  Si6  2  0.42539700  0.30471900  0.13131300  1\n  O  O7  2  0.08650000  0.41305400  0.58149300  1\n  O  O8  2  0.09333400  0.62634600  0.20648100  1\n  O  O9  2  0.09499900  0.16771800  0.71389900  1\n  O  O10  2  0.14921100  0.86575800  0.71163000  1\n  O  O11  2  0.28160900  0.41787600  0.15999400  1\n  O  O12  2  0.29167900  0.14867300  0.96122700  1\n  O  O13  2  0.33199200  0.54408200  0.86593200  1\n  O  O14  2  0.39587600  0.64921600  0.43758400  1\n  O  O15  2  0.43881600  0.19984100  0.24215000  1\n  O  O16  2  0.49908600  0.20460500  0.76870100  1",
-            "cif_content": "# generated using pymatgen\ndata_KNaFe(Si2O5)2\n_symmetry_space_group_name_H-M   P-1\n_cell_length_a   7.05698800\n_cell_length_b   8.30659430\n_cell_length_c   10.06901065\n_cell_angle_alpha   105.21923465\n_cell_angle_beta   101.12915932\n_cell_angle_gamma   113.83963667\n_symmetry_Int_Tables_number   2\n_chemical_formula_structural   KNaFe(Si2O5)2\n_chemical_formula_sum   'K2 Na2 Fe2 Si8 O20'\n_cell_volume   490.11655222\n_cell_formula_units_Z   2\nloop_\n _symmetry_equiv_pos_site_id\n _symmetry_equiv_pos_as_xyz\n  1  'x, y, z'\n  2  '-x, -y, -z'\nloop_\n _atom_site_type_symbol\n _atom_site_label\n _atom_site_symmetry_multiplicity\n _atom_site_fract_x\n _atom_site_fract_y\n _atom_site_fract_z\n _atom_site_occupancy\n  K  K0  2  0.17211500  0.81347000  0.01551800  1\n  Na  Na1  2  0.24815200  0.28103500  0.41001300  1\n  Fe  Fe2  2  0.24873600  0.69908800  0.59164600  1\n  Si  Si3  2  0.10530800  0.37420300  0.73019500  1\n  Si  Si4  2  0.25773000  0.09193100  0.78464700  1\n  Si  Si5  2  0.32733400  0.62650600  0.27002800  1\n  Si  Si6  2  0.42539700  0.30471900  0.13131300  1\n  O  O7  2  0.08650000  0.41305400  0.58149300  1\n  O  O8  2  0.09333400  0.62634600  0.20648100  1\n  O  O9  2  0.09499900  0.16771800  0.71389900  1\n  O  O10  2  0.14921100  0.86575800  0.71163000  1\n  O  O11  2  0.28160900  0.41787600  0.15999400  1\n  O  O12  2  0.29167900  0.14867300  0.96122700  1\n  O  O13  2  0.33199200  0.54408200  0.86593200  1\n  O  O14  2  0.39587600  0.64921600  0.43758400  1\n  O  O15  2  0.43881600  0.19984100  0.24215000  1\n  O  O16  2  0.49908600  0.20460500  0.76870100  1",
-            "poscar_text": "KNaFeSi4O10 Triclinic P-1 (2)\n1.0\n       7.05698800     0.00000000     0.00000000\n      -3.35734400     7.59787800     0.00000000\n      -1.94353400    -3.74861200     9.14087300\n    K   Na   Fe   Si    O\n    1    1    1    4   10\nDirect\n    0.17212000   0.81347000   0.01552000\n    0.24815000   0.28103000   0.41001000\n    0.24874000   0.69909000   0.59165000\n    0.10531000   0.37420000   0.73020000\n    0.25773000   0.09193000   0.78465000\n    0.32733000   0.62651000   0.27003000\n    0.42540000   0.30472000   0.13131000\n    0.08650000   0.41305000   0.58149000\n    0.09333000   0.62635000   0.20648000\n    0.09500000   0.16772000   0.71390000\n    0.14921000   0.86576000   0.71163000\n    0.28161000   0.41788000   0.15999000\n    0.29168000   0.14867000   0.96123000\n    0.33199000   0.54408000   0.86593000\n    0.39588000   0.64922000   0.43758000\n    0.43882000   0.19984000   0.24215000\n    0.49909000   0.20461000   0.76870000\n",
-            "poscar_content": "KNaFeSi4O10 Triclinic P-1 (2)\n1.0\n       7.05698800     0.00000000     0.00000000\n      -3.35734400     7.59787800     0.00000000\n      -1.94353400    -3.74861200     9.14087300\n    K   Na   Fe   Si    O\n    1    1    1    4   10\nDirect\n    0.17212000   0.81347000   0.01552000\n    0.24815000   0.28103000   0.41001000\n    0.24874000   0.69909000   0.59165000\n    0.10531000   0.37420000   0.73020000\n    0.25773000   0.09193000   0.78465000\n    0.32733000   0.62651000   0.27003000\n    0.42540000   0.30472000   0.13131000\n    0.08650000   0.41305000   0.58149000\n    0.09333000   0.62635000   0.20648000\n    0.09500000   0.16772000   0.71390000\n    0.14921000   0.86576000   0.71163000\n    0.28161000   0.41788000   0.15999000\n    0.29168000   0.14867000   0.96123000\n    0.33199000   0.54408000   0.86593000\n    0.39588000   0.64922000   0.43758000\n    0.43882000   0.19984000   0.24215000\n    0.49909000   0.20461000   0.76870000\n",
-            "atoms": [
-              {
-                "element": "K",
-                "label": "K0",
-                "x": 0.17212,
-                "y": 0.81347,
-                "z": 0.01552,
-                "occupancy": 1
-              },
-              {
-                "element": "Na",
-                "label": "Na1",
-                "x": 0.24815,
-                "y": 0.28103,
-                "z": 0.41001,
-                "occupancy": 1
-              },
-              {
-                "element": "Fe",
-                "label": "Fe2",
-                "x": 0.24874,
-                "y": 0.69909,
-                "z": 0.59165,
-                "occupancy": 1
-              },
-              {
-                "element": "Si",
-                "label": "Si3",
-                "x": 0.10531,
-                "y": 0.3742,
-                "z": 0.7302,
-                "occupancy": 1
-              },
-              {
-                "element": "Si",
-                "label": "Si4",
-                "x": 0.25773,
-                "y": 0.09193,
-                "z": 0.78465,
-                "occupancy": 1
-              },
-              {
-                "element": "Si",
-                "label": "Si5",
-                "x": 0.32733,
-                "y": 0.62651,
-                "z": 0.27003,
-                "occupancy": 1
-              },
-              {
-                "element": "Si",
-                "label": "Si6",
-                "x": 0.4254,
-                "y": 0.30472,
-                "z": 0.13131,
-                "occupancy": 1
-              },
-              {
-                "element": "O",
-                "label": "O7",
-                "x": 0.0865,
-                "y": 0.41305,
-                "z": 0.58149,
-                "occupancy": 1
-              },
-              {
-                "element": "O",
-                "label": "O8",
-                "x": 0.09333,
-                "y": 0.62635,
-                "z": 0.20648,
-                "occupancy": 1
-              },
-              {
-                "element": "O",
-                "label": "O9",
-                "x": 0.095,
-                "y": 0.16772,
-                "z": 0.7139,
-                "occupancy": 1
-              },
-              {
-                "element": "O",
-                "label": "O10",
-                "x": 0.14921,
-                "y": 0.86576,
-                "z": 0.71163,
-                "occupancy": 1
-              },
-              {
-                "element": "O",
-                "label": "O11",
-                "x": 0.28161,
-                "y": 0.41788,
-                "z": 0.15999,
-                "occupancy": 1
-              },
-              {
-                "element": "O",
-                "label": "O12",
-                "x": 0.29168,
-                "y": 0.14867,
-                "z": 0.96123,
-                "occupancy": 1
-              },
-              {
-                "element": "O",
-                "label": "O13",
-                "x": 0.33199,
-                "y": 0.54408,
-                "z": 0.86593,
-                "occupancy": 1
-              },
-              {
-                "element": "O",
-                "label": "O14",
-                "x": 0.39588,
-                "y": 0.64922,
-                "z": 0.43758,
-                "occupancy": 1
-              },
-              {
-                "element": "O",
-                "label": "O15",
-                "x": 0.43882,
-                "y": 0.19984,
-                "z": 0.24215,
-                "occupancy": 1
-              },
-              {
-                "element": "O",
-                "label": "O16",
-                "x": 0.49909,
-                "y": 0.20461,
-                "z": 0.7687,
-                "occupancy": 1
-              }
-            ],
-            "in_weekly_report": 0,
-            "id": 1794999222943,
-            "visibility": "Private",
-            "owner_email": "lamvt@g.skku.edu",
-            "owner_name": "Jaewon Kim",
-            "allowed_users": []
-          }
-        ],
+        "structures": [],
         "schedule": [
           {
             "title": "DFT Discussion",
@@ -7381,8 +6571,38 @@
     "grp_dft_team",
     "grp_skku_lab"
   ],
-  "deleted_structures": [],
-  "deleted_structures_map": {},
+  "deleted_structures": [
+    "1794982489046",
+    "CD-0039",
+    "1794982490510",
+    "CD-0037",
+    "1794807861185",
+    "CD-0028",
+    "1794571683471",
+    "CD-0027",
+    "1794807861186",
+    "CD-0031",
+    "1794571683472",
+    "CD-0030",
+    "1794999222943",
+    "CD-0029"
+  ],
+  "deleted_structures_map": {
+    "1794982489046": 1795048744332,
+    "CD-0039": 1795048744332,
+    "1794982490510": 1795048744333,
+    "CD-0037": 1795048744333,
+    "1794807861185": 1795048744333,
+    "CD-0028": 1795048744333,
+    "1794571683471": 1795048744333,
+    "CD-0027": 1795048744333,
+    "1794807861186": 1795048744333,
+    "CD-0031": 1795048744333,
+    "1794571683472": 1795048744333,
+    "CD-0030": 1795048744333,
+    "1794999222943": 1795048744333,
+    "CD-0029": 1795048744333
+  },
   "deleted_papers": [],
   "deleted_papers_map": {},
   "deleted_schedule": [],
