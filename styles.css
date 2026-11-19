@@ -8805,3 +8805,142 @@ body.is-admin #cv-exclusive-owner-notice {
   }
 }
 
+
+/* ========================================================================== */
+/* V106: FULL-PAGE ARTICLE READER & FORMULA / ABSTRACT / DOCX STYLES          */
+/* ========================================================================== */
+
+.news-full-article-view {
+  width: 100%;
+  animation: fadeIn 0.25s ease-in-out;
+}
+
+.news-article-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px;
+  background: #ffffff;
+  border: 1px solid #ebd8c1;
+  border-radius: 10px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 14px rgba(43, 31, 23, 0.05);
+  position: sticky;
+  top: 70px;
+  z-index: 99;
+  backdrop-filter: blur(8px);
+}
+
+.news-article-breadcrumb {
+  font-size: 13px;
+  font-weight: 600;
+  color: #786354;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 520px;
+}
+
+.news-full-paper-page {
+  max-width: 1040px;
+  margin: 0 auto 30px auto;
+  background: #ffffff;
+  border: 1px solid #ebd8c1;
+  border-radius: 12px;
+  padding: 44px 52px;
+  box-shadow: 0 12px 36px rgba(43, 31, 23, 0.07);
+}
+
+@media (max-width: 768px) {
+  .news-article-top-bar {
+    top: 55px;
+    padding: 10px 12px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .news-full-paper-page {
+    padding: 24px 16px;
+    border-radius: 8px;
+  }
+  .news-article-breadcrumb {
+    max-width: 100%;
+  }
+}
+
+/* Abstract Formula Toolbar & Live Preview */
+.abstract-toolbar .btn-xs {
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 600;
+  border-color: #ebd8c1;
+  color: #5c4738;
+  background: #ffffff;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.abstract-toolbar .btn-xs:hover {
+  background: #8b3a1a;
+  color: #ffffff;
+  border-color: #8b3a1a;
+}
+
+.abstract-live-preview-box {
+  min-height: 48px;
+  max-height: 140px;
+  overflow-y: auto;
+  padding: 8px 12px;
+  background: #fdfbf7;
+  border: 1px solid #ebd8c1;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #2b1f17;
+}
+
+.inline-math-formula,
+.journal-math-formula {
+  font-family: 'Cambria Math', 'STIX Two Math', 'Times New Roman', serif;
+  font-style: italic;
+  color: #8b3a1a;
+  padding: 0 2px;
+}
+
+.btn-copy-link-inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  font-size: 12px;
+  background: #f5ece1;
+  border: 1px solid #ebd8c1;
+  border-radius: 4px;
+  color: #8b3a1a;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-copy-link-inline:hover {
+  background: #8b3a1a;
+  color: #ffffff;
+  border-color: #8b3a1a;
+}
+
+/* Print Styles Update for Full Page View */
+@media print {
+  #news-full-article-view,
+  #news-full-article-view * {
+    visibility: visible !important;
+  }
+  .news-article-top-bar,
+  .news-article-bottom-bar {
+    display: none !important;
+  }
+  .news-full-paper-page {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+}
