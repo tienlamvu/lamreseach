@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-19T01:32:12.241Z",
+  "exported_at": "2026-11-19T01:32:26.679Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -5099,7 +5099,7 @@
       "registeredAt": "2026-11-16 11:31",
       "lastLoginAt": "2026-11-18 21:42",
       "lastUpdatedAt": "2026-11-19 10:32",
-      "updatedAtMs": 1795051931145,
+      "updatedAtMs": 1795051945409,
       "workspace": {
         "papers": [
           {
@@ -5155,7 +5155,7 @@
             "structural_id": "CD-0027",
             "calc_status": "Relaxed",
             "is_starred": false,
-            "name": "J1+4_Pristine",
+            "name": "Lam",
             "formula": "MoSi2N2P2",
             "chemical_formula": "MoSi2N2P2",
             "project_folder": "2D Janus MA2Z4 & Layered TMDs",
@@ -5466,6 +5466,12 @@
         ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-19 10:32",
+          "category": "Crystal Structures",
+          "action": "Updated Structure",
+          "detail": "MoSi2N2P2 — Lam (P3M1 (156))"
+        },
         {
           "timestamp": "2026-11-19 10:32",
           "category": "Crystal Structures",
