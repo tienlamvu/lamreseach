@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261119_v105_fix_editor_ui_direct_article_link" onerror="this.href='/static/styles.css?v=20261119_v105_fix_editor_ui_direct_article_link'" />
+  <link rel="stylesheet" href="styles.css?v=20261119_v106_full_page_word_import_math_abstract" onerror="this.href='/static/styles.css?v=20261119_v106_full_page_word_import_math_abstract" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -243,6 +243,8 @@
       <!-- TAB: RESEARCH NEWS & SCIENTIFIC PUBLICATIONS                      -->
       <!-- ================================================================ -->
       <section id="tab-news" class="tab-pane">
+        <!-- News Catalog View (Grid & Filters) -->
+        <div id="news-catalog-view">
         <!-- News Header Bar -->
         <div class="news-pane-header">
           <div class="news-pane-titles">
@@ -251,6 +253,10 @@
             <p class="news-subheading">Peer-reviewed publications, DFT breakthroughs, research highlights, and lab announcements from the Sungkyunkwan University Materials Simulation Lab.</p>
           </div>
           <div class="news-header-actions">
+            <button id="news-import-word-btn" class="btn btn-outline admin-only" onclick="triggerWordImport()" title="Import &amp; auto-detect content, formulas, tables, figures from Word (.docx)">
+              📥 Import Word (.docx)
+            </button>
+            <input type="file" id="news-word-file-input" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none;" onchange="handleWordFileInput(event)">
             <button id="news-new-article-btn" class="btn btn-primary admin-only" onclick="openNewsEditorModal()" title="Compose &amp; publish a new research article or announcement">
               ✍️ + New Article
             </button>
@@ -284,6 +290,45 @@
           <div class="news-empty-icon">📰</div>
           <div class="news-empty-title">No articles found</div>
           <div class="news-empty-text">No articles matched your selected category filter or search keywords.</div>
+                </div>
+        <!-- End #news-catalog-view -->
+
+        <!-- ============================================================ -->
+        <!-- FULL-PAGE SCIENTIFIC ARTICLE READER VIEW (Direct Full Page)  -->
+        <!-- ============================================================ -->
+        <div id="news-full-article-view" style="display:none;" class="news-full-article-view">
+          <!-- Top Sticky Navigation & Action Bar -->
+          <div class="news-article-top-bar">
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-outline btn-sm news-back-btn" onclick="closeNewsFullArticleView()">
+                ← Back to All Articles
+              </button>
+              <div class="news-article-breadcrumb" id="news-article-breadcrumb">
+                News &gt; Research Article
+              </div>
+            </div>
+            <div class="news-article-actions" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-outline btn-sm" onclick="printNewsArticle()" title="Print / Export to PDF">🖨️ Print / PDF</button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="copyNewsCitation()" title="Copy Citation">📋 Cite</button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="copyNewsShareLink()" title="Copy Link to Article">🔗 Share Link</button>
+              <button type="button" id="news-full-admin-edit-btn" class="btn btn-primary btn-sm admin-only" onclick="editCurrentJournalArticle()" title="Edit this article">✏️ Edit Article</button>
+            </div>
+          </div>
+
+          <!-- Main Academic Paper Body (Full Page Layout) -->
+          <article class="journal-paper-container news-full-paper-page" id="news-full-paper-body">
+            <!-- Dynamically populated by openNewsJournalModal() -->
+          </article>
+
+          <!-- Bottom Navigation Bar -->
+          <div class="news-article-bottom-bar" style="margin-top:28px; padding-top:18px; border-top:1px solid #ebd8c1; display:flex; justify-content:space-between; align-items:center;">
+            <button type="button" class="btn btn-outline news-back-btn" onclick="closeNewsFullArticleView()">
+              ← Back to All Articles
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="window.scrollTo({top:0, behavior:'smooth'})">
+              ↑ Back to Top
+            </button>
+          </div>
         </div>
       </section>
 
@@ -3944,8 +3989,10 @@
     </div>
   </div>
 
-<script src="matsci_tools.js?v=20261119_v105_fix_editor_ui_direct_article_link" onerror="this.src='/static/matsci_tools.js?v=20261119_v105_fix_editor_ui_direct_article_link'"></script>
-  <script src="app.js?v=20261119_v105_fix_editor_ui_direct_article_link" onerror="this.src='/static/app.js?v=20261119_v105_fix_editor_ui_direct_article_link'"></script>
+<script src="jszip.min.js"></script>
+  <script>if (typeof JSZip === "undefined") { document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"><\\/script>'); }</script>
+  <script src="matsci_tools.js?v=20261119_v106_full_page_word_import_math_abstract" onerror="this.src='/static/matsci_tools.js?v=20261119_v106_full_page_word_import_math_abstract"></script>
+  <script src="app.js?v=20261119_v106_full_page_word_import_math_abstract" onerror="this.src='/static/app.js?v=20261119_v106_full_page_word_import_math_abstract"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
@@ -4023,7 +4070,12 @@
           <div class="card-title" id="news-editor-modal-title" style="font-size:18px; font-weight:800; color:#2b1f17;">✍️ Compose Scientific News &amp; Article</div>
           <div style="font-size:12px; color:#786354; margin-top:2px;">Publish peer-reviewed announcements, DFT papers, or lab communications with academic formatting.</div>
         </div>
-        <button type="button" class="btn btn-outline btn-sm" onclick="confirmCloseNewsEditor()">✕ Close</button>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button type="button" class="btn btn-outline btn-sm" onclick="triggerWordImport()" title="Import from Microsoft Word (*.docx)">
+            📄 Import Word (.docx)
+          </button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="confirmCloseNewsEditor()">✕ Close</button>
+        </div>
       </div>
 
       <div class="news-editor-modal-body" style="overflow-y:auto; flex:1; padding-right:6px;">
@@ -4116,10 +4168,41 @@
           </div>
         </div>
 
-        <!-- Abstract Box -->
+        <!-- Abstract Box with Formula Tools & Live Preview -->
         <div class="news-form-group">
-          <label class="form-label" for="news-edit-abstract">Abstract / Executive Summary <span class="required">*</span></label>
-          <textarea id="news-edit-abstract" class="form-textarea" rows="3" placeholder="Provide a concise 100-250 word scientific summary highlighting problem, computational methodology, key discoveries, and impact..."></textarea>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <label class="form-label" for="news-edit-abstract" style="margin-bottom:0;">Abstract / Executive Summary <span class="required">*</span></label>
+            <span style="font-size:11px; color:#8c7662;">Supports LaTeX ($...$), subscripts (x₂), superscripts (x²), chemical formulas &amp; Greek letters</span>
+          </div>
+
+          <!-- Abstract Formula & Notation Quick Toolbar -->
+          <div class="abstract-toolbar" style="display:flex; gap:5px; flex-wrap:wrap; margin-bottom:6px; padding:6px 8px; background:#fbf8f4; border:1px solid #e8decb; border-radius:6px;">
+            <span style="font-size:11px; color:#5c4738; font-weight:700; align-self:center; margin-right:4px;">Formula Tools:</span>
+            <button type="button" class="btn btn-outline btn-xs" onclick="insertAbstractSymbol('<sub>', '</sub>')" title="Subscript (e.g. MoS₂)">x₂ Sub</button>
+            <button type="button" class="btn btn-outline btn-xs" onclick="insertAbstractSymbol('<sup>', '</sup>')" title="Superscript (e.g. Li⁺)">x² Sup</button>
+            <button type="button" class="btn btn-outline btn-xs" onclick="insertAbstractSymbol('$', '$')" title="LaTeX Math Formula ($...$)"><i>$...$</i> Math</button>
+            <button type="button" class="btn btn-outline btn-xs" onclick="insertAbstractSymbol('Δ')" title="Delta">Δ</button>
+            <button type="button" class="btn btn-outline btn-xs" onclick="insertAbstractSymbol('μ')" title="Mu">μ</button>
+            <button type="button" class="btn btn-outline btn-xs" onclick="insertAbstractSymbol('Å')" title="Angstrom">Å</button>
+            <button type="button" class="btn btn-outline btn-xs" onclick="insertAbstractSymbol('±')" title="Plus-Minus">±</button>
+            <button type="button" class="btn btn-outline btn-xs" onclick="insertAbstractSymbol('→')" title="Reaction Arrow">→</button>
+            <button type="button" class="btn btn-outline btn-xs" onclick="insertAbstractSymbol('≈')" title="Approximately">≈</button>
+            <button type="button" class="btn btn-outline btn-xs" onclick="insertAbstractSymbol('ΔG*')" title="Free energy ΔG*">ΔG*</button>
+            <button type="button" class="btn btn-outline btn-xs" onclick="insertAbstractSymbol('eV')" title="Electron-volt">eV</button>
+          </div>
+
+          <textarea id="news-edit-abstract" class="form-textarea" rows="3" placeholder="Paste or type scientific abstract with formulas, functions, and chemical notations (e.g. ΔG_H*, MoSi₂N₄, $E_{coh} = -7.84	ext{ eV}$)..." oninput="updateAbstractLivePreview()" onpaste="handleAbstractPaste(event)"></textarea>
+
+          <!-- Live Formula Preview -->
+          <div class="abstract-preview-wrapper" style="margin-top:6px;">
+            <div style="font-size:11px; font-weight:700; color:#5c4738; margin-bottom:3px; display:flex; justify-content:space-between;">
+              <span>🔬 Abstract Live Preview (Rendered Formulas &amp; Functions):</span>
+              <span id="abstract-preview-hint" style="font-size:10.5px; color:#8c7662;">Formatted in real-time</span>
+            </div>
+            <div id="news-edit-abstract-preview" class="abstract-live-preview-box">
+              <span style="color:#a8998b; font-style:italic; font-size:12px;">Type or paste into the abstract box above to see rendered formulas and functions here...</span>
+            </div>
+          </div>
         </div>
 
         <!-- WYSIWYG Rich Text Toolbar & Content -->
