@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-19T02:11:51.748Z",
+  "exported_at": "2026-11-19T02:11:58.787Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -5098,8 +5098,8 @@
       "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
       "registeredAt": "2026-11-16 11:31",
       "lastLoginAt": "2026-11-19 10:44:15",
-      "lastUpdatedAt": "2026-11-19 11:11:50",
-      "updatedAtMs": 1795054310521,
+      "lastUpdatedAt": "2026-11-19 11:11:57",
+      "updatedAtMs": 1795054317408,
       "workspace": {
         "papers": [
           {
@@ -5164,15 +5164,24 @@
                 "is_admin": false,
                 "action": "Created Structure",
                 "details": "Created structure Mo2Si4N3P5 (P3M1 (156), Cubic)"
+              },
+              {
+                "timestamp": "2026-11-19 11:11:57",
+                "timestampMs": 1795054317408,
+                "editor_name": "Tien Lam",
+                "editor_email": "lamvt.sep@gmail.com",
+                "is_admin": false,
+                "action": "Modified Structure Parameters",
+                "details": "Updated structure properties"
               }
             ],
             "name": "J1+4_P_N2",
             "formula": "Mo2Si4N3P5",
             "chemical_formula": "Mo2Si4N3P5",
             "project_folder": "General Research",
-            "associated_paper_id": null,
-            "associated_paper_title": "",
-            "associated_paper_doi": "",
+            "associated_paper_id": 1794966590683,
+            "associated_paper_title": "Charge doping and electric field tunable ferromagnetism and Curie temperature of the MnS\n                    <sub>2</sub>\n                    monolayer",
+            "associated_paper_doi": "10.1039/d3cp04382g",
             "crystal_system": "Cubic",
             "space_group": "P3M1 (156)",
             "structure_type": "2D Monolayer",
@@ -5477,6 +5486,13 @@
         ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-19 11:11:57",
+          "timestampMs": 1795054317408,
+          "category": "Crystal Structures",
+          "action": "Updated Structure",
+          "detail": "Mo2Si4N3P5 — J1+4_P_N2 (P3M1 (156))"
+        },
         {
           "timestamp": "2026-11-19 11:11:50",
           "timestampMs": 1795054310521,
