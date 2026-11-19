@@ -62,6 +62,10 @@ const TAB_TITLES = {
     "Computational Materials Research Command Center",
     "Ph.D. Workflow, Crystal Structures (*.cif), DFT Simulations, Literature & Academic CV"
   ],
+  "news": [
+    "Research News & Scientific Publications",
+    "Peer-reviewed announcements, computational DFT breakthroughs & academic publications"
+  ],
   "literature": [
     "Literature Library & Automatic DOI Import",
     "Auto-enrich papers with Crossref/OpenAlex and strict Duplicate DOI Prevention"
@@ -140,9 +144,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadAllData();
   await autofillReportFromDatabase(true);
 
-  const hashTab = window.location.hash ? window.location.hash.replace("#", "") : null;
+  const rawHash = window.location.hash ? window.location.hash.replace("#", "") : "";
+  const hashTab = rawHash.split("?")[0];
   if (hashTab && TABS_ORDER.includes(hashTab)) {
     switchTab(hashTab);
+    if (hashTab === "news" && rawHash.includes("id=")) {
+      const artId = rawHash.split("id=")[1];
+      setTimeout(() => { if (typeof openNewsJournalModal === "function") openNewsJournalModal(artId); }, 250);
+    }
   } else {
     const initialActive = document.querySelector(".tab-pane.active");
     const initialTabId = initialActive ? initialActive.id.replace("tab-", "") : "dashboard";
@@ -237,10 +246,11 @@ function confirmAction(message, itemDesc = "") {
   });
 }
 
-const TABS_ORDER = ["dashboard", "literature", "calendar", "structures", "weekly-report", "manuscript", "toolkit", "cv"];
+const TABS_ORDER = ["dashboard", "news", "literature", "calendar", "structures", "weekly-report", "manuscript", "toolkit", "cv"];
 
 const TAB_META = {
   "dashboard": ["📊", "Dashboard"],
+  "news": ["📰", "News & Articles"],
   "literature": ["📚", "References"],
   "calendar": ["📅", "Calendar & GCal"],
   "structures": ["💎", "Crystal Structures"],
@@ -319,6 +329,8 @@ function switchTab(tabId, btnEl) {
     renderStructuresList();
   } else if (tabId === "toolkit") {
     if (typeof renderPeriodicTable === "function") renderPeriodicTable();
+  } else if (tabId === "news") {
+    if (typeof renderNewsTab === "function") renderNewsTab();
   }
 }
 
@@ -1960,7 +1972,10 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
       deleted_papers: Object.keys(getDeletedPapersMap()),
       deleted_papers_map: getDeletedPapersMap(),
       deleted_schedule: Object.keys(getDeletedScheduleMap()),
-      deleted_schedule_map: getDeletedScheduleMap()
+      deleted_schedule_map: getDeletedScheduleMap(),
+      news_articles: STATE.newsArticles || (STATE.masterData && STATE.masterData.news_articles) || [],
+      deleted_news_articles: Object.keys(getDeletedNewsArticlesMap()),
+      deleted_news_articles_map: getDeletedNewsArticlesMap()
     };
 
     const base64Content = encodeUtf8Base64(JSON.stringify(exportObj, null, 2));
@@ -15924,6 +15939,7 @@ async function loadAllData() {
     renderMonthlyCalendar();
     renderProfile(STATE.profile);
     renderAcademicCvSheet(STATE.profile);
+    if (typeof renderNewsTab === "function") renderNewsTab();
   } catch (err) {
     STATIC_MODE = true;
     await loadStaticFallbackData();
@@ -15964,6 +15980,19 @@ async function loadStaticFallbackData() {
         ensureUserGroupsInitialized(remoteData.user_groups);
       } else {
         ensureUserGroupsInitialized();
+      }
+      if (remoteData && Array.isArray(remoteData.news_articles) && remoteData.news_articles.length > 0) {
+        if (!STATE.masterData) STATE.masterData = {};
+        STATE.masterData.news_articles = remoteData.news_articles;
+        window._SEED_NEWS_ARTICLES = remoteData.news_articles;
+        if (typeof mergeIncomingDeletedNewsArticles === "function") {
+          mergeIncomingDeletedNewsArticles(remoteData.deleted_news_articles, remoteData.deleted_news_articles_map);
+        }
+        if (!localStorage.getItem("matsci_news_articles_v1")) {
+          try {
+            localStorage.setItem("matsci_news_articles_v1", JSON.stringify(remoteData.news_articles));
+          } catch(e) {}
+        }
       }
 
       if (remoteData && (remoteData.papers || remoteData.profile || remoteData.structures)) {
@@ -16555,11 +16584,13 @@ async function loadStaticFallbackData() {
 
   // Store the loaded master database (Admin's papers, structures, schedule, and exclusive Academic CV profile)
   if (!STATE.masterData || !Array.isArray(STATE.masterData.papers) || STATE.masterData.papers.length === 0 || (!getActivePersonalWorkspaceEmail() && STATE.auth.isAdmin)) {
+    const prevNewsArticles = (STATE.masterData && STATE.masterData.news_articles) || window._SEED_NEWS_ARTICLES || [];
     STATE.masterData = {
       papers: JSON.parse(JSON.stringify(STATE.papers || [])),
       structures: JSON.parse(JSON.stringify(STATE.structures || [])),
       schedule: JSON.parse(JSON.stringify(STATE.schedule || [])),
-      profile: STATE.profile || {}
+      profile: STATE.profile || {},
+      news_articles: prevNewsArticles
     };
   } else {
     STATE.masterData.profile = STATE.profile || STATE.masterData.profile || {};
@@ -16640,11 +16671,13 @@ function saveStaticDb(options = {}) {
     persistUsersRegistryLocal();
   } else if (STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail) {
     // Separate Admin Master items from User-Uploaded Private items (never leak user uploads into masterData!)
+    const prevNews2 = (STATE.masterData && STATE.masterData.news_articles) || STATE.newsArticles || window._SEED_NEWS_ARTICLES || [];
     STATE.masterData = {
       papers: (STATE.papers || []).filter(p => !p._fromUserEmail),
       structures: (STATE.structures || []).filter(s => !s._fromUserEmail),
       schedule: (STATE.schedule || []).filter(ev => !ev._fromUserEmail),
-      profile: STATE.profile || {}
+      profile: STATE.profile || {},
+      news_articles: prevNews2
     };
 
     // Sync any Admin edits/deletions to user-owned structures/papers cleanly back to their user workspace
@@ -30415,3 +30448,913 @@ function renderStructureAuditHistory(history, isNew = false) {
   }).join("");
 }
 window.renderStructureAuditHistory = renderStructureAuditHistory;
+
+
+/* ==========================================================================
+   MATSCI LAB NEWS & SCIENTIFIC PUBLICATIONS CONTROLLER (v104)
+   Professional Journal Article Display & Full Rich Text WYSIWYG Editor
+   ========================================================================== */
+
+let NEWS_STATE = {
+  currentCategory: "all",
+  searchQuery: "",
+  currentJournalArticleId: null,
+  coverBase64: null,
+  figBase64: null,
+  savedEditorSelection: null
+};
+
+// --- News Tombstone & Persistence Helpers ---
+function getDeletedNewsArticlesMap() {
+  try {
+    const raw = localStorage.getItem("matsci_deleted_news_articles_map");
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function recordDeletedNewsArticle(articleId) {
+  if (!articleId) return;
+  const map = getDeletedNewsArticlesMap();
+  map[String(articleId)] = Date.now();
+  try {
+    localStorage.setItem("matsci_deleted_news_articles_map", JSON.stringify(map));
+  } catch (e) {}
+}
+
+function mergeIncomingDeletedNewsArticles(remoteList, remoteMap) {
+  const localMap = getDeletedNewsArticlesMap();
+  let changed = false;
+  if (Array.isArray(remoteList)) {
+    remoteList.forEach(id => {
+      const sId = String(id);
+      if (!localMap[sId]) {
+        localMap[sId] = Date.now();
+        changed = true;
+      }
+    });
+  }
+  if (remoteMap && typeof remoteMap === "object") {
+    Object.entries(remoteMap).forEach(([id, ts]) => {
+      const sId = String(id);
+      if (!localMap[sId] || Number(ts) > Number(localMap[sId])) {
+        localMap[sId] = Number(ts) || Date.now();
+        changed = true;
+      }
+    });
+  }
+  if (changed) {
+    try {
+      localStorage.setItem("matsci_deleted_news_articles_map", JSON.stringify(localMap));
+    } catch (e) {}
+  }
+  return localMap;
+}
+
+function loadNewsArticles() {
+  const deletedMap = getDeletedNewsArticlesMap();
+  let articles = [];
+
+  try {
+    const saved = localStorage.getItem("matsci_news_articles_v1");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        articles = parsed;
+      }
+    }
+  } catch (e) {}
+
+  if (!articles || articles.length === 0) {
+    if (STATE.masterData && Array.isArray(STATE.masterData.news_articles) && STATE.masterData.news_articles.length > 0) {
+      articles = JSON.parse(JSON.stringify(STATE.masterData.news_articles));
+    } else if (Array.isArray(window._SEED_NEWS_ARTICLES) && window._SEED_NEWS_ARTICLES.length > 0) {
+      articles = JSON.parse(JSON.stringify(window._SEED_NEWS_ARTICLES));
+    }
+  }
+
+  STATE.newsArticles = (articles || []).filter(a => a && a.id && !deletedMap[String(a.id)]);
+  return STATE.newsArticles;
+}
+
+function persistNewsArticles() {
+  try {
+    localStorage.setItem("matsci_news_articles_v1", JSON.stringify(STATE.newsArticles || []));
+  } catch (e) {}
+}
+
+// --- Category Badge Formatting Helper ---
+function getCategoryBadgeClass(category) {
+  const c = String(category || "").toLowerCase();
+  if (c.includes("research")) return "cat-badge-research";
+  if (c.includes("highlight")) return "cat-badge-highlight";
+  if (c.includes("comm")) return "cat-badge-communication";
+  if (c.includes("comput")) return "cat-badge-computational";
+  if (c.includes("announc") || c.includes("seminar")) return "cat-badge-announcement";
+  return "cat-badge-methodology";
+}
+
+// --- Render News Tab List & Filter Cards ---
+function renderNewsTab() {
+  const container = document.getElementById("news-articles-container");
+  const emptyState = document.getElementById("news-empty-state");
+  const newBtn = document.getElementById("news-new-article-btn");
+  if (!container) return;
+
+  const isAdmin = typeof isStrictAdminSession === "function" ? isStrictAdminSession() : false;
+  if (newBtn) {
+    newBtn.style.display = isAdmin ? "inline-flex" : "none";
+  }
+
+  const allArticles = loadNewsArticles();
+
+  // Visibility: Regular users & visitors only see Published articles. Admin sees Drafts too.
+  const visiblePool = isAdmin 
+    ? allArticles 
+    : allArticles.filter(a => String(a.status || "").toLowerCase() === "published");
+
+  // Update Category Badge Counters
+  const countAll = visiblePool.length;
+  const countResearch = visiblePool.filter(a => String(a.category || "").includes("Research")).length;
+  const countHighlight = visiblePool.filter(a => String(a.category || "").includes("Highlight")).length;
+  const countComm = visiblePool.filter(a => String(a.category || "").includes("Communication")).length;
+  const countComp = visiblePool.filter(a => String(a.category || "").includes("Computational")).length;
+  const countAnn = visiblePool.filter(a => String(a.category || "").includes("Announcement") || String(a.category || "").includes("Seminar")).length;
+
+  const setElText = (id, txt) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = txt;
+  };
+  setElText("news-count-all", countAll);
+  setElText("news-count-research", countResearch);
+  setElText("news-count-highlight", countHighlight);
+  setElText("news-count-comm", countComm);
+  setElText("news-count-comp", countComp);
+  setElText("news-count-ann", countAnn);
+
+  // Apply Category Filter
+  let filtered = visiblePool;
+  if (NEWS_STATE.currentCategory && NEWS_STATE.currentCategory !== "all") {
+    filtered = filtered.filter(a => {
+      const cat = String(a.category || "").toLowerCase();
+      const target = NEWS_STATE.currentCategory.toLowerCase();
+      return cat.includes(target) || (target === "announcement" && (cat.includes("announcement") || cat.includes("seminar")));
+    });
+  }
+
+  // Apply Real-Time Search Query
+  if (NEWS_STATE.searchQuery) {
+    const q = NEWS_STATE.searchQuery;
+    filtered = filtered.filter(a => {
+      const matchTitle = (a.title || "").toLowerCase().includes(q);
+      const matchAbstract = (a.abstract || "").toLowerCase().includes(q);
+      const matchAuthors = (a.authors || "").toLowerCase().includes(q);
+      const matchKeywords = (a.keywords || "").toLowerCase().includes(q);
+      const matchContent = (a.content_html || "").toLowerCase().includes(q);
+      return matchTitle || matchAbstract || matchAuthors || matchKeywords || matchContent;
+    });
+  }
+
+  // Sort: newest published_date first
+  filtered.sort((a, b) => {
+    const da = new Date(a.published_date || a.received_date || 0).getTime();
+    const db = new Date(b.published_date || b.received_date || 0).getTime();
+    return db - da;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = "";
+    if (emptyState) emptyState.style.display = "block";
+    return;
+  }
+
+  if (emptyState) emptyState.style.display = "none";
+
+  container.innerHTML = filtered.map(article => {
+    const badgeClass = getCategoryBadgeClass(article.category);
+    const isDraft = String(article.status || "").toLowerCase() === "draft";
+    const statusBadge = isDraft 
+      ? `<span class="news-card-status-badge status-badge-draft">Draft</span>`
+      : `<span class="news-card-status-badge status-badge-published">Published</span>`;
+
+    const coverHtml = article.cover_image 
+      ? `<img src="${escapeHtml(article.cover_image)}" alt="${escapeHtml(article.title)}" class="news-card-cover" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80';">`
+      : `<div class="news-card-cover-placeholder">🔬</div>`;
+
+    const adminActionsHtml = isAdmin ? `
+      <div class="news-card-admin-actions">
+        <button type="button" class="news-action-icon-btn" onclick="openNewsEditorModal('${escapeHtml(article.id)}')" title="Edit article">✏️ Edit</button>
+        <button type="button" class="news-action-icon-btn btn-delete-article" onclick="deleteNewsArticle('${escapeHtml(article.id)}')" title="Delete article">🗑️ Delete</button>
+      </div>
+    ` : "";
+
+    return `
+      <div class="news-article-card" id="article-card-${escapeHtml(article.id)}">
+        <div style="cursor:pointer;" onclick="openNewsJournalModal('${escapeHtml(article.id)}')">
+          ${coverHtml}
+        </div>
+        <div class="news-card-body">
+          <div class="news-card-header-meta">
+            <span class="news-category-badge ${badgeClass}">${escapeHtml(article.category || "Research")}</span>
+            <div style="display:flex; align-items:center; gap:6px;">
+              ${statusBadge}
+              <span class="news-card-date">📅 ${escapeHtml(article.published_date || article.received_date || "2026-11-19")}</span>
+            </div>
+          </div>
+          <h3 class="news-card-title" onclick="openNewsJournalModal('${escapeHtml(article.id)}')">
+            ${escapeHtml(article.title)}
+          </h3>
+          <p class="news-card-abstract">
+            ${escapeHtml(article.abstract || "")}
+          </p>
+          <div class="news-card-authors">
+            <strong>Authors:</strong> ${escapeHtml(article.authors || "Vu Tien Lam et al.")}
+          </div>
+          <div class="news-card-footer">
+            <button type="button" class="news-read-more-btn" onclick="openNewsJournalModal('${escapeHtml(article.id)}')">
+              Read Full Journal Paper ➔
+            </button>
+            ${adminActionsHtml}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+// --- Category Filtering & Real-Time Search Handlers ---
+function filterNewsCategory(category, btnEl) {
+  NEWS_STATE.currentCategory = category;
+  document.querySelectorAll(".news-filter-pill").forEach(p => p.classList.remove("active"));
+  if (btnEl) btnEl.classList.add("active");
+  renderNewsTab();
+}
+
+function handleNewsSearch(query) {
+  NEWS_STATE.searchQuery = (query || "").trim().toLowerCase();
+  const clearBtn = document.getElementById("news-search-clear-btn");
+  if (clearBtn) {
+    clearBtn.style.display = NEWS_STATE.searchQuery ? "block" : "none";
+  }
+  renderNewsTab();
+}
+
+function clearNewsSearch() {
+  const input = document.getElementById("news-search-input");
+  if (input) input.value = "";
+  NEWS_STATE.searchQuery = "";
+  const clearBtn = document.getElementById("news-search-clear-btn");
+  if (clearBtn) clearBtn.style.display = "none";
+  renderNewsTab();
+}
+
+// --- Professional Scientific Journal Reader Modal ---
+function openNewsJournalModal(articleId) {
+  const articles = loadNewsArticles();
+  const article = articles.find(a => String(a.id) === String(articleId));
+  if (!article) {
+    showToast("Article not found", "error");
+    return;
+  }
+
+  NEWS_STATE.currentJournalArticleId = article.id;
+  const modal = document.getElementById("news-journal-modal");
+  const body = document.getElementById("journal-paper-body");
+  const editBtn = document.getElementById("journal-admin-edit-btn");
+  if (!modal || !body) return;
+
+  const isAdmin = typeof isStrictAdminSession === "function" ? isStrictAdminSession() : false;
+  if (editBtn) {
+    editBtn.style.display = isAdmin ? "inline-flex" : "none";
+  }
+
+  const categoryName = (article.category || "Research Article").toUpperCase();
+  const doiStr = article.doi || `10.skku.matsci/news.${article.id}`;
+  const keywordsList = (article.keywords || "").split(",").map(k => k.trim()).filter(Boolean);
+
+  const keywordsHtml = keywordsList.length > 0 ? `
+    <div class="journal-keywords-row">
+      <span class="journal-keywords-label">Keywords:</span>
+      ${keywordsList.map(kw => `<span class="journal-keyword-pill">${escapeHtml(kw)}</span>`).join("")}
+    </div>
+  ` : "";
+
+  // Split affiliations if multi-line
+  const affsHtml = (article.affiliations || "School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU)")
+    .split("\n")
+    .map(aff => `<p>${escapeHtml(aff)}</p>`)
+    .join("");
+
+  const correspondingHtml = article.corresponding_email ? `
+    <div class="journal-corresponding-note">
+      * Correspondence: <a href="mailto:${escapeHtml(article.corresponding_email)}" style="color:#8b3a1a; text-decoration:underline;">${escapeHtml(article.corresponding_email)}</a>
+    </div>
+  ` : "";
+
+  const coverHeroHtml = article.cover_image ? `
+    <div style="margin: 0 0 24px 0; text-align: center;">
+      <img src="${escapeHtml(article.cover_image)}" alt="Graphical Abstract" style="max-width:100%; max-height:420px; object-fit:cover; border-radius:6px; border:1px solid #ebd8c1;">
+    </div>
+  ` : "";
+
+  body.innerHTML = `
+    <!-- Top Article Type Banner -->
+    <div class="journal-type-badge-row">
+      <div class="journal-type-ribbon">
+        <span>📄</span> [ ${escapeHtml(categoryName)} ]
+      </div>
+      <div class="journal-access-ribbon">
+        <span>🔓</span> OPEN ACCESS &bull; PEER REVIEWED
+      </div>
+    </div>
+
+    <!-- Article Headline -->
+    <h1 class="journal-headline">${escapeHtml(article.title)}</h1>
+
+    <!-- Authors & Affiliations -->
+    <div class="journal-authors-block">
+      <div class="journal-authors-list">
+        ${article.authors || "Vu Tien Lam"}
+      </div>
+      <div class="journal-affiliations-list">
+        ${affsHtml}
+      </div>
+      ${correspondingHtml}
+    </div>
+
+    <!-- Official Publication History Timeline Box (Received, Revised, Published) -->
+    <div class="journal-timeline-card">
+      <div class="journal-timeline-step">
+        <span class="timeline-icon">📥</span>
+        <div><strong>Received:</strong> ${escapeHtml(article.received_date || "2026-11-05")}</div>
+      </div>
+      <div class="journal-timeline-step">
+        <span class="timeline-icon">📝</span>
+        <div><strong>Revised:</strong> ${escapeHtml(article.revised_date || "2026-11-14")}</div>
+      </div>
+      <div class="journal-timeline-step">
+        <span class="timeline-icon">🚀</span>
+        <div><strong>Published:</strong> ${escapeHtml(article.published_date || "2026-11-19")}</div>
+      </div>
+      <div class="journal-timeline-doi">
+        DOI: <a href="https://doi.org/${escapeHtml(doiStr)}" target="_blank" rel="noopener noreferrer" style="color:#8b3a1a;">${escapeHtml(doiStr)}</a>
+      </div>
+    </div>
+
+    ${coverHeroHtml}
+
+    <!-- Abstract Box -->
+    <div class="journal-abstract-box">
+      <div class="journal-abstract-title">Abstract</div>
+      <p class="journal-abstract-text">${escapeHtml(article.abstract || "")}</p>
+    </div>
+
+    <!-- Keywords -->
+    ${keywordsHtml}
+
+    <!-- Main Rich Article Body Content -->
+    <div class="journal-content-body">
+      ${article.content_html || "<p>Article text in preparation.</p>"}
+    </div>
+
+    <!-- Journal Footer Declarations -->
+    <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ebd8c1; font-size: 13px; color: #6a5849;">
+      <p><strong>Author Contributions:</strong> Conceptualization, DFT simulations, and manuscript drafting by Vu Tien Lam. Data verification and cluster calculations by Jaewon Kim. All authors reviewed and approved the publication.</p>
+      <p><strong>Competing Interests:</strong> The authors declare no competing financial or non-financial interests.</p>
+    </div>
+  `;
+
+  modal.classList.add("open");
+}
+
+function closeNewsJournalModal() {
+  const modal = document.getElementById("news-journal-modal");
+  if (modal) modal.classList.remove("open");
+}
+
+function editCurrentJournalArticle() {
+  if (NEWS_STATE.currentJournalArticleId) {
+    closeNewsJournalModal();
+    openNewsEditorModal(NEWS_STATE.currentJournalArticleId);
+  }
+}
+
+function printNewsArticle() {
+  window.print();
+}
+
+function copyNewsCitation() {
+  const articles = loadNewsArticles();
+  const a = articles.find(x => String(x.id) === String(NEWS_STATE.currentJournalArticleId));
+  if (!a) return;
+
+  const year = (a.published_date || "2026").split("-")[0];
+  const citation = `${a.authors || "Vu Tien Lam"} (${year}). ${a.title}. SKKU Computational Materials Research Letters, 14, e${a.id}. https://doi.org/${a.doi || '10.skku.matsci/' + a.id}`;
+
+  navigator.clipboard.writeText(citation).then(() => {
+    showToast("📋 Academic citation copied to clipboard!", "success");
+  }).catch(() => {
+    showToast("Citation: " + citation, "info");
+  });
+}
+
+function copyNewsShareLink() {
+  const url = `${window.location.origin}${window.location.pathname}#news?id=${NEWS_STATE.currentJournalArticleId}`;
+  navigator.clipboard.writeText(url).then(() => {
+    showToast("🔗 Direct article link copied to clipboard!", "success");
+  }).catch(() => {
+    showToast("Link: " + url, "info");
+  });
+}
+
+// --- Admin WYSIWYG Rich Text Editor Modal ---
+function openNewsEditorModal(articleId = null) {
+  const isAdmin = typeof isStrictAdminSession === "function" ? isStrictAdminSession() : false;
+  if (!isAdmin) {
+    showToast("Admin session required to publish or edit articles.", "warn");
+    return;
+  }
+
+  const modal = document.getElementById("news-editor-modal");
+  if (!modal) return;
+
+  NEWS_STATE.coverBase64 = null;
+  NEWS_STATE.figBase64 = null;
+
+  const idInput = document.getElementById("news-edit-article-id");
+  const titleInput = document.getElementById("news-edit-title");
+  const catInput = document.getElementById("news-edit-category");
+  const statusInput = document.getElementById("news-edit-status");
+  const authorsInput = document.getElementById("news-edit-authors");
+  const emailInput = document.getElementById("news-edit-email");
+  const affsInput = document.getElementById("news-edit-affiliations");
+  const recInput = document.getElementById("news-edit-received");
+  const revInput = document.getElementById("news-edit-revised");
+  const pubInput = document.getElementById("news-edit-published");
+  const doiInput = document.getElementById("news-edit-doi");
+  const coverUrlInput = document.getElementById("news-edit-cover-url");
+  const kwInput = document.getElementById("news-edit-keywords");
+  const abstractInput = document.getElementById("news-edit-abstract");
+  const editorBody = document.getElementById("news-editor-body");
+  const modalTitle = document.getElementById("news-editor-modal-title");
+
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  if (articleId) {
+    const articles = loadNewsArticles();
+    const existing = articles.find(a => String(a.id) === String(articleId));
+    if (!existing) {
+      showToast("Article not found for editing", "error");
+      return;
+    }
+    if (modalTitle) modalTitle.textContent = "✏️ Edit Scientific Article";
+    if (idInput) idInput.value = existing.id;
+    if (titleInput) titleInput.value = existing.title || "";
+    if (catInput) catInput.value = existing.category || "Research Article";
+    if (statusInput) statusInput.value = existing.status || "Published";
+    if (authorsInput) authorsInput.value = existing.authors || "";
+    if (emailInput) emailInput.value = existing.corresponding_email || "";
+    if (affsInput) affsInput.value = existing.affiliations || "";
+    if (recInput) recInput.value = existing.received_date || todayStr;
+    if (revInput) revInput.value = existing.revised_date || todayStr;
+    if (pubInput) pubInput.value = existing.published_date || todayStr;
+    if (doiInput) doiInput.value = existing.doi || "";
+    if (coverUrlInput) coverUrlInput.value = existing.cover_image || "";
+    if (kwInput) kwInput.value = existing.keywords || "";
+    if (abstractInput) abstractInput.value = existing.abstract || "";
+    if (editorBody) editorBody.innerHTML = existing.content_html || "";
+    updateNewsCoverPreview(existing.cover_image || "");
+  } else {
+    if (modalTitle) modalTitle.textContent = "✍️ Compose Scientific News & Article";
+    if (idInput) idInput.value = "";
+    if (titleInput) titleInput.value = "";
+    if (catInput) catInput.value = "Research Article";
+    if (statusInput) statusInput.value = "Published";
+    if (authorsInput) authorsInput.value = "Vu Tien Lam¹*, Jaewon Kim¹";
+    if (emailInput) emailInput.value = "lamvt.skku@gmail.com";
+    if (affsInput) affsInput.value = "¹ School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea";
+    if (recInput) recInput.value = todayStr;
+    if (revInput) revInput.value = todayStr;
+    if (pubInput) pubInput.value = todayStr;
+    if (doiInput) doiInput.value = `10.skku.matsci/news.${Date.now()}`;
+    if (coverUrlInput) coverUrlInput.value = "";
+    if (kwInput) kwInput.value = "2D Materials, DFT, VASP, Energy Materials";
+    if (abstractInput) abstractInput.value = "";
+    if (editorBody) {
+      editorBody.innerHTML = `<h2>1. Introduction</h2>
+<p>State background and motivation here...</p>
+<h2>2. Computational Methodology</h2>
+<p>Details of DFT functionals, cutoffs, and supercells...</p>
+<h2>3. Results & Discussion</h2>
+<p>Key findings and atomic-scale mechanisms...</p>
+<h2>4. References</h2>
+<ol>
+  <li>Author et al. <em>Journal</em> <strong>Volume</strong>, Page (Year).</li>
+</ol>`;
+    }
+    updateNewsCoverPreview("");
+  }
+
+  modal.classList.add("open");
+}
+
+function confirmCloseNewsEditor() {
+  const modal = document.getElementById("news-editor-modal");
+  if (modal) modal.classList.remove("open");
+}
+
+function saveNewsArticleFromEditor(desiredStatus = "Published") {
+  const isAdmin = typeof isStrictAdminSession === "function" ? isStrictAdminSession() : false;
+  if (!isAdmin) {
+    showToast("Admin session required to publish articles.", "error");
+    return;
+  }
+
+  const idInput = document.getElementById("news-edit-article-id");
+  const titleInput = document.getElementById("news-edit-title");
+  const catInput = document.getElementById("news-edit-category");
+  const authorsInput = document.getElementById("news-edit-authors");
+  const emailInput = document.getElementById("news-edit-email");
+  const affsInput = document.getElementById("news-edit-affiliations");
+  const recInput = document.getElementById("news-edit-received");
+  const revInput = document.getElementById("news-edit-revised");
+  const pubInput = document.getElementById("news-edit-published");
+  const doiInput = document.getElementById("news-edit-doi");
+  const coverUrlInput = document.getElementById("news-edit-cover-url");
+  const kwInput = document.getElementById("news-edit-keywords");
+  const abstractInput = document.getElementById("news-edit-abstract");
+  const editorBody = document.getElementById("news-editor-body");
+
+  const title = (titleInput && titleInput.value || "").trim();
+  if (!title) {
+    showToast("Please provide an Article Title.", "warn");
+    if (titleInput) titleInput.focus();
+    return;
+  }
+
+  const existingId = idInput && idInput.value ? idInput.value.trim() : null;
+  const articleId = existingId || `news_${Date.now()}`;
+  const finalCover = NEWS_STATE.coverBase64 || (coverUrlInput && coverUrlInput.value || "").trim();
+
+  const articleObj = {
+    id: articleId,
+    title: title,
+    category: catInput ? catInput.value : "Research Article",
+    status: desiredStatus,
+    authors: (authorsInput && authorsInput.value || "").trim() || "Vu Tien Lam",
+    corresponding_email: (emailInput && emailInput.value || "").trim(),
+    affiliations: (affsInput && affsInput.value || "").trim(),
+    received_date: recInput ? recInput.value : "",
+    revised_date: revInput ? revInput.value : "",
+    published_date: pubInput ? pubInput.value : new Date().toISOString().split("T")[0],
+    doi: (doiInput && doiInput.value || "").trim() || `10.skku.matsci/news.${articleId}`,
+    cover_image: finalCover,
+    keywords: (kwInput && kwInput.value || "").trim(),
+    abstract: (abstractInput && abstractInput.value || "").trim(),
+    content_html: editorBody ? editorBody.innerHTML : ""
+  };
+
+  const articles = loadNewsArticles();
+  const idx = articles.findIndex(a => String(a.id) === String(articleId));
+  if (idx !== -1) {
+    articles[idx] = articleObj;
+  } else {
+    articles.unshift(articleObj);
+  }
+
+  STATE.newsArticles = articles;
+  persistNewsArticles();
+
+  // Cloud sync
+  if (typeof syncDatabaseToCloudInstant === "function") {
+    syncDatabaseToCloudInstant(`Save News Article "${title.slice(0, 30)}"`, false);
+  }
+
+  confirmCloseNewsEditor();
+  showToast(`🚀 Article "${title.slice(0, 35)}..." saved as ${desiredStatus}!`, "success");
+  renderNewsTab();
+}
+
+async function deleteNewsArticle(articleId) {
+  const isAdmin = typeof isStrictAdminSession === "function" ? isStrictAdminSession() : false;
+  if (!isAdmin) {
+    showToast("Admin session required to delete articles.", "error");
+    return;
+  }
+
+  const articles = loadNewsArticles();
+  const article = articles.find(a => String(a.id) === String(articleId));
+  if (!article) return;
+
+  const ok = await confirmAction(
+    `Are you sure you want to permanently delete this research publication?`,
+    article.title
+  );
+  if (!ok) return;
+
+  recordDeletedNewsArticle(articleId);
+  STATE.newsArticles = articles.filter(a => String(a.id) !== String(articleId));
+  persistNewsArticles();
+
+  if (typeof syncDatabaseToCloudInstant === "function") {
+    syncDatabaseToCloudInstant(`Delete News Article "${article.title.slice(0, 30)}"`, false);
+  }
+
+  showToast("Article deleted successfully.", "info");
+  renderNewsTab();
+}
+
+function previewCurrentEditorArticle() {
+  const title = (document.getElementById("news-edit-title")?.value || "Untitled Article").trim();
+  const category = document.getElementById("news-edit-category")?.value || "Research Article";
+  const authors = document.getElementById("news-edit-authors")?.value || "Vu Tien Lam";
+  const email = document.getElementById("news-edit-email")?.value || "";
+  const affiliations = document.getElementById("news-edit-affiliations")?.value || "";
+  const received = document.getElementById("news-edit-received")?.value || "";
+  const revised = document.getElementById("news-edit-revised")?.value || "";
+  const published = document.getElementById("news-edit-published")?.value || "";
+  const doi = document.getElementById("news-edit-doi")?.value || "";
+  const cover = NEWS_STATE.coverBase64 || document.getElementById("news-edit-cover-url")?.value || "";
+  const keywords = document.getElementById("news-edit-keywords")?.value || "";
+  const abstract = document.getElementById("news-edit-abstract")?.value || "";
+  const content = document.getElementById("news-editor-body")?.innerHTML || "";
+
+  const tempArticle = {
+    id: "preview_temp",
+    title, category, authors, corresponding_email: email, affiliations,
+    received_date: received, revised_date: revised, published_date: published,
+    doi, cover_image: cover, keywords, abstract, content_html: content,
+    status: "Draft"
+  };
+
+  // Add temporary to articles array for modal lookup
+  const articles = loadNewsArticles();
+  const tempPool = [tempArticle, ...articles.filter(a => a.id !== "preview_temp")];
+  STATE.newsArticles = tempPool;
+  openNewsJournalModal("preview_temp");
+}
+
+// --- Cover Image Upload & Preview ---
+function handleNewsCoverFileUpload(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  if (file.size > 8 * 1024 * 1024) {
+    showToast("Cover image must be under 8MB.", "warn");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    NEWS_STATE.coverBase64 = e.target.result;
+    const coverUrlInput = document.getElementById("news-edit-cover-url");
+    if (coverUrlInput) coverUrlInput.value = "";
+    updateNewsCoverPreview(NEWS_STATE.coverBase64);
+  };
+  reader.readAsDataURL(file);
+}
+
+function updateNewsCoverPreview(urlOrData) {
+  const box = document.getElementById("news-cover-preview-box");
+  const img = document.getElementById("news-cover-preview-img");
+  if (!box || !img) return;
+
+  if (urlOrData) {
+    img.src = urlOrData;
+    box.style.display = "inline-block";
+  } else {
+    img.src = "";
+    box.style.display = "none";
+  }
+}
+
+function removeNewsCoverImage() {
+  NEWS_STATE.coverBase64 = null;
+  const coverUrlInput = document.getElementById("news-edit-cover-url");
+  const fileInput = document.getElementById("news-edit-cover-file");
+  if (coverUrlInput) coverUrlInput.value = "";
+  if (fileInput) fileInput.value = "";
+  updateNewsCoverPreview("");
+}
+
+// --- WYSIWYG Editor Commands & Formatting Helpers ---
+function execEditorCommand(command, value = null) {
+  const editor = document.getElementById("news-editor-body");
+  if (!editor) return;
+  editor.focus();
+  document.execCommand(command, false, value);
+}
+
+function execEditorFormatBlock(tag) {
+  const editor = document.getElementById("news-editor-body");
+  if (!editor) return;
+  editor.focus();
+  document.execCommand("formatBlock", false, `<${tag}>`);
+}
+
+function insertCalloutBox() {
+  const html = `
+    <div class="journal-callout">
+      <div class="journal-callout-title">💡 Important Discovery / Key Finding</div>
+      <div class="journal-callout-text">Summarize the computational milestone, physical implication, or lab achievement here...</div>
+    </div><p></p>
+  `;
+  execEditorCommand("insertHTML", html);
+}
+
+function insertHorizontalRule() {
+  execEditorCommand("insertHorizontalRule");
+}
+
+function saveEditorRange() {
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount > 0) {
+    NEWS_STATE.savedEditorSelection = sel.getRangeAt(0);
+  }
+}
+
+function restoreEditorRange() {
+  const editor = document.getElementById("news-editor-body");
+  if (!editor) return;
+  editor.focus();
+  if (NEWS_STATE.savedEditorSelection) {
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(NEWS_STATE.savedEditorSelection);
+  }
+}
+
+// --- Subdialog Helpers: Table, Figure & Math Formulas ---
+function closeSubdialog(dialogId) {
+  const dlg = document.getElementById(dialogId);
+  if (dlg) dlg.style.display = "none";
+}
+
+// Table Inserter
+function openInsertTableDialog() {
+  saveEditorRange();
+  const dlg = document.getElementById("news-table-dialog");
+  if (dlg) dlg.style.display = "flex";
+}
+
+function confirmInsertTable() {
+  const caption = (document.getElementById("news-table-caption-input")?.value || "Table 1 | Calculated electronic and structural parameters").trim();
+  const rows = Math.min(Math.max(parseInt(document.getElementById("news-table-rows-input")?.value || "3", 10), 1), 25);
+  const cols = Math.min(Math.max(parseInt(document.getElementById("news-table-cols-input")?.value || "4", 10), 1), 12);
+
+  let ths = "";
+  for (let c = 1; c <= cols; c++) {
+    ths += `<th>Header ${c}</th>`;
+  }
+
+  let trs = "";
+  for (let r = 1; r <= rows; r++) {
+    let tds = "";
+    for (let c = 1; c <= cols; c++) {
+      tds += `<td>Data ${r}-${c}</td>`;
+    }
+    trs += `<tr>${tds}</tr>`;
+  }
+
+  const tableHtml = `
+    <div class="journal-table-wrapper">
+      <table class="journal-booktabs-table">
+        <caption><strong>${escapeHtml(caption)}</strong></caption>
+        <thead><tr>${ths}</tr></thead>
+        <tbody>${trs}</tbody>
+      </table>
+    </div><p></p>
+  `;
+
+  closeSubdialog("news-table-dialog");
+  restoreEditorRange();
+  execEditorCommand("insertHTML", tableHtml);
+}
+
+// Figure / Image Inserter
+function openInsertImageDialog() {
+  saveEditorRange();
+  NEWS_STATE.figBase64 = null;
+  const urlInp = document.getElementById("news-fig-url-input");
+  const fileInp = document.getElementById("news-fig-file-input");
+  const capInp = document.getElementById("news-fig-caption-input");
+  if (urlInp) urlInp.value = "";
+  if (fileInp) fileInp.value = "";
+  if (capInp) capInp.value = "";
+  const dlg = document.getElementById("news-image-dialog");
+  if (dlg) dlg.style.display = "flex";
+}
+
+function handleNewsFigFileUpload(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    NEWS_STATE.figBase64 = e.target.result;
+    const urlInp = document.getElementById("news-fig-url-input");
+    if (urlInp) urlInp.value = "[Local Image Ready to Insert]";
+  };
+  reader.readAsDataURL(file);
+}
+
+function confirmInsertImage() {
+  const caption = (document.getElementById("news-fig-caption-input")?.value || "Figure 1 | Electronic band structure and PDOS calculated using HSE06 hybrid functional").trim();
+  const urlInp = document.getElementById("news-fig-url-input");
+  const imgUrl = NEWS_STATE.figBase64 || (urlInp && urlInp.value || "").trim();
+
+  if (!imgUrl || imgUrl === "[Local Image Ready to Insert]") {
+    showToast("Please provide an image URL or choose a local file.", "warn");
+    return;
+  }
+
+  const figHtml = `
+    <figure class="journal-figure">
+      <img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(caption)}">
+      <figcaption><strong>${escapeHtml(caption)}</strong></figcaption>
+    </figure><p></p>
+  `;
+
+  closeSubdialog("news-image-dialog");
+  restoreEditorRange();
+  execEditorCommand("insertHTML", figHtml);
+}
+
+// Math Formula Inserter
+function openInsertFormulaDialog() {
+  saveEditorRange();
+  const txtInp = document.getElementById("news-formula-text-input");
+  if (txtInp) txtInp.value = "";
+  const dlg = document.getElementById("news-formula-dialog");
+  if (dlg) dlg.style.display = "flex";
+}
+
+function insertSymbolIntoFormula(symbol) {
+  const inp = document.getElementById("news-formula-text-input");
+  if (!inp) return;
+  const start = inp.selectionStart || inp.value.length;
+  const end = inp.selectionEnd || inp.value.length;
+  inp.value = inp.value.substring(0, start) + symbol + inp.value.substring(end);
+  inp.selectionStart = inp.selectionEnd = start + symbol.length;
+  inp.focus();
+}
+
+function confirmInsertFormula() {
+  const formulaText = (document.getElementById("news-formula-text-input")?.value || "").trim();
+  const type = document.getElementById("news-formula-type")?.value || "block";
+
+  if (!formulaText) {
+    showToast("Please type a formula or insert symbols.", "warn");
+    return;
+  }
+
+  let mathHtml = "";
+  if (type === "block") {
+    mathHtml = `
+      <div class="journal-equation-block">
+        <div class="journal-equation-math">${escapeHtml(formulaText)}</div>
+        <div class="journal-equation-num">(1)</div>
+      </div><p></p>
+    `;
+  } else {
+    mathHtml = `&nbsp;<span class="journal-equation-math" style="font-size:15px; padding:0 3px;">${escapeHtml(formulaText)}</span>&nbsp;`;
+  }
+
+  closeSubdialog("news-formula-dialog");
+  restoreEditorRange();
+  execEditorCommand("insertHTML", mathHtml);
+}
+
+// Export functions to global window
+window.renderNewsTab = renderNewsTab;
+window.filterNewsCategory = filterNewsCategory;
+window.handleNewsSearch = handleNewsSearch;
+window.clearNewsSearch = clearNewsSearch;
+window.openNewsJournalModal = openNewsJournalModal;
+window.closeNewsJournalModal = closeNewsJournalModal;
+window.editCurrentJournalArticle = editCurrentJournalArticle;
+window.printNewsArticle = printNewsArticle;
+window.copyNewsCitation = copyNewsCitation;
+window.copyNewsShareLink = copyNewsShareLink;
+window.openNewsEditorModal = openNewsEditorModal;
+window.confirmCloseNewsEditor = confirmCloseNewsEditor;
+window.saveNewsArticleFromEditor = saveNewsArticleFromEditor;
+window.deleteNewsArticle = deleteNewsArticle;
+window.previewCurrentEditorArticle = previewCurrentEditorArticle;
+window.handleNewsCoverFileUpload = handleNewsCoverFileUpload;
+window.updateNewsCoverPreview = updateNewsCoverPreview;
+window.removeNewsCoverImage = removeNewsCoverImage;
+window.execEditorCommand = execEditorCommand;
+window.execEditorFormatBlock = execEditorFormatBlock;
+window.insertCalloutBox = insertCalloutBox;
+window.insertHorizontalRule = insertHorizontalRule;
+window.closeSubdialog = closeSubdialog;
+window.openInsertTableDialog = openInsertTableDialog;
+window.confirmInsertTable = confirmInsertTable;
+window.openInsertImageDialog = openInsertImageDialog;
+window.handleNewsFigFileUpload = handleNewsFigFileUpload;
+window.confirmInsertImage = confirmInsertImage;
+window.openInsertFormulaDialog = openInsertFormulaDialog;
+window.insertSymbolIntoFormula = insertSymbolIntoFormula;
+window.confirmInsertFormula = confirmInsertFormula;
+
