@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-19T08:32:47.608Z",
+  "exported_at": "2026-11-19T08:33:08.713Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -6116,6 +6116,47 @@
   "deleted_schedule": [],
   "deleted_schedule_map": {},
   "news_articles": [
+    {
+      "id": "news_1795077188150",
+      "title": "gggg",
+      "category": "Research Article",
+      "status": "Published",
+      "authors": "Vu Tien Lam<sup>1</sup>*, Jaewon Kim<sup>1</sup>",
+      "corresponding_email": "lamvt.skku@gmail.com",
+      "affiliations": "1. School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea",
+      "authors_data": [
+        {
+          "name": "Vu Tien Lam",
+          "is_corresponding": true,
+          "email": "lamvt.skku@gmail.com",
+          "affiliations": [
+            1
+          ]
+        },
+        {
+          "name": "Jaewon Kim",
+          "is_corresponding": false,
+          "email": "",
+          "affiliations": [
+            1
+          ]
+        }
+      ],
+      "affiliations_data": [
+        {
+          "id": 1,
+          "text": "School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea"
+        }
+      ],
+      "received_date": "",
+      "revised_date": "",
+      "published_date": "2026-11-19",
+      "doi": "10.skku.matsci/news.1795077171826",
+      "cover_image": "",
+      "keywords": "2D Materials, DFT, VASP, Energy Materials",
+      "abstract": "nn",
+      "content_html": "<h2>1. Introduction</h2>\n<p>State background and motivation here...</p>\n<h2>2. Computational Methodology</h2>\n<p>Details of DFT functionals, cutoffs, and supercells...</p>\n<h2>3. Results &amp; Discussion</h2>\n<p>Key findings and atomic-scale mechanisms...</p>\n<h2>4. References</h2>\n<ol>\n  <li>Author et al. <em>Journal</em> <strong>Volume</strong>, Page (Year).</li>\n</ol>"
+    },
     {
       "id": "news_1795072095532",
       "title": "Electrically tunable Stoner magnetism and valley Hall transport in Janus MoSSe",
