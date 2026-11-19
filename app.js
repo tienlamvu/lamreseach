@@ -30469,7 +30469,9 @@ let NEWS_STATE = {
   currentJournalArticleId: null,
   coverBase64: null,
   figBase64: null,
-  savedEditorSelection: null
+  savedEditorSelection: null,
+  editorAuthorsData: [],
+  editorAffiliationsData: []
 };
 
 // --- Scientific Journal Volume & Numbering Helpers (V108) ---
@@ -31557,6 +31559,16 @@ async function importScientificWordDocument(file) {
     // Open Editor Modal & Populate Detected Fields
     openNewsEditorModal(null);
 
+    // Populate structured authors and affiliations from Word (V110)
+    if (detectedAffiliations) {
+      NEWS_STATE.editorAffiliationsData = deSquashAffiliations(detectedAffiliations);
+    }
+    if (detectedAuthors) {
+      NEWS_STATE.editorAuthorsData = parseLegacyAuthors(detectedAuthors, detectedEmail || "");
+    }
+    renderAffiliationsEditor();
+    syncAuthorAffiliationsBuilder();
+
     const titleInput = document.getElementById("news-edit-title");
     const authorsInput = document.getElementById("news-edit-authors");
     const affsInput = document.getElementById("news-edit-affiliations");
@@ -31619,6 +31631,90 @@ function formatNatureDate(dateStr) {
   return dateStr;
 }
 window.formatNatureDate = formatNatureDate;
+
+// --- Structured Authors & Affiliations Utilities (V110) ---
+function deSquashAffiliations(raw) {
+  if (!raw || typeof raw !== "string") return [];
+  let clean = raw.trim();
+  const corrMatch = clean.match(/\s*(\*|✉)?\s*Correspondence.*$/i);
+  if (corrMatch) {
+    clean = clean.slice(0, corrMatch.index).trim();
+  }
+  let parts = clean.split(/\r?\n+/).map(p => p.trim()).filter(Boolean);
+  if (parts.length === 1 && /(?<=[a-zA-Z\.\,\)])\s*(?=[1-9]\d?[A-Z])/.test(parts[0])) {
+    parts = parts[0].split(/(?<=[a-zA-Z\.\,\)])\s*(?=[1-9]\d?[A-Z])/).map(p => p.trim()).filter(Boolean);
+  }
+  const result = [];
+  parts.forEach((p, idx) => {
+    let t = p.replace(/^([¹²³⁴⁵⁶⁷⁸⁹⁰]+|[1-9]\d*[\.\:\-\s]*|\(\d+\)\s*)/, "").trim();
+    if (t) {
+      result.push({ id: idx + 1, text: t });
+    }
+  });
+  return result.length > 0 ? result : [{ id: 1, text: clean }];
+}
+
+function parseLegacyAuthors(rawAuthors, correspondingEmail = "") {
+  if (!rawAuthors || typeof rawAuthors !== "string") {
+    return [{ name: "Vu Tien Lam", is_corresponding: true, email: correspondingEmail || "lamvt.skku@gmail.com", affiliations: [1] }];
+  }
+  const supMap = { "¹": "1", "²": "2", "³": "3", "⁴": "4", "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9" };
+  let norm = rawAuthors;
+  for (const [k, v] of Object.entries(supMap)) {
+    norm = norm.split(k).join(`<sup>${v}</sup>`);
+  }
+  norm = norm.replace(/<sup>(.*?)<\/sup>/gi, (m, g1) => `<sup>${g1.replace(/,/g, ";")}</sup>`);
+  const tokens = norm.split(",").map(t => t.trim()).filter(Boolean);
+  const authors = [];
+  tokens.forEach(tok => {
+    tok = tok.replace(/;/g, ",");
+    const isCorr = tok.includes("*") || tok.includes("✉") || /envelope|corr/i.test(tok);
+    let tokClean = tok.replace(/[*✉]/g, "").trim();
+    const affs = [];
+    const supMatches = tokClean.match(/<sup>(.*?)<\/sup>/gi);
+    if (supMatches) {
+      supMatches.forEach(sm => {
+        const nums = sm.replace(/<\/?sup>/gi, "").match(/\d+/g);
+        if (nums) nums.forEach(n => affs.push(parseInt(n, 10)));
+      });
+    }
+    let name = tokClean.replace(/<[^>]+>/g, "").trim();
+    name = name.replace(/[\d\,\s\*]+$/, "").trim();
+    if (name) {
+      authors.push({
+        name: name,
+        is_corresponding: isCorr,
+        email: isCorr ? (correspondingEmail || "") : "",
+        affiliations: affs.length > 0 ? Array.from(new Set(affs)).sort((a,b)=>a-b) : [1]
+      });
+    }
+  });
+  if (authors.length === 0) {
+    authors.push({ name: "Vu Tien Lam", is_corresponding: true, email: correspondingEmail || "lamvt.skku@gmail.com", affiliations: [1] });
+  }
+  return authors;
+}
+
+function getArticleStructuredAffiliations(article) {
+  if (!article) return [];
+  if (Array.isArray(article.affiliations_data) && article.affiliations_data.length > 0) {
+    return article.affiliations_data;
+  }
+  return deSquashAffiliations(article.affiliations || "");
+}
+
+function getArticleStructuredAuthors(article) {
+  if (!article) return [];
+  if (Array.isArray(article.authors_data) && article.authors_data.length > 0) {
+    return article.authors_data;
+  }
+  return parseLegacyAuthors(article.authors || "", article.corresponding_email || "");
+}
+
+window.deSquashAffiliations = deSquashAffiliations;
+window.parseLegacyAuthors = parseLegacyAuthors;
+window.getArticleStructuredAffiliations = getArticleStructuredAffiliations;
+window.getArticleStructuredAuthors = getArticleStructuredAuthors;
 
 // --- Professional Scientific Journal Reader (Nature Index / npj Computational Materials Aesthetic) ---
 function openNewsJournalModal(articleId) {
@@ -31683,18 +31779,30 @@ function openNewsJournalModal(articleId) {
     </div>
   ` : "";
 
-  // Split affiliations if multi-line
-  const affsHtml = (article.affiliations || "School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU)")
-    .split("\n")
-    .filter(a => a && a.trim())
-    .map((aff, i) => `<p class="nature-aff-item"><span class="nature-aff-num">${i + 1}.</span> ${escapeHtml(aff)}</p>`)
-    .join("");
+  // Structured authors & affiliations (V110)
+  const structuredAuthors = getArticleStructuredAuthors(article);
+  const structuredAffs = getArticleStructuredAffiliations(article);
 
-  const correspondingHtml = article.corresponding_email ? `
-    <div class="nature-corresponding-line">
-      * Correspondence to: <a href="mailto:${escapeHtml(article.corresponding_email)}" class="nature-corr-email">${escapeHtml(article.corresponding_email)}</a>
-    </div>
-  ` : "";
+  // Formatted authors inline row (Nature style: clickable author with popover, superscripts, envelope icon)
+  const authorsListHtml = structuredAuthors.map((auth, idx) => {
+    const affNums = (auth.affiliations && auth.affiliations.length > 0) ? auth.affiliations.join(",") : "1";
+    return `
+      <span class="nature-author-item" data-author-index="${idx}">
+        <a class="nature-author-link" href="javascript:void(0)" onclick="toggleNatureAuthorPopover(event, '${escapeHtml(article.id)}', ${idx})">
+          ${escapeHtml(auth.name)}<sup class="nature-author-sup">${escapeHtml(affNums)}</sup>${auth.is_corresponding ? `<span class="nature-author-email-icon" title="Corresponding Author">&#9993;</span>` : ""}
+        </a>${idx < structuredAuthors.length - 1 ? `<span class="nature-author-sep">,</span>` : ""}
+      </span>
+    `;
+  }).join("");
+
+  const affsTerminalHtml = structuredAffs.map(a => `
+    <p class="nature-aff-item"><span class="nature-aff-num">${a.id}.</span> ${escapeHtml(a.text)}</p>
+  `).join("");
+
+  const corrAuthors = structuredAuthors.filter(a => a.is_corresponding);
+  const correspondingTerminalHtml = corrAuthors.length > 0 ? (
+    corrAuthors.map(a => `Correspondence to <strong>${escapeHtml(a.name)}</strong>${a.email ? ` (<a href="mailto:${escapeHtml(a.email)}" class="nature-corr-email">${escapeHtml(a.email)}</a>)` : ""}`).join("; ")
+  ) : `Correspondence to ${escapeHtml(article.corresponding_email || "Vu Tien Lam")}.`;
 
   const coverHeroHtml = article.cover_image ? `
     <figure class="nature-figure-hero" id="nature-sec-figure-hero">
@@ -31824,15 +31932,13 @@ function openNewsJournalModal(articleId) {
         <!-- High-Contrast Academic Serif Headline -->
         <h1 class="nature-article-title">${escapeHtml(article.title)}</h1>
 
-        <!-- Authors Block -->
-        <div class="nature-authors-block">
+        <!-- Authors Block (Nature Style: Clickable authors with interactive popover, NO static affiliations underneath) -->
+        <div class="nature-authors-block" style="position:relative;">
           <div class="nature-authors-names">
-            ${article.authors || "Vu Tien Lam"}
+            ${authorsListHtml}
           </div>
-          <div class="nature-affiliations-box">
-            ${affsHtml}
-          </div>
-          ${correspondingHtml}
+          <!-- Floating Nature Author Popover -->
+          <div id="nature-author-popover" class="nature-author-popover" style="display:none;" role="dialog" aria-modal="false"></div>
         </div>
 
         <!-- Citation & Permanent Link Bar -->
@@ -31870,12 +31976,14 @@ function openNewsJournalModal(articleId) {
             ${processedBodyHtml}
           </div>
 
-          <!-- Author Information Declarations -->
+          <!-- Author Information Declarations (Comprehensive Reference Section) -->
           <section class="nature-section nature-declarations" id="nature-sec-declarations">
             <h2 class="nature-section-title">Author information</h2>
             <div class="nature-decl-block">
               <h3 class="nature-decl-heading">Authors and Affiliations</h3>
-              <div class="nature-decl-affs">${affsHtml}</div>
+              <div class="nature-decl-affs">
+                ${affsTerminalHtml}
+              </div>
             </div>
             <div class="nature-decl-block">
               <h3 class="nature-decl-heading">Contributions</h3>
@@ -31883,7 +31991,7 @@ function openNewsJournalModal(articleId) {
             </div>
             <div class="nature-decl-block">
               <h3 class="nature-decl-heading">Corresponding author</h3>
-              <p class="nature-decl-p">Correspondence to ${escapeHtml(article.corresponding_email || "Vu Tien Lam")}.</p>
+              <p class="nature-decl-p">${correspondingTerminalHtml}</p>
             </div>
           </section>
 
@@ -32021,6 +32129,7 @@ function openNewsJournalModal(articleId) {
 }
 
 function closeNewsFullArticleView() {
+  if (typeof closeNatureAuthorPopover === "function") closeNatureAuthorPopover();
   const catalogView = document.getElementById("news-catalog-view");
   const fullArticleView = document.getElementById("news-full-article-view");
   if (catalogView) catalogView.style.display = "block";
@@ -32046,6 +32155,117 @@ function closeNewsJournalModal() {
   if (modal) modal.classList.remove("open");
   closeNewsFullArticleView();
 }
+
+// --- Interactive Nature Author Popover Controller (V110) ---
+function toggleNatureAuthorPopover(event, articleId, authorIdx) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  const popover = document.getElementById("nature-author-popover");
+  if (!popover) return;
+
+  // Toggle off if clicking the already open author
+  if (popover.style.display === "block" && popover.dataset.activeAuthor === String(authorIdx)) {
+    closeNatureAuthorPopover();
+    return;
+  }
+
+  const articles = loadNewsArticles();
+  let article = articles.find(a => String(a.id) === String(articleId));
+  if (!article && articleId === "preview_temp") {
+    article = STATE.newsArticles?.find(a => a.id === "preview_temp");
+  }
+  if (!article) return;
+
+  const authors = getArticleStructuredAuthors(article);
+  const affs = getArticleStructuredAffiliations(article);
+  const author = authors[authorIdx];
+  if (!author) return;
+
+  const authorAffIds = (author.affiliations && author.affiliations.length > 0) ? author.affiliations : [1];
+  const matchedAffs = affs.filter(a => authorAffIds.includes(a.id));
+  const displayAffs = matchedAffs.length > 0 ? matchedAffs : affs.slice(0, 1);
+
+  popover.dataset.activeAuthor = String(authorIdx);
+  popover.innerHTML = `
+    <div class="nature-popover-caret"></div>
+    <div class="nature-popover-header">
+      <span class="nature-popover-tag">${author.is_corresponding ? "Corresponding author" : "Author"}</span>
+      <button type="button" class="nature-popover-close-btn" onclick="closeNatureAuthorPopover()" aria-label="Close author info">&times;</button>
+    </div>
+    <h4 class="nature-popover-name">${escapeHtml(author.name)}</h4>
+    <div class="nature-popover-aff-list">
+      ${displayAffs.map(a => `
+        <div class="nature-popover-aff-item">
+          <strong>${a.id}.</strong> ${escapeHtml(a.text)}
+        </div>
+      `).join("")}
+    </div>
+    ${author.is_corresponding && author.email ? `
+      <div class="nature-popover-email">
+        <span class="nature-popover-email-label">&#9993; Contact:</span>
+        <a href="mailto:${escapeHtml(author.email)}" class="nature-popover-email-link">${escapeHtml(author.email)}</a>
+      </div>
+    ` : ""}
+    <div class="nature-popover-actions" style="margin-top:12px; padding-top:8px; border-top:1px solid #f3f4f6;">
+      <a href="#nature-sec-declarations" class="nature-popover-link-more" style="font-size:12px; color:#6b7280; text-decoration:underline;" onclick="closeNatureAuthorPopover(); document.getElementById('nature-sec-declarations')?.scrollIntoView({ behavior:'smooth' });">
+        View all author declarations &darr;
+      </a>
+    </div>
+  `;
+
+  const targetEl = (event && (event.currentTarget || event.target))?.closest(".nature-author-link") || (event && event.currentTarget);
+  const parentBlock = targetEl ? (targetEl.closest(".nature-authors-block") || popover.parentElement) : popover.parentElement;
+
+  if (targetEl && parentBlock) {
+    const targetRect = targetEl.getBoundingClientRect();
+    const parentRect = parentBlock.getBoundingClientRect();
+    const popoverWidth = Math.min(420, window.innerWidth - 32);
+
+    let leftOffset = (targetRect.left - parentRect.left);
+    const maxLeft = parentRect.width - popoverWidth - 10;
+    if (leftOffset > maxLeft) {
+      leftOffset = Math.max(10, maxLeft);
+    }
+    if (leftOffset < 0) leftOffset = 0;
+
+    popover.style.top = `${(targetRect.bottom - parentRect.top) + 8}px`;
+    popover.style.left = `${leftOffset}px`;
+    popover.style.display = "block";
+
+    const caret = popover.querySelector(".nature-popover-caret");
+    if (caret) {
+      const caretLeft = Math.max(16, Math.min(popoverWidth - 24, (targetRect.left - parentRect.left) - leftOffset + (targetRect.width / 2) - 8));
+      caret.style.left = `${caretLeft}px`;
+    }
+  } else {
+    popover.style.display = "block";
+  }
+
+  if (!window._natureAuthorPopoverListenerAttached) {
+    document.addEventListener("click", function(e) {
+      const p = document.getElementById("nature-author-popover");
+      if (!p || p.style.display === "none") return;
+      if (e.target.closest("#nature-author-popover") || e.target.closest(".nature-author-link")) {
+        return;
+      }
+      closeNatureAuthorPopover();
+    });
+    window._natureAuthorPopoverListenerAttached = true;
+  }
+}
+
+function closeNatureAuthorPopover() {
+  const popover = document.getElementById("nature-author-popover");
+  if (popover) {
+    popover.style.display = "none";
+    popover.dataset.activeAuthor = "";
+  }
+}
+window.toggleNatureAuthorPopover = toggleNatureAuthorPopover;
+window.closeNatureAuthorPopover = closeNatureAuthorPopover;
 
 function editCurrentJournalArticle() {
   const targetId = NEWS_STATE.currentJournalArticleId;
@@ -32092,6 +32312,256 @@ function copyNewsShareLink(articleId = null) {
     prompt("Direct article link:", url);
   }
 }
+
+// --- Structured Author & Affiliation Editor Functions (V110) ---
+function renderAffiliationsEditor() {
+  const container = document.getElementById("news-affiliations-list");
+  if (!container) return;
+  const affs = NEWS_STATE.editorAffiliationsData || [];
+
+  if (affs.length === 0) {
+    container.innerHTML = `
+      <div style="padding:10px 14px; background:#fff; border:1px dashed #d4bcad; border-radius:6px; color:#8c786a; font-size:12px; text-align:center;">
+        No affiliations added yet. Click <strong>+ Add Affiliation</strong> above.
+      </div>
+    `;
+    renderAuthorsEditor();
+    syncAuthorAffiliationsBuilder();
+    return;
+  }
+
+  let html = "";
+  affs.forEach((aff, index) => {
+    html += `
+      <div class="news-aff-item-row" data-aff-id="${aff.id}">
+        <span class="news-aff-badge">${aff.id}</span>
+        <input type="text" class="form-input news-aff-text-input" 
+               placeholder="Institution, Department, University, City, Country..." 
+               value="${escapeHtml(aff.text || "")}" 
+               oninput="onAffiliationTextChange(${aff.id}, this.value)">
+        <button type="button" class="btn btn-outline btn-sm news-aff-del-btn" 
+                onclick="removeAffiliationRow(${aff.id})" title="Remove this affiliation">
+          🗑️
+        </button>
+      </div>
+    `;
+  });
+  container.innerHTML = html;
+  renderAuthorsEditor();
+  syncAuthorAffiliationsBuilder();
+}
+
+function addAffiliationRow() {
+  if (!NEWS_STATE.editorAffiliationsData) NEWS_STATE.editorAffiliationsData = [];
+  const nextId = NEWS_STATE.editorAffiliationsData.length > 0 
+    ? Math.max(...NEWS_STATE.editorAffiliationsData.map(a => a.id)) + 1 
+    : 1;
+  NEWS_STATE.editorAffiliationsData.push({ id: nextId, text: "" });
+  renderAffiliationsEditor();
+  setTimeout(() => {
+    const inputs = document.querySelectorAll(".news-aff-text-input");
+    if (inputs.length > 0) inputs[inputs.length - 1].focus();
+  }, 50);
+}
+
+function removeAffiliationRow(affId) {
+  if (!NEWS_STATE.editorAffiliationsData) return;
+  NEWS_STATE.editorAffiliationsData = NEWS_STATE.editorAffiliationsData.filter(a => a.id !== affId);
+  const oldToNew = {};
+  NEWS_STATE.editorAffiliationsData.forEach((a, idx) => {
+    oldToNew[a.id] = idx + 1;
+    a.id = idx + 1;
+  });
+  if (NEWS_STATE.editorAuthorsData) {
+    NEWS_STATE.editorAuthorsData.forEach(auth => {
+      auth.affiliations = (auth.affiliations || [])
+        .map(id => oldToNew[id])
+        .filter(Boolean)
+        .sort((a,b)=>a-b);
+    });
+  }
+  renderAffiliationsEditor();
+}
+
+function onAffiliationTextChange(affId, val) {
+  if (!NEWS_STATE.editorAffiliationsData) return;
+  const item = NEWS_STATE.editorAffiliationsData.find(a => a.id === affId);
+  if (item) {
+    item.text = val;
+    renderAuthorsEditor(); // update labels in chips
+    syncAuthorAffiliationsBuilder();
+  }
+}
+
+function renderAuthorsEditor() {
+  const container = document.getElementById("news-authors-list");
+  if (!container) return;
+  const authors = NEWS_STATE.editorAuthorsData || [];
+  const affs = NEWS_STATE.editorAffiliationsData || [];
+
+  if (authors.length === 0) {
+    container.innerHTML = `
+      <div style="padding:10px 14px; background:#fff; border:1px dashed #d4bcad; border-radius:6px; color:#8c786a; font-size:12px; text-align:center;">
+        No authors added yet. Click <strong>+ Add Author</strong> above.
+      </div>
+    `;
+    syncAuthorAffiliationsBuilder();
+    return;
+  }
+
+  let html = "";
+  authors.forEach((auth, idx) => {
+    let affChipsHtml = "";
+    if (affs.length > 0) {
+      affChipsHtml = affs.map(a => {
+        const isChecked = (auth.affiliations || []).includes(a.id);
+        const previewText = a.text ? (a.text.length > 30 ? a.text.slice(0, 28) + "…" : a.text) : `Institution ${a.id}`;
+        return `
+          <label class="news-aff-chip-label ${isChecked ? 'active' : ''}">
+            <input type="checkbox" style="display:none;" 
+                   ${isChecked ? 'checked' : ''} 
+                   onchange="onAuthorAffToggle(${idx}, ${a.id}, this.checked)">
+            <span>${isChecked ? '✓' : '+'} [${a.id}] ${escapeHtml(previewText)}</span>
+          </label>
+        `;
+      }).join("");
+    } else {
+      affChipsHtml = `<span style="font-size:11.5px; color:#9ca3af; font-style:italic;">Please add an affiliation above first to assign numbers.</span>`;
+    }
+
+    html += `
+      <div class="news-author-item-card" data-author-idx="${idx}">
+        <div class="news-author-top-row">
+          <div class="news-author-name-group">
+            <label class="news-field-micro-label">Author Name</label>
+            <input type="text" class="form-input" style="font-size:13px; font-weight:600;" 
+                   placeholder="e.g. Vu Tien Lam" 
+                   value="${escapeHtml(auth.name || "")}" 
+                   oninput="onAuthorNameChange(${idx}, this.value)">
+          </div>
+          <div class="news-author-corr-group">
+            <label class="news-corr-checkbox-label">
+              <input type="checkbox" ${auth.is_corresponding ? 'checked' : ''} 
+                     onchange="onAuthorCorrChange(${idx}, this.checked)">
+              ✉ Corresponding Author
+            </label>
+            <input type="email" class="form-input news-author-email-input" 
+                   style="${auth.is_corresponding ? 'display:block;' : 'display:none;'}"
+                   placeholder="Contact email (e.g. author@skku.edu)" 
+                   value="${escapeHtml(auth.email || "")}" 
+                   oninput="onAuthorEmailChange(${idx}, this.value)">
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" 
+                  onclick="removeAuthorRow(${idx})" title="Remove author" 
+                  style="align-self:flex-start; margin-top:18px;">
+            🗑️
+          </button>
+        </div>
+        <div class="news-author-bottom-row">
+          <span style="font-size:11.5px; font-weight:700; color:#4a3f35;">Assign Affiliations:</span>
+          <div class="news-author-aff-chips">
+            ${affChipsHtml}
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+  syncAuthorAffiliationsBuilder();
+}
+
+function addAuthorRow() {
+  if (!NEWS_STATE.editorAuthorsData) NEWS_STATE.editorAuthorsData = [];
+  const defaultAffs = (NEWS_STATE.editorAffiliationsData && NEWS_STATE.editorAffiliationsData.length > 0) ? [NEWS_STATE.editorAffiliationsData[0].id] : [1];
+  NEWS_STATE.editorAuthorsData.push({
+    name: "",
+    is_corresponding: NEWS_STATE.editorAuthorsData.length === 0,
+    email: "",
+    affiliations: defaultAffs
+  });
+  renderAuthorsEditor();
+  setTimeout(() => {
+    const cards = document.querySelectorAll(".news-author-item-card");
+    if (cards.length > 0) {
+      const inp = cards[cards.length - 1].querySelector("input[type='text']");
+      if (inp) inp.focus();
+    }
+  }, 50);
+}
+
+function removeAuthorRow(idx) {
+  if (!NEWS_STATE.editorAuthorsData) return;
+  NEWS_STATE.editorAuthorsData.splice(idx, 1);
+  renderAuthorsEditor();
+}
+
+function onAuthorNameChange(idx, val) {
+  if (!NEWS_STATE.editorAuthorsData || !NEWS_STATE.editorAuthorsData[idx]) return;
+  NEWS_STATE.editorAuthorsData[idx].name = val;
+  syncAuthorAffiliationsBuilder();
+}
+
+function onAuthorCorrChange(idx, isChecked) {
+  if (!NEWS_STATE.editorAuthorsData || !NEWS_STATE.editorAuthorsData[idx]) return;
+  NEWS_STATE.editorAuthorsData[idx].is_corresponding = isChecked;
+  renderAuthorsEditor();
+}
+
+function onAuthorEmailChange(idx, val) {
+  if (!NEWS_STATE.editorAuthorsData || !NEWS_STATE.editorAuthorsData[idx]) return;
+  NEWS_STATE.editorAuthorsData[idx].email = val;
+  syncAuthorAffiliationsBuilder();
+}
+
+function onAuthorAffToggle(authorIdx, affId, isChecked) {
+  if (!NEWS_STATE.editorAuthorsData || !NEWS_STATE.editorAuthorsData[authorIdx]) return;
+  const auth = NEWS_STATE.editorAuthorsData[authorIdx];
+  if (!auth.affiliations) auth.affiliations = [];
+  if (isChecked) {
+    if (!auth.affiliations.includes(affId)) auth.affiliations.push(affId);
+  } else {
+    auth.affiliations = auth.affiliations.filter(id => id !== affId);
+  }
+  auth.affiliations.sort((a,b)=>a-b);
+  renderAuthorsEditor();
+}
+
+function syncAuthorAffiliationsBuilder() {
+  const authors = NEWS_STATE.editorAuthorsData || [];
+  const affs = NEWS_STATE.editorAffiliationsData || [];
+
+  const authorParts = authors.map(auth => {
+    const name = (auth.name || "Author").trim();
+    const affStr = (auth.affiliations && auth.affiliations.length > 0) ? `<sup>${auth.affiliations.join(",")}</sup>` : "";
+    const corrStr = auth.is_corresponding ? "*" : "";
+    return `${name}${affStr}${corrStr}`;
+  });
+  const legacyAuthorsStr = authorParts.join(", ");
+  const legacyAffsStr = affs.map(a => `${a.id}. ${a.text}`).join("\n");
+  const corrAuthor = authors.find(a => a.is_corresponding && a.email && a.email.trim());
+  const legacyEmailStr = corrAuthor ? corrAuthor.email.trim() : (authors.map(a => a.email).filter(Boolean)[0] || "");
+
+  const hAuthors = document.getElementById("news-edit-authors");
+  const hAffs = document.getElementById("news-edit-affiliations");
+  const hEmail = document.getElementById("news-edit-email");
+  if (hAuthors) hAuthors.value = legacyAuthorsStr;
+  if (hAffs) hAffs.value = legacyAffsStr;
+  if (hEmail) hEmail.value = legacyEmailStr;
+}
+
+window.renderAffiliationsEditor = renderAffiliationsEditor;
+window.addAffiliationRow = addAffiliationRow;
+window.removeAffiliationRow = removeAffiliationRow;
+window.onAffiliationTextChange = onAffiliationTextChange;
+window.renderAuthorsEditor = renderAuthorsEditor;
+window.addAuthorRow = addAuthorRow;
+window.removeAuthorRow = removeAuthorRow;
+window.onAuthorNameChange = onAuthorNameChange;
+window.onAuthorCorrChange = onAuthorCorrChange;
+window.onAuthorEmailChange = onAuthorEmailChange;
+window.onAuthorAffToggle = onAuthorAffToggle;
+window.syncAuthorAffiliationsBuilder = syncAuthorAffiliationsBuilder;
 
 // --- Admin WYSIWYG Rich Text Editor Modal ---
 function openNewsEditorModal(articleId = null) {
@@ -32154,6 +32624,11 @@ function openNewsEditorModal(articleId = null) {
     if (abstractInput) abstractInput.value = existing.abstract || "";
     if (editorBody) editorBody.innerHTML = existing.content_html || "";
     updateNewsCoverPreview(existing.cover_image || "");
+
+    // Load structured authors and affiliations into dynamic editor manager (V110)
+    NEWS_STATE.editorAffiliationsData = getArticleStructuredAffiliations(existing);
+    NEWS_STATE.editorAuthorsData = getArticleStructuredAuthors(existing);
+    renderAffiliationsEditor();
   } else {
     if (modalTitle) modalTitle.textContent = "✍️ Compose Scientific News & Article";
     if (idInput) idInput.value = "";
@@ -32185,6 +32660,16 @@ function openNewsEditorModal(articleId = null) {
 </ol>`;
     }
     updateNewsCoverPreview("");
+
+    // Initialize default structured authors and affiliations (V110)
+    NEWS_STATE.editorAffiliationsData = [
+      { id: 1, text: "School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea" }
+    ];
+    NEWS_STATE.editorAuthorsData = [
+      { name: "Vu Tien Lam", is_corresponding: true, email: "lamvt.skku@gmail.com", affiliations: [1] },
+      { name: "Jaewon Kim", is_corresponding: false, email: "", affiliations: [1] }
+    ];
+    renderAffiliationsEditor();
   }
 
   modal.classList.add("open");
@@ -32219,6 +32704,9 @@ function saveNewsArticleFromEditor(desiredStatus = "Published") {
   const abstractInput = document.getElementById("news-edit-abstract");
   const editorBody = document.getElementById("news-editor-body");
 
+  // Synchronize dynamic structured author & affiliation rows
+  syncAuthorAffiliationsBuilder();
+
   const title = (titleInput && titleInput.value || "").trim();
   if (!title) {
     showToast("Please provide an Article Title.", "warn");
@@ -32238,6 +32726,8 @@ function saveNewsArticleFromEditor(desiredStatus = "Published") {
     authors: (authorsInput && authorsInput.value || "").trim() || "Vu Tien Lam",
     corresponding_email: (emailInput && emailInput.value || "").trim(),
     affiliations: (affsInput && affsInput.value || "").trim(),
+    authors_data: NEWS_STATE.editorAuthorsData || [],
+    affiliations_data: NEWS_STATE.editorAffiliationsData || [],
     received_date: recInput && recInput.value ? recInput.value.trim() : "",
     revised_date: revInput && revInput.value ? revInput.value.trim() : "",
     published_date: pubInput && pubInput.value ? pubInput.value.trim() : new Date().toISOString().split("T")[0],
@@ -32315,9 +32805,19 @@ function previewCurrentEditorArticle() {
   const abstract = document.getElementById("news-edit-abstract")?.value || "";
   const content = document.getElementById("news-editor-body")?.innerHTML || "";
 
+  syncAuthorAffiliationsBuilder();
+  const finalAuthors = document.getElementById("news-edit-authors")?.value || authors;
+  const finalEmail = document.getElementById("news-edit-email")?.value || email;
+  const finalAffs = document.getElementById("news-edit-affiliations")?.value || affiliations;
+
   const tempArticle = {
     id: "preview_temp",
-    title, category, authors, corresponding_email: email, affiliations,
+    title, category,
+    authors: finalAuthors,
+    corresponding_email: finalEmail,
+    affiliations: finalAffs,
+    authors_data: NEWS_STATE.editorAuthorsData || [],
+    affiliations_data: NEWS_STATE.editorAffiliationsData || [],
     received_date: received, revised_date: revised, published_date: published,
     doi, cover_image: cover, keywords, abstract, content_html: content,
     status: "Draft"
