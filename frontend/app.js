@@ -144,14 +144,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadAllData();
   await autofillReportFromDatabase(true);
 
+  checkAndHandleArticleDeepLink();
   const rawHash = window.location.hash ? window.location.hash.replace("#", "") : "";
-  const hashTab = rawHash.split("?")[0];
+  const hashTab = rawHash.split("?")[0].split("/")[0];
   if (hashTab && TABS_ORDER.includes(hashTab)) {
     switchTab(hashTab);
-    if (hashTab === "news" && rawHash.includes("id=")) {
-      const artId = rawHash.split("id=")[1];
-      setTimeout(() => { if (typeof openNewsJournalModal === "function") openNewsJournalModal(artId); }, 250);
-    }
   } else {
     const initialActive = document.querySelector(".tab-pane.active");
     const initialTabId = initialActive ? initialActive.id.replace("tab-", "") : "dashboard";
@@ -30673,7 +30670,10 @@ function renderNewsTab() {
           </div>
           <div class="news-card-footer">
             <button type="button" class="news-read-more-btn" onclick="openNewsJournalModal('${escapeHtml(article.id)}')">
-              Read Full Journal Paper ➔
+              Read Full Paper ➔
+            </button>
+            <button type="button" class="news-card-share-btn" onclick="copyNewsShareLink('${escapeHtml(article.id)}'); event.stopPropagation();" title="Copy direct link to this article">
+              🔗 Share Link
             </button>
             ${adminActionsHtml}
           </div>
@@ -30719,6 +30719,12 @@ function openNewsJournalModal(articleId) {
   }
 
   NEWS_STATE.currentJournalArticleId = article.id;
+  try {
+    const articleHash = `#news?id=${encodeURIComponent(article.id)}`;
+    if (window.location.hash !== articleHash) {
+      history.replaceState(null, "", articleHash);
+    }
+  } catch (e) {}
   const modal = document.getElementById("news-journal-modal");
   const body = document.getElementById("journal-paper-body");
   const editBtn = document.getElementById("journal-admin-edit-btn");
@@ -30831,6 +30837,12 @@ function openNewsJournalModal(articleId) {
 function closeNewsJournalModal() {
   const modal = document.getElementById("news-journal-modal");
   if (modal) modal.classList.remove("open");
+  NEWS_STATE.currentJournalArticleId = null;
+  try {
+    if (window.location.hash.includes("id=") || window.location.hash.includes("article")) {
+      history.replaceState(null, "", "#news");
+    }
+  } catch (e) {}
 }
 
 function editCurrentJournalArticle() {
@@ -30859,13 +30871,19 @@ function copyNewsCitation() {
   });
 }
 
-function copyNewsShareLink() {
-  const url = `${window.location.origin}${window.location.pathname}#news?id=${NEWS_STATE.currentJournalArticleId}`;
-  navigator.clipboard.writeText(url).then(() => {
-    showToast("🔗 Direct article link copied to clipboard!", "success");
-  }).catch(() => {
-    showToast("Link: " + url, "info");
-  });
+function copyNewsShareLink(articleId = null) {
+  const targetId = articleId || NEWS_STATE.currentJournalArticleId;
+  if (!targetId) return;
+  const url = `${window.location.origin}${window.location.pathname}#news?id=${encodeURIComponent(targetId)}`;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => {
+      showToast("🔗 Direct article link copied to clipboard!", "success");
+    }).catch(() => {
+      prompt("Direct article link:", url);
+    });
+  } else {
+    prompt("Direct article link:", url);
+  }
 }
 
 // --- Admin WYSIWYG Rich Text Editor Modal ---
@@ -31358,3 +31376,62 @@ window.openInsertFormulaDialog = openInsertFormulaDialog;
 window.insertSymbolIntoFormula = insertSymbolIntoFormula;
 window.confirmInsertFormula = confirmInsertFormula;
 
+
+
+// --- Direct Article Permalinks & Deep Linking Handler (v105) ---
+function extractArticleIdFromUrl() {
+  const hash = window.location.hash || "";
+  const search = window.location.search || "";
+
+  // 1. Check query parameter ?article=xxx or ?id=xxx
+  try {
+    const searchParams = new URLSearchParams(search);
+    if (searchParams.get("article")) return searchParams.get("article").trim();
+    if (searchParams.get("id")) return searchParams.get("id").trim();
+  } catch (e) {}
+
+  // 2. Check hash variants: #news?id=xxx, #article=xxx, #news/xxx, #article/xxx
+  if (hash) {
+    const raw = hash.replace(/^#/, "");
+    if (raw.includes("id=")) {
+      const parts = raw.split("id=");
+      return decodeURIComponent(parts[1].split("&")[0]).trim();
+    }
+    if (raw.includes("article=")) {
+      const parts = raw.split("article=");
+      return decodeURIComponent(parts[1].split("&")[0]).trim();
+    }
+    if (raw.startsWith("news/") || raw.startsWith("article/")) {
+      return decodeURIComponent(raw.split("/")[1].split("?")[0]).trim();
+    }
+  }
+  return null;
+}
+
+function checkAndHandleArticleDeepLink() {
+  const artId = extractArticleIdFromUrl();
+  if (artId) {
+    if (typeof switchTab === "function") switchTab("news");
+    setTimeout(() => {
+      if (typeof openNewsJournalModal === "function") {
+        openNewsJournalModal(artId);
+      }
+    }, 150);
+  }
+}
+
+window.addEventListener("hashchange", () => {
+  const artId = extractArticleIdFromUrl();
+  if (artId) {
+    if (typeof switchTab === "function") switchTab("news");
+    if (typeof openNewsJournalModal === "function") openNewsJournalModal(artId);
+  } else if (window.location.hash === "#news" || window.location.hash === "") {
+    const modal = document.getElementById("news-journal-modal");
+    if (modal && modal.classList.contains("open")) {
+      closeNewsJournalModal();
+    }
+  }
+});
+
+window.extractArticleIdFromUrl = extractArticleIdFromUrl;
+window.checkAndHandleArticleDeepLink = checkAndHandleArticleDeepLink;
