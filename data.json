@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-19T00:18:56.565Z",
+  "exported_at": "2026-11-19T00:19:53.571Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -458,27 +458,6 @@
     "weekly_report_allowed_users": []
   },
   "papers": [
-    {
-      "id": 1795001237985,
-      "doi": "10.1103/physrevb.106.235414",
-      "title": "Structural defects in a Janus MoSSe monolayer: A density functional theory study",
-      "authors": "Hamid Mehdipour, Peter Kratzer",
-      "journal": "Physical Review B",
-      "year": 2022,
-      "volume": "106",
-      "pages": "",
-      "abstract": "",
-      "citation_count": 30,
-      "material_system": "Perovskite / 2D Material",
-      "synthesis_method": "First-principles DFT",
-      "characterization_tags": "DFT, VASP, XRD",
-      "status": "To Read",
-      "notes": "",
-      "in_weekly_report": 1,
-      "visibility": "Public",
-      "allowed_users": [],
-      "allowed_groups": []
-    },
     {
       "id": 1794980221631,
       "doi": "10.1103/physrevb.104.035409",
@@ -5095,6 +5074,13 @@
       "participant_groups": []
     }
   ],
+  "event_categories": [
+    "Synthesis / Furnace",
+    "Characterization (XRD/SEM/TEM/XPS)",
+    "Group Meeting / PI Meeting",
+    "Electrochemical Testing",
+    "Data Analysis / Manuscript Writing"
+  ],
   "users_registry": {
     "lamvt.sep@gmail.com": {
       "email": "lamvt.sep@gmail.com",
@@ -7376,6 +7362,20 @@
     "alice@skku.edu",
     "jaewon@skku.edu"
   ],
+  "deleted_users_map": {
+    "test.researcher@skku.edu": 1795047536565,
+    "aaa@gmail.com": 1795047536565,
+    "jhpark.matsci@skku.edu": 1795047536565,
+    "temp.delete.test@gmail.com": 1795047536565,
+    "minseo.kim@gmail.com": 1795047536565,
+    "ssk@gmail.com": 1795047536565,
+    "las@gmail.com": 1795047536565,
+    "test.relay.otp@skku.edu": 1795047536565,
+    "linh@gmail.com": 1795047536565,
+    "a@gmail.com": 1795047536565,
+    "alice@skku.edu": 1795047536565,
+    "jaewon@skku.edu": 1795047536565
+  },
   "deleted_groups": [
     "grp_external_collab",
     "grp_dft_team",
