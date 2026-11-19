@@ -1769,6 +1769,49 @@ async function pullCloudDatabaseInstant(silent = true) {
   }
 }
 
+function mergeChatConversationsRemote(localList, remoteList) {
+  const map = new Map();
+  const getArray = x => Array.isArray(x) ? x : [];
+
+  getArray(remoteList).forEach(c => {
+    if (c && c.id) map.set(c.id, { ...c, messages: Array.isArray(c.messages) ? [...c.messages] : [] });
+  });
+
+  getArray(localList).forEach(c => {
+    if (!c || !c.id) return;
+    if (!map.has(c.id)) {
+      map.set(c.id, { ...c, messages: Array.isArray(c.messages) ? [...c.messages] : [] });
+      return;
+    }
+    const target = map.get(c.id);
+    const allParts = new Set([...(target.participants || []), ...(c.participants || [])]);
+    target.participants = Array.from(allParts);
+    target.participantNames = { ...(target.participantNames || {}), ...(c.participantNames || {}) };
+    if (c.name && !target.name) target.name = c.name;
+
+    const msgMap = new Map();
+    (target.messages || []).forEach(m => { if (m && m.id) msgMap.set(m.id, m); });
+    (c.messages || []).forEach(m => {
+      if (!m || !m.id) return;
+      if (!msgMap.has(m.id)) {
+        msgMap.set(m.id, m);
+      } else {
+        const existingM = msgMap.get(m.id);
+        const readSet = new Map();
+        (existingM.readBy || []).forEach(r => { if (r && r.email) readSet.set(normalizeEmail(r.email), r); });
+        (m.readBy || []).forEach(r => { if (r && r.email) readSet.set(normalizeEmail(r.email), r); });
+        existingM.readBy = Array.from(readSet.values());
+      }
+    });
+    target.messages = Array.from(msgMap.values()).sort((a, b) => Number(a.timestampMs || 0) - Number(b.timestampMs || 0));
+    target.updatedAtMs = Math.max(Number(target.updatedAtMs || 0), Number(c.updatedAtMs || 0));
+    target.updatedAt = (target.updatedAtMs === Number(c.updatedAtMs || 0)) ? (c.updatedAt || target.updatedAt) : target.updatedAt;
+  });
+
+  return Array.from(map.values()).sort((a, b) => Number(b.updatedAtMs || 0) - Number(a.updatedAtMs || 0));
+}
+window.mergeChatConversationsRemote = mergeChatConversationsRemote;
+
 async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) {
   const token = getBuiltInCloudToken();
   if (!token) return false;
@@ -1961,7 +2004,11 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
       deleted_papers: Object.keys(getDeletedPapersMap()),
       deleted_papers_map: getDeletedPapersMap(),
       deleted_schedule: Object.keys(getDeletedScheduleMap()),
-      deleted_schedule_map: getDeletedScheduleMap()
+      deleted_schedule_map: getDeletedScheduleMap(),
+      chat_conversations: mergeChatConversationsRemote(
+        (typeof getChatConversations === "function" ? getChatConversations() : (STATE.chatConversations || [])),
+        remoteDb && remoteDb.chat_conversations
+      )
     };
 
     const base64Content = encodeUtf8Base64(JSON.stringify(exportObj, null, 2));
@@ -5316,6 +5363,9 @@ function completePersonalUserLogin(userObj, loginMethod = "Account") {
   applyActiveWorkspaceData();
   saveStaticDb();
   refreshAllWorkspaceViews();
+  if (typeof _activeChatConvId !== "undefined") _activeChatConvId = null;
+  if (typeof renderChatConversationsList === "function") renderChatConversationsList();
+  if (typeof updateChatUnreadBadges === "function") updateChatUnreadBadges();
   autofillReportFromDatabase(true);
 
   showToast(`🎉 Welcome, ${userObj.name}! Your personal research workspace is now active.`, "success");
@@ -15965,6 +16015,21 @@ async function loadStaticFallbackData() {
         ensureUserGroupsInitialized(remoteData.user_groups);
       } else {
         ensureUserGroupsInitialized();
+      }
+      if (remoteData && Array.isArray(remoteData.chat_conversations) && remoteData.chat_conversations.length > 0) {
+        let localSaved = [];
+        try {
+          const raw = localStorage.getItem("matsci_chat_conversations_v1");
+          if (raw) localSaved = JSON.parse(raw);
+        } catch (e) {}
+        const mergedConvs = typeof mergeChatConversationsRemote === "function"
+          ? mergeChatConversationsRemote(localSaved, remoteData.chat_conversations)
+          : remoteData.chat_conversations;
+        STATE.chatConversations = mergedConvs;
+        try {
+          localStorage.setItem("matsci_chat_conversations_v1", JSON.stringify(mergedConvs));
+        } catch (e) {}
+        if (typeof updateChatUnreadBadges === "function") updateChatUnreadBadges();
       }
       if (remoteData && (remoteData.papers || remoteData.profile || remoteData.structures)) {
         const saved = localStorage.getItem("matsci_static_db_v4");
@@ -30540,8 +30605,41 @@ function getInitialDemoChatConversations() {
   ];
 }
 
+function ensureGeneralLabGroupParticipants(convs) {
+  if (!Array.isArray(convs)) return;
+  const generalGroup = convs.find(c => c.id === "group_skku_lab_general");
+  if (!generalGroup) return;
+  generalGroup.isLabWide = true;
+  generalGroup.participants = Array.isArray(generalGroup.participants) ? generalGroup.participants : [];
+  generalGroup.participantNames = generalGroup.participantNames || {};
+
+  if (!generalGroup.participants.includes(OWNER_GOOGLE_EMAIL)) {
+    generalGroup.participants.push(OWNER_GOOGLE_EMAIL);
+  }
+  generalGroup.participantNames[OWNER_GOOGLE_EMAIL] = "Vu Tien Lam (Admin)";
+
+  if (STATE.usersRegistry && typeof STATE.usersRegistry === "object") {
+    Object.keys(STATE.usersRegistry).forEach(em => {
+      const norm = normalizeEmail(em);
+      if (!norm) return;
+      if (!generalGroup.participants.includes(norm)) {
+        generalGroup.participants.push(norm);
+      }
+      const u = STATE.usersRegistry[em];
+      if (u && u.name) generalGroup.participantNames[norm] = u.name;
+    });
+  }
+
+  const curUser = getCurrentChatUser();
+  if (curUser && curUser.email && !generalGroup.participants.includes(curUser.email)) {
+    generalGroup.participants.push(curUser.email);
+    generalGroup.participantNames[curUser.email] = curUser.name || curUser.email;
+  }
+}
+
 function getChatConversations() {
   if (Array.isArray(STATE.chatConversations) && STATE.chatConversations.length > 0) {
+    ensureGeneralLabGroupParticipants(STATE.chatConversations);
     return STATE.chatConversations;
   }
   try {
@@ -30566,7 +30664,8 @@ function getChatConversations() {
   return seeded;
 }
 
-function saveChatConversations() {
+let _chatCloudSyncDebounceTimer = null;
+function saveChatConversations(shouldSyncCloud = true) {
   try {
     localStorage.setItem("matsci_chat_conversations_v1", JSON.stringify(STATE.chatConversations || []));
   } catch (e) {}
@@ -30574,6 +30673,15 @@ function saveChatConversations() {
     STATE.masterData.chat_conversations = STATE.chatConversations;
   }
   updateChatUnreadBadges();
+
+  if (shouldSyncCloud) {
+    clearTimeout(_chatCloudSyncDebounceTimer);
+    _chatCloudSyncDebounceTimer = setTimeout(() => {
+      if (typeof syncDatabaseToCloudInstant === "function") {
+        syncDatabaseToCloudInstant("Chat message sent / updated", true);
+      }
+    }, 1500);
+  }
 }
 
 function getUnreadChatCount() {
@@ -30674,7 +30782,8 @@ function renderChatConversationsList() {
   const q = _chatSearchQuery;
 
   let filtered = convs.filter(c => {
-    const isParticipant = (c.participants || []).some(p => normalizeEmail(p) === curUser.email);
+    const isLabWide = c.id === "group_skku_lab_general" || Boolean(c.isLabWide);
+    const isParticipant = isLabWide || (c.participants || []).some(p => normalizeEmail(p) === curUser.email);
     if (!isParticipant && !isStrictAdminSession()) return false;
 
     if (_chatConvFilter === "groups" && c.type !== "group") return false;
@@ -31232,3 +31341,55 @@ function startDirectChatWithUser(partnerEmail, partnerName) {
   openChatConversation(convId);
 }
 window.startDirectChatWithUser = startDirectChatWithUser;
+
+// ============================================================================
+// Real-Time Cross-Tab & Cross-Device Chat Synchronization
+// ============================================================================
+window.addEventListener("storage", (e) => {
+  if (e.key === "matsci_chat_conversations_v1") {
+    try {
+      const updated = JSON.parse(e.newValue || "[]");
+      if (Array.isArray(updated) && updated.length > 0) {
+        STATE.chatConversations = updated;
+        if (typeof _activeChatConvId !== "undefined" && _activeChatConvId) {
+          renderActiveChatMessages();
+        }
+        if (typeof renderChatConversationsList === "function") renderChatConversationsList();
+        if (typeof updateChatUnreadBadges === "function") updateChatUnreadBadges();
+      }
+    } catch (err) {}
+  }
+});
+
+let _chatCloudPollInterval = null;
+function initChatCloudPolling() {
+  if (_chatCloudPollInterval) clearInterval(_chatCloudPollInterval);
+  _chatCloudPollInterval = setInterval(async () => {
+    try {
+      const res = await fetch(`data.json?_t=${Date.now()}`, { cache: "no-store" });
+      if (res.ok) {
+        const remote = await res.json();
+        if (remote && Array.isArray(remote.chat_conversations) && remote.chat_conversations.length > 0) {
+          const current = (typeof getChatConversations === "function") ? getChatConversations() : (STATE.chatConversations || []);
+          const merged = (typeof mergeChatConversationsRemote === "function")
+            ? mergeChatConversationsRemote(current, remote.chat_conversations)
+            : remote.chat_conversations;
+
+          const prevTotal = (current || []).reduce((acc, c) => acc + (c.messages || []).length, 0);
+          const newTotal = (merged || []).reduce((acc, c) => acc + (c.messages || []).length, 0);
+
+          if (newTotal !== prevTotal) {
+            STATE.chatConversations = merged;
+            saveChatConversations(false);
+            if (typeof _activeChatConvId !== "undefined" && _activeChatConvId) {
+              renderActiveChatMessages();
+            }
+            if (typeof renderChatConversationsList === "function") renderChatConversationsList();
+            if (typeof updateChatUnreadBadges === "function") updateChatUnreadBadges();
+          }
+        }
+      }
+    } catch (e) {}
+  }, 10000);
+}
+if (typeof initChatCloudPolling === "function") initChatCloudPolling();
