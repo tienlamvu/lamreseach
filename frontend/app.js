@@ -3320,6 +3320,7 @@ function openAuthModal(defaultTab = "signin") {
   const modal = document.getElementById("login-modal");
   if (!modal) return;
   switchAuthModalTab(defaultTab);
+  updateAbstractLivePreview();
   modal.classList.add("open");
 }
 
@@ -30729,9 +30730,9 @@ function renderNewsTab() {
           <h3 class="news-card-title" onclick="openNewsJournalModal('${escapeHtml(article.id)}')">
             ${escapeHtml(article.title)}
           </h3>
-          <p class="news-card-abstract">
-            ${escapeHtml(article.abstract || "")}
-          </p>
+          <div class="news-card-abstract">
+            ${renderScientificRichText(article.abstract || "")}
+          </div>
           <div class="news-card-authors">
             <strong>Authors:</strong> ${escapeHtml(article.authors || "Vu Tien Lam et al.")}
           </div>
@@ -30776,6 +30777,483 @@ function clearNewsSearch() {
   renderNewsTab();
 }
 
+// ============================================================================
+// V106: SCIENTIFIC RICH TEXT & MATHEMATICAL FORMULA PARSER
+// ============================================================================
+
+function renderScientificRichText(raw) {
+  if (!raw) return "";
+  let s = String(raw);
+
+  // Check if text already contains HTML tags (e.g. <sub>, <sup>, <i>, <b>)
+  const hasHtml = /<\/?(b|i|u|sub|sup|span|em|strong|code|math|p|br)\b/i.test(s);
+  if (!hasHtml) {
+    s = s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  // 1. Parse inline LaTeX math expressions: $...$
+  s = s.replace(/\$([^$]+)\$/g, (match, formula) => {
+    let f = formula;
+    const greekMap = {
+      "\\Delta": "Δ", "\\mu": "μ", "\\alpha": "α", "\\beta": "β",
+      "\\gamma": "γ", "\\lambda": "λ", "\\sigma": "σ", "\\pi": "π",
+      "\\theta": "θ", "\\Omega": "Ω", "\\phi": "φ", "\\omega": "ω",
+      "\\approx": "≈", "\\le": "≤", "\\ge": "≥", "\\pm": "±",
+      "\\times": "×", "\\rightarrow": "→", "\\to": "→", "\\partial": "∂",
+      "\\infty": "∞", "\\int": "∫", "\\sum": "∑", "\\neq": "≠"
+    };
+    for (const [code, sym] of Object.entries(greekMap)) {
+      f = f.split(code).join(sym);
+    }
+    f = f.replace(/_\{([^}]+)\}/g, "<sub>$1</sub>");
+    f = f.replace(/\^\{([^}]+)\}/g, "<sup>$1</sup>");
+    f = f.replace(/_([A-Za-z0-9*+-]+)/g, "<sub>$1</sub>");
+    f = f.replace(/\^([A-Za-z0-9*+-]+)/g, "<sup>$1</sup>");
+    f = f.replace(/\\text\{([^}]+)\}/g, "$1");
+    return `<span class="inline-math-formula">${f}</span>`;
+  });
+
+  // 2. Parse standalone LaTeX Greek/math symbols
+  s = s.replace(/\\Delta/g, "Δ")
+       .replace(/\\mu/g, "μ")
+       .replace(/\\alpha/g, "α")
+       .replace(/\\beta/g, "β")
+       .replace(/\\pm/g, "±")
+       .replace(/\\times/g, "×");
+
+  // 3. Parse chemical/physical notation: e.g. MoS_2 -> MoS<sub>2</sub>, Li^+ -> Li<sup>+</sup>, ΔG_H* -> ΔG<sub>H*</sub>
+  s = s.replace(/\b([A-Z][a-z]?)_([0-9]+)\b/g, "$1<sub>$2</sub>");
+  s = s.replace(/([A-Za-z0-9]+)_([A-Za-z0-9*]+)/g, "$1<sub>$2</sub>");
+  s = s.replace(/([A-Za-z0-9]+)\^([0-9*+-]+)/g, "$1<sup>$2</sup>");
+
+  return s;
+}
+window.renderScientificRichText = renderScientificRichText;
+
+// --- Abstract Quick Tools & Live Preview ---
+function updateAbstractLivePreview() {
+  const input = document.getElementById("news-edit-abstract");
+  const preview = document.getElementById("news-edit-abstract-preview");
+  if (!input || !preview) return;
+
+  const val = input.value.trim();
+  if (!val) {
+    preview.innerHTML = '<span style="color:#a8998b; font-style:italic; font-size:12px;">Type or paste into the abstract box above to see rendered formulas and functions here...</span>';
+    return;
+  }
+  preview.innerHTML = renderScientificRichText(val);
+}
+window.updateAbstractLivePreview = updateAbstractLivePreview;
+
+function insertAbstractSymbol(before, after = "") {
+  const textarea = document.getElementById("news-edit-abstract");
+  if (!textarea) return;
+  textarea.focus();
+
+  const start = textarea.selectionStart || 0;
+  const end = textarea.selectionEnd || 0;
+  const selectedText = textarea.value.substring(start, end);
+  const replacement = before + (selectedText || "") + after;
+
+  textarea.value = textarea.value.substring(0, start) + replacement + textarea.value.substring(end);
+  const newPos = start + replacement.length;
+  textarea.setSelectionRange(newPos, newPos);
+  updateAbstractLivePreview();
+}
+window.insertAbstractSymbol = insertAbstractSymbol;
+
+function handleAbstractPaste(event) {
+  const clipboardData = event.clipboardData || window.clipboardData;
+  if (!clipboardData) return;
+
+  const htmlData = clipboardData.getData("text/html");
+  if (htmlData && (htmlData.includes("sub>") || htmlData.includes("sup>") || htmlData.includes("<math") || htmlData.includes("&Delta;") || htmlData.includes("&mu;"))) {
+    // Pasted rich text from Word or web containing sub/super/math tags
+    event.preventDefault();
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = htmlData;
+    
+    // Extract formatted text preserving <sub>, <sup>, <i>, <b>
+    const allowed = tempDiv.querySelectorAll("b, i, u, sub, sup, strong, em");
+    allowed.forEach(el => {
+      // keep them
+    });
+
+    const cleanHtml = tempDiv.innerHTML
+      .replace(/<p[^>]*>/gi, "")
+      .replace(/<\/p>/gi, "\n\n")
+      .replace(/<br[^>]*>/gi, "\n")
+      .replace(/<span[^>]*>/gi, "")
+      .replace(/<\/span>/gi, "")
+      .trim();
+
+    const textarea = event.target;
+    const start = textarea.selectionStart || 0;
+    const end = textarea.selectionEnd || 0;
+    textarea.value = textarea.value.substring(0, start) + cleanHtml + textarea.value.substring(end);
+    textarea.setSelectionRange(start + cleanHtml.length, start + cleanHtml.length);
+    updateAbstractLivePreview();
+    return;
+  }
+
+  // Allow default paste for plain text or LaTeX, and update live preview after slight delay
+  setTimeout(updateAbstractLivePreview, 40);
+}
+window.handleAbstractPaste = handleAbstractPaste;
+
+// ============================================================================
+// V106: CLIENT-SIDE MICROSOFT WORD (.DOCX) IMPORT & MANUSCRIPT PARSER
+// ============================================================================
+
+function triggerWordImport() {
+  const input = document.getElementById("news-word-file-input");
+  if (input) {
+    input.value = "";
+    input.click();
+  }
+}
+window.triggerWordImport = triggerWordImport;
+
+async function handleWordFileInput(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  const isAdmin = typeof isStrictAdminSession === "function" ? isStrictAdminSession() : false;
+  if (!isAdmin) {
+    showToast("Admin session required to import Word manuscripts.", "warn");
+    return;
+  }
+
+  await importScientificWordDocument(file);
+}
+window.handleWordFileInput = handleWordFileInput;
+
+async function importScientificWordDocument(file) {
+  if (typeof JSZip === "undefined") {
+    showToast("JSZip library is still loading. Please try again in a few seconds.", "warn");
+    return;
+  }
+
+  showToast(`⏳ Auto-parsing Word manuscript '${file.name}'...`, "info");
+
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const zip = await JSZip.loadAsync(arrayBuffer);
+
+    // 1. Read document relationships for media
+    const relsMap = {};
+    const relsFile = zip.file("word/_rels/document.xml.rels");
+    if (relsFile) {
+      const relsXml = await relsFile.async("string");
+      const relsDoc = new DOMParser().parseFromString(relsXml, "application/xml");
+      const relEls = relsDoc.getElementsByTagName("Relationship");
+      for (let i = 0; i < relEls.length; i++) {
+        const id = relEls[i].getAttribute("Id");
+        const target = relEls[i].getAttribute("Target");
+        if (id && target) relsMap[id] = target;
+      }
+    }
+
+    // 2. Pre-extract all embedded images to Base64 data URLs
+    const mediaMap = {};
+    for (const [rId, target] of Object.entries(relsMap)) {
+      const fullPath = target.startsWith("word/") ? target : "word/" + target;
+      const imgFile = zip.file(fullPath);
+      if (imgFile) {
+        const b64 = await imgFile.async("base64");
+        let mime = "image/png";
+        if (target.match(/\.jpe?g$/i)) mime = "image/jpeg";
+        else if (target.match(/\.gif$/i)) mime = "image/gif";
+        else if (target.match(/\.svg$/i)) mime = "image/svg+xml";
+        mediaMap[rId] = `data:${mime};base64,${b64}`;
+      }
+    }
+
+    // 3. Read word/document.xml
+    const docFile = zip.file("word/document.xml");
+    if (!docFile) throw new Error("word/document.xml not found in .docx");
+    const docXml = await docFile.async("string");
+    const doc = new DOMParser().parseFromString(docXml, "application/xml");
+
+    const body = doc.getElementsByTagName("w:body")[0] || doc.getElementsByTagName("body")[0];
+    if (!body) throw new Error("Body element not found in Word document");
+
+    function parseDocxRun(rNode) {
+      let text = "";
+      const tEls = rNode.getElementsByTagName("w:t");
+      for (let i = 0; i < tEls.length; i++) text += tEls[i].textContent || "";
+
+      let html = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const rPr = rNode.getElementsByTagName("w:rPr")[0];
+      if (rPr) {
+        if (rPr.getElementsByTagName("w:b").length > 0) html = `<b>${html}</b>`;
+        if (rPr.getElementsByTagName("w:i").length > 0) html = `<i>${html}</i>`;
+        if (rPr.getElementsByTagName("w:u").length > 0) html = `<u>${html}</u>`;
+        const vAlign = rPr.getElementsByTagName("w:vertAlign")[0];
+        if (vAlign) {
+          const v = vAlign.getAttribute("w:val");
+          if (v === "superscript") html = `<sup>${html}</sup>`;
+          else if (v === "subscript") html = `<sub>${html}</sub>`;
+        }
+      }
+
+      // Check for embedded drawings/images
+      const drawings = rNode.getElementsByTagName("w:drawing");
+      const imgList = [];
+      for (let i = 0; i < drawings.length; i++) {
+        const blips = drawings[i].getElementsByTagName("a:blip");
+        for (let j = 0; j < blips.length; j++) {
+          const embedId = blips[j].getAttribute("r:embed");
+          if (embedId && mediaMap[embedId]) {
+            imgList.push(mediaMap[embedId]);
+          }
+        }
+      }
+
+      return { raw: text, html, images: imgList };
+    }
+
+    const elements = [];
+    const children = body.childNodes;
+    for (let i = 0; i < children.length; i++) {
+      const node = children[i];
+      const nodeName = node.nodeName.toLowerCase();
+
+      if (nodeName.endsWith(":p") || nodeName === "p") {
+        let pRaw = "";
+        let pHtml = "";
+        const pImages = [];
+
+        const pPr = node.getElementsByTagName("w:pPr")[0];
+        let isCenter = false;
+        let pStyle = "";
+        if (pPr) {
+          const jc = pPr.getElementsByTagName("w:jc")[0];
+          if (jc && jc.getAttribute("w:val") === "center") isCenter = true;
+          const ps = pPr.getElementsByTagName("w:pStyle")[0];
+          if (ps) pStyle = ps.getAttribute("w:val") || "";
+        }
+
+        const rNodes = node.getElementsByTagName("w:r");
+        for (let j = 0; j < rNodes.length; j++) {
+          const rRes = parseDocxRun(rNodes[j]);
+          pRaw += rRes.raw;
+          pHtml += rRes.html;
+          pImages.push(...rRes.images);
+        }
+
+        // Check for math equations
+        const mathNodes = node.getElementsByTagName("m:oMath");
+        for (let m = 0; m < mathNodes.length; m++) {
+          const mText = mathNodes[m].textContent || "";
+          pRaw += " " + mText;
+          pHtml += ` <span class="journal-math-formula">${escapeHtml(mText)}</span>`;
+        }
+
+        if (pRaw.trim() || pImages.length > 0) {
+          elements.push({
+            type: "p",
+            raw: pRaw.trim(),
+            html: pHtml.trim(),
+            images: pImages,
+            isCenter,
+            pStyle
+          });
+        }
+      } else if (nodeName.endsWith(":tbl") || nodeName === "tbl") {
+        const trs = node.getElementsByTagName("w:tr");
+        const tableData = [];
+        for (let r = 0; r < trs.length; r++) {
+          const row = [];
+          const tcs = trs[r].getElementsByTagName("w:tc");
+          for (let c = 0; c < tcs.length; c++) {
+            let cellTxt = "";
+            const ts = tcs[c].getElementsByTagName("w:t");
+            for (let t = 0; t < ts.length; t++) cellTxt += ts[t].textContent || "";
+            row.push(cellTxt.trim());
+          }
+          if (row.length > 0) tableData.push(row);
+        }
+        if (tableData.length > 0) {
+          elements.push({ type: "table", data: tableData });
+        }
+      }
+    }
+
+    // --- Automatic Academic Metadata Detection ---
+    let detectedTitle = "";
+    let detectedAuthors = "";
+    let detectedAffiliations = "";
+    let detectedEmail = "";
+    let detectedAbstract = "";
+    let detectedKeywords = "";
+    const bodyBlocks = [];
+    const extractedFigures = [];
+    let tablesCount = 0;
+
+    let stage = "before_abstract";
+    const abstractLines = [];
+
+    for (let i = 0; i < elements.length; i++) {
+      const el = elements[i];
+      if (el.type === "p") {
+        const raw = el.raw;
+        const lower = raw.toLowerCase();
+
+        // Stage 0: Detect Title
+        if (!detectedTitle && raw.length > 10 && !lower.startsWith("abstract")) {
+          detectedTitle = raw;
+          continue;
+        }
+
+        // Stage 1: Detect Authors
+        if (detectedTitle && !detectedAuthors && !lower.startsWith("abstract") && !lower.includes("university") && !lower.includes("institute") && !lower.includes("school")) {
+          detectedAuthors = el.html || raw;
+          continue;
+        }
+
+        // Stage 2: Detect Affiliations & Corresponding Email
+        if (detectedTitle && detectedAuthors && (lower.includes("university") || lower.includes("institute") || lower.includes("department") || lower.includes("school") || lower.includes("republic of korea") || lower.includes("@") || lower.includes("correspondence"))) {
+          detectedAffiliations += (detectedAffiliations ? "\n" : "") + raw;
+          const emailMatch = raw.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/);
+          if (emailMatch && !detectedEmail) detectedEmail = emailMatch[0];
+          continue;
+        }
+
+        // Stage 3: Detect Abstract
+        if (lower.startsWith("abstract") || lower === "abstract:") {
+          stage = "in_abstract";
+          const remainder = raw.replace(/^abstract:?/i, "").trim();
+          if (remainder) abstractLines.push(remainder);
+          continue;
+        }
+
+        if (stage === "in_abstract") {
+          if (lower.startsWith("keywords:") || lower.startsWith("key words:") || lower.startsWith("index terms:")) {
+            detectedKeywords = raw.replace(/^(keywords|key words|index terms):?/i, "").trim();
+            stage = "in_body";
+            continue;
+          }
+          if (lower.match(/^(1\.\s+introduction|introduction)/i)) {
+            stage = "in_body";
+            // let body parser below handle this heading
+          } else {
+            abstractLines.push(el.html || raw);
+            continue;
+          }
+        }
+
+        // Stage 4: Detect Keywords outside abstract
+        if (lower.startsWith("keywords:") || lower.startsWith("key words:") || lower.startsWith("index terms:")) {
+          detectedKeywords = raw.replace(/^(keywords|key words|index terms):?/i, "").trim();
+          continue;
+        }
+
+        // Stage 5: In Body - Parse Figures
+        if (el.images && el.images.length > 0) {
+          for (const imgUri of el.images) {
+            extractedFigures.push(imgUri);
+            let caption = `Figure ${extractedFigures.length}`;
+            if (i + 1 < elements.length && elements[i + 1].type === "p") {
+              const nextRaw = elements[i + 1].raw;
+              if (nextRaw.match(/^(figure|fig\.?)\s*\d+/i)) {
+                caption = nextRaw;
+                i++; // consume caption
+              }
+            }
+            bodyBlocks.push(`
+              <figure class="journal-figure">
+                <img src="${imgUri}" alt="${escapeHtml(caption)}" class="journal-figure-img">
+                <figcaption><strong>${escapeHtml(caption)}</strong></figcaption>
+              </figure>
+            `);
+          }
+          continue;
+        }
+
+        // Check if Section Heading
+        if (raw.match(/^(\d+\.?\s+[A-Z]|Introduction|Computational Methodology|Results|Discussion|Conclusion|References)/i) && raw.length < 90) {
+          bodyBlocks.push(`<h2>${el.html || raw}</h2>`);
+          continue;
+        }
+
+        // Check if Equation
+        if (raw.match(/\(\d+\)\s*$/) || (el.isCenter && (raw.includes("=") || raw.includes("Δ") || raw.includes("μ")))) {
+          const eqNumMatch = raw.match(/\((\d+)\)\s*$/);
+          const eqNum = eqNumMatch ? `(${eqNumMatch[1]})` : "";
+          const eqMath = raw.replace(/\(\d+\)\s*$/, "").trim();
+          bodyBlocks.push(`
+            <div class="journal-equation-block">
+              <div class="journal-equation-math">${escapeHtml(eqMath)}</div>
+              ${eqNum ? `<div class="journal-equation-num">${escapeHtml(eqNum)}</div>` : ""}
+            </div>
+          `);
+          continue;
+        }
+
+        // Standard Body Paragraph
+        bodyBlocks.push(`<p>${el.html || raw}</p>`);
+
+      } else if (el.type === "table") {
+        tablesCount++;
+        const rows = el.data;
+        if (rows.length > 0) {
+          let tblHtml = `<div class="journal-table-wrapper"><table class="journal-booktabs-table">`;
+          tblHtml += `<thead><tr>`;
+          for (const h of rows[0]) tblHtml += `<th>${escapeHtml(h)}</th>`;
+          tblHtml += `</tr></thead><tbody>`;
+          for (let r = 1; r < rows.length; r++) {
+            tblHtml += `<tr>`;
+            for (const c of rows[r]) tblHtml += `<td>${escapeHtml(c)}</td>`;
+            tblHtml += `</tr>`;
+          }
+          tblHtml += `</tbody></table></div>`;
+          bodyBlocks.push(tblHtml);
+        }
+      }
+    }
+
+    detectedAbstract = abstractLines.join("\n\n");
+
+    // Open Editor Modal & Populate Detected Fields
+    openNewsEditorModal(null);
+
+    const titleInput = document.getElementById("news-edit-title");
+    const authorsInput = document.getElementById("news-edit-authors");
+    const affsInput = document.getElementById("news-edit-affiliations");
+    const emailInput = document.getElementById("news-edit-email");
+    const abstractInput = document.getElementById("news-edit-abstract");
+    const kwInput = document.getElementById("news-edit-keywords");
+    const editorBody = document.getElementById("news-editor-body");
+
+    if (titleInput && detectedTitle) titleInput.value = detectedTitle;
+    if (authorsInput && detectedAuthors) authorsInput.value = detectedAuthors;
+    if (affsInput && detectedAffiliations) affsInput.value = detectedAffiliations;
+    if (emailInput && detectedEmail) emailInput.value = detectedEmail;
+    if (abstractInput && detectedAbstract) {
+      abstractInput.value = detectedAbstract;
+      updateAbstractLivePreview();
+    }
+    if (kwInput && detectedKeywords) kwInput.value = detectedKeywords;
+    if (editorBody && bodyBlocks.length > 0) {
+      editorBody.innerHTML = bodyBlocks.join("\n\n");
+    }
+
+    // If images were extracted, automatically set first figure as cover preview
+    if (extractedFigures.length > 0) {
+      NEWS_STATE.coverBase64 = extractedFigures[0];
+      updateNewsCoverPreview(extractedFigures[0]);
+    }
+
+    showToast(`🎉 Word manuscript imported! Detected title, authors, abstract, ${extractedFigures.length} figures & ${tablesCount} tables.`, "success");
+
+  } catch (err) {
+    console.error("Word import error:", err);
+    showToast(`Failed to parse Word file: ${err.message}`, "error");
+  }
+}
+window.importScientificWordDocument = importScientificWordDocument;
+
 // --- Professional Scientific Journal Reader Modal ---
 function openNewsJournalModal(articleId) {
   const articles = loadNewsArticles();
@@ -30786,22 +31264,16 @@ function openNewsJournalModal(articleId) {
   }
 
   NEWS_STATE.currentJournalArticleId = article.id;
+  const canonicalUrl = `${window.location.origin}${window.location.pathname}#news?id=${encodeURIComponent(article.id)}`;
+
   try {
     const articleHash = `#news?id=${encodeURIComponent(article.id)}`;
     if (window.location.hash !== articleHash) {
       history.replaceState(null, "", articleHash);
     }
   } catch (e) {}
-  const modal = document.getElementById("news-journal-modal");
-  const body = document.getElementById("journal-paper-body");
-  const editBtn = document.getElementById("journal-admin-edit-btn");
-  if (!modal || !body) return;
 
   const isAdmin = typeof isStrictAdminSession === "function" ? isStrictAdminSession() : false;
-  if (editBtn) {
-    editBtn.style.display = isAdmin ? "inline-flex" : "none";
-  }
-
   const categoryName = (article.category || "Research Article").toUpperCase();
   const doiStr = article.doi || `10.skku.matsci/news.${article.id}`;
   const keywordsList = (article.keywords || "").split(",").map(k => k.trim()).filter(Boolean);
@@ -30827,11 +31299,14 @@ function openNewsJournalModal(articleId) {
 
   const coverHeroHtml = article.cover_image ? `
     <div style="margin: 0 0 24px 0; text-align: center;">
-      <img src="${escapeHtml(article.cover_image)}" alt="Graphical Abstract" style="max-width:100%; max-height:420px; object-fit:cover; border-radius:6px; border:1px solid #ebd8c1;">
+      <img src="${escapeHtml(article.cover_image)}" alt="Graphical Abstract" style="max-width:100%; max-height:460px; object-fit:cover; border-radius:8px; border:1px solid #ebd8c1; box-shadow:0 4px 16px rgba(0,0,0,0.06);">
     </div>
   ` : "";
 
-  body.innerHTML = `
+  // Render abstract using renderScientificRichText so functions, equations, formulas render
+  const renderedAbstractHtml = renderScientificRichText(article.abstract || "");
+
+  const fullPaperHtml = `
     <!-- Top Article Type Banner -->
     <div class="journal-type-badge-row">
       <div class="journal-type-ribbon">
@@ -30856,7 +31331,7 @@ function openNewsJournalModal(articleId) {
       ${correspondingHtml}
     </div>
 
-    <!-- Official Publication History Timeline Box (Received, Revised, Published) -->
+    <!-- Official Publication History Timeline Box (Received, Revised, Published & Direct Link) -->
     <div class="journal-timeline-card">
       <div class="journal-timeline-step">
         <span class="timeline-icon">📥</span>
@@ -30870,17 +31345,18 @@ function openNewsJournalModal(articleId) {
         <span class="timeline-icon">🚀</span>
         <div><strong>Published:</strong> ${escapeHtml(article.published_date || "2026-11-19")}</div>
       </div>
-      <div class="journal-timeline-doi">
-        DOI: <a href="https://doi.org/${escapeHtml(doiStr)}" target="_blank" rel="noopener noreferrer" style="color:#8b3a1a;">${escapeHtml(doiStr)}</a>
+      <div class="journal-timeline-doi" style="display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap;">
+        <strong>Link:</strong> <a href="${canonicalUrl}" target="_blank" rel="noopener noreferrer" style="color:#8b3a1a; font-weight:700; text-decoration:underline;">${canonicalUrl}</a>
+        <button type="button" class="btn-copy-link-inline" onclick="copyNewsShareLink('${escapeHtml(article.id)}')" title="Copy direct article link">🔗 Copy</button>
       </div>
     </div>
 
     ${coverHeroHtml}
 
-    <!-- Abstract Box -->
+    <!-- Abstract Box with Formula Support -->
     <div class="journal-abstract-box">
       <div class="journal-abstract-title">Abstract</div>
-      <p class="journal-abstract-text">${escapeHtml(article.abstract || "")}</p>
+      <div class="journal-abstract-text">${renderedAbstractHtml || "<p>Abstract in preparation.</p>"}</div>
     </div>
 
     <!-- Keywords -->
@@ -30898,18 +31374,58 @@ function openNewsJournalModal(articleId) {
     </div>
   `;
 
-  modal.classList.add("open");
+  // 1. POPULATE FULL-PAGE CONTAINER (Primary full-page view on #tab-news)
+  const fullPaperBody = document.getElementById("news-full-paper-body");
+  const fullArticleView = document.getElementById("news-full-article-view");
+  const catalogView = document.getElementById("news-catalog-view");
+  const breadcrumb = document.getElementById("news-article-breadcrumb");
+  const fullEditBtn = document.getElementById("news-full-admin-edit-btn");
+
+  if (fullPaperBody) fullPaperBody.innerHTML = fullPaperHtml;
+  if (breadcrumb) breadcrumb.textContent = `News > ${article.category || 'Article'} > ${article.title}`;
+  if (fullEditBtn) fullEditBtn.style.display = isAdmin ? "inline-flex" : "none";
+
+  if (catalogView) catalogView.style.display = "none";
+  if (fullArticleView) fullArticleView.style.display = "block";
+
+  // Ensure news tab is active
+  if (typeof switchTab === "function") switchTab("news");
+
+  // Smooth scroll to top of article page
+  window.scrollTo({ top: 0, behavior: "smooth" });
+
+  // 2. Also populate legacy modal body for print or fallback
+  const modalBody = document.getElementById("journal-paper-body");
+  if (modalBody) modalBody.innerHTML = fullPaperHtml;
+  const editBtn = document.getElementById("journal-admin-edit-btn");
+  if (editBtn) editBtn.style.display = isAdmin ? "inline-flex" : "none";
 }
+
+function closeNewsFullArticleView() {
+  const catalogView = document.getElementById("news-catalog-view");
+  const fullArticleView = document.getElementById("news-full-article-view");
+  if (catalogView) catalogView.style.display = "block";
+  if (fullArticleView) fullArticleView.style.display = "none";
+
+  NEWS_STATE.currentJournalArticleId = null;
+  try {
+    history.replaceState(null, "", "#news");
+  } catch (e) {
+    window.location.hash = "#news";
+  }
+
+  // Scroll back to top of news tab
+  const newsPane = document.getElementById("tab-news");
+  if (newsPane) {
+    newsPane.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+window.closeNewsFullArticleView = closeNewsFullArticleView;
 
 function closeNewsJournalModal() {
   const modal = document.getElementById("news-journal-modal");
   if (modal) modal.classList.remove("open");
-  NEWS_STATE.currentJournalArticleId = null;
-  try {
-    if (window.location.hash.includes("id=") || window.location.hash.includes("article")) {
-      history.replaceState(null, "", "#news");
-    }
-  } catch (e) {}
+  closeNewsFullArticleView();
 }
 
 function editCurrentJournalArticle() {
