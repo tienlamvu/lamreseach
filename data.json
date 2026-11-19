@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-19T02:12:11.685Z",
+  "exported_at": "2026-11-19T02:12:28.409Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -5098,8 +5098,8 @@
       "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
       "registeredAt": "2026-11-16 11:31",
       "lastLoginAt": "2026-11-19 10:44:15",
-      "lastUpdatedAt": "2026-11-19 11:12:10",
-      "updatedAtMs": 1795054330552,
+      "lastUpdatedAt": "2026-11-19 11:12:27",
+      "updatedAtMs": 1795054347000,
       "workspace": {
         "papers": [
           {
@@ -5182,6 +5182,15 @@
                 "is_admin": false,
                 "action": "Modified Structure Parameters",
                 "details": "Updated structure properties"
+              },
+              {
+                "timestamp": "2026-11-19 11:12:27",
+                "timestampMs": 1795054347000,
+                "editor_name": "Tien Lam",
+                "editor_email": "lamvt.sep@gmail.com",
+                "is_admin": false,
+                "action": "Modified Structure Parameters",
+                "details": "Updated structure properties"
               }
             ],
             "name": "J1+4_P_N2",
@@ -5215,7 +5224,7 @@
             "bandgap_type": "Direct",
             "energy_per_atom": -6.85,
             "total_energy_per_atom": -6.85,
-            "magnetic_state": "NM",
+            "magnetic_state": "AFM",
             "notes": "",
             "raw_cif": "data_J1+4_P_N2\n_audit_creation_date              2026-11-17\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P3M1'\n_symmetry_Int_Tables_number       156\n_symmetry_cell_setting            trigonal\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n  -y,x-y,z\n  -x+y,-x,z\n  -y,-x,z\n  -x+y,y,z\n  x,x-y,z\n_cell_length_a                    6.5943\n_cell_length_b                    6.5943\n_cell_length_c                    25.1509\n_cell_angle_alpha                 90.0000\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0000\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo    0.00000   0.00000   0.52994   0.00000  Uiso   1.00\nP2     P     0.16667   0.33333   0.47087   0.00000  Uiso   1.00\nN3     N     0.16667   0.33333   0.57601   0.00000  Uiso   1.00\nSi4    Si    0.16667   0.33333   0.64600   0.00000  Uiso   1.00\nSi5    Si    0.16667   0.33333   0.38262   0.00000  Uiso   1.00\nN6     N     0.33333   0.16667   0.66175   0.00000  Uiso   1.00\nP7     P     0.33333   0.16667   0.33896   0.00000  Uiso   1.00\nMo8    Mo    0.50000  -0.00000   0.52994   0.00000  Uiso   1.00\nP9     P     0.66667   0.33333   0.47087   0.00000  Uiso   1.00\nP10    P     0.66667   0.33333   0.57601   0.00000  Uiso   1.00\nSi11   Si    0.66667   0.33333   0.64600   0.00000  Uiso   1.00\nSi12   Si    0.66667   0.33333   0.38262   0.00000  Uiso   1.00\nN13    N     0.33333   0.66667   0.66175   0.00000  Uiso   1.00\nP14    P     0.33333   0.66667   0.33896   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    P2      2.415   .     S\nMo1    P2      2.415   2     S\nMo1    P2      2.415   3     S\nMo1    N3      2.228   .     S\nMo1    N3      2.228   2     S\nMo1    N3      2.228   3     S\nP2     Mo8     2.415   3_665 S\nP2     Mo8     2.415   2     S\nP2     Si5     2.219   .     S\nN3     Si4     1.760   .     S\nN3     Mo8     2.228   3_665 S\nN3     Mo8     2.228   2     S\nSi4    N6      1.944   .     S\nSi4    N6      1.944   2     S\nSi4    N13     1.944   .     S\nSi5    P7      2.198   .     S\nSi5    P7      2.198   2     S\nSi5    P14     2.198   .     S\nN6     Si4     1.944   3     S\nN6     Si11    1.944   .     S\nP7     Si5     2.198   3     S\nP7     Si12    2.198   .     S\nMo8    P9      2.415   .     S\nMo8    P10     2.228   .     S\nMo8    P2      2.415   3     S\nMo8    P2      2.415   2_655 S\nMo8    N3      2.228   2_655 S\nMo8    N3      2.228   3     S\nP9     Mo8     2.415   2_655 S\nP9     Mo8     2.415   3_665 S\nP9     Si12    2.219   .     S\nP10    Si11    1.760   .     S\nP10    Mo8     2.228   2_655 S\nP10    Mo8     2.228   3_665 S\nSi11   N6      1.944   2_655 S\nSi11   N6      1.944   3_665 S\nSi12   P7      2.198   2_655 S\nSi12   P7      2.198   3_665 S\nN13    Si4     1.944   3_565 S\nN13    Si4     1.944   2_665 S\nP14    Si5     2.198   3_565 S\nP14    Si5     2.198   2_665 S",
             "cif_content": "data_J1+4_P_N2\n_audit_creation_date              2026-11-17\n_audit_creation_method            'Materials Studio'\n_symmetry_space_group_name_H-M    'P3M1'\n_symmetry_Int_Tables_number       156\n_symmetry_cell_setting            trigonal\nloop_\n_symmetry_equiv_pos_as_xyz\n  x,y,z\n  -y,x-y,z\n  -x+y,-x,z\n  -y,-x,z\n  -x+y,y,z\n  x,x-y,z\n_cell_length_a                    6.5943\n_cell_length_b                    6.5943\n_cell_length_c                    25.1509\n_cell_angle_alpha                 90.0000\n_cell_angle_beta                  90.0000\n_cell_angle_gamma                 120.0000\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_U_iso_or_equiv\n_atom_site_adp_type\n_atom_site_occupancy\nMo1    Mo    0.00000   0.00000   0.52994   0.00000  Uiso   1.00\nP2     P     0.16667   0.33333   0.47087   0.00000  Uiso   1.00\nN3     N     0.16667   0.33333   0.57601   0.00000  Uiso   1.00\nSi4    Si    0.16667   0.33333   0.64600   0.00000  Uiso   1.00\nSi5    Si    0.16667   0.33333   0.38262   0.00000  Uiso   1.00\nN6     N     0.33333   0.16667   0.66175   0.00000  Uiso   1.00\nP7     P     0.33333   0.16667   0.33896   0.00000  Uiso   1.00\nMo8    Mo    0.50000  -0.00000   0.52994   0.00000  Uiso   1.00\nP9     P     0.66667   0.33333   0.47087   0.00000  Uiso   1.00\nP10    P     0.66667   0.33333   0.57601   0.00000  Uiso   1.00\nSi11   Si    0.66667   0.33333   0.64600   0.00000  Uiso   1.00\nSi12   Si    0.66667   0.33333   0.38262   0.00000  Uiso   1.00\nN13    N     0.33333   0.66667   0.66175   0.00000  Uiso   1.00\nP14    P     0.33333   0.66667   0.33896   0.00000  Uiso   1.00\nloop_\n_geom_bond_atom_site_label_1\n_geom_bond_atom_site_label_2\n_geom_bond_distance\n_geom_bond_site_symmetry_2\n_ccdc_geom_bond_type\nMo1    P2      2.415   .     S\nMo1    P2      2.415   2     S\nMo1    P2      2.415   3     S\nMo1    N3      2.228   .     S\nMo1    N3      2.228   2     S\nMo1    N3      2.228   3     S\nP2     Mo8     2.415   3_665 S\nP2     Mo8     2.415   2     S\nP2     Si5     2.219   .     S\nN3     Si4     1.760   .     S\nN3     Mo8     2.228   3_665 S\nN3     Mo8     2.228   2     S\nSi4    N6      1.944   .     S\nSi4    N6      1.944   2     S\nSi4    N13     1.944   .     S\nSi5    P7      2.198   .     S\nSi5    P7      2.198   2     S\nSi5    P14     2.198   .     S\nN6     Si4     1.944   3     S\nN6     Si11    1.944   .     S\nP7     Si5     2.198   3     S\nP7     Si12    2.198   .     S\nMo8    P9      2.415   .     S\nMo8    P10     2.228   .     S\nMo8    P2      2.415   3     S\nMo8    P2      2.415   2_655 S\nMo8    N3      2.228   2_655 S\nMo8    N3      2.228   3     S\nP9     Mo8     2.415   2_655 S\nP9     Mo8     2.415   3_665 S\nP9     Si12    2.219   .     S\nP10    Si11    1.760   .     S\nP10    Mo8     2.228   2_655 S\nP10    Mo8     2.228   3_665 S\nSi11   N6      1.944   2_655 S\nSi11   N6      1.944   3_665 S\nSi12   P7      2.198   2_655 S\nSi12   P7      2.198   3_665 S\nN13    Si4     1.944   3_565 S\nN13    Si4     1.944   2_665 S\nP14    Si5     2.198   3_565 S\nP14    Si5     2.198   2_665 S",
@@ -5495,6 +5504,13 @@
         ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-19 11:12:27",
+          "timestampMs": 1795054347000,
+          "category": "Crystal Structures",
+          "action": "Updated Structure",
+          "detail": "Mo2Si4N3P5 — J1+4_P_N2 (P3M1 (156))"
+        },
         {
           "timestamp": "2026-11-19 11:12:10",
           "timestampMs": 1795054330552,
