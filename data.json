@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-19T01:08:25.922Z",
+  "exported_at": "2026-11-19T01:08:39.778Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -5099,7 +5099,7 @@
       "registeredAt": "2026-11-16 11:31",
       "lastLoginAt": "2026-11-18 21:42",
       "lastUpdatedAt": "2026-11-19 10:08",
-      "updatedAtMs": 1795050504843,
+      "updatedAtMs": 1795050518219,
       "workspace": {
         "papers": [
           {
@@ -5318,7 +5318,7 @@
             "structural_id": "CD-0027",
             "calc_status": "Relaxed",
             "is_starred": false,
-            "name": "J1+4_Pristine",
+            "name": "J1+4_A",
             "formula": "MoSi2N2P2",
             "chemical_formula": "MoSi2N2P2",
             "project_folder": "2D Janus MA2Z4 & Layered TMDs",
@@ -5617,7 +5617,8 @@
           }
         ],
         "customFolders": [
-          "lam New"
+          "lam New",
+          "2D Janus MA2Z4 & Layered TMDs"
         ],
         "eventCategories": [
           "Synthesis / Furnace",
@@ -5628,6 +5629,12 @@
         ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-19 10:08",
+          "category": "Crystal Structures",
+          "action": "Updated Structure",
+          "detail": "MoSi2N2P2 — J1+4_A (P3M1 (156))"
+        },
         {
           "timestamp": "2026-11-19 10:08",
           "category": "Crystal Structures",
