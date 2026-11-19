@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-19T06:31:15.155Z",
+  "exported_at": "2026-11-19T06:31:24.847Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -5541,6 +5541,151 @@
       ],
       "picture": "https://lh3.googleusercontent.com/a/ACg8ocJ5aVyRlpWSljVC2OJusM1rb39s2jSKUTJqGBroVnc79VyzoEsF=s96-c"
     },
+    "aaa@gmail.com": {
+      "email": "aaa@gmail.com",
+      "name": "ABC",
+      "affiliation": "Independent Researcher",
+      "academicRole": "Researcher",
+      "status": "Active",
+      "emailVerified": true,
+      "verifiedAt": "2026-11-16 06:01",
+      "authProvider": "Verified Email & Password",
+      "googleLinked": false,
+      "googleEmail": "",
+      "passwordPlainHint": "••••••••",
+      "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
+      "registeredAt": "2026-11-16 06:01",
+      "lastLoginAt": "2026-11-16 06:01",
+      "lastUpdatedAt": "2026-11-19 15:31:23",
+      "updatedAtMs": 1795069883709,
+      "workspace": {
+        "papers": [],
+        "structures": [],
+        "schedule": [
+          {
+            "id": 1794808872194,
+            "title": "Welcome Research Session — ABC's Workspace",
+            "event_type": "Group Meeting / PI Meeting",
+            "instrument_or_location": "Independent Researcher",
+            "start_date": "2026-11-16",
+            "start_time": "10:00",
+            "end_time": "11:30",
+            "priority": "High",
+            "status": "Scheduled",
+            "sample_id": "INIT-01",
+            "description": "Personal schedule initialized for ABC (aaa@gmail.com).",
+            "in_weekly_report": 1,
+            "visibility": "Private",
+            "owner_email": "aaa@gmail.com"
+          }
+        ],
+        "expReportRows": [
+          {
+            "sample_id": "J+4",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N4",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2P4",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "Te",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSSe",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "Na0.5TiBi0.5O3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Non-relaxed"
+          },
+          {
+            "sample_id": "Na0.5TiBi0.5O3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Non-relaxed"
+          },
+          {
+            "sample_id": "Na0.5TiBi0.5O3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Non-relaxed"
+          }
+        ],
+        "litReportRows": [
+          {
+            "title": "Antisite defect qubits in monolayer transition metal dichalcogenides",
+            "journal": "Nature Communications (2022) | DOI: 10.1038/s41467-022-28133-x",
+            "material": "Perovskite / 2D Material",
+            "takeaway": "Good reference for antisite defects in TMDs."
+          }
+        ],
+        "customFolders": [],
+        "eventCategories": [
+          "Synthesis / Furnace",
+          "Characterization (XRD/SEM/TEM/XPS)",
+          "Group Meeting / PI Meeting",
+          "Electrochemical Testing",
+          "Data Analysis / Manuscript Writing"
+        ]
+      },
+      "activityLog": [
+        {
+          "timestamp": "2026-11-16 06:01",
+          "category": "Session",
+          "action": "Signed In (Email Confirmation Link Verified)",
+          "detail": "Authenticated as ABC (aaa@gmail.com)"
+        },
+        {
+          "timestamp": "2026-11-16 06:01",
+          "category": "Account",
+          "action": "Registered & Verified Email (Email Confirmation Link Verified)",
+          "detail": "ABC (Independent Researcher) verified email aaa@gmail.com."
+        }
+      ],
+      "groups": []
+    },
     "tlamvux@gmail.com": {
       "email": "tlamvux@gmail.com",
       "name": "Vu Tien Lam",
@@ -6048,7 +6193,6 @@
     "ssk@gmail.com",
     "las@gmail.com",
     "test.researcher@skku.edu",
-    "aaa@gmail.com",
     "temp.delete.test@gmail.com",
     "test.relay.otp@skku.edu",
     "linh@gmail.com",
@@ -6062,7 +6206,6 @@
     "ssk@gmail.com": 1795047536565,
     "las@gmail.com": 1795047536565,
     "test.researcher@skku.edu": 1795047536565,
-    "aaa@gmail.com": 1795047536565,
     "temp.delete.test@gmail.com": 1795047536565,
     "test.relay.otp@skku.edu": 1795047536565,
     "linh@gmail.com": 1795047536565,
