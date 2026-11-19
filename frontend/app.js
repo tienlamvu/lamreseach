@@ -125,6 +125,8 @@ function startLiveClock() {
 document.addEventListener("DOMContentLoaded", async () => {
   startLiveClock();
   initAuthSession();
+  if (typeof initIdleAutoLogout === "function") initIdleAutoLogout();
+  if (typeof updateChatUnreadBadges === "function") updateChatUnreadBadges();
   initCifDropZone();
   if (typeof initPlagDropZone === "function") initPlagDropZone();
   if (typeof initDiffDropZones === "function") initDiffDropZones();
@@ -666,12 +668,13 @@ function getGmt9NowStr() {
       day: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
+      second: "2-digit",
       hour12: false
     }).formatToParts(d);
     const getP = (t) => parts.find(p => p.type === t)?.value || "00";
-    return `${getP("year")}-${getP("month")}-${getP("day")} ${getP("hour")}:${getP("minute")}`;
+    return `${getP("year")}-${getP("month")}-${getP("day")} ${getP("hour")}:${getP("minute")}:${getP("second")}`;
   } catch (e) {
-    return d.toISOString().replace("T", " ").slice(0, 16);
+    return d.toISOString().replace("T", " ").slice(0, 19);
   }
 }
 
@@ -687,10 +690,11 @@ function formatToGmt9(ts, fallbackMs = null) {
           day: "2-digit",
           hour: "2-digit",
           minute: "2-digit",
+          second: "2-digit",
           hour12: false
         }).formatToParts(d);
         const getP = (t) => parts.find(p => p.type === t)?.value || "00";
-        return `${getP("year")}-${getP("month")}-${getP("day")} ${getP("hour")}:${getP("minute")}`;
+        return `${getP("year")}-${getP("month")}-${getP("day")} ${getP("hour")}:${getP("minute")}:${getP("second")}`;
       }
     } catch (e) {}
   }
@@ -698,10 +702,16 @@ function formatToGmt9(ts, fallbackMs = null) {
   let s = String(ts).trim();
   if (s.includes("GMT+9") || s.includes("KST")) return s;
 
-  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(s)) {
+  // If already formatted as "YYYY-MM-DD HH:mm(:ss)", it is ALREADY Korea Standard Time!
+  // Return directly to avoid erroneous double UTC +9h timezone addition!
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(s)) {
+    return s;
+  }
+
+  // If ISO 8601 string with "T" and "Z" / offset, convert accurately to Asia/Seoul
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)) {
     try {
-      const cleanIso = s.replace(" ", "T") + (s.endsWith("Z") ? "" : ":00Z");
-      const d = new Date(cleanIso);
+      const d = new Date(s);
       if (!isNaN(d.getTime())) {
         const parts = new Intl.DateTimeFormat("en-CA", {
           timeZone: "Asia/Seoul",
@@ -710,10 +720,11 @@ function formatToGmt9(ts, fallbackMs = null) {
           day: "2-digit",
           hour: "2-digit",
           minute: "2-digit",
+          second: "2-digit",
           hour12: false
         }).formatToParts(d);
         const getP = (t) => parts.find(p => p.type === t)?.value || "00";
-        return `${getP("year")}-${getP("month")}-${getP("day")} ${getP("hour")}:${getP("minute")}`;
+        return `${getP("year")}-${getP("month")}-${getP("day")} ${getP("hour")}:${getP("minute")}:${getP("second")}`;
       }
     } catch (e) {}
   }
@@ -2849,23 +2860,43 @@ function shouldUseBackendApi() {
 }
 
 function recordUserActivity(category, action, detail) {
+  const nowMs = Date.now();
   const nowStr = getGmt9NowStr();
-  const activeEmail = getActivePersonalWorkspaceEmail();
-  if (!activeEmail || !STATE.usersRegistry[activeEmail]) return;
-  const user = STATE.usersRegistry[activeEmail];
-  user.activityLog = Array.isArray(user.activityLog) ? user.activityLog : [];
-  user.activityLog.unshift({
+  const actObj = {
     timestamp: nowStr,
+    timestampMs: nowMs,
     category: category || "Workspace",
     action: action || "Updated Content",
     detail: detail || ""
-  });
-  if (user.activityLog.length > 100) {
-    user.activityLog = user.activityLog.slice(0, 100);
+  };
+
+  const activeEmail = getActivePersonalWorkspaceEmail();
+  if (activeEmail && STATE.usersRegistry && STATE.usersRegistry[activeEmail]) {
+    const user = STATE.usersRegistry[activeEmail];
+    user.activityLog = Array.isArray(user.activityLog) ? user.activityLog : [];
+    user.activityLog.unshift(actObj);
+    if (user.activityLog.length > 100) {
+      user.activityLog = user.activityLog.slice(0, 100);
+    }
+    user.lastUpdatedAt = nowStr;
+    user.updatedAtMs = nowMs;
+    persistUsersRegistryLocal();
+  } else if (isStrictAdminSession()) {
+    if (!STATE.adminActivityLog) {
+      try {
+        const raw = localStorage.getItem("matsci_admin_activity_log_v1");
+        STATE.adminActivityLog = raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        STATE.adminActivityLog = [];
+      }
+    }
+    STATE.adminActivityLog = Array.isArray(STATE.adminActivityLog) ? STATE.adminActivityLog : [];
+    STATE.adminActivityLog.unshift(actObj);
+    if (STATE.adminActivityLog.length > 100) STATE.adminActivityLog = STATE.adminActivityLog.slice(0, 100);
+    try {
+      localStorage.setItem("matsci_admin_activity_log_v1", JSON.stringify(STATE.adminActivityLog));
+    } catch (e) {}
   }
-  user.lastUpdatedAt = nowStr;
-  user.updatedAtMs = Date.now();
-  persistUsersRegistryLocal();
 }
 
 function isStrictAdminSession() {
@@ -9762,6 +9793,15 @@ async function handleBatchCifFiles(fileList) {
         poscar_content: poscarText,
         in_weekly_report: 0,
         uploaded_at: getGmt9NowStr(),
+        edit_history: [{
+          timestamp: getGmt9NowStr(),
+          timestampMs: Date.now(),
+          editor_name: (STATE.auth && STATE.auth.name) || (isAdminNow ? "Vu Tien Lam" : "Researcher"),
+          editor_email: (STATE.auth && STATE.auth.email) || (isAdminNow ? OWNER_GOOGLE_EMAIL : ""),
+          is_admin: isAdminNow,
+          action: "Uploaded CIF File",
+          details: `Batch uploaded CIF from ${file.name} (Lattice: ${a}×${b}×${c} Å, Space Group: ${sg})`
+        }],
         ...visMeta
       };
       removeDeletedStructureTombstone(newStruct.id, structuralId);
@@ -11152,11 +11192,11 @@ const MP_COLUMN_DEFS = [
   { key: "formula",    label: "Formula",         defaultOn: true },
   { key: "system",     label: "Crystal System",  defaultOn: true },
   { key: "spacegroup", label: "Space Group",     defaultOn: true },
+  { key: "lattice",    label: "Lattice (a, b, c)", defaultOn: true },
   { key: "volume",     label: "Volume (Å³)",     defaultOn: true },
-  { key: "bandgap",    label: "Band Gap (eV)",   defaultOn: true },
   { key: "folder",     label: "Project Folder",  defaultOn: true },
+  { key: "bandgap",    label: "Band Gap (eV)",   defaultOn: false },
   { key: "status",     label: "Workflow Status", defaultOn: false },
-  { key: "lattice",    label: "Lattice (a,b,c)", defaultOn: false },
   { key: "dft",        label: "DFT Method",      defaultOn: false },
   { key: "mpid",       label: "MP / COD ID",     defaultOn: false },
   { key: "paper",      label: "Publication",     defaultOn: false },
@@ -11168,12 +11208,17 @@ function mpGetVisibleColumns() {
   const cols = {};
   MP_COLUMN_DEFS.forEach(c => { cols[c.key] = c.defaultOn; });
   try {
-    const saved = localStorage.getItem("matsci_mp_cols_v1");
+    const saved = localStorage.getItem("matsci_mp_cols_v2");
     if (saved) {
       const parsed = JSON.parse(saved);
       MP_COLUMN_DEFS.forEach(c => {
         if (typeof parsed[c.key] === "boolean") cols[c.key] = parsed[c.key];
       });
+    } else {
+      // Migrate from v1 ensuring new defaults: Lattice and Volume ON, Band Gap OFF
+      cols.lattice = true;
+      cols.volume = true;
+      cols.bandgap = false;
     }
   } catch (e) {}
   STATE.mpVisibleCols = cols;
@@ -11183,7 +11228,7 @@ function mpGetVisibleColumns() {
 function mpSaveVisibleColumns(cols) {
   STATE.mpVisibleCols = cols;
   try {
-    localStorage.setItem("matsci_mp_cols_v1", JSON.stringify(cols));
+    localStorage.setItem("matsci_mp_cols_v2", JSON.stringify(cols));
   } catch (e) {}
 }
 
@@ -13216,6 +13261,10 @@ function openStructureModal(structId = null, options = {}) {
       populateModalFolderDropdown(curFilterVal && curFilterVal !== "ALL" && !isPersonalUserFolderName(curFilterVal) ? curFilterVal : "General Research");
     }
   }
+  const curStructForHistory = structId ? STATE.structures.find(x => x.id === structId) : null;
+  if (typeof renderStructureAuditHistory === "function") {
+    renderStructureAuditHistory(curStructForHistory ? (curStructForHistory.edit_history || []) : [], !structId);
+  }
   modal.classList.add("open");
   setTimeout(checkModalStructureDuplicate, 60);
 }
@@ -13346,10 +13395,43 @@ async function saveStructureFromModal() {
     : generateNextStructuralId();
   const calcStatus = document.getElementById("struct-calc-status")?.value || (existingStruct && existingStruct.calc_status) || "Relaxed";
 
+  // Compute detailed modification audit history
+  const changes = [];
+  if (existingStruct) {
+    if (existingStruct.formula !== formula) changes.push(`Formula: ${existingStruct.formula} → ${formula}`);
+    if (Number(existingStruct.a) !== Number(a) || Number(existingStruct.b) !== Number(b) || Number(existingStruct.c) !== Number(c)) {
+      changes.push(`Lattice: (${existingStruct.a}, ${existingStruct.b}, ${existingStruct.c}) → (${a}, ${b}, ${c})`);
+    }
+    if (Number(existingStruct.volume) !== Number(vol)) changes.push(`Volume: ${existingStruct.volume} → ${vol}`);
+    if (existingStruct.space_group !== spaceGroup) changes.push(`Space Group: ${existingStruct.space_group} → ${spaceGroup}`);
+    if (existingStruct.crystal_system !== crystalSystem) changes.push(`Crystal System: ${existingStruct.crystal_system} → ${crystalSystem}`);
+    if (existingStruct.project_folder !== assignedFolder) changes.push(`Folder: ${existingStruct.project_folder} → ${assignedFolder}`);
+    if (existingStruct.visibility !== visMeta.visibility) changes.push(`Visibility: ${existingStruct.visibility} → ${visMeta.visibility}`);
+    if (existingStruct.calc_status !== calcStatus) changes.push(`Status: ${existingStruct.calc_status} → ${calcStatus}`);
+    if (existingStruct.notes !== notes) changes.push("Updated computational notes");
+    if (changes.length === 0) changes.push("Updated structure properties");
+  } else {
+    changes.push(`Created structure ${formula} (${spaceGroup}, ${crystalSystem})`);
+  }
+
+  const currentEditorName = (STATE.auth && STATE.auth.name) || (isAdminNow ? "Vu Tien Lam" : "Researcher");
+  const currentEditorEmail = (STATE.auth && STATE.auth.email) || (isAdminNow ? OWNER_GOOGLE_EMAIL : "");
+  const auditEntry = {
+    timestamp: getGmt9NowStr(),
+    timestampMs: Date.now(),
+    editor_name: currentEditorName,
+    editor_email: currentEditorEmail,
+    is_admin: isAdminNow,
+    action: existingStruct ? "Modified Structure Parameters" : "Created Structure",
+    details: changes.join("; ")
+  };
+  const prevHist = (existingStruct && Array.isArray(existingStruct.edit_history)) ? existingStruct.edit_history : [];
+
   const payload = {
     structural_id: structuralId,
     calc_status: calcStatus,
     is_starred: existingStruct ? Boolean(existingStruct.is_starred) : false,
+    edit_history: [...prevHist, auditEntry],
     name,
     formula,
     chemical_formula: formula,
@@ -30215,3 +30297,938 @@ window.formatToGmt9 = formatToGmt9;
 window.getDatesInRange = getDatesInRange;
 window.handleScheduleStartDateChange = handleScheduleStartDateChange;
 window.updateScheduleDurationBadge = updateScheduleDurationBadge;
+
+
+// ============================================================================
+// Auto-Logout After 1 Hour Inactivity & Structure Audit History Helpers (v101)
+// ============================================================================
+
+const IDLE_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour (3,600,000 ms)
+let _lastActivityTimestamp = Date.now();
+
+function recordUserActivityHeartbeat() {
+  _lastActivityTimestamp = Date.now();
+  try {
+    localStorage.setItem("matsci_last_active_ts", String(_lastActivityTimestamp));
+  } catch (e) {}
+}
+
+function initIdleAutoLogout() {
+  try {
+    const saved = localStorage.getItem("matsci_last_active_ts");
+    if (saved) {
+      const parsed = Number(saved);
+      if (parsed > 0 && Date.now() - parsed < IDLE_TIMEOUT_MS) {
+        _lastActivityTimestamp = parsed;
+      } else if (parsed > 0 && Date.now() - parsed >= IDLE_TIMEOUT_MS) {
+        if (STATE.auth && (STATE.auth.isLoggedIn || STATE.auth.isAdmin)) {
+          console.warn("Session expired on startup due to 1 hour inactivity.");
+          setTimeout(() => {
+            signOutUser();
+            showToast("Phiên đăng nhập đã tự động kết thúc sau 1 giờ không thao tác. Vui lòng đăng nhập lại.", "warn");
+          }, 600);
+          return;
+        }
+      }
+    }
+    localStorage.setItem("matsci_last_active_ts", String(Date.now()));
+  } catch (e) {}
+
+  const events = ["mousedown", "mousemove", "keydown", "scroll", "touchstart", "click"];
+  let lastThrottled = 0;
+  events.forEach(evt => {
+    window.addEventListener(evt, () => {
+      const now = Date.now();
+      if (now - lastThrottled > 15000) {
+        lastThrottled = now;
+        recordUserActivityHeartbeat();
+      }
+    }, { passive: true });
+  });
+
+  setInterval(() => {
+    if (!STATE.auth || (!STATE.auth.isLoggedIn && !STATE.auth.isAdmin)) return;
+    const now = Date.now();
+    let stored = _lastActivityTimestamp;
+    try {
+      const s = localStorage.getItem("matsci_last_active_ts");
+      if (s) stored = Math.max(stored, Number(s) || 0);
+    } catch (e) {}
+    
+    if (now - stored >= IDLE_TIMEOUT_MS) {
+      console.warn("Auto-logout: User inactive for 1 hour.");
+      signOutUser();
+      showToast("Phiên đăng nhập đã tự động kết thúc sau 1 giờ không thao tác. Vui lòng đăng nhập lại.", "warn");
+      _lastActivityTimestamp = now;
+      try { localStorage.setItem("matsci_last_active_ts", String(now)); } catch (e) {}
+    }
+  }, 30000);
+}
+window.initIdleAutoLogout = initIdleAutoLogout;
+
+function renderStructureAuditHistory(history, isNew = false) {
+  const container = document.getElementById("struct-history-list");
+  const badge = document.getElementById("struct-history-badge");
+  if (!container) return;
+
+  if (isNew) {
+    if (badge) badge.textContent = "0 records";
+    container.innerHTML = `<div style="color:#856447; font-size:11.5px; padding:6px 4px; font-style:italic;">✨ New structure: Initial creation and provenance record will be recorded automatically upon save.</div>`;
+    return;
+  }
+
+  const list = Array.isArray(history) ? history : [];
+  if (badge) badge.textContent = `${list.length} record${list.length === 1 ? "" : "s"}`;
+
+  if (list.length === 0) {
+    container.innerHTML = `<div style="color:#856447; font-size:11.5px; padding:6px 4px; font-style:italic;">No recorded modification history for this structure yet.</div>`;
+    return;
+  }
+
+  const sorted = [...list].sort((a, b) => (Number(b.timestampMs || 0) - Number(a.timestampMs || 0)) || String(b.timestamp || "").localeCompare(String(a.timestamp || "")));
+
+  container.innerHTML = sorted.map(item => {
+    const isAdm = Boolean(item.is_admin);
+    const editorName = item.editor_name || (isAdm ? "Vu Tien Lam" : "Researcher");
+    const editorEmail = item.editor_email || (isAdm ? OWNER_GOOGLE_EMAIL : "");
+    const roleBadge = isAdm
+      ? `<span class="badge" style="background:#8c4a1e; color:#fff; font-size:9.5px; padding:1px 5px;">Admin</span>`
+      : `<span class="badge" style="background:#2563eb; color:#fff; font-size:9.5px; padding:1px 5px;">Researcher</span>`;
+
+    return `
+      <div style="background:#fff; border:1px solid #ebd8c1; border-radius:6px; padding:6px 10px; display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+        <div style="flex:1; min-width:0;">
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <strong style="color:#2e1a0d; font-size:12px;">${escapeHtml(editorName)}</strong>
+            ${roleBadge}
+            <span style="color:#786354; font-size:11px;">(${escapeHtml(editorEmail)})</span>
+          </div>
+          <div style="color:#573c29; font-size:11.5px; margin-top:2px; line-height:1.4;">
+            <strong style="color:#b45309;">${escapeHtml(item.action || "Updated")}</strong>: ${escapeHtml(item.details || "")}
+          </div>
+        </div>
+        <div style="font-size:10.5px; color:#856447; white-space:nowrap; font-family:monospace; margin-top:1px;">
+          📅 ${escapeHtml(item.timestamp || "")}
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+window.renderStructureAuditHistory = renderStructureAuditHistory;
+
+// ============================================================================
+// Real-Time Lab Messenger & Research Chat Controller (v101)
+// ============================================================================
+
+const CHAT_STICKERS = [
+  "⚛️", "🧪", "🔬", "📊", "💻", "📐", "💎", "⚡", "🌡️", "🛰️", "🔭", "🧲",
+  "👍", "❤️", "🎉", "🚀", "🔥", "💡", "👏", "🙏", "☕", "✅", "👀", "💯", "🎯", "💪", "🙌", "🤝"
+];
+
+let _activeChatConvId = null;
+let _chatConvFilter = "all";
+let _chatSearchQuery = "";
+
+function getCurrentChatUser() {
+  if (isStrictAdminSession()) {
+    return {
+      email: OWNER_GOOGLE_EMAIL,
+      name: "Vu Tien Lam",
+      role: "Admin",
+      isAdmin: true,
+      picture: (STATE.auth && STATE.auth.picture) || ""
+    };
+  }
+  if (STATE.auth && STATE.auth.isLoggedIn) {
+    return {
+      email: normalizeEmail(STATE.auth.email),
+      name: STATE.auth.name || STATE.auth.email,
+      role: "Researcher",
+      isAdmin: false,
+      picture: STATE.auth.picture || ""
+    };
+  }
+  return {
+    email: "guest.researcher@skku.edu",
+    name: "Guest Researcher",
+    role: "Researcher",
+    isAdmin: false,
+    picture: ""
+  };
+}
+
+function getInitialDemoChatConversations() {
+  const now = getGmt9NowStr();
+  const nowMs = Date.now();
+  return [
+    {
+      id: "group_skku_lab_general",
+      type: "group",
+      name: "SKKU Materials Simulation Lab",
+      created_by: OWNER_GOOGLE_EMAIL,
+      created_at: "2026-11-17 09:00:00",
+      participants: [OWNER_GOOGLE_EMAIL, "lamvt@g.skku.edu", "lamvt.sep@gmail.com", "tlamvux@gmail.com"],
+      participantNames: {
+        [OWNER_GOOGLE_EMAIL]: "Vu Tien Lam (Admin)",
+        "lamvt@g.skku.edu": "Jaewon Kim",
+        "lamvt.sep@gmail.com": "Tien Lam (Researcher)",
+        "tlamvux@gmail.com": "Vu Tien Lam (Google User)"
+      },
+      updatedAt: now,
+      updatedAtMs: nowMs,
+      messages: [
+        {
+          id: "msg_demo_1",
+          senderEmail: OWNER_GOOGLE_EMAIL,
+          senderName: "Vu Tien Lam",
+          senderRole: "Admin",
+          timestamp: "2026-11-18 10:00:00",
+          timestampMs: nowMs - 86400000,
+          text: "Welcome team to the SKKU Materials Simulation Lab Messenger! Please share your DFT VASP relaxation results and paper drafts here.",
+          attachments: [],
+          sticker: "⚛️",
+          readBy: [
+            { email: OWNER_GOOGLE_EMAIL, name: "Vu Tien Lam", timestamp: "2026-11-18 10:00:00" },
+            { email: "lamvt@g.skku.edu", name: "Jaewon Kim", timestamp: "2026-11-18 10:05:00" }
+          ]
+        },
+        {
+          id: "msg_demo_2",
+          senderEmail: "lamvt@g.skku.edu",
+          senderName: "Jaewon Kim",
+          senderRole: "Researcher",
+          timestamp: "2026-11-18 10:15:00",
+          timestampMs: nowMs - 85500000,
+          text: "Thank you, Professor! The 2D MoSi2N4 Janus defect configurations are converging smoothly.",
+          attachments: [],
+          sticker: "🚀",
+          readBy: [
+            { email: "lamvt@g.skku.edu", name: "Jaewon Kim", timestamp: "2026-11-18 10:15:00" },
+            { email: OWNER_GOOGLE_EMAIL, name: "Vu Tien Lam", timestamp: "2026-11-18 10:20:00" }
+          ]
+        }
+      ]
+    },
+    {
+      id: `dm_${[OWNER_GOOGLE_EMAIL, "lamvt@g.skku.edu"].sort().join("_")}`,
+      type: "direct",
+      participants: [OWNER_GOOGLE_EMAIL, "lamvt@g.skku.edu"],
+      participantNames: {
+        [OWNER_GOOGLE_EMAIL]: "Vu Tien Lam",
+        "lamvt@g.skku.edu": "Jaewon Kim"
+      },
+      updatedAt: now,
+      updatedAtMs: nowMs,
+      messages: [
+        {
+          id: "msg_dm_demo_1",
+          senderEmail: "lamvt@g.skku.edu",
+          senderName: "Jaewon Kim",
+          senderRole: "Researcher",
+          timestamp: "2026-11-18 14:30:00",
+          timestampMs: nowMs - 70000000,
+          text: "Hi Professor Lam, I reviewed the latest band structure plots. Everything is ready for our weekly subgroup meeting.",
+          attachments: [],
+          sticker: "👍",
+          readBy: [
+            { email: "lamvt@g.skku.edu", name: "Jaewon Kim", timestamp: "2026-11-18 14:30:00" },
+            { email: OWNER_GOOGLE_EMAIL, name: "Vu Tien Lam", timestamp: "2026-11-18 14:35:00" }
+          ]
+        }
+      ]
+    }
+  ];
+}
+
+function getChatConversations() {
+  if (Array.isArray(STATE.chatConversations) && STATE.chatConversations.length > 0) {
+    return STATE.chatConversations;
+  }
+  try {
+    const raw = localStorage.getItem("matsci_chat_conversations_v1");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        STATE.chatConversations = parsed;
+        return parsed;
+      }
+    }
+  } catch (e) {}
+
+  if (STATE.masterData && Array.isArray(STATE.masterData.chat_conversations) && STATE.masterData.chat_conversations.length > 0) {
+    STATE.chatConversations = STATE.masterData.chat_conversations;
+    return STATE.chatConversations;
+  }
+
+  const seeded = getInitialDemoChatConversations();
+  STATE.chatConversations = seeded;
+  saveChatConversations();
+  return seeded;
+}
+
+function saveChatConversations() {
+  try {
+    localStorage.setItem("matsci_chat_conversations_v1", JSON.stringify(STATE.chatConversations || []));
+  } catch (e) {}
+  if (STATE.masterData) {
+    STATE.masterData.chat_conversations = STATE.chatConversations;
+  }
+  updateChatUnreadBadges();
+}
+
+function getUnreadChatCount() {
+  const curUser = getCurrentChatUser();
+  if (!curUser) return 0;
+  const convs = getChatConversations();
+  let count = 0;
+  convs.forEach(conv => {
+    const isMember = (conv.participants || []).some(p => normalizeEmail(p) === curUser.email);
+    if (!isMember) return;
+    (conv.messages || []).forEach(m => {
+      if (normalizeEmail(m.senderEmail) !== curUser.email) {
+        const read = (m.readBy || []).some(r => normalizeEmail(r.email) === curUser.email);
+        if (!read) count++;
+      }
+    });
+  });
+  return count;
+}
+
+function updateChatUnreadBadges() {
+  const count = getUnreadChatCount();
+  const floatingBadge = document.getElementById("floating-chat-unread-badge");
+  const headerBadge = document.getElementById("header-chat-unread-badge");
+  if (floatingBadge) {
+    floatingBadge.textContent = count > 99 ? "99+" : String(count);
+    floatingBadge.style.display = count > 0 ? "block" : "none";
+  }
+  if (headerBadge) {
+    headerBadge.textContent = count > 99 ? "99+" : String(count);
+    headerBadge.style.display = count > 0 ? "inline-block" : "none";
+  }
+}
+
+function toggleChatDrawer(forceState = null) {
+  const drawer = document.getElementById("matsci-chat-drawer");
+  if (!drawer) return;
+  const isHidden = drawer.style.display === "none" || !drawer.style.display;
+  const shouldShow = forceState !== null ? Boolean(forceState) : isHidden;
+
+  if (shouldShow) {
+    drawer.style.display = "flex";
+    const curUser = getCurrentChatUser();
+    if (!curUser) {
+      document.getElementById("chat-view-conversations").style.display = "block";
+      document.getElementById("chat-view-active").style.display = "none";
+      const scroll = document.getElementById("chat-conversations-scroll");
+      if (scroll) {
+        scroll.innerHTML = `
+          <div style="padding:40px 20px; text-align:center; color:#786354;">
+            <div style="font-size:36px; margin-bottom:8px;">💬</div>
+            <div style="font-weight:700; font-size:15px; color:#3d2314; margin-bottom:6px;">Sign in to join Lab Messenger</div>
+            <div style="font-size:12.5px; color:#6b5343; margin-bottom:16px;">Chat with fellow researchers, exchange CIF files, and participate in lab discussion groups.</div>
+            <div style="display:flex; justify-content:center; gap:8px;">
+              <button class="btn btn-outline btn-sm" onclick="openAuthModal('register')">Register</button>
+              <button class="btn btn-primary btn-sm" onclick="openAuthModal('signin')">Sign In</button>
+            </div>
+          </div>
+        `;
+      }
+    } else {
+      if (!_activeChatConvId) {
+        document.getElementById("chat-view-conversations").style.display = "block";
+        document.getElementById("chat-view-active").style.display = "none";
+        renderChatConversationsList();
+      } else {
+        openChatConversation(_activeChatConvId);
+      }
+    }
+  } else {
+    drawer.style.display = "none";
+  }
+  updateChatUnreadBadges();
+}
+window.toggleChatDrawer = toggleChatDrawer;
+
+function filterChatConversations(type, btnEl) {
+  _chatConvFilter = type;
+  document.querySelectorAll(".matsci-conv-filter-pill").forEach(el => el.classList.remove("active"));
+  if (btnEl) btnEl.classList.add("active");
+  renderChatConversationsList();
+}
+window.filterChatConversations = filterChatConversations;
+
+function handleChatConvSearch(val) {
+  _chatSearchQuery = (val || "").trim().toLowerCase();
+  renderChatConversationsList();
+}
+window.handleChatConvSearch = handleChatConvSearch;
+
+function renderChatConversationsList() {
+  const container = document.getElementById("chat-conversations-scroll");
+  if (!container) return;
+  const curUser = getCurrentChatUser();
+  if (!curUser) return;
+
+  const convs = getChatConversations();
+  const q = _chatSearchQuery;
+
+  let filtered = convs.filter(c => {
+    const isParticipant = (c.participants || []).some(p => normalizeEmail(p) === curUser.email);
+    if (!isParticipant && !isStrictAdminSession()) return false;
+
+    if (_chatConvFilter === "groups" && c.type !== "group") return false;
+    if (_chatConvFilter === "direct" && c.type !== "direct") return false;
+
+    if (q) {
+      const title = getConvTitle(c, curUser).toLowerCase();
+      const lastMsg = (c.messages && c.messages.length > 0 ? c.messages[c.messages.length - 1].text : "").toLowerCase();
+      if (!title.includes(q) && !lastMsg.includes(q)) return false;
+    }
+    return true;
+  });
+
+  filtered.sort((a, b) => Number(b.updatedAtMs || 0) - Number(a.updatedAtMs || 0));
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div style="padding:32px 16px; text-align:center; color:#856447; font-size:12.5px;">No conversations found matching filters.</div>`;
+    return;
+  }
+
+  container.innerHTML = filtered.map(c => {
+    const title = getConvTitle(c, curUser);
+    const lastMsg = c.messages && c.messages.length > 0 ? c.messages[c.messages.length - 1] : null;
+    let snippet = "No messages yet";
+    let timeStr = "";
+    if (lastMsg) {
+      if (lastMsg.sticker) snippet = `${lastMsg.sticker} Sticker`;
+      else if (lastMsg.attachments && lastMsg.attachments.length > 0) snippet = `📎 ${lastMsg.attachments[0].name || "Attachment"}`;
+      else snippet = lastMsg.text || "";
+      timeStr = lastMsg.timestamp ? lastMsg.timestamp.slice(11, 16) : "";
+    }
+
+    let unreadInConv = 0;
+    (c.messages || []).forEach(m => {
+      if (normalizeEmail(m.senderEmail) !== curUser.email) {
+        const read = (m.readBy || []).some(r => normalizeEmail(r.email) === curUser.email);
+        if (!read) unreadInConv++;
+      }
+    });
+
+    const isGroup = c.type === "group";
+    const initial = isGroup ? "👥" : title.trim().charAt(0).toUpperCase();
+
+    return `
+      <div class="matsci-conv-item ${_activeChatConvId === c.id ? "active" : ""}" onclick="openChatConversation('${c.id}')">
+        <div class="matsci-conv-avatar" style="background:${isGroup ? '#78350f' : '#b45309'};">
+          ${initial}
+        </div>
+        <div class="matsci-conv-meta">
+          <div class="matsci-conv-name-row">
+            <span class="matsci-conv-title">${escapeHtml(title)}</span>
+            <span class="matsci-conv-time">${escapeHtml(timeStr)}</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span class="matsci-conv-snippet">${escapeHtml(snippet)}</span>
+            ${unreadInConv > 0 ? `<span class="matsci-conv-item-unread">${unreadInConv}</span>` : ""}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function getConvTitle(conv, curUser) {
+  if (conv.type === "group") return conv.name || "Research Group";
+  const otherEmail = (conv.participants || []).find(p => normalizeEmail(p) !== curUser.email);
+  if (!otherEmail) return "Self Note";
+  const names = conv.participantNames || {};
+  if (names[otherEmail]) return names[otherEmail];
+  if (STATE.usersRegistry && STATE.usersRegistry[otherEmail]) {
+    return STATE.usersRegistry[otherEmail].name || otherEmail;
+  }
+  if (otherEmail === OWNER_GOOGLE_EMAIL) return "Vu Tien Lam (Admin)";
+  return otherEmail;
+}
+
+function openChatConversation(convId) {
+  _activeChatConvId = convId;
+  const curUser = getCurrentChatUser();
+  if (!curUser) return;
+
+  const convs = getChatConversations();
+  const conv = convs.find(c => c.id === convId);
+  if (!conv) return;
+
+  let markedAny = false;
+  const nowStr = getGmt9NowStr();
+  (conv.messages || []).forEach(m => {
+    if (normalizeEmail(m.senderEmail) !== curUser.email) {
+      if (!Array.isArray(m.readBy)) m.readBy = [];
+      if (!m.readBy.some(r => normalizeEmail(r.email) === curUser.email)) {
+        m.readBy.push({ email: curUser.email, name: curUser.name, timestamp: nowStr });
+        markedAny = true;
+      }
+    }
+  });
+  if (markedAny) {
+    saveChatConversations();
+  }
+
+  document.getElementById("chat-view-conversations").style.display = "none";
+  document.getElementById("chat-view-active").style.display = "flex";
+
+  const titleEl = document.getElementById("chat-header-title");
+  if (titleEl) titleEl.textContent = getConvTitle(conv, curUser);
+
+  const countEl = document.getElementById("chat-active-members-count");
+  if (countEl) {
+    countEl.textContent = conv.type === "group"
+      ? `👥 ${conv.participants.length} members`
+      : `👤 Direct (1:1)`;
+  }
+
+  renderActiveChatMessages();
+  populateChatStickers();
+  updateChatUnreadBadges();
+}
+window.openChatConversation = openChatConversation;
+
+function backToChatConversations() {
+  _activeChatConvId = null;
+  document.getElementById("chat-view-active").style.display = "none";
+  document.getElementById("chat-view-conversations").style.display = "block";
+  const titleEl = document.getElementById("chat-header-title");
+  if (titleEl) titleEl.textContent = "Lab Messenger";
+  renderChatConversationsList();
+  updateChatUnreadBadges();
+}
+window.backToChatConversations = backToChatConversations;
+
+function renderActiveChatMessages() {
+  const container = document.getElementById("chat-messages-stream");
+  if (!container || !_activeChatConvId) return;
+  const curUser = getCurrentChatUser();
+  if (!curUser) return;
+
+  const convs = getChatConversations();
+  const conv = convs.find(c => c.id === _activeChatConvId);
+  if (!conv) return;
+
+  const msgs = conv.messages || [];
+  if (msgs.length === 0) {
+    container.innerHTML = `<div style="padding:40px 16px; text-align:center; color:#856447; font-size:12.5px;">No messages yet. Send a greeting to start the conversation!</div>`;
+    return;
+  }
+
+  let lastDate = "";
+  const htmlParts = [];
+
+  msgs.forEach(m => {
+    const isSent = normalizeEmail(m.senderEmail) === curUser.email;
+    const msgDate = (m.timestamp || "").slice(0, 10);
+    if (msgDate && msgDate !== lastDate) {
+      lastDate = msgDate;
+      htmlParts.push(`
+        <div class="matsci-chat-day-divider">
+          <span class="matsci-chat-day-text">📅 ${escapeHtml(msgDate)}</span>
+        </div>
+      `);
+    }
+
+    let attachHtml = "";
+    if (Array.isArray(m.attachments) && m.attachments.length > 0) {
+      m.attachments.forEach(att => {
+        if (att.type === "image") {
+          attachHtml += `
+            <div style="margin-top:6px;">
+              <img src="${escapeHtml(att.dataUrl)}" class="matsci-msg-img-thumb" onclick="openChatImageLightbox('${escapeHtml(att.dataUrl)}')" title="Click to view full image" alt="" />
+            </div>
+          `;
+        } else {
+          attachHtml += `
+            <div style="margin-top:6px;">
+              <a href="${escapeHtml(att.dataUrl)}" download="${escapeHtml(att.name || 'file')}" class="matsci-msg-file-card">
+                <span style="font-size:16px;">📄</span>
+                <span style="font-weight:600; text-decoration:underline;">${escapeHtml(att.name || 'Download file')}</span>
+              </a>
+            </div>
+          `;
+        }
+      });
+    }
+
+    let stickerHtml = "";
+    if (m.sticker) {
+      stickerHtml = `<div class="matsci-msg-sticker" title="Sticker">${escapeHtml(m.sticker)}</div>`;
+    }
+
+    let readStatusHtml = "";
+    const readers = (m.readBy || []).filter(r => normalizeEmail(r.email) !== normalizeEmail(m.senderEmail));
+    if (isSent) {
+      if (conv.type === "direct") {
+        if (readers.length > 0) {
+          readStatusHtml = `<div class="matsci-msg-read-status"><span class="matsci-msg-read-check">✓✓</span> Seen ${escapeHtml((readers[0].timestamp || "").slice(11, 16))}</div>`;
+        } else {
+          readStatusHtml = `<div class="matsci-msg-read-status">✓ Sent</div>`;
+        }
+      } else {
+        if (readers.length > 0) {
+          const namesStr = readers.map(r => r.name).slice(0, 3).join(", ");
+          const moreCount = readers.length > 3 ? ` +${readers.length - 3}` : "";
+          readStatusHtml = `<div class="matsci-msg-read-status" title="${escapeHtml(readers.map(r => `${r.name} (${r.timestamp})`).join('; '))}"><span class="matsci-msg-read-check">✓✓</span> Seen by: ${escapeHtml(namesStr)}${moreCount}</div>`;
+        } else {
+          readStatusHtml = `<div class="matsci-msg-read-status">✓ Sent to group</div>`;
+        }
+      }
+    }
+
+    const timeOnly = (m.timestamp || "").slice(11, 16);
+    const initial = (m.senderName || m.senderEmail || "U").trim().charAt(0).toUpperCase();
+
+    htmlParts.push(`
+      <div class="matsci-chat-msg-row ${isSent ? "sent" : "received"}">
+        ${!isSent ? `<div class="matsci-msg-avatar" title="${escapeHtml(m.senderName)}">${initial}</div>` : ""}
+        <div class="matsci-msg-content-wrap">
+          ${!isSent && conv.type === "group" ? `<div class="matsci-msg-sender-name">${escapeHtml(m.senderName)}</div>` : ""}
+          <div class="matsci-msg-bubble">
+            ${m.text ? `<div>${escapeHtml(m.text).replace(/\\n/g, "<br>")}</div>` : ""}
+            ${stickerHtml}
+            ${attachHtml}
+          </div>
+          <div style="display:flex; justify-content:${isSent ? 'flex-end' : 'flex-start'}; align-items:center; gap:6px; margin-top:2px;">
+            <span style="font-size:10px; color:#8c6d55; font-family:monospace;">${escapeHtml(timeOnly)}</span>
+            ${readStatusHtml}
+          </div>
+        </div>
+      </div>
+    `);
+  });
+
+  container.innerHTML = htmlParts.join("");
+  container.scrollTop = container.scrollHeight;
+}
+
+function submitCurrentChatMessage() {
+  const inp = document.getElementById("chat-message-input");
+  if (!inp || !_activeChatConvId) return;
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value = "";
+  dispatchChatMessage({ text });
+}
+window.submitCurrentChatMessage = submitCurrentChatMessage;
+
+function handleChatInputKeyDown(e) {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    submitCurrentChatMessage();
+  }
+}
+window.handleChatInputKeyDown = handleChatInputKeyDown;
+
+function dispatchChatMessage({ text = "", sticker = null, attachments = [] }) {
+  const curUser = getCurrentChatUser();
+  if (!curUser || !_activeChatConvId) return;
+
+  const convs = getChatConversations();
+  const conv = convs.find(c => c.id === _activeChatConvId);
+  if (!conv) return;
+
+  const nowStr = getGmt9NowStr();
+  const nowMs = Date.now();
+
+  const newMsg = {
+    id: `msg_${nowMs}_${Math.floor(Math.random() * 1000)}`,
+    senderEmail: curUser.email,
+    senderName: curUser.name,
+    senderRole: curUser.role,
+    senderPicture: curUser.picture || "",
+    timestamp: nowStr,
+    timestampMs: nowMs,
+    text,
+    sticker,
+    attachments,
+    readBy: [{ email: curUser.email, name: curUser.name, timestamp: nowStr }]
+  };
+
+  conv.messages = conv.messages || [];
+  conv.messages.push(newMsg);
+  conv.updatedAt = nowStr;
+  conv.updatedAtMs = nowMs;
+
+  saveChatConversations();
+  renderActiveChatMessages();
+}
+
+function populateChatStickers() {
+  const container = document.getElementById("chat-sticker-picker");
+  if (!container) return;
+  container.innerHTML = CHAT_STICKERS.map(s => `
+    <span class="matsci-sticker-item" onclick="sendChatSticker('${s}')">${s}</span>
+  `).join("");
+}
+
+function toggleChatStickerPicker() {
+  const picker = document.getElementById("chat-sticker-picker");
+  if (!picker) return;
+  picker.style.display = picker.style.display === "none" ? "grid" : "none";
+}
+window.toggleChatStickerPicker = toggleChatStickerPicker;
+
+function sendChatSticker(sticker) {
+  const picker = document.getElementById("chat-sticker-picker");
+  if (picker) picker.style.display = "none";
+  dispatchChatMessage({ sticker });
+}
+window.sendChatSticker = sendChatSticker;
+
+function triggerChatImageInput() {
+  document.getElementById("chat-image-file-input")?.click();
+}
+window.triggerChatImageInput = triggerChatImageInput;
+
+function triggerChatDocInput() {
+  document.getElementById("chat-doc-file-input")?.click();
+}
+window.triggerChatDocInput = triggerChatDocInput;
+
+function handleChatImageSelected(e) {
+  const files = e.target.files;
+  if (!files || files.length === 0) return;
+  const file = files[0];
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    dispatchChatMessage({
+      attachments: [{
+        type: "image",
+        name: file.name,
+        dataUrl: ev.target.result,
+        size: file.size
+      }]
+    });
+  };
+  reader.readAsDataURL(file);
+  e.target.value = "";
+}
+window.handleChatImageSelected = handleChatImageSelected;
+
+function handleChatDocSelected(e) {
+  const files = e.target.files;
+  if (!files || files.length === 0) return;
+  const file = files[0];
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    dispatchChatMessage({
+      attachments: [{
+        type: "file",
+        name: file.name,
+        dataUrl: ev.target.result,
+        size: file.size
+      }]
+    });
+  };
+  reader.readAsDataURL(file);
+  e.target.value = "";
+}
+window.handleChatDocSelected = handleChatDocSelected;
+
+function openChatImageLightbox(src) {
+  const img = document.getElementById("chat-lightbox-img");
+  if (img) img.src = src;
+  const modal = document.getElementById("chat-image-lightbox-modal");
+  if (modal) modal.classList.add("active");
+}
+window.openChatImageLightbox = openChatImageLightbox;
+
+function openNewChatGroupModal() {
+  if (!isStrictAdminSession()) {
+    showToast("Only Administrator can create chat groups.", "warn");
+    return;
+  }
+  const modal = document.getElementById("chat-new-group-modal");
+  if (!modal) return;
+
+  document.getElementById("chat-group-name-input").value = "";
+  const checklist = document.getElementById("chat-group-members-checklist");
+  if (checklist) {
+    const users = Object.values(STATE.usersRegistry || {}).filter(u => u && u.email);
+    checklist.innerHTML = users.map(u => `
+      <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer;">
+        <input type="checkbox" class="chat-group-member-checkbox" value="${escapeHtml(u.email)}" checked />
+        <span><strong>${escapeHtml(u.name || u.email)}</strong> (${escapeHtml(u.email)})</span>
+      </label>
+    `).join("");
+  }
+  modal.classList.add("active");
+}
+window.openNewChatGroupModal = openNewChatGroupModal;
+
+function chatSelectAllUsersForGroup(selectAll) {
+  document.querySelectorAll(".chat-group-member-checkbox").forEach(cb => {
+    cb.checked = Boolean(selectAll);
+  });
+}
+window.chatSelectAllUsersForGroup = chatSelectAllUsersForGroup;
+
+function submitCreateChatGroup() {
+  const nameInp = document.getElementById("chat-group-name-input");
+  const name = nameInp ? nameInp.value.trim() : "";
+  if (!name) {
+    showToast("Please enter a group name.", "warn");
+    return;
+  }
+
+  const selectedMembers = [];
+  document.querySelectorAll(".chat-group-member-checkbox:checked").forEach(cb => {
+    selectedMembers.push(cb.value);
+  });
+
+  const allMembers = Array.from(new Set([OWNER_GOOGLE_EMAIL, ...selectedMembers]));
+  const pNames = { [OWNER_GOOGLE_EMAIL]: "Vu Tien Lam (Admin)" };
+  allMembers.forEach(em => {
+    if (STATE.usersRegistry && STATE.usersRegistry[em]) {
+      pNames[em] = STATE.usersRegistry[em].name || em;
+    }
+  });
+
+  const nowStr = getGmt9NowStr();
+  const nowMs = Date.now();
+
+  const newGroup = {
+    id: `group_${nowMs}`,
+    type: "group",
+    name,
+    created_by: OWNER_GOOGLE_EMAIL,
+    created_at: nowStr,
+    participants: allMembers,
+    participantNames: pNames,
+    updatedAt: nowStr,
+    updatedAtMs: nowMs,
+    messages: [
+      {
+        id: `msg_init_${nowMs}`,
+        senderEmail: OWNER_GOOGLE_EMAIL,
+        senderName: "Vu Tien Lam",
+        senderRole: "Admin",
+        timestamp: nowStr,
+        timestampMs: nowMs,
+        text: `Group "${name}" created by Administrator Vu Tien Lam. Welcome all members to research collaboration!`,
+        sticker: "🎉",
+        attachments: [],
+        readBy: [{ email: OWNER_GOOGLE_EMAIL, name: "Vu Tien Lam", timestamp: nowStr }]
+      }
+    ]
+  };
+
+  const convs = getChatConversations();
+  convs.unshift(newGroup);
+  saveChatConversations();
+  closeModal("chat-new-group-modal");
+  showToast(`Created research chat group "${name}" with ${allMembers.length} members!`, "success");
+  openChatConversation(newGroup.id);
+}
+window.submitCreateChatGroup = submitCreateChatGroup;
+
+function openNewDirectChatModal() {
+  const curUser = getCurrentChatUser();
+  if (!curUser) {
+    showToast("Please sign in to start a direct message.", "warn");
+    return;
+  }
+  const modal = document.getElementById("chat-new-direct-modal");
+  if (!modal) return;
+
+  renderDirectUserList("");
+  modal.classList.add("active");
+}
+window.openNewDirectChatModal = openNewDirectChatModal;
+
+function filterDirectUserList(query) {
+  renderDirectUserList(query);
+}
+window.filterDirectUserList = filterDirectUserList;
+
+function renderDirectUserList(query = "") {
+  const container = document.getElementById("chat-direct-users-list");
+  if (!container) return;
+  const curUser = getCurrentChatUser();
+  if (!curUser) return;
+
+  const q = (query || "").trim().toLowerCase();
+  const pool = [];
+
+  if (curUser.email !== OWNER_GOOGLE_EMAIL) {
+    pool.push({
+      email: OWNER_GOOGLE_EMAIL,
+      name: "Vu Tien Lam",
+      affiliation: "Sungkyunkwan University (SKKU)",
+      role: "Administrator"
+    });
+  }
+
+  Object.values(STATE.usersRegistry || {}).forEach(u => {
+    if (u && u.email && normalizeEmail(u.email) !== curUser.email) {
+      pool.push({
+        email: normalizeEmail(u.email),
+        name: u.name || u.email,
+        affiliation: u.affiliation || "Researcher",
+        role: "Researcher"
+      });
+    }
+  });
+
+  const filtered = pool.filter(u => {
+    if (!q) return true;
+    return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || u.affiliation.toLowerCase().includes(q);
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div style="padding:20px; text-align:center; color:#856447; font-size:12.5px;">No matching users found.</div>`;
+    return;
+  }
+
+  container.innerHTML = filtered.map(u => `
+    <div style="background:#fff; border:1px solid #ebd8c1; border-radius:8px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <div style="font-weight:700; color:#2e1e14; font-size:13px;">${escapeHtml(u.name)} <span class="badge" style="font-size:10px; background:${u.role === 'Administrator' ? '#8c4a1e' : '#2563eb'}; color:#fff;">${u.role}</span></div>
+        <div style="font-size:11.5px; color:#786354;">${escapeHtml(u.email)} · ${escapeHtml(u.affiliation)}</div>
+      </div>
+      <button type="button" class="btn btn-primary btn-sm" onclick="startDirectChatWithUser('${escapeHtml(u.email)}', '${escapeHtml(u.name)}')">💬 Chat</button>
+    </div>
+  `).join("");
+}
+
+function startDirectChatWithUser(partnerEmail, partnerName) {
+  const curUser = getCurrentChatUser();
+  if (!curUser) return;
+  const pNorm = normalizeEmail(partnerEmail);
+  const myNorm = curUser.email;
+  const convId = `dm_${[myNorm, pNorm].sort().join("_")}`;
+
+  const convs = getChatConversations();
+  let existing = convs.find(c => c.id === convId);
+
+  if (!existing) {
+    const nowStr = getGmt9NowStr();
+    const nowMs = Date.now();
+    existing = {
+      id: convId,
+      type: "direct",
+      participants: [myNorm, pNorm],
+      participantNames: {
+        [myNorm]: curUser.name,
+        [pNorm]: partnerName || pNorm
+      },
+      updatedAt: nowStr,
+      updatedAtMs: nowMs,
+      messages: []
+    };
+    convs.unshift(existing);
+    saveChatConversations();
+  }
+
+  closeModal("chat-new-direct-modal");
+  openChatConversation(convId);
+}
+window.startDirectChatWithUser = startDirectChatWithUser;
