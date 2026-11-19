@@ -8771,37 +8771,226 @@ body.is-admin #cv-exclusive-owner-notice {
   border-color: #8b3a1a;
 }
 
-/* Print view for Journal Articles */
+/* ========================================================================== */
+/* V109: HIGH-FIDELITY BALANCED PRINT & PDF STYLESHEET FOR SCIENTIFIC ARTICLES */
+/* ========================================================================== */
 @media print {
-  body * {
-    visibility: hidden;
+  @page {
+    size: A4 portrait;
+    margin: 14mm 16mm 16mm 16mm;
   }
-  #news-journal-modal,
-  #news-journal-modal * {
-    visibility: visible;
-  }
-  #news-journal-modal {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    background: transparent !important;
-  }
-  .news-journal-modal-card {
-    max-width: 100% !important;
-    width: 100% !important;
-    border: none !important;
-    box-shadow: none !important;
-  }
-  .journal-masthead-right,
+
+  /* Completely hide website navigation, chrome, sidebars, buttons & dialogs */
+  .top-app-header,
+  .page-subheader,
+  .mobile-tab-nav-bar,
+  nav, header:not(.nature-article-header), footer,
+  .nature-masthead,
+  .nature-sidebar-col,
+  .btn-nature-nav-back,
+  .btn-nature-action,
+  .btn-copy-link-inline,
+  .nature-citation-cite-btn,
+  .btn-nature-share-card,
   .news-header-actions,
-  .no-print {
+  .news-filter-bar,
+  .news-article-top-bar,
+  .news-article-bottom-bar,
+  .news-catalog-view,
+  #news-catalog-view,
+  .news-editor-modal,
+  .news-subdialog-overlay,
+  .modal-backdrop,
+  #toast-container,
+  .no-print,
+  .scroll-top-btn,
+  .owner-only-btn,
+  .strict-admin-only,
+  .admin-only,
+  .public-mode-banner {
     display: none !important;
   }
-  .journal-paper-container {
+
+  body {
+    background: #ffffff !important;
+    color: #111827 !important;
+    font-size: 10pt !important;
+    line-height: 1.55 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    margin: 0 !important;
     padding: 0 !important;
+  }
+
+  .main-content,
+  .content-wrapper,
+  #tab-news,
+  #news-full-article-view,
+  .news-full-paper-page,
+  .nature-article-wrapper,
+  .nature-main-col {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+  }
+
+  .nature-grid {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .nature-article-header {
+    padding: 0 0 14px 0 !important;
+    margin-bottom: 18px !important;
+    border-bottom: 1.5pt solid #111827 !important;
+  }
+
+  .nature-article-meta-ribbon {
+    font-size: 8.5pt !important;
+    margin-bottom: 6px !important;
+    color: #4b5563 !important;
+  }
+
+  .nature-article-title {
+    font-family: Georgia, "Times New Roman", serif !important;
+    font-size: 20pt !important;
+    line-height: 1.25 !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    margin: 8px 0 12px 0 !important;
+  }
+
+  .nature-authors-block {
+    margin-bottom: 12px !important;
+  }
+
+  .nature-authors-names {
+    font-size: 11pt !important;
+    font-weight: 700 !important;
+    color: #1e293b !important;
+    margin-bottom: 4px !important;
+  }
+
+  .nature-aff-item {
+    font-size: 8.5pt !important;
+    color: #475569 !important;
+    line-height: 1.35 !important;
+    margin-bottom: 2px !important;
+  }
+
+  .nature-corresponding-line {
+    font-size: 8pt !important;
+    color: #64748b !important;
+    margin-top: 4px !important;
+  }
+
+  .nature-citation-bar {
+    background: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 4px !important;
+    padding: 8px 12px !important;
+    margin: 10px 0 16px 0 !important;
+    font-size: 8.5pt !important;
+  }
+
+  .nature-citation-info {
+    display: block !important;
+  }
+
+  .nature-doi-row {
+    margin-top: 4px !important;
+    font-size: 8pt !important;
+  }
+
+  .nature-section {
+    margin-bottom: 18px !important;
+  }
+
+  .nature-section-title {
+    font-family: Georgia, "Times New Roman", serif !important;
+    font-size: 13pt !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    border-bottom: 1px solid #cbd5e1 !important;
+    padding-bottom: 4px !important;
+    margin-top: 16px !important;
+    margin-bottom: 8px !important;
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  .nature-abstract-text {
+    font-size: 9.5pt !important;
+    line-height: 1.5 !important;
+    text-align: justify !important;
+    color: #1e293b !important;
+  }
+
+  .nature-body-content p {
+    font-size: 9.5pt !important;
+    line-height: 1.55 !important;
+    text-align: justify !important;
+    margin-bottom: 8px !important;
+  }
+
+  .nature-body-content h2,
+  .nature-body-content h3 {
+    font-family: Georgia, "Times New Roman", serif !important;
+    page-break-after: avoid;
+    break-after: avoid;
+    color: #0f172a !important;
+  }
+
+  .nature-body-content h2 {
+    font-size: 12pt !important;
+    margin-top: 14px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .nature-body-content h3 {
+    font-size: 10.5pt !important;
+    margin-top: 10px !important;
+    margin-bottom: 4px !important;
+  }
+
+  /* Prevent page breaks inside figures, equations, tables & cards */
+  figure,
+  .journal-figure,
+  .nature-figure-hero,
+  .journal-equation-block,
+  .journal-table-wrapper,
+  table,
+  .nature-rights-card,
+  .nature-about-history-box,
+  .nature-decl-block {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .journal-figure img,
+  .nature-hero-img {
+    max-height: 360px !important;
+    max-width: 90% !important;
+    margin: 8px auto !important;
+  }
+
+  .journal-equation-block {
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 4px !important;
+    padding: 6px 14px !important;
+    margin: 10px 0 !important;
+  }
+
+  .journal-booktabs-table {
+    font-size: 8.5pt !important;
   }
 }
 
@@ -8927,22 +9116,46 @@ body.is-admin #cv-exclusive-owner-notice {
   border-color: #8b3a1a;
 }
 
-/* Print Styles Update for Full Page View */
-@media print {
-  #news-full-article-view,
-  #news-full-article-view * {
-    visibility: visible !important;
-  }
-  .news-article-top-bar,
-  .news-article-bottom-bar {
-    display: none !important;
-  }
-  .news-full-paper-page {
-    border: none !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-    max-width: 100% !important;
-  }
+/* Universal strict containment for all article images & figures (V109: Prevent overflow) */
+.nature-body-content img,
+.nature-main-col img,
+.nature-article-wrapper img,
+#news-full-paper-body img,
+#news-editor-body img,
+.journal-figure img,
+.nature-hero-img {
+  max-width: 100% !important;
+  height: auto !important;
+  object-fit: contain !important;
+  display: block !important;
+  margin: 16px auto !important;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+.nature-body-content figure,
+.nature-main-col figure,
+.nature-article-wrapper figure,
+#news-full-paper-body figure,
+#news-editor-body figure,
+.journal-figure {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  margin: 20px auto !important;
+  padding: 10px !important;
+  background: #fafafa !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  text-align: center !important;
+}
+
+.journal-table-wrapper,
+.nature-body-content table,
+#news-editor-body table {
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  display: block;
 }
 
 
@@ -8959,10 +9172,10 @@ body.is-admin #cv-exclusive-owner-notice {
   overflow: hidden;
 }
 
-/* 1. Nature Masthead Banner */
+/* 1. Academic Header & Breadcrumb Bar (Cleaned up: No fake journal branding) */
 .nature-masthead {
   border-bottom: 1px solid #e5e7eb;
-  padding: 16px 28px 12px 28px;
+  padding: 12px 24px;
   background: #ffffff;
 }
 .nature-masthead-inner {
@@ -8971,47 +9184,21 @@ body.is-admin #cv-exclusive-owner-notice {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 0;
 }
 .nature-brand-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: none !important;
 }
-.nature-brand-badge {
-  background: #8b1d1d;
-  color: #ffffff;
-  font-weight: 900;
-  font-size: 14px;
-  padding: 3px 8px;
-  border-radius: 3px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-.nature-brand-title {
-  font-size: 19px;
-  font-weight: 800;
-  color: #111827;
-  letter-spacing: -0.02em;
-  text-transform: lowercase;
-}
-.nature-brand-partner {
-  font-size: 13px;
-  font-weight: 600;
-  color: #8b3a1a;
-  letter-spacing: 0.02em;
+.nature-brand-badge,
+.nature-brand-title,
+.nature-brand-partner,
+.nature-portfolio-note {
+  display: none !important;
 }
 .nature-masthead-controls {
   display: flex;
   align-items: center;
   gap: 12px;
-}
-.nature-portfolio-note {
-  font-size: 12px;
-  font-weight: 600;
-  color: #6b7280;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
 }
 .btn-nature-nav-back {
   background: #f3f4f6;
@@ -9789,37 +9976,18 @@ body.is-admin #cv-exclusive-owner-notice {
 }
 
 .news-volume-scroll-hint {
-  font-size: 12px;
-  color: #8c786a;
-  font-style: italic;
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  display: none !important;
 }
 
+.news-volume-articles-container,
 .news-volume-articles-scroll-container {
-  max-height: 560px;
-  overflow-y: auto;
+  max-height: none !important;
+  overflow-y: visible !important;
   padding: 18px 20px;
   display: flex;
   flex-direction: column;
   gap: 16px;
   background: #ffffff;
-}
-
-.news-volume-articles-scroll-container::-webkit-scrollbar {
-  width: 7px;
-}
-.news-volume-articles-scroll-container::-webkit-scrollbar-track {
-  background: #f7f1eb;
-  border-radius: 4px;
-}
-.news-volume-articles-scroll-container::-webkit-scrollbar-thumb {
-  background: #d4bcad;
-  border-radius: 4px;
-}
-.news-volume-articles-scroll-container::-webkit-scrollbar-thumb:hover {
-  background: #8b3a1a;
 }
 
 .news-volume-article-item {
@@ -9961,3 +10129,61 @@ body.is-admin #cv-exclusive-owner-notice {
     align-items: flex-start;
   }
 }
+
+/* ========================================================================== */
+/* V109: SCIENTIFIC FORMULA LIVE PREVIEW & TEMPLATES STYLING                  */
+/* ========================================================================== */
+.news-formula-live-preview {
+  min-height: 48px;
+  padding: 10px 14px;
+  background: #fffdfa;
+  border: 1px solid #d4bcad;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.news-formula-preview-math {
+  flex: 1;
+  font-family: "Cambria Math", "Latin Modern Math", "TeX Gyre Termes Math", "STIX Two Math", Georgia, serif;
+  font-size: 16px;
+  color: #2b1f17;
+  text-align: center;
+  overflow-x: auto;
+}
+
+.news-formula-preview-num {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  color: #78350f;
+  font-weight: 700;
+  margin-left: 14px;
+  white-space: nowrap;
+}
+
+.news-formula-templates-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.btn-formula-tpl {
+  border: 1px solid #ecdac8;
+  background: #fbf8f4;
+  color: #554433;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-formula-tpl:hover {
+  background: #8b3a1a;
+  color: #ffffff;
+  border-color: #8b3a1a;
+}
+
