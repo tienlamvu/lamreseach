@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-19T08:33:20.578Z",
+  "exported_at": "2026-11-19T08:34:16.224Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -6121,16 +6121,17 @@
       "title": "gggg",
       "category": "Research Article",
       "status": "Published",
-      "authors": "Vu Tien Lam<sup>1</sup>*, Jaewon Kim<sup>1</sup>",
+      "authors": "Vu Tien Lam<sup>1,2</sup>*, Jaewon Kim<sup>1</sup>",
       "corresponding_email": "lamvt.skku@gmail.com",
-      "affiliations": "1. School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea",
+      "affiliations": "1. School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea\n2. Samsung",
       "authors_data": [
         {
           "name": "Vu Tien Lam",
           "is_corresponding": true,
           "email": "lamvt.skku@gmail.com",
           "affiliations": [
-            1
+            1,
+            2
           ]
         },
         {
@@ -6146,6 +6147,10 @@
         {
           "id": 1,
           "text": "School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea"
+        },
+        {
+          "id": 2,
+          "text": "Samsung"
         }
       ],
       "received_date": "",
