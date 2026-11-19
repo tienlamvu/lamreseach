@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-19T01:36:09.910Z",
+  "exported_at": "2026-11-19T01:37:23.579Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -458,6 +458,27 @@
     "weekly_report_allowed_users": []
   },
   "papers": [
+    {
+      "id": 1795052242493,
+      "doi": "10.1002/sia.7184",
+      "title": "Surface ferromagnetism of complex defects lead‐free ferroelectric Bi₀.₅ Na₀.₅ TiO₃ materials",
+      "authors": "Vu Tien Lam, Nguyen Hoang Thoan, Nguyen Ngoc Trung, Duong Quoc Van, Dang Duc Dung",
+      "journal": "Surface and Interface Analysis",
+      "year": 2022,
+      "volume": "55",
+      "pages": "243-255",
+      "abstract": "The complex surface defects induced magnetic properties of lead‐free ferroelectric Bi₀.₅ Na₀.₅ TiO₃ (110) materials system are investigated by using the density‐functional theory. Various types of surface defects were considered for calculation, including antisite, vacancies and interstitial defects. The calculated results indicated that a perfect Bi₀.₅ Na₀.₅ TiO₃ (110) surface produced zero magnetic moments. The conduction band was mostly contributed from Bi‐6 p and Ti‐3 d levels, where the valence band was built from O‐2 p. The antisite defects where Na replaced for Bi‐site induced nonzero magnetic moments because of unsymmetrical spin O‐2 p up and O‐2 p down. While, the observation in nonzero magnetic moment of antisite defects Bi substitute for Na‐site were originated from Ti‐3 d and Na‐2 s. The Na and Bi vacancies on the surface were tuned to the ferromagnetic because of the unsymmetrical contribution of O‐2 p, while the Ti and O vacancies were not. The Na and Bi surface interstitials induced the magnetic moments because of the contribution of the difference between Ti‐3 d and Bi‐6 p, respectively, while the Ti and O surface interstitials not induced the magnetic moments. We expected that our results could help to control chemical defects in new green multiferroic materials for smart electronic devices.",
+      "citation_count": 8,
+      "material_system": "Perovskite / 2D Material",
+      "synthesis_method": "First-principles DFT",
+      "characterization_tags": "DFT, VASP, XRD",
+      "status": "To Read",
+      "notes": "",
+      "in_weekly_report": 1,
+      "visibility": "Public",
+      "allowed_users": [],
+      "allowed_groups": []
+    },
     {
       "id": 1794980221631,
       "doi": "10.1103/physrevb.104.035409",
