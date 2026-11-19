@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-19T02:00:40.041Z",
+  "exported_at": "2026-11-19T02:00:45.273Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -6099,8 +6099,8 @@
         "tlamvux@gmail.com": "Vu Tien Lam",
         "guest.researcher@skku.edu": "Guest Researcher"
       },
-      "updatedAt": "2026-11-19 11:00:37",
-      "updatedAtMs": 1795053637828,
+      "updatedAt": "2026-11-19 11:00:43",
+      "updatedAtMs": 1795053643108,
       "messages": [
         {
           "id": "msg_demo_1",
@@ -6269,6 +6269,25 @@
               "email": "lamvt.sep@gmail.com",
               "name": "Tien Lam",
               "timestamp": "2026-11-19 11:00:37"
+            }
+          ]
+        },
+        {
+          "id": "msg_1795053643108_638",
+          "senderEmail": "lamvt.sep@gmail.com",
+          "senderName": "Tien Lam",
+          "senderRole": "Researcher",
+          "senderPicture": "https://lh3.googleusercontent.com/a/ACg8ocJ5aVyRlpWSljVC2OJusM1rb39s2jSKUTJqGBroVnc79VyzoEsF=s96-c",
+          "timestamp": "2026-11-19 11:00:43",
+          "timestampMs": 1795053643108,
+          "text": "",
+          "sticker": "🤝",
+          "attachments": [],
+          "readBy": [
+            {
+              "email": "lamvt.sep@gmail.com",
+              "name": "Tien Lam",
+              "timestamp": "2026-11-19 11:00:43"
             }
           ]
         }
