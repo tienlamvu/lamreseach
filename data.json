@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-19T04:44:39.530Z",
+  "exported_at": "2026-11-19T04:45:26.012Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -6062,13 +6062,13 @@
     }
   },
   "deleted_users": [
-    "test.researcher@skku.edu",
-    "aaa@gmail.com",
     "jhpark.matsci@skku.edu",
-    "temp.delete.test@gmail.com",
     "minseo.kim@gmail.com",
     "ssk@gmail.com",
     "las@gmail.com",
+    "test.researcher@skku.edu",
+    "aaa@gmail.com",
+    "temp.delete.test@gmail.com",
     "test.relay.otp@skku.edu",
     "linh@gmail.com",
     "a@gmail.com",
@@ -6076,13 +6076,13 @@
     "jaewon@skku.edu"
   ],
   "deleted_users_map": {
-    "test.researcher@skku.edu": 1795047536565,
-    "aaa@gmail.com": 1795047536565,
     "jhpark.matsci@skku.edu": 1795047536565,
-    "temp.delete.test@gmail.com": 1795047536565,
     "minseo.kim@gmail.com": 1795047536565,
     "ssk@gmail.com": 1795047536565,
     "las@gmail.com": 1795047536565,
+    "test.researcher@skku.edu": 1795047536565,
+    "aaa@gmail.com": 1795047536565,
+    "temp.delete.test@gmail.com": 1795047536565,
     "test.relay.otp@skku.edu": 1795047536565,
     "linh@gmail.com": 1795047536565,
     "a@gmail.com": 1795047536565,
@@ -6134,59 +6134,7 @@
   "deleted_papers_map": {},
   "deleted_schedule": [],
   "deleted_schedule_map": {},
-  "news_articles": [
-    {
-      "id": "news_20261119_001",
-      "title": "Phase Stability, Valleytronics, and Electrocatalytic Hydrogen Evolution in 2D Janus MoSi₂N₄/WSi₂N₄ Heterobilayers",
-      "category": "Research Article",
-      "authors": "Vu Tien Lam¹*, Jaewon Kim¹, Jin-Woo Park²",
-      "affiliations": "¹ School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea\n² Center for Computational Materials Science, Korea Institute of Science and Technology (KIST), Seoul 02792, Republic of Korea",
-      "corresponding_email": "lamvt.skku@gmail.com",
-      "received_date": "2026-11-05",
-      "revised_date": "2026-11-14",
-      "published_date": "2026-11-19",
-      "doi": "10.skku.matsci/news.2026.001",
-      "keywords": "2D Janus Monolayers, MoSi2N4, Valley Polarization, Electrocatalytic HER, DFT, HSE06",
-      "status": "Published",
-      "cover_image": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80",
-      "abstract": "Two-dimensional (2D) Janus semiconducting monolayers offer unprecedented symmetry breaking and intrinsic out-of-plane electric fields. Herein, we employ first-principles density functional theory (DFT) using hybrid HSE06 functionals and spin-orbit coupling (SOC) to systematically explore the structural stability, electronic valleytronics, and electrocatalytic hydrogen evolution reaction (HER) performance of MoSi₂N₄ and WSi₂N₄ Janus configurations. Our calculations reveal that nitrogen-to-phosphorus surface substitution reduces the hydrogen adsorption Gibbs free energy (ΔG_H*) to -0.04 eV, approaching benchmark Pt efficiency, while breaking out-of-plane mirror symmetry generates a spontaneous polarization dipole of 0.38 Debye.",
-      "content_html": "<h2>1. Introduction</h2>\n<p>The discovery of the two-dimensional (2D) <em>MoSi<sub>2</sub>N<sub>4</sub></em> family has ignited intense research in ultrathin semiconductors possessing superior mechanical strength, high carrier mobility, and remarkable environmental robustness. By breaking out-of-plane inversion symmetry through selective surface janusization, one introduces intrinsic dipole moments that govern charge carrier dynamics and surface reaction energetics.</p>\n\n<h2>2. Computational Methodology</h2>\n<p>All density functional theory (DFT) calculations were executed using the Vienna Ab initio Simulation Package (<strong>VASP 6.4</strong>) within the projector augmented-wave (PAW) method. The exchange-correlation functional was treated with the generalized gradient approximation (GGA) formulated by Perdew-Burke-Ernzerhof (PBE). For electronic band dispersions and optical properties, the Heyd-Scuseria-Ernzerhof (<strong>HSE06</strong>) hybrid functional was employed with spin-orbit coupling (SOC) included self-consistently. The plane-wave cutoff energy was set to <strong>520 eV</strong>, and a vacuum spacing of <strong>20 Å</strong> along the z-axis was enforced to prevent spurious inter-layer interactions.</p>\n\n<div class=\"journal-equation-block\">\n  <div class=\"journal-equation-math\">&Delta;G<sub>H*</sub> = &Delta;E<sub>DFT</sub> + &Delta;E<sub>ZPE</sub> - T&Delta;S<sub>H</sub></div>\n  <div class=\"journal-equation-num\">(1)</div>\n</div>\n\n<h2>3. Structural Characteristics & Formation Energies</h2>\n<p>The relaxed crystallographic parameters and relative energetic stabilities are summarized in Table 1 below. Dynamic stability of the Janus monolayers was confirmed through phonon dispersion spectra across the entire Brillouin zone without imaginary frequencies.</p>\n\n<div class=\"journal-table-wrapper\">\n  <table class=\"journal-booktabs-table\">\n    <caption><strong>Table 1 |</strong> Calculated lattice constant (<em>a</em>), layer thickness (<em>d</em>), cohesive energy (<em>E<sub>coh</sub></em>), and bandgap (<em>E<sub>g</sub></em>) at HSE06+SOC level.</caption>\n    <thead>\n      <tr>\n        <th>Configuration</th>\n        <th>Lattice <em>a</em> (&Aring;)</th>\n        <th>Thickness <em>d</em> (&Aring;)</th>\n        <th><em>E<sub>coh</sub></em> (eV/atom)</th>\n        <th>Bandgap <em>E<sub>g</sub></em> (eV)</th>\n        <th>Dipole &mu; (Debye)</th>\n      </tr>\n    </thead>\n    <tbody>\n      <tr>\n        <td>MoSi<sub>2</sub>N<sub>4</sub> (Pristine)</td>\n        <td>2.909</td>\n        <td>7.012</td>\n        <td>-7.84</td>\n        <td>1.94 (Indirect)</td>\n        <td>0.00</td>\n      </tr>\n      <tr>\n        <td>MoSi<sub>2</sub>N<sub>3</sub>P (Janus-1)</td>\n        <td>2.984</td>\n        <td>7.245</td>\n        <td>-7.41</td>\n        <td>1.58 (Direct)</td>\n        <td>0.38</td>\n      </tr>\n      <tr>\n        <td>MoSiGeN<sub>4</sub> (Janus-2)</td>\n        <td>2.952</td>\n        <td>7.180</td>\n        <td>-7.55</td>\n        <td>1.72 (Direct)</td>\n        <td>0.29</td>\n      </tr>\n      <tr>\n        <td>WSi<sub>2</sub>N<sub>3</sub>P (Janus-3)</td>\n        <td>2.981</td>\n        <td>7.260</td>\n        <td>-7.62</td>\n        <td>1.69 (Direct)</td>\n        <td>0.41</td>\n      </tr>\n    </tbody>\n  </table>\n</div>\n\n<h2>4. Electrocatalytic Performance & Valley Splitting</h2>\n<p>Due to the built-in perpendicular electric dipole, the surface charge distribution accelerates proton transfer kinetics. The calculated hydrogen adsorption free energy at the active Janus phosphorus site reaches &Delta;G<sub>H*</sub> = -0.04 eV at 50% coverage, significantly outperforming pristine MoS<sub>2</sub> (&Delta;G = +1.8 eV) and nearing optimal platinum benchmarks.</p>\n\n<figure class=\"journal-figure\">\n  <img src=\"https://images.unsplash.com/photo-1507668077129-56e32842fceb?auto=format&fit=crop&w=1000&q=80\" alt=\"Computed band structure and density of states\">\n  <figcaption><strong>Figure 1 |</strong> Electronic band structure, projected density of states (PDOS), and spin-valley splitting at the K and K' valleys under HSE06+SOC for Janus MoSi<sub>2</sub>N<sub>3</sub>P monolayer.</figcaption>\n</figure>\n\n<div class=\"journal-callout\">\n  <div class=\"journal-callout-title\">💡 Key Computational Finding</div>\n  <div class=\"journal-callout-text\">The built-in dipole moment of 0.38 Debye induces a 142 meV spin splitting at the valence band maximum (VBM) around the K valleys, enabling room-temperature valley polarization without external gate biasing.</div>\n</div>\n\n<h2>5. References & Citations</h2>\n<ol class=\"journal-references-list\">\n  <li>Hong, Y. L. et al. Chemical vapor deposition of layered two-dimensional MoSi<sub>2</sub>N<sub>4</sub> materials. <em>Science</em> <strong>369</strong>, 670–674 (2020).</li>\n  <li>Vu, T. L. & Kim, J. Density functional theory investigations of Janus 2D carbonitrides. <em>SKKU Computational Science</em> <strong>12</strong>, 104–112 (2025).</li>\n  <li>Perdew, J. P., Burke, K. & Ernzerhof, M. Generalized gradient approximation made simple. <em>Phys. Rev. Lett.</em> <strong>77</strong>, 3865 (1996).</li>\n</ol>"
-    },
-    {
-      "id": "news_20261118_003",
-      "title": "Lab Announcement: Deployment of New 128-Core AMD EPYC VASP 6.4 Cluster & Joint Research Initiative with KIST",
-      "category": "Announcement",
-      "authors": "Vu Tien Lam¹*, Computational Materials Science Lab Administration",
-      "affiliations": "¹ School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU)",
-      "corresponding_email": "lamvt.skku@gmail.com",
-      "received_date": "2026-11-12",
-      "revised_date": "2026-11-12",
-      "published_date": "2026-11-18",
-      "doi": "10.skku.matsci/news.2026.003",
-      "keywords": "High-Performance Computing, VASP 6.4, GPU Acceleration, Lab Facility, KIST Collaboration",
-      "status": "Published",
-      "cover_image": "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1200&q=80",
-      "abstract": "We are pleased to announce the successful installation and benchmarking of our new 128-core AMD EPYC 9554 computing node equipped with dual NVIDIA H100 GPUs, achieving a 4.2x speedup on hybrid functional calculations for 200+ atom supercells. In addition, our lab has signed a formal collaborative computing and experimental synthesis agreement with KIST Center for Computational Materials Science.",
-      "content_html": "<h2>1. High-Performance Computing Cluster Expansion</h2>\n<p>To support high-throughput DFT simulations and hybrid functional calculations of large defect supercells, our research group has completed the deployment and commissioning of the <strong>SKKU-CMS-Node03</strong> computing cluster. Specifications:</p>\n\n<ul>\n  <li><strong>CPUs:</strong> Dual AMD EPYC 9554 processors (128 physical cores, 256 threads @ up to 3.75 GHz)</li>\n  <li><strong>Memory:</strong> 512 GB DDR5-4800 ECC Registered RAM</li>\n  <li><strong>Accelerators:</strong> 2x NVIDIA H100 PCIe (80 GB HBM3 each)</li>\n  <li><strong>Storage:</strong> 8 TB NVMe PCIe Gen5 scratch storage for wavefunction and charge density I/O</li>\n  <li><strong>Software Stack:</strong> VASP 6.4.2 compiled with OpenMPI 4.1.6, Intel oneMKL, and CUDA OpenACC GPU offloading</li>\n</ul>\n\n<h2>2. Benchmark Results on 2D Supercells</h2>\n<p>Benchmarking on a 216-atom 2D MoSi<sub>2</sub>N<sub>4</sub> defect supercell with HSE06 hybrid functional demonstrated a <strong>4.2&times; walltime reduction</strong> compared to our previous dual Xeon Gold nodes. Self-consistent electronic convergence was achieved within 38 minutes per k-point configuration.</p>\n\n<figure class=\"journal-figure\">\n  <img src=\"https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1000&q=80\" alt=\"HPC Cluster Rack\">\n  <figcaption><strong>Figure 1 |</strong> Newly commissioned SKKU Materials Simulation High-Performance Computing node.</figcaption>\n</figure>\n\n<h2>3. Collaboration with KIST</h2>\n<p>Furthermore, under the new MoU with the Korea Institute of Science and Technology (KIST), our group will gain access to shared supercomputing allocations on the KIST K-CREST infrastructure to perform ab initio molecular dynamics (AIMD) simulations of molten salt synthesis.</p>"
-    },
-    {
-      "id": "news_20261115_002",
-      "title": "High-Throughput DFT Screening of 2D Transition Metal Carbonitrides for Solid-State Battery Solid Electrolyte Interphases",
-      "category": "Computational",
-      "authors": "Vu Tien Lam¹*, Jaewon Kim¹",
-      "affiliations": "¹ School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea",
-      "corresponding_email": "lamvt.skku@gmail.com",
-      "received_date": "2026-10-28",
-      "revised_date": "2026-11-08",
-      "published_date": "2026-11-15",
-      "doi": "10.skku.matsci/news.2026.002",
-      "keywords": "Solid-State Batteries, MXenes, DFT, High-Throughput Screening, VASP, LLZO",
-      "status": "Published",
-      "cover_image": "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80",
-      "abstract": "The interface stability between garnet-type solid electrolytes (e.g., Li7La3Zr2O12, LLZO) and lithium metal anodes remains the primary bottleneck for next-generation solid-state batteries. We report a comprehensive high-throughput computational screening over 45 functionalized 2D transition metal carbonitrides (MXenes and MAB phases). By computing grand potential phase diagrams and interfacial reaction energies, we identify Ti3C2F2 and V2CTx as superior artificial SEI interlayers that effectively suppress lithium dendrite nucleation.",
-      "content_html": "<h2>1. Background & Motivation</h2>\n<p>All-solid-state lithium metal batteries promise game-changing energy densities exceeding 500 Wh/kg. However, severe chemical side-reactions and dendrite propagation across the garnet electrolyte/lithium metal interface critically shorten cycle lifetime. In this study, we screen 2D transition metal carbides and nitrides (MXenes) to design an ultra-thin, chemo-mechanically robust artificial solid electrolyte interphase (SEI).</p>\n\n<h2>2. High-Throughput Computational Workflow</h2>\n<p>A Python-automated high-throughput DFT pipeline utilizing VASP and pymatgen screened 45 surface-terminated MXene compositions (M<sub>2</sub>X, M<sub>3</sub>X<sub>2</sub>, M<sub>4</sub>X<sub>3</sub>; M = Ti, V, Nb, Mo; T<sub>x</sub> = O, F, OH, Cl). Li-ion diffusion pathways across the interfacial grain boundaries were evaluated using the climbing image nudged elastic band (CI-NEB) method with 7 intermediate images.</p>\n\n<div class=\"journal-equation-block\">\n  <div class=\"journal-equation-math\">&Delta;E<sub>interface</sub> = E<sub>bilayer</sub> - E<sub>MXene</sub> - E<sub>LLZO(001)</sub></div>\n  <div class=\"journal-equation-num\">(1)</div>\n</div>\n\n<h2>3. Interfacial Stability & Lithium Diffusion Barriers</h2>\n<p>Among all candidates, fluorinated titanium carbide <strong>Ti<sub>3</sub>C<sub>2</sub>F<sub>2</sub></strong> demonstrated an ideal balance of low Li-ion migration barrier (<strong>0.22 eV</strong>) and thermodynamic passivity against metallic lithium reduction. The computed grand-potential phase diagram indicates complete electrochemical stability from 0.0 V to 2.4 V vs Li/Li<sup>+</sup>.</p>\n\n<figure class=\"journal-figure\">\n  <img src=\"https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1000&q=80\" alt=\"High-throughput screening diagram\">\n  <figcaption><strong>Figure 1 |</strong> High-throughput computational screening matrix of 45 MXene terminations showing thermodynamic stability vs Li-ion migration activation barrier.</figcaption>\n</figure>\n\n<h2>4. Summary & Outlook</h2>\n<p>Our findings establish atomic-level design guidelines for stabilizing solid-state lithium battery interfaces, paving the way for targeted experimental synthesis in the upcoming quarter.</p>"
-    }
-  ],
+  "news_articles": [],
   "deleted_news_articles": [],
   "deleted_news_articles_map": {}
 }
