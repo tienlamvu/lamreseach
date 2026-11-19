@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261119_v106_full_page_word_import_math_abstract" onerror="this.href='/static/styles.css?v=20261119_v106_full_page_word_import_math_abstract" />
+  <link rel="stylesheet" href="styles.css?v=20261119_v109_clean_journal_edit_pdf_word_formula" onerror="this.href='/static/styles.css?v=20261119_v109_clean_journal_edit_pdf_word_formula" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -249,8 +249,8 @@
         <div class="news-pane-header">
           <div class="news-pane-titles">
             <div class="news-eyebrow">SKKU COMPUTATIONAL MATERIALS RESEARCH</div>
-            <h2 class="news-heading">📰 Lab News &amp; Scientific Publications</h2>
-            <p class="news-subheading">Peer-reviewed publications, DFT breakthroughs, research highlights, and lab announcements from the Sungkyunkwan University Materials Simulation Lab.</p>
+            <h2 class="news-heading">📰 Lab News &amp; Scientific Articles</h2>
+            <p class="news-subheading">Research articles, DFT breakthroughs, scientific highlights, and lab communications from the Sungkyunkwan University Materials Simulation Lab.</p>
           </div>
           <div class="news-header-actions">
             <button id="news-import-word-btn" class="btn btn-outline admin-only" onclick="triggerWordImport()" title="Import &amp; auto-detect content, formulas, tables, figures from Word (.docx)">
@@ -3992,8 +3992,8 @@
 
 <script src="jszip.min.js"></script>
   <script>if (typeof JSZip === "undefined") { document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"><\\/script>'); }</script>
-  <script src="matsci_tools.js?v=20261119_v106_full_page_word_import_math_abstract" onerror="this.src='/static/matsci_tools.js?v=20261119_v106_full_page_word_import_math_abstract"></script>
-  <script src="app.js?v=20261119_v106_full_page_word_import_math_abstract" onerror="this.src='/static/app.js?v=20261119_v106_full_page_word_import_math_abstract"></script>
+  <script src="matsci_tools.js?v=20261119_v109_clean_journal_edit_pdf_word_formula" onerror="this.src='/static/matsci_tools.js?v=20261119_v109_clean_journal_edit_pdf_word_formula"></script>
+  <script src="app.js?v=20261119_v109_clean_journal_edit_pdf_word_formula" onerror="this.src='/static/app.js?v=20261119_v109_clean_journal_edit_pdf_word_formula"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
@@ -4366,55 +4366,121 @@
 
   <!-- Math Formula Inserter Subdialog -->
   <div id="news-formula-dialog" class="news-subdialog-overlay" style="display:none;" onclick="if(event.target===this) closeSubdialog('news-formula-dialog')">
-    <div class="news-subdialog-card">
-      <h4 style="margin:0 0 12px 0; color:#2b1f17; font-size:16px;">∑ Insert Mathematical Formula / Equation</h4>
-      <div class="form-group" style="margin-bottom:10px;">
-        <label class="form-label">Formula Style</label>
-        <select id="news-formula-type" class="form-select">
-          <option value="block">Display Equation Block (Centered with Number)</option>
-          <option value="inline">Inline Math (Inside Sentence)</option>
-        </select>
+    <div class="news-subdialog-card" style="max-width:580px; width:92%;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h4 style="margin:0; color:#2b1f17; font-size:16px; font-weight:700;">∑ Insert Scientific Equation &amp; Math Formula</h4>
+        <button type="button" class="news-subdialog-close" onclick="closeSubdialog('news-formula-dialog')" style="background:none; border:none; font-size:20px; cursor:pointer; color:#78350f;">&times;</button>
       </div>
-      <div class="form-group" style="margin-bottom:6px;">
-        <label class="form-label">Formula Content</label>
-        <input type="text" id="news-formula-text-input" class="form-input" placeholder="e.g. ΔG_H* = ΔE_DFT + ΔE_ZPE - TΔS_H" style="font-family:'Cambria Math', serif; font-size:15px;">
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label" style="font-size:12px;">Formula Style</label>
+          <select id="news-formula-type" class="form-select" onchange="updateFormulaLivePreview()">
+            <option value="block">Display Block (Centered with Number)</option>
+            <option value="inline">Inline Math (Inside Sentence)</option>
+          </select>
+        </div>
+        <div class="form-group" id="news-formula-num-group" style="margin-bottom:0;">
+          <label class="form-label" style="font-size:12px;">Equation Number (Optional)</label>
+          <input type="text" id="news-formula-num-input" class="form-input" placeholder="(1), (2), Eq. 1, etc." oninput="updateFormulaLivePreview()">
+        </div>
       </div>
-      <div style="font-size:11px; color:#6b5c4f; margin-bottom:6px;">Click any symbol below to quickly insert:</div>
+
+      <div class="form-group" style="margin-bottom:8px;">
+        <label class="form-label" style="font-size:12px;">Formula Content (Unicode / LaTeX / Subscripts &amp; Superscripts)</label>
+        <input type="text" id="news-formula-text-input" class="form-input" placeholder="e.g. ΔG_H* = ΔE_DFT + ΔE_ZPE - TΔS_H" style="font-family:'Cambria Math', Georgia, serif; font-size:15px;" oninput="updateFormulaLivePreview()">
+      </div>
+
+      <!-- Real-Time Live Preview -->
+      <div style="margin-bottom:12px;">
+        <div style="font-size:11px; font-weight:600; color:#6b5c4f; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">Live Preview:</div>
+        <div id="news-formula-live-preview" class="news-formula-live-preview">
+          <div id="news-formula-preview-math" class="news-formula-preview-math">ΔG_H* = ΔE_DFT + ΔE_ZPE - TΔS_H</div>
+          <div id="news-formula-preview-num" class="news-formula-preview-num">(1)</div>
+        </div>
+      </div>
+
+      <!-- Quick Templates -->
+      <div style="margin-bottom:8px;">
+        <div style="font-size:11px; font-weight:600; color:#6b5c4f; margin-bottom:4px;">Quick Scientific Templates:</div>
+        <div class="news-formula-templates-row">
+          <button type="button" class="btn-formula-tpl" onclick="applyFormulaTemplate('ΔG_H* = ΔE_DFT + ΔE_ZPE - TΔS_H', '(1)')">HER Free Energy</button>
+          <button type="button" class="btn-formula-tpl" onclick="applyFormulaTemplate('E_ads = E_total - (E_sub + E_mol)', '(2)')">Adsorption Energy</button>
+          <button type="button" class="btn-formula-tpl" onclick="applyFormulaTemplate('k = A · exp(-E_a / (k_B · T))', '(3)')">Arrhenius Rate</button>
+          <button type="button" class="btn-formula-tpl" onclick="applyFormulaTemplate('ĤΨ = EΨ', '(4)')">Schrödinger Eq.</button>
+          <button type="button" class="btn-formula-tpl" onclick="applyFormulaTemplate('V = a · b · c · √(1 - cos²α - cos²β - cos²γ + 2cosα·cosβ·cosγ)', '(5)')">Lattice Volume</button>
+        </div>
+      </div>
+
+      <!-- Extended Scientific Palette with categories -->
+      <div style="font-size:11px; font-weight:600; color:#6b5c4f; margin-bottom:4px;">Insert Symbols &amp; Operators:</div>
       <div class="news-math-palette">
-        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('α')">α</button>
-        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('β')">β</button>
-        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('γ')">γ</button>
-        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('δ')">δ</button>
-        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('ε')">ε</button>
-        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('θ')">θ</button>
-        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('λ')">λ</button>
-        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('μ')">μ</button>
-        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('π')">π</button>
-        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('σ')">σ</button>
-        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('ω')">ω</button>
-        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('Δ')">Δ</button>
-        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('Ω')">Ω</button>
-        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('Σ')">Σ</button>
-        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('Å')">Å</button>
+        <!-- Greek Lowercase -->
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('α')" title="alpha">α</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('β')" title="beta">β</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('γ')" title="gamma">γ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('δ')" title="delta">δ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('ε')" title="epsilon">ε</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('η')" title="eta">η</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('θ')" title="theta">θ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('λ')" title="lambda">λ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('μ')" title="mu">μ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('ν')" title="nu">ν</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('π')" title="pi">π</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('ρ')" title="rho">ρ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('σ')" title="sigma">σ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('τ')" title="tau">τ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('φ')" title="phi">φ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('ψ')" title="psi">ψ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('ω')" title="omega">ω</button>
+
+        <!-- Greek Uppercase -->
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('Δ')" title="Delta">Δ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('Γ')" title="Gamma">Γ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('Θ')" title="Theta">Θ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('Λ')" title="Lambda">Λ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('Σ')" title="Sigma">Σ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('Φ')" title="Phi">Phi</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('Ψ')" title="Psi">Ψ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('Ω')" title="Omega">Ω</button>
+
+        <!-- Operators & Relations -->
         <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('±')">±</button>
         <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('×')">×</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('·')">·</button>
         <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('÷')">÷</button>
         <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('≤')">≤</button>
         <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('≥')">≥</button>
         <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('≠')">≠</button>
         <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('≈')">≈</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('≡')">≡</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('∝')">∝</button>
         <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('→')">→</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('↔')">↔</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('⇒')">⇒</button>
         <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('∞')">∞</button>
         <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('∂')">∂</button>
         <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('∇')">∇</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('∫')">∫</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('∑')">∑</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('∏')">∏</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('√')">√</button>
         <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('ħ')">ħ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('Å')">Å</button>
+
+        <!-- Subscripts & Superscripts -->
         <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('²')">²</button>
         <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('³')">³</button>
         <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('⁻¹')">⁻¹</button>
         <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('₀')">₀</button>
         <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('₁')">₁</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('₂')">₂</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('ᵢ')">ᵢ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('ⱼ')">ⱼ</button>
+        <button type="button" class="news-symbol-btn" onclick="insertSymbolIntoFormula('ₐ')">ₐ</button>
       </div>
-      <div style="display:flex; justify-content:flex-end; gap:8px;">
+
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px; border-top:1px solid #ecdac8; padding-top:10px;">
         <button type="button" class="btn btn-secondary btn-sm" onclick="closeSubdialog('news-formula-dialog')">Cancel</button>
         <button type="button" class="btn btn-primary btn-sm" onclick="confirmInsertFormula()">Insert Formula</button>
       </div>
