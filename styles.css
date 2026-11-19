@@ -8944,3 +8944,672 @@ body.is-admin #cv-exclusive-owner-notice {
     max-width: 100% !important;
   }
 }
+
+
+/* ========================================================================== */
+/* V107: NATURE INDEX (npj COMPUTATIONAL MATERIALS) PORTFOLIO LAYOUT STYLES    */
+/* ========================================================================== */
+
+.nature-article-wrapper {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: #222222;
+  line-height: 1.65;
+  background: #ffffff;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* 1. Nature Masthead Banner */
+.nature-masthead {
+  border-bottom: 1px solid #e5e7eb;
+  padding: 16px 28px 12px 28px;
+  background: #ffffff;
+}
+.nature-masthead-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.nature-brand-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nature-brand-badge {
+  background: #111827;
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 14px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+  text-transform: lowercase;
+}
+.nature-brand-title {
+  font-size: 19px;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: -0.02em;
+  text-transform: lowercase;
+}
+.nature-brand-partner {
+  font-size: 13px;
+  font-weight: 600;
+  color: #8b3a1a;
+  letter-spacing: 0.02em;
+}
+.nature-masthead-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.nature-portfolio-note {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.btn-nature-nav-back {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-nature-nav-back:hover {
+  background: #111827;
+  color: #ffffff;
+  border-color: #111827;
+}
+
+/* Breadcrumbs */
+.nature-breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #6b7280;
+  flex-wrap: wrap;
+}
+.nature-crumb-link {
+  color: #4b5563;
+  cursor: pointer;
+  text-decoration: none;
+}
+.nature-crumb-link:hover {
+  text-decoration: underline;
+  color: #111827;
+}
+.nature-crumb-sep {
+  color: #9ca3af;
+}
+.nature-crumb-active {
+  color: #111827;
+  font-weight: 600;
+}
+
+/* 2. Nature Article Header Area */
+.nature-article-header {
+  padding: 28px 36px 20px 36px;
+  border-bottom: 1px solid #f3f4f6;
+}
+.nature-article-meta-ribbon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4b5563;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.nature-meta-type {
+  font-weight: 700;
+  color: #111827;
+}
+.nature-meta-open {
+  color: #15803d;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.nature-meta-pub {
+  color: #4b5563;
+}
+.nature-meta-dot {
+  color: #9ca3af;
+}
+
+/* Article Headline */
+.nature-article-title {
+  font-family: 'Merriweather', 'Georgia', 'Cambria', serif;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.28;
+  color: #111827;
+  margin: 0 0 18px 0;
+  letter-spacing: -0.01em;
+}
+@media (max-width: 768px) {
+  .nature-article-title {
+    font-size: 24px;
+  }
+  .nature-masthead, .nature-article-header {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+/* Authors Block */
+.nature-authors-block {
+  margin-bottom: 22px;
+}
+.nature-authors-names {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+.nature-authors-names sup {
+  color: #8b3a1a;
+  font-weight: 700;
+}
+.nature-affiliations-box {
+  padding-left: 14px;
+  border-left: 2px solid #e5e7eb;
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+.nature-aff-item {
+  margin: 2px 0;
+}
+.nature-aff-num {
+  font-weight: 700;
+  color: #111827;
+}
+.nature-corresponding-line {
+  font-size: 12.5px;
+  color: #6b7280;
+  font-style: italic;
+  margin-top: 6px;
+}
+.nature-corr-email {
+  color: #8b3a1a;
+  text-decoration: underline;
+  font-style: normal;
+}
+
+/* Citation & Permanent Link Bar */
+.nature-citation-bar {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 14px 18px;
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.nature-citation-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 13.5px;
+  color: #1f2937;
+}
+.nature-citation-text em {
+  font-weight: 700;
+  color: #111827;
+}
+.nature-citation-cite-btn {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.nature-citation-cite-btn:hover {
+  background: #111827;
+  color: #ffffff;
+  border-color: #111827;
+}
+.nature-doi-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  flex-wrap: wrap;
+}
+.nature-doi-label {
+  font-weight: 700;
+  color: #4b5563;
+}
+.nature-doi-link {
+  color: #8b3a1a;
+  text-decoration: underline;
+  font-family: 'Consolas', monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+/* 3. Two-Column Grid Layout */
+.nature-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 36px;
+  align-items: start;
+  padding: 28px 36px 48px 36px;
+}
+@media (max-width: 992px) {
+  .nature-grid {
+    grid-template-columns: 1fr;
+    padding-left: 16px;
+    padding-right: 16px;
+    gap: 28px;
+  }
+}
+
+/* Main Column Styles */
+.nature-main-col {
+  min-width: 0;
+}
+.nature-section {
+  margin-bottom: 32px;
+}
+.nature-section-title {
+  font-family: 'Merriweather', 'Georgia', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 14px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.nature-abstract-text {
+  font-size: 15.5px;
+  line-height: 1.75;
+  color: #1f2937;
+  margin-bottom: 14px;
+}
+.nature-keywords-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.nature-keywords-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+}
+.nature-keyword-pill {
+  font-size: 12px;
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+/* Figures in Nature Main Column */
+.nature-figure-hero {
+  margin: 28px 0;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+.nature-hero-img-wrap {
+  text-align: center;
+  background: #f9fafb;
+  border-radius: 6px;
+  padding: 8px;
+}
+.nature-hero-img {
+  max-width: 100%;
+  max-height: 480px;
+  height: auto;
+  object-fit: contain;
+  border-radius: 4px;
+}
+.nature-figcaption {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: #374151;
+  margin-top: 12px;
+  padding: 0 4px;
+}
+.nature-fig-num {
+  font-weight: 800;
+  color: #111827;
+}
+
+/* Body Content Headings & Text */
+.nature-body-content {
+  font-size: 15.5px;
+  line-height: 1.75;
+  color: #262626;
+}
+.nature-body-content h2,
+.nature-heading-h2 {
+  font-family: 'Merriweather', 'Georgia', serif;
+  font-size: 21px;
+  font-weight: 700;
+  color: #111827;
+  margin: 36px 0 14px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.nature-body-content h3,
+.nature-heading-h3 {
+  font-family: 'Merriweather', 'Georgia', serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 26px 0 10px 0;
+}
+.nature-body-content p {
+  margin: 0 0 18px 0;
+  text-align: justify;
+}
+.nature-body-content ul,
+.nature-body-content ol {
+  margin: 0 0 18px 24px;
+}
+.nature-body-content li {
+  margin-bottom: 6px;
+}
+
+/* Author Declarations & Rights Sections */
+.nature-declarations, .nature-ethics, .nature-rights, .nature-about-footer {
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid #e5e7eb;
+}
+.nature-decl-block {
+  margin-bottom: 18px;
+}
+.nature-decl-heading {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 6px 0;
+}
+.nature-decl-p, .nature-decl-affs {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #4b5563;
+  margin: 0;
+}
+.nature-rights-card {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 16px 20px;
+}
+.nature-rights-license-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.nature-cc-pill {
+  font-size: 12px;
+  font-weight: 700;
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.nature-cc-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+}
+.nature-rights-desc {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #4b5563;
+  margin: 0;
+}
+
+/* About this article Footer Card */
+.nature-about-history-box {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 16px 20px;
+}
+.nature-history-group-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.nature-history-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.nature-history-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px dashed #e5e7eb;
+  font-size: 13.5px;
+}
+.nature-history-key {
+  color: #6b7280;
+  font-weight: 600;
+}
+.nature-history-val {
+  color: #111827;
+  font-weight: 700;
+}
+.nature-history-doi-line {
+  font-size: 13px;
+  color: #4b5563;
+  padding-top: 8px;
+  border-top: 1px solid #e5e7eb;
+}
+.nature-history-doi-line a {
+  color: #8b3a1a;
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+/* 4. Sticky Sidebar Column Styles */
+.nature-sidebar-col {
+  min-width: 0;
+}
+.nature-sticky-sidebar {
+  position: sticky;
+  top: 76px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.nature-sidebar-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px 18px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.nature-sidebar-card-title {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #111827;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+/* Actions in Sidebar */
+.nature-actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.btn-nature-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 5px;
+  cursor: pointer;
+  background: #f9fafb;
+  border: 1px solid #d1d5db;
+  color: #1f2937;
+  transition: all 0.15s ease;
+}
+.btn-nature-action:hover {
+  background: #111827;
+  color: #ffffff;
+  border-color: #111827;
+}
+.btn-nature-download {
+  background: #111827;
+  color: #ffffff;
+  border-color: #111827;
+}
+.btn-nature-download:hover {
+  background: #374151;
+  border-color: #374151;
+}
+.btn-nature-admin-edit {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+.btn-nature-admin-edit:hover {
+  background: #b91c1c;
+  color: #ffffff;
+  border-color: #b91c1c;
+}
+
+/* TOC in Sidebar */
+.nature-toc-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 380px;
+  overflow-y: auto;
+}
+.nature-toc-item a {
+  display: block;
+  font-size: 13px;
+  color: #4b5563;
+  padding: 4px 8px;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nature-toc-item a:hover {
+  background: #f3f4f6;
+  color: #111827;
+  padding-left: 12px;
+  font-weight: 600;
+}
+.nature-toc-sub {
+  padding-left: 12px;
+}
+.nature-toc-sub a {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* About this article Widget in Sidebar */
+.nature-about-card-section {
+  margin-bottom: 10px;
+}
+.nature-about-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.nature-about-history-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.nature-about-doi-val {
+  font-size: 12px;
+  color: #8b3a1a;
+  font-family: 'Consolas', monospace;
+  word-break: break-all;
+}
+.btn-nature-share-card {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-nature-share-card:hover {
+  background: #111827;
+  color: #ffffff;
+  border-color: #111827;
+}
+
+/* Hide default top navigation bar in full article view to maintain pure Nature layout */
+.news-full-article-view .news-article-top-bar {
+  display: none !important;
+}
+.news-full-paper-page {
+  max-width: 1260px !important;
+  margin: 0 auto 40px auto !important;
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  padding: 0 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04) !important;
+}
