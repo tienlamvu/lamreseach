@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-19T02:07:11.795Z",
+  "exported_at": "2026-11-19T02:08:03.294Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -5098,8 +5098,8 @@
       "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
       "registeredAt": "2026-11-16 11:31",
       "lastLoginAt": "2026-11-19 10:44:15",
-      "lastUpdatedAt": "2026-11-19 11:06:57",
-      "updatedAtMs": 1795054017653,
+      "lastUpdatedAt": "2026-11-19 11:07:54",
+      "updatedAtMs": 1795054074830,
       "workspace": {
         "papers": [
           {
@@ -6126,7 +6126,7 @@
             {
               "email": "lamvt.sep@gmail.com",
               "name": "Tien Lam",
-              "timestamp": "2026-11-19 10:39:39"
+              "timestamp": "2026-11-19 10:49:36"
             }
           ]
         },
@@ -6154,7 +6154,7 @@
             {
               "email": "lamvt.sep@gmail.com",
               "name": "Tien Lam",
-              "timestamp": "2026-11-19 10:39:39"
+              "timestamp": "2026-11-19 10:49:36"
             }
           ]
         },
@@ -6198,6 +6198,11 @@
               "email": "lamvt.skku@gmail.com",
               "name": "Vu Tien Lam",
               "timestamp": "2026-11-19 10:49:21"
+            },
+            {
+              "email": "lamvt.sep@gmail.com",
+              "name": "Tien Lam",
+              "timestamp": "2026-11-19 11:08:01"
             }
           ]
         },
@@ -6370,6 +6375,11 @@
               "email": "lamvt.skku@gmail.com",
               "name": "Vu Tien Lam",
               "timestamp": "2026-11-19 11:06:48"
+            },
+            {
+              "email": "lamvt.sep@gmail.com",
+              "name": "Tien Lam",
+              "timestamp": "2026-11-19 11:08:01"
             }
           ]
         },
