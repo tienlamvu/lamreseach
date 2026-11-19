@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-19T05:00:00.698Z",
+  "exported_at": "2026-11-19T05:00:20.312Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -6149,7 +6149,7 @@
       "doi": "10.skku.matsci/news.1795064173443",
       "cover_image": "",
       "keywords": "2D Materials, DFT, VASP, Energy Materials",
-      "abstract": "AAA",
+      "abstract": "Electrical control of magnetism and valley states in two-dimensional semiconductors have been seeking for long time since they are essential for the application of low-power spintronic and valleytronic devices. Because non-magnetic Janus monolayer possesses inherent dipoles, which can provide a pathway to control them using external electric field. However,  coupling these phenomena in Janus materials has been explored yet. Here we show that, using first-principles calculations, out-of-plane electric fields (Ez) and carrier doping synergistically drive itinerant Stoner ferromagnetism, which subsequently leads to anomalous valley Hall effect in monolayer MoSSe. An electric field of Ez  ±1.0 V/Å triggers a giant Stark shift that pulls a conduction-band nearly free-electron state at the Γ point across the Fermi level, inducing a metal-insulator transition. The elevated density of states at Fermi level satisfies the Stoner criterion, breaking combined parity-time symmetry and exhibiting polarity-selective orbital magnetization dominated by molybdenum and selenide states under positive and negative bias, respectively. This magnetic transition reverses the Berry curvature sign at the -K valley, deflecting carriers from both K and -K valleys toward the same transverse edge. Introducing holes suppresses the delocalized free-electron states and strengthens exchange splitting, reopening the semiconducting gap with a valley splitting of 160 meV. Our findings highlight dual electrostatic and doping control as a versatile platform for electric spin-valleytronic devices.",
       "content_html": "<h2>1. Introduction</h2>\n<p>State background and motivation here...</p>\n<h2>2. Computational Methodology</h2>\n<p>Details of DFT functionals, cutoffs, and supercells...</p>\n<h2>3. Results &amp; Discussion</h2>\n<p>Key findings and atomic-scale mechanisms...</p>\n<h2>4. References</h2>\n<ol>\n  <li>Author et al. <em>Journal</em> <strong>Volume</strong>, Page (Year).</li>\n</ol>"
     }
   ],
