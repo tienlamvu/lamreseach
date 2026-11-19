@@ -30968,11 +30968,11 @@ function renderNewsTab() {
   const volumeArticlesHtml = renderVolumeArticlesHtml(activeVolArticles, isAdmin);
 
   container.innerHTML = `
-    <!-- Top Section: Most Recent Publications -->
-    <section class="news-most-recent-section" aria-label="Most Recent Publications">
+    <!-- Top Section: Most Recent Articles -->
+    <section class="news-most-recent-section" aria-label="Most Recent Articles">
       <div class="news-section-header">
         <div class="news-section-title-wrap">
-          <h3 class="news-section-heading">🔥 Most Recent Publications</h3>
+          <h3 class="news-section-heading">🔥 Most Recent Articles</h3>
           <span class="news-section-badge-recent">${recentArticles.length} Latest</span>
         </div>
         <p class="news-section-sub">Latest breakthrough research papers, computational DFT findings, and official announcements from our laboratory.</p>
@@ -30982,14 +30982,14 @@ function renderNewsTab() {
       </div>
     </section>
 
-    <!-- Bottom Section: Publication Volumes & Archives -->
-    <section class="news-volumes-archive-section" aria-label="Publication Volumes and Archives">
+    <!-- Bottom Section: Research Volumes & Archives -->
+    <section class="news-volumes-archive-section" aria-label="Research Volumes and Archives">
       <div class="news-section-header">
         <div class="news-section-title-wrap">
-          <h3 class="news-section-heading">📚 Publication Volumes &amp; Archives</h3>
+          <h3 class="news-section-heading">📚 Research Volumes &amp; Archives</h3>
           <span class="news-section-badge-volumes">${volumeNames.length} Volumes Available</span>
         </div>
-        <p class="news-section-sub">Browse scientific publications grouped by annual volume. Select a volume below to view its full paper directory with internal scrolling.</p>
+        <p class="news-section-sub">Browse scientific articles grouped by annual volume. Select a volume below to view its full paper directory.</p>
       </div>
 
       <!-- Horizontal Volume Tabs Bar -->
@@ -30997,19 +30997,16 @@ function renderNewsTab() {
         ${volumeTabsHtml}
       </div>
 
-      <!-- Active Volume Box with Internal Scrollable Container -->
+      <!-- Active Volume Box with Full Paper Directory (No Scroll Box Clipping) -->
       <div class="news-volume-box">
         <div class="news-volume-box-header">
           <div class="news-volume-box-title">
             <span class="news-vol-box-volname">📖 ${escapeHtml(activeVol)}</span>
             <span class="news-vol-box-countbadge">${activeVolArticles.length} ${activeVolArticles.length === 1 ? 'Article' : 'Articles'}</span>
           </div>
-          <div class="news-volume-scroll-hint">
-            <span>↕️ Scroll down inside box to view all papers</span>
-          </div>
         </div>
 
-        <div class="news-volume-articles-scroll-container">
+        <div class="news-volume-articles-container">
           ${volumeArticlesHtml}
         </div>
       </div>
@@ -31368,10 +31365,13 @@ async function importScientificWordDocument(file) {
           pImages.push(...rRes.images);
         }
 
-        // Check for math equations
+        // Check for math equations: m:oMath or m:oMathPara
         const mathNodes = node.getElementsByTagName("m:oMath");
+        let hasMath = mathNodes.length > 0;
+        let mathContent = "";
         for (let m = 0; m < mathNodes.length; m++) {
           const mText = mathNodes[m].textContent || "";
+          mathContent += (mathContent ? " " : "") + mText;
           pRaw += " " + mText;
           pHtml += ` <span class="journal-math-formula">${escapeHtml(mText)}</span>`;
         }
@@ -31383,7 +31383,9 @@ async function importScientificWordDocument(file) {
             html: pHtml.trim(),
             images: pImages,
             isCenter,
-            pStyle
+            pStyle,
+            hasMath,
+            mathContent
           });
         }
       } else if (nodeName.endsWith(":tbl") || nodeName === "tbl") {
@@ -31406,7 +31408,7 @@ async function importScientificWordDocument(file) {
       }
     }
 
-    // --- Automatic Academic Metadata Detection ---
+    // --- Automatic Academic Metadata Detection (V109: High-Precision Parsing) ---
     let detectedTitle = "";
     let detectedAuthors = "";
     let detectedAffiliations = "";
@@ -31427,40 +31429,49 @@ async function importScientificWordDocument(file) {
         const lower = raw.toLowerCase();
 
         // Stage 0: Detect Title
-        if (!detectedTitle && raw.length > 10 && !lower.startsWith("abstract")) {
+        const isTitleStyle = el.pStyle.match(/title|heading\s*1|tieude/i);
+        if (!detectedTitle && (isTitleStyle || (raw.length > 10 && !lower.startsWith("abstract") && !lower.startsWith("author")))) {
           detectedTitle = raw;
           continue;
         }
 
         // Stage 1: Detect Authors
-        if (detectedTitle && !detectedAuthors && !lower.startsWith("abstract") && !lower.includes("university") && !lower.includes("institute") && !lower.includes("school")) {
-          detectedAuthors = el.html || raw;
-          continue;
+        if (detectedTitle && !detectedAuthors) {
+          if (lower.startsWith("author") || lower.startsWith("tác giả") || lower.startsWith("by ")) {
+            detectedAuthors = el.html.replace(/^(authors?|tác giả|by)\s*[:—–\.-]?\s*/i, "") || raw;
+            continue;
+          }
+          if (!lower.startsWith("abstract") && !lower.includes("university") && !lower.includes("institute") && !lower.includes("department") && !lower.includes("school") && !lower.includes("@")) {
+            detectedAuthors = el.html || raw;
+            continue;
+          }
         }
 
         // Stage 2: Detect Affiliations & Corresponding Email
-        if (detectedTitle && detectedAuthors && (lower.includes("university") || lower.includes("institute") || lower.includes("department") || lower.includes("school") || lower.includes("republic of korea") || lower.includes("@") || lower.includes("correspondence"))) {
-          detectedAffiliations += (detectedAffiliations ? "\n" : "") + raw;
-          const emailMatch = raw.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/);
-          if (emailMatch && !detectedEmail) detectedEmail = emailMatch[0];
-          continue;
+        if (detectedTitle && (lower.includes("university") || lower.includes("institute") || lower.includes("department") || lower.includes("school") || lower.includes("college") || lower.includes("center") || lower.includes("faculty") || lower.includes("republic of korea") || lower.includes("korea") || lower.includes("vietnam") || lower.includes("@") || lower.includes("correspondence") || lower.startsWith("1.") || lower.startsWith("2."))) {
+          if (stage === "before_abstract") {
+            detectedAffiliations += (detectedAffiliations ? "\n" : "") + raw;
+            const emailMatch = raw.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/);
+            if (emailMatch && !detectedEmail) detectedEmail = emailMatch[0];
+            continue;
+          }
         }
 
         // Stage 3: Detect Abstract
-        if (lower.startsWith("abstract") || lower === "abstract:") {
+        if (lower.match(/^(abstract|tóm tắt|executive summary)\s*[:—–\.-]?/i)) {
           stage = "in_abstract";
-          const remainder = raw.replace(/^abstract:?/i, "").trim();
+          const remainder = raw.replace(/^(abstract|tóm tắt|executive summary)\s*[:—–\.-]?\s*/i, "").trim();
           if (remainder) abstractLines.push(remainder);
           continue;
         }
 
         if (stage === "in_abstract") {
-          if (lower.startsWith("keywords:") || lower.startsWith("key words:") || lower.startsWith("index terms:")) {
-            detectedKeywords = raw.replace(/^(keywords|key words|index terms):?/i, "").trim();
+          if (lower.match(/^(keywords?|key words?|từ khóa|index terms)\s*[:—–\.-]?/i)) {
+            detectedKeywords = raw.replace(/^(keywords?|key words?|từ khóa|index terms)\s*[:—–\.-]?\s*/i, "").trim();
             stage = "in_body";
             continue;
           }
-          if (lower.match(/^(1\.\s+introduction|introduction)/i)) {
+          if (lower.match(/^(\d+(\.\d+)*\.?\s+|i+\.?\s+)?(introduction|mở đầu|background)/i)) {
             stage = "in_body";
             // let body parser below handle this heading
           } else {
@@ -31470,8 +31481,8 @@ async function importScientificWordDocument(file) {
         }
 
         // Stage 4: Detect Keywords outside abstract
-        if (lower.startsWith("keywords:") || lower.startsWith("key words:") || lower.startsWith("index terms:")) {
-          detectedKeywords = raw.replace(/^(keywords|key words|index terms):?/i, "").trim();
+        if (lower.match(/^(keywords?|key words?|từ khóa|index terms)\s*[:—–\.-]?/i)) {
+          detectedKeywords = raw.replace(/^(keywords?|key words?|từ khóa|index terms)\s*[:—–\.-]?\s*/i, "").trim();
           continue;
         }
 
@@ -31482,7 +31493,7 @@ async function importScientificWordDocument(file) {
             let caption = `Figure ${extractedFigures.length}`;
             if (i + 1 < elements.length && elements[i + 1].type === "p") {
               const nextRaw = elements[i + 1].raw;
-              if (nextRaw.match(/^(figure|fig\.?)\s*\d+/i)) {
+              if (nextRaw.match(/^(figure|fig\.?|hình)\s*\d+/i)) {
                 caption = nextRaw;
                 i++; // consume caption
               }
@@ -31498,19 +31509,21 @@ async function importScientificWordDocument(file) {
         }
 
         // Check if Section Heading
-        if (raw.match(/^(\d+\.?\s+[A-Z]|Introduction|Computational Methodology|Results|Discussion|Conclusion|References)/i) && raw.length < 90) {
-          bodyBlocks.push(`<h2>${el.html || raw}</h2>`);
+        const isHeading = raw.match(/^((I|II|III|IV|V|VI|VII|VIII|IX|X|\d+(\.\d+)*)\.?\s+[A-Z]|Introduction|Computational Methodology|Methods|Computational Details|Experimental|Results and Discussion|Results & Discussion|Discussion|Conclusions?|Acknowledgements?|References|Tài liệu tham khảo)/i) && raw.length < 100;
+        if (isHeading) {
+          const isSub = raw.match(/^\d+\.\d+\s+/);
+          bodyBlocks.push(isSub ? `<h3>${el.html || raw}</h3>` : `<h2>${el.html || raw}</h2>`);
           continue;
         }
 
-        // Check if Equation
-        if (raw.match(/\(\d+\)\s*$/) || (el.isCenter && (raw.includes("=") || raw.includes("Δ") || raw.includes("μ")))) {
-          const eqNumMatch = raw.match(/\((\d+)\)\s*$/);
+        // Check if Equation Block
+        if (el.hasMath || raw.match(/\((\d+|eq\.\s*\d+)\)\s*$/i) || (el.isCenter && (raw.includes("=") || raw.includes("Δ") || raw.includes("μ") || raw.includes("Ĥ")))) {
+          const eqNumMatch = raw.match(/\((\d+|eq\.\s*\d+)\)\s*$/i);
           const eqNum = eqNumMatch ? `(${eqNumMatch[1]})` : "";
-          const eqMath = raw.replace(/\(\d+\)\s*$/, "").trim();
+          const eqMath = raw.replace(/\((\d+|eq\.\s*\d+)\)\s*$/i, "").trim();
           bodyBlocks.push(`
             <div class="journal-equation-block">
-              <div class="journal-equation-math">${escapeHtml(eqMath)}</div>
+              <div class="journal-equation-math">${renderScientificRichText(eqMath)}</div>
               ${eqNum ? `<div class="journal-equation-num">${escapeHtml(eqNum)}</div>` : ""}
             </div>
           `);
@@ -31780,31 +31793,21 @@ function openNewsJournalModal(articleId) {
 
   const fullPaperHtml = `
     <div class="nature-article-wrapper">
-      <!-- 1. Journal Academic Masthead Header (Custom Lab Academic Identity) -->
+      <!-- 1. Journal Header & Academic Breadcrumbs -->
       <header class="nature-masthead">
         <div class="nature-masthead-inner">
-          <div class="nature-brand-group">
-            <span class="nature-brand-badge">SKKU</span>
-            <span class="nature-brand-title">computational materials letters</span>
-            <span class="nature-brand-partner">| Materials Simulation Lab</span>
-          </div>
-          <div class="nature-masthead-controls">
-            <span class="nature-portfolio-note">Open Access Academic Research</span>
-            <button type="button" class="btn-nature-nav-back" onclick="closeNewsFullArticleView()">
-              ← Back to All Articles
-            </button>
-          </div>
+          <!-- Academic Breadcrumbs -->
+          <nav class="nature-breadcrumbs" aria-label="Breadcrumb">
+            <span class="nature-crumb-link" onclick="closeNewsFullArticleView()">Explore content</span>
+            <span class="nature-crumb-sep">&gt;</span>
+            <span class="nature-crumb-link" onclick="closeNewsFullArticleView()">${escapeHtml(volumeName)}</span>
+            <span class="nature-crumb-sep">&gt;</span>
+            <span class="nature-crumb-active">Article ${escapeHtml(articleNum)}</span>
+          </nav>
+          <button type="button" class="btn-nature-nav-back" onclick="closeNewsFullArticleView()">
+            ← Back to All Articles
+          </button>
         </div>
-        <!-- Academic Breadcrumbs -->
-        <nav class="nature-breadcrumbs" aria-label="Breadcrumb">
-          <span class="nature-crumb-link" onclick="closeNewsFullArticleView()">Publications</span>
-          <span class="nature-crumb-sep">&gt;</span>
-          <span class="nature-crumb-link" onclick="closeNewsFullArticleView()">SKKU Computational Materials Letters</span>
-          <span class="nature-crumb-sep">&gt;</span>
-          <span class="nature-crumb-link" onclick="closeNewsFullArticleView()">${escapeHtml(volumeName)}</span>
-          <span class="nature-crumb-sep">&gt;</span>
-          <span class="nature-crumb-active">Article ${escapeHtml(articleNum)}</span>
-        </nav>
       </header>
 
       <!-- 2. Nature Article Header Area -->
@@ -31835,7 +31838,7 @@ function openNewsJournalModal(articleId) {
         <!-- Citation & Permanent Link Bar -->
         <div class="nature-citation-bar">
           <div class="nature-citation-info">
-            <span class="nature-citation-text"><em>SKKU Computational Materials Letters</em> ${escapeHtml(volumeName)}, Article number: ${escapeHtml(articleNum)} (${escapeHtml(pubYear)})</span>
+            <span class="nature-citation-text"><em>Computational Materials Research</em> ${escapeHtml(volumeName)}, Article number: ${escapeHtml(articleNum)} (${escapeHtml(pubYear)})</span>
             <button type="button" class="nature-citation-cite-btn" onclick="copyNewsCitation()">📋 Cite this article</button>
           </div>
           <div class="nature-doi-row">
@@ -32045,9 +32048,10 @@ function closeNewsJournalModal() {
 }
 
 function editCurrentJournalArticle() {
-  if (NEWS_STATE.currentJournalArticleId) {
+  const targetId = NEWS_STATE.currentJournalArticleId;
+  if (targetId) {
     closeNewsJournalModal();
-    openNewsEditorModal(NEWS_STATE.currentJournalArticleId);
+    openNewsEditorModal(targetId);
   }
 }
 
@@ -32065,7 +32069,7 @@ function copyNewsCitation() {
   const num = getArticleNumber(a, volArts);
   const year = getArticleYear(a);
   const canonicalUrl = `${window.location.origin}${window.location.pathname}#news?id=${encodeURIComponent(a.id)}`;
-  const citation = `${a.authors || "Vu Tien Lam"} (${year}). ${a.title}. SKKU Computational Materials Letters, ${vol}, Article ${num}. ${canonicalUrl}`;
+  const citation = `${a.authors || "Vu Tien Lam"} (${year}). ${a.title}. Computational Materials Research, ${vol}, Article ${num}. ${canonicalUrl}`;
 
   navigator.clipboard.writeText(citation).then(() => {
     showToast("📋 Academic citation copied to clipboard!", "success");
@@ -32511,44 +32515,112 @@ function confirmInsertImage() {
   execEditorCommand("insertHTML", figHtml);
 }
 
-// Math Formula Inserter
+// Math Formula Inserter (V109: Enhanced live preview, equation numbering, templates & full symbol set)
 function openInsertFormulaDialog() {
   saveEditorRange();
-  const txtInp = document.getElementById("news-formula-text-input");
-  if (txtInp) txtInp.value = "";
   const dlg = document.getElementById("news-formula-dialog");
-  if (dlg) dlg.style.display = "flex";
+  if (!dlg) return;
+
+  const txtInp = document.getElementById("news-formula-text-input");
+  const numInp = document.getElementById("news-formula-num-input");
+  const typeSelect = document.getElementById("news-formula-type");
+
+  // Determine next equation number
+  const editorBody = document.getElementById("news-editor-body");
+  const existingBlocks = editorBody ? editorBody.querySelectorAll(".journal-equation-block") : [];
+  const nextEq = `(${existingBlocks.length + 1})`;
+
+  if (numInp && !numInp.value) {
+    numInp.value = nextEq;
+  }
+  if (typeSelect) typeSelect.value = "block";
+  if (txtInp && !txtInp.value) {
+    txtInp.value = "ΔG_H* = ΔE_DFT + ΔE_ZPE - TΔS_H";
+  }
+
+  updateFormulaLivePreview();
+  dlg.style.display = "flex";
+  if (txtInp) {
+    setTimeout(() => {
+      txtInp.focus();
+      txtInp.select();
+    }, 60);
+  }
+}
+
+function updateFormulaLivePreview() {
+  const input = document.getElementById("news-formula-text-input");
+  const numInput = document.getElementById("news-formula-num-input");
+  const typeSelect = document.getElementById("news-formula-type");
+  const previewMath = document.getElementById("news-formula-preview-math");
+  const previewNum = document.getElementById("news-formula-preview-num");
+  const numGroup = document.getElementById("news-formula-num-group");
+
+  const rawText = (input?.value || "").trim();
+  const rawNum = (numInput?.value || "").trim();
+  const type = typeSelect?.value || "block";
+
+  if (numGroup) {
+    numGroup.style.display = type === "block" ? "block" : "none";
+  }
+
+  if (previewMath) {
+    previewMath.innerHTML = rawText ? renderScientificRichText(rawText) : `<span style="color:#a89988; font-style:italic;">Formula preview will appear here...</span>`;
+    previewMath.style.textAlign = type === "block" ? "center" : "left";
+  }
+
+  if (previewNum) {
+    if (type === "block" && rawNum) {
+      previewNum.textContent = rawNum;
+      previewNum.style.display = "inline-block";
+    } else {
+      previewNum.textContent = "";
+      previewNum.style.display = "none";
+    }
+  }
 }
 
 function insertSymbolIntoFormula(symbol) {
   const inp = document.getElementById("news-formula-text-input");
   if (!inp) return;
-  const start = inp.selectionStart || inp.value.length;
-  const end = inp.selectionEnd || inp.value.length;
+  const start = inp.selectionStart ?? inp.value.length;
+  const end = inp.selectionEnd ?? inp.value.length;
   inp.value = inp.value.substring(0, start) + symbol + inp.value.substring(end);
   inp.selectionStart = inp.selectionEnd = start + symbol.length;
   inp.focus();
+  updateFormulaLivePreview();
+}
+
+function applyFormulaTemplate(templateStr, defaultEqNum = "") {
+  const inp = document.getElementById("news-formula-text-input");
+  const numInp = document.getElementById("news-formula-num-input");
+  if (inp) inp.value = templateStr;
+  if (numInp && defaultEqNum) numInp.value = defaultEqNum;
+  updateFormulaLivePreview();
+  if (inp) inp.focus();
 }
 
 function confirmInsertFormula() {
   const formulaText = (document.getElementById("news-formula-text-input")?.value || "").trim();
   const type = document.getElementById("news-formula-type")?.value || "block";
+  const numText = (document.getElementById("news-formula-num-input")?.value || "").trim();
 
   if (!formulaText) {
     showToast("Please type a formula or insert symbols.", "warn");
     return;
   }
 
+  const renderedMath = renderScientificRichText(formulaText);
   let mathHtml = "";
   if (type === "block") {
     mathHtml = `
       <div class="journal-equation-block">
-        <div class="journal-equation-math">${escapeHtml(formulaText)}</div>
-        <div class="journal-equation-num">(1)</div>
+        <div class="journal-equation-math">${renderedMath}</div>
+        ${numText ? `<div class="journal-equation-num">${escapeHtml(numText)}</div>` : ""}
       </div><p></p>
     `;
   } else {
-    mathHtml = `&nbsp;<span class="journal-equation-math" style="font-size:15px; padding:0 3px;">${escapeHtml(formulaText)}</span>&nbsp;`;
+    mathHtml = `&nbsp;<span class="journal-equation-math" style="font-size:15px; padding:0 3px;">${renderedMath}</span>&nbsp;`;
   }
 
   closeSubdialog("news-formula-dialog");
@@ -32591,6 +32663,8 @@ window.handleNewsFigFileUpload = handleNewsFigFileUpload;
 window.confirmInsertImage = confirmInsertImage;
 window.openInsertFormulaDialog = openInsertFormulaDialog;
 window.insertSymbolIntoFormula = insertSymbolIntoFormula;
+window.updateFormulaLivePreview = updateFormulaLivePreview;
+window.applyFormulaTemplate = applyFormulaTemplate;
 window.confirmInsertFormula = confirmInsertFormula;
 
 
