@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-19T04:55:53.543Z",
+  "exported_at": "2026-11-19T04:56:25.739Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -6134,7 +6134,25 @@
   "deleted_papers_map": {},
   "deleted_schedule": [],
   "deleted_schedule_map": {},
-  "news_articles": [],
+  "news_articles": [
+    {
+      "id": "news_1795064184580",
+      "title": "ABC",
+      "category": "Research Article",
+      "status": "Published",
+      "authors": "Vu Tien Lam¹*, Jaewon Kim¹",
+      "corresponding_email": "lamvt.skku@gmail.com",
+      "affiliations": "¹ School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea",
+      "received_date": "2026-11-19",
+      "revised_date": "2026-11-19",
+      "published_date": "2026-11-19",
+      "doi": "10.skku.matsci/news.1795064173443",
+      "cover_image": "",
+      "keywords": "2D Materials, DFT, VASP, Energy Materials",
+      "abstract": "AAA",
+      "content_html": "<h2>1. Introduction</h2>\n<p>State background and motivation here...</p>\n<h2>2. Computational Methodology</h2>\n<p>Details of DFT functionals, cutoffs, and supercells...</p>\n<h2>3. Results &amp; Discussion</h2>\n<p>Key findings and atomic-scale mechanisms...</p>\n<h2>4. References</h2>\n<ol>\n  <li>Author et al. <em>Journal</em> <strong>Volume</strong>, Page (Year).</li>\n</ol>"
+    }
+  ],
   "deleted_news_articles": [],
   "deleted_news_articles_map": {}
 }
