@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-19T00:18:50.961Z",
+  "exported_at": "2026-11-19T00:18:56.565Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -5095,13 +5095,6 @@
       "participant_groups": []
     }
   ],
-  "event_categories": [
-    "Synthesis / Furnace",
-    "Characterization (XRD/SEM/TEM/XPS)",
-    "Group Meeting / PI Meeting",
-    "Electrochemical Testing",
-    "Data Analysis / Manuscript Writing"
-  ],
   "users_registry": {
     "lamvt.sep@gmail.com": {
       "email": "lamvt.sep@gmail.com",
@@ -7383,20 +7376,6 @@
     "alice@skku.edu",
     "jaewon@skku.edu"
   ],
-  "deleted_users_map": {
-    "test.researcher@skku.edu": 1794983284716,
-    "aaa@gmail.com": 1794983284716,
-    "jhpark.matsci@skku.edu": 1794983284716,
-    "temp.delete.test@gmail.com": 1794983284716,
-    "minseo.kim@gmail.com": 1794983284716,
-    "ssk@gmail.com": 1794983284716,
-    "las@gmail.com": 1794983284716,
-    "test.relay.otp@skku.edu": 1794983284716,
-    "linh@gmail.com": 1794983284716,
-    "a@gmail.com": 1794983284716,
-    "alice@skku.edu": 1795000782079,
-    "jaewon@skku.edu": 1795000782079
-  },
   "deleted_groups": [
     "grp_external_collab",
     "grp_dft_team",
