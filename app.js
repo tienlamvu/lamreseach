@@ -1196,7 +1196,22 @@ function getDeletedStructuresMap() {
     const raw = localStorage.getItem("matsci_deleted_structures_map_v2");
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === "object") return parsed;
+      if (parsed && typeof parsed === "object") {
+        let dirty = false;
+        Object.keys(parsed).forEach(k => {
+          if (/^CD-\d+$/i.test(k)) {
+            delete parsed[k];
+            dirty = true;
+          }
+        });
+        if (dirty) {
+          try {
+            localStorage.setItem("matsci_deleted_structures_map_v2", JSON.stringify(parsed));
+            localStorage.setItem("matsci_deleted_structures_v1", JSON.stringify(Object.keys(parsed)));
+          } catch (e) {}
+        }
+        return parsed;
+      }
     }
   } catch (e) {}
   return {};
@@ -1210,11 +1225,13 @@ function getDeletedStructuresSet() {
 function addDeletedStructureTombstone(id, structuralId = null, timestampMs = null) {
   const map = getDeletedStructuresMap();
   const ts = timestampMs || Date.now();
-  if (id !== undefined && id !== null) {
-    map[String(id)] = ts;
+  if (id !== undefined && id !== null && String(id).trim()) {
+    map[String(id).trim()] = ts;
   }
-  if (structuralId && typeof structuralId === "string" && structuralId.trim()) {
-    map[structuralId.trim().toUpperCase()] = ts;
+  // NEVER tombstone structuralId (e.g. CD-0027) permanently, because CD-XXXX slots must be recycled!
+  // If structuralId is provided, ensure any previous tombstone on that structuralId slot is removed
+  if (structuralId && typeof structuralId === "string") {
+    delete map[structuralId.trim().toUpperCase()];
   }
   try {
     localStorage.setItem("matsci_deleted_structures_map_v2", JSON.stringify(map));
@@ -1229,9 +1246,12 @@ function removeDeletedStructureTombstone(id, structuralId = null) {
     delete map[String(id)];
     changed = true;
   }
-  if (structuralId && typeof structuralId === "string" && map[structuralId.trim().toUpperCase()]) {
-    delete map[structuralId.trim().toUpperCase()];
-    changed = true;
+  if (structuralId && typeof structuralId === "string") {
+    const sKey = structuralId.trim().toUpperCase();
+    if (map[sKey]) {
+      delete map[sKey];
+      changed = true;
+    }
   }
   if (changed) {
     try {
@@ -1241,11 +1261,24 @@ function removeDeletedStructureTombstone(id, structuralId = null) {
   }
 }
 
-function isStructureTombstoned(id, structuralId = null) {
+function isStructureTombstoned(id, structuralId = null, itemTimestampMs = null) {
   const map = getDeletedStructuresMap();
   if (id !== undefined && id !== null && map[String(id)]) return true;
   if (structuralId && typeof structuralId === "string" && structuralId.trim()) {
-    if (map[structuralId.trim().toUpperCase()]) return true;
+    const sidKey = structuralId.trim().toUpperCase();
+    const delTs = map[sidKey];
+    if (delTs) {
+      const itemTs = itemTimestampMs || (Number(id) > 1000000000000 ? Number(id) : 0);
+      if (itemTs > 0 && itemTs > delTs) {
+        delete map[sidKey];
+        try {
+          localStorage.setItem("matsci_deleted_structures_map_v2", JSON.stringify(map));
+          localStorage.setItem("matsci_deleted_structures_v1", JSON.stringify(Object.keys(map)));
+        } catch (e) {}
+        return false;
+      }
+      return true;
+    }
   }
   return false;
 }
@@ -1256,7 +1289,8 @@ function mergeIncomingDeletedStructures(remoteList = null, remoteMap = null) {
   if (Array.isArray(remoteList)) {
     remoteList.forEach(k => {
       const key = String(k || "").trim().toUpperCase();
-      if (key && !localMap[key]) {
+      if (!key || /^CD-\d+$/i.test(key)) return; // Never blacklist reusable CD-XXXX slots!
+      if (!localMap[key]) {
         localMap[key] = 1;
         changed = true;
       }
@@ -1265,8 +1299,9 @@ function mergeIncomingDeletedStructures(remoteList = null, remoteMap = null) {
   if (remoteMap && typeof remoteMap === "object") {
     Object.entries(remoteMap).forEach(([k, ts]) => {
       const key = String(k || "").trim().toUpperCase();
+      if (!key || /^CD-\d+$/i.test(key)) return; // Never blacklist reusable CD-XXXX slots!
       const numTs = Number(ts) || Date.now();
-      if (key && (!localMap[key] || numTs > localMap[key])) {
+      if (!localMap[key] || numTs > localMap[key]) {
         localMap[key] = numTs;
         changed = true;
       }
@@ -1487,6 +1522,8 @@ window.removeDeletedStructureTombstone = removeDeletedStructureTombstone;
 window.isStructureTombstoned = isStructureTombstoned;
 window.purgeTombstonedStructures = purgeTombstonedStructures;
 window.purgeAllTombstonedEntities = purgeAllTombstonedEntities;
+window.STATE = STATE;
+window.loadAllData = loadAllData;
 
 
 function mergeTwoUserRecords(existingU, incomingU) {
@@ -9727,6 +9764,7 @@ async function handleBatchCifFiles(fileList) {
         uploaded_at: getGmt9NowStr(),
         ...visMeta
       };
+      removeDeletedStructureTombstone(newStruct.id, structuralId);
       STATE.structures.unshift(newStruct);
       addedIds.push(structuralId);
     } catch (err) {
@@ -13374,6 +13412,7 @@ async function saveStructureFromModal() {
     if (idx >= 0) STATE.structures[idx] = { ...STATE.structures[idx], ...payload };
     recordUserActivity("Crystal Structures", "Updated Structure", `${formula} — ${payload.name} (${payload.space_group})`);
   } else {
+    removeDeletedStructureTombstone(null, payload.structural_id);
     STATE.structures.unshift({ ...payload, id: Date.now() });
     recordUserActivity("Crystal Structures", "Added Structure", `${formula} — ${payload.name} (${payload.space_group})`);
   }
