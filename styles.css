@@ -8478,12 +8478,91 @@ body.is-admin #cv-exclusive-owner-notice {
 /* ==========================================================================
    ADMIN WYSIWYG RICH TEXT EDITOR MODAL & TOOLBAR
    ========================================================================== */
+/* News Editor Modal Solid Background & Contrast (Fixed v105) */
+#news-editor-modal.modal-backdrop {
+  background: rgba(15, 23, 42, 0.75) !important;
+  z-index: 10002 !important;
+}
+
+#news-editor-modal .modal-box,
+#news-editor-modal .news-editor-modal-box,
 .news-editor-modal-card {
-  max-width: 1040px;
-  width: 95%;
-  max-height: 94vh;
-  display: flex;
-  flex-direction: column;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border: 1px solid #ebd8c1 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45) !important;
+  max-width: 1060px !important;
+  width: 95% !important;
+  max-height: 94vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 24px !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+#news-editor-modal label.form-label,
+#news-editor-modal .form-label {
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  color: #3b2c20 !important;
+  margin-bottom: 5px !important;
+  display: block !important;
+}
+#news-editor-modal .form-label .required {
+  color: #dc2626 !important;
+  font-weight: bold;
+}
+
+#news-editor-modal .form-input,
+#news-editor-modal .form-select,
+#news-editor-modal .form-textarea,
+#news-editor-modal input[type="text"],
+#news-editor-modal input[type="email"],
+#news-editor-modal input[type="date"],
+#news-editor-modal select,
+#news-editor-modal textarea {
+  background: #ffffff !important;
+  color: #2b1f17 !important;
+  border: 1px solid #d4c5b3 !important;
+  border-radius: 6px !important;
+  padding: 8px 12px !important;
+  font-size: 13.5px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+#news-editor-modal .form-input:focus,
+#news-editor-modal .form-select:focus,
+#news-editor-modal .form-textarea:focus,
+#news-editor-modal input:focus,
+#news-editor-modal select:focus,
+#news-editor-modal textarea:focus {
+  border-color: #8b3a1a !important;
+  box-shadow: 0 0 0 3px rgba(139, 58, 26, 0.15) !important;
+  outline: none !important;
+}
+
+.news-card-share-btn {
+  background: #fbf7f2;
+  border: 1px solid #e2cfbc;
+  border-radius: 4px;
+  color: #695747;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 9px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+.news-card-share-btn:hover {
+  background: #8b3a1a;
+  border-color: #8b3a1a;
+  color: #ffffff;
 }
 .news-editor-modal-body {
   overflow-y: auto;
