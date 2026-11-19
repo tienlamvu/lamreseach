@@ -280,8 +280,8 @@
           </div>
         </div>
 
-        <!-- News Articles Grid -->
-        <div id="news-articles-container" class="news-articles-grid">
+        <!-- News Articles Container (Most Recent & Annual Volumes) -->
+        <div id="news-articles-container" class="news-catalog-container">
           <!-- Dynamically populated by renderNewsTab() -->
         </div>
 
@@ -4144,6 +4144,18 @@
           <div class="news-form-group flex-1">
             <label class="form-label" for="news-edit-doi">DOI Identifier</label>
             <input type="text" id="news-edit-doi" class="form-input" placeholder="e.g. 10.skku.matsci/news.2026.001">
+          </div>
+        </div>
+
+        <!-- Journal Volume & Article Number Row (Auto-grouped by Year if empty) -->
+        <div class="news-form-row">
+          <div class="news-form-group flex-1">
+            <label class="form-label" for="news-edit-volume">📚 Volume &amp; Year <span style="font-weight:normal; font-size:11px; color:#8c786a;">(Auto-grouped by Year if empty)</span></label>
+            <input type="text" id="news-edit-volume" class="form-input" placeholder="Auto: e.g. Volume 3 (2026)">
+          </div>
+          <div class="news-form-group flex-1">
+            <label class="form-label" for="news-edit-article-number">🔢 Article Number <span style="font-weight:normal; font-size:11px; color:#8c786a;">(Auto-sequenced if empty)</span></label>
+            <input type="text" id="news-edit-article-number" class="form-input" placeholder="Auto: e.g. 1, 2, 3...">
           </div>
         </div>
 
