@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-19T04:23:55.825Z",
+  "exported_at": "2026-11-19T04:40:34.851Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -6539,13 +6539,13 @@
     }
   },
   "deleted_users": [
+    "test.researcher@skku.edu",
+    "aaa@gmail.com",
     "jhpark.matsci@skku.edu",
+    "temp.delete.test@gmail.com",
     "minseo.kim@gmail.com",
     "ssk@gmail.com",
     "las@gmail.com",
-    "test.researcher@skku.edu",
-    "aaa@gmail.com",
-    "temp.delete.test@gmail.com",
     "test.relay.otp@skku.edu",
     "linh@gmail.com",
     "a@gmail.com",
@@ -6553,13 +6553,13 @@
     "jaewon@skku.edu"
   ],
   "deleted_users_map": {
+    "test.researcher@skku.edu": 1795047536565,
+    "aaa@gmail.com": 1795047536565,
     "jhpark.matsci@skku.edu": 1795047536565,
+    "temp.delete.test@gmail.com": 1795047536565,
     "minseo.kim@gmail.com": 1795047536565,
     "ssk@gmail.com": 1795047536565,
     "las@gmail.com": 1795047536565,
-    "test.researcher@skku.edu": 1795047536565,
-    "aaa@gmail.com": 1795047536565,
-    "temp.delete.test@gmail.com": 1795047536565,
     "test.relay.otp@skku.edu": 1795047536565,
     "linh@gmail.com": 1795047536565,
     "a@gmail.com": 1795047536565,
@@ -6578,7 +6578,16 @@
     "1794571683471",
     "1794807861186",
     "1794571683472",
-    "1794999222943"
+    "1794999222943",
+    "1795050286115",
+    "1795050257948",
+    "1795050504842",
+    "1795050490611",
+    "1795050738746",
+    "1795050742013",
+    "1795050876368",
+    "1795051931145",
+    "1795054310521"
   ],
   "deleted_structures_map": {
     "1794982489046": 1795048744332,
@@ -6587,7 +6596,16 @@
     "1794571683471": 1795048744333,
     "1794807861186": 1795048744333,
     "1794571683472": 1795048744333,
-    "1794999222943": 1795048744333
+    "1794999222943": 1795048744333,
+    "1795050286115": 1795050301987,
+    "1795050257948": 1795050301987,
+    "1795050504842": 1795050522281,
+    "1795050490611": 1795050522282,
+    "1795050738746": 1795050746512,
+    "1795050742013": 1795050746512,
+    "1795050876368": 1795050917455,
+    "1795051931145": 1795051960320,
+    "1795054310521": 1795054370263
   },
   "deleted_papers": [],
   "deleted_papers_map": {},
