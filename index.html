@@ -4108,23 +4108,44 @@
           </div>
         </div>
 
-        <!-- Authors, Affiliations & Corresponding Email Row -->
-        <div class="news-form-row">
-          <div class="news-form-group flex-2">
-            <label class="form-label" for="news-edit-authors">Authors (with superscripts) <span class="required">*</span></label>
-            <input type="text" id="news-edit-authors" class="form-input" placeholder="e.g. Vu Tien Lam¹*, Jaewon Kim¹, Jin-Woo Park²">
+        <!-- Authors & Affiliations Structured Dynamic Manager (V110) -->
+        <div class="news-authors-affiliations-container" style="background:#fdfaf6; border:1px solid #ebd8c1; border-radius:8px; padding:16px; margin-bottom:16px;">
+          <!-- 1. Affiliations Section -->
+          <div class="news-affiliations-section" style="margin-bottom:18px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <div>
+                <label class="form-label" style="font-weight:700; color:#2b1f17; margin-bottom:2px;">🏛️ Affiliations / Institutions</label>
+                <div style="font-size:11.5px; color:#6b5c4f;">Add numbered institutions below. Authors can select one or multiple affiliation numbers.</div>
+              </div>
+              <button type="button" class="btn btn-outline btn-sm" onclick="addAffiliationRow()" style="font-weight:600; font-size:12px; padding:4px 10px;">
+                + Add Affiliation
+              </button>
+            </div>
+            <div id="news-affiliations-list" class="news-affiliations-list" style="display:flex; flex-direction:column; gap:8px;">
+              <!-- Dynamically populated by renderAffiliationsEditor() -->
+            </div>
           </div>
-          <div class="news-form-group flex-1">
-            <label class="form-label" for="news-edit-email">Corresponding Email</label>
-            <input type="email" id="news-edit-email" class="form-input" placeholder="e.g. lamvt.skku@gmail.com">
-          </div>
-        </div>
 
-        <div class="news-form-row">
-          <div class="news-form-group flex-1">
-            <label class="form-label" for="news-edit-affiliations">Affiliations / Institutions</label>
-            <input type="text" id="news-edit-affiliations" class="form-input" placeholder="e.g. ¹ School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU); ² KIST">
+          <!-- 2. Authors Section -->
+          <div class="news-authors-section">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <div>
+                <label class="form-label" style="font-weight:700; color:#2b1f17; margin-bottom:2px;">👥 Authors &amp; Contributors <span class="required">*</span></label>
+                <div style="font-size:11.5px; color:#6b5c4f;">Add authors, assign their affiliation numbers, and check corresponding author(s) with contact email.</div>
+              </div>
+              <button type="button" class="btn btn-outline btn-sm" onclick="addAuthorRow()" style="font-weight:600; font-size:12px; padding:4px 10px;">
+                + Add Author
+              </button>
+            </div>
+            <div id="news-authors-list" class="news-authors-list" style="display:flex; flex-direction:column; gap:10px;">
+              <!-- Dynamically populated by renderAuthorsEditor() -->
+            </div>
           </div>
+
+          <!-- Hidden legacy inputs for backward compatibility -->
+          <input type="hidden" id="news-edit-authors">
+          <input type="hidden" id="news-edit-email">
+          <input type="hidden" id="news-edit-affiliations">
         </div>
 
         <!-- Publication Timeline Dates Row (Pure English Labels) -->
