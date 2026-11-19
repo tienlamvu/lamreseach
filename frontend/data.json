@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-19T02:00:25.608Z",
+  "exported_at": "2026-11-19T02:00:28.408Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -5098,8 +5098,8 @@
       "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
       "registeredAt": "2026-11-16 11:31",
       "lastLoginAt": "2026-11-19 10:44:15",
-      "lastUpdatedAt": "2026-11-19 10:58:59",
-      "updatedAtMs": 1795053539145,
+      "lastUpdatedAt": "2026-11-19 11:00:28",
+      "updatedAtMs": 1795053628031,
       "workspace": {
         "papers": [
           {
@@ -6008,13 +6008,13 @@
     }
   },
   "deleted_users": [
-    "test.researcher@skku.edu",
-    "aaa@gmail.com",
     "jhpark.matsci@skku.edu",
-    "temp.delete.test@gmail.com",
     "minseo.kim@gmail.com",
     "ssk@gmail.com",
     "las@gmail.com",
+    "test.researcher@skku.edu",
+    "aaa@gmail.com",
+    "temp.delete.test@gmail.com",
     "test.relay.otp@skku.edu",
     "linh@gmail.com",
     "a@gmail.com",
@@ -6022,13 +6022,13 @@
     "jaewon@skku.edu"
   ],
   "deleted_users_map": {
-    "test.researcher@skku.edu": 1795047536565,
-    "aaa@gmail.com": 1795047536565,
     "jhpark.matsci@skku.edu": 1795047536565,
-    "temp.delete.test@gmail.com": 1795047536565,
     "minseo.kim@gmail.com": 1795047536565,
     "ssk@gmail.com": 1795047536565,
     "las@gmail.com": 1795047536565,
+    "test.researcher@skku.edu": 1795047536565,
+    "aaa@gmail.com": 1795047536565,
+    "temp.delete.test@gmail.com": 1795047536565,
     "test.relay.otp@skku.edu": 1795047536565,
     "linh@gmail.com": 1795047536565,
     "a@gmail.com": 1795047536565,
@@ -6122,6 +6122,11 @@
               "email": "lamvt@g.skku.edu",
               "name": "Jaewon Kim",
               "timestamp": "2026-11-18 10:05:00"
+            },
+            {
+              "email": "lamvt.sep@gmail.com",
+              "name": "Tien Lam",
+              "timestamp": "2026-11-19 10:39:39"
             }
           ]
         },
@@ -6145,6 +6150,106 @@
               "email": "lamvt.skku@gmail.com",
               "name": "Vu Tien Lam",
               "timestamp": "2026-11-18 10:20:00"
+            },
+            {
+              "email": "lamvt.sep@gmail.com",
+              "name": "Tien Lam",
+              "timestamp": "2026-11-19 10:39:39"
+            }
+          ]
+        },
+        {
+          "id": "msg_1795052437961_197",
+          "senderEmail": "lamvt.sep@gmail.com",
+          "senderName": "Tien Lam",
+          "senderRole": "Researcher",
+          "senderPicture": "https://lh3.googleusercontent.com/a/ACg8ocJ5aVyRlpWSljVC2OJusM1rb39s2jSKUTJqGBroVnc79VyzoEsF=s96-c",
+          "timestamp": "2026-11-19 10:40:37",
+          "timestampMs": 1795052437961,
+          "text": "Lam",
+          "sticker": null,
+          "attachments": [],
+          "readBy": [
+            {
+              "email": "lamvt.sep@gmail.com",
+              "name": "Tien Lam",
+              "timestamp": "2026-11-19 10:40:37"
+            },
+            {
+              "email": "lamvt.skku@gmail.com",
+              "name": "Vu Tien Lam",
+              "timestamp": "2026-11-19 10:43:58"
+            }
+          ]
+        },
+        {
+          "id": "msg_1795053470707_212",
+          "senderEmail": "lamvt.sep@gmail.com",
+          "senderName": "Tien Lam",
+          "senderRole": "Researcher",
+          "senderPicture": "https://lh3.googleusercontent.com/a/ACg8ocJ5aVyRlpWSljVC2OJusM1rb39s2jSKUTJqGBroVnc79VyzoEsF=s96-c",
+          "timestamp": "2026-11-19 10:57:50",
+          "timestampMs": 1795053470707,
+          "text": "Next",
+          "sticker": null,
+          "attachments": [],
+          "readBy": [
+            {
+              "email": "lamvt.sep@gmail.com",
+              "name": "Tien Lam",
+              "timestamp": "2026-11-19 10:57:50"
+            }
+          ]
+        },
+        {
+          "id": "msg_1795053476671_626",
+          "senderEmail": "lamvt.sep@gmail.com",
+          "senderName": "Tien Lam",
+          "senderRole": "Researcher",
+          "senderPicture": "https://lh3.googleusercontent.com/a/ACg8ocJ5aVyRlpWSljVC2OJusM1rb39s2jSKUTJqGBroVnc79VyzoEsF=s96-c",
+          "timestamp": "2026-11-19 10:57:56",
+          "timestampMs": 1795053476671,
+          "text": "",
+          "sticker": null,
+          "attachments": [
+            {
+              "type": "file",
+              "name": "J1+4_P_N2.cif",
+              "dataUrl": "data:application/octet-stream;base64,ZGF0YV9KMSs0X1BfTjINCl9hdWRpdF9jcmVhdGlvbl9kYXRlICAgICAgICAgICAgICAyMDI2LTExLTE3DQpfYXVkaXRfY3JlYXRpb25fbWV0aG9kICAgICAgICAgICAgJ01hdGVyaWFscyBTdHVkaW8nDQpfc3ltbWV0cnlfc3BhY2VfZ3JvdXBfbmFtZV9ILU0gICAgJ1AzTTEnDQpfc3ltbWV0cnlfSW50X1RhYmxlc19udW1iZXIgICAgICAgMTU2DQpfc3ltbWV0cnlfY2VsbF9zZXR0aW5nICAgICAgICAgICAgdHJpZ29uYWwNCmxvb3BfDQpfc3ltbWV0cnlfZXF1aXZfcG9zX2FzX3h5eg0KICB4LHkseg0KICAteSx4LXkseg0KICAteCt5LC14LHoNCiAgLXksLXgseg0KICAteCt5LHkseg0KICB4LHgteSx6DQpfY2VsbF9sZW5ndGhfYSAgICAgICAgICAgICAgICAgICAgNi41OTQzDQpfY2VsbF9sZW5ndGhfYiAgICAgICAgICAgICAgICAgICAgNi41OTQzDQpfY2VsbF9sZW5ndGhfYyAgICAgICAgICAgICAgICAgICAgMjUuMTUwOQ0KX2NlbGxfYW5nbGVfYWxwaGEgICAgICAgICAgICAgICAgIDkwLjAwMDANCl9jZWxsX2FuZ2xlX2JldGEgICAgICAgICAgICAgICAgICA5MC4wMDAwDQpfY2VsbF9hbmdsZV9nYW1tYSAgICAgICAgICAgICAgICAgMTIwLjAwMDANCmxvb3BfDQpfYXRvbV9zaXRlX2xhYmVsDQpfYXRvbV9zaXRlX3R5cGVfc3ltYm9sDQpfYXRvbV9zaXRlX2ZyYWN0X3gNCl9hdG9tX3NpdGVfZnJhY3RfeQ0KX2F0b21fc2l0ZV9mcmFjdF96DQpfYXRvbV9zaXRlX1VfaXNvX29yX2VxdWl2DQpfYXRvbV9zaXRlX2FkcF90eXBlDQpfYXRvbV9zaXRlX29jY3VwYW5jeQ0KTW8xICAgIE1vICAgIDAuMDAwMDAgICAwLjAwMDAwICAgMC41Mjk5NCAgIDAuMDAwMDAgIFVpc28gICAxLjAwDQpQMiAgICAgUCAgICAgMC4xNjY2NyAgIDAuMzMzMzMgICAwLjQ3MDg3ICAgMC4wMDAwMCAgVWlzbyAgIDEuMDANCk4zICAgICBOICAgICAwLjE2NjY3ICAgMC4zMzMzMyAgIDAuNTc2MDEgICAwLjAwMDAwICBVaXNvICAgMS4wMA0KU2k0ICAgIFNpICAgIDAuMTY2NjcgICAwLjMzMzMzICAgMC42NDYwMCAgIDAuMDAwMDAgIFVpc28gICAxLjAwDQpTaTUgICAgU2kgICAgMC4xNjY2NyAgIDAuMzMzMzMgICAwLjM4MjYyICAgMC4wMDAwMCAgVWlzbyAgIDEuMDANCk42ICAgICBOICAgICAwLjMzMzMzICAgMC4xNjY2NyAgIDAuNjYxNzUgICAwLjAwMDAwICBVaXNvICAgMS4wMA0KUDcgICAgIFAgICAgIDAuMzMzMzMgICAwLjE2NjY3ICAgMC4zMzg5NiAgIDAuMDAwMDAgIFVpc28gICAxLjAwDQpNbzggICAgTW8gICAgMC41MDAwMCAgLTAuMDAwMDAgICAwLjUyOTk0ICAgMC4wMDAwMCAgVWlzbyAgIDEuMDANClA5ICAgICBQICAgICAwLjY2NjY3ICAgMC4zMzMzMyAgIDAuNDcwODcgICAwLjAwMDAwICBVaXNvICAgMS4wMA0KUDEwICAgIFAgICAgIDAuNjY2NjcgICAwLjMzMzMzICAgMC41NzYwMSAgIDAuMDAwMDAgIFVpc28gICAxLjAwDQpTaTExICAgU2kgICAgMC42NjY2NyAgIDAuMzMzMzMgICAwLjY0NjAwICAgMC4wMDAwMCAgVWlzbyAgIDEuMDANClNpMTIgICBTaSAgICAwLjY2NjY3ICAgMC4zMzMzMyAgIDAuMzgyNjIgICAwLjAwMDAwICBVaXNvICAgMS4wMA0KTjEzICAgIE4gICAgIDAuMzMzMzMgICAwLjY2NjY3ICAgMC42NjE3NSAgIDAuMDAwMDAgIFVpc28gICAxLjAwDQpQMTQgICAgUCAgICAgMC4zMzMzMyAgIDAuNjY2NjcgICAwLjMzODk2ICAgMC4wMDAwMCAgVWlzbyAgIDEuMDANCmxvb3BfDQpfZ2VvbV9ib25kX2F0b21fc2l0ZV9sYWJlbF8xDQpfZ2VvbV9ib25kX2F0b21fc2l0ZV9sYWJlbF8yDQpfZ2VvbV9ib25kX2Rpc3RhbmNlDQpfZ2VvbV9ib25kX3NpdGVfc3ltbWV0cnlfMg0KX2NjZGNfZ2VvbV9ib25kX3R5cGUNCk1vMSAgICBQMiAgICAgIDIuNDE1ICAgLiAgICAgUw0KTW8xICAgIFAyICAgICAgMi40MTUgICAyICAgICBTDQpNbzEgICAgUDIgICAgICAyLjQxNSAgIDMgICAgIFMNCk1vMSAgICBOMyAgICAgIDIuMjI4ICAgLiAgICAgUw0KTW8xICAgIE4zICAgICAgMi4yMjggICAyICAgICBTDQpNbzEgICAgTjMgICAgICAyLjIyOCAgIDMgICAgIFMNClAyICAgICBNbzggICAgIDIuNDE1ICAgM182NjUgUw0KUDIgICAgIE1vOCAgICAgMi40MTUgICAyICAgICBTDQpQMiAgICAgU2k1ICAgICAyLjIxOSAgIC4gICAgIFMNCk4zICAgICBTaTQgICAgIDEuNzYwICAgLiAgICAgUw0KTjMgICAgIE1vOCAgICAgMi4yMjggICAzXzY2NSBTDQpOMyAgICAgTW84ICAgICAyLjIyOCAgIDIgICAgIFMNClNpNCAgICBONiAgICAgIDEuOTQ0ICAgLiAgICAgUw0KU2k0ICAgIE42ICAgICAgMS45NDQgICAyICAgICBTDQpTaTQgICAgTjEzICAgICAxLjk0NCAgIC4gICAgIFMNClNpNSAgICBQNyAgICAgIDIuMTk4ICAgLiAgICAgUw0KU2k1ICAgIFA3ICAgICAgMi4xOTggICAyICAgICBTDQpTaTUgICAgUDE0ICAgICAyLjE5OCAgIC4gICAgIFMNCk42ICAgICBTaTQgICAgIDEuOTQ0ICAgMyAgICAgUw0KTjYgICAgIFNpMTEgICAgMS45NDQgICAuICAgICBTDQpQNyAgICAgU2k1ICAgICAyLjE5OCAgIDMgICAgIFMNClA3ICAgICBTaTEyICAgIDIuMTk4ICAgLiAgICAgUw0KTW84ICAgIFA5ICAgICAgMi40MTUgICAuICAgICBTDQpNbzggICAgUDEwICAgICAyLjIyOCAgIC4gICAgIFMNCk1vOCAgICBQMiAgICAgIDIuNDE1ICAgMyAgICAgUw0KTW84ICAgIFAyICAgICAgMi40MTUgICAyXzY1NSBTDQpNbzggICAgTjMgICAgICAyLjIyOCAgIDJfNjU1IFMNCk1vOCAgICBOMyAgICAgIDIuMjI4ICAgMyAgICAgUw0KUDkgICAgIE1vOCAgICAgMi40MTUgICAyXzY1NSBTDQpQOSAgICAgTW84ICAgICAyLjQxNSAgIDNfNjY1IFMNClA5ICAgICBTaTEyICAgIDIuMjE5ICAgLiAgICAgUw0KUDEwICAgIFNpMTEgICAgMS43NjAgICAuICAgICBTDQpQMTAgICAgTW84ICAgICAyLjIyOCAgIDJfNjU1IFMNClAxMCAgICBNbzggICAgIDIuMjI4ICAgM182NjUgUw0KU2kxMSAgIE42ICAgICAgMS45NDQgICAyXzY1NSBTDQpTaTExICAgTjYgICAgICAxLjk0NCAgIDNfNjY1IFMNClNpMTIgICBQNyAgICAgIDIuMTk4ICAgMl82NTUgUw0KU2kxMiAgIFA3ICAgICAgMi4xOTggICAzXzY2NSBTDQpOMTMgICAgU2k0ICAgICAxLjk0NCAgIDNfNTY1IFMNCk4xMyAgICBTaTQgICAgIDEuOTQ0ICAgMl82NjUgUw0KUDE0ICAgIFNpNSAgICAgMi4xOTggICAzXzU2NSBTDQpQMTQgICAgU2k1ICAgICAyLjE5OCAgIDJfNjY1IFMNCg==",
+              "size": 3172
+            }
+          ],
+          "readBy": [
+            {
+              "email": "lamvt.sep@gmail.com",
+              "name": "Tien Lam",
+              "timestamp": "2026-11-19 10:57:56"
+            }
+          ]
+        },
+        {
+          "id": "msg_1795053492812_915",
+          "senderEmail": "lamvt.sep@gmail.com",
+          "senderName": "Tien Lam",
+          "senderRole": "Researcher",
+          "senderPicture": "https://lh3.googleusercontent.com/a/ACg8ocJ5aVyRlpWSljVC2OJusM1rb39s2jSKUTJqGBroVnc79VyzoEsF=s96-c",
+          "timestamp": "2026-11-19 10:58:12",
+          "timestampMs": 1795053492812,
+          "text": "",
+          "sticker": null,
+          "attachments": [
+            {
+              "type": "image",
+              "name": "Screenshot 2026-11-19 093600.png",
+              "dataUrl": "data:image/png;base64,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",
+              "size": 4946
+            }
+          ],
+          "readBy": [
+            {
+              "email": "lamvt.sep@gmail.com",
+              "name": "Tien Lam",
+              "timestamp": "2026-11-19 10:58:12"
             }
           ]
         }
@@ -6185,6 +6290,25 @@
               "email": "lamvt.skku@gmail.com",
               "name": "Vu Tien Lam",
               "timestamp": "2026-11-18 14:35:00"
+            }
+          ]
+        },
+        {
+          "id": "msg_1795052628850_115",
+          "senderEmail": "lamvt.skku@gmail.com",
+          "senderName": "Vu Tien Lam",
+          "senderRole": "Admin",
+          "senderPicture": "",
+          "timestamp": "2026-11-19 10:43:48",
+          "timestampMs": 1795052628850,
+          "text": "ok",
+          "sticker": null,
+          "attachments": [],
+          "readBy": [
+            {
+              "email": "lamvt.skku@gmail.com",
+              "name": "Vu Tien Lam",
+              "timestamp": "2026-11-19 10:43:48"
             }
           ]
         }
