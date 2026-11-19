@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-19T02:06:50.191Z",
+  "exported_at": "2026-11-19T02:06:58.502Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -5098,8 +5098,8 @@
       "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
       "registeredAt": "2026-11-16 11:31",
       "lastLoginAt": "2026-11-19 10:44:15",
-      "lastUpdatedAt": "2026-11-19 11:06:35",
-      "updatedAtMs": 1795053995959,
+      "lastUpdatedAt": "2026-11-19 11:06:57",
+      "updatedAtMs": 1795054017653,
       "workspace": {
         "papers": [
           {
@@ -6126,7 +6126,7 @@
             {
               "email": "lamvt.sep@gmail.com",
               "name": "Tien Lam",
-              "timestamp": "2026-11-19 10:39:39"
+              "timestamp": "2026-11-19 10:49:36"
             }
           ]
         },
@@ -6154,7 +6154,7 @@
             {
               "email": "lamvt.sep@gmail.com",
               "name": "Tien Lam",
-              "timestamp": "2026-11-19 10:39:39"
+              "timestamp": "2026-11-19 10:49:36"
             }
           ]
         },
@@ -6198,6 +6198,25 @@
               "email": "lamvt.skku@gmail.com",
               "name": "Vu Tien Lam",
               "timestamp": "2026-11-19 10:49:21"
+            }
+          ]
+        },
+        {
+          "id": "msg_1795052981919_832",
+          "senderEmail": "lamvt.sep@gmail.com",
+          "senderName": "Tien Lam",
+          "senderRole": "Researcher",
+          "senderPicture": "https://lh3.googleusercontent.com/a/ACg8ocJ5aVyRlpWSljVC2OJusM1rb39s2jSKUTJqGBroVnc79VyzoEsF=s96-c",
+          "timestamp": "2026-11-19 10:49:41",
+          "timestampMs": 1795052981919,
+          "text": "Thanks",
+          "sticker": null,
+          "attachments": [],
+          "readBy": [
+            {
+              "email": "lamvt.sep@gmail.com",
+              "name": "Tien Lam",
+              "timestamp": "2026-11-19 10:49:41"
             }
           ]
         },
