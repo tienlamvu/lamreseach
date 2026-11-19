@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-19T00:19:53.571Z",
+  "exported_at": "2026-11-19T00:34:27.793Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -7380,5 +7380,11 @@
     "grp_external_collab",
     "grp_dft_team",
     "grp_skku_lab"
-  ]
+  ],
+  "deleted_structures": [],
+  "deleted_structures_map": {},
+  "deleted_papers": [],
+  "deleted_papers_map": {},
+  "deleted_schedule": [],
+  "deleted_schedule_map": {}
 }
