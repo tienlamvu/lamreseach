@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-19T02:01:30.550Z",
+  "exported_at": "2026-11-19T02:02:22.960Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -6089,16 +6089,18 @@
         "lamvt.skku@gmail.com",
         "lamvt@g.skku.edu",
         "lamvt.sep@gmail.com",
-        "tlamvux@gmail.com"
+        "tlamvux@gmail.com",
+        "guest.researcher@skku.edu"
       ],
       "participantNames": {
         "lamvt.skku@gmail.com": "Vu Tien Lam (Admin)",
         "lamvt@g.skku.edu": "Jaewon Kim",
         "lamvt.sep@gmail.com": "Tien Lam",
-        "tlamvux@gmail.com": "Vu Tien Lam"
+        "tlamvux@gmail.com": "Vu Tien Lam",
+        "guest.researcher@skku.edu": "Guest Researcher"
       },
-      "updatedAt": "2026-11-19 11:00:43",
-      "updatedAtMs": 1795053643108,
+      "updatedAt": "2026-11-19 11:02:21",
+      "updatedAtMs": 1795053741396,
       "messages": [
         {
           "id": "msg_demo_1",
@@ -6302,8 +6304,8 @@
         "lamvt.skku@gmail.com": "Vu Tien Lam",
         "lamvt@g.skku.edu": "Jaewon Kim"
       },
-      "updatedAt": "2026-11-19 10:43:48",
-      "updatedAtMs": 1795052628850,
+      "updatedAt": "2026-11-19 11:02:21",
+      "updatedAtMs": 1795053741396,
       "messages": [
         {
           "id": "msg_dm_demo_1",
