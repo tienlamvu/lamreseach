@@ -1186,6 +1186,309 @@ function removeDeletedUserTombstone(email) {
   }
 }
 
+// ============================================================================
+// Authoritative Entity Tombstones (Structures, Papers, Schedule)
+// Guarantee permanent deletion across cloud sync, browser cache, and page reloads
+// ============================================================================
+
+function getDeletedStructuresMap() {
+  try {
+    const raw = localStorage.getItem("matsci_deleted_structures_map_v2");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") return parsed;
+    }
+  } catch (e) {}
+  return {};
+}
+
+function getDeletedStructuresSet() {
+  const map = getDeletedStructuresMap();
+  return new Set(Object.keys(map));
+}
+
+function addDeletedStructureTombstone(id, structuralId = null, timestampMs = null) {
+  const map = getDeletedStructuresMap();
+  const ts = timestampMs || Date.now();
+  if (id !== undefined && id !== null) {
+    map[String(id)] = ts;
+  }
+  if (structuralId && typeof structuralId === "string" && structuralId.trim()) {
+    map[structuralId.trim().toUpperCase()] = ts;
+  }
+  try {
+    localStorage.setItem("matsci_deleted_structures_map_v2", JSON.stringify(map));
+    localStorage.setItem("matsci_deleted_structures_v1", JSON.stringify(Object.keys(map)));
+  } catch (e) {}
+}
+
+function removeDeletedStructureTombstone(id, structuralId = null) {
+  const map = getDeletedStructuresMap();
+  let changed = false;
+  if (id !== undefined && id !== null && map[String(id)]) {
+    delete map[String(id)];
+    changed = true;
+  }
+  if (structuralId && typeof structuralId === "string" && map[structuralId.trim().toUpperCase()]) {
+    delete map[structuralId.trim().toUpperCase()];
+    changed = true;
+  }
+  if (changed) {
+    try {
+      localStorage.setItem("matsci_deleted_structures_map_v2", JSON.stringify(map));
+      localStorage.setItem("matsci_deleted_structures_v1", JSON.stringify(Object.keys(map)));
+    } catch (e) {}
+  }
+}
+
+function isStructureTombstoned(id, structuralId = null) {
+  const map = getDeletedStructuresMap();
+  if (id !== undefined && id !== null && map[String(id)]) return true;
+  if (structuralId && typeof structuralId === "string" && structuralId.trim()) {
+    if (map[structuralId.trim().toUpperCase()]) return true;
+  }
+  return false;
+}
+
+function mergeIncomingDeletedStructures(remoteList = null, remoteMap = null) {
+  const localMap = getDeletedStructuresMap();
+  let changed = false;
+  if (Array.isArray(remoteList)) {
+    remoteList.forEach(k => {
+      const key = String(k || "").trim().toUpperCase();
+      if (key && !localMap[key]) {
+        localMap[key] = 1;
+        changed = true;
+      }
+    });
+  }
+  if (remoteMap && typeof remoteMap === "object") {
+    Object.entries(remoteMap).forEach(([k, ts]) => {
+      const key = String(k || "").trim().toUpperCase();
+      const numTs = Number(ts) || Date.now();
+      if (key && (!localMap[key] || numTs > localMap[key])) {
+        localMap[key] = numTs;
+        changed = true;
+      }
+    });
+  }
+  if (changed) {
+    try {
+      localStorage.setItem("matsci_deleted_structures_map_v2", JSON.stringify(localMap));
+      localStorage.setItem("matsci_deleted_structures_v1", JSON.stringify(Object.keys(localMap)));
+    } catch (e) {}
+  }
+  return localMap;
+}
+
+function purgeTombstonedStructures() {
+  const sMap = getDeletedStructuresMap();
+  if (!sMap || Object.keys(sMap).length === 0) return;
+
+  if (Array.isArray(STATE.structures)) {
+    STATE.structures = STATE.structures.filter(s => s && !isStructureTombstoned(s.id, s.structural_id));
+  }
+  if (STATE.masterData && Array.isArray(STATE.masterData.structures)) {
+    STATE.masterData.structures = STATE.masterData.structures.filter(s => s && !isStructureTombstoned(s.id, s.structural_id));
+  }
+  if (STATE.usersRegistry && typeof STATE.usersRegistry === "object") {
+    let usersModified = false;
+    Object.values(STATE.usersRegistry).forEach(u => {
+      if (u && u.workspace && Array.isArray(u.workspace.structures)) {
+        const origLen = u.workspace.structures.length;
+        u.workspace.structures = u.workspace.structures.filter(s => s && !isStructureTombstoned(s.id, s.structural_id));
+        if (u.workspace.structures.length !== origLen) {
+          u.updatedAtMs = Date.now();
+          u.lastUpdatedAt = getGmt9NowStr();
+          usersModified = true;
+        }
+      }
+    });
+    if (usersModified) persistUsersRegistryLocal();
+  }
+}
+
+// Papers Tombstones
+function getDeletedPapersMap() {
+  try {
+    const raw = localStorage.getItem("matsci_deleted_papers_map_v1");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") return parsed;
+    }
+  } catch (e) {}
+  return {};
+}
+
+function addDeletedPaperTombstone(id, doi = null, timestampMs = null) {
+  const map = getDeletedPapersMap();
+  const ts = timestampMs || Date.now();
+  if (id !== undefined && id !== null) map[String(id)] = ts;
+  if (doi && typeof doi === "string" && doi.trim()) map[doi.trim().toLowerCase()] = ts;
+  try {
+    localStorage.setItem("matsci_deleted_papers_map_v1", JSON.stringify(map));
+  } catch (e) {}
+}
+
+function isPaperTombstoned(id, doi = null) {
+  const map = getDeletedPapersMap();
+  if (id !== undefined && id !== null && map[String(id)]) return true;
+  if (doi && typeof doi === "string" && doi.trim() && map[doi.trim().toLowerCase()]) return true;
+  return false;
+}
+
+function mergeIncomingDeletedPapers(remoteList = null, remoteMap = null) {
+  const localMap = getDeletedPapersMap();
+  let changed = false;
+  if (Array.isArray(remoteList)) {
+    remoteList.forEach(k => {
+      const key = String(k || "").trim().toLowerCase();
+      if (key && !localMap[key]) {
+        localMap[key] = 1;
+        changed = true;
+      }
+    });
+  }
+  if (remoteMap && typeof remoteMap === "object") {
+    Object.entries(remoteMap).forEach(([k, ts]) => {
+      const key = String(k || "").trim().toLowerCase();
+      const numTs = Number(ts) || Date.now();
+      if (key && (!localMap[key] || numTs > localMap[key])) {
+        localMap[key] = numTs;
+        changed = true;
+      }
+    });
+  }
+  if (changed) {
+    try {
+      localStorage.setItem("matsci_deleted_papers_map_v1", JSON.stringify(localMap));
+    } catch (e) {}
+  }
+  return localMap;
+}
+
+function purgeTombstonedPapers() {
+  const pMap = getDeletedPapersMap();
+  if (!pMap || Object.keys(pMap).length === 0) return;
+  if (Array.isArray(STATE.papers)) {
+    STATE.papers = STATE.papers.filter(p => p && !isPaperTombstoned(p.id, p.doi));
+  }
+  if (STATE.masterData && Array.isArray(STATE.masterData.papers)) {
+    STATE.masterData.papers = STATE.masterData.papers.filter(p => p && !isPaperTombstoned(p.id, p.doi));
+  }
+  if (STATE.usersRegistry && typeof STATE.usersRegistry === "object") {
+    let usersModified = false;
+    Object.values(STATE.usersRegistry).forEach(u => {
+      if (u && u.workspace && Array.isArray(u.workspace.papers)) {
+        const origLen = u.workspace.papers.length;
+        u.workspace.papers = u.workspace.papers.filter(p => p && !isPaperTombstoned(p.id, p.doi));
+        if (u.workspace.papers.length !== origLen) {
+          u.updatedAtMs = Date.now();
+          u.lastUpdatedAt = getGmt9NowStr();
+          usersModified = true;
+        }
+      }
+    });
+    if (usersModified) persistUsersRegistryLocal();
+  }
+}
+
+// Schedule Tombstones
+function getDeletedScheduleMap() {
+  try {
+    const raw = localStorage.getItem("matsci_deleted_schedule_map_v1");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") return parsed;
+    }
+  } catch (e) {}
+  return {};
+}
+
+function addDeletedScheduleTombstone(id, timestampMs = null) {
+  const map = getDeletedScheduleMap();
+  const ts = timestampMs || Date.now();
+  if (id !== undefined && id !== null) map[String(id)] = ts;
+  try {
+    localStorage.setItem("matsci_deleted_schedule_map_v1", JSON.stringify(map));
+  } catch (e) {}
+}
+
+function isScheduleTombstoned(id) {
+  const map = getDeletedScheduleMap();
+  return id !== undefined && id !== null && Boolean(map[String(id)]);
+}
+
+function mergeIncomingDeletedSchedule(remoteList = null, remoteMap = null) {
+  const localMap = getDeletedScheduleMap();
+  let changed = false;
+  if (Array.isArray(remoteList)) {
+    remoteList.forEach(k => {
+      const key = String(k || "").trim();
+      if (key && !localMap[key]) {
+        localMap[key] = 1;
+        changed = true;
+      }
+    });
+  }
+  if (remoteMap && typeof remoteMap === "object") {
+    Object.entries(remoteMap).forEach(([k, ts]) => {
+      const key = String(k || "").trim();
+      const numTs = Number(ts) || Date.now();
+      if (key && (!localMap[key] || numTs > localMap[key])) {
+        localMap[key] = numTs;
+        changed = true;
+      }
+    });
+  }
+  if (changed) {
+    try {
+      localStorage.setItem("matsci_deleted_schedule_map_v1", JSON.stringify(localMap));
+    } catch (e) {}
+  }
+  return localMap;
+}
+
+function purgeTombstonedSchedule() {
+  const sMap = getDeletedScheduleMap();
+  if (!sMap || Object.keys(sMap).length === 0) return;
+  if (Array.isArray(STATE.schedule)) {
+    STATE.schedule = STATE.schedule.filter(ev => ev && !isScheduleTombstoned(ev.id));
+  }
+  if (STATE.masterData && Array.isArray(STATE.masterData.schedule)) {
+    STATE.masterData.schedule = STATE.masterData.schedule.filter(ev => ev && !isScheduleTombstoned(ev.id));
+  }
+  if (STATE.usersRegistry && typeof STATE.usersRegistry === "object") {
+    let usersModified = false;
+    Object.values(STATE.usersRegistry).forEach(u => {
+      if (u && u.workspace && Array.isArray(u.workspace.schedule)) {
+        const origLen = u.workspace.schedule.length;
+        u.workspace.schedule = u.workspace.schedule.filter(ev => ev && !isScheduleTombstoned(ev.id));
+        if (u.workspace.schedule.length !== origLen) {
+          u.updatedAtMs = Date.now();
+          u.lastUpdatedAt = getGmt9NowStr();
+          usersModified = true;
+        }
+      }
+    });
+    if (usersModified) persistUsersRegistryLocal();
+  }
+}
+
+function purgeAllTombstonedEntities() {
+  purgeTombstonedStructures();
+  purgeTombstonedPapers();
+  purgeTombstonedSchedule();
+}
+
+window.getDeletedStructuresMap = getDeletedStructuresMap;
+window.addDeletedStructureTombstone = addDeletedStructureTombstone;
+window.removeDeletedStructureTombstone = removeDeletedStructureTombstone;
+window.isStructureTombstoned = isStructureTombstoned;
+window.purgeTombstonedStructures = purgeTombstonedStructures;
+window.purgeAllTombstonedEntities = purgeAllTombstonedEntities;
+
+
 function mergeTwoUserRecords(existingU, incomingU) {
   if (!existingU) return incomingU;
   if (!incomingU) return existingU;
@@ -1343,7 +1646,12 @@ async function pullCloudDatabaseInstant(silent = true) {
       ensureEventCategoriesInitialized(cloudDb.event_categories);
     }
 
-    // Merge deleted users tombstones, users_registry, and user_groups
+    // Merge all deleted entity tombstones (users, groups, structures, papers, schedule)
+    mergeIncomingDeletedStructures(cloudDb.deleted_structures, cloudDb.deleted_structures_map);
+    mergeIncomingDeletedPapers(cloudDb.deleted_papers, cloudDb.deleted_papers_map);
+    mergeIncomingDeletedSchedule(cloudDb.deleted_schedule, cloudDb.deleted_schedule_map);
+    purgeAllTombstonedEntities();
+
     ensureUsersRegistryInitialized(
       cloudDb.users_registry || {},
       cloudDb.deleted_users || [],
@@ -1367,9 +1675,11 @@ async function pullCloudDatabaseInstant(silent = true) {
     const cloudExportedMs = cloudDb.exported_at ? new Date(cloudDb.exported_at).getTime() : 0;
 
     if (!isStrictAdminNow || (!isNaN(cloudExportedMs) && cloudExportedMs >= localMasterUpdatedMs)) {
-      if (Array.isArray(cloudDb.papers)) STATE.masterData.papers = cloudDb.papers;
-      if (Array.isArray(cloudDb.structures)) STATE.masterData.structures = cloudDb.structures;
-      if (Array.isArray(cloudDb.schedule)) STATE.masterData.schedule = cloudDb.schedule;
+      if (Array.isArray(cloudDb.papers)) STATE.masterData.papers = cloudDb.papers.filter(p => !isPaperTombstoned(p.id, p.doi));
+      if (Array.isArray(cloudDb.structures)) STATE.masterData.structures = cloudDb.structures.filter(s => !isStructureTombstoned(s.id, s.structural_id));
+      if (Array.isArray(cloudDb.schedule)) STATE.masterData.schedule = cloudDb.schedule.filter(ev => !isScheduleTombstoned(ev.id));
+      applyActiveWorkspaceData();
+      refreshAllWorkspaceViews();
       if (cloudDb.profile && typeof cloudDb.profile === "object") {
         const localCid = (localStorage.getItem("matsci_google_oauth_client_id") || "").trim();
         const remoteCid = (cloudDb.profile.google_client_id || "").trim();
@@ -1529,20 +1839,31 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
     persistUsersRegistryLocal();
     persistUserGroupsLocal();
 
+    // 2.5 Merge entity tombstones from remoteDb before deciding master data
+    mergeIncomingDeletedStructures(remoteDb && remoteDb.deleted_structures, remoteDb && remoteDb.deleted_structures_map);
+    mergeIncomingDeletedPapers(remoteDb && remoteDb.deleted_papers, remoteDb && remoteDb.deleted_papers_map);
+    mergeIncomingDeletedSchedule(remoteDb && remoteDb.deleted_schedule, remoteDb && remoteDb.deleted_schedule_map);
+    purgeAllTombstonedEntities();
+
     // 3. Determine master data (Admin's CV, papers, structures, schedule)
     const isStrictAdmin = STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail;
     const masterProfile = isStrictAdmin
       ? (STATE.profile || (STATE.masterData && STATE.masterData.profile) || (remoteDb && remoteDb.profile) || {})
       : ((remoteDb && remoteDb.profile) || (STATE.masterData && STATE.masterData.profile) || STATE.profile || {});
-    const masterPapers = isStrictAdmin
+    let masterPapers = isStrictAdmin
       ? ((STATE.masterData && STATE.masterData.papers) || STATE.papers || [])
       : ((remoteDb && remoteDb.papers) || (STATE.masterData && STATE.masterData.papers) || []);
-    const masterStructures = isStrictAdmin
+    let masterStructures = isStrictAdmin
       ? ((STATE.masterData && STATE.masterData.structures) || STATE.structures || [])
       : ((remoteDb && remoteDb.structures) || (STATE.masterData && STATE.masterData.structures) || []);
-    const masterSchedule = isStrictAdmin
+    let masterSchedule = isStrictAdmin
       ? ((STATE.masterData && STATE.masterData.schedule) || STATE.schedule || [])
       : ((remoteDb && remoteDb.schedule) || (STATE.masterData && STATE.masterData.schedule) || []);
+
+    // Strict Tombstone Enforcement: Dropped entities are NEVER resurrected into cloud database!
+    masterPapers = (masterPapers || []).filter(p => !isPaperTombstoned(p.id, p.doi));
+    masterStructures = (masterStructures || []).filter(s => !isStructureTombstoned(s.id, s.structural_id));
+    masterSchedule = (masterSchedule || []).filter(ev => !isScheduleTombstoned(ev.id));
 
     const sanitizedCloudUsers = {};
     Object.entries(STATE.usersRegistry || {}).forEach(([k, u]) => {
@@ -1586,7 +1907,13 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
       user_groups: STATE.userGroups || {},
       deleted_users: Object.keys(deletedMap).filter(em => !sanitizedCloudUsers[em] && (!STATE.auth || normalizeEmail(STATE.auth.email) !== em)),
       deleted_users_map: deletedMap,
-      deleted_groups: Array.from(getDeletedGroupsSet())
+      deleted_groups: Array.from(getDeletedGroupsSet()),
+      deleted_structures: Object.keys(getDeletedStructuresMap()),
+      deleted_structures_map: getDeletedStructuresMap(),
+      deleted_papers: Object.keys(getDeletedPapersMap()),
+      deleted_papers_map: getDeletedPapersMap(),
+      deleted_schedule: Object.keys(getDeletedScheduleMap()),
+      deleted_schedule_map: getDeletedScheduleMap()
     };
 
     const base64Content = encodeUtf8Base64(JSON.stringify(exportObj, null, 2));
@@ -9200,7 +9527,25 @@ async function deletePaperItem(id) {
     await fetch(`/api/papers/${id}`, { method: "DELETE" });
     await loadAllData();
   } else {
-    STATE.papers = STATE.papers.filter(x => x.id !== id);
+    const numId = Number(id);
+    const pDoi = p && p.doi ? p.doi : "";
+    addDeletedPaperTombstone(numId, pDoi);
+    STATE.papers = (STATE.papers || []).filter(x => Number(x.id) !== numId && (!pDoi || x.doi !== pDoi));
+    if (STATE.masterData && Array.isArray(STATE.masterData.papers)) {
+      STATE.masterData.papers = STATE.masterData.papers.filter(x => Number(x.id) !== numId && (!pDoi || x.doi !== pDoi));
+    }
+    if (p && (p._fromUserEmail || p.owner_email)) {
+      const ownerEmail = normalizeEmail(p._fromUserEmail || p.owner_email);
+      if (ownerEmail && STATE.usersRegistry && STATE.usersRegistry[ownerEmail]) {
+        const u = STATE.usersRegistry[ownerEmail];
+        if (u.workspace && Array.isArray(u.workspace.papers)) {
+          u.workspace.papers = u.workspace.papers.filter(x => Number(x.id) !== numId && (!pDoi || x.doi !== pDoi));
+          u.updatedAtMs = Date.now();
+          u.lastUpdatedAt = getGmt9NowStr();
+          persistUsersRegistryLocal();
+        }
+      }
+    }
     recordUserActivity("References", "Deleted Paper", pTitle.slice(0, 75));
     saveStaticDb();
     applyActiveWorkspaceData();
@@ -10401,9 +10746,12 @@ function ensureAllStructuralIdsGlobal(masterListOverride = null, usersRegistryOv
   const usedNumericIds = new Set();
   let changed = false;
 
+  // Purge any tombstoned structures before canonical global indexing
+  purgeTombstonedStructures();
+
   // Bucket 1: Admin Master structures (ordered oldest-first, deterministic regardless of who is logged in)
   const sortedMaster = [...masterStructs]
-    .filter(s => s && !s._fromUserEmail && !s._sharedFromAdmin)
+    .filter(s => s && !s._fromUserEmail && !s._sharedFromAdmin && !isStructureTombstoned(s.id, s.structural_id))
     .sort((a, b) => (Number(a.id || 0) - Number(b.id || 0)) || String(a.structural_id || "").localeCompare(String(b.structural_id || "")));
   sortedMaster.forEach(s => {
     let numId = Number(s.id || 0);
@@ -10425,7 +10773,7 @@ function ensureAllStructuralIdsGlobal(masterListOverride = null, usersRegistryOv
     if (!ws || !Array.isArray(ws.structures)) return;
     const normEm = normalizeEmail(u.email || emKey);
     const sortedUserStructs = [...ws.structures]
-      .filter(s => s && !s._sharedFromAdmin)
+      .filter(s => s && !s._sharedFromAdmin && !isStructureTombstoned(s.id, s.structural_id))
       .sort((a, b) => (Number(a.id || 0) - Number(b.id || 0)) || String(a.structural_id || "").localeCompare(String(b.structural_id || "")));
     sortedUserStructs.forEach(s => {
       let numId = Number(s.id || 0);
@@ -12580,9 +12928,32 @@ async function deleteSelectedStructures() {
   if (!ok) return;
 
   const idsToDelete = new Set(Array.from(STATE.selectedStructureIds).map(Number));
-  STATE.structures = STATE.structures.filter(s => !idsToDelete.has(Number(s.id)));
+  
+  // Authoritatively tombstone all selected structures to prevent cloud/cache revival
+  (STATE.structures || []).forEach(s => {
+    if (s && idsToDelete.has(Number(s.id))) {
+      addDeletedStructureTombstone(s.id, s.structural_id);
+      if (s._fromUserEmail || s.owner_email) {
+        const ownerEmail = normalizeEmail(s._fromUserEmail || s.owner_email);
+        if (ownerEmail && STATE.usersRegistry && STATE.usersRegistry[ownerEmail]) {
+          const u = STATE.usersRegistry[ownerEmail];
+          if (u.workspace && Array.isArray(u.workspace.structures)) {
+            u.workspace.structures = u.workspace.structures.filter(x => !idsToDelete.has(Number(x.id)));
+            u.updatedAtMs = Date.now();
+            u.lastUpdatedAt = getGmt9NowStr();
+          }
+        }
+      }
+    }
+  });
+  persistUsersRegistryLocal();
+
+  STATE.structures = (STATE.structures || []).filter(s => !idsToDelete.has(Number(s.id)));
+  if (STATE.masterData && Array.isArray(STATE.masterData.structures)) {
+    STATE.masterData.structures = STATE.masterData.structures.filter(s => !idsToDelete.has(Number(s.id)));
+  }
   STATE.selectedStructureIds.clear();
-  recordUserActivity("Crystal Structures", "Batch Deleted Structures", `Removed ${count} crystal structure(s) from database.`);
+  recordUserActivity("Crystal Structures", "Batch Deleted Structures", `Permanently removed ${count} crystal structure(s) from database.`);
   saveStaticDb();
   applyActiveWorkspaceData();
   refreshAllWorkspaceViews();
@@ -12945,12 +13316,38 @@ async function deleteStructureItem(id) {
     }
   }
   const freedSid = s && s.structural_id ? s.structural_id : "";
-  STATE.structures = STATE.structures.filter(x => x.id !== id);
+  const numId = Number(id);
+
+  // Authoritative Tombstone: instantly blocks resurrection from GitHub Pages CDN, REST API, or cache!
+  addDeletedStructureTombstone(numId, freedSid);
+
+  // Remove from live STATE.structures
+  STATE.structures = (STATE.structures || []).filter(x => Number(x.id) !== numId && (!freedSid || x.structural_id !== freedSid));
+
+  // Explicitly prune from STATE.masterData.structures
+  if (STATE.masterData && Array.isArray(STATE.masterData.structures)) {
+    STATE.masterData.structures = STATE.masterData.structures.filter(x => Number(x.id) !== numId && (!freedSid || x.structural_id !== freedSid));
+  }
+
+  // If owned by a user, prune from user workspace AND bump their timestamp
+  if (s && (s._fromUserEmail || s.owner_email)) {
+    const ownerEmail = normalizeEmail(s._fromUserEmail || s.owner_email);
+    if (ownerEmail && STATE.usersRegistry && STATE.usersRegistry[ownerEmail]) {
+      const u = STATE.usersRegistry[ownerEmail];
+      if (u.workspace && Array.isArray(u.workspace.structures)) {
+        u.workspace.structures = u.workspace.structures.filter(x => Number(x.id) !== numId && (!freedSid || x.structural_id !== freedSid));
+        u.updatedAtMs = Date.now();
+        u.lastUpdatedAt = getGmt9NowStr();
+        persistUsersRegistryLocal();
+      }
+    }
+  }
+
   recordUserActivity("Crystal Structures", "Deleted Structure", `${freedSid ? freedSid + " · " : ""}${sName}`);
   saveStaticDb();
   applyActiveWorkspaceData();
   refreshAllWorkspaceViews();
-  showToast(freedSid ? `Deleted ${freedSid}. ID ${freedSid} is now available for reuse.` : "Deleted crystal structure.");
+  showToast(freedSid ? `Deleted ${freedSid}. ID ${freedSid} is now permanently removed.` : "Deleted crystal structure.");
 }
 
 // ============================================================================
@@ -15221,7 +15618,12 @@ async function deleteScheduleItem(id) {
     await fetch(`/api/schedule/${id}`, { method: "DELETE" });
     await loadAllData();
   } else {
-    STATE.schedule = STATE.schedule.filter(x => x.id !== id);
+    const numId = Number(id);
+    addDeletedScheduleTombstone(numId);
+    STATE.schedule = (STATE.schedule || []).filter(x => Number(x.id) !== numId);
+    if (STATE.masterData && Array.isArray(STATE.masterData.schedule)) {
+      STATE.masterData.schedule = STATE.masterData.schedule.filter(x => Number(x.id) !== numId);
+    }
     if (s) syncEventToParticipantsWorkspaces(s, { deleted: true });
     recordUserActivity("Calendar", "Deleted Event", sTitle);
     saveStaticDb();
@@ -15365,16 +15767,27 @@ async function loadStaticFallbackData() {
             if (parsed && parsed.user_groups) {
               ensureUserGroupsInitialized(parsed.user_groups);
             }
+            // Merge entity tombstones from remote and local storage immediately
+            mergeIncomingDeletedStructures(remoteData.deleted_structures, remoteData.deleted_structures_map);
+            mergeIncomingDeletedPapers(remoteData.deleted_papers, remoteData.deleted_papers_map);
+            mergeIncomingDeletedSchedule(remoteData.deleted_schedule, remoteData.deleted_schedule_map);
+            if (parsed) {
+              mergeIncomingDeletedStructures(parsed.deleted_structures, parsed.deleted_structures_map);
+              mergeIncomingDeletedPapers(parsed.deleted_papers, parsed.deleted_papers_map);
+              mergeIncomingDeletedSchedule(parsed.deleted_schedule, parsed.deleted_schedule_map);
+            }
+            purgeAllTombstonedEntities();
+
             const isStrictAdminBoot = Boolean(STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail);
             const localMasterTsStr = (parsed && (parsed.master_updated_at || parsed.updated_at)) || "";
             const localTime = localMasterTsStr ? new Date(localMasterTsStr).getTime() : 0;
             const remoteExportedStr = (remoteData.exported_at || "").replace("20.", "20");
             const remoteTime = remoteExportedStr ? new Date(remoteExportedStr).getTime() : 0;
-            // Only let local cache override remote data.json masterData when Strict Admin has newer unsynced edits!
-            if (isStrictAdminBoot && !isNaN(localTime) && !isNaN(remoteTime) && localTime > remoteTime) {
-              STATE.papers = parsed.papers || [];
-              STATE.structures = parsed.structures || [];
-              STATE.schedule = parsed.schedule || [];
+            // Only let local cache override remote data.json masterData when Strict Admin has newer/equal unsynced edits!
+            if (isStrictAdminBoot && !isNaN(localTime) && !isNaN(remoteTime) && localTime >= remoteTime) {
+              STATE.papers = (parsed.papers || []).filter(p => !isPaperTombstoned(p.id, p.doi));
+              STATE.structures = (parsed.structures || []).filter(s => !isStructureTombstoned(s.id, s.structural_id));
+              STATE.schedule = (parsed.schedule || []).filter(ev => !isScheduleTombstoned(ev.id));
               STATE.profile = parsed.profile || {};
               loadedFromDataJson = true;
             }
@@ -15383,9 +15796,10 @@ async function loadStaticFallbackData() {
           }
         }
         if (!loadedFromDataJson) {
-          STATE.papers = remoteData.papers || [];
-          STATE.structures = remoteData.structures || [];
-          STATE.schedule = remoteData.schedule || [];
+          // Even when loading from remote data.json, NEVER resurrect tombstoned entities!
+          STATE.papers = (remoteData.papers || []).filter(p => !isPaperTombstoned(p.id, p.doi));
+          STATE.structures = (remoteData.structures || []).filter(s => !isStructureTombstoned(s.id, s.structural_id));
+          STATE.schedule = (remoteData.schedule || []).filter(ev => !isScheduleTombstoned(ev.id));
           STATE.profile = remoteData.profile || {};
           loadedFromDataJson = true;
         }
@@ -16058,10 +16472,14 @@ function saveStaticDb(options = {}) {
           });
         if (JSON.stringify(u.workspace.structures || []) !== JSON.stringify(liveUserStructs)) {
           u.workspace.structures = liveUserStructs;
+          u.updatedAtMs = Date.now();
+          u.lastUpdatedAt = getGmt9NowStr();
           usersModified = true;
         }
         if (JSON.stringify(u.workspace.papers || []) !== JSON.stringify(liveUserPapers)) {
           u.workspace.papers = liveUserPapers;
+          u.updatedAtMs = Date.now();
+          u.lastUpdatedAt = getGmt9NowStr();
           usersModified = true;
         }
       });
@@ -16110,7 +16528,14 @@ function saveStaticDb(options = {}) {
     users_registry: STATE.usersRegistry || {},
     user_groups: STATE.userGroups || {},
     deleted_users: Array.from(getDeletedUsersSet()),
+    deleted_users_map: getDeletedUsersMap(),
     deleted_groups: Array.from(getDeletedGroupsSet()),
+    deleted_structures: Object.keys(getDeletedStructuresMap()),
+    deleted_structures_map: getDeletedStructuresMap(),
+    deleted_papers: Object.keys(getDeletedPapersMap()),
+    deleted_papers_map: getDeletedPapersMap(),
+    deleted_schedule: Object.keys(getDeletedScheduleMap()),
+    deleted_schedule_map: getDeletedScheduleMap(),
     master_updated_at: masterUpdatedAt,
     updated_at: nowIso
   }));
@@ -16135,17 +16560,26 @@ function exportDataJson() {
     }
   });
 
+  purgeAllTombstonedEntities();
   const exportObj = {
     version: "4.0",
     exported_at: new Date().toISOString(),
     profile: (STATE.masterData && STATE.masterData.profile) || STATE.profile,
-    papers: (STATE.masterData && STATE.masterData.papers) || STATE.papers,
-    structures: (STATE.masterData && STATE.masterData.structures) || STATE.structures,
-    schedule: (STATE.masterData && STATE.masterData.schedule) || STATE.schedule,
+    papers: ((STATE.masterData && STATE.masterData.papers) || STATE.papers || []).filter(p => !isPaperTombstoned(p.id, p.doi)),
+    structures: ((STATE.masterData && STATE.masterData.structures) || STATE.structures || []).filter(s => !isStructureTombstoned(s.id, s.structural_id)),
+    schedule: ((STATE.masterData && STATE.masterData.schedule) || STATE.schedule || []).filter(ev => !isScheduleTombstoned(ev.id)),
+    event_categories: ensureEventCategoriesInitialized(),
     users_registry: sanitizedExportUsers,
     user_groups: STATE.userGroups || {},
     deleted_users: Array.from(getDeletedUsersSet()),
-    deleted_groups: Array.from(getDeletedGroupsSet())
+    deleted_users_map: getDeletedUsersMap(),
+    deleted_groups: Array.from(getDeletedGroupsSet()),
+    deleted_structures: Object.keys(getDeletedStructuresMap()),
+    deleted_structures_map: getDeletedStructuresMap(),
+    deleted_papers: Object.keys(getDeletedPapersMap()),
+    deleted_papers_map: getDeletedPapersMap(),
+    deleted_schedule: Object.keys(getDeletedScheduleMap()),
+    deleted_schedule_map: getDeletedScheduleMap()
   };
   const jsonStr = JSON.stringify(exportObj, null, 2);
   const blob = new Blob([jsonStr], { type: "application/json" });
@@ -16199,17 +16633,26 @@ async function commitDataJsonToGitHub(options = {}) {
       console.warn("Could not get existing file sha:", e);
     }
 
+    purgeAllTombstonedEntities();
     const exportObj = {
       version: "4.0",
       exported_at: new Date().toISOString(),
       profile: (STATE.masterData && STATE.masterData.profile) || STATE.profile,
-      papers: (STATE.masterData && STATE.masterData.papers) || STATE.papers,
-      structures: (STATE.masterData && STATE.masterData.structures) || STATE.structures,
-      schedule: (STATE.masterData && STATE.masterData.schedule) || STATE.schedule,
+      papers: ((STATE.masterData && STATE.masterData.papers) || STATE.papers || []).filter(p => !isPaperTombstoned(p.id, p.doi)),
+      structures: ((STATE.masterData && STATE.masterData.structures) || STATE.structures || []).filter(s => !isStructureTombstoned(s.id, s.structural_id)),
+      schedule: ((STATE.masterData && STATE.masterData.schedule) || STATE.schedule || []).filter(ev => !isScheduleTombstoned(ev.id)),
+      event_categories: ensureEventCategoriesInitialized(),
       users_registry: STATE.usersRegistry || {},
       user_groups: STATE.userGroups || {},
       deleted_users: Array.from(getDeletedUsersSet()),
-      deleted_groups: Array.from(getDeletedGroupsSet())
+      deleted_users_map: getDeletedUsersMap(),
+      deleted_groups: Array.from(getDeletedGroupsSet()),
+      deleted_structures: Object.keys(getDeletedStructuresMap()),
+      deleted_structures_map: getDeletedStructuresMap(),
+      deleted_papers: Object.keys(getDeletedPapersMap()),
+      deleted_papers_map: getDeletedPapersMap(),
+      deleted_schedule: Object.keys(getDeletedScheduleMap()),
+      deleted_schedule_map: getDeletedScheduleMap()
     };
 
     const contentUtf8 = JSON.stringify(exportObj, null, 2);
@@ -16272,6 +16715,19 @@ async function commitDataJsonToGitHub(options = {}) {
     } catch (e) {
       console.warn("Could not sync root data.json:", e);
     }
+
+    try {
+      const prevRaw = localStorage.getItem("matsci_static_db_v4");
+      const prevObj = prevRaw ? JSON.parse(prevRaw) : {};
+      prevObj.master_updated_at = exportObj.exported_at;
+      prevObj.updated_at = exportObj.exported_at;
+      prevObj.structures = exportObj.structures;
+      prevObj.papers = exportObj.papers;
+      prevObj.schedule = exportObj.schedule;
+      prevObj.deleted_structures = exportObj.deleted_structures;
+      prevObj.deleted_structures_map = exportObj.deleted_structures_map;
+      localStorage.setItem("matsci_static_db_v4", JSON.stringify(prevObj));
+    } catch (e) {}
 
     if (!silent) {
       showToast("🎉 Successfully synced directly to GitHub! Changes will appear live across all devices in ~1 minute.", "success");
