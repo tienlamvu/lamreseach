@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261119_v104_news_tab_rich_editor_journal_view" onerror="this.href='/static/styles.css?v=20261119_v104_news_tab_rich_editor_journal_view'" />
+  <link rel="stylesheet" href="styles.css?v=20261119_v105_fix_editor_ui_direct_article_link" onerror="this.href='/static/styles.css?v=20261119_v105_fix_editor_ui_direct_article_link'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -3944,8 +3944,8 @@
     </div>
   </div>
 
-<script src="matsci_tools.js?v=20261119_v104_news_tab_rich_editor_journal_view" onerror="this.src='/static/matsci_tools.js?v=20261119_v104_news_tab_rich_editor_journal_view'"></script>
-  <script src="app.js?v=20261119_v104_news_tab_rich_editor_journal_view" onerror="this.src='/static/app.js?v=20261119_v104_news_tab_rich_editor_journal_view'"></script>
+<script src="matsci_tools.js?v=20261119_v105_fix_editor_ui_direct_article_link" onerror="this.src='/static/matsci_tools.js?v=20261119_v105_fix_editor_ui_direct_article_link'"></script>
+  <script src="app.js?v=20261119_v105_fix_editor_ui_direct_article_link" onerror="this.src='/static/app.js?v=20261119_v105_fix_editor_ui_direct_article_link'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
@@ -4017,16 +4017,16 @@
   <!-- ADMIN NEWS & SCIENTIFIC ARTICLE WYSIWYG EDITOR MODAL              -->
   <!-- ================================================================ -->
   <div id="news-editor-modal" class="modal-backdrop" onclick="if(event.target===this) confirmCloseNewsEditor()">
-    <div class="modal-card news-editor-modal-card">
-      <div class="modal-header">
+    <div class="modal-box news-editor-modal-box">
+      <div class="card-header" style="margin-bottom:14px; border-bottom:1px solid #ebd8c1; padding-bottom:12px;">
         <div>
-          <h3 class="modal-title" id="news-editor-modal-title">✍️ Compose Scientific News &amp; Article</h3>
-          <p class="modal-subtitle">Publish peer-reviewed style announcements, DFT papers, or lab communications with academic formatting.</p>
+          <div class="card-title" id="news-editor-modal-title" style="font-size:18px; font-weight:800; color:#2b1f17;">✍️ Compose Scientific News &amp; Article</div>
+          <div style="font-size:12px; color:#786354; margin-top:2px;">Publish peer-reviewed announcements, DFT papers, or lab communications with academic formatting.</div>
         </div>
-        <button type="button" class="modal-close-btn" onclick="confirmCloseNewsEditor()">&times;</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="confirmCloseNewsEditor()">✕ Close</button>
       </div>
 
-      <div class="modal-body news-editor-modal-body">
+      <div class="news-editor-modal-body" style="overflow-y:auto; flex:1; padding-right:6px;">
         <input type="hidden" id="news-edit-article-id" value="">
 
         <!-- Title & Category Row -->
@@ -4074,18 +4074,18 @@
           </div>
         </div>
 
-        <!-- Publication Timeline Dates Row (Ngày gửi, Ngày sửa, Ngày đăng) -->
+        <!-- Publication Timeline Dates Row (Pure English Labels) -->
         <div class="news-form-row news-timeline-dates-row">
           <div class="news-form-group flex-1">
-            <label class="form-label" for="news-edit-received">📥 Received Date (Ngày gửi)</label>
+            <label class="form-label" for="news-edit-received">📥 Received Date</label>
             <input type="date" id="news-edit-received" class="form-input">
           </div>
           <div class="news-form-group flex-1">
-            <label class="form-label" for="news-edit-revised">📝 Revised Date (Ngày sửa)</label>
+            <label class="form-label" for="news-edit-revised">📝 Revised Date</label>
             <input type="date" id="news-edit-revised" class="form-input">
           </div>
           <div class="news-form-group flex-1">
-            <label class="form-label" for="news-edit-published">🚀 Published Date (Ngày đăng) <span class="required">*</span></label>
+            <label class="form-label" for="news-edit-published">🚀 Published Date <span class="required">*</span></label>
             <input type="date" id="news-edit-published" class="form-input">
           </div>
           <div class="news-form-group flex-1">
@@ -4208,11 +4208,11 @@
         </div>
       </div>
 
-      <!-- Modal Footer -->
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" onclick="confirmCloseNewsEditor()">Cancel</button>
-        <button type="button" class="btn btn-secondary" onclick="previewCurrentEditorArticle()">👁️ Preview Layout</button>
-        <button type="button" class="btn btn-secondary" onclick="saveNewsArticleFromEditor('Draft')">💾 Save Draft</button>
+      <!-- Action Footer -->
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px; padding-top:12px; border-top:1px solid #ebd8c1; flex-wrap:wrap;">
+        <button type="button" class="btn btn-outline" onclick="confirmCloseNewsEditor()">Cancel</button>
+        <button type="button" class="btn btn-outline" onclick="previewCurrentEditorArticle()">👁️ Preview Layout</button>
+        <button type="button" class="btn btn-outline" onclick="saveNewsArticleFromEditor('Draft')">💾 Save Draft</button>
         <button type="button" class="btn btn-primary" onclick="saveNewsArticleFromEditor('Published')">🚀 Publish Article</button>
       </div>
     </div>
