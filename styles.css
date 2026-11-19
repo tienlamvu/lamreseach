@@ -9297,46 +9297,351 @@ body.is-admin #cv-exclusive-owner-notice {
   }
 }
 
-/* Authors Block */
+/* ========================================================================== */
+/* V110: NATURE-STYLE CLICKABLE AUTHORS & INTERACTIVE POPOVER CARD            */
+/* ========================================================================== */
 .nature-authors-block {
-  margin-bottom: 22px;
+  margin-bottom: 20px;
+  position: relative;
 }
+
 .nature-authors-names {
-  font-size: 16px;
+  font-size: 16.5px;
   font-weight: 600;
   color: #1f2937;
-  line-height: 1.6;
-  margin-bottom: 10px;
+  line-height: 1.8;
+  margin-bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 4px;
 }
-.nature-authors-names sup {
-  color: #8b3a1a;
+
+.nature-author-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  position: relative;
+}
+
+.nature-author-link {
+  color: #111827;
+  text-decoration: underline;
+  text-decoration-color: rgba(31, 41, 55, 0.4);
+  text-underline-offset: 3px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.nature-author-link:hover {
+  color: #1a56db;
+  text-decoration-color: #1a56db;
+}
+
+.nature-author-sup {
+  font-size: 11px;
   font-weight: 700;
+  color: #8b3a1a;
+  margin-left: 1px;
 }
-.nature-affiliations-box {
-  padding-left: 14px;
-  border-left: 2px solid #e5e7eb;
-  font-size: 13px;
+
+.nature-author-email-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #374151;
+  padding: 0 3px;
+  vertical-align: middle;
+  text-decoration: none !important;
+  margin-left: 2px;
+  transition: color 0.15s ease;
+}
+
+.nature-author-email-icon:hover {
+  color: #1a56db;
+}
+
+.nature-envelope-svg {
+  display: inline-block;
+  vertical-align: -1px;
+}
+
+.nature-author-sep {
   color: #4b5563;
-  line-height: 1.6;
+  font-weight: 500;
+  margin-right: 4px;
+}
+
+/* Floating Nature Author Popover */
+.nature-author-popover {
+  position: absolute;
+  z-index: 1050;
+  width: 420px;
+  max-width: calc(100vw - 32px);
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border: 1px solid #1f2937;
+  border-radius: 6px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
+  padding: 16px 20px 16px 20px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #1f2937;
+}
+
+.nature-popover-caret {
+  position: absolute;
+  top: -8px;
+  left: 28px;
+  width: 14px;
+  height: 14px;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border-left: 1px solid #1f2937;
+  border-top: 1px solid #1f2937;
+  transform: rotate(45deg);
+  z-index: 1;
+}
+
+.nature-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.nature-popover-tag {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+  text-transform: capitalize;
+}
+
+.nature-popover-close-btn {
+  background: none;
+  border: none;
+  font-size: 22px;
+  line-height: 1;
+  color: #4b5563;
+  cursor: pointer;
+  padding: 0 4px;
+  transition: color 0.15s ease;
+}
+
+.nature-popover-close-btn:hover {
+  color: #111827;
+}
+
+.nature-popover-name {
+  font-size: 18px;
+  font-weight: 800;
+  color: #111827;
+  margin: 0 0 10px 0;
+  line-height: 1.3;
+}
+
+.nature-popover-aff-item {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #4b5563;
   margin-bottom: 8px;
 }
+
+.nature-popover-aff-item strong {
+  color: #1f2937;
+}
+
+.nature-popover-email {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed #e5e7eb;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nature-popover-email-label {
+  font-weight: 600;
+  color: #374151;
+}
+
+.nature-popover-email-link {
+  color: #1a56db;
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+/* Hide static affiliations header box from top of paper */
+.nature-affiliations-box {
+  display: none !important;
+}
+
+.nature-corresponding-line {
+  display: none !important;
+}
+
 .nature-aff-item {
-  margin: 2px 0;
+  margin: 4px 0;
 }
 .nature-aff-num {
   font-weight: 700;
   color: #111827;
 }
-.nature-corresponding-line {
-  font-size: 12.5px;
-  color: #6b7280;
-  font-style: italic;
-  margin-top: 6px;
+
+/* ========================================================================== */
+/* V110: STRUCTURED AUTHORS & AFFILIATIONS MANAGER IN EDITOR MODAL            */
+/* ========================================================================== */
+.news-authors-affiliations-container {
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.02);
 }
-.nature-corr-email {
+
+.news-aff-item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  padding: 6px 10px;
+  border: 1px solid #e2d4c7;
+  border-radius: 6px;
+}
+
+.news-aff-badge {
+  font-size: 12px;
+  font-weight: 700;
   color: #8b3a1a;
-  text-decoration: underline;
-  font-style: normal;
+  background: #faede2;
+  padding: 3px 7px;
+  border-radius: 4px;
+  min-width: 28px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.news-aff-text-input {
+  flex: 1;
+  font-size: 13px;
+  padding: 6px 10px;
+  border: 1px solid #d4bcad;
+  border-radius: 4px;
+}
+
+.btn-remove-item {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #991b1b;
+  cursor: pointer;
+  padding: 0 6px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.btn-remove-item:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.news-author-item-card {
+  background: #ffffff;
+  border: 1px solid #e2d4c7;
+  border-radius: 8px;
+  padding: 12px 14px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+}
+
+.news-author-top-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.news-author-name-group {
+  flex: 2;
+  min-width: 180px;
+}
+
+.news-author-corr-group {
+  flex: 2;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.news-field-micro-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b5c4f;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 3px;
+  display: block;
+}
+
+.news-corr-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #78350f;
+  cursor: pointer;
+  user-select: none;
+}
+
+.news-author-email-input {
+  font-size: 12px;
+  padding: 4px 8px;
+  border: 1px solid #d4bcad;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+
+.news-author-bottom-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px dashed #ebd8c1;
+  padding-top: 8px;
+  flex-wrap: wrap;
+}
+
+.news-author-aff-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.news-aff-chip-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border: 1px solid #d4bcad;
+  border-radius: 4px;
+  background: #fbf8f4;
+  color: #554433;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.news-aff-chip-label:hover {
+  border-color: #8b3a1a;
+  background: #faede2;
+}
+
+.news-aff-chip-label.active {
+  background: #8b3a1a;
+  color: #ffffff;
+  border-color: #8b3a1a;
 }
 
 /* Citation & Permanent Link Bar */
