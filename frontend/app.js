@@ -9674,7 +9674,10 @@ async function handleBatchCifFiles(fileList) {
         chemical_formula: formula,
         crystal_system: sys,
         space_group: sg,
-        a, b, c, volume: vol
+        a, b, c, alpha, beta, gamma, volume: vol,
+        atoms,
+        cif_content: text,
+        raw_cif: text
       };
       const dups = findDuplicateStructures(candidate, null);
       if (dups.length > 0) dupCount++;
@@ -10926,18 +10929,91 @@ window.copyStructuralId = copyStructuralId;
 
 function computeStructureFingerprint(s) {
   if (!s) return "";
-  const formula = (s.chemical_formula || s.formula || "").replace(/\s+/g, "").toLowerCase();
+
+  // 1. Normalized chemical formula (spaces stripped, lowercased)
+  const rawForm = s.chemical_formula || s.formula || "";
+  const formula = (typeof cleanAndSortChemicalFormula === "function" ? cleanAndSortChemicalFormula(rawForm) : rawForm)
+    .replace(/\s+/g, "")
+    .toLowerCase();
+
+  // 2. Crystal System & Space Group (exact international number or normalized symbol)
   const sys = (s.crystal_system || "").trim().toLowerCase();
   const sgRaw = String(s.space_group || "").trim();
   const sgNumMatch = sgRaw.match(/\((\d+)\)/);
   const sgKey = sgNumMatch ? sgNumMatch[1] : sgRaw.replace(/\s+/g, "").toLowerCase();
+
+  // 3. Unit cell dimensions (physically realistic tolerance: 0.02 Å = 50 steps per Å)
   const dims = [Number(s.a || 0), Number(s.b || 0), Number(s.c || 0)]
-    .map(v => Math.round(v * 20) / 20) // 0.05 A tolerance
+    .map(v => Math.round(v * 50) / 50)
     .sort((x, y) => x - y)
     .map(v => v.toFixed(2))
     .join("x");
-  const vol = Math.round(Number(s.volume || 0));
-  return `${formula}|${sys}|${sgKey}|${dims}|${vol}`;
+
+  // 4. Unit cell angles (alpha, beta, gamma) rounded to 0.1 deg
+  const angles = [Number(s.alpha || 90), Number(s.beta || 90), Number(s.gamma || 90)]
+    .map(v => Math.round(v * 10) / 10)
+    .sort((x, y) => x - y)
+    .map(v => v.toFixed(1))
+    .join(",");
+
+  // 5. Volume with 0.1 Å³ precision
+  const vol = Math.round(Number(s.volume || 0) * 10) / 10;
+
+  // 6. ATOMIC POSITIONS & SITE COORDINATES (The essential crystallography!)
+  // Differentiates distinct polymorphs, isomers, point defects (e.g. V(N1) vs V(N2)), and Janus stackings.
+  let atomStr = "";
+  let atoms = Array.isArray(s.atoms) ? s.atoms : null;
+  if (!atoms && s.cif_content) {
+    try {
+      const parsed = typeof parseCifTextClient === "function" ? parseCifTextClient(s.cif_content, s.name || "") : null;
+      if (parsed && Array.isArray(parsed.atoms) && parsed.atoms.length > 0) atoms = parsed.atoms;
+    } catch (e) {}
+  }
+  if (!atoms && s.raw_cif) {
+    try {
+      const parsed = typeof parseCifTextClient === "function" ? parseCifTextClient(s.raw_cif, s.name || "") : null;
+      if (parsed && Array.isArray(parsed.atoms) && parsed.atoms.length > 0) atoms = parsed.atoms;
+    } catch (e) {}
+  }
+
+  if (Array.isArray(atoms) && atoms.length > 0) {
+    const atomSigs = atoms.map(a => {
+      const elem = String(a.element || a.type || "").trim().toUpperCase();
+      // Normalized fractional coordinate in [0, 1), rounded to 2 decimal places (0.01 fractional tolerance)
+      let x = parseFloat(a.x) || 0;
+      let y = parseFloat(a.y) || 0;
+      let z = parseFloat(a.z) || 0;
+      x = ((x % 1.0) + 1.0) % 1.0;
+      y = ((y % 1.0) + 1.0) % 1.0;
+      z = ((z % 1.0) + 1.0) % 1.0;
+      return `${elem}:${x.toFixed(2)},${y.toFixed(2)},${z.toFixed(2)}`;
+    });
+    atomSigs.sort(); // Canonical ordering independent of atom sequence in file
+    atomStr = atomSigs.join(";");
+  } else {
+    // If no parsed atoms array, check for POSCAR or CIF coordinate lines
+    const rawText = s.poscar_text || s.poscar_content || s.cif_content || s.raw_cif || "";
+    if (rawText && typeof rawText === "string") {
+      const lines = rawText
+        .split(/\r?\n/)
+        .map(l => l.trim().replace(/\s+/g, " "))
+        .filter(l => l.length > 0 && !l.startsWith("#") && !l.startsWith("data_") && !l.startsWith("_"));
+      if (lines.length > 0) {
+        atomStr = "raw:" + lines.slice(0, 30).join("|");
+      }
+    }
+  }
+
+  // 7. Defect configuration / structural isomer tag from name or notes
+  // (e.g. J1+4_V(N1) vs J1+4_V(N2), J1+4_P_N1 vs J1+4_P_N2, Janus 1 vs Janus 2)
+  let defectTag = "";
+  const nameStr = String(s.name || "").trim();
+  const mDef = nameStr.match(/_([A-Za-z0-9()_+-]+)$/) || nameStr.match(/Janus\s*(\d+)/i) || nameStr.match(/V\([A-Za-z0-9]+\)/i);
+  if (mDef) {
+    defectTag = mDef[0].trim().toLowerCase();
+  }
+
+  return `${formula}|${sys}|${sgKey}|${dims}|${angles}|${vol}|${atomStr}|${defectTag}`;
 }
 
 function findDuplicateStructures(candidate, excludeId = null) {
@@ -10988,14 +11064,33 @@ function checkModalStructureDuplicate() {
   if (!warnEl) return;
   const excludeIdRaw = document.getElementById("struct-id")?.value;
   const excludeId = excludeIdRaw ? Number(excludeIdRaw) : null;
+  const rawCif = document.getElementById("struct-cifcontent")?.value || "";
+  let atoms = typeof collectModalAtoms === "function" ? collectModalAtoms() : [];
+  if (atoms.length === 0 && excludeId) {
+    const existing = (STATE.structures || []).find(x => Number(x.id) === Number(excludeId));
+    if (existing && Array.isArray(existing.atoms) && existing.atoms.length > 0) atoms = existing.atoms;
+  }
+  if (atoms.length === 0 && rawCif) {
+    try {
+      const parsed = typeof parseCifTextClient === "function" ? parseCifTextClient(rawCif, document.getElementById("struct-name")?.value || "") : null;
+      if (parsed && Array.isArray(parsed.atoms) && parsed.atoms.length > 0) atoms = parsed.atoms;
+    } catch (e) {}
+  }
   const candidate = {
+    name: (document.getElementById("struct-name")?.value || "").trim(),
     chemical_formula: (document.getElementById("struct-formula")?.value || "").trim(),
     crystal_system: document.getElementById("struct-system")?.value || "",
     space_group: (document.getElementById("struct-spacegroup")?.value || "").trim(),
     a: parseFloat(document.getElementById("struct-a")?.value) || 0,
     b: parseFloat(document.getElementById("struct-b")?.value) || 0,
     c: parseFloat(document.getElementById("struct-c")?.value) || 0,
-    volume: parseFloat(document.getElementById("struct-vol")?.value) || 0
+    alpha: parseFloat(document.getElementById("struct-alpha")?.value) || 90,
+    beta: parseFloat(document.getElementById("struct-beta")?.value) || 90,
+    gamma: parseFloat(document.getElementById("struct-gamma")?.value) || 90,
+    volume: parseFloat(document.getElementById("struct-vol")?.value) || 0,
+    atoms: atoms,
+    cif_content: rawCif,
+    raw_cif: rawCif
   };
   if (!candidate.chemical_formula) {
     warnEl.style.display = "none";
