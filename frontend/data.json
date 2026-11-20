@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-20T01:07:20.927Z",
+  "exported_at": "2026-11-20T01:07:42.674Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -6138,14 +6138,14 @@
       "title": "Lab Announcement: Deployment of New 128-Core AMD EPYC VASP 6.4 Cluster & Joint Research Initiative with KIST",
       "category": "Announcement",
       "status": "Published",
-      "authors": "Vu Tien Lam<sup>1</sup>†*, Computational Materials Science Lab Administration<sup>1</sup>†",
+      "authors": "Vu Tien Lam<sup>1</sup>*, Computational Materials Science Lab Administration<sup>1</sup>",
       "corresponding_email": "lamvt.skku@gmail.com",
       "affiliations": "1. School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU)",
       "authors_data": [
         {
           "name": "Vu Tien Lam",
           "is_corresponding": true,
-          "is_co_first": true,
+          "is_co_first": false,
           "email": "lamvt.skku@gmail.com",
           "affiliations": [
             1
@@ -6154,7 +6154,7 @@
         {
           "name": "Computational Materials Science Lab Administration",
           "is_corresponding": false,
-          "is_co_first": true,
+          "is_co_first": false,
           "email": "",
           "affiliations": [
             1
