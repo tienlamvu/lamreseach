@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-20T00:41:54.517Z",
+  "exported_at": "2026-11-20T00:42:02.162Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -6136,11 +6136,30 @@
   "deleted_schedule_map": {},
   "news_articles": [
     {
+      "id": "news_20261118_003",
+      "title": "Lab Announcement: Deployment of New 128-Core AMD EPYC VASP 6.4 Cluster & Joint Research Initiative with KIST",
+      "category": "Announcement",
+      "authors": "Vu Tien Lam¹*, Computational Materials Science Lab Administration",
+      "affiliations": "¹ School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU)",
+      "corresponding_email": "lamvt.skku@gmail.com",
+      "received_date": "2026-11-12",
+      "revised_date": "2026-11-12",
+      "published_date": "2026-11-18",
+      "doi": "10.skku.matsci/news.2026.003",
+      "keywords": "High-Performance Computing, VASP 6.4, GPU Acceleration, Lab Facility, KIST Collaboration",
+      "status": "Published",
+      "cover_image": "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1200&q=80",
+      "abstract": "We are pleased to announce the successful installation and benchmarking of our new 128-core AMD EPYC 9554 computing node equipped with dual NVIDIA H100 GPUs, achieving a 4.2x speedup on hybrid functional calculations for 200+ atom supercells. In addition, our lab has signed a formal collaborative computing and experimental synthesis agreement with KIST Center for Computational Materials Science.",
+      "content_html": "<h2>1. High-Performance Computing Cluster Expansion</h2>\n<p>To support high-throughput DFT simulations and hybrid functional calculations of large defect supercells, our research group has completed the deployment and commissioning of the <strong>SKKU-CMS-Node03</strong> computing cluster. Specifications:</p>\n\n<ul>\n  <li><strong>CPUs:</strong> Dual AMD EPYC 9554 processors (128 physical cores, 256 threads @ up to 3.75 GHz)</li>\n  <li><strong>Memory:</strong> 512 GB DDR5-4800 ECC Registered RAM</li>\n  <li><strong>Accelerators:</strong> 2x NVIDIA H100 PCIe (80 GB HBM3 each)</li>\n  <li><strong>Storage:</strong> 8 TB NVMe PCIe Gen5 scratch storage for wavefunction and charge density I/O</li>\n  <li><strong>Software Stack:</strong> VASP 6.4.2 compiled with OpenMPI 4.1.6, Intel oneMKL, and CUDA OpenACC GPU offloading</li>\n</ul>\n\n<h2>2. Benchmark Results on 2D Supercells</h2>\n<p>Benchmarking on a 216-atom 2D MoSi<sub>2</sub>N<sub>4</sub> defect supercell with HSE06 hybrid functional demonstrated a <strong>4.2&times; walltime reduction</strong> compared to our previous dual Xeon Gold nodes. Self-consistent electronic convergence was achieved within 38 minutes per k-point configuration.</p>\n\n<figure class=\"journal-figure\">\n  <img src=\"https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1000&q=80\" alt=\"HPC Cluster Rack\">\n  <figcaption><strong>Figure 1 |</strong> Newly commissioned SKKU Materials Simulation High-Performance Computing node.</figcaption>\n</figure>\n\n<h2>3. Collaboration with KIST</h2>\n<p>Furthermore, under the new MoU with the Korea Institute of Science and Technology (KIST), our group will gain access to shared supercomputing allocations on the KIST K-CREST infrastructure to perform ab initio molecular dynamics (AIMD) simulations of molten salt synthesis.</p>",
+      "volume": "Volume 3 (2026)",
+      "article_number": "3"
+    },
+    {
       "id": "news_20261115_002",
       "title": "High-Throughput DFT Screening of 2D Transition Metal Carbonitrides for Solid-State Battery Solid Electrolyte Interphases",
       "category": "Computational",
       "authors": "Vu Tien Lam¹*, Jaewon Kim¹",
-      "affiliations": "1. School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea",
+      "affiliations": "¹ School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea",
       "corresponding_email": "lamvt.skku@gmail.com",
       "received_date": "2026-10-28",
       "revised_date": "2026-11-08",
@@ -6152,81 +6171,14 @@
       "abstract": "The interface stability between garnet-type solid electrolytes (e.g., Li7La3Zr2O12, LLZO) and lithium metal anodes remains the primary bottleneck for next-generation solid-state batteries. We report a comprehensive high-throughput computational screening over 45 functionalized 2D transition metal carbonitrides (MXenes and MAB phases). By computing grand potential phase diagrams and interfacial reaction energies, we identify Ti3C2F2 and V2CTx as superior artificial SEI interlayers that effectively suppress lithium dendrite nucleation.",
       "content_html": "<h2>1. Background & Motivation</h2>\n<p>All-solid-state lithium metal batteries promise game-changing energy densities exceeding 500 Wh/kg. However, severe chemical side-reactions and dendrite propagation across the garnet electrolyte/lithium metal interface critically shorten cycle lifetime. In this study, we screen 2D transition metal carbides and nitrides (MXenes) to design an ultra-thin, chemo-mechanically robust artificial solid electrolyte interphase (SEI).</p>\n\n<h2>2. High-Throughput Computational Workflow</h2>\n<p>A Python-automated high-throughput DFT pipeline utilizing VASP and pymatgen screened 45 surface-terminated MXene compositions (M<sub>2</sub>X, M<sub>3</sub>X<sub>2</sub>, M<sub>4</sub>X<sub>3</sub>; M = Ti, V, Nb, Mo; T<sub>x</sub> = O, F, OH, Cl). Li-ion diffusion pathways across the interfacial grain boundaries were evaluated using the climbing image nudged elastic band (CI-NEB) method with 7 intermediate images.</p>\n\n<div class=\"journal-equation-block\">\n  <div class=\"journal-equation-math\">&Delta;E<sub>interface</sub> = E<sub>bilayer</sub> - E<sub>MXene</sub> - E<sub>LLZO(001)</sub></div>\n  <div class=\"journal-equation-num\">(1)</div>\n</div>\n\n<h2>3. Interfacial Stability & Lithium Diffusion Barriers</h2>\n<p>Among all candidates, fluorinated titanium carbide <strong>Ti<sub>3</sub>C<sub>2</sub>F<sub>2</sub></strong> demonstrated an ideal balance of low Li-ion migration barrier (<strong>0.22 eV</strong>) and thermodynamic passivity against metallic lithium reduction. The computed grand-potential phase diagram indicates complete electrochemical stability from 0.0 V to 2.4 V vs Li/Li<sup>+</sup>.</p>\n\n<figure class=\"journal-figure\">\n  <img src=\"https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1000&q=80\" alt=\"High-throughput screening diagram\">\n  <figcaption><strong>Figure 1 |</strong> High-throughput computational screening matrix of 45 MXene terminations showing thermodynamic stability vs Li-ion migration activation barrier.</figcaption>\n</figure>\n\n<h2>4. Summary & Outlook</h2>\n<p>Our findings establish atomic-level design guidelines for stabilizing solid-state lithium battery interfaces, paving the way for targeted experimental synthesis in the upcoming quarter.</p>",
       "volume": "Volume 3 (2026)",
-      "article_number": "2",
-      "affiliations_data": [
-        {
-          "id": 1,
-          "text": "School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea"
-        }
-      ],
-      "authors_data": [
-        {
-          "name": "Vu Tien Lam",
-          "is_corresponding": true,
-          "email": "lamvt.skku@gmail.com",
-          "affiliations": [
-            1
-          ]
-        },
-        {
-          "name": "Jaewon Kim",
-          "is_corresponding": false,
-          "email": "",
-          "affiliations": [
-            1
-          ]
-        }
-      ]
-    },
-    {
-      "id": "news_20261118_003",
-      "title": "Lab Announcement: Deployment of New 128-Core AMD EPYC VASP 6.4 Cluster & Joint Research Initiative with KIST",
-      "category": "Announcement",
-      "authors": "Vu Tien Lam¹*, Computational Materials Science Lab Administration",
-      "affiliations": "1. School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU)",
-      "corresponding_email": "lamvt.skku@gmail.com",
-      "received_date": "",
-      "revised_date": "",
-      "published_date": "2026-11-18",
-      "doi": "10.skku.matsci/news.2026.003",
-      "keywords": "High-Performance Computing, VASP 6.4, GPU Acceleration, Lab Facility, KIST Collaboration",
-      "status": "Published",
-      "cover_image": "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1200&q=80",
-      "abstract": "We are pleased to announce the successful installation and benchmarking of our new 128-core AMD EPYC 9554 computing node equipped with dual NVIDIA H100 GPUs, achieving a 4.2x speedup on hybrid functional calculations for 200+ atom supercells. In addition, our lab has signed a formal collaborative computing and experimental synthesis agreement with KIST Center for Computational Materials Science.",
-      "content_html": "<h2>1. High-Performance Computing Cluster Expansion</h2>\n<p>To support high-throughput DFT simulations and hybrid functional calculations of large defect supercells, our research group has completed the deployment and commissioning of the <strong>SKKU-CMS-Node03</strong> computing cluster. Specifications:</p>\n\n<ul>\n  <li><strong>CPUs:</strong> Dual AMD EPYC 9554 processors (128 physical cores, 256 threads @ up to 3.75 GHz)</li>\n  <li><strong>Memory:</strong> 512 GB DDR5-4800 ECC Registered RAM</li>\n  <li><strong>Accelerators:</strong> 2x NVIDIA H100 PCIe (80 GB HBM3 each)</li>\n  <li><strong>Storage:</strong> 8 TB NVMe PCIe Gen5 scratch storage for wavefunction and charge density I/O</li>\n  <li><strong>Software Stack:</strong> VASP 6.4.2 compiled with OpenMPI 4.1.6, Intel oneMKL, and CUDA OpenACC GPU offloading</li>\n</ul>\n\n<h2>2. Benchmark Results on 2D Supercells</h2>\n<p>Benchmarking on a 216-atom 2D MoSi<sub>2</sub>N<sub>4</sub> defect supercell with HSE06 hybrid functional demonstrated a <strong>4.2&times; walltime reduction</strong> compared to our previous dual Xeon Gold nodes. Self-consistent electronic convergence was achieved within 38 minutes per k-point configuration.</p>\n\n<figure class=\"journal-figure\">\n  <img src=\"https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1000&q=80\" alt=\"HPC Cluster Rack\">\n  <figcaption><strong>Figure 1 |</strong> Newly commissioned SKKU Materials Simulation High-Performance Computing node.</figcaption>\n</figure>\n\n<h2>3. Collaboration with KIST</h2>\n<p>Furthermore, under the new MoU with the Korea Institute of Science and Technology (KIST), our group will gain access to shared supercomputing allocations on the KIST K-CREST infrastructure to perform ab initio molecular dynamics (AIMD) simulations of molten salt synthesis.</p>",
-      "volume": "Volume 3 (2026)",
-      "article_number": "3",
-      "affiliations_data": [
-        {
-          "id": 1,
-          "text": "School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU)"
-        }
-      ],
-      "authors_data": [
-        {
-          "name": "Vu Tien Lam",
-          "is_corresponding": true,
-          "email": "lamvt.skku@gmail.com",
-          "affiliations": [
-            1
-          ]
-        },
-        {
-          "name": "Computational Materials Science Lab Administration",
-          "is_corresponding": false,
-          "email": "",
-          "affiliations": [
-            1
-          ]
-        }
-      ]
+      "article_number": "2"
     },
     {
       "id": "news_20251015_001",
       "title": "First-Principles Prediction of Two-Dimensional Ferroelectric Rashba Semiconductors in Janus Group-IV Chalcogenides",
       "category": "Research Article",
       "authors": "Vu Tien Lam¹*, Jaewon Kim¹, Jin-Woo Park²",
-      "affiliations": "1. School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea\n2. Center for Computational Materials Science, Korea Institute of Science and Technology (KIST), Seoul 02792, Republic of Korea",
+      "affiliations": "¹ School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea\n² Center for Computational Materials Science, Korea Institute of Science and Technology (KIST), Seoul 02792, Republic of Korea",
       "corresponding_email": "lamvt.skku@gmail.com",
       "received_date": "",
       "revised_date": "",
@@ -6238,50 +6190,14 @@
       "status": "Published",
       "cover_image": "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80",
       "abstract": "Two-dimensional Janus monochalcogenides exhibit robust out-of-plane electric polarization and giant Rashba spin splitting. Here, through first-principles relativistic density functional theory calculations, we predict dynamic stability and room-temperature spontaneous electric polarization in Janus Ge2SeTe monolayers with strong spin-orbit coupling.",
-      "content_html": "<h2>1. Introduction</h2><p>Two-dimensional ferroelectrics with non-centrosymmetric structures provide an exceptional platform for nonvolatile spintronic memories. In this work, we investigate Janus group-IV monochalcogenide monolayers using hybrid DFT.</p><h2>2. Methodology & Stabilities</h2><p>Phonon dispersion curves calculated using density functional perturbation theory (DFPT) confirm kinetic stability across the full Brillouin zone without imaginary modes.</p><h2>3. Rashba Spin Splitting</h2><p>The broken inversion symmetry accompanied by vertical dipole gives rise to a giant Rashba parameter alpha_R = 1.82 eV·Å at the conduction band edge.</p><h2>4. References</h2><ol><li>Lam, V. T. et al. <em>SKKU Comp. Mater.</em> <strong>2</strong>, 101-110 (2025).</li></ol>",
-      "affiliations_data": [
-        {
-          "id": 1,
-          "text": "School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea"
-        },
-        {
-          "id": 2,
-          "text": "Center for Computational Materials Science, Korea Institute of Science and Technology (KIST), Seoul 02792, Republic of Korea"
-        }
-      ],
-      "authors_data": [
-        {
-          "name": "Vu Tien Lam",
-          "is_corresponding": true,
-          "email": "lamvt.skku@gmail.com",
-          "affiliations": [
-            1
-          ]
-        },
-        {
-          "name": "Jaewon Kim",
-          "is_corresponding": false,
-          "email": "",
-          "affiliations": [
-            1
-          ]
-        },
-        {
-          "name": "Jin-Woo Park",
-          "is_corresponding": false,
-          "email": "",
-          "affiliations": [
-            2
-          ]
-        }
-      ]
+      "content_html": "<h2>1. Introduction</h2><p>Two-dimensional ferroelectrics with non-centrosymmetric structures provide an exceptional platform for nonvolatile spintronic memories. In this work, we investigate Janus group-IV monochalcogenide monolayers using hybrid DFT.</p><h2>2. Methodology & Stabilities</h2><p>Phonon dispersion curves calculated using density functional perturbation theory (DFPT) confirm kinetic stability across the full Brillouin zone without imaginary modes.</p><h2>3. Rashba Spin Splitting</h2><p>The broken inversion symmetry accompanied by vertical dipole gives rise to a giant Rashba parameter alpha_R = 1.82 eV·Å at the conduction band edge.</p><h2>4. References</h2><ol><li>Lam, V. T. et al. <em>SKKU Comp. Mater.</em> <strong>2</strong>, 101-110 (2025).</li></ol>"
     },
     {
       "id": "news_20240905_001",
       "title": "Benchmark Analysis of Many-Body GW Approximations and Bethe-Salpeter Equation for Excitonic Spectra in Monolayer MoS2",
       "category": "Computational",
       "authors": "Vu Tien Lam¹*, Dinh Loc Duong²",
-      "affiliations": "1. School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea\n2. Frontier Institute for Research in Sensor Technologies, University of Maine, USA",
+      "affiliations": "¹ School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea\n² Frontier Institute for Research in Sensor Technologies, University of Maine, USA",
       "corresponding_email": "lamvt.skku@gmail.com",
       "received_date": "",
       "revised_date": "",
@@ -6293,35 +6209,7 @@
       "status": "Published",
       "cover_image": "https://images.unsplash.com/photo-1507668077129-56e32842fceb?auto=format&fit=crop&w=1200&q=80",
       "abstract": "Accurate optical and quasiparticle band structures of single-layer transition metal dichalcogenides require treating many-body electron-electron and electron-hole interactions. Using state-of-the-art GW+BSE approaches implemented in VASP 6.3, we systematically analyze k-point convergence and screened Coulomb cutoffs for excitonic binding energies.",
-      "content_html": "<h2>1. Introduction</h2><p>Monolayer transition metal dichalcogenides host tightly bound excitons due to quantum confinement and reduced dielectric screening. We evaluate quasiparticle band gaps using single-shot G0W0 and partially self-consistent GW0.</p><h2>2. Many-Body Computational Framework</h2><p>Calculations were performed with a 24x24x1 Gamma-centered k-mesh and 480 empty bands, achieving exciton binding energy convergence within 15 meV.</p><h2>3. Results</h2><p>The computed A and B exciton peaks align with low-temperature photoluminescence measurements within 0.03 eV.</p><h2>4. References</h2><ol><li>Lam, V. T. & Duong, D. L. <em>SKKU Comp. Mater.</em> <strong>1</strong>, 45-52 (2024).</li></ol>",
-      "affiliations_data": [
-        {
-          "id": 1,
-          "text": "School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea"
-        },
-        {
-          "id": 2,
-          "text": "Frontier Institute for Research in Sensor Technologies, University of Maine, USA"
-        }
-      ],
-      "authors_data": [
-        {
-          "name": "Vu Tien Lam",
-          "is_corresponding": true,
-          "email": "lamvt.skku@gmail.com",
-          "affiliations": [
-            1
-          ]
-        },
-        {
-          "name": "Dinh Loc Duong",
-          "is_corresponding": false,
-          "email": "",
-          "affiliations": [
-            2
-          ]
-        }
-      ]
+      "content_html": "<h2>1. Introduction</h2><p>Monolayer transition metal dichalcogenides host tightly bound excitons due to quantum confinement and reduced dielectric screening. We evaluate quasiparticle band gaps using single-shot G0W0 and partially self-consistent GW0.</p><h2>2. Many-Body Computational Framework</h2><p>Calculations were performed with a 24x24x1 Gamma-centered k-mesh and 480 empty bands, achieving exciton binding energy convergence within 15 meV.</p><h2>3. Results</h2><p>The computed A and B exciton peaks align with low-temperature photoluminescence measurements within 0.03 eV.</p><h2>4. References</h2><ol><li>Lam, V. T. & Duong, D. L. <em>SKKU Comp. Mater.</em> <strong>1</strong>, 45-52 (2024).</li></ol>"
     }
   ],
   "deleted_news_articles": [
@@ -6331,7 +6219,8 @@
     "news_20261119_001",
     "news_1795071397513",
     "news_1795072095532",
-    "news_1795135260574"
+    "news_1795135260574",
+    "news_1795135298222"
   ],
   "deleted_news_articles_map": {
     "news_1795065759528": 1795135289979,
@@ -6340,6 +6229,7 @@
     "news_20261119_001": 1795135289979,
     "news_1795071397513": 1795135289979,
     "news_1795072095532": 1795135289979,
-    "news_1795135260574": 1795135300305
+    "news_1795135260574": 1795135300305,
+    "news_1795135298222": 1795135300733
   }
 }
