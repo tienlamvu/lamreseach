@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-20T04:39:20.623Z",
+  "exported_at": "2026-11-20T04:39:35.113Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -4281,6 +4281,25 @@
     }
   ],
   "schedule": [
+    {
+      "title": "Day off for Liberation Day",
+      "event_type": "Google Calendar Sync",
+      "instrument_or_location": "Holidays in South Korea",
+      "start_date": "2027-08-16",
+      "end_date": "2027-08-16",
+      "start_time": "09:00",
+      "end_time": "18:00",
+      "syncedWithGoogle": true,
+      "googleEventId": "20270816_tdobcb3l6hhta28ec72c6r0tso@google.com",
+      "googleCalendarName": "Holidays in South Korea",
+      "priority": "Medium",
+      "status": "Scheduled",
+      "description": "Public holiday",
+      "visibility": "Private",
+      "allowed_users": [],
+      "in_weekly_report": 0,
+      "id": 1795149598986
+    },
     {
       "title": "Stay at Wuhan Binhu Hotel",
       "event_type": "Google Calendar Sync",
