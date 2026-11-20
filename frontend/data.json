@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-20T02:14:13.692Z",
+  "exported_at": "2026-11-20T02:15:37.960Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -458,6 +458,27 @@
     "weekly_report_allowed_users": []
   },
   "papers": [
+    {
+      "id": 1795140936916,
+      "doi": "10.1021/acsnano.4c01033",
+      "title": "Point Defect Limited Carrier Mobility in 2D Transition Metal Dichalcogenides",
+      "authors": "Zhongcan Xiao, Rongjing Guo, Chenmu Zhang, Yuanyue Liu",
+      "journal": "ACS Nano",
+      "year": 2024,
+      "volume": "18",
+      "pages": "8511-8516",
+      "abstract": "",
+      "citation_count": 39,
+      "material_system": "Perovskite / 2D Material",
+      "synthesis_method": "First-principles DFT",
+      "characterization_tags": "DFT, VASP, XRD",
+      "status": "To Read",
+      "notes": "",
+      "in_weekly_report": 1,
+      "visibility": "Public",
+      "allowed_users": [],
+      "allowed_groups": []
+    },
     {
       "id": 1794980221631,
       "doi": "10.1103/physrevb.104.035409",
