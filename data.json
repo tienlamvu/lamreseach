@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-20T02:13:23.371Z",
+  "exported_at": "2026-11-20T02:14:13.692Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -1035,7 +1035,7 @@
       "project_folder": "General Research",
       "structural_id": "CD-0026",
       "calc_status": "Relaxed",
-      "is_starred": true
+      "is_starred": false
     },
     {
       "name": "J1+4_Si_N1",
