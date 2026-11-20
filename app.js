@@ -30985,10 +30985,10 @@ function renderNewsTab() {
     <section class="news-most-recent-section" aria-label="Most Recent Articles">
       <div class="news-section-header">
         <div class="news-section-title-wrap">
-          <h3 class="news-section-heading">🔥 Most Recent Articles</h3>
+          <h3 class="news-section-heading">🔥 Most Recent</h3>
           <span class="news-section-badge-recent">${recentArticles.length} Latest</span>
         </div>
-        <p class="news-section-sub">Latest breakthrough research papers, computational DFT findings, and official announcements from our laboratory.</p>
+        <p class="news-section-sub">Latest breakthrough news, findings, and official announcements from our laboratory.</p>
       </div>
       <div class="news-articles-grid news-most-recent-grid">
         ${recentCardsHtml}
@@ -31370,23 +31370,48 @@ async function importScientificWordDocument(file) {
           if (ps) pStyle = ps.getAttribute("w:val") || "";
         }
 
-        const rNodes = node.getElementsByTagName("w:r");
-        for (let j = 0; j < rNodes.length; j++) {
-          const rRes = parseDocxRun(rNodes[j]);
-          pRaw += rRes.raw;
-          pHtml += rRes.html;
-          pImages.push(...rRes.images);
+        // V113: Parse paragraph child nodes in sequential document order
+        let hasMath = false;
+        let isMathPara = false;
+        let mathContent = "";
+
+        function processParaNode(cNode) {
+          const cName = cNode.nodeName.toLowerCase();
+          if (cName.endsWith(":r") || cName === "r") {
+            const rRes = parseDocxRun(cNode);
+            pRaw += rRes.raw;
+            pHtml += rRes.html;
+            pImages.push(...rRes.images);
+          } else if (cName.endsWith(":hyperlink") || cName === "hyperlink") {
+            const subRuns = cNode.getElementsByTagName("w:r");
+            for (let k = 0; k < subRuns.length; k++) {
+              const rRes = parseDocxRun(subRuns[k]);
+              pRaw += rRes.raw;
+              pHtml += rRes.html;
+              pImages.push(...rRes.images);
+            }
+          } else if (cName.endsWith(":omath") || cName === "omath") {
+            const mText = (cNode.textContent || "").trim();
+            if (mText) {
+              hasMath = true;
+              mathContent += (mathContent ? " " : "") + mText;
+              pRaw += (pRaw && !pRaw.endsWith(" ") ? " " : "") + mText;
+              pHtml += ` <span class="journal-math-formula">${escapeHtml(mText)}</span> `;
+            }
+          } else if (cName.endsWith(":omathpara") || cName === "omathpara") {
+            isMathPara = true;
+            hasMath = true;
+            const mText = (cNode.textContent || "").trim();
+            if (mText) {
+              mathContent += (mathContent ? " " : "") + mText;
+              pRaw += (pRaw && !pRaw.endsWith(" ") ? " " : "") + mText;
+              pHtml += ` <span class="journal-math-formula">${escapeHtml(mText)}</span> `;
+            }
+          }
         }
 
-        // Check for math equations: m:oMath or m:oMathPara
-        const mathNodes = node.getElementsByTagName("m:oMath");
-        let hasMath = mathNodes.length > 0;
-        let mathContent = "";
-        for (let m = 0; m < mathNodes.length; m++) {
-          const mText = mathNodes[m].textContent || "";
-          mathContent += (mathContent ? " " : "") + mText;
-          pRaw += " " + mText;
-          pHtml += ` <span class="journal-math-formula">${escapeHtml(mText)}</span>`;
+        for (let j = 0; j < node.childNodes.length; j++) {
+          processParaNode(node.childNodes[j]);
         }
 
         if (pRaw.trim() || pImages.length > 0) {
@@ -31398,6 +31423,7 @@ async function importScientificWordDocument(file) {
             isCenter,
             pStyle,
             hasMath,
+            isMathPara,
             mathContent
           });
         }
@@ -31529,8 +31555,20 @@ async function importScientificWordDocument(file) {
           continue;
         }
 
-        // Check if Equation Block
-        if (el.hasMath || raw.match(/\((\d+|eq\.\s*\d+)\)\s*$/i) || (el.isCenter && (raw.includes("=") || raw.includes("Δ") || raw.includes("μ") || raw.includes("Ĥ")))) {
+        // V113: Equation Block ONLY for standalone math formulas, NEVER for normal prose paragraphs!
+        const hasEqNumber = Boolean(raw.match(/\((\d+|eq\.\s*\d+)\)\s*$/i));
+        const hasMathSymbols = /[=≈≤≥±→×∫∑∂∇]/.test(raw) || raw.includes("\Delta") || raw.includes("\mu");
+        const isShortBlock = raw.length < 130;
+        const hasProseSentences = raw.includes(". ") || (raw.split(/\s+/).length > 25);
+
+        const isDisplayEquation = !hasProseSentences && (
+          el.isMathPara ||
+          (hasEqNumber && isShortBlock) ||
+          (el.hasMath && isShortBlock && hasMathSymbols) ||
+          (el.isCenter && isShortBlock && hasMathSymbols)
+        );
+
+        if (isDisplayEquation) {
           const eqNumMatch = raw.match(/\((\d+|eq\.\s*\d+)\)\s*$/i);
           const eqNum = eqNumMatch ? `(${eqNumMatch[1]})` : "";
           const eqMath = raw.replace(/\((\d+|eq\.\s*\d+)\)\s*$/i, "").trim();
@@ -31543,7 +31581,7 @@ async function importScientificWordDocument(file) {
           continue;
         }
 
-        // Standard Body Paragraph
+        // Standard Body Paragraph (Inline math will cleanly render via .journal-math-formula)
         bodyBlocks.push(`<p>${el.html || raw}</p>`);
 
       } else if (el.type === "table") {
@@ -31679,7 +31717,8 @@ function parseLegacyAuthors(rawAuthors, correspondingEmail = "") {
   tokens.forEach(tok => {
     tok = tok.replace(/;/g, ",");
     const isCorr = tok.includes("*") || tok.includes("✉") || /envelope|corr/i.test(tok);
-    let tokClean = tok.replace(/[*✉]/g, "").trim();
+    const isCoFirst = tok.includes("†") || /co-?first|equal\s*contrib/i.test(tok);
+    let tokClean = tok.replace(/[*✉†]/g, "").trim();
     const affs = [];
     const supMatches = tokClean.match(/<sup>(.*?)<\/sup>/gi);
     if (supMatches) {
@@ -31694,6 +31733,7 @@ function parseLegacyAuthors(rawAuthors, correspondingEmail = "") {
       authors.push({
         name: name,
         is_corresponding: isCorr,
+        is_co_first: isCoFirst,
         email: isCorr ? (correspondingEmail || "") : "",
         affiliations: affs.length > 0 ? Array.from(new Set(affs)).sort((a,b)=>a-b) : [1]
       });
@@ -31799,11 +31839,15 @@ function openNewsJournalModal(articleId) {
   const structuredAuthors = getArticleStructuredAuthors(article);
   const structuredAffs = getArticleStructuredAffiliations(article);
 
-  // Formatted authors inline row (Nature style: true upperscript indices, no underline on superscripts/icons, no space before comma)
+  // V113: Formatted authors inline row with Co-first (†) support and true upperscript indices
+  const coFirstAuthors = structuredAuthors.filter(a => a.is_co_first);
+
   const authorsListHtml = structuredAuthors.map((auth, idx) => {
     const affNums = (auth.affiliations && auth.affiliations.length > 0) ? auth.affiliations.join(",") : "1";
     const isLast = idx === structuredAuthors.length - 1;
-    return `<span class="nature-author-item" data-author-index="${idx}"><a class="nature-author-link" href="javascript:void(0)" onclick="toggleNatureAuthorPopover(event, '${escapeHtml(article.id)}', ${idx})"><span class="nature-author-name-text">${escapeHtml(auth.name)}</span><sup class="nature-author-sup">${escapeHtml(affNums)}</sup>${auth.is_corresponding ? `<span class="nature-author-email-icon" title="Corresponding Author">&#9993;</span>` : ""}</a>${!isLast ? `<span class="nature-author-sep">, </span>` : ""}</span>`;
+    const coFirstMark = auth.is_co_first ? ",†" : "";
+    const fullSup = affNums ? `${affNums}${coFirstMark}` : (auth.is_co_first ? "†" : "");
+    return `<span class="nature-author-item" data-author-index="${idx}"><a class="nature-author-link" href="javascript:void(0)" onclick="toggleNatureAuthorPopover(event, '${escapeHtml(article.id)}', ${idx})"><span class="nature-author-name-text">${escapeHtml(auth.name)}</span><sup class="nature-author-sup">${escapeHtml(fullSup)}</sup>${auth.is_corresponding ? `<span class="nature-author-email-icon" title="Corresponding Author">&#9993;</span>` : ""}</a>${!isLast ? `<span class="nature-author-sep">, </span>` : ""}</span>`;
   }).join("");
 
   const affsTerminalHtml = structuredAffs.map(a => `
@@ -31860,9 +31904,12 @@ function openNewsJournalModal(articleId) {
     processedBodyHtml = article.content_html || "<p>Article text in preparation.</p>";
   }
 
-  // Add standard Nature terminal sections to TOC
+  // Add standard Nature terminal sections to TOC (V113: conditional Author information)
+  const hasAuthorDecls = structuredAffs.length > 0 || (article.show_contributions !== false) || (article.show_corresponding !== false) || coFirstAuthors.length > 1;
+  if (hasAuthorDecls) {
+    tocList.push({ id: "nature-sec-declarations", label: "Author information" });
+  }
   tocList.push(
-    { id: "nature-sec-declarations", label: "Author information" },
     { id: "nature-sec-ethics", label: "Ethics declarations" },
     { id: "nature-sec-rights", label: "Rights & permissions" },
     { id: "nature-sec-about", label: "About this article" }
@@ -31950,6 +31997,13 @@ function openNewsJournalModal(articleId) {
           </div>
           <!-- Floating Nature Author Popover -->
           <div id="nature-author-popover" class="nature-author-popover" style="display:none;" role="dialog" aria-modal="false"></div>
+
+          <!-- Comprehensive Print & PDF Affiliations List (Screen: hidden, Print/PDF: fully visible) -->
+          <div class="nature-print-affiliations-block">
+            ${structuredAffs.map(a => `<div class="nature-print-aff-item"><span class="nature-print-aff-num">${a.id}.</span> ${escapeHtml(a.text)}</div>`).join("")}
+            ${coFirstAuthors.length > 1 ? `<div class="nature-print-meta-item"><strong>* Equal contribution:</strong> ${coFirstAuthors.map(a => escapeHtml(a.name)).join(", ")} contributed equally to this work.</div>` : ""}
+            ${(article.show_corresponding !== false) ? `<div class="nature-print-meta-item"><strong>✉ Correspondence:</strong> ${escapeHtml(corrAuthors.map(a => `${a.name}${a.email ? ` (${a.email})` : ''}`).join('; ') || article.corresponding_email || 'Vu Tien Lam (lamvt.skku@gmail.com)')}</div>` : ""}
+          </div>
         </div>
 
         <!-- Citation & Permanent Link Bar -->
@@ -31987,24 +32041,57 @@ function openNewsJournalModal(articleId) {
             ${processedBodyHtml}
           </div>
 
-          <!-- Author Information Declarations (Comprehensive Reference Section) -->
-          <section class="nature-section nature-declarations" id="nature-sec-declarations">
-            <h2 class="nature-section-title">Author information</h2>
-            <div class="nature-decl-block">
-              <h3 class="nature-decl-heading">Authors and Affiliations</h3>
-              <div class="nature-decl-affs">
-                ${affsTerminalHtml}
-              </div>
-            </div>
-            <div class="nature-decl-block">
-              <h3 class="nature-decl-heading">Contributions</h3>
-              <p class="nature-decl-p">V.T.L. conceived the project, executed DFT simulations, and prepared the manuscript and figures. J.K. performed high-throughput screening and verification. All authors reviewed and approved the publication.</p>
-            </div>
-            <div class="nature-decl-block">
-              <h3 class="nature-decl-heading">Corresponding author</h3>
-              <p class="nature-decl-p">${correspondingTerminalHtml}</p>
-            </div>
-          </section>
+          <!-- V113: Author Information Declarations (Customizable Visibility) -->
+          ${(() => {
+            const showContribs = article.show_contributions !== false;
+            const showCorr = article.show_corresponding !== false;
+            const customContribs = article.contributions_text ? article.contributions_text.trim() : "";
+            const hasDecls = structuredAffs.length > 0 || showContribs || showCorr || coFirstAuthors.length > 1;
+            if (!hasDecls) return "";
+
+            function genDefaultContribs(auths) {
+              if (!auths || auths.length === 0) return "V.T.L. conceived the project and prepared the manuscript.";
+              const getInits = (nm) => nm.split(/\s+/).map(p => p[0].toUpperCase() + ".").join("");
+              const lead = getInits(auths[0].name);
+              const rest = auths.slice(1).map(a => getInits(a.name));
+              if (rest.length > 0) {
+                return `${lead} conceived the project, performed computational calculations, and prepared the manuscript. ${rest.join(", ")} contributed to screening, data analysis, and manuscript revisions. All authors reviewed and approved the publication.`;
+              }
+              return `${lead} conceived the research project, performed all DFT calculations, analyzed the results, and wrote the manuscript.`;
+            }
+
+            return `
+              <section class="nature-section nature-declarations" id="nature-sec-declarations">
+                <h2 class="nature-section-title">Author information</h2>
+                ${structuredAffs.length > 0 ? `
+                  <div class="nature-decl-block">
+                    <h3 class="nature-decl-heading">Authors and Affiliations</h3>
+                    <div class="nature-decl-affs">
+                      ${affsTerminalHtml}
+                    </div>
+                  </div>
+                ` : ""}
+                ${coFirstAuthors.length > 1 ? `
+                  <div class="nature-decl-block">
+                    <h3 class="nature-decl-heading">Equal contribution</h3>
+                    <p class="nature-decl-p">These authors contributed equally to this work: <strong>${coFirstAuthors.map(a => escapeHtml(a.name)).join(", ")}</strong>.</p>
+                  </div>
+                ` : ""}
+                ${showContribs ? `
+                  <div class="nature-decl-block">
+                    <h3 class="nature-decl-heading">Contributions</h3>
+                    <p class="nature-decl-p">${escapeHtml(customContribs || genDefaultContribs(structuredAuthors))}</p>
+                  </div>
+                ` : ""}
+                ${showCorr ? `
+                  <div class="nature-decl-block">
+                    <h3 class="nature-decl-heading">Corresponding author</h3>
+                    <p class="nature-decl-p">${correspondingTerminalHtml}</p>
+                  </div>
+                ` : ""}
+              </section>
+            `;
+          })()}
 
           <!-- Ethics Declarations -->
           <section class="nature-section nature-ethics" id="nature-sec-ethics">
@@ -32203,7 +32290,11 @@ function toggleNatureAuthorPopover(event, articleId, authorIdx) {
   popover.innerHTML = `
     <div class="nature-popover-caret"></div>
     <div class="nature-popover-header">
-      <span class="nature-popover-tag">${author.is_corresponding ? "Corresponding author" : "Author"}</span>
+      <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+        ${author.is_corresponding ? `<span class="nature-popover-tag">&#9993; Corresponding author</span>` : ""}
+        ${author.is_co_first ? `<span class="nature-popover-tag nature-popover-tag-cofirst">👥 Co-first author (&dagger;)</span>` : ""}
+        ${!author.is_corresponding && !author.is_co_first ? `<span class="nature-popover-tag">Author</span>` : ""}
+      </div>
       <button type="button" class="nature-popover-close-btn" onclick="closeNatureAuthorPopover()" aria-label="Close author info">&times;</button>
     </div>
     <h4 class="nature-popover-name">${escapeHtml(author.name)}</h4>
@@ -32451,13 +32542,20 @@ function renderAuthorsEditor() {
                    oninput="onAuthorNameChange(${idx}, this.value)">
           </div>
           <div class="news-author-corr-group">
-            <label class="news-corr-checkbox-label">
-              <input type="checkbox" ${auth.is_corresponding ? 'checked' : ''} 
-                     onchange="onAuthorCorrChange(${idx}, this.checked)">
-              ✉ Corresponding Author
-            </label>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <label class="news-corr-checkbox-label">
+                <input type="checkbox" ${auth.is_corresponding ? 'checked' : ''} 
+                       onchange="onAuthorCorrChange(${idx}, this.checked)">
+                ✉ Corresponding Author
+              </label>
+              <label class="news-cofirst-checkbox-label">
+                <input type="checkbox" ${auth.is_co_first ? 'checked' : ''} 
+                       onchange="onAuthorCoFirstChange(${idx}, this.checked)">
+                <span>👥 Co-first (Equal contrib †)</span>
+              </label>
+            </div>
             <input type="email" class="form-input news-author-email-input" 
-                   style="${auth.is_corresponding ? 'display:block;' : 'display:none;'}"
+                   style="${auth.is_corresponding ? 'display:block;' : 'display:none;'}; margin-top:6px;"
                    placeholder="Contact email (e.g. author@skku.edu)" 
                    value="${escapeHtml(auth.email || "")}" 
                    oninput="onAuthorEmailChange(${idx}, this.value)">
@@ -32519,6 +32617,13 @@ function onAuthorCorrChange(idx, isChecked) {
   renderAuthorsEditor();
 }
 
+function onAuthorCoFirstChange(idx, isChecked) {
+  if (!NEWS_STATE.editorAuthorsData || !NEWS_STATE.editorAuthorsData[idx]) return;
+  NEWS_STATE.editorAuthorsData[idx].is_co_first = Boolean(isChecked);
+  syncAuthorAffiliationsBuilder();
+}
+window.onAuthorCoFirstChange = onAuthorCoFirstChange;
+
 function onAuthorEmailChange(idx, val) {
   if (!NEWS_STATE.editorAuthorsData || !NEWS_STATE.editorAuthorsData[idx]) return;
   NEWS_STATE.editorAuthorsData[idx].email = val;
@@ -32545,8 +32650,9 @@ function syncAuthorAffiliationsBuilder() {
   const authorParts = authors.map(auth => {
     const name = (auth.name || "Author").trim();
     const affStr = (auth.affiliations && auth.affiliations.length > 0) ? `<sup>${auth.affiliations.join(",")}</sup>` : "";
+    const coFirstStr = auth.is_co_first ? "†" : "";
     const corrStr = auth.is_corresponding ? "*" : "";
-    return `${name}${affStr}${corrStr}`;
+    return `${name}${affStr}${coFirstStr}${corrStr}`;
   });
   const legacyAuthorsStr = authorParts.join(", ");
   const legacyAffsStr = affs.map(a => `${a.id}. ${a.text}`).join("\n");
@@ -32606,6 +32712,9 @@ function openNewsEditorModal(articleId = null) {
   const abstractInput = document.getElementById("news-edit-abstract");
   const editorBody = document.getElementById("news-editor-body");
   const modalTitle = document.getElementById("news-editor-modal-title");
+  const showContribsCb = document.getElementById("news-edit-show-contributions");
+  const contribsTextInput = document.getElementById("news-edit-contributions-text");
+  const showCorrCb = document.getElementById("news-edit-show-corresponding");
 
   const todayStr = new Date().toISOString().split("T")[0];
 
@@ -32621,6 +32730,9 @@ function openNewsEditorModal(articleId = null) {
     if (titleInput) titleInput.value = existing.title || "";
     if (catInput) catInput.value = existing.category || "Research Article";
     if (statusInput) statusInput.value = existing.status || "Published";
+    if (showContribsCb) showContribsCb.checked = existing.show_contributions !== false;
+    if (contribsTextInput) contribsTextInput.value = existing.contributions_text || "";
+    if (showCorrCb) showCorrCb.checked = existing.show_corresponding !== false;
     if (authorsInput) authorsInput.value = existing.authors || "";
     if (emailInput) emailInput.value = existing.corresponding_email || "";
     if (affsInput) affsInput.value = existing.affiliations || "";
@@ -32646,6 +32758,9 @@ function openNewsEditorModal(articleId = null) {
     if (titleInput) titleInput.value = "";
     if (catInput) catInput.value = "Research Article";
     if (statusInput) statusInput.value = "Published";
+    if (showContribsCb) showContribsCb.checked = true;
+    if (contribsTextInput) contribsTextInput.value = "";
+    if (showCorrCb) showCorrCb.checked = true;
     if (authorsInput) authorsInput.value = "Vu Tien Lam¹*, Jaewon Kim¹";
     if (emailInput) emailInput.value = "lamvt.skku@gmail.com";
     if (affsInput) affsInput.value = "¹ School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea";
@@ -32714,6 +32829,9 @@ function saveNewsArticleFromEditor(desiredStatus = "Published") {
   const kwInput = document.getElementById("news-edit-keywords");
   const abstractInput = document.getElementById("news-edit-abstract");
   const editorBody = document.getElementById("news-editor-body");
+  const showContribsCb = document.getElementById("news-edit-show-contributions");
+  const contribsTextInput = document.getElementById("news-edit-contributions-text");
+  const showCorrCb = document.getElementById("news-edit-show-corresponding");
 
   // Synchronize dynamic structured author & affiliation rows
   syncAuthorAffiliationsBuilder();
@@ -32748,6 +32866,9 @@ function saveNewsArticleFromEditor(desiredStatus = "Published") {
     cover_image: finalCover,
     keywords: (kwInput && kwInput.value || "").trim(),
     abstract: (abstractInput && abstractInput.value || "").trim(),
+    show_contributions: showContribsCb ? Boolean(showContribsCb.checked) : true,
+    contributions_text: (contribsTextInput && contribsTextInput.value || "").trim(),
+    show_corresponding: showCorrCb ? Boolean(showCorrCb.checked) : true,
     content_html: editorBody ? editorBody.innerHTML : ""
   };
 
