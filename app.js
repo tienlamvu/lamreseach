@@ -16635,6 +16635,16 @@ async function loadStaticFallbackData() {
   renderProfile(STATE.profile);
   renderAcademicCvSheet(STATE.profile);
 
+  window._DATA_JSON_LOADED = true;
+  const activeTabEl = document.querySelector(".tab-pane.active");
+  const currentTabName = activeTabEl ? activeTabEl.id.replace("tab-", "") : "";
+  if (currentTabName === "news") {
+    if (typeof renderNewsTab === "function") renderNewsTab();
+  }
+  if (typeof checkAndHandleArticleDeepLink === "function") {
+    checkAndHandleArticleDeepLink();
+  }
+
   // Immediately pull real-time cloud registry via GitHub API to bypass CDN cache (crucial for Incognito / cross-device registrations)
   setTimeout(() => {
     pullCloudDatabaseInstant(true);
@@ -31733,27 +31743,33 @@ function openNewsJournalModal(articleId) {
   if (typeof switchTab === "function") switchTab("news");
 
   if (!article) {
-    if (fullPaperBody) {
-      fullPaperBody.innerHTML = `
-        <div class="nature-not-found-card" style="text-align:center; padding:60px 24px; background:#fff; border-radius:12px; border:1px solid #ebd8c1; max-width:820px; margin:0 auto; box-shadow:0 8px 24px rgba(0,0,0,0.05);">
-          <div style="font-size:42px; margin-bottom:12px;">📄</div>
-          <h2 style="color:#222; font-family:'Merriweather',Georgia,serif; font-weight:700; margin-bottom:8px;">Article Not Found</h2>
-          <p style="color:#6b7280; font-size:14.5px; max-width:520px; margin:0 auto 20px auto; line-height:1.6;">
-            The requested publication (ID: <code>${escapeHtml(articleId)}</code>) could not be located in the current database. It may have been unpublished or removed.
-          </p>
-          <div style="display:flex; justify-content:center; gap:10px;">
-            <button type="button" class="btn btn-primary" onclick="closeNewsFullArticleView()" style="font-weight:700;">
-              ← Back to All Articles
-            </button>
-            <button type="button" class="btn btn-outline" onclick="location.reload()" style="font-weight:600;">
-              🔄 Refresh Page
-            </button>
+    if (!window._DATA_JSON_LOADED) {
+      if (fullPaperBody) {
+        fullPaperBody.innerHTML = `
+          <div style="text-align:center; padding:80px 24px; max-width:600px; margin:0 auto;">
+            <div style="width:40px; height:40px; margin:0 auto 16px auto; border:3px solid #e2e8f0; border-top-color:#8b3a1a; border-radius:50%; animation:spin 0.8s linear infinite;"></div>
+            <h3 style="font-family:'Merriweather',Georgia,serif; font-size:18px; color:#1e293b; margin-bottom:6px;">Loading publication...</h3>
+            <p style="color:#64748b; font-size:13.5px;">Fetching scientific article from database...</p>
           </div>
-        </div>
-      `;
+        `;
+      }
+      let retryCount = 0;
+      const retryTimer = setInterval(() => {
+        retryCount += 1;
+        const freshArticles = loadNewsArticles();
+        const found = freshArticles.find(a => String(a.id) === String(articleId));
+        if (found || retryCount >= 25) {
+          clearInterval(retryTimer);
+          if (found) {
+            openNewsJournalModal(articleId);
+          } else {
+            renderNotFoundArticle(articleId, fullPaperBody, breadcrumb);
+          }
+        }
+      }, 120);
+      return;
     }
-    if (breadcrumb) breadcrumb.textContent = `News > Article Not Found`;
-    showToast(`Article '${articleId}' not found.`, "error");
+    renderNotFoundArticle(articleId, fullPaperBody, breadcrumb);
     return;
   }
 
@@ -33216,15 +33232,38 @@ function extractArticleIdFromUrl() {
   return null;
 }
 
+function renderNotFoundArticle(articleId, fullPaperBody, breadcrumb) {
+  if (fullPaperBody) {
+    fullPaperBody.innerHTML = `
+      <div class="nature-not-found-card" style="text-align:center; padding:60px 24px; background:#fff; border-radius:12px; border:1px solid #ebd8c1; max-width:820px; margin:0 auto; box-shadow:0 8px 24px rgba(0,0,0,0.05);">
+        <div style="font-size:42px; margin-bottom:12px;">📄</div>
+        <h2 style="color:#222; font-family:'Merriweather',Georgia,serif; font-weight:700; margin-bottom:8px;">Article Not Found</h2>
+        <p style="color:#6b7280; font-size:14.5px; max-width:520px; margin:0 auto 20px auto; line-height:1.6;">
+          The requested publication (ID: <code>${escapeHtml(articleId)}</code>) could not be located in the current database. It may have been unpublished or removed.
+        </p>
+        <div style="display:flex; justify-content:center; gap:10px;">
+          <button type="button" class="btn btn-primary" onclick="closeNewsFullArticleView()" style="font-weight:700;">
+            ← Back to All Articles
+          </button>
+          <button type="button" class="btn btn-outline" onclick="location.reload()" style="font-weight:600;">
+            🔄 Refresh Page
+          </button>
+        </div>
+      </div>
+    `;
+  }
+  if (breadcrumb) breadcrumb.textContent = `News > Article Not Found`;
+  showToast(`Article '${articleId}' not found.`, "error");
+}
+window.renderNotFoundArticle = renderNotFoundArticle;
+
 function checkAndHandleArticleDeepLink() {
   const artId = extractArticleIdFromUrl();
   if (artId) {
     if (typeof switchTab === "function") switchTab("news");
-    setTimeout(() => {
-      if (typeof openNewsJournalModal === "function") {
-        openNewsJournalModal(artId);
-      }
-    }, 150);
+    if (typeof openNewsJournalModal === "function") {
+      openNewsJournalModal(artId);
+    }
   }
 }
 
