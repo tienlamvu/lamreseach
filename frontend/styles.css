@@ -10511,3 +10511,19 @@ sup {
   top: -0.55em;
   vertical-align: baseline;
 }
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.news-card-authors sup {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  color: #8b3a1a !important;
+  vertical-align: baseline !important;
+  position: relative !important;
+  top: -0.5em !important;
+  line-height: 0 !important;
+  text-decoration: none !important;
+}
