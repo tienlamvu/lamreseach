@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-20T10:26:27.961Z",
+  "exported_at": "2026-11-20T10:30:16.826Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -6083,13 +6083,13 @@
     }
   },
   "deleted_users": [
+    "test.researcher@skku.edu",
+    "aaa@gmail.com",
     "jhpark.matsci@skku.edu",
+    "temp.delete.test@gmail.com",
     "minseo.kim@gmail.com",
     "ssk@gmail.com",
     "las@gmail.com",
-    "test.researcher@skku.edu",
-    "aaa@gmail.com",
-    "temp.delete.test@gmail.com",
     "test.relay.otp@skku.edu",
     "linh@gmail.com",
     "a@gmail.com",
@@ -6097,13 +6097,13 @@
     "jaewon@skku.edu"
   ],
   "deleted_users_map": {
+    "test.researcher@skku.edu": 1795047536565,
+    "aaa@gmail.com": 1795047536565,
     "jhpark.matsci@skku.edu": 1795047536565,
+    "temp.delete.test@gmail.com": 1795047536565,
     "minseo.kim@gmail.com": 1795047536565,
     "ssk@gmail.com": 1795047536565,
     "las@gmail.com": 1795047536565,
-    "test.researcher@skku.edu": 1795047536565,
-    "aaa@gmail.com": 1795047536565,
-    "temp.delete.test@gmail.com": 1795047536565,
     "test.relay.otp@skku.edu": 1795047536565,
     "linh@gmail.com": 1795047536565,
     "a@gmail.com": 1795047536565,
@@ -6233,34 +6233,6 @@
       "content_html": "<h2>1. Introduction</h2><p>Monolayer transition metal dichalcogenides host tightly bound excitons due to quantum confinement and reduced dielectric screening. We evaluate quasiparticle band gaps using single-shot G0W0 and partially self-consistent GW0.</p><h2>2. Many-Body Computational Framework</h2><p>Calculations were performed with a 24x24x1 Gamma-centered k-mesh and 480 empty bands, achieving exciton binding energy convergence within 15 meV.</p><h2>3. Results</h2><p>The computed A and B exciton peaks align with low-temperature photoluminescence measurements within 0.03 eV.</p><h2>4. References</h2><ol><li>Lam, V. T. & Duong, D. L. <em>SKKU Comp. Mater.</em> <strong>1</strong>, 45-52 (2024).</li></ol>"
     }
   ],
-  "deleted_news_articles": [
-    "news_1795065759528",
-    "news_1795065626633",
-    "news_1795064184580",
-    "news_20261119_001",
-    "news_1795071397513",
-    "news_1795072095532",
-    "news_1795135260574",
-    "news_1795135298222",
-    "news_1795135330461",
-    "news_1795135354485",
-    "news_1795135680362",
-    "news_1795077188150",
-    "news_1795149607560"
-  ],
-  "deleted_news_articles_map": {
-    "news_1795065759528": 1795149435584,
-    "news_1795065626633": 1795136900942,
-    "news_1795064184580": 1795136900942,
-    "news_20261119_001": 1795136900942,
-    "news_1795071397513": 1795136900942,
-    "news_1795072095532": 1795135289979,
-    "news_1795135260574": 1795149435584,
-    "news_1795135298222": 1795149435584,
-    "news_1795135330461": 1795149435584,
-    "news_1795135354485": 1795149435584,
-    "news_1795135680362": 1795149435584,
-    "news_1795077188150": 1795170366824,
-    "news_1795149607560": 1795170366824
-  }
+  "deleted_news_articles": [],
+  "deleted_news_articles_map": {}
 }
