@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-20T14:31:24.466Z",
+  "exported_at": "2026-11-20T14:31:52.756Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -6354,25 +6354,6 @@
       "content_html": "<h2>1. Background & Motivation</h2>\n<p>All-solid-state lithium metal batteries promise game-changing energy densities exceeding 500 Wh/kg. However, severe chemical side-reactions and dendrite propagation across the garnet electrolyte/lithium metal interface critically shorten cycle lifetime. In this study, we screen 2D transition metal carbides and nitrides (MXenes) to design an ultra-thin, chemo-mechanically robust artificial solid electrolyte interphase (SEI).</p>\n\n<h2>2. High-Throughput Computational Workflow</h2>\n<p>A Python-automated high-throughput DFT pipeline utilizing VASP and pymatgen screened 45 surface-terminated MXene compositions (M<sub>2</sub>X, M<sub>3</sub>X<sub>2</sub>, M<sub>4</sub>X<sub>3</sub>; M = Ti, V, Nb, Mo; T<sub>x</sub> = O, F, OH, Cl). Li-ion diffusion pathways across the interfacial grain boundaries were evaluated using the climbing image nudged elastic band (CI-NEB) method with 7 intermediate images.</p>\n\n<div class=\"journal-equation-block\">\n  <div class=\"journal-equation-math\">&Delta;E<sub>interface</sub> = E<sub>bilayer</sub> - E<sub>MXene</sub> - E<sub>LLZO(001)</sub></div>\n  <div class=\"journal-equation-num\">(1)</div>\n</div>\n\n<h2>3. Interfacial Stability & Lithium Diffusion Barriers</h2>\n<p>Among all candidates, fluorinated titanium carbide <strong>Ti<sub>3</sub>C<sub>2</sub>F<sub>2</sub></strong> demonstrated an ideal balance of low Li-ion migration barrier (<strong>0.22 eV</strong>) and thermodynamic passivity against metallic lithium reduction. The computed grand-potential phase diagram indicates complete electrochemical stability from 0.0 V to 2.4 V vs Li/Li<sup>+</sup>.</p>\n\n<figure class=\"journal-figure\">\n  <img src=\"https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1000&q=80\" alt=\"High-throughput screening diagram\">\n  <figcaption><strong>Figure 1 |</strong> High-throughput computational screening matrix of 45 MXene terminations showing thermodynamic stability vs Li-ion migration activation barrier.</figcaption>\n</figure>\n\n<h2>4. Summary & Outlook</h2>\n<p>Our findings establish atomic-level design guidelines for stabilizing solid-state lithium battery interfaces, paving the way for targeted experimental synthesis in the upcoming quarter.</p>",
       "volume": "Volume 3 (2026)",
       "article_number": "2"
-    },
-    {
-      "id": "news_20251015_001",
-      "title": "First-Principles Prediction of Two-Dimensional Ferroelectric Rashba Semiconductors in Janus Group-IV Chalcogenides",
-      "category": "Research Article",
-      "authors": "Vu Tien Lam¹*, Jaewon Kim¹, Jin-Woo Park²",
-      "affiliations": "¹ School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea\n² Center for Computational Materials Science, Korea Institute of Science and Technology (KIST), Seoul 02792, Republic of Korea",
-      "corresponding_email": "lamvt.skku@gmail.com",
-      "received_date": "",
-      "revised_date": "",
-      "published_date": "2025-10-15",
-      "volume": "Volume 2 (2025)",
-      "article_number": "1",
-      "doi": "10.skku.matsci/news.2025.001",
-      "keywords": "Janus Monolayers, Ferroelectricity, Rashba Effect, Spintronics, DFT",
-      "status": "Published",
-      "cover_image": "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80",
-      "abstract": "Two-dimensional Janus monochalcogenides exhibit robust out-of-plane electric polarization and giant Rashba spin splitting. Here, through first-principles relativistic density functional theory calculations, we predict dynamic stability and room-temperature spontaneous electric polarization in Janus Ge2SeTe monolayers with strong spin-orbit coupling.",
-      "content_html": "<h2>1. Introduction</h2><p>Two-dimensional ferroelectrics with non-centrosymmetric structures provide an exceptional platform for nonvolatile spintronic memories. In this work, we investigate Janus group-IV monochalcogenide monolayers using hybrid DFT.</p><h2>2. Methodology & Stabilities</h2><p>Phonon dispersion curves calculated using density functional perturbation theory (DFPT) confirm kinetic stability across the full Brillouin zone without imaginary modes.</p><h2>3. Rashba Spin Splitting</h2><p>The broken inversion symmetry accompanied by vertical dipole gives rise to a giant Rashba parameter alpha_R = 1.82 eV·Å at the conduction band edge.</p><h2>4. References</h2><ol><li>Lam, V. T. et al. <em>SKKU Comp. Mater.</em> <strong>2</strong>, 101-110 (2025).</li></ol>"
     }
   ],
   "deleted_news_articles": [
@@ -6389,7 +6370,8 @@
     "news_1795135354485",
     "news_1795135680362",
     "news_1795149607560",
-    "news_20240905_001"
+    "news_20240905_001",
+    "news_20251015_001"
   ],
   "deleted_news_articles_map": {
     "news_20261119_001": 1795136900942,
@@ -6405,6 +6387,7 @@
     "news_1795135354485": 1795149435584,
     "news_1795135680362": 1795149435584,
     "news_1795149607560": 1795170366824,
-    "news_20240905_001": 1795185031193
+    "news_20240905_001": 1795185031193,
+    "news_20251015_001": 1795185111814
   }
 }
