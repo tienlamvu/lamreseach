@@ -30874,11 +30874,12 @@ function renderNewsTab() {
     });
   }
 
-  // Sort: newest published_date first
+  // Sort: newest published_date first, tie-break with ID
   filtered.sort((a, b) => {
     const da = new Date(a.published_date || a.received_date || 0).getTime();
     const db = new Date(b.published_date || b.received_date || 0).getTime();
-    return db - da;
+    if (db !== da) return db - da;
+    return String(b.id || "").localeCompare(String(a.id || ""));
   });
 
   if (filtered.length === 0) {
@@ -31577,9 +31578,8 @@ async function importScientificWordDocument(file) {
     const kwInput = document.getElementById("news-edit-keywords");
     const editorBody = document.getElementById("news-editor-body");
 
-    if (titleInput && detectedTitle) titleInput.value = detectedTitle;
-    if (authorsInput && detectedAuthors) authorsInput.value = detectedAuthors;
-    if (affsInput && detectedAffiliations) affsInput.value = detectedAffiliations;
+    const fallbackTitle = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ").trim();
+    if (titleInput) titleInput.value = detectedTitle || fallbackTitle;
     if (emailInput && detectedEmail) emailInput.value = detectedEmail;
     if (abstractInput && detectedAbstract) {
       abstractInput.value = detectedAbstract;
@@ -31783,16 +31783,11 @@ function openNewsJournalModal(articleId) {
   const structuredAuthors = getArticleStructuredAuthors(article);
   const structuredAffs = getArticleStructuredAffiliations(article);
 
-  // Formatted authors inline row (Nature style: clickable author with popover, superscripts, envelope icon)
+  // Formatted authors inline row (Nature style: true upperscript indices, no underline on superscripts/icons, no space before comma)
   const authorsListHtml = structuredAuthors.map((auth, idx) => {
     const affNums = (auth.affiliations && auth.affiliations.length > 0) ? auth.affiliations.join(",") : "1";
-    return `
-      <span class="nature-author-item" data-author-index="${idx}">
-        <a class="nature-author-link" href="javascript:void(0)" onclick="toggleNatureAuthorPopover(event, '${escapeHtml(article.id)}', ${idx})">
-          ${escapeHtml(auth.name)}<sup class="nature-author-sup">${escapeHtml(affNums)}</sup>${auth.is_corresponding ? `<span class="nature-author-email-icon" title="Corresponding Author">&#9993;</span>` : ""}
-        </a>${idx < structuredAuthors.length - 1 ? `<span class="nature-author-sep">,</span>` : ""}
-      </span>
-    `;
+    const isLast = idx === structuredAuthors.length - 1;
+    return `<span class="nature-author-item" data-author-index="${idx}"><a class="nature-author-link" href="javascript:void(0)" onclick="toggleNatureAuthorPopover(event, '${escapeHtml(article.id)}', ${idx})"><span class="nature-author-name-text">${escapeHtml(auth.name)}</span><sup class="nature-author-sup">${escapeHtml(affNums)}</sup>${auth.is_corresponding ? `<span class="nature-author-email-icon" title="Corresponding Author">&#9993;</span>` : ""}</a>${!isLast ? `<span class="nature-author-sep">, </span>` : ""}</span>`;
   }).join("");
 
   const affsTerminalHtml = structuredAffs.map(a => `
@@ -32749,6 +32744,9 @@ function saveNewsArticleFromEditor(desiredStatus = "Published") {
   }
 
   STATE.newsArticles = articles;
+  if (!STATE.masterData) STATE.masterData = {};
+  STATE.masterData.news_articles = articles;
+  window._SEED_NEWS_ARTICLES = articles;
   persistNewsArticles();
 
   // Cloud sync
@@ -32757,8 +32755,27 @@ function saveNewsArticleFromEditor(desiredStatus = "Published") {
   }
 
   confirmCloseNewsEditor();
-  showToast(`🚀 Article "${title.slice(0, 35)}..." saved as ${desiredStatus}!`, "success");
+
+  // Clear category filter & search query so the new article is immediately visible
+  NEWS_STATE.currentCategory = "all";
+  NEWS_STATE.searchQuery = "";
+  NEWS_STATE.activeVolume = getArticleVolume(articleObj);
+
+  // Render news tab catalog
   renderNewsTab();
+
+  if (desiredStatus === "Published") {
+    showToast(`🚀 Article "${title.slice(0, 35)}..." published successfully!`, "success");
+    // Immediately open the newly published article in full Nature reader view!
+    if (typeof openNewsJournalModal === "function") {
+      openNewsJournalModal(articleId);
+    }
+  } else {
+    showToast(`💾 Article "${title.slice(0, 35)}..." saved as Draft!`, "info");
+    if (typeof closeNewsFullArticleView === "function") {
+      closeNewsFullArticleView();
+    }
+  }
 }
 
 async function deleteNewsArticle(articleId) {
