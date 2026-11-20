@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261120_v112_news_deeplink_upperscript" onerror="this.href='/static/styles.css?v=20261120_v112_news_deeplink_upperscript" />
+  <link rel="stylesheet" href="styles.css?v=20261120_v113_news_enhancements" onerror="this.href='/static/styles.css?v=20261120_v113_news_enhancements" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -3992,8 +3992,8 @@
 
 <script src="jszip.min.js"></script>
   <script>if (typeof JSZip === "undefined") { document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"><\\/script>'); }</script>
-  <script src="matsci_tools.js?v=20261120_v112_news_deeplink_upperscript" onerror="this.src='/static/matsci_tools.js?v=20261120_v112_news_deeplink_upperscript"></script>
-  <script src="app.js?v=20261120_v112_news_deeplink_upperscript" onerror="this.src='/static/app.js?v=20261120_v112_news_deeplink_upperscript"></script>
+  <script src="matsci_tools.js?v=20261120_v113_news_enhancements" onerror="this.src='/static/matsci_tools.js?v=20261120_v113_news_enhancements"></script>
+  <script src="app.js?v=20261120_v113_news_enhancements" onerror="this.src='/static/app.js?v=20261120_v113_news_enhancements"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
@@ -4177,6 +4177,29 @@
           <div class="news-form-group flex-1">
             <label class="form-label" for="news-edit-article-number">🔢 Article Number <span style="font-weight:normal; font-size:11px; color:#8c786a;">(Auto-sequenced if empty)</span></label>
             <input type="text" id="news-edit-article-number" class="form-input" placeholder="Auto: e.g. 1, 2, 3...">
+          </div>
+        </div>
+
+        <!-- Declarations & Metadata Visibility Settings (V113) -->
+        <div class="news-form-row" style="background:#fcfaf7; border:1px solid #eadbc8; border-radius:8px; padding:10px 14px; margin-bottom:14px; gap:16px; flex-wrap:wrap;">
+          <div style="font-weight:700; font-size:12.5px; color:#5c4738; width:100%; display:flex; align-items:center; gap:6px;">
+            <span>⚙️ Academic Declarations &amp; Metadata Visibility</span>
+            <span style="font-weight:normal; font-size:11px; color:#8c786a;">(Uncheck for General News / Announcements)</span>
+          </div>
+          <label style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; color:#1e293b; cursor:pointer;">
+            <input type="checkbox" id="news-edit-show-contributions" checked>
+            <span>Show "Contributions" Section</span>
+          </label>
+          <label style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; color:#1e293b; cursor:pointer;">
+            <input type="checkbox" id="news-edit-show-corresponding" checked>
+            <span>Show "Corresponding author" Section</span>
+          </label>
+          <div id="news-edit-contributions-wrap" style="width:100%; margin-top:2px;">
+            <label class="form-label" for="news-edit-contributions-text" style="font-size:11.5px; color:#6b5a4d; margin-bottom:3px;">
+              Contributions Statement <span style="font-weight:normal; font-size:11px; color:#9ca3af;">(Optional: custom text or leave blank to auto-generate)</span>
+            </label>
+            <input type="text" id="news-edit-contributions-text" class="form-input" style="font-size:12.5px;" 
+                   placeholder="e.g. V.T.L. and J.K. conceived the project and performed simulations...">
           </div>
         </div>
 
