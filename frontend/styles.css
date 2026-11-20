@@ -9306,73 +9306,82 @@ body.is-admin #cv-exclusive-owner-notice {
 }
 
 .nature-authors-names {
-  font-size: 16.5px;
+  font-size: 16px;
   font-weight: 600;
   color: #1f2937;
-  line-height: 1.8;
+  line-height: 1.85;
   margin-bottom: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 2px 4px;
+  display: block;
 }
 
 .nature-author-item {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 2px;
+  display: inline;
   position: relative;
+  white-space: nowrap;
 }
 
 .nature-author-link {
   color: #111827;
+  text-decoration: none !important;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 16px;
+  display: inline;
+  transition: all 0.15s ease;
+}
+
+.nature-author-name-text {
+  color: #111827;
   text-decoration: underline;
   text-decoration-color: rgba(31, 41, 55, 0.4);
   text-underline-offset: 3px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: all 0.15s ease;
-  display: inline-flex;
-  align-items: baseline;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease;
 }
 
-.nature-author-link:hover {
+.nature-author-link:hover .nature-author-name-text {
   color: #1a56db;
   text-decoration-color: #1a56db;
 }
 
-.nature-author-sup {
-  font-size: 11px;
-  font-weight: 700;
-  color: #8b3a1a;
-  margin-left: 1px;
+/* Strict Upperscript (Superscript) for Author Affiliation Indices */
+.nature-author-sup,
+sup.nature-author-sup {
+  font-size: 11px !important;
+  line-height: 0 !important;
+  vertical-align: baseline !important;
+  position: relative !important;
+  top: -0.6em !important;
+  font-weight: 700 !important;
+  color: #8b3a1a !important;
+  margin-left: 1px !important;
+  margin-right: 0 !important;
+  text-decoration: none !important;
+  display: inline-block !important;
+  letter-spacing: -0.2px !important;
 }
 
 .nature-author-email-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #374151;
-  padding: 0 3px;
-  vertical-align: middle;
+  display: inline-block !important;
+  line-height: 0 !important;
+  position: relative !important;
+  top: -0.2em !important;
+  color: #374151 !important;
+  padding: 0 1px !important;
+  margin-left: 2px !important;
+  margin-right: 0 !important;
+  font-size: 13px !important;
   text-decoration: none !important;
-  margin-left: 2px;
   transition: color 0.15s ease;
 }
 
 .nature-author-email-icon:hover {
-  color: #1a56db;
-}
-
-.nature-envelope-svg {
-  display: inline-block;
-  vertical-align: -1px;
+  color: #1a56db !important;
 }
 
 .nature-author-sep {
-  color: #4b5563;
+  color: #111827;
   font-weight: 500;
-  margin-right: 4px;
+  text-decoration: none !important;
 }
 
 /* Floating Nature Author Popover */
@@ -10492,3 +10501,13 @@ body.is-admin #cv-exclusive-owner-notice {
   border-color: #8b3a1a;
 }
 
+
+
+/* Global Academic Upperscript Enhancement */
+sup {
+  font-size: 0.72em;
+  line-height: 0;
+  position: relative;
+  top: -0.55em;
+  vertical-align: baseline;
+}
