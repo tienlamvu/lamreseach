@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-20T04:42:20.974Z",
+  "exported_at": "2026-11-20T10:26:07.933Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -6157,25 +6157,6 @@
   "deleted_schedule_map": {},
   "news_articles": [
     {
-      "id": "news_20261118_003",
-      "title": "Lab Announcement: Deployment of New 128-Core AMD EPYC VASP 6.4 Cluster & Joint Research Initiative with KIST",
-      "category": "Announcement",
-      "authors": "Vu Tien Lam¹*, Computational Materials Science Lab Administration",
-      "affiliations": "¹ School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU)",
-      "corresponding_email": "lamvt.skku@gmail.com",
-      "received_date": "2026-11-12",
-      "revised_date": "2026-11-12",
-      "published_date": "2026-11-18",
-      "doi": "10.skku.matsci/news.2026.003",
-      "keywords": "High-Performance Computing, VASP 6.4, GPU Acceleration, Lab Facility, KIST Collaboration",
-      "status": "Published",
-      "cover_image": "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1200&q=80",
-      "abstract": "We are pleased to announce the successful installation and benchmarking of our new 128-core AMD EPYC 9554 computing node equipped with dual NVIDIA H100 GPUs, achieving a 4.2x speedup on hybrid functional calculations for 200+ atom supercells. In addition, our lab has signed a formal collaborative computing and experimental synthesis agreement with KIST Center for Computational Materials Science.",
-      "content_html": "<h2>1. High-Performance Computing Cluster Expansion</h2>\n<p>To support high-throughput DFT simulations and hybrid functional calculations of large defect supercells, our research group has completed the deployment and commissioning of the <strong>SKKU-CMS-Node03</strong> computing cluster. Specifications:</p>\n\n<ul>\n  <li><strong>CPUs:</strong> Dual AMD EPYC 9554 processors (128 physical cores, 256 threads @ up to 3.75 GHz)</li>\n  <li><strong>Memory:</strong> 512 GB DDR5-4800 ECC Registered RAM</li>\n  <li><strong>Accelerators:</strong> 2x NVIDIA H100 PCIe (80 GB HBM3 each)</li>\n  <li><strong>Storage:</strong> 8 TB NVMe PCIe Gen5 scratch storage for wavefunction and charge density I/O</li>\n  <li><strong>Software Stack:</strong> VASP 6.4.2 compiled with OpenMPI 4.1.6, Intel oneMKL, and CUDA OpenACC GPU offloading</li>\n</ul>\n\n<h2>2. Benchmark Results on 2D Supercells</h2>\n<p>Benchmarking on a 216-atom 2D MoSi<sub>2</sub>N<sub>4</sub> defect supercell with HSE06 hybrid functional demonstrated a <strong>4.2&times; walltime reduction</strong> compared to our previous dual Xeon Gold nodes. Self-consistent electronic convergence was achieved within 38 minutes per k-point configuration.</p>\n\n<figure class=\"journal-figure\">\n  <img src=\"https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1000&q=80\" alt=\"HPC Cluster Rack\">\n  <figcaption><strong>Figure 1 |</strong> Newly commissioned SKKU Materials Simulation High-Performance Computing node.</figcaption>\n</figure>\n\n<h2>3. Collaboration with KIST</h2>\n<p>Furthermore, under the new MoU with the Korea Institute of Science and Technology (KIST), our group will gain access to shared supercomputing allocations on the KIST K-CREST infrastructure to perform ab initio molecular dynamics (AIMD) simulations of molten salt synthesis.</p>",
-      "volume": "Volume 3 (2026)",
-      "article_number": "3"
-    },
-    {
       "id": "news_20261115_002",
       "title": "High-Throughput DFT Screening of 2D Transition Metal Carbonitrides for Solid-State Battery Solid Electrolyte Interphases",
       "category": "Computational",
@@ -6193,6 +6174,25 @@
       "content_html": "<h2>1. Background & Motivation</h2>\n<p>All-solid-state lithium metal batteries promise game-changing energy densities exceeding 500 Wh/kg. However, severe chemical side-reactions and dendrite propagation across the garnet electrolyte/lithium metal interface critically shorten cycle lifetime. In this study, we screen 2D transition metal carbides and nitrides (MXenes) to design an ultra-thin, chemo-mechanically robust artificial solid electrolyte interphase (SEI).</p>\n\n<h2>2. High-Throughput Computational Workflow</h2>\n<p>A Python-automated high-throughput DFT pipeline utilizing VASP and pymatgen screened 45 surface-terminated MXene compositions (M<sub>2</sub>X, M<sub>3</sub>X<sub>2</sub>, M<sub>4</sub>X<sub>3</sub>; M = Ti, V, Nb, Mo; T<sub>x</sub> = O, F, OH, Cl). Li-ion diffusion pathways across the interfacial grain boundaries were evaluated using the climbing image nudged elastic band (CI-NEB) method with 7 intermediate images.</p>\n\n<div class=\"journal-equation-block\">\n  <div class=\"journal-equation-math\">&Delta;E<sub>interface</sub> = E<sub>bilayer</sub> - E<sub>MXene</sub> - E<sub>LLZO(001)</sub></div>\n  <div class=\"journal-equation-num\">(1)</div>\n</div>\n\n<h2>3. Interfacial Stability & Lithium Diffusion Barriers</h2>\n<p>Among all candidates, fluorinated titanium carbide <strong>Ti<sub>3</sub>C<sub>2</sub>F<sub>2</sub></strong> demonstrated an ideal balance of low Li-ion migration barrier (<strong>0.22 eV</strong>) and thermodynamic passivity against metallic lithium reduction. The computed grand-potential phase diagram indicates complete electrochemical stability from 0.0 V to 2.4 V vs Li/Li<sup>+</sup>.</p>\n\n<figure class=\"journal-figure\">\n  <img src=\"https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1000&q=80\" alt=\"High-throughput screening diagram\">\n  <figcaption><strong>Figure 1 |</strong> High-throughput computational screening matrix of 45 MXene terminations showing thermodynamic stability vs Li-ion migration activation barrier.</figcaption>\n</figure>\n\n<h2>4. Summary & Outlook</h2>\n<p>Our findings establish atomic-level design guidelines for stabilizing solid-state lithium battery interfaces, paving the way for targeted experimental synthesis in the upcoming quarter.</p>",
       "volume": "Volume 3 (2026)",
       "article_number": "2"
+    },
+    {
+      "id": "news_20261118_003",
+      "title": "Lab Announcement: Deployment of New 128-Core AMD EPYC VASP 6.4 Cluster & Joint Research Initiative with KIST",
+      "category": "Announcement",
+      "authors": "Vu Tien Lam¹*, Computational Materials Science Lab Administration",
+      "affiliations": "¹ School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU)",
+      "corresponding_email": "lamvt.skku@gmail.com",
+      "received_date": "2026-11-12",
+      "revised_date": "2026-11-12",
+      "published_date": "2026-11-18",
+      "doi": "10.skku.matsci/news.2026.003",
+      "keywords": "High-Performance Computing, VASP 6.4, GPU Acceleration, Lab Facility, KIST Collaboration",
+      "status": "Published",
+      "cover_image": "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1200&q=80",
+      "abstract": "We are pleased to announce the successful installation and benchmarking of our new 128-core AMD EPYC 9554 computing node equipped with dual NVIDIA H100 GPUs, achieving a 4.2x speedup on hybrid functional calculations for 200+ atom supercells. In addition, our lab has signed a formal collaborative computing and experimental synthesis agreement with KIST Center for Computational Materials Science.",
+      "content_html": "<h2>1. High-Performance Computing Cluster Expansion</h2>\n<p>To support high-throughput DFT simulations and hybrid functional calculations of large defect supercells, our research group has completed the deployment and commissioning of the <strong>SKKU-CMS-Node03</strong> computing cluster. Specifications:</p>\n\n<ul>\n  <li><strong>CPUs:</strong> Dual AMD EPYC 9554 processors (128 physical cores, 256 threads @ up to 3.75 GHz)</li>\n  <li><strong>Memory:</strong> 512 GB DDR5-4800 ECC Registered RAM</li>\n  <li><strong>Accelerators:</strong> 2x NVIDIA H100 PCIe (80 GB HBM3 each)</li>\n  <li><strong>Storage:</strong> 8 TB NVMe PCIe Gen5 scratch storage for wavefunction and charge density I/O</li>\n  <li><strong>Software Stack:</strong> VASP 6.4.2 compiled with OpenMPI 4.1.6, Intel oneMKL, and CUDA OpenACC GPU offloading</li>\n</ul>\n\n<h2>2. Benchmark Results on 2D Supercells</h2>\n<p>Benchmarking on a 216-atom 2D MoSi<sub>2</sub>N<sub>4</sub> defect supercell with HSE06 hybrid functional demonstrated a <strong>4.2&times; walltime reduction</strong> compared to our previous dual Xeon Gold nodes. Self-consistent electronic convergence was achieved within 38 minutes per k-point configuration.</p>\n\n<figure class=\"journal-figure\">\n  <img src=\"https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1000&q=80\" alt=\"HPC Cluster Rack\">\n  <figcaption><strong>Figure 1 |</strong> Newly commissioned SKKU Materials Simulation High-Performance Computing node.</figcaption>\n</figure>\n\n<h2>3. Collaboration with KIST</h2>\n<p>Furthermore, under the new MoU with the Korea Institute of Science and Technology (KIST), our group will gain access to shared supercomputing allocations on the KIST K-CREST infrastructure to perform ab initio molecular dynamics (AIMD) simulations of molten salt synthesis.</p>",
+      "volume": "Volume 3 (2026)",
+      "article_number": "3"
     },
     {
       "id": "news_20251015_001",
@@ -6234,33 +6234,33 @@
     }
   ],
   "deleted_news_articles": [
-    "news_20261119_001",
+    "news_1795065759528",
     "news_1795065626633",
     "news_1795064184580",
+    "news_20261119_001",
     "news_1795071397513",
     "news_1795072095532",
-    "news_1795077188150",
-    "news_1795065759528",
     "news_1795135260574",
     "news_1795135298222",
     "news_1795135330461",
     "news_1795135354485",
     "news_1795135680362",
+    "news_1795077188150",
     "news_1795149607560"
   ],
   "deleted_news_articles_map": {
-    "news_20261119_001": 1795136900942,
+    "news_1795065759528": 1795149435584,
     "news_1795065626633": 1795136900942,
     "news_1795064184580": 1795136900942,
+    "news_20261119_001": 1795136900942,
     "news_1795071397513": 1795136900942,
     "news_1795072095532": 1795135289979,
-    "news_1795077188150": 1795094756162,
-    "news_1795065759528": 1795149435584,
     "news_1795135260574": 1795149435584,
     "news_1795135298222": 1795149435584,
     "news_1795135330461": 1795149435584,
     "news_1795135354485": 1795149435584,
     "news_1795135680362": 1795149435584,
-    "news_1795149607560": 1795149737599
+    "news_1795077188150": 1795170366824,
+    "news_1795149607560": 1795170366824
   }
 }
