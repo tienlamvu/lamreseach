@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-20T10:30:41.276Z",
+  "exported_at": "2026-11-20T11:17:17.505Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -6066,6 +6066,131 @@
           "detail": "Administrator created personal account for Jaewon Kim (lamvt@g.skku.edu)."
         }
       ]
+    },
+    "researcher.kim@skku.edu": {
+      "email": "researcher.kim@skku.edu",
+      "name": "Jaewon Kim",
+      "affiliation": "Sungkyunkwan University",
+      "academicRole": "Postdoctoral Fellow",
+      "lastLoginAt": "2026-11-20 19:38:28",
+      "activityLog": [
+        {
+          "timestamp": "2026-11-20 19:38:28",
+          "category": "Session",
+          "action": "Signed In (Account)",
+          "detail": "Authenticated as Jaewon Kim (researcher.kim@skku.edu)"
+        }
+      ],
+      "workspace": {
+        "schedule": [],
+        "papers": [],
+        "structures": [],
+        "expReportRows": [
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N2P2",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2N4",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSi2P4",
+            "material": "CASTEP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "Te",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "MoSSe",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Full-relaxed"
+          },
+          {
+            "sample_id": "Na0.5TiBi0.5O3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Non-relaxed"
+          },
+          {
+            "sample_id": "Na0.5TiBi0.5O3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Non-relaxed"
+          },
+          {
+            "sample_id": "Na0.5TiBi0.5O3",
+            "material": "VASP (PBE)",
+            "conditions": "Eg = 3.2 eV (Direct)",
+            "findings": "Non-relaxed"
+          }
+        ],
+        "litReportRows": [
+          {
+            "title": "Point Defect Limited Carrier Mobility in 2D Transition Metal Dichalcogenides",
+            "journal": "ACS Nano (2024) | DOI: 10.1021/acsnano.4c01033",
+            "material": "Perovskite / 2D Material",
+            "takeaway": ""
+          },
+          {
+            "title": "Intraband Lifshitz transition and Stoner ferromagnetism in Janus PA₂As (A = Si, Ge, Sn, and Pb) monolayers",
+            "journal": "Physical Review B (2021) | DOI: 10.1103/physrevb.104.035409",
+            "material": "Perovskite / 2D Material",
+            "takeaway": ""
+          },
+          {
+            "title": "Charge doping and electric field tunable ferromagnetism and Curie temperature of the MnS\n                    <sub>2</sub>\n                    monolayer",
+            "journal": "Physical Chemistry Chemical Physics (2024) | DOI: 10.1039/d3cp04382g",
+            "material": "Perovskite / 2D Material",
+            "takeaway": "Two-dimensional ferromagnets with a long-range ferromagnetic ordering at finite temperature present a bright prospect fo"
+          },
+          {
+            "title": "Antisite defect qubits in monolayer transition metal dichalcogenides",
+            "journal": "Nature Communications (2022) | DOI: 10.1038/s41467-022-28133-x",
+            "material": "Perovskite / 2D Material",
+            "takeaway": "Good reference for antisite defects in TMDs."
+          }
+        ],
+        "customFolders": [],
+        "eventCategories": [
+          "Synthesis / Furnace",
+          "Characterization (XRD/SEM/TEM/XPS)",
+          "Group Meeting / PI Meeting",
+          "Electrochemical Testing",
+          "Data Analysis / Manuscript Writing"
+        ]
+      },
+      "groups": [],
+      "lastUpdatedAt": "2026-11-20 19:38:29",
+      "updatedAtMs": 1795171109469
     }
   },
   "user_groups": {
@@ -6083,13 +6208,13 @@
     }
   },
   "deleted_users": [
-    "test.researcher@skku.edu",
-    "aaa@gmail.com",
     "jhpark.matsci@skku.edu",
-    "temp.delete.test@gmail.com",
     "minseo.kim@gmail.com",
     "ssk@gmail.com",
     "las@gmail.com",
+    "test.researcher@skku.edu",
+    "aaa@gmail.com",
+    "temp.delete.test@gmail.com",
     "test.relay.otp@skku.edu",
     "linh@gmail.com",
     "a@gmail.com",
@@ -6097,13 +6222,13 @@
     "jaewon@skku.edu"
   ],
   "deleted_users_map": {
-    "test.researcher@skku.edu": 1795047536565,
-    "aaa@gmail.com": 1795047536565,
     "jhpark.matsci@skku.edu": 1795047536565,
-    "temp.delete.test@gmail.com": 1795047536565,
     "minseo.kim@gmail.com": 1795047536565,
     "ssk@gmail.com": 1795047536565,
     "las@gmail.com": 1795047536565,
+    "test.researcher@skku.edu": 1795047536565,
+    "aaa@gmail.com": 1795047536565,
+    "temp.delete.test@gmail.com": 1795047536565,
     "test.relay.otp@skku.edu": 1795047536565,
     "linh@gmail.com": 1795047536565,
     "a@gmail.com": 1795047536565,
@@ -6233,6 +6358,34 @@
       "content_html": "<h2>1. Introduction</h2><p>Monolayer transition metal dichalcogenides host tightly bound excitons due to quantum confinement and reduced dielectric screening. We evaluate quasiparticle band gaps using single-shot G0W0 and partially self-consistent GW0.</p><h2>2. Many-Body Computational Framework</h2><p>Calculations were performed with a 24x24x1 Gamma-centered k-mesh and 480 empty bands, achieving exciton binding energy convergence within 15 meV.</p><h2>3. Results</h2><p>The computed A and B exciton peaks align with low-temperature photoluminescence measurements within 0.03 eV.</p><h2>4. References</h2><ol><li>Lam, V. T. & Duong, D. L. <em>SKKU Comp. Mater.</em> <strong>1</strong>, 45-52 (2024).</li></ol>"
     }
   ],
-  "deleted_news_articles": [],
-  "deleted_news_articles_map": {}
+  "deleted_news_articles": [
+    "news_1795065759528",
+    "news_1795065626633",
+    "news_1795064184580",
+    "news_20261119_001",
+    "news_1795071397513",
+    "news_1795072095532",
+    "news_1795135260574",
+    "news_1795135298222",
+    "news_1795135330461",
+    "news_1795135354485",
+    "news_1795135680362",
+    "news_1795077188150",
+    "news_1795149607560"
+  ],
+  "deleted_news_articles_map": {
+    "news_1795065759528": 1795149435584,
+    "news_1795065626633": 1795136900942,
+    "news_1795064184580": 1795136900942,
+    "news_20261119_001": 1795136900942,
+    "news_1795071397513": 1795136900942,
+    "news_1795072095532": 1795135289979,
+    "news_1795135260574": 1795149435584,
+    "news_1795135298222": 1795149435584,
+    "news_1795135330461": 1795149435584,
+    "news_1795135354485": 1795149435584,
+    "news_1795135680362": 1795149435584,
+    "news_1795077188150": 1795170366824,
+    "news_1795149607560": 1795170366824
+  }
 }
