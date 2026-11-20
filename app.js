@@ -7,6 +7,20 @@
 const OWNER_GOOGLE_EMAIL = "lamvt.skku@gmail.com";
 let STATIC_MODE = false;
 
+// ============================================================================
+// Activity & Idle Auto-Logout Definitions (Persistent Session v114)
+// ============================================================================
+const IDLE_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour (3,600,000 ms)
+let _lastActivityTimestamp = Date.now();
+
+function recordUserActivityHeartbeat() {
+  _lastActivityTimestamp = Date.now();
+  try {
+    localStorage.setItem("matsci_last_active_ts", String(_lastActivityTimestamp));
+  } catch (e) {}
+}
+window.recordUserActivityHeartbeat = recordUserActivityHeartbeat;
+
 const nowDate = new Date();
 
 let STATE = {
@@ -3156,12 +3170,15 @@ function renderWorkspaceBanner() {
 
 function initAuthSession() {
   ensureUsersRegistryInitialized();
-  const saved = localStorage.getItem("matsci_admin_session_v4");
+  let saved = localStorage.getItem("matsci_admin_session_v4");
+  if (!saved) {
+    saved = localStorage.getItem("matsci_auth_session_v2") || localStorage.getItem("matsci_owner_session");
+  }
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
       const normEmail = normalizeEmail(parsed.email);
-      if (parsed.isLoggedIn && normEmail === OWNER_GOOGLE_EMAIL) {
+      if (parsed.isLoggedIn && (normEmail === OWNER_GOOGLE_EMAIL || parsed.isAdmin || parsed.role === "admin")) {
         STATE.auth = {
           ...STATE.auth,
           ...parsed,
@@ -3171,10 +3188,12 @@ function initAuthSession() {
           email: OWNER_GOOGLE_EMAIL,
           ownerEmail: OWNER_GOOGLE_EMAIL
         };
+        try { localStorage.setItem("matsci_admin_session_v4", JSON.stringify(STATE.auth)); } catch (e) {}
         _hydrateGoogleTokenFromLocalStorage();
         document.body.classList.add("is-admin", "is-logged-in");
         document.body.classList.remove("visitor-mode", "is-user");
         renderAuthHeader();
+        recordUserActivityHeartbeat();
         return;
       } else if (parsed.isLoggedIn && normEmail) {
         const regUser = findRegisteredUserByEmailOrGoogle(normEmail);
@@ -3191,10 +3210,12 @@ function initAuthSession() {
           googleLinked: Boolean(regUser ? regUser.googleLinked : parsed.googleLinked),
           googleEmail: (regUser && regUser.googleEmail) || parsed.googleEmail || ""
         };
+        try { localStorage.setItem("matsci_admin_session_v4", JSON.stringify(STATE.auth)); } catch (e) {}
         _hydrateGoogleTokenFromLocalStorage();
         document.body.classList.add("is-logged-in", "is-user");
         document.body.classList.remove("is-admin", "visitor-mode");
         renderAuthHeader();
+        recordUserActivityHeartbeat();
         return;
       }
     } catch (e) {
@@ -5264,6 +5285,7 @@ function completeOwnerLogin(email, name, picture) {
     googleTokenScope: existingGScope
   };
   localStorage.setItem("matsci_admin_session_v4", JSON.stringify(STATE.auth));
+  recordUserActivityHeartbeat();
   document.body.classList.add("is-admin", "is-logged-in");
   document.body.classList.remove("visitor-mode", "is-user");
   renderAuthHeader();
@@ -5328,6 +5350,7 @@ function completePersonalUserLogin(userObj, loginMethod = "Account") {
     googleTokenScope: existingGScope
   };
   localStorage.setItem("matsci_admin_session_v4", JSON.stringify(STATE.auth));
+  recordUserActivityHeartbeat();
   document.body.classList.add("is-logged-in", "is-user");
   document.body.classList.remove("is-admin", "visitor-mode");
 
@@ -30350,38 +30373,14 @@ window.updateScheduleDurationBadge = updateScheduleDurationBadge;
 
 
 // ============================================================================
-// Auto-Logout After 1 Hour Inactivity & Structure Audit History Helpers (v101)
+// Auto-Logout After 1 Hour Inactivity on Unattended Tab & Structure Audit History Helpers (v114)
 // ============================================================================
 
-const IDLE_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour (3,600,000 ms)
-let _lastActivityTimestamp = Date.now();
-
-function recordUserActivityHeartbeat() {
+function initIdleAutoLogout() {
+  // Always mark the session active on page load/refresh
   _lastActivityTimestamp = Date.now();
   try {
     localStorage.setItem("matsci_last_active_ts", String(_lastActivityTimestamp));
-  } catch (e) {}
-}
-
-function initIdleAutoLogout() {
-  try {
-    const saved = localStorage.getItem("matsci_last_active_ts");
-    if (saved) {
-      const parsed = Number(saved);
-      if (parsed > 0 && Date.now() - parsed < IDLE_TIMEOUT_MS) {
-        _lastActivityTimestamp = parsed;
-      } else if (parsed > 0 && Date.now() - parsed >= IDLE_TIMEOUT_MS) {
-        if (STATE.auth && (STATE.auth.isLoggedIn || STATE.auth.isAdmin)) {
-          console.warn("Session expired on startup due to 1 hour inactivity.");
-          setTimeout(() => {
-            signOutUser();
-            showToast("Phiên đăng nhập đã tự động kết thúc sau 1 giờ không thao tác. Vui lòng đăng nhập lại.", "warn");
-          }, 600);
-          return;
-        }
-      }
-    }
-    localStorage.setItem("matsci_last_active_ts", String(Date.now()));
   } catch (e) {}
 
   const events = ["mousedown", "mousemove", "keydown", "scroll", "touchstart", "click"];
@@ -30396,6 +30395,16 @@ function initIdleAutoLogout() {
     }, { passive: true });
   });
 
+  window.addEventListener("focus", () => {
+    recordUserActivityHeartbeat();
+  }, { passive: true });
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      recordUserActivityHeartbeat();
+    }
+  }, { passive: true });
+
   setInterval(() => {
     if (!STATE.auth || (!STATE.auth.isLoggedIn && !STATE.auth.isAdmin)) return;
     const now = Date.now();
@@ -30406,7 +30415,7 @@ function initIdleAutoLogout() {
     } catch (e) {}
     
     if (now - stored >= IDLE_TIMEOUT_MS) {
-      console.warn("Auto-logout: User inactive for 1 hour.");
+      console.warn("Auto-logout: User inactive for 1 hour on unattended open tab.");
       signOutUser();
       showToast("Phiên đăng nhập đã tự động kết thúc sau 1 giờ không thao tác. Vui lòng đăng nhập lại.", "warn");
       _lastActivityTimestamp = now;
