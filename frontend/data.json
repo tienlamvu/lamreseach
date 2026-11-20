@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-20T14:32:23.741Z",
+  "exported_at": "2026-11-20T14:32:40.804Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -6367,20 +6367,47 @@
       "id": "news_20261115_002",
       "title": "High-Throughput DFT Screening of 2D Transition Metal Carbonitrides for Solid-State Battery Solid Electrolyte Interphases",
       "category": "Computational",
-      "authors": "Vu Tien Lam¹*, Jaewon Kim¹",
-      "affiliations": "¹ School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea",
+      "status": "Published",
+      "authors": "Vu Tien Lam<sup>1</sup>*, Jaewon Kim<sup>1</sup>",
       "corresponding_email": "lamvt.skku@gmail.com",
+      "affiliations": "1. School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea",
+      "authors_data": [
+        {
+          "name": "Vu Tien Lam",
+          "is_corresponding": true,
+          "is_co_first": false,
+          "email": "lamvt.skku@gmail.com",
+          "affiliations": [
+            1
+          ]
+        },
+        {
+          "name": "Jaewon Kim",
+          "is_corresponding": false,
+          "is_co_first": false,
+          "email": "",
+          "affiliations": [
+            1
+          ]
+        }
+      ],
+      "affiliations_data": [
+        {
+          "id": 1,
+          "text": "School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea"
+        }
+      ],
       "received_date": "2026-10-28",
       "revised_date": "2026-11-08",
       "published_date": "2026-11-15",
       "doi": "10.skku.matsci/news.2026.002",
-      "keywords": "Solid-State Batteries, MXenes, DFT, High-Throughput Screening, VASP, LLZO",
-      "status": "Published",
       "cover_image": "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80",
+      "keywords": "Solid-State Batteries, MXenes, DFT, High-Throughput Screening, VASP, LLZO",
       "abstract": "The interface stability between garnet-type solid electrolytes (e.g., Li7La3Zr2O12, LLZO) and lithium metal anodes remains the primary bottleneck for next-generation solid-state batteries. We report a comprehensive high-throughput computational screening over 45 functionalized 2D transition metal carbonitrides (MXenes and MAB phases). By computing grand potential phase diagrams and interfacial reaction energies, we identify Ti3C2F2 and V2CTx as superior artificial SEI interlayers that effectively suppress lithium dendrite nucleation.",
-      "content_html": "<h2>1. Background & Motivation</h2>\n<p>All-solid-state lithium metal batteries promise game-changing energy densities exceeding 500 Wh/kg. However, severe chemical side-reactions and dendrite propagation across the garnet electrolyte/lithium metal interface critically shorten cycle lifetime. In this study, we screen 2D transition metal carbides and nitrides (MXenes) to design an ultra-thin, chemo-mechanically robust artificial solid electrolyte interphase (SEI).</p>\n\n<h2>2. High-Throughput Computational Workflow</h2>\n<p>A Python-automated high-throughput DFT pipeline utilizing VASP and pymatgen screened 45 surface-terminated MXene compositions (M<sub>2</sub>X, M<sub>3</sub>X<sub>2</sub>, M<sub>4</sub>X<sub>3</sub>; M = Ti, V, Nb, Mo; T<sub>x</sub> = O, F, OH, Cl). Li-ion diffusion pathways across the interfacial grain boundaries were evaluated using the climbing image nudged elastic band (CI-NEB) method with 7 intermediate images.</p>\n\n<div class=\"journal-equation-block\">\n  <div class=\"journal-equation-math\">&Delta;E<sub>interface</sub> = E<sub>bilayer</sub> - E<sub>MXene</sub> - E<sub>LLZO(001)</sub></div>\n  <div class=\"journal-equation-num\">(1)</div>\n</div>\n\n<h2>3. Interfacial Stability & Lithium Diffusion Barriers</h2>\n<p>Among all candidates, fluorinated titanium carbide <strong>Ti<sub>3</sub>C<sub>2</sub>F<sub>2</sub></strong> demonstrated an ideal balance of low Li-ion migration barrier (<strong>0.22 eV</strong>) and thermodynamic passivity against metallic lithium reduction. The computed grand-potential phase diagram indicates complete electrochemical stability from 0.0 V to 2.4 V vs Li/Li<sup>+</sup>.</p>\n\n<figure class=\"journal-figure\">\n  <img src=\"https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1000&q=80\" alt=\"High-throughput screening diagram\">\n  <figcaption><strong>Figure 1 |</strong> High-throughput computational screening matrix of 45 MXene terminations showing thermodynamic stability vs Li-ion migration activation barrier.</figcaption>\n</figure>\n\n<h2>4. Summary & Outlook</h2>\n<p>Our findings establish atomic-level design guidelines for stabilizing solid-state lithium battery interfaces, paving the way for targeted experimental synthesis in the upcoming quarter.</p>",
-      "volume": "Volume 3 (2026)",
-      "article_number": "2"
+      "show_contributions": true,
+      "contributions_text": "",
+      "show_corresponding": true,
+      "content_html": "<h2>1. Background &amp; Motivation</h2>\n<p>All-solid-state lithium metal batteries promise game-changing energy densities exceeding 500 Wh/kg. However, severe chemical side-reactions and dendrite propagation across the garnet electrolyte/lithium metal interface critically shorten cycle lifetime. In this study, we screen 2D transition metal carbides and nitrides (MXenes) to design an ultra-thin, chemo-mechanically robust artificial solid electrolyte interphase (SEI).</p>\n\n<h2>2. High-Throughput Computational Workflow</h2>\n<p>A Python-automated high-throughput DFT pipeline utilizing VASP and pymatgen screened 45 surface-terminated MXene compositions (M<sub>2</sub>X, M<sub>3</sub>X<sub>2</sub>, M<sub>4</sub>X<sub>3</sub>; M = Ti, V, Nb, Mo; T<sub>x</sub> = O, F, OH, Cl). Li-ion diffusion pathways across the interfacial grain boundaries were evaluated using the climbing image nudged elastic band (CI-NEB) method with 7 intermediate images.</p>\n\n<div class=\"journal-equation-block\">\n  <div class=\"journal-equation-math\">ΔE<sub>interface</sub> = E<sub>bilayer</sub> - E<sub>MXene</sub> - E<sub>LLZO(001)</sub></div>\n  <div class=\"journal-equation-num\">(1)</div>\n</div>\n\n<h2>3. Interfacial Stability &amp; Lithium Diffusion Barriers</h2>\n<p>Among all candidates, fluorinated titanium carbide <strong>Ti<sub>3</sub>C<sub>2</sub>F<sub>2</sub></strong> demonstrated an ideal balance of low Li-ion migration barrier (<strong>0.22 eV</strong>) and thermodynamic passivity against metallic lithium reduction. The computed grand-potential phase diagram indicates complete electrochemical stability from 0.0 V to 2.4 V vs Li/Li<sup>+</sup>.</p>\n\n<figure class=\"journal-figure\">\n  <img src=\"https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&amp;fit=crop&amp;w=1000&amp;q=80\" alt=\"High-throughput screening diagram\">\n  <figcaption><strong>Figure 1 |</strong> High-throughput computational screening matrix of 45 MXene terminations showing thermodynamic stability vs Li-ion migration activation barrier.</figcaption>\n</figure>\n\n<h2>4. Summary &amp; Outlook</h2>\n<p>Our findings establish atomic-level design guidelines for stabilizing solid-state lithium battery interfaces, paving the way for targeted experimental synthesis in the upcoming quarter.</p>"
     }
   ],
   "deleted_news_articles": [
