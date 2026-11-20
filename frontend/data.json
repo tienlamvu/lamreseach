@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-20T14:30:35.794Z",
+  "exported_at": "2026-11-20T14:30:59.942Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -6309,6 +6309,7 @@
       "revised_date": "",
       "published_date": "2026-11-20",
       "doi": "10.skku.matsci/news.1795184765071",
+      "volume": "A",
       "cover_image": "",
       "keywords": "Health & life science",
       "abstract": "Breakthrough enables scalable, high-precision biosensing applications in life sciences and healthcare.",
