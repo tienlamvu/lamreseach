@@ -74,7 +74,7 @@
           <option value="literature">📚 References (Literature)</option>
           <option value="calendar">📅 Calendar &amp; Google Calendar</option>
           <option value="structures">💎 Crystal Structures (*.cif)</option>
-          <option value="castep">⚡ CASTEP Simulation Studio</option>
+          <option value="castep">📊 Data Analysis</option>
           <option value="weekly-report" class="admin-only">📽️ Weekly Report (PPTX)</option>
           <option value="manuscript">🎯 Journal Finder &amp; Plagiarism</option>
           <option value="toolkit">⚛️ Periodic Table &amp; Calc</option>
@@ -108,7 +108,7 @@
           <span class="nav-icon">💎</span> Crystal Structures
         </button>
         <button class="nav-btn" data-tab="castep" onclick="switchTab('castep', this)">
-          <span class="nav-icon">⚡</span> CASTEP Studio
+          <span class="nav-icon">📊</span> Data Analysis
         </button>
         <button class="nav-btn admin-only" data-tab="weekly-report" onclick="switchTab('weekly-report', this)">
           <span class="nav-icon">📽️</span> Weekly Report
@@ -722,7 +722,7 @@
           <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
             <div>
               <div style="font-weight:700; font-size:14px; color:#0f172a;">Upload *.cif File</div>
-              <div style="font-size:12px; color:#64748b;">Drag &amp; drop any CIF file (Materials Project, ICSD, COD, VESTA) to auto-parse lattice vectors, space group, and POSCAR.</div>
+              <div style="font-size:12px; color:#64748b;">Drag &amp; drop any CIF file (Materials Project, ICSD, COD) to auto-parse lattice vectors, space group, and POSCAR.</div>
             </div>
             <div style="display:flex; gap:6px; align-items:center;">
               <button type="button" class="mp-btn-outline" onclick="triggerCifFileInput()">Browse *.cif</button>
@@ -1066,9 +1066,9 @@
         <div class="castep-studio-header">
           <div class="castep-studio-title-wrap">
             <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-              <span class="castep-badge-logo">CASTEP 2026</span>
+              <span class="castep-badge-logo">DATA ANALYSIS</span>
               <h2 style="margin:0; font-size:20px; font-weight:800; color:#0f172a; letter-spacing:-0.02em;">
-                BIOVIA Materials Studio &amp; CASTEP Simulation Workbench
+                Computational Materials Data Analysis &amp; Simulation Workbench
               </h2>
               <span id="castep-machine-status-pill" class="castep-live-pill">
                 <span class="castep-pulse-dot"></span>
@@ -1144,8 +1144,11 @@
                 <button type="button" class="castep-pill" data-filter="running" onclick="filterCastepJobs('running', this)">🟢 Active</button>
                 <button type="button" class="castep-pill" data-filter="geom" onclick="filterCastepJobs('geom', this)">📐 GeomOpt</button>
                 <button type="button" class="castep-pill" data-filter="banddos" onclick="filterCastepJobs('banddos', this)">📈 Band/DOS</button>
-                <button type="button" class="castep-pill" data-filter="elf" onclick="filterCastepJobs('elf', this)">⚡ Energy/ELF</button>
+                <button type="button" class="castep-pill" data-filter="optics" onclick="filterCastepJobs('optics', this)">🌈 Optics</button>
               </div>
+              <button type="button" class="btn btn-outline btn-sm" style="width:100%; margin-top:7px; font-size:11.5px; font-weight:700; color:#0369a1; border-color:#7dd3fc; background:#f0f9ff;" onclick="switchCastepStagePane('gateway')">
+                🖥️ Remote Gateway Jobs (70)
+              </button>
               <!-- Search & Batch Select -->
               <div style="display:flex; gap:6px; align-items:center; margin-top:8px;">
                 <input type="text" id="castep-job-search" class="castep-input" placeholder="Search job name, material, folder, file..." oninput="renderCastepJobsList()" style="font-size:12px;" />
@@ -1168,16 +1171,22 @@
             <!-- Sub-Workspace Mode Tabs -->
             <div class="castep-stage-tabs">
               <button type="button" class="castep-stage-tab active" data-pane="builder" onclick="switchCastepStagePane('builder', this)">
-                🧱 3D Structure Viewer &amp; Surface / Adsorption Builder
+                🧱 3D Structure Builder
+              </button>
+              <button type="button" class="castep-stage-tab" data-pane="gateway" onclick="switchCastepStagePane('gateway', this)">
+                🖥️ Remote Gateway Jobs
               </button>
               <button type="button" class="castep-stage-tab" data-pane="electronic" onclick="switchCastepStagePane('electronic', this)">
-                📈 Band Structure &amp; DOS / PDOS Analyzer
+                📈 Band Structure &amp; DOS
+              </button>
+              <button type="button" class="castep-stage-tab" data-pane="optics" onclick="switchCastepStagePane('optics', this)">
+                🌈 Optical Properties
               </button>
               <button type="button" class="castep-stage-tab" data-pane="convergence" onclick="switchCastepStagePane('convergence', this)">
-                ⚡ SCF &amp; Geometry Convergence / Forces
+                ⚡ Convergence &amp; Forces
               </button>
               <button type="button" class="castep-stage-tab" data-pane="files" onclick="switchCastepStagePane('files', this)">
-                📝 CASTEP Input / Output Files &amp; Parameter Editor
+                📝 Input / Output Files
               </button>
             </div>
 
@@ -1208,7 +1217,7 @@
                   <button type="button" class="vesta-icon-btn" onclick="vestaStepRotate('right')" title="Rotate Right">➡</button>
                   <button type="button" class="vesta-icon-btn" onclick="vestaStepRotate('ccw')" title="Roll Counter-Clockwise">↺</button>
                   <button type="button" class="vesta-icon-btn" onclick="vestaStepRotate('cw')" title="Roll Clockwise">↻</button>
-                  <span class="vesta-tb-lbl">Step (°):</span>
+                  <span class="vesta-tb-lbl">°</span>
                   <input type="number" id="vesta-rot-step-input" class="vesta-tb-input" value="45.0" step="5" min="1" max="180" />
                 </div>
 
@@ -1220,7 +1229,7 @@
                   <button type="button" class="vesta-icon-btn" onclick="vestaStepPan(0, 1)" title="Pan Down">▽</button>
                   <button type="button" class="vesta-icon-btn" onclick="vestaStepPan(-1, 0)" title="Pan Left">◁</button>
                   <button type="button" class="vesta-icon-btn" onclick="vestaStepPan(1, 0)" title="Pan Right">▷</button>
-                  <span class="vesta-tb-lbl">Step (px):</span>
+                  <span class="vesta-tb-lbl">px</span>
                   <input type="number" id="vesta-pan-step-input" class="vesta-tb-input" value="15" step="5" min="1" max="200" style="width:42px;" />
                 </div>
 
@@ -1231,7 +1240,7 @@
                   <button type="button" class="vesta-icon-btn" onclick="vestaStepZoom(1)" title="Zoom In">＋</button>
                   <button type="button" class="vesta-icon-btn" onclick="vestaStepZoom(-1)" title="Zoom Out">－</button>
                   <button type="button" class="vesta-icon-btn" onclick="vestaFitToScreen()" title="Fit Structure to Screen">⊡</button>
-                  <span class="vesta-tb-lbl">Step (%):</span>
+                  <span class="vesta-tb-lbl">%</span>
                   <input type="number" id="vesta-zoom-step-input" class="vesta-tb-input" value="15" step="5" min="5" max="100" style="width:42px;" />
                 </div>
 
@@ -1242,7 +1251,7 @@
                   <button type="button" class="vesta-icon-btn" onclick="undoCastepStructureEdit()" title="Undo structure modification">↩ Undo</button>
                   <button type="button" class="vesta-icon-btn" onclick="redoCastepStructureEdit()" title="Redo structure modification">↪ Redo</button>
                   <button type="button" class="vesta-icon-btn" onclick="resetCastepStructureToJobOriginal()" title="Reset to original structure">🔄 Reset</button>
-                  <button type="button" class="vesta-icon-btn" onclick="exportCastepCanvasPNG('castep-3d-canvas', 'VESTA_Crystal_Structure.png')" title="Export High-Resolution VESTA PNG">📷 PNG</button>
+                  <button type="button" class="vesta-icon-btn" onclick="exportCastepCanvasPNG('castep-3d-canvas', 'Crystal_Structure_3D.png')" title="Export High-Resolution 3D Structure PNG">📷 PNG</button>
                 </div>
               </div>
 
@@ -1300,7 +1309,7 @@
                       </label>
                       <label class="vesta-chk-row">
                         <input type="checkbox" id="vesta-chk-boundary-bonds" checked onchange="toggleCastep3DOption('showBoundaryBonds', this.checked)" />
-                        Show bonded boundary atoms (VESTA)
+                        Show bonded boundary atoms
                       </label>
                       <label class="vesta-chk-row">
                         <input type="checkbox" id="vesta-chk-show-bonds" checked onchange="toggleCastep3DOption('showBonds', this.checked)" />
@@ -1365,7 +1374,7 @@
                       <div class="vesta-prop-row">
                         <span>Canvas background:</span>
                         <select id="vesta-bg-select" class="vesta-tb-input" style="width:110px;" onchange="setVestaBackgroundTheme(this.value)">
-                          <option value="white">VESTA White</option>
+                          <option value="white">Pure White (Light)</option>
                           <option value="dark">Dark Slate</option>
                         </select>
                       </div>
@@ -1382,7 +1391,7 @@
                   <!-- DOCK TAB 2: BOUNDARY, SUPERCELL, LATTICE & SLAB/VACUUM -->
                   <div id="vesta-dock-cell" class="vesta-dock-pane">
                     <fieldset class="vesta-fieldset">
-                      <legend>VESTA Boundary Ranges (Fractional)</legend>
+                      <legend>Fractional Boundary Ranges</legend>
                       <div class="castep-grid-2">
                         <div>
                           <label class="castep-field-lbl">x(min) — x(max)</label>
@@ -1613,7 +1622,7 @@
                   <!-- DOCK TAB 4: VESTA OBJECTS & ELEMENT COLORS -->
                   <div id="vesta-dock-objects" class="vesta-dock-pane">
                     <fieldset class="vesta-fieldset">
-                      <legend>Elements &amp; VESTA CPK Colors</legend>
+                      <legend>Elements &amp; Atomic CPK Colors</legend>
                       <div id="vesta-objects-elements-list" style="display:flex; flex-direction:column; gap:6px;"></div>
                     </fieldset>
                   </div>
@@ -1640,7 +1649,7 @@
                     <canvas id="castep-3d-canvas" width="900" height="500"></canvas>
                     <div id="castep-3d-legend" class="vesta-3d-legend"></div>
                     <div id="castep-3d-selection-hud" class="vesta-3d-hud">
-                      VESTA Mode • Click any atom to inspect • Use a, b, c buttons above for crystallographic projections
+                      3D Crystal Viewer • Click any atom to inspect • Use a, b, c buttons above for crystallographic projections
                     </div>
                   </div>
 
@@ -1719,7 +1728,7 @@
                         <button type="button" class="castep-dl-pill" onclick="downloadCastepFormat('cell')">⬇️ .cell (CASTEP)</button>
                         <button type="button" class="castep-dl-pill" onclick="downloadCastepFormat('param')">⬇️ .param (CASTEP)</button>
                         <button type="button" class="castep-dl-pill" onclick="downloadCastepFormat('xsd')">⬇️ .xsd (Materials Studio)</button>
-                        <button type="button" class="castep-dl-pill" onclick="downloadCastepFormat('cif')">⬇️ .cif (VESTA / CIF)</button>
+                        <button type="button" class="castep-dl-pill" onclick="downloadCastepFormat('cif')">⬇️ .cif (Crystallographic File)</button>
                         <button type="button" class="castep-dl-pill" onclick="downloadCastepFormat('poscar')">⬇️ POSCAR (VASP)</button>
                         <button type="button" class="castep-dl-pill" onclick="downloadCastepFormat('xyz')">⬇️ .xyz</button>
                       </div>
@@ -1733,6 +1742,200 @@
                       <span id="vesta-status-summary-line" style="margin-left:auto; font-size:11px; color:#475569; font-family:monospace; padding-right:8px;"></span>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- PANE 2: MATERIALS STUDIO REMOTE GATEWAY JOBS MANAGER         -->
+            <!-- ============================================================ -->
+            <div id="castep-pane-gateway" class="castep-stage-pane">
+              <!-- Official Materials Studio Remote Gateway Banner -->
+              <div class="ms-gateway-banner">
+                <div class="ms-gateway-title-left">
+                  <div class="ms-gateway-cube-logo" aria-hidden="true">
+                    <span class="ms-cube-outer"></span>
+                    <span class="ms-cube-mid"></span>
+                    <span class="ms-cube-inner"></span>
+                  </div>
+                  <div class="ms-gateway-title-text">
+                    <span class="ms-gw-brand">M A T E R I A L S &nbsp; S T U D I O</span>
+                    <span class="ms-gw-pipe">|</span>
+                    <span class="ms-gw-host" id="ms-gw-host-label">Remote Gateway desktop-bvgr3ea_18888</span>
+                  </div>
+                </div>
+                <div class="ms-gateway-controls-right">
+                  <div class="ms-gw-filter-group">
+                    <button type="button" class="ms-gw-pill active" data-gwfilter="all" onclick="filterMsGatewayJobs('all', this)">All (<span id="ms-gw-count-all">0</span>)</button>
+                    <button type="button" class="ms-gw-pill" data-gwfilter="running" onclick="filterMsGatewayJobs('running', this)">🟢 Running (<span id="ms-gw-count-run">0</span>)</button>
+                    <button type="button" class="ms-gw-pill" data-gwfilter="completed" onclick="filterMsGatewayJobs('completed', this)">✅ Completed</button>
+                    <button type="button" class="ms-gw-pill" data-gwfilter="terminated" onclick="filterMsGatewayJobs('terminated', this)">⏹️ Terminated</button>
+                  </div>
+                  <input type="text" id="ms-gw-search-input" class="castep-input-sm" style="width:190px; font-size:11.5px;" placeholder="Filter Job Id, Description, PID..." oninput="renderMsGatewayTable()" />
+                  <button type="button" class="btn btn-outline btn-sm" style="padding:4px 9px; font-size:11.5px;" onclick="refreshMsGatewayJobsFromServer()">🔄 Refresh Gateway</button>
+                </div>
+              </div>
+
+              <!-- 2-Column Remote Gateway Body (Left Nav Box | Right Jobs / Servers / Data Table) -->
+              <div class="ms-gateway-body-grid">
+                <!-- Left Blue Navigation Box matching Remote Gateway UI -->
+                <div class="ms-gateway-left-nav">
+                  <a href="javascript:void(0)" class="ms-gw-nav-link" data-gwview="servers" onclick="switchMsGatewaySubView('servers', this)">Installed<br/>Servers</a>
+                  <a href="javascript:void(0)" class="ms-gw-nav-link" data-gwview="data" onclick="switchMsGatewaySubView('data', this)">Gateway Data</a>
+                  <a href="javascript:void(0)" class="ms-gw-nav-link active" data-gwview="jobs" onclick="switchMsGatewaySubView('jobs', this)">Jobs</a>
+                </div>
+
+                <!-- Right Content Area -->
+                <div class="ms-gateway-right-content">
+                  <!-- Subview 1: Gateway Jobs Table (Default) -->
+                  <div id="ms-gw-subview-jobs" class="ms-gw-subview active">
+                    <div class="ms-gw-table-scroll">
+                      <table class="ms-gateway-table">
+                        <thead>
+                          <tr>
+                            <th>Description</th>
+                            <th>Job<br/>Id</th>
+                            <th>Server</th>
+                            <th>Owner</th>
+                            <th>Status</th>
+                            <th>Submitted</th>
+                            <th>Queue</th>
+                            <th>Queued<br/>Job Id</th>
+                            <th>Process<br/>Id</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody id="ms-gateway-jobs-tbody"></tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <!-- Subview 2: Installed Servers -->
+                  <div id="ms-gw-subview-servers" class="ms-gw-subview" style="display:none;">
+                    <div class="ms-gw-table-scroll">
+                      <table class="ms-gateway-table">
+                        <thead>
+                          <tr>
+                            <th>Server Name</th>
+                            <th>Module Description</th>
+                            <th>Version</th>
+                            <th>Gateway Host</th>
+                            <th>Max MPI Cores</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr><td><strong>CASTEP</strong></td><td>First-Principles Plane-Wave Pseudopotential DFT Server</td><td>26.1 (x64)</td><td>desktop-bvgr3ea_18888</td><td>15 / 16 Cores</td><td><span style="color:#15803d; font-weight:700;">● Active</span></td></tr>
+                          <tr><td><strong>DMol3</strong></td><td>All-Electron Numerical Atomic Orbital DFT Server</td><td>26.1 (x64)</td><td>desktop-bvgr3ea_18888</td><td>15 / 16 Cores</td><td><span style="color:#15803d; font-weight:700;">● Installed</span></td></tr>
+                          <tr><td><strong>DFTB+</strong></td><td>Density Functional Based Tight Binding Server</td><td>26.1 (x64)</td><td>desktop-bvgr3ea_18888</td><td>15 / 16 Cores</td><td><span style="color:#15803d; font-weight:700;">● Installed</span></td></tr>
+                          <tr><td><strong>Forcite</strong></td><td>Classical Molecular Mechanics &amp; MD Server</td><td>26.1 (x64)</td><td>desktop-bvgr3ea_18888</td><td>15 / 16 Cores</td><td><span style="color:#15803d; font-weight:700;">● Installed</span></td></tr>
+                          <tr><td><strong>GULP</strong></td><td>General Utility Lattice Program Server</td><td>26.1 (x64)</td><td>desktop-bvgr3ea_18888</td><td>15 / 16 Cores</td><td><span style="color:#15803d; font-weight:700;">● Installed</span></td></tr>
+                          <tr><td><strong>AdsorptionLocator</strong></td><td>Monte Carlo Surface Adsorption Site Finder</td><td>26.1 (x64)</td><td>desktop-bvgr3ea_18888</td><td>15 / 16 Cores</td><td><span style="color:#15803d; font-weight:700;">● Installed</span></td></tr>
+                          <tr><td><strong>AmorphousCell</strong></td><td>Amorphous Polymer &amp; Packing Builder Server</td><td>26.1 (x64)</td><td>desktop-bvgr3ea_18888</td><td>15 / 16 Cores</td><td><span style="color:#15803d; font-weight:700;">● Installed</span></td></tr>
+                          <tr><td><strong>Reflex</strong></td><td>Powder X-Ray Diffraction Simulation &amp; Rietveld Server</td><td>26.1 (x64)</td><td>desktop-bvgr3ea_18888</td><td>15 / 16 Cores</td><td><span style="color:#15803d; font-weight:700;">● Installed</span></td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <!-- Subview 3: Gateway Data & Daemon Diagnostics -->
+                  <div id="ms-gw-subview-data" class="ms-gw-subview" style="display:none;">
+                    <div class="ms-gw-table-scroll">
+                      <table class="ms-gateway-table">
+                        <thead>
+                          <tr>
+                            <th style="width:240px;">Gateway Property</th>
+                            <th>Value / Local Machine Configuration</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr><td><strong>Remote Gateway Daemon</strong></td><td><code>desktop-bvgr3ea_18888</code> (HTTP Port 18888 • Apache/Perl DSD Daemon)</td></tr>
+                          <tr><td><strong>BIOVIA Server Version</strong></td><td>Materials Studio 26.1 x64 Server (Windows 10/11 x64)</td></tr>
+                          <tr><td><strong>Gateway Document Root</strong></td><td><code>C:\ProgramData\BIOVIA\Materials Studio.1\Gateway-x64
+oot_default</code></td></tr>
+                          <tr><td><strong>Active Jobs Directory</strong></td><td><code>C:\ProgramData\BIOVIA\Materials Studio.1\Gateway-x64
+oot_default\dsd\jobs-info</code></td></tr>
+                          <tr><td><strong>Archived Jobs History</strong></td><td><code>C:\ProgramData\BIOVIA\Materials Studio.1\Gateway-x64
+oot_default\dsd\jobs-info-archive</code> (522 total records)</td></tr>
+                          <tr><td><strong>Default Job Owner</strong></td><td><code>Vu_Tien_Lam</code> (127.0.0.1)</td></tr>
+                          <tr><td><strong>Active MPI Configuration</strong></td><td>Intel MPI / MS-MPI • 15 CPU Cores per CASTEP Job • OpenMP Enabled</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- PANE 4: CASTEP OPTICAL PROPERTIES ANALYZER                   -->
+            <!-- ============================================================ -->
+            <div id="castep-pane-optics" class="castep-stage-pane">
+              <div class="castep-plot-toolbar">
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                  <label class="castep-field-lbl" style="margin:0;">Optical Spectrum:</label>
+                  <select id="castep-opt-property" class="castep-input" style="width:auto; font-weight:700;" onchange="renderCastepOpticalPlots()">
+                    <option value="multigrid">📊 4-Panel Optical Overview (Dielectric ε₁/ε₂, Absorption α, Refractive n/k, Reflectivity R &amp; Loss L)</option>
+                    <option value="absorption">🌈 Optical Absorption Coefficient α(ω) (cm⁻¹)</option>
+                    <option value="dielectric">⚡ Complex Dielectric Function ε₁(ω) [Real] &amp; ε₂(ω) [Imaginary]</option>
+                    <option value="refractive">💎 Refractive Index n(ω) &amp; Extinction Coefficient k(ω)</option>
+                    <option value="reflectivity">🪞 Optical Reflectivity R(ω)</option>
+                    <option value="conductivity">🔌 Optical Conductivity Re[σ(ω)] &amp; Im[σ(ω)] (1/fs)</option>
+                    <option value="loss">📉 Electron Energy Loss Function (EELS) L(ω) = Im[-1/ε(ω)]</option>
+                    <option value="tauc">📐 Tauc Plot Optical Band Gap (αhν)² [Direct] &amp; (αhν)¹/² [Indirect]</option>
+                  </select>
+
+                  <label class="castep-field-lbl" style="margin:0;">X-Axis:</label>
+                  <select id="castep-opt-xaxis" class="castep-input" style="width:auto;" onchange="renderCastepOpticalPlots()">
+                    <option value="ev">Photon Energy ħω (eV)</option>
+                    <option value="nm">Wavelength λ (nm) [200–1200 nm]</option>
+                  </select>
+
+                  <label class="castep-field-lbl" style="margin:0;">E<sub>max</sub> (eV):</label>
+                  <input type="number" id="castep-opt-emax" class="castep-input-sm" value="15.0" step="1.0" min="2" max="100" style="width:58px;" onchange="renderCastepOpticalPlots()" />
+                  <div style="display:flex; gap:3px;">
+                    <button type="button" class="castep-preset-chip" onclick="setCastepOpticalWindow(6)">0–6 eV (UV-Vis)</button>
+                    <button type="button" class="castep-preset-chip" onclick="setCastepOpticalWindow(15)">0–15 eV</button>
+                    <button type="button" class="castep-preset-chip" onclick="setCastepOpticalWindow(30)">0–30 eV</button>
+                    <button type="button" class="castep-preset-chip" onclick="setCastepOpticalWindow(60)">0–60 eV</button>
+                  </div>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:6px;">
+                  <label class="castep-field-lbl" style="margin:0;">Polarization:</label>
+                  <select id="castep-opt-pol" class="castep-input" style="width:auto;" onchange="renderCastepOpticalPlots()">
+                    <option value="inplane">In-Plane E ⊥ c (1 0 0 / xx, yy)</option>
+                    <option value="outplane">Out-of-Plane E ∥ c (0 0 1 / zz)</option>
+                    <option value="poly">Polycrystalline Isotropic Average</option>
+                  </select>
+
+                  <label class="castep-field-lbl" style="margin:0;">Scissors ΔE (eV):</label>
+                  <input type="number" id="castep-opt-scissors" class="castep-input-sm" value="0.00" step="0.1" min="-2.0" max="5.0" style="width:56px;" onchange="renderCastepOpticalPlots()" />
+
+                  <label class="castep-field-lbl" style="margin:0;">Smearing Γ (eV):</label>
+                  <input type="number" id="castep-opt-smearing" class="castep-input-sm" value="0.25" step="0.05" min="0.05" max="1.5" style="width:56px;" onchange="renderCastepOpticalPlots()" />
+
+                  <label class="castep-chk-lbl" style="margin-left:4px;">
+                    <input type="checkbox" id="castep-opt-show-vis" checked onchange="renderCastepOpticalPlots()" />
+                    🌈 Visible Light Band (1.65–3.26 eV)
+                  </label>
+
+                  <div style="margin-left:auto; display:flex; gap:6px;">
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px;" onclick="loadDemoMoSSeOpticalJob()" title="Load MoSSe -1.0 CASTEP Optical Properties Dataset">⚡ Load MoSSe Optics</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px;" onclick="exportCastepCanvasPNG('castep-optics-canvas', 'CASTEP_Optical_Properties.png')">📷 Export PNG</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px;" onclick="exportCastepOpticalCSV()">📊 Export CSV</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Key Optical Constants KPI Strip -->
+              <div id="castep-optics-summary-strip" class="castep-elec-summary-strip"></div>
+
+              <!-- High-DPI Optical Properties Canvas -->
+              <div class="castep-plot-canvas-card">
+                <canvas id="castep-optics-canvas" width="1120" height="540"></canvas>
+                <div id="castep-optics-readout" class="castep-plot-readout">
+                  Hover over any optical spectrum to inspect exact Photon Energy ħω (eV), Wavelength λ (nm), Dielectric Function ε₁/ε₂, Absorption α (cm⁻¹), Refractive Index n/k, and Reflectivity R.
                 </div>
               </div>
             </div>
@@ -4530,7 +4733,7 @@
           <div style="font-size:12.5px; color:var(--text-muted); margin-top:3px;" id="cvm-subtitle"></div>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <button class="btn btn-primary btn-sm" onclick="closeModal('cif-view-modal'); if(window.CURRENT_VIEW_CIF && typeof openStructureInCastepStudio==='function') openStructureInCastepStudio(window.CURRENT_VIEW_CIF.id);">🔬 Open in Full-Page VESTA / CASTEP Studio</button>
+          <button class="btn btn-primary btn-sm" onclick="closeModal('cif-view-modal'); if(window.CURRENT_VIEW_CIF && typeof openStructureInCastepStudio==='function') openStructureInCastepStudio(window.CURRENT_VIEW_CIF.id);">🔬 Open in Data Analysis 3D Builder</button>
           <button class="btn btn-outline btn-sm" onclick="downloadCurrentCif()">📥 Download .cif</button>
           <button class="btn btn-teal btn-sm" onclick="downloadCurrentPoscar()">⚡ Export POSCAR</button>
           <button class="btn btn-outline btn-sm" onclick="closeModal('cif-view-modal')">✕ Close</button>
