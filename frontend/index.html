@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261120_v114_persistent_session" onerror="this.href='/static/styles.css?v=20261120_v114_persistent_session" />
+  <link rel="stylesheet" href="styles.css?v=20261123_v115_castep_studio" onerror="this.href='/static/styles.css?v=20261123_v115_castep_studio" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -74,6 +74,7 @@
           <option value="literature">📚 References (Literature)</option>
           <option value="calendar">📅 Calendar &amp; Google Calendar</option>
           <option value="structures">💎 Crystal Structures (*.cif)</option>
+          <option value="castep">⚡ CASTEP Simulation Studio</option>
           <option value="weekly-report" class="admin-only">📽️ Weekly Report (PPTX)</option>
           <option value="manuscript">🎯 Journal Finder &amp; Plagiarism</option>
           <option value="toolkit">⚛️ Periodic Table &amp; Calc</option>
@@ -105,6 +106,9 @@
         </button>
         <button class="nav-btn" data-tab="structures" onclick="switchTab('structures', this)">
           <span class="nav-icon">💎</span> Crystal Structures
+        </button>
+        <button class="nav-btn" data-tab="castep" onclick="switchTab('castep', this)">
+          <span class="nav-icon">⚡</span> CASTEP Studio
         </button>
         <button class="nav-btn admin-only" data-tab="weekly-report" onclick="switchTab('weekly-report', this)">
           <span class="nav-icon">📽️</span> Weekly Report
@@ -1049,6 +1053,764 @@
             <div class="mp-grid-main">
               <div id="structures-list-container" class="mp-table-wrap"></div>
               <div id="struct-pagination-bar" class="mp-pagination-bar" style="display:none;"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================ -->
+      <!-- TAB 4B: BIOVIA MATERIALS STUDIO & CASTEP SIMULATION STUDIO       -->
+      <!-- ================================================================ -->
+      <section id="tab-castep" class="tab-pane">
+        <!-- Studio Top Command Header -->
+        <div class="castep-studio-header">
+          <div class="castep-studio-title-wrap">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <span class="castep-badge-logo">CASTEP 2026</span>
+              <h2 style="margin:0; font-size:20px; font-weight:800; color:#0f172a; letter-spacing:-0.02em;">
+                BIOVIA Materials Studio &amp; CASTEP Simulation Workbench
+              </h2>
+              <span id="castep-machine-status-pill" class="castep-live-pill">
+                <span class="castep-pulse-dot"></span>
+                MatStudio.exe Active (PID 18556 • 15 MPI Cores) • Local Disk Connected
+              </span>
+            </div>
+            <p style="margin:4px 0 0 0; font-size:12.5px; color:#475569;">
+              Full-page local job monitor, multi-format parser (<code>.cell</code>, <code>.param</code>, <code>.castep</code>, <code>.xsd</code>, <code>.geom</code>, <code>.bands</code>, <code>.xcd</code>, <code>.cif</code>, <code>POSCAR</code>), 3D supercell/slab/vacuum/adsorption structure builder, and electronic Band Structure &amp; DOS/PDOS analyzer.
+            </p>
+          </div>
+          <div class="castep-header-actions">
+            <input type="file" id="castep-file-upload-input" multiple accept=".cell,.param,.castep,.xsd,.geom,.bands,.xcd,.cif,.xyz,.msi,.outmol,.txt,POSCAR,CONTCAR" style="display:none;" onchange="handleCastepFilesUpload(event)" />
+            <input type="file" id="castep-folder-upload-input" webkitdirectory directory multiple style="display:none;" onchange="handleCastepFolderFallbackUpload(event)" />
+            <button type="button" class="btn btn-outline btn-sm castep-action-btn" onclick="mountCastepLocalDirectory()" title="Mount a local Materials Studio / CASTEP calculation folder with direct browser read &amp; write access">
+              📂 Mount Local Folder (Read/Write)
+            </button>
+            <button type="button" class="btn btn-outline btn-sm castep-action-btn" onclick="scanCastepLocalMachineJobs()" title="Scan local machine calculation directories for running and completed CASTEP jobs">
+              🔄 Scan Machine Jobs
+            </button>
+            <button type="button" class="btn btn-outline btn-sm castep-action-btn" onclick="document.getElementById('castep-file-upload-input').click()" title="Import .cell, .param, .castep, .xsd, .geom, .bands, .xcd, .cif, or POSCAR files">
+              📥 Import CASTEP / Structure Files
+            </button>
+            <button type="button" class="btn btn-teal btn-sm castep-action-btn" id="castep-batch-add-library-btn" onclick="addSelectedCastepJobsToLibrary()" title="Add selected CASTEP structures directly to the Crystal Structures Library">
+              💎 Add Checked to Crystal Library (<span id="castep-checked-count">0</span>)
+            </button>
+            <button type="button" class="btn btn-primary btn-sm castep-action-btn" onclick="saveCastepStructureToWorkingFolder()" title="Save modified structure and input files directly back to the active calculation directory">
+              💾 Save to Calculation Folder
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 KPI Telemetry Cards -->
+        <div class="castep-kpi-grid" id="castep-kpi-bar">
+          <div class="castep-kpi-card">
+            <div class="castep-kpi-label">🟢 ACTIVE / RUNNING JOBS ON MACHINE</div>
+            <div class="castep-kpi-val" id="castep-kpi-running">1 Active</div>
+            <div class="castep-kpi-sub" id="castep-kpi-running-sub">MatStudio.exe • 15 MPI Cores • 700 eV PBE</div>
+          </div>
+          <div class="castep-kpi-card">
+            <div class="castep-kpi-label">✅ COMPLETED CASTEP CALCULATIONS</div>
+            <div class="castep-kpi-val" id="castep-kpi-completed">8 Jobs</div>
+            <div class="castep-kpi-sub" id="castep-kpi-completed-sub">GeomOpt, Band Structure, DOS/PDOS &amp; ELF</div>
+          </div>
+          <div class="castep-kpi-card">
+            <div class="castep-kpi-label">🧱 ACTIVE STRUCTURE IN 3D BUILDER</div>
+            <div class="castep-kpi-val" id="castep-kpi-formula">Mo4Si8N9P7</div>
+            <div class="castep-kpi-sub" id="castep-kpi-lattice">28 atoms • a=6.594 Å, c=25.151 Å • P3m1</div>
+          </div>
+          <div class="castep-kpi-card">
+            <div class="castep-kpi-label">⚡ ENERGETICS &amp; ELECTRONIC BAND GAP</div>
+            <div class="castep-kpi-val" id="castep-kpi-energy">-5427.682 eV</div>
+            <div class="castep-kpi-sub" id="castep-kpi-bandgap">Eg = 0.718 eV • ΔE = 2.35e-7 eV/atom</div>
+          </div>
+        </div>
+
+        <!-- Main Full-Page 2-Column Workbench -->
+        <div class="castep-studio-workbench">
+          <!-- LEFT SIDEBAR: CASTEP Job & Directory Manager -->
+          <aside class="castep-jobs-sidebar">
+            <div class="castep-sidebar-head">
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                <span style="font-weight:800; font-size:13.5px; color:#0f172a;">📁 Local Machine CASTEP Jobs</span>
+                <span id="castep-jobs-total-badge" class="badge badge-blue">9 jobs</span>
+              </div>
+              <!-- Directory Path Bar -->
+              <div style="display:flex; gap:4px; margin-top:8px;">
+                <input type="text" id="castep-root-path-input" class="castep-input" value="D:\DATA LAM\DATA TINH TOAN\2026" placeholder="Local calculation directory path..." style="font-size:11.5px; font-family:monospace;" />
+                <button type="button" class="btn btn-outline btn-sm" style="padding:4px 8px; font-size:11.5px; white-space:nowrap;" onclick="scanCastepLocalMachineJobs()">Scan</button>
+              </div>
+              <!-- Project Quick Filters -->
+              <div class="castep-filter-pills" style="margin-top:8px;">
+                <button type="button" class="castep-pill active" data-filter="all" onclick="filterCastepJobs('all', this)">All</button>
+                <button type="button" class="castep-pill" data-filter="running" onclick="filterCastepJobs('running', this)">🟢 Active</button>
+                <button type="button" class="castep-pill" data-filter="geom" onclick="filterCastepJobs('geom', this)">📐 GeomOpt</button>
+                <button type="button" class="castep-pill" data-filter="banddos" onclick="filterCastepJobs('banddos', this)">📈 Band/DOS</button>
+                <button type="button" class="castep-pill" data-filter="elf" onclick="filterCastepJobs('elf', this)">⚡ Energy/ELF</button>
+              </div>
+              <!-- Search & Batch Select -->
+              <div style="display:flex; gap:6px; align-items:center; margin-top:8px;">
+                <input type="text" id="castep-job-search" class="castep-input" placeholder="Search job name, material, folder, file..." oninput="renderCastepJobsList()" style="font-size:12px;" />
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; padding-top:6px; border-top:1px solid #e2e8f0; font-size:11.5px; color:#475569;">
+                <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-weight:600;">
+                  <input type="checkbox" id="castep-select-all-jobs" onchange="toggleSelectAllCastepJobs(this.checked)" />
+                  Select All Visible
+                </label>
+                <button type="button" class="castep-link-btn" onclick="addCurrentCastepStructureToLibrary()">+ Add Active to Library</button>
+              </div>
+            </div>
+
+            <!-- Scrollable Jobs List -->
+            <div class="castep-jobs-list" id="castep-jobs-list"></div>
+          </aside>
+
+          <!-- RIGHT MAIN STAGE: Full-Page Multi-View Workbench (No Popups!) -->
+          <div class="castep-main-stage">
+            <!-- Sub-Workspace Mode Tabs -->
+            <div class="castep-stage-tabs">
+              <button type="button" class="castep-stage-tab active" data-pane="builder" onclick="switchCastepStagePane('builder', this)">
+                🧱 3D Structure Viewer &amp; Surface / Adsorption Builder
+              </button>
+              <button type="button" class="castep-stage-tab" data-pane="electronic" onclick="switchCastepStagePane('electronic', this)">
+                📈 Band Structure &amp; DOS / PDOS Analyzer
+              </button>
+              <button type="button" class="castep-stage-tab" data-pane="convergence" onclick="switchCastepStagePane('convergence', this)">
+                ⚡ SCF &amp; Geometry Convergence / Forces
+              </button>
+              <button type="button" class="castep-stage-tab" data-pane="files" onclick="switchCastepStagePane('files', this)">
+                📝 CASTEP Input / Output Files &amp; Parameter Editor
+              </button>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- PANE 1: 3D STRUCTURE VIEWER & ADVANCED BUILDER               -->
+            <!-- ============================================================ -->
+            <div id="castep-pane-builder" class="castep-stage-pane active">
+              <div class="castep-builder-grid">
+                <!-- Left: 3D Interactive Canvas + Trajectory Scrubber -->
+                <div class="castep-viewport-card">
+                  <div class="castep-viewport-toolbar">
+                    <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;">
+                      <span style="font-size:11px; font-weight:700; color:#64748b; margin-right:2px;">VIEW:</span>
+                      <button type="button" class="castep-tool-btn" onclick="setCastep3DView('iso')" title="3D Isometric Perspective">3D Iso</button>
+                      <button type="button" class="castep-tool-btn" onclick="setCastep3DView('top')" title="Top View along c-axis (001) xy-plane">Top (001)</button>
+                      <button type="button" class="castep-tool-btn" onclick="setCastep3DView('front')" title="Side View along a-axis (100) yz-plane">Front (100)</button>
+                      <button type="button" class="castep-tool-btn" onclick="setCastep3DView('side')" title="Side View along b-axis (010) xz-plane">Side (010)</button>
+                      <span class="castep-toolbar-sep"></span>
+                      <button type="button" class="castep-tool-btn active" id="castep-btn-bonds" onclick="toggleCastep3DOption('showBonds')" title="Toggle Chemical Bonds">🔗 Bonds</button>
+                      <button type="button" class="castep-tool-btn active" id="castep-btn-box" onclick="toggleCastep3DOption('showBox')" title="Toggle Unit Cell Box">📦 Cell</button>
+                      <button type="button" class="castep-tool-btn active" id="castep-btn-labels" onclick="toggleCastep3DOption('showLabels')" title="Toggle Atom Labels">🏷️ Labels</button>
+                      <button type="button" class="castep-tool-btn active" id="castep-btn-sites" onclick="toggleCastep3DOption('showAdsorptionSites')" title="Show Candidate Surface Adsorption Sites (Top, Bridge, Hollow)">🎯 Sites</button>
+                      <button type="button" class="castep-tool-btn" id="castep-btn-forces" onclick="toggleCastep3DOption('showForces')" title="Show Symmetrised Atomic Force Vectors">➡️ Forces</button>
+                      <button type="button" class="castep-tool-btn" id="castep-btn-style" onclick="cycleCastep3DStyle()" title="Cycle Ball-and-Stick / Space-Fill / Wireframe">🎨 Style</button>
+                      <button type="button" class="castep-tool-btn" id="castep-btn-theme" onclick="toggleCastep3DTheme()" title="Toggle Dark / Light Canvas Background">☀️</button>
+                    </div>
+                    <div style="display:flex; gap:4px; align-items:center;">
+                      <button type="button" class="castep-tool-btn" id="castep-btn-undo" onclick="undoCastepStructureEdit()" title="Undo last structure modification">↩️ Undo</button>
+                      <button type="button" class="castep-tool-btn" id="castep-btn-redo" onclick="redoCastepStructureEdit()" title="Redo structure modification">↪️ Redo</button>
+                      <button type="button" class="castep-tool-btn" onclick="resetCastepStructureToJobOriginal()" title="Reset structure to original job file">🔄 Reset</button>
+                    </div>
+                  </div>
+
+                  <!-- 3D Canvas Container -->
+                  <div class="castep-3d-canvas-wrap" id="castep-3d-container">
+                    <canvas id="castep-3d-canvas" width="820" height="500"></canvas>
+                    <div id="castep-3d-legend" class="castep-3d-legend"></div>
+                    <div id="castep-3d-selection-hud" class="castep-3d-hud">
+                      Click any atom in 3D view to select/inspect • Drag to rotate • Scroll to zoom
+                    </div>
+                  </div>
+
+                  <!-- Geometry Optimization Trajectory Player (for .geom files) -->
+                  <div id="castep-geom-scrubber" class="castep-geom-scrubber" style="display:none;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+                      <div style="display:flex; align-items:center; gap:6px;">
+                        <span style="font-size:11.5px; font-weight:800; color:#1e40af;">🎞️ Geometry Trajectory (.geom):</span>
+                        <button type="button" class="castep-tool-btn" onclick="stepCastepGeomFrame(0)">⏮️ Init</button>
+                        <button type="button" class="castep-tool-btn" id="castep-geom-play-btn" onclick="togglePlayCastepGeomTrajectory()">▶️ Play</button>
+                        <button type="button" class="castep-tool-btn" onclick="stepCastepGeomFrame(-1)">⏭️ Final</button>
+                      </div>
+                      <div style="flex:1; min-width:160px; display:flex; align-items:center; gap:8px;">
+                        <input type="range" id="castep-geom-slider" min="0" max="0" value="0" style="flex:1;" oninput="selectCastepGeomFrame(Number(this.value))" />
+                        <span id="castep-geom-step-label" style="font-size:11.5px; font-weight:700; color:#0f172a; white-space:nowrap;">Step 0 / 0</span>
+                      </div>
+                      <div id="castep-geom-metrics-label" style="font-size:11.5px; color:#334155; font-family:monospace;"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Right: Comprehensive Structure Manipulation & Surface Engineering Console -->
+                <div class="castep-engineering-console">
+                  <!-- Tool Module 1: Supercell & Lattice Strain -->
+                  <div class="castep-tool-box">
+                    <div class="castep-tool-box-title">
+                      <span>📐 1. Supercell Expansion &amp; Lattice Strain Engineering</span>
+                      <span class="castep-mini-tag">Periodic Cell</span>
+                    </div>
+                    <div class="castep-tool-row">
+                      <div style="display:flex; align-items:center; gap:4px;">
+                        <label class="castep-mini-lbl">N<sub>a</sub></label>
+                        <input type="number" id="castep-sc-na" class="castep-input-sm" value="2" min="1" max="12" />
+                        <span>×</span>
+                        <label class="castep-mini-lbl">N<sub>b</sub></label>
+                        <input type="number" id="castep-sc-nb" class="castep-input-sm" value="2" min="1" max="12" />
+                        <span>×</span>
+                        <label class="castep-mini-lbl">N<sub>c</sub></label>
+                        <input type="number" id="castep-sc-nc" class="castep-input-sm" value="1" min="1" max="12" />
+                      </div>
+                      <button type="button" class="btn btn-primary btn-sm" style="padding:4px 10px; font-size:11.5px;" onclick="applyCastepSupercell()">
+                        🧱 Build Supercell
+                      </button>
+                    </div>
+                    <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:6px;">
+                      <button type="button" class="castep-preset-chip" onclick="quickCastepSupercell(2,2,1)">2×2×1</button>
+                      <button type="button" class="castep-preset-chip" onclick="quickCastepSupercell(3,3,1)">3×3×1</button>
+                      <button type="button" class="castep-preset-chip" onclick="quickCastepSupercell(4,4,1)">4×4×1</button>
+                      <button type="button" class="castep-preset-chip" onclick="quickCastepSupercell(2,2,2)">2×2×2</button>
+                      <button type="button" class="castep-preset-chip" onclick="quickCastepSupercell(3,2,1)">3×2×1</button>
+                    </div>
+                    <div class="castep-grid-3" style="margin-top:8px;">
+                      <div>
+                        <label class="castep-field-lbl">a (Å)</label>
+                        <input type="number" id="castep-lat-a" class="castep-input" step="0.001" value="6.594" />
+                      </div>
+                      <div>
+                        <label class="castep-field-lbl">b (Å)</label>
+                        <input type="number" id="castep-lat-b" class="castep-input" step="0.001" value="6.594" />
+                      </div>
+                      <div>
+                        <label class="castep-field-lbl">c (Å)</label>
+                        <input type="number" id="castep-lat-c" class="castep-input" step="0.001" value="25.151" />
+                      </div>
+                      <div>
+                        <label class="castep-field-lbl">α (°)</label>
+                        <input type="number" id="castep-lat-alpha" class="castep-input" step="0.1" value="90.0" />
+                      </div>
+                      <div>
+                        <label class="castep-field-lbl">β (°)</label>
+                        <input type="number" id="castep-lat-beta" class="castep-input" step="0.1" value="90.0" />
+                      </div>
+                      <div>
+                        <label class="castep-field-lbl">γ (°)</label>
+                        <input type="number" id="castep-lat-gamma" class="castep-input" step="0.1" value="120.0" />
+                      </div>
+                    </div>
+                    <div style="display:flex; gap:6px; align-items:center; margin-top:8px;">
+                      <label class="castep-field-lbl" style="margin:0; white-space:nowrap;">Biaxial Strain ε<sub>xy</sub> (%):</label>
+                      <input type="number" id="castep-strain-pct" class="castep-input-sm" step="0.5" value="0.0" style="width:68px;" />
+                      <button type="button" class="btn btn-outline btn-sm" style="padding:4px 8px; font-size:11.5px;" onclick="applyCastepLatticeAndStrain()">
+                        Apply Lattice / Strain
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Tool Module 2: Surface Slab Cutter & Vacuum Layer Engineering -->
+                  <div class="castep-tool-box">
+                    <div class="castep-tool-box-title">
+                      <span>✂️ 2. Surface Slab Cutter (hkl) &amp; Vacuum Layer Builder</span>
+                      <span class="castep-mini-tag">Slab / 2D</span>
+                    </div>
+                    <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                      <span style="font-size:11.5px; font-weight:700; color:#334155;">Miller (hkl):</span>
+                      <input type="number" id="castep-slab-h" class="castep-input-sm" value="0" min="-6" max="6" style="width:44px;" />
+                      <input type="number" id="castep-slab-k" class="castep-input-sm" value="0" min="-6" max="6" style="width:44px;" />
+                      <input type="number" id="castep-slab-l" class="castep-input-sm" value="1" min="-6" max="6" style="width:44px;" />
+                      <label class="castep-field-lbl" style="margin:0;">Layers:</label>
+                      <input type="number" id="castep-slab-layers" class="castep-input-sm" value="1" min="1" max="12" style="width:48px;" />
+                      <button type="button" class="btn btn-primary btn-sm" style="padding:4px 9px; font-size:11.5px;" onclick="cutCastepSurfaceSlab()">
+                        ✂️ Cut Slab
+                      </button>
+                    </div>
+                    <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:6px;">
+                      <button type="button" class="castep-preset-chip" onclick="setCastepMillerPreset(0,0,1)">(001)</button>
+                      <button type="button" class="castep-preset-chip" onclick="setCastepMillerPreset(1,0,0)">(100)</button>
+                      <button type="button" class="castep-preset-chip" onclick="setCastepMillerPreset(0,1,0)">(010)</button>
+                      <button type="button" class="castep-preset-chip" onclick="setCastepMillerPreset(1,1,0)">(110)</button>
+                      <button type="button" class="castep-preset-chip" onclick="setCastepMillerPreset(1,1,1)">(111)</button>
+                      <button type="button" class="castep-preset-chip" onclick="setCastepMillerPreset(2,1,1)">(211)</button>
+                    </div>
+                    <div class="castep-grid-2" style="margin-top:8px;">
+                      <div>
+                        <label class="castep-field-lbl">Vacuum Thickness (Å)</label>
+                        <input type="number" id="castep-vac-thickness" class="castep-input" step="0.5" value="20.0" min="0" max="100" />
+                      </div>
+                      <div>
+                        <label class="castep-field-lbl">Slab Z-Alignment</label>
+                        <select id="castep-vac-align" class="castep-input">
+                          <option value="center">Center Slab (z = 0.5)</option>
+                          <option value="bottom">Bottom-Align (z = 2.0 Å)</option>
+                          <option value="keep">Keep Current Z-Center</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div style="display:flex; gap:4px; align-items:center; justify-content:space-between; margin-top:6px; flex-wrap:wrap;">
+                      <div style="display:flex; gap:4px;">
+                        <button type="button" class="castep-preset-chip" onclick="quickCastepVacuum(15)">15 Å Vac</button>
+                        <button type="button" class="castep-preset-chip" onclick="quickCastepVacuum(20)">20 Å Vac</button>
+                        <button type="button" class="castep-preset-chip" onclick="quickCastepVacuum(25)">25 Å Vac</button>
+                      </div>
+                      <button type="button" class="btn btn-teal btn-sm" style="padding:4px 10px; font-size:11.5px;" onclick="applyCastepVacuumLayer()">
+                        🌌 Apply Vacuum &amp; Center
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Tool Module 3: Surface Adsorption & Site-Specific Atom / Molecule Placement -->
+                  <div class="castep-tool-box castep-tool-box-highlight">
+                    <div class="castep-tool-box-title">
+                      <span>🎯 3. Surface Adsorption Builder (Top, Bridge, Hollow, Interstitial)</span>
+                      <span class="castep-mini-tag" style="background:#dbeafe; color:#1d4ed8;">Catalysis / Ads</span>
+                    </div>
+                    <div class="castep-grid-2">
+                      <div>
+                        <label class="castep-field-lbl">Adsorption Site Geometry</label>
+                        <select id="castep-ads-site-type" class="castep-input" onchange="detectCastepAdsorptionSites()">
+                          <option value="top">🎯 Top (Atop) — Above Surface Atom</option>
+                          <option value="bridge">🌉 Bridge — Midpoint of 2 Surface Atoms</option>
+                          <option value="hollow3">🔺 3-Fold Hollow (FCC / HCP Triangle Center)</option>
+                          <option value="hollow4">💠 4-Fold Hollow (Square Center)</option>
+                          <option value="custom">📍 Custom Fractional (u, v, w)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label class="castep-field-lbl">Adsorbate Atom / Molecule</label>
+                        <select id="castep-ads-species" class="castep-input">
+                          <optgroup label="Single Adsorbate Atoms">
+                            <option value="H">H — Hydrogen Atom</option>
+                            <option value="Li">Li — Lithium Atom</option>
+                            <option value="Na">Na — Sodium Atom</option>
+                            <option value="K">K — Potassium Atom</option>
+                            <option value="O">O — Oxygen Atom</option>
+                            <option value="N">N — Nitrogen Atom</option>
+                            <option value="P">P — Phosphorus Atom</option>
+                            <option value="S">S — Sulfur Atom</option>
+                            <option value="Se">Se — Selenium Atom</option>
+                            <option value="Te">Te — Tellurium Atom</option>
+                            <option value="C">C — Carbon Atom</option>
+                            <option value="F">F — Fluorine Atom</option>
+                            <option value="Cl">Cl — Chlorine Atom</option>
+                            <option value="Pt">Pt — Platinum Single Atom</option>
+                            <option value="Au">Au — Gold Single Atom</option>
+                            <option value="Fe">Fe — Iron Single Atom</option>
+                            <option value="Co">Co — Cobalt Single Atom</option>
+                            <option value="Ni">Ni — Nickel Single Atom</option>
+                            <option value="Cu">Cu — Copper Single Atom</option>
+                            <option value="Mo">Mo — Molybdenum Atom</option>
+                            <option value="W">W — Tungsten Atom</option>
+                            <option value="Si">Si — Silicon Atom</option>
+                          </optgroup>
+                          <optgroup label="Catalytic Molecules &amp; Intermediates">
+                            <option value="H2">H2 — Hydrogen Molecule (H–H)</option>
+                            <option value="O2">O2 — Oxygen Molecule (O=O)</option>
+                            <option value="H2O">H2O — Water Molecule</option>
+                            <option value="OH">*OH — Hydroxyl Intermediate</option>
+                            <option value="OOH">*OOH — Hydroperoxyl Intermediate</option>
+                            <option value="CO">CO — Carbon Monoxide</option>
+                            <option value="CO2">CO2 — Carbon Dioxide</option>
+                            <option value="NH3">NH3 — Ammonia</option>
+                            <option value="N2">N2 — Dinitrogen</option>
+                            <option value="NO">NO — Nitric Oxide</option>
+                          </optgroup>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style="margin-top:6px;">
+                      <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <label class="castep-field-lbl">Detected Surface Candidate Sites (or select atoms in 3D view)</label>
+                        <button type="button" class="castep-link-btn" onclick="detectCastepAdsorptionSites()">🔍 Refresh Sites</button>
+                      </div>
+                      <select id="castep-ads-site-select" class="castep-input" style="font-family:monospace; font-size:11.5px;" onchange="previewSelectedCastepAdsorptionSite()"></select>
+                    </div>
+
+                    <div class="castep-grid-3" style="margin-top:6px;">
+                      <div>
+                        <label class="castep-field-lbl">Height d<sub>z</sub> (Å)</label>
+                        <input type="number" id="castep-ads-height" class="castep-input" step="0.1" value="1.80" />
+                      </div>
+                      <div>
+                        <label class="castep-field-lbl">Surface Side</label>
+                        <select id="castep-ads-side" class="castep-input" onchange="detectCastepAdsorptionSites()">
+                          <option value="top">Top Surface (+z)</option>
+                          <option value="bottom">Bottom Surface (-z)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label class="castep-field-lbl">Orientation</label>
+                        <select id="castep-ads-orient" class="castep-input">
+                          <option value="vertical">Vertical (End-on)</option>
+                          <option value="horizontal">Horizontal (Flat)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <!-- Custom Fractional Coordinates Row (shown when custom is selected or always available) -->
+                    <div id="castep-ads-custom-row" class="castep-grid-3" style="margin-top:6px; display:none;">
+                      <div>
+                        <label class="castep-field-lbl">Fract u</label>
+                        <input type="number" id="castep-ads-u" class="castep-input" step="0.01" value="0.3333" />
+                      </div>
+                      <div>
+                        <label class="castep-field-lbl">Fract v</label>
+                        <input type="number" id="castep-ads-v" class="castep-input" step="0.01" value="0.6667" />
+                      </div>
+                      <div>
+                        <label class="castep-field-lbl">Fract w</label>
+                        <input type="number" id="castep-ads-w" class="castep-input" step="0.01" value="0.7200" />
+                      </div>
+                    </div>
+
+                    <div style="display:flex; gap:6px; margin-top:8px;">
+                      <button type="button" class="btn btn-primary btn-sm" style="flex:1; font-size:12px;" onclick="placeCastepAdsorbateAtSite()">
+                        ➕ Place Adsorbate at Selected Site
+                      </button>
+                      <button type="button" class="btn btn-outline btn-sm" style="font-size:11.5px;" onclick="placeCastepAdsorbateFromSelectedAtoms()" title="Place adsorbate at the centroid (Top / Bridge / Hollow) of the atoms currently clicked in the 3D viewer">
+                        🎯 Place Above Clicked Atom(s)
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Tool Module 4: Point Defects, Janus Substitution & Ionic Constraints -->
+                  <div class="castep-tool-box">
+                    <div class="castep-tool-box-title">
+                      <span>🔬 4. Point Defects, Janus Layer Substitution &amp; Constraints</span>
+                      <span class="castep-mini-tag">Defects / Fix</span>
+                    </div>
+                    <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                      <button type="button" class="btn btn-outline btn-sm" style="color:#dc2626; border-color:#fecaca; font-size:11.5px;" onclick="deleteSelectedCastepAtoms()">
+                        🗑️ Delete Selected (Vacancy)
+                      </button>
+                      <span style="font-size:11.5px; color:#475569;">Replace Selected →</span>
+                      <input type="text" id="castep-sub-element" class="castep-input-sm" value="P" placeholder="Elem" style="width:46px; text-align:center; font-weight:700;" />
+                      <button type="button" class="btn btn-outline btn-sm" style="font-size:11.5px;" onclick="substituteSelectedCastepAtoms()">
+                        🔄 Substitute
+                      </button>
+                    </div>
+
+                    <!-- Janus Layer Converter -->
+                    <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap; margin-top:8px; padding-top:6px; border-top:1px dashed #e2e8f0;">
+                      <span style="font-size:11.5px; font-weight:700; color:#334155;">🌗 Janus Layer:</span>
+                      <select id="castep-janus-layer-side" class="castep-input-sm" style="width:92px;">
+                        <option value="top">Top Layer</option>
+                        <option value="bottom">Bottom Layer</option>
+                      </select>
+                      <span style="font-size:11.5px;">of</span>
+                      <input type="text" id="castep-janus-from" class="castep-input-sm" value="N" style="width:38px; text-align:center; font-weight:700;" />
+                      <span>→</span>
+                      <input type="text" id="castep-janus-to" class="castep-input-sm" value="P" style="width:38px; text-align:center; font-weight:700;" />
+                      <button type="button" class="btn btn-teal btn-sm" style="padding:3px 8px; font-size:11.5px;" onclick="applyCastepJanusLayerSubstitution()">
+                        Convert Layer
+                      </button>
+                    </div>
+
+                    <!-- Selective Constraints & Coordinate Cleanup -->
+                    <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap; margin-top:8px; padding-top:6px; border-top:1px dashed #e2e8f0;">
+                      <span style="font-size:11.5px; font-weight:700; color:#334155;">🔒 Fix Atoms w &lt;</span>
+                      <input type="number" id="castep-fix-z-thresh" class="castep-input-sm" step="0.05" value="0.45" style="width:58px;" />
+                      <button type="button" class="castep-preset-chip" onclick="applyCastepFixBottomLayers()">Fix Bottom</button>
+                      <button type="button" class="castep-preset-chip" onclick="unfixAllCastepAtoms()">Unfix All</button>
+                      <button type="button" class="castep-preset-chip" onclick="wrapCastepAtomsToUnitCell()">Wrap [0,1)</button>
+                      <button type="button" class="castep-preset-chip" onclick="rattleCastepAtoms(0.02)">Rattle 0.02Å</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Direct Working Folder Save & Multi-Format Export Bar -->
+              <div class="castep-save-export-bar">
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; flex:1;">
+                  <span style="font-weight:800; font-size:12.5px; color:#0f172a; white-space:nowrap;">💾 Working Folder &amp; Export:</span>
+                  <input type="text" id="castep-save-folder-input" class="castep-input" style="flex:1; min-width:240px; font-family:monospace; font-size:11.5px;" placeholder="Target calculation folder path..." />
+                  <input type="text" id="castep-save-subfolder-input" class="castep-input" style="width:155px; font-size:11.5px;" placeholder="Optional subfolder..." />
+                  <input type="text" id="castep-save-seed-input" class="castep-input" style="width:130px; font-weight:700; font-size:11.5px;" value="ELF+Orbitals" placeholder="Seed name" />
+                  <button type="button" class="btn btn-primary btn-sm" onclick="saveCastepStructureToWorkingFolder()">
+                    💾 Save All (.cell, .param, .xsd, .cif, POSCAR) to Folder
+                  </button>
+                  <button type="button" class="btn btn-teal btn-sm" onclick="addCurrentCastepStructureToLibrary()">
+                    💎 Add to Crystal Structures Library
+                  </button>
+                </div>
+                <div style="display:flex; gap:5px; align-items:center; flex-wrap:wrap; margin-top:6px;">
+                  <span style="font-size:11.5px; font-weight:700; color:#475569;">Download Single File:</span>
+                  <button type="button" class="castep-dl-pill" onclick="downloadCastepFormat('cell')">⬇️ .cell (CASTEP)</button>
+                  <button type="button" class="castep-dl-pill" onclick="downloadCastepFormat('param')">⬇️ .param (CASTEP)</button>
+                  <button type="button" class="castep-dl-pill" onclick="downloadCastepFormat('xsd')">⬇️ .xsd (Materials Studio)</button>
+                  <button type="button" class="castep-dl-pill" onclick="downloadCastepFormat('cif')">⬇️ .cif (Crystallographic)</button>
+                  <button type="button" class="castep-dl-pill" onclick="downloadCastepFormat('poscar')">⬇️ POSCAR (VASP)</button>
+                  <button type="button" class="castep-dl-pill" onclick="downloadCastepFormat('xyz')">⬇️ .xyz (Cartesian)</button>
+                </div>
+              </div>
+
+              <!-- Interactive Editable Atomic Coordinates & Constraints Table -->
+              <div class="castep-atoms-table-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px;">
+                  <div>
+                    <span style="font-weight:800; font-size:13.5px; color:#0f172a;">⚛️ Atomic Fractional &amp; Cartesian Coordinates, Forces, Hirshfeld Charges &amp; Constraints</span>
+                    <span id="castep-atoms-count-badge" class="badge badge-blue" style="margin-left:6px;">28 atoms</span>
+                  </div>
+                  <div style="display:flex; gap:6px; align-items:center;">
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px;" onclick="addManualCastepAtomRow()">+ Add Atom Row</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px;" onclick="sortCastepAtomsBy('z')">Sort by Z-Height</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px;" onclick="sortCastepAtomsBy('element')">Sort by Element</button>
+                  </div>
+                </div>
+                <div class="castep-atoms-table-scroll">
+                  <table class="castep-atoms-table">
+                    <thead>
+                      <tr>
+                        <th style="width:32px;"><input type="checkbox" onchange="toggleSelectAllCastepAtoms(this.checked)" /></th>
+                        <th style="width:42px;">#</th>
+                        <th style="width:70px;">Element</th>
+                        <th style="width:85px;">Atom Label</th>
+                        <th>Fract u</th>
+                        <th>Fract v</th>
+                        <th>Fract w</th>
+                        <th>Cart X (Å)</th>
+                        <th>Cart Y (Å)</th>
+                        <th>Cart Z (Å)</th>
+                        <th>Layer Region</th>
+                        <th>|Force| (eV/Å)</th>
+                        <th>Charge (e)</th>
+                        <th>Constraint</th>
+                        <th style="width:55px;">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="castep-atoms-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- PANE 2: ELECTRONIC BAND STRUCTURE & DOS / PDOS ANALYZER      -->
+            <!-- ============================================================ -->
+            <div id="castep-pane-electronic" class="castep-stage-pane">
+              <div class="castep-plot-toolbar">
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                  <label class="castep-field-lbl" style="margin:0;">Layout:</label>
+                  <select id="castep-elec-layout" class="castep-input" style="width:auto;" onchange="renderCastepElectronicPlots()">
+                    <option value="joint">📊 Synchronized Band Structure + DOS / PDOS (Side-by-Side)</option>
+                    <option value="band">📈 Electronic Band Structure Only</option>
+                    <option value="dos">🌊 Total &amp; Partial Density of States (DOS / PDOS) Only</option>
+                  </select>
+                  <label class="castep-field-lbl" style="margin:0;">E<sub>min</sub> (eV):</label>
+                  <input type="number" id="castep-elec-emin" class="castep-input-sm" value="-5.0" step="0.5" style="width:62px;" onchange="renderCastepElectronicPlots()" />
+                  <label class="castep-field-lbl" style="margin:0;">E<sub>max</sub> (eV):</label>
+                  <input type="number" id="castep-elec-emax" class="castep-input-sm" value="5.0" step="0.5" style="width:62px;" onchange="renderCastepElectronicPlots()" />
+                  <div style="display:flex; gap:3px;">
+                    <button type="button" class="castep-preset-chip" onclick="setCastepElecWindow(-3,3)">[-3,+3]</button>
+                    <button type="button" class="castep-preset-chip" onclick="setCastepElecWindow(-5,5)">[-5,+5]</button>
+                    <button type="button" class="castep-preset-chip" onclick="setCastepElecWindow(-8,8)">[-8,+8]</button>
+                    <button type="button" class="castep-preset-chip" onclick="setCastepElecWindow(-15,10)">[-15,+10]</button>
+                  </div>
+                  <label class="castep-field-lbl" style="margin:0;">DOS Smearing σ (eV):</label>
+                  <input type="number" id="castep-dos-sigma" class="castep-input-sm" value="0.12" step="0.02" min="0.02" max="0.6" style="width:60px;" onchange="renderCastepElectronicPlots()" />
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:6px;">
+                  <span style="font-size:11.5px; font-weight:700; color:#334155;">PDOS / Spin Channels:</span>
+                  <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-dos-total" checked onchange="renderCastepElectronicPlots()" /> Total / Sum</label>
+                  <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-dos-s" checked onchange="renderCastepElectronicPlots()" /> <span style="color:#2563eb;">● s-orbital</span></label>
+                  <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-dos-p" checked onchange="renderCastepElectronicPlots()" /> <span style="color:#16a34a;">● p-orbital</span></label>
+                  <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-dos-d" checked onchange="renderCastepElectronicPlots()" /> <span style="color:#dc2626;">● d-orbital</span></label>
+                  <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-dos-f" checked onchange="renderCastepElectronicPlots()" /> <span style="color:#9333ea;">● f-orbital</span></label>
+                  <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-spin-up" checked onchange="renderCastepElectronicPlots()" /> Spin α (Solid)</label>
+                  <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-spin-dn" checked onchange="renderCastepElectronicPlots()" /> Spin β (Dashed)</label>
+                  <div style="margin-left:auto; display:flex; gap:6px;">
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px;" onclick="exportCastepCanvasPNG('castep-electronic-canvas', 'CASTEP_Band_DOS.png')">📷 Export PNG</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px;" onclick="exportCastepElectronicCSV()">📊 Export CSV</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Band Gap & Electronic Summary Strip -->
+              <div id="castep-electronic-summary-strip" class="castep-elec-summary-strip"></div>
+
+              <!-- High-DPI Electronic Plot Canvas -->
+              <div class="castep-plot-canvas-card">
+                <canvas id="castep-electronic-canvas" width="1120" height="540"></canvas>
+                <div id="castep-electronic-readout" class="castep-plot-readout">
+                  Hover over Band Structure or DOS/PDOS plot to inspect exact k-point, band energy (E - E<sub>F</sub>), and density of states.
+                </div>
+              </div>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- PANE 3: SCF & GEOMETRY OPTIMIZATION CONVERGENCE PLOTS        -->
+            <!-- ============================================================ -->
+            <div id="castep-pane-convergence" class="castep-stage-pane">
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
+                <div>
+                  <h3 style="margin:0; font-size:15px; font-weight:800; color:#0f172a;">⚡ CASTEP Total Energy, Enthalpy &amp; Convergence Diagnostics</h3>
+                  <div style="font-size:12px; color:#64748b;">Real-time SCF loop energy convergence, LBFGS/TPSD geometry optimization enthalpy, maximum ionic forces, and Hirshfeld population analysis.</div>
+                </div>
+                <div style="display:flex; gap:6px;">
+                  <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepCanvasPNG('castep-energy-chart-canvas', 'CASTEP_Energy_Profile.png')">📷 Save Energy PNG</button>
+                  <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepCanvasPNG('castep-conv-chart-canvas', 'CASTEP_Convergence.png')">📷 Save Convergence PNG</button>
+                </div>
+              </div>
+
+              <div class="castep-conv-charts-grid">
+                <div class="castep-plot-canvas-card">
+                  <div style="font-weight:700; font-size:13px; color:#0f172a; margin-bottom:6px;" id="castep-energy-chart-title">Total Energy / Enthalpy vs. Iteration (eV)</div>
+                  <canvas id="castep-energy-chart-canvas" width="560" height="340"></canvas>
+                </div>
+                <div class="castep-plot-canvas-card">
+                  <div style="font-weight:700; font-size:13px; color:#0f172a; margin-bottom:6px;" id="castep-conv-chart-title">Convergence Criteria log<sub>10</sub>(ΔE / atom) &amp; Max Force</div>
+                  <canvas id="castep-conv-chart-canvas" width="560" height="340"></canvas>
+                </div>
+              </div>
+
+              <div class="castep-conv-tables-grid" style="margin-top:12px;">
+                <div class="castep-atoms-table-card">
+                  <div style="font-weight:800; font-size:13px; color:#0f172a; margin-bottom:6px;">📋 SCF Cycles &amp; Geometry Optimization Steps</div>
+                  <div class="castep-atoms-table-scroll" style="max-height:260px;">
+                    <table class="castep-atoms-table">
+                      <thead>
+                        <tr>
+                          <th>Type</th>
+                          <th>Step</th>
+                          <th>Total Energy (eV)</th>
+                          <th>Fermi E<sub>F</sub> (eV)</th>
+                          <th>ΔE / atom (eV)</th>
+                          <th>Time (s)</th>
+                        </tr>
+                      </thead>
+                      <tbody id="castep-scf-history-tbody"></tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div class="castep-atoms-table-card">
+                  <div style="font-weight:800; font-size:13px; color:#0f172a; margin-bottom:6px;">🧲 Symmetrised Forces (eV/Å) &amp; Hirshfeld Atomic Charges</div>
+                  <div class="castep-atoms-table-scroll" style="max-height:260px;">
+                    <table class="castep-atoms-table">
+                      <thead>
+                        <tr>
+                          <th>Atom</th>
+                          <th>F<sub>x</sub> (eV/Å)</th>
+                          <th>F<sub>y</sub> (eV/Å)</th>
+                          <th>F<sub>z</sub> (eV/Å)</th>
+                          <th>|F| (eV/Å)</th>
+                          <th>Hirshfeld Charge (e)</th>
+                          <th>Spin (ħ/2)</th>
+                        </tr>
+                      </thead>
+                      <tbody id="castep-forces-charges-tbody"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- PANE 4: CASTEP INPUT / OUTPUT FILES & PARAMETER EDITOR       -->
+            <!-- ============================================================ -->
+            <div id="castep-pane-files" class="castep-stage-pane">
+              <div class="castep-files-grid">
+                <!-- Left: Visual CASTEP .param Settings Configurator -->
+                <div class="castep-tool-box">
+                  <div class="castep-tool-box-title">
+                    <span>⚙️ CASTEP Calculation Parameter Builder (<code>.param</code> &amp; <code>.cell</code>)</span>
+                    <span class="castep-mini-tag">CASTEP 26.1</span>
+                  </div>
+                  <div class="castep-grid-2">
+                    <div>
+                      <label class="castep-field-lbl">Calculation Task</label>
+                      <select id="castep-param-task" class="castep-input" onchange="syncCastepParamFormToText()">
+                        <option value="GeometryOptimization">GeometryOptimization</option>
+                        <option value="SinglePoint">SinglePoint (Energy / ELF)</option>
+                        <option value="BandStructure">BandStructure</option>
+                        <option value="Optics">Optics</option>
+                        <option value="Phonon">Phonon</option>
+                        <option value="MolecularDynamics">MolecularDynamics</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="castep-field-lbl">XC Functional</label>
+                      <select id="castep-param-xc" class="castep-input" onchange="syncCastepParamFormToText()">
+                        <option value="PBE">GGA — PBE</option>
+                        <option value="PBESOL">GGA — PBEsol</option>
+                        <option value="RPBE">GGA — RPBE</option>
+                        <option value="PW91">GGA — PW91</option>
+                        <option value="LDA">LDA — CA-PZ</option>
+                        <option value="HSE06">Hybrid — HSE06</option>
+                        <option value="B3LYP">Hybrid — B3LYP</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="castep-field-lbl">Plane-Wave Cut-off (eV)</label>
+                      <input type="number" id="castep-param-cutoff" class="castep-input" value="700" step="20" onchange="syncCastepParamFormToText()" />
+                    </div>
+                    <div>
+                      <label class="castep-field-lbl">SCF Tolerance (eV/atom)</label>
+                      <input type="text" id="castep-param-etol" class="castep-input" value="5.0e-7" onchange="syncCastepParamFormToText()" />
+                    </div>
+                    <div>
+                      <label class="castep-field-lbl">Max SCF Cycles</label>
+                      <input type="number" id="castep-param-maxscf" class="castep-input" value="200" onchange="syncCastepParamFormToText()" />
+                    </div>
+                    <div>
+                      <label class="castep-field-lbl">Geom Method</label>
+                      <select id="castep-param-geom-method" class="castep-input" onchange="syncCastepParamFormToText()">
+                        <option value="LBFGS">LBFGS</option>
+                        <option value="BFGS">BFGS</option>
+                        <option value="TPSD">TPSD</option>
+                        <option value="DampedMD">DampedMD</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="castep-field-lbl">Force Tolerance (eV/Å)</label>
+                      <input type="text" id="castep-param-ftol" class="castep-input" value="0.01" onchange="syncCastepParamFormToText()" />
+                    </div>
+                    <div>
+                      <label class="castep-field-lbl">DFT-D Dispersion</label>
+                      <select id="castep-param-sedc" class="castep-input" onchange="syncCastepParamFormToText()">
+                        <option value="G06">Grimme G06 (DFT-D2)</option>
+                        <option value="TS">Tkatchenko-Scheffler (TS)</option>
+                        <option value="OBS">Ortmann-Bechstedt-Schmidt</option>
+                        <option value="off">None (Off)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+                    <label class="castep-chk-lbl"><input type="checkbox" id="castep-param-spin" checked onchange="syncCastepParamFormToText()" /> Spin Polarized</label>
+                    <label class="castep-chk-lbl"><input type="checkbox" id="castep-param-soc" onchange="syncCastepParamFormToText()" /> Spin-Orbit (SOC)</label>
+                    <label class="castep-chk-lbl"><input type="checkbox" id="castep-param-elf" checked onchange="syncCastepParamFormToText()" /> Calculate ELF</label>
+                    <label class="castep-chk-lbl"><input type="checkbox" id="castep-param-hirsh" checked onchange="syncCastepParamFormToText()" /> Hirshfeld Analysis</label>
+                    <label class="castep-chk-lbl"><input type="checkbox" id="castep-param-pdos" checked onchange="syncCastepParamFormToText()" /> PDOS Weights</label>
+                  </div>
+                  <div style="display:flex; gap:6px; margin-top:12px;">
+                    <button type="button" class="btn btn-primary btn-sm" style="flex:1;" onclick="syncCastepParamFormToText(true)">
+                      ⚡ Update .param &amp; .cell Text
+                    </button>
+                    <button type="button" class="btn btn-teal btn-sm" onclick="saveCastepStructureToWorkingFolder()">
+                      💾 Save to Working Folder
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Right: Multi-File Code Inspector & Editor -->
+                <div class="castep-file-editor-card">
+                  <div class="castep-file-subtabs">
+                    <button type="button" class="castep-file-tab active" data-filetab="cell" onclick="switchCastepFileEditorTab('cell', this)">.cell (Structure &amp; K-Points)</button>
+                    <button type="button" class="castep-file-tab" data-filetab="param" onclick="switchCastepFileEditorTab('param', this)">.param (Parameters)</button>
+                    <button type="button" class="castep-file-tab" data-filetab="castep" onclick="switchCastepFileEditorTab('castep', this)">.castep (Output Log)</button>
+                    <button type="button" class="castep-file-tab" data-filetab="status" onclick="switchCastepFileEditorTab('status', this)">Status.txt</button>
+                    <button type="button" class="castep-file-tab" data-filetab="geom" onclick="switchCastepFileEditorTab('geom', this)">.geom (Trajectory)</button>
+                    <button type="button" class="castep-file-tab" data-filetab="xsd" onclick="switchCastepFileEditorTab('xsd', this)">.xsd (MS XML)</button>
+                    <button type="button" class="castep-file-tab" data-filetab="cif" onclick="switchCastepFileEditorTab('cif', this)">.cif</button>
+                    <button type="button" class="castep-file-tab" data-filetab="poscar" onclick="switchCastepFileEditorTab('poscar', this)">POSCAR</button>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 10px; background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+                    <span id="castep-file-editor-label" style="font-size:12px; font-weight:700; color:#334155; font-family:monospace;">ELF+Orbitals.cell</span>
+                    <div style="display:flex; gap:6px;">
+                      <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px;" onclick="applyCastepEditorTextToStructure()">🔄 Parse &amp; Apply to 3D Builder</button>
+                      <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px;" onclick="copyCastepEditorContent()">📋 Copy</button>
+                      <button type="button" class="btn btn-primary btn-sm" style="padding:3px 8px; font-size:11.5px;" onclick="downloadCurrentCastepEditorFile()">⬇️ Download</button>
+                    </div>
+                  </div>
+                  <textarea id="castep-file-editor-textarea" class="castep-code-textarea" spellcheck="false"></textarea>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -3992,8 +4754,8 @@
 
 <script src="jszip.min.js"></script>
   <script>if (typeof JSZip === "undefined") { document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"><\\/script>'); }</script>
-  <script src="matsci_tools.js?v=20261120_v114_persistent_session" onerror="this.src='/static/matsci_tools.js?v=20261120_v114_persistent_session"></script>
-  <script src="app.js?v=20261120_v114_persistent_session" onerror="this.src='/static/app.js?v=20261120_v114_persistent_session"></script>
+  <script src="matsci_tools.js?v=20261123_v115_castep_studio" onerror="this.src='/static/matsci_tools.js?v=20261123_v115_castep_studio"></script>
+  <script src="app.js?v=20261123_v115_castep_studio" onerror="this.src='/static/app.js?v=20261123_v115_castep_studio"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
