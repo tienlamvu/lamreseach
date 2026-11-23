@@ -11968,3 +11968,204 @@ sup {
   min-width: 0 !important;
   overflow: hidden !important;
 }
+
+/* ============================================================================
+   v121 Dock Balance & Zero Horizontal Overflow (Style, Cell & Slab, Adsorb, Objects)
+   ============================================================================ */
+.vesta-workspace-body {
+  grid-template-columns: 32px 268px minmax(0, 1fr) !important;
+}
+.vesta-left-dock {
+  min-width: 0 !important;
+  max-width: 268px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+.vesta-dock-tabs {
+  gap: 2px !important;
+  padding: 4px 4px 0 4px !important;
+}
+.vesta-dock-tab {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  padding: 5px 4px !important;
+  font-size: 10.2px !important;
+  white-space: nowrap !important;
+}
+.vesta-dock-pane {
+  padding: 7px 8px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+.vesta-fieldset {
+  padding: 6px 8px 8px 8px !important;
+  margin: 0 0 8px 0 !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+.vesta-fieldset legend {
+  font-size: 10.8px !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.vesta-prop-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 104px !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-size: 11px !important;
+  margin-bottom: 5px !important;
+}
+.vesta-prop-row > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vesta-prop-row input[type="range"] {
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+}
+.vesta-dock-input,
+.vesta-dock-select,
+.vesta-left-dock .castep-input,
+.vesta-left-dock .castep-input-sm {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 3.5px 5px !important;
+  font-size: 11px !important;
+  line-height: 1.3 !important;
+  height: 26px !important;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+}
+.vesta-dock-input::-webkit-outer-spin-button,
+.vesta-dock-input::-webkit-inner-spin-button,
+.vesta-left-dock input[type="number"]::-webkit-outer-spin-button,
+.vesta-left-dock input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.vesta-left-dock input[type="number"] {
+  -moz-appearance: textfield;
+}
+.vesta-num-center {
+  text-align: center !important;
+  padding: 3.5px 3px !important;
+}
+.vesta-bnd-grid {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) 10px minmax(0, 1fr);
+  gap: 4px;
+  align-items: center;
+}
+.vesta-bnd-lbl {
+  font-size: 11px;
+  font-weight: 800;
+  color: #334155;
+  text-align: right;
+}
+.vesta-bnd-dash {
+  font-size: 11px;
+  color: #64748b;
+  text-align: center;
+}
+.vesta-sc-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 10px minmax(0, 1fr) 10px minmax(0, 1fr) auto;
+  gap: 3px;
+  align-items: center;
+}
+.vesta-sc-x {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-align: center;
+}
+.vesta-lat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+.vesta-lat-grid > div {
+  min-width: 0;
+}
+.vesta-lat-grid .castep-field-lbl {
+  font-size: 10.5px !important;
+  margin-bottom: 2px !important;
+}
+.vesta-strain-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 5px;
+  align-items: center;
+}
+.vesta-hkl-row {
+  display: grid;
+  grid-template-columns: auto repeat(3, minmax(0, 1fr)) auto minmax(0, 1fr) auto;
+  gap: 3px;
+  align-items: center;
+}
+.vesta-vac-grid {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 6px;
+}
+.vesta-vac-grid > div {
+  min-width: 0;
+}
+.vesta-chip-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+.vesta-chip-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 3px;
+}
+.vesta-chip-grid-2 .castep-preset-chip,
+.vesta-chip-grid-4 .castep-preset-chip {
+  text-align: center;
+  padding: 3px 2px !important;
+  font-size: 10.5px !important;
+  min-width: 0;
+  white-space: nowrap;
+}
+.vesta-left-dock .castep-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 5px !important;
+}
+.vesta-left-dock .castep-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 5px !important;
+}
+.vesta-left-dock .castep-grid-2 > div,
+.vesta-left-dock .castep-grid-3 > div {
+  min-width: 0 !important;
+}
+.vesta-left-dock #vesta-objects-elements-list > div {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+/* Smooth subtle loading transition on active job card */
+.castep-job-item {
+  transition: border-color 0.14s ease, background-color 0.14s ease, box-shadow 0.14s ease;
+}
+.castep-job-item.loading-job {
+  opacity: 0.85;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
