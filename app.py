@@ -1679,6 +1679,287 @@ async def compare_word_documents_api(request: Request):
 
 
 # ============================================================================
+# Materials Studio & CASTEP Simulation Studio Endpoints (Local Machine Bridge)
+# ============================================================================
+
+CASTEP_DEFAULT_ROOTS = [
+    r"D:\DATA LAM\DATA TINH TOAN\2026",
+    r"C:\Users\Vu Tien Lam\Documents\Materials Studio Projects",
+    r"D:\Data_Server",
+    r"D:\DATA LAM\DATA TINH TOAN\2025",
+]
+
+def _detect_castep_processes():
+    import subprocess
+    procs = []
+    try:
+        out = subprocess.check_output(["tasklist", "/FO", "CSV"], text=True, errors="ignore", timeout=4)
+        for line in out.splitlines():
+            low = line.lower()
+            if any(k in low for k in ["matstudio.exe", "castep", "dmol", "mpiexec", "smpd", "gateway"]):
+                parts = [p.strip('"') for p in line.split('","')]
+                if len(parts) >= 5:
+                    procs.append({"name": parts[0], "pid": parts[1], "mem": parts[4]})
+    except Exception:
+        pass
+    return procs
+
+def _parse_xcd_file_backend(xml_text: str, is_band: bool = False):
+    if not xml_text:
+        return None
+    title_m = re.search(r'<TITLE[^>]*Text="([^"]*)"', xml_text)
+    title = title_m.group(1).replace("\\n", " ").strip() if title_m else ""
+    ax_x_m = re.search(r'<AXIS_X[^>]*Title="([^"]*)"', xml_text)
+    ax_y_m = re.search(r'<AXIS_Y[^>]*Title="([^"]*)"', xml_text)
+    ticks = []
+    for tm in re.finditer(r'<TICK_LABEL\s+Position="([^"]+)"\s+Text="([^"]+)"', xml_text):
+        try:
+            ticks.append({"pos": round(float(tm.group(1)), 5), "label": tm.group(2)})
+        except Exception:
+            pass
+    series_list = []
+    for sm in re.finditer(r'<SERIES_2D\s+UniqueID="(\d+)"\s+Name="([^"]*)"\s+NumPoints="(\d+)"[^>]*>(.*?)</SERIES_2D>', xml_text, re.DOTALL):
+        sname = sm.group(2).strip() or f"Series {sm.group(1)}"
+        body = sm.group(4)
+        segments = []
+        cur_seg = []
+        for pm in re.finditer(r'<POINT_2D\s+XY="([^,]+),([^"]+)"', body):
+            try:
+                x = float(pm.group(1))
+                y = float(pm.group(2))
+                if abs(y) > 1e100:
+                    if cur_seg:
+                        segments.append(cur_seg)
+                        cur_seg = []
+                else:
+                    cur_seg.append([round(x, 4), round(y, 4)])
+            except Exception:
+                pass
+        if cur_seg:
+            segments.append(cur_seg)
+        filtered = []
+        for seg in segments:
+            ys = [pt[1] for pt in seg]
+            if not ys:
+                continue
+            if is_band and (max(ys) < -8.0 or min(ys) > 8.0):
+                continue
+            filtered.append(seg)
+        series_list.append({"name": sname, "segments": filtered})
+    return {
+        "title": title,
+        "xLabel": ax_x_m.group(1) if ax_x_m else "",
+        "yLabel": ax_y_m.group(1) if ax_y_m else "",
+        "ticks": ticks,
+        "series": series_list,
+    }
+
+def _parse_castep_bands_backend(bands_path: str, e_window: float = 8.5):
+    if not os.path.exists(bands_path):
+        return None
+    HA_EV = 27.211386245988
+    try:
+        with open(bands_path, "r", encoding="latin1", errors="ignore") as f:
+            lines = f.readlines()
+        nk = 0; ns = 1; neig = 0; ef_ha = 0.0; nelec = 0.0
+        i = 0
+        while i < len(lines):
+            l = lines[i].strip()
+            if l.startswith("Number of k-points"):
+                nk = int(l.split()[-1])
+            elif l.startswith("Number of spin components"):
+                ns = int(l.split()[-1])
+            elif l.startswith("Number of electrons"):
+                nelec = float(l.split()[3])
+            elif l.startswith("Number of eigenvalues"):
+                neig = int(l.split()[3])
+            elif l.startswith("Fermi energ"):
+                ef_ha = float(l.split()[5])
+            elif l.startswith("Unit cell vectors"):
+                i += 4
+                break
+            i += 1
+        kpts = [None] * max(1, nk)
+        while i < len(lines):
+            l = lines[i].strip()
+            if l.startswith("K-point"):
+                p = l.split()
+                kidx = int(p[1]) - 1
+                kx, ky, kz, wt = float(p[2]), float(p[3]), float(p[4]), float(p[5])
+                i += 1
+                spins = []
+                for s in range(ns):
+                    if i < len(lines) and lines[i].strip().startswith("Spin component"):
+                        i += 1
+                    ev_list = []
+                    for b in range(neig):
+                        if i < len(lines):
+                            val_ha = float(lines[i].strip())
+                            ev_list.append(round((val_ha - ef_ha) * HA_EV, 4))
+                            i += 1
+                    spins.append(ev_list)
+                if 0 <= kidx < len(kpts):
+                    kpts[kidx] = {"k": [round(kx, 4), round(ky, 4), round(kz, 4)], "w": round(wt, 4), "e": spins}
+            else:
+                i += 1
+        kpts = [k for k in kpts if k is not None]
+        if not kpts:
+            return None
+        keep_bands = []
+        for b in range(neig):
+            vals = [kp["e"][0][b] for kp in kpts if b < len(kp["e"][0])]
+            if vals and max(vals) >= -e_window and min(vals) <= e_window:
+                keep_bands.append(b)
+        for kp in kpts:
+            kp["e"] = [[round(sp[b], 3) for b in keep_bands if b < len(sp)] for sp in kp["e"]]
+        return {
+            "nk": len(kpts),
+            "ns": ns,
+            "neig": len(keep_bands),
+            "total_bands": neig,
+            "nelec": nelec,
+            "ef_ha": round(ef_ha, 6),
+            "ef_ev": round(ef_ha * HA_EV, 4),
+            "kpoints": kpts,
+        }
+    except Exception:
+        return None
+
+
+@app.get("/api/castep/scan")
+def api_castep_scan(root_path: Optional[str] = None, limit: int = 80):
+    import time
+    roots = [root_path] if (root_path and os.path.exists(root_path)) else [r for r in CASTEP_DEFAULT_ROOTS if os.path.exists(r)]
+    procs = _detect_castep_processes()
+    discovered = []
+    for base in roots:
+        for cur_root, dirs, files in os.walk(base):
+            castep_files = [f for f in files if f.endswith((".cell", ".param", ".castep", "Status.txt", ".xcd", ".geom", ".bands"))]
+            if not any(f.endswith((".cell", ".castep")) for f in castep_files):
+                continue
+            cell_files = [f for f in files if f.endswith(".cell") and not f.endswith(("_BandStr.cell", "_DOS.cell", "_Optics.cell"))]
+            castep_logs = [f for f in files if f.endswith(".castep") and not f.endswith(("_BandStr.castep", "_DOS.castep", "_Optics.castep"))]
+            seed = ""
+            if castep_logs:
+                seed = castep_logs[0][:-7]
+            elif cell_files:
+                seed = cell_files[0][:-5]
+            elif any(f.endswith(".cell") for f in files):
+                seed = [f for f in files if f.endswith(".cell")][0][:-5]
+            if not seed:
+                continue
+            mtimes = []
+            for f in castep_files:
+                try:
+                    mtimes.append(os.path.getmtime(os.path.join(cur_root, f)))
+                except Exception:
+                    pass
+            max_mt = max(mtimes) if mtimes else 0
+            has_castep = os.path.exists(os.path.join(cur_root, f"{seed}.castep"))
+            has_status = os.path.exists(os.path.join(cur_root, "Status.txt"))
+            status_str = "Completed" if has_castep else ("Running" if has_status else "Input Ready")
+            if has_status and not has_castep:
+                status_str = "Running"
+            rel_proj = os.path.relpath(cur_root, base) if cur_root.startswith(base) else cur_root
+            discovered.append({
+                "id": "local_" + str(abs(hash(cur_root))),
+                "title": f"{seed} ({os.path.basename(cur_root)})",
+                "project": rel_proj.split(os.sep)[0] if os.sep in rel_proj else os.path.basename(base),
+                "folder": cur_root,
+                "seed": seed,
+                "status": status_str,
+                "mtime": max_mt,
+                "updated_at": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(max_mt)) if max_mt else "",
+                "files_list": sorted([f for f in files if not f.endswith((".castep_bin", ".cst_esp", ".chdiff", ".3ed", ".charg_frm", ".pdos_bin", ".check"))]),
+            })
+    discovered.sort(key=lambda x: x["mtime"], reverse=True)
+    return {
+        "processes": procs,
+        "roots": roots,
+        "total_found": len(discovered),
+        "jobs": discovered[:limit],
+    }
+
+
+@app.get("/api/castep/job")
+def api_castep_job_detail(folder: str, seed: Optional[str] = None):
+    import time
+    if not folder or not os.path.exists(folder):
+        raise HTTPException(status_code=404, detail=f"Job directory not found: {folder}")
+    all_files = sorted([f for f in os.listdir(folder) if os.path.isfile(os.path.join(folder, f))])
+    if not seed:
+        cells = [f[:-5] for f in all_files if f.endswith(".cell") and not f.endswith(("_BandStr.cell", "_DOS.cell"))]
+        casteps = [f[:-7] for f in all_files if f.endswith(".castep") and not f.endswith(("_BandStr.castep", "_DOS.castep"))]
+        seed = (casteps[0] if casteps else (cells[0] if cells else "CASTEP_Job"))
+
+    def _read(fname, limit_b=300000):
+        fp = os.path.join(folder, fname)
+        if not os.path.exists(fp):
+            return ""
+        with open(fp, "r", encoding="latin1", errors="ignore") as f:
+            return f.read(limit_b)
+
+    mtime = max([os.path.getmtime(os.path.join(folder, f)) for f in all_files]) if all_files else time.time()
+    band_xcd = _parse_xcd_file_backend(_read(f"{seed} Band Structure.xcd", 2000000), is_band=True)
+    dos_xcd = _parse_xcd_file_backend(_read(f"{seed} DOS.xcd", 1500000))
+    pdos_xcd = _parse_xcd_file_backend(_read(f"{seed} PDOS.xcd", 1500000))
+    conv_xcd = _parse_xcd_file_backend(_read(f"{seed} Convergence.xcd", 500000))
+    ener_xcd = _parse_xcd_file_backend(_read(f"{seed} Energies.xcd", 500000))
+
+    bandstr_bands = _parse_castep_bands_backend(os.path.join(folder, f"{seed}_BandStr.bands"))
+    dos_bands = _parse_castep_bands_backend(os.path.join(folder, f"{seed}_DOS.bands")) or _parse_castep_bands_backend(os.path.join(folder, f"{seed}.bands"))
+
+    return {
+        "folder": folder,
+        "seed": seed,
+        "updated_at": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(mtime)),
+        "files_list": all_files,
+        "cell_text": _read(f"{seed}.cell"),
+        "param_text": _read(f"{seed}.param"),
+        "castep_text": _read(f"{seed}.castep"),
+        "geom_text": _read(f"{seed}.geom"),
+        "status_text": _read("Status.txt"),
+        "xsd_text": _read(f"{seed}.xsd", 180000),
+        "conv_xcd": conv_xcd,
+        "ener_xcd": ener_xcd,
+        "band_xcd": band_xcd,
+        "dos_xcd": dos_xcd,
+        "pdos_xcd": pdos_xcd,
+        "bandstr_bands": bandstr_bands,
+        "dos_bands": dos_bands,
+    }
+
+
+@app.post("/api/castep/save")
+async def api_castep_save_files(request: Request):
+    body = await request.json()
+    folder = (body.get("folder") or "").strip()
+    subfolder = (body.get("subfolder") or "").strip()
+    files_dict = body.get("files") or {}
+    if not folder:
+        raise HTTPException(status_code=400, detail="Target folder path is required.")
+    target_dir = os.path.join(folder, subfolder) if subfolder else folder
+    try:
+        os.makedirs(target_dir, exist_ok=True)
+        saved_paths = []
+        for fname, content_str in files_dict.items():
+            safe_name = os.path.basename(fname)
+            if not safe_name:
+                continue
+            out_fp = os.path.join(target_dir, safe_name)
+            with open(out_fp, "w", encoding="utf-8", newline="\n") as f:
+                f.write(str(content_str))
+            saved_paths.append(out_fp)
+        return {
+            "ok": True,
+            "target_dir": target_dir,
+            "saved_files": saved_paths,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to write files to {target_dir}: {str(e)}")
+
+
+# ============================================================================
 # Static Frontend Serving (Supports both /static/* and relative paths for GitHub Pages)
 # ============================================================================
 
