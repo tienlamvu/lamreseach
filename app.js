@@ -14277,7 +14277,7 @@ function renderCrystal3D() {
     };
   }
 
-  // 1. VESTA Boundary Expansion
+  // 1. Exact Periodic Unit-Cell Boundary Expansion (only true face atoms <=0.012 / >=0.988 shifted by ±1.0 — zero teleportation!)
   const baseAtoms = CRYSTAL_3D_STATE.atoms || [];
   const hasAnions = baseAtoms.some(at => NON_METALS_SET.has(at.element));
   const expandedAtoms = [];
@@ -14285,26 +14285,26 @@ function renderCrystal3D() {
 
   baseAtoms.forEach((at) => {
     const elem = at.element || "X";
-    const x0 = Number(at.x) || 0;
-    const y0 = Number(at.y) || 0;
-    const z0 = Number(at.z) || 0;
+    const x0 = ((Number(at.x) || 0) % 1 + 1) % 1;
+    const y0 = ((Number(at.y) || 0) % 1 + 1) % 1;
+    const z0 = ((Number(at.z) || 0) % 1 + 1) % 1;
 
     const xs = [x0];
-    if (x0 < 0.04) xs.push(1.0);
-    else if (x0 > 0.96) xs.push(0.0);
+    if (x0 <= 0.012) xs.push(x0 + 1.0);
+    else if (x0 >= 0.988) xs.push(x0 - 1.0);
 
     const ys = [y0];
-    if (y0 < 0.04) ys.push(1.0);
-    else if (y0 > 0.96) ys.push(0.0);
+    if (y0 <= 0.012) ys.push(y0 + 1.0);
+    else if (y0 >= 0.988) ys.push(y0 - 1.0);
 
     const zs = [z0];
-    if (z0 < 0.04) zs.push(1.0);
-    else if (z0 > 0.96) zs.push(0.0);
+    if (z0 <= 0.012) zs.push(z0 + 1.0);
+    else if (z0 >= 0.988) zs.push(z0 - 1.0);
 
     xs.forEach(x => {
       ys.forEach(y => {
         zs.forEach(z => {
-          const key = `${elem}_${Math.round(x * 1000)}_${Math.round(y * 1000)}_${Math.round(z * 1000)}`;
+          const key = `${elem}_${Math.round(x * 500)}_${Math.round(y * 500)}_${Math.round(z * 500)}`;
           if (seenAtoms.has(key)) return;
           seenAtoms.add(key);
 
@@ -14327,7 +14327,7 @@ function renderCrystal3D() {
     });
   });
 
-  // 2. Chemical Bonds Detection
+  // 2. Accurate Chemical Bonds Detection
   const bonds = [];
   if (CRYSTAL_3D_STATE.showBonds && CRYSTAL_3D_STATE.style !== "space-fill") {
     for (let i = 0; i < expandedAtoms.length; i++) {
@@ -14338,7 +14338,7 @@ function renderCrystal3D() {
       for (let j = i + 1; j < expandedAtoms.length; j++) {
         const a2 = expandedAtoms[j];
         const isM2 = METALS_SET.has(a2.element);
-        if (hasAnions && isM1 && isM2) continue; // Filter spurious metal-metal bonds in ionic/semiconductors
+        if (hasAnions && isM1 && isM2) continue;
 
         const r2 = COVALENT_RADII[a2.element] || 1.25;
         const dx = a1.cartX - a2.cartX;
@@ -14346,8 +14346,9 @@ function renderCrystal3D() {
         const dz = a1.cartZ - a2.cartZ;
         const dist = Math.hypot(dx, dy, dz);
 
-        const maxBondDist = (r1 + r2) * 1.18;
-        if (dist > 0.5 && dist <= maxBondDist) {
+        const isBothNonMetal = !isM1 && !isM2;
+        const maxBondDist = Math.min(3.30, (r1 + r2) * (isBothNonMetal ? 1.12 : 1.15));
+        if (dist > 0.45 && dist <= maxBondDist) {
           bonds.push({
             p1: a1,
             p2: a2,
@@ -14394,33 +14395,39 @@ function renderCrystal3D() {
     });
   }
 
-  // 4. Add Bonds to Draw List
+  // 4. Add Half-Bond Depth-Sorted 3D Cylindrical Sticks to Draw List
   const isStick = CRYSTAL_3D_STATE.style === "stick";
   const isSpaceFill = CRYSTAL_3D_STATE.style === "space-fill";
-  const bondWidth = isStick ? Math.max(4.5, autoScale * 0.18) : Math.max(3.2, autoScale * 0.11);
+  const bondWidth = isStick ? Math.max(5.5, Math.min(18, autoScale * 0.28)) : Math.max(3.6, Math.min(13, autoScale * 0.21));
 
   bonds.forEach(b => {
+    const mx = (b.p1.sx + b.p2.sx) * 0.5;
+    const my = (b.p1.sy + b.p2.sy) * 0.5;
     drawList.push({
-      type: "bond",
-      p1: b.p1,
-      p2: b.p2,
-      color1: b.color1,
-      color2: b.color2,
-      bondWidth,
-      sz: b.sz
+      type: "half_bond",
+      x1: b.p1.sx, y1: b.p1.sy, x2: mx, y2: my,
+      color: b.color1, bondWidth,
+      sz: 0.68 * b.p1.sz + 0.32 * b.p2.sz - 0.04
+    });
+    drawList.push({
+      type: "half_bond",
+      x1: b.p2.sx, y1: b.p2.sy, x2: mx, y2: my,
+      color: b.color2, bondWidth,
+      sz: 0.32 * b.p1.sz + 0.68 * b.p2.sz - 0.04
     });
   });
 
   // 5. Add Atoms to Draw List
   expandedAtoms.forEach(at => {
+    const covR = COVALENT_RADII[at.element] || 1.20;
     let radius;
     if (isSpaceFill) {
-      radius = Math.max(16, getElementRadius(at.element) * (autoScale / 24) * 2.1);
+      radius = Math.max(12, covR * autoScale * 0.84);
     } else if (isStick) {
-      radius = Math.max(4, autoScale * 0.12);
+      radius = bondWidth * 0.54;
     } else {
-      // Ball & Stick (VESTA high-fidelity)
-      radius = Math.max(8, getElementRadius(at.element) * (autoScale / 24) * 0.95);
+      // Ball-and-stick proportional radii
+      radius = Math.max(bondWidth * 0.82, Math.min(30, covR * autoScale * 0.36));
     }
 
     drawList.push({
@@ -14441,64 +14448,53 @@ function renderCrystal3D() {
   drawList.forEach(item => {
     if (item.type === "edge") {
       ctx.beginPath();
-      ctx.strokeStyle = isWhite ? "rgba(71, 85, 105, 0.75)" : "#475569";
-      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = isWhite ? "rgba(71, 85, 105, 0.68)" : "rgba(148, 163, 184, 0.45)";
+      ctx.lineWidth = 1.1;
       ctx.moveTo(item.p1.sx, item.p1.sy);
       ctx.lineTo(item.p2.sx, item.p2.sy);
       ctx.stroke();
-    } else if (item.type === "bond") {
-      // Dual-Color 3D Shaded Cylinder (VESTA Style)
-      const p1 = item.p1, p2 = item.p2;
-      const dx = p2.sx - p1.sx;
-      const dy = p2.sy - p1.sy;
+    } else if (item.type === "half_bond") {
+      const dx = item.x2 - item.x1;
+      const dy = item.y2 - item.y1;
       const len = Math.hypot(dx, dy);
-      if (len < 1.0) return;
+      if (len < 0.8) return;
 
       const ux = dx / len, uy = dy / len;
       const nx = -uy, ny = ux;
-      const hw = item.bondWidth / 2;
-      const mx = (p1.sx + p2.sx) / 2;
-      const my = (p1.sy + p2.sy) / 2;
+      const hw = item.bondWidth * 0.5;
+      const mx = (item.x1 + item.x2) * 0.5;
+      const my = (item.y1 + item.y2) * 0.5;
+      const flip = (nx * -0.707 + ny * -0.707) < 0 ? -1 : 1;
+      const gnx = nx * flip, gny = ny * flip;
 
-      // First Half: P1 -> Mid (color1)
-      const grad1 = ctx.createLinearGradient(
-        mx - nx * hw, my - ny * hw,
-        mx + nx * hw, my + ny * hw
+      const grad = ctx.createLinearGradient(
+        mx + gnx * hw, my + gny * hw,
+        mx - gnx * hw, my - gny * hw
       );
-      grad1.addColorStop(0.0, darkenColor(item.color1, 0.45));
-      grad1.addColorStop(0.25, item.color1);
-      grad1.addColorStop(0.55, lightenColor(item.color1, 0.65));
-      grad1.addColorStop(0.85, item.color1);
-      grad1.addColorStop(1.0, darkenColor(item.color1, 0.4));
+      grad.addColorStop(0.00, darkenColor(item.color, 0.38));
+      grad.addColorStop(0.26, lightenColor(item.color, 0.52));
+      grad.addColorStop(0.54, item.color);
+      grad.addColorStop(0.86, darkenColor(item.color, 0.38));
+      grad.addColorStop(1.00, darkenColor(item.color, 0.52));
 
+      const ex = item.x2 + ux * 0.55, ey = item.y2 + uy * 0.55;
       ctx.beginPath();
-      ctx.moveTo(p1.sx - nx * hw, p1.sy - ny * hw);
-      ctx.lineTo(p1.sx + nx * hw, p1.sy + ny * hw);
-      ctx.lineTo(mx + nx * hw, my + ny * hw);
-      ctx.lineTo(mx - nx * hw, my - ny * hw);
+      ctx.moveTo(item.x1 - nx * hw, item.y1 - ny * hw);
+      ctx.lineTo(ex - nx * hw, ey - ny * hw);
+      ctx.lineTo(ex + nx * hw, ey + ny * hw);
+      ctx.lineTo(item.x1 + nx * hw, item.y1 + ny * hw);
       ctx.closePath();
-      ctx.fillStyle = grad1;
+      ctx.fillStyle = grad;
       ctx.fill();
 
-      // Second Half: Mid -> P2 (color2)
-      const grad2 = ctx.createLinearGradient(
-        mx - nx * hw, my - ny * hw,
-        mx + nx * hw, my + ny * hw
-      );
-      grad2.addColorStop(0.0, darkenColor(item.color2, 0.45));
-      grad2.addColorStop(0.25, item.color2);
-      grad2.addColorStop(0.55, lightenColor(item.color2, 0.65));
-      grad2.addColorStop(0.85, item.color2);
-      grad2.addColorStop(1.0, darkenColor(item.color2, 0.4));
-
       ctx.beginPath();
-      ctx.moveTo(mx - nx * hw, my - ny * hw);
-      ctx.lineTo(mx + nx * hw, my + ny * hw);
-      ctx.lineTo(p2.sx + nx * hw, p2.sy + ny * hw);
-      ctx.lineTo(p2.sx - nx * hw, p2.sy - ny * hw);
-      ctx.closePath();
-      ctx.fillStyle = grad2;
-      ctx.fill();
+      ctx.moveTo(item.x1 - nx * hw, item.y1 - ny * hw);
+      ctx.lineTo(ex - nx * hw, ey - ny * hw);
+      ctx.moveTo(item.x1 + nx * hw, item.y1 + ny * hw);
+      ctx.lineTo(ex + nx * hw, ey + ny * hw);
+      ctx.strokeStyle = isWhite ? "rgba(15, 23, 42, 0.34)" : "rgba(0, 0, 0, 0.55)";
+      ctx.lineWidth = 0.75;
+      ctx.stroke();
     } else if (item.type === "atom") {
       const radius = item.radius;
       const color = item.color;
