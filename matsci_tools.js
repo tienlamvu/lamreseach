@@ -253,9 +253,21 @@ const CASTEP_STUDIO_STATE = {
   activeFileEditorTab: "cell",
 
   gatewayConnected: false,
+  gatewayLiveHttp: false,
+  gatewaySource: "none",
+  gatewayUrl: "http://localhost:18888",
   gatewayHost: "",
   gatewayRoot: "",
+  gatewayPageGenerated: "",
   gatewayArchivedTotal: 0,
+  gatewayArchivedJobs: [],
+  gatewayArchivedLoaded: false,
+  gatewayServers: [],
+  gatewayData: [],
+  gatewaySortKey: "default",
+  gatewaySortAsc: true,
+  gatewayExpandedServer: "",
+  apiBase: "",
   localProcesses: [],
   localBackendConnected: false,
 
@@ -1149,12 +1161,14 @@ function initCastepStudioTab() {
       });
     }
 
-    // Only auto-probe local FastAPI server when running on localhost/127.0.0.1
+    // Auto-connect to local FastAPI bridge (same-origin on localhost, or quiet local bridge probe on GitHub Pages)
     const isLocalHost = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
     if (isLocalHost) {
-      autoConnectLocalCastepBackend();
+      CASTEP_STUDIO_STATE.apiBase = "";
+      autoConnectLocalCastepBackend("");
     } else {
       updateCastepConnectionPill(false, "Browser Mode • Click 📂 Mount Local Folder or 📥 Import Files");
+      probeLocalBridgeOnRemoteOrigin();
     }
   }
   renderCastepJobsList();
@@ -1172,6 +1186,43 @@ function initCastepStudioTab() {
 }
 window.initCastepStudioTab = initCastepStudioTab;
 
+function getCastepApiBase() {
+  if (["localhost", "127.0.0.1", "::1"].includes(window.location.hostname)) return "";
+  return CASTEP_STUDIO_STATE.apiBase || "";
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = 2500) {
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: ctrl.signal });
+  } finally {
+    clearTimeout(tid);
+  }
+}
+
+async function probeLocalBridgeOnRemoteOrigin() {
+  // Quietly test if the user is running the local FastAPI workstation bridge on http://127.0.0.1:8877
+  const bridgeBase = "http://127.0.0.1:8877";
+  try {
+    const gwUrl = (document.getElementById("ms-gw-url-input")?.value || CASTEP_STUDIO_STATE.gatewayUrl || "http://localhost:18888").trim();
+    const gwResp = await fetchWithTimeout(
+      `${bridgeBase}/api/castep/gateway?gateway_url=${encodeURIComponent(gwUrl)}&include_archived=false&limit=200`,
+      {},
+      3500
+    );
+    if (gwResp.ok) {
+      CASTEP_STUDIO_STATE.apiBase = bridgeBase;
+      const gwData = await gwResp.json();
+      applyGatewayApiPayload(gwData);
+      // Also auto-connect local CASTEP folder scan via the local bridge
+      autoConnectLocalCastepBackend(bridgeBase, true);
+    }
+  } catch (e) {
+    // Another PC without the local bridge -> stay cleanly in Browser Mode (0 jobs, Not Connected)
+  }
+}
+
 function updateCastepConnectionPill(connected, labelText) {
   const pill = document.getElementById("castep-machine-status-pill");
   if (!pill) return;
@@ -1188,45 +1239,57 @@ function updateCastepConnectionPill(connected, labelText) {
   }
 }
 
-async function autoConnectLocalCastepBackend() {
-  try {
-    const resp = await fetch("/api/castep/scan?limit=80");
-    if (resp.ok) {
-      const data = await resp.json();
-      CASTEP_STUDIO_STATE.localBackendConnected = true;
-      CASTEP_STUDIO_STATE.localProcesses = data.processes || [];
-      if (Array.isArray(data.roots) && data.roots.length > 0) {
-        const inp = document.getElementById("castep-root-path-input");
-        if (inp && !inp.value) inp.value = data.roots[0];
+async function autoConnectLocalCastepBackend(baseOverride = null, skipGateway = false) {
+  const apiBase = baseOverride !== null ? baseOverride : getCastepApiBase();
+
+  // 1) Fire Materials Studio Remote Gateway probe IMMEDIATELY in parallel (never wait behind slow disk scans!)
+  const gwPromise = (!skipGateway)
+    ? (async () => {
+        try {
+          const gwUrl = (document.getElementById("ms-gw-url-input")?.value || CASTEP_STUDIO_STATE.gatewayUrl || "http://localhost:18888").trim();
+          const gwResp = await fetchWithTimeout(
+            `${apiBase}/api/castep/gateway?gateway_url=${encodeURIComponent(gwUrl)}&include_archived=false&limit=250`,
+            {},
+            8000
+          );
+          if (gwResp.ok) {
+            const gwData = await gwResp.json();
+            applyGatewayApiPayload(gwData);
+          }
+        } catch (e) {}
+      })()
+    : Promise.resolve();
+
+  // 2) Simultaneously scan local calculation directories in the background
+  const scanPromise = (async () => {
+    try {
+      const resp = await fetch(`${apiBase}/api/castep/scan?limit=80`);
+      if (resp.ok) {
+        const data = await resp.json();
+        CASTEP_STUDIO_STATE.localBackendConnected = true;
+        CASTEP_STUDIO_STATE.localProcesses = data.processes || [];
+        if (Array.isArray(data.roots) && data.roots.length > 0) {
+          const inp = document.getElementById("castep-root-path-input");
+          if (inp && !inp.value) inp.value = data.roots[0];
+        }
+        if (Array.isArray(data.jobs) && data.jobs.length > 0) {
+          CASTEP_STUDIO_STATE.jobs = data.jobs.map(j => enrichCastepJobSummary(j));
+          renderCastepJobsList();
+          updateCastepKpiBar();
+          await loadCastepJobIntoStudio(CASTEP_STUDIO_STATE.jobs[0].id);
+        }
+        const procLabel = CASTEP_STUDIO_STATE.localProcesses.length
+          ? `${CASTEP_STUDIO_STATE.localProcesses[0].name} Active (${CASTEP_STUDIO_STATE.localProcesses.length} proc)`
+          : "Local Backend Connected";
+        updateCastepConnectionPill(true, `${procLabel} • ${CASTEP_STUDIO_STATE.jobs.length} Local Jobs`);
       }
-      if (Array.isArray(data.jobs) && data.jobs.length > 0) {
-        CASTEP_STUDIO_STATE.jobs = data.jobs.map(j => enrichCastepJobSummary(j));
-        renderCastepJobsList();
-        updateCastepKpiBar();
-        await loadCastepJobIntoStudio(CASTEP_STUDIO_STATE.jobs[0].id);
-      }
-      const procLabel = CASTEP_STUDIO_STATE.localProcesses.length
-        ? `${CASTEP_STUDIO_STATE.localProcesses[0].name} Active (${CASTEP_STUDIO_STATE.localProcesses.length} proc)`
-        : "Local Backend Connected";
-      updateCastepConnectionPill(true, `${procLabel} • ${CASTEP_STUDIO_STATE.jobs.length} Local Jobs`);
+    } catch (e) {
+      CASTEP_STUDIO_STATE.localBackendConnected = false;
+      updateCastepConnectionPill(false, "Browser Mode • Click 📂 Mount Local Folder or 📥 Import Files");
     }
-  } catch (e) {
-    CASTEP_STUDIO_STATE.localBackendConnected = false;
-    updateCastepConnectionPill(false, "Browser Mode • Click 📂 Mount Local Folder or 📥 Import Files");
-  }
-  // Quietly probe local BIOVIA Gateway daemon
-  try {
-    const gwResp = await fetch("/api/castep/gateway?include_archived=true&limit=120");
-    if (gwResp.ok) {
-      const gwData = await gwResp.json();
-      CASTEP_STUDIO_STATE.gatewayConnected = !!gwData.connected;
-      CASTEP_STUDIO_STATE.gatewayHost = gwData.gateway_host || "";
-      CASTEP_STUDIO_STATE.gatewayRoot = gwData.gateway_root || "";
-      CASTEP_STUDIO_STATE.gatewayArchivedTotal = gwData.archived_total || 0;
-      CASTEP_STUDIO_STATE.gatewayJobs = Array.isArray(gwData.jobs) ? gwData.jobs : [];
-      renderMsGatewayTable();
-    }
-  } catch (e) {}
+  })();
+
+  await Promise.allSettled([gwPromise, scanPromise]);
 }
 
 function enrichCastepJobSummary(job) {
@@ -1613,7 +1676,7 @@ async function loadCastepJobIntoStudio(jobId) {
       job._hydrated = true;
     } else if (job.folder && CASTEP_STUDIO_STATE.localBackendConnected) {
       try {
-        const resp = await fetch(`/api/castep/job?folder=${encodeURIComponent(job.folder)}&seed=${encodeURIComponent(job.seed || "")}`);
+        const resp = await fetch(`${getCastepApiBase()}/api/castep/job?folder=${encodeURIComponent(job.folder)}&seed=${encodeURIComponent(job.seed || "")}`);
         if (loadSeq !== CASTEP_STUDIO_STATE._jobLoadSeq) return;
         if (resp.ok) {
           const detail = await resp.json();
@@ -5480,7 +5543,7 @@ async function saveCastepStructureToWorkingFolder() {
 
   // 2) Try FastAPI local server endpoint /api/castep/save
   try {
-    const resp = await fetch("/api/castep/save", {
+    const resp = await fetch(`${getCastepApiBase()}/api/castep/save`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ folder, subfolder, files: filesPayload })
@@ -5643,9 +5706,11 @@ function getActiveStructureCellVolAndC() {
 
 async function scanCastepLocalMachineJobs() {
   const rootPath = (document.getElementById("castep-root-path-input")?.value || "").trim();
+  const base = getCastepApiBase() || (["localhost", "127.0.0.1", "::1"].includes(window.location.hostname) ? "" : "http://127.0.0.1:8877");
   try {
-    const resp = await fetch(`/api/castep/scan?root_path=${encodeURIComponent(rootPath)}&limit=120`);
+    const resp = await fetch(`${base}/api/castep/scan?root_path=${encodeURIComponent(rootPath)}&limit=120`);
     if (resp.ok) {
+      if (base) CASTEP_STUDIO_STATE.apiBase = base;
       const data = await resp.json();
       CASTEP_STUDIO_STATE.localBackendConnected = true;
       CASTEP_STUDIO_STATE.localProcesses = data.processes || [];
@@ -5695,7 +5760,8 @@ async function mountCastepLocalDirectory() {
       CASTEP_STUDIO_STATE.mountedDirName = dirHandle.name;
       const discovered = [];
       const sbjList = [];
-      await scanMountedDirectoryHandleRecursive(dirHandle, dirHandle.name, 0, discovered, sbjList);
+      const gwMeta = { active: [], archived: [], servers: [], gwInfo: null, gwParams: null };
+      await scanMountedDirectoryHandleRecursive(dirHandle, dirHandle.name, 0, discovered, sbjList, gwMeta);
 
       discovered.sort((a, b) => (b.mtime || 0) - (a.mtime || 0));
       if (discovered.length > 0) {
@@ -5704,11 +5770,8 @@ async function mountCastepLocalDirectory() {
         const existing = CASTEP_STUDIO_STATE.jobs.filter(j => !newKeys.has(`${j.folder}::${j.seed}`));
         CASTEP_STUDIO_STATE.jobs = [...discovered, ...existing];
       }
-      if (sbjList.length > 0) {
-        CASTEP_STUDIO_STATE.gatewayJobs = sbjList.sort((a, b) => (b.create_ts || 0) - (a.create_ts || 0));
-        CASTEP_STUDIO_STATE.gatewayConnected = true;
-        CASTEP_STUDIO_STATE.gatewayHost = `Mounted Folder (${dirHandle.name})`;
-        renderMsGatewayTable();
+      if (gwMeta.active.length > 0 || gwMeta.archived.length > 0 || gwMeta.servers.length > 0 || gwMeta.gwInfo) {
+        applyMountedGatewayData(dirHandle.name, gwMeta.active, gwMeta.archived, gwMeta.servers, gwMeta.gwInfo, gwMeta.gwParams);
       }
 
       renderCastepJobsList();
@@ -5746,8 +5809,10 @@ function parseSbjTextClient(sbjText, filename, isArchived = false) {
   const jid = filename.replace(/\.sbj$/i, "");
   const item = {
     job_id: jid, description: jid, server: "CASTEP", owner: "",
-    status: "terminated", create_ts: 0, submitted: "-", queue: "-",
-    queued_job_id: "-", process_id: "-", cpu_cores: 0, job_directory: "", is_archived: isArchived
+    status: "terminated", create_ts: 0, start_ts: 0, finish_ts: 0,
+    submitted: "-", queue: "-", queued_job_id: "-", process_id: "-",
+    cpu_cores: 0, job_directory: "", client_ip: "",
+    is_archived: isArchived, has_local_files: false
   };
   (sbjText || "").split(/\r?\n/).forEach(line => {
     const idx = line.indexOf("=");
@@ -5762,17 +5827,68 @@ function parseSbjTextClient(sbjText, filename, isArchived = false) {
       const ts = parseInt(v, 10);
       if (!isNaN(ts)) {
         item.create_ts = ts;
-        item.submitted = new Date(ts * 1000).toString().slice(0, 24);
+        const d = new Date(ts * 1000);
+        const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const mons = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const pad2 = n => String(n).padStart(2, "0");
+        item.submitted = `${days[d.getDay()]} ${mons[d.getMonth()]} ${d.getDate()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())} ${d.getFullYear()}`;
       }
-    } else if (k === "job-primary-processid") item.process_id = v;
+    } else if (k === "job-start") item.start_ts = parseInt(v, 10) || 0;
+    else if (k === "job-finish") item.finish_ts = parseInt(v, 10) || 0;
+    else if (k === "job-primary-processid") item.process_id = v;
     else if (k === "job-processid" && item.process_id === "-") item.process_id = v;
+    else if (k === "job-queue" && v) item.queue = v;
+    else if (k === "job-queued-id" && v) item.queued_job_id = v;
     else if (k === "job-cpu-number") item.cpu_cores = parseInt(v, 10) || 0;
     else if (k === "job-directory") item.job_directory = v;
+    else if (k === "job-client-ip") item.client_ip = v;
   });
   return item;
 }
 
-async function scanMountedDirectoryHandleRecursive(dirHandle, relPath, depth, discovered, sbjList) {
+function parseGwKvTextClient(text) {
+  const items = [];
+  const kv = {};
+  (text || "").split(/\r?\n/).forEach(raw => {
+    const line = raw.trim();
+    if (!line || line.startsWith("#")) return;
+    const idx = line.indexOf("=");
+    if (idx === -1) return;
+    const k = line.slice(0, idx).trim();
+    const v = line.slice(idx + 1).trim();
+    if (!k) return;
+    kv[k] = v;
+    items.push({ key: k, value: v });
+  });
+  return { items, kv };
+}
+
+function parseSbsTextClient(text, filename) {
+  const name = filename.replace(/\.sbs$/i, "");
+  const { items, kv } = parseGwKvTextClient(text);
+  const vmaj = kv.VersionMajor || "";
+  const vmin = kv.VersionMinor || "";
+  const rev = kv.Revision || "";
+  const verStr = vmaj ? `${vmaj}.${vmin}${rev ? "." + rev : ""}` : "Installed";
+  return {
+    name,
+    category: kv.Category || "Other",
+    description: kv.Description || `${name} Server Application`,
+    version: verStr,
+    build_date: kv.Builddate || "-",
+    executable: kv["server-executable"] || "",
+    shell: kv.shell || "",
+    wait_for_start: kv.WaitForStart || "",
+    timeout: kv.Timeout || "",
+    polling_interval: kv.MinimumPollingInterval || "",
+    max_cores: kv.MaxCoresPerProcessor || "0",
+    clean_tmp: kv.CleanTmp || "",
+    sbs_file: filename,
+    details: items
+  };
+}
+
+async function scanMountedDirectoryHandleRecursive(dirHandle, relPath, depth, discovered, sbjList, gwMeta = null) {
   if (depth > 10) return;
   const fileHandles = [];
   const subDirs = [];
@@ -5786,13 +5902,34 @@ async function scanMountedDirectoryHandleRecursive(dirHandle, relPath, depth, di
     }
   }
 
-  // Check for BIOVIA Gateway .sbj job files
+  // Check for BIOVIA Gateway metadata (.sbj, .sbs, gw-info.sbd, gwparams.cfg)
   const isArchDir = relPath.toLowerCase().includes("archive");
   for (const fh of fileHandles) {
-    if (fh.name.toLowerCase().endsWith(".sbj")) {
+    const low = fh.name.toLowerCase();
+    if (low.endsWith(".sbj")) {
       try {
         const f = await fh.getFile();
-        sbjList.push(parseSbjTextClient(await f.text(), fh.name, isArchDir));
+        const rec = parseSbjTextClient(await f.text(), fh.name, isArchDir);
+        sbjList.push(rec);
+        if (gwMeta) {
+          if (isArchDir) gwMeta.archived.push(rec);
+          else gwMeta.active.push(rec);
+        }
+      } catch (e) {}
+    } else if (gwMeta && low.endsWith(".sbs")) {
+      try {
+        const f = await fh.getFile();
+        gwMeta.servers.push(parseSbsTextClient(await f.text(), fh.name));
+      } catch (e) {}
+    } else if (gwMeta && low === "gw-info.sbd") {
+      try {
+        const f = await fh.getFile();
+        gwMeta.gwInfo = parseGwKvTextClient(await f.text());
+      } catch (e) {}
+    } else if (gwMeta && low === "gwparams.cfg") {
+      try {
+        const f = await fh.getFile();
+        gwMeta.gwParams = parseGwKvTextClient(await f.text());
       } catch (e) {}
     }
   }
@@ -5853,7 +5990,7 @@ async function scanMountedDirectoryHandleRecursive(dirHandle, relPath, depth, di
   }
 
   for (const sub of subDirs) {
-    await scanMountedDirectoryHandleRecursive(sub, `${relPath}/${sub.name}`, depth + 1, discovered, sbjList);
+    await scanMountedDirectoryHandleRecursive(sub, `${relPath}/${sub.name}`, depth + 1, discovered, sbjList, gwMeta);
   }
 }
 
@@ -6233,79 +6370,304 @@ function exportCastepElectronicCSV() {
 window.exportCastepElectronicCSV = exportCastepElectronicCSV;
 
 // ============================================================================
-// 9. Materials Studio Remote Gateway Jobs Manager (Live / Mounted .sbj Only)
+// 9. Materials Studio Remote Gateway Manager (Live HTTP + Local dsd / Mounted)
 // ============================================================================
+
+function applyGatewayApiPayload(data, mergeArchivedOnly = false) {
+  if (!data || typeof data !== "object") return;
+  CASTEP_STUDIO_STATE.gatewayConnected = !!data.connected;
+  CASTEP_STUDIO_STATE.gatewayLiveHttp = !!data.live_http_reachable;
+  CASTEP_STUDIO_STATE.gatewaySource = data.source || (data.connected ? "local_disk" : "none");
+  if (data.gateway_url) {
+    CASTEP_STUDIO_STATE.gatewayUrl = data.gateway_url;
+    const urlInp = document.getElementById("ms-gw-url-input");
+    if (urlInp && !urlInp.value) urlInp.value = data.gateway_url;
+  }
+  CASTEP_STUDIO_STATE.gatewayHost = data.gateway_host || "";
+  CASTEP_STUDIO_STATE.gatewayRoot = data.gateway_root || "";
+  CASTEP_STUDIO_STATE.gatewayPageGenerated = data.page_generated || "";
+  CASTEP_STUDIO_STATE.gatewayArchivedTotal = Number(data.archived_total || 0);
+  if (!mergeArchivedOnly) {
+    CASTEP_STUDIO_STATE.gatewayJobs = Array.isArray(data.jobs) ? data.jobs : [];
+    CASTEP_STUDIO_STATE.gatewayServers = Array.isArray(data.installed_servers) ? data.installed_servers : [];
+    CASTEP_STUDIO_STATE.gatewayData = Array.isArray(data.gateway_data) ? data.gateway_data : [];
+    if (Array.isArray(data.local_processes)) {
+      CASTEP_STUDIO_STATE.localProcesses = data.local_processes;
+    }
+  }
+  if (Array.isArray(data.archived_jobs) && data.archived_jobs.length > 0) {
+    CASTEP_STUDIO_STATE.gatewayArchivedJobs = data.archived_jobs;
+    CASTEP_STUDIO_STATE.gatewayArchivedLoaded = true;
+  } else if (!mergeArchivedOnly) {
+    CASTEP_STUDIO_STATE.gatewayArchivedJobs = [];
+    CASTEP_STUDIO_STATE.gatewayArchivedLoaded = false;
+  }
+  renderMsGatewayTable();
+}
 
 function switchMsGatewaySubView(viewKey, linkEl) {
   CASTEP_STUDIO_STATE.gatewaySubView = viewKey || "jobs";
   document.querySelectorAll(".ms-gw-nav-link").forEach(a => a.classList.remove("active"));
-  if (linkEl) linkEl.classList.add("active");
+  if (linkEl) {
+    linkEl.classList.add("active");
+  } else {
+    const match = document.querySelector(`.ms-gw-nav-link[data-gwview="${CASTEP_STUDIO_STATE.gatewaySubView}"]`);
+    if (match) match.classList.add("active");
+  }
   ["jobs", "servers", "data"].forEach(k => {
     const el = document.getElementById(`ms-gw-subview-${k}`);
     if (el) el.style.display = (k === CASTEP_STUDIO_STATE.gatewaySubView) ? "block" : "none";
   });
+  if (CASTEP_STUDIO_STATE.gatewaySubView === "servers") renderMsGatewayServers();
+  else if (CASTEP_STUDIO_STATE.gatewaySubView === "data") renderMsGatewayData();
+  else renderMsGatewayTable();
 }
 window.switchMsGatewaySubView = switchMsGatewaySubView;
 
-function filterMsGatewayJobs(filterKey, btnEl) {
+async function filterMsGatewayJobs(filterKey, btnEl) {
   CASTEP_STUDIO_STATE.gatewayFilter = filterKey || "all";
   document.querySelectorAll(".ms-gw-pill").forEach(b => b.classList.remove("active"));
   if (btnEl) btnEl.classList.add("active");
+  if (CASTEP_STUDIO_STATE.gatewaySubView !== "jobs") {
+    switchMsGatewaySubView("jobs");
+  }
+  // Lazy-fetch archived jobs from backend only when the user explicitly clicks Archived
+  if (
+    filterKey === "archived" &&
+    CASTEP_STUDIO_STATE.gatewayConnected &&
+    !CASTEP_STUDIO_STATE.gatewayArchivedLoaded &&
+    CASTEP_STUDIO_STATE.gatewayArchivedTotal > 0 &&
+    CASTEP_STUDIO_STATE.gatewaySource !== "mounted"
+  ) {
+    const apiBase = getCastepApiBase() || (["localhost", "127.0.0.1", "::1"].includes(window.location.hostname) ? "" : "http://127.0.0.1:8877");
+    const gwUrl = (document.getElementById("ms-gw-url-input")?.value || CASTEP_STUDIO_STATE.gatewayUrl || "http://localhost:18888").trim();
+    try {
+      const resp = await fetch(`${apiBase}/api/castep/gateway?gateway_url=${encodeURIComponent(gwUrl)}&include_archived=true&limit=250`);
+      if (resp.ok) {
+        const data = await resp.json();
+        applyGatewayApiPayload(data, true);
+      }
+    } catch (e) {}
+  }
   renderMsGatewayTable();
 }
 window.filterMsGatewayJobs = filterMsGatewayJobs;
 
+function sortMsGatewayJobs(key) {
+  if (CASTEP_STUDIO_STATE.gatewaySortKey === key) {
+    CASTEP_STUDIO_STATE.gatewaySortAsc = !CASTEP_STUDIO_STATE.gatewaySortAsc;
+  } else {
+    CASTEP_STUDIO_STATE.gatewaySortKey = key;
+    CASTEP_STUDIO_STATE.gatewaySortAsc = (key !== "create_ts");
+  }
+  renderMsGatewayTable();
+}
+window.sortMsGatewayJobs = sortMsGatewayJobs;
+
+function renderMsGatewayServers() {
+  const srvBody = document.getElementById("ms-gateway-servers-tbody");
+  const srvSummary = document.getElementById("ms-gw-servers-summary");
+  const detailBox = document.getElementById("ms-gw-server-detail-box");
+  if (!srvBody) return;
+
+  const servers = CASTEP_STUDIO_STATE.gatewayServers || [];
+  if (!CASTEP_STUDIO_STATE.gatewayConnected || servers.length === 0) {
+    if (srvSummary) srvSummary.textContent = "";
+    if (detailBox) detailBox.style.display = "none";
+    srvBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:18px; color:#64748b;">No Materials Studio Installed Servers loaded. Run the local FastAPI bridge on your Materials Studio workstation and click <strong>🔄 Refresh Gateway</strong>, or click <strong>📂 Mount Gateway Folder</strong> (select <code>dsd</code> or <code>Gateway-x64</code> containing <code>servers-info/*.sbs</code>).</td></tr>`;
+    return;
+  }
+
+  const q = (document.getElementById("ms-gw-server-search")?.value || "").trim().toLowerCase();
+  const vis = q
+    ? servers.filter(s => `${s.name} ${s.category} ${s.description}`.toLowerCase().includes(q))
+    : servers;
+
+  if (srvSummary) {
+    const cats = new Set(servers.map(s => s.category || "Other")).size;
+    srvSummary.textContent = `Showing ${vis.length} of ${servers.length} installed server modules across ${cats} categories — click any Server Name to inspect its .sbs configuration`;
+  }
+
+  if (!vis.length) {
+    srvBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:16px; color:#64748b;">No installed server matches "${escapeHtml(q)}".</td></tr>`;
+    return;
+  }
+
+  srvBody.innerHTML = vis.map(s => {
+    const isExp = CASTEP_STUDIO_STATE.gatewayExpandedServer === s.name;
+    return `
+      <tr${isExp ? ' style="outline:2px solid #0284c7;"' : ""}>
+        <td><a href="javascript:void(0)" class="ms-gw-jobid-link" onclick="toggleMsGatewayServerDetail('${escapeHtml(s.name)}')">${escapeHtml(s.name)}</a></td>
+        <td style="text-align:center;">${escapeHtml(s.category || "Other")}</td>
+        <td>${escapeHtml(s.description || `${s.name} Server Application`)}</td>
+        <td style="text-align:center;">${escapeHtml(s.version || "Installed")}</td>
+        <td style="text-align:center; white-space:nowrap;">${escapeHtml(s.build_date || "-")}</td>
+        <td style="text-align:center;"><span style="color:#15803d; font-weight:700;">● Installed</span></td>
+      </tr>
+    `;
+  }).join("");
+
+  // Render detail drawer for clicked server
+  if (detailBox) {
+    const sel = servers.find(s => s.name === CASTEP_STUDIO_STATE.gatewayExpandedServer);
+    if (sel) {
+      const rows = (sel.details && sel.details.length)
+        ? sel.details
+        : [
+            { key: "Category", value: sel.category || "-" },
+            { key: "Description", value: sel.description || "-" },
+            { key: "Version", value: sel.version || "-" },
+            { key: "Builddate", value: sel.build_date || "-" },
+            { key: "server-executable", value: sel.executable || "-" }
+          ];
+      detailBox.style.display = "block";
+      detailBox.innerHTML = `
+        <div class="ms-gw-server-detail-head">
+          <span>Server ${escapeHtml(sel.name)} — ${escapeHtml(sel.description || "")}</span>
+          <button type="button" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:11px;" onclick="toggleMsGatewayServerDetail('')">Close</button>
+        </div>
+        <table class="ms-gateway-table">
+          <thead><tr><th style="width:220px;">Parameter</th><th>Server ${escapeHtml(sel.name)} Configuration</th></tr></thead>
+          <tbody>
+            ${rows.map(r => `<tr><td><strong>${escapeHtml(r.key)}</strong></td><td style="word-break:break-all;">${escapeHtml(r.value)}</td></tr>`).join("")}
+          </tbody>
+        </table>
+      `;
+    } else {
+      detailBox.style.display = "none";
+    }
+  }
+}
+window.renderMsGatewayServers = renderMsGatewayServers;
+
+function toggleMsGatewayServerDetail(serverName) {
+  CASTEP_STUDIO_STATE.gatewayExpandedServer =
+    CASTEP_STUDIO_STATE.gatewayExpandedServer === serverName ? "" : (serverName || "");
+  renderMsGatewayServers();
+}
+window.toggleMsGatewayServerDetail = toggleMsGatewayServerDetail;
+
+function renderMsGatewayData() {
+  const dataBody = document.getElementById("ms-gateway-data-tbody");
+  if (!dataBody) return;
+
+  if (!CASTEP_STUDIO_STATE.gatewayConnected) {
+    dataBody.innerHTML = `
+      <tr><td><strong>Connection Status</strong></td><td>Not connected. On a device without a running local Materials Studio Gateway bridge, zero fake Gateway records are fabricated.</td></tr>
+      <tr><td><strong>How to Connect</strong></td><td>1) On your Materials Studio workstation, run <code>uvicorn app:app --host 127.0.0.1 --port 8877</code> and click <strong>🔄 Refresh Gateway</strong> (works from both localhost and GitHub Pages); OR<br/>2) Click <strong>📂 Mount Gateway Folder</strong> and select <code>C:\\ProgramData\\BIOVIA\\Materials Studio\\&lt;ver&gt;\\Gateway-x64\\root_default\\dsd</code> (containing <code>conf/gw-info.sbd</code>, <code>servers-info/*.sbs</code>, and <code>jobs-info/*.sbj</code>).</td></tr>
+    `;
+    return;
+  }
+
+  const gwData = CASTEP_STUDIO_STATE.gatewayData || [];
+  const srcLabel = CASTEP_STUDIO_STATE.gatewayLiveHttp
+    ? `Live Materials Studio HTTP Gateway (${CASTEP_STUDIO_STATE.gatewayUrl})`
+    : (CASTEP_STUDIO_STATE.gatewaySource === "mounted"
+      ? "Mounted Local Gateway Directory (Browser File System API)"
+      : "Local BIOVIA Gateway Disk Metadata (HTTP daemon stopped)");
+
+  const activeJobs = CASTEP_STUDIO_STATE.gatewayJobs || [];
+  const runCount = activeJobs.filter(j => /running|starting|queued/i.test(j.status || "")).length;
+  const procs = CASTEP_STUDIO_STATE.localProcesses || [];
+
+  let rowsHtml = "";
+  if (gwData.length > 0) {
+    rowsHtml += gwData.map(kv => `
+      <tr>
+        <td>${escapeHtml(kv.key)}</td>
+        <td style="word-break:break-word;">${escapeHtml(kv.value)}</td>
+      </tr>
+    `).join("");
+  } else {
+    rowsHtml += `<tr><td>gatewayname</td><td>${escapeHtml(CASTEP_STUDIO_STATE.gatewayHost || "-")}</td></tr>`;
+  }
+
+  rowsHtml += `
+    <tr class="ms-gw-section-row"><td colspan="2">Live Bridge &amp; Diagnostics Summary</td></tr>
+    <tr><td><strong>Data Source</strong></td><td>${escapeHtml(srcLabel)}</td></tr>
+    <tr><td><strong>Gateway Root Directory</strong></td><td><code>${escapeHtml(CASTEP_STUDIO_STATE.gatewayRoot || "Remote / Browser Mounted")}</code></td></tr>
+    <tr><td><strong>Current Gateway Jobs</strong></td><td><strong>${activeJobs.length}</strong> active/visible jobs (<strong>${runCount}</strong> running) • <strong>${CASTEP_STUDIO_STATE.gatewayArchivedTotal || 0}</strong> archived in <code>jobs-info-archive</code></td></tr>
+    <tr><td><strong>Installed Server Modules</strong></td><td><strong>${(CASTEP_STUDIO_STATE.gatewayServers || []).length}</strong> server modules detected</td></tr>
+    ${procs.length ? `<tr><td><strong>Active Workstation Processes</strong></td><td>${procs.map(p => `<code>${escapeHtml(p.name)}</code> (PID ${escapeHtml(p.pid)}, ${escapeHtml(p.mem)})`).join(" • ")}</td></tr>` : ""}
+    ${CASTEP_STUDIO_STATE.gatewayPageGenerated ? `<tr><td><strong>Gateway Timestamp</strong></td><td>${escapeHtml(CASTEP_STUDIO_STATE.gatewayPageGenerated)}</td></tr>` : ""}
+  `;
+  dataBody.innerHTML = rowsHtml;
+}
+window.renderMsGatewayData = renderMsGatewayData;
+
 function renderMsGatewayTable() {
-  const allJobs = CASTEP_STUDIO_STATE.gatewayJobs || [];
-  const runCount = allJobs.filter(j => /running|starting|queued/i.test(j.status)).length;
-  const elAll = document.getElementById("ms-gw-count-all");
-  const elRun = document.getElementById("ms-gw-count-run");
-  const elSide = document.getElementById("castep-sidebar-gw-count");
+  const activeJobs = CASTEP_STUDIO_STATE.gatewayJobs || [];
+  const archivedJobs = CASTEP_STUDIO_STATE.gatewayArchivedJobs || [];
+  const runCount = activeJobs.filter(j => /running|starting|queued/i.test(j.status || "")).length;
+  const compCount = activeJobs.filter(j => /completed|success/i.test(j.status || "")).length;
+  const termCount = activeJobs.filter(j => /terminated|stopped|failed/i.test(j.status || "")).length;
+  const archTotal = CASTEP_STUDIO_STATE.gatewayArchivedTotal || archivedJobs.length;
+
+  const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = String(v); };
+  setText("ms-gw-count-all", activeJobs.length);
+  setText("ms-gw-count-run", runCount);
+  setText("ms-gw-count-comp", compCount);
+  setText("ms-gw-count-term", termCount);
+  setText("ms-gw-count-arch", archTotal);
+  setText("castep-sidebar-gw-count", activeJobs.length);
+  setText("ms-gw-nav-job-count", activeJobs.length ? `(${activeJobs.length})` : "");
+  setText("ms-gw-nav-srv-count", (CASTEP_STUDIO_STATE.gatewayServers || []).length ? `(${CASTEP_STUDIO_STATE.gatewayServers.length})` : "");
+
   const elHost = document.getElementById("ms-gw-host-label");
-  if (elAll) elAll.textContent = String(allJobs.length);
-  if (elRun) elRun.textContent = String(runCount);
-  if (elSide) elSide.textContent = String(allJobs.length);
   if (elHost) {
     elHost.textContent = CASTEP_STUDIO_STATE.gatewayConnected && CASTEP_STUDIO_STATE.gatewayHost
       ? `Remote Gateway ${CASTEP_STUDIO_STATE.gatewayHost}`
       : "Remote Gateway (Not Connected)";
   }
 
-  // Update Servers & Gateway Data subviews dynamically
-  const srvBody = document.getElementById("ms-gateway-servers-tbody");
-  if (srvBody) {
-    if (CASTEP_STUDIO_STATE.gatewayConnected) {
-      const host = escapeHtml(CASTEP_STUDIO_STATE.gatewayHost || "Local Gateway");
-      const seenServers = [...new Set(allJobs.map(j => j.server).filter(Boolean))];
-      const srvList = seenServers.length ? seenServers : ["CASTEP", "DMol3", "Forcite"];
-      srvBody.innerHTML = srvList.map(sn => `
-        <tr><td><strong>${escapeHtml(sn)}</strong></td><td>BIOVIA Materials Studio Server Module</td><td>Installed</td><td>${host}</td><td>Detected</td><td><span style="color:#15803d; font-weight:700;">● Available</span></td></tr>
-      `).join("");
+  const badge = document.getElementById("ms-gw-source-badge");
+  if (badge) {
+    if (CASTEP_STUDIO_STATE.gatewayConnected && CASTEP_STUDIO_STATE.gatewayLiveHttp) {
+      badge.className = "ms-gw-source-badge live";
+      badge.textContent = "🟢 Live HTTP Connected";
+    } else if (CASTEP_STUDIO_STATE.gatewayConnected && CASTEP_STUDIO_STATE.gatewaySource === "mounted") {
+      badge.className = "ms-gw-source-badge disk";
+      badge.textContent = "📂 Mounted Folder";
+    } else if (CASTEP_STUDIO_STATE.gatewayConnected) {
+      badge.className = "ms-gw-source-badge disk";
+      badge.textContent = "💾 Local Disk dsd";
     } else {
-      srvBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:16px; color:#64748b;">No Materials Studio Gateway detected on this device. Click "📂 Mount Gateway Folder" (select <code>jobs-info</code> / <code>jobs-info-archive</code>) or run the local server on your calculation PC.</td></tr>`;
+      badge.className = "ms-gw-source-badge offline";
+      badge.textContent = "⚪ Not Connected";
     }
   }
 
-  const dataBody = document.getElementById("ms-gateway-data-tbody");
-  if (dataBody) {
-    if (CASTEP_STUDIO_STATE.gatewayConnected) {
-      dataBody.innerHTML = `
-        <tr><td><strong>Remote Gateway Host</strong></td><td><code>${escapeHtml(CASTEP_STUDIO_STATE.gatewayHost || "Local")}</code></td></tr>
-        <tr><td><strong>Gateway Directory</strong></td><td><code>${escapeHtml(CASTEP_STUDIO_STATE.gatewayRoot || "Mounted Browser Folder")}</code></td></tr>
-        <tr><td><strong>Loaded Job Records</strong></td><td>${allJobs.length} loaded (${CASTEP_STUDIO_STATE.gatewayArchivedTotal || 0} archived total)</td></tr>
-      `;
+  const extLink = document.getElementById("ms-gw-external-link");
+  if (extLink) {
+    if (CASTEP_STUDIO_STATE.gatewayConnected && CASTEP_STUDIO_STATE.gatewayLiveHttp && CASTEP_STUDIO_STATE.gatewayUrl) {
+      extLink.href = `${CASTEP_STUDIO_STATE.gatewayUrl.replace(/\/$/, "")}/dsd/commands/dsd_configuregw.pl?jobs=yes`;
+      extLink.style.display = "block";
     } else {
-      dataBody.innerHTML = `<tr><td><strong>Connection Status</strong></td><td>Not connected. On another computer without a local Materials Studio server, no Gateway jobs are fabricated.</td></tr>`;
+      extLink.style.display = "none";
     }
   }
+
+  const footerNote = document.getElementById("ms-gw-footer-note");
+  if (footerNote) {
+    footerNote.textContent = CASTEP_STUDIO_STATE.gatewayPageGenerated || (
+      CASTEP_STUDIO_STATE.gatewayConnected
+        ? `Showing ${activeJobs.length} current Gateway job(s) (${archTotal} archived) • Source: ${CASTEP_STUDIO_STATE.gatewaySource}`
+        : ""
+    );
+  }
+
+  // Keep Servers & Gateway Data subviews synced
+  renderMsGatewayServers();
+  renderMsGatewayData();
 
   const tbody = document.getElementById("ms-gateway-jobs-tbody");
   if (!tbody) return;
 
   const f = CASTEP_STUDIO_STATE.gatewayFilter || "all";
   const q = (document.getElementById("ms-gw-search-input")?.value || "").trim().toLowerCase();
+  const baseList = (f === "archived") ? archivedJobs : activeJobs;
 
-  const filtered = allJobs.filter(j => {
+  let filtered = baseList.filter(j => {
     const st = (j.status || "").toLowerCase();
     if (f === "running" && !/running|starting|queued/.test(st)) return false;
     if (f === "completed" && !/completed|success/.test(st)) return false;
@@ -6317,38 +6679,53 @@ function renderMsGatewayTable() {
     return true;
   });
 
+  // Column sorting
+  const sk = CASTEP_STUDIO_STATE.gatewaySortKey || "default";
+  const dir = CASTEP_STUDIO_STATE.gatewaySortAsc ? 1 : -1;
+  if (sk !== "default") {
+    filtered = [...filtered].sort((a, b) => {
+      if (sk === "create_ts") return ((a.create_ts || 0) - (b.create_ts || 0)) * dir;
+      if (sk === "process_id") return ((parseInt(a.process_id, 10) || 0) - (parseInt(b.process_id, 10) || 0)) * dir;
+      return String(a[sk] || "").localeCompare(String(b[sk] || "")) * dir;
+    });
+  }
+
   if (!filtered.length) {
-    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:22px; color:#475569;">${
-      allJobs.length === 0
-        ? "No Remote Gateway jobs loaded on this machine. Click <strong>📂 Mount Gateway Folder</strong> (containing <code>*.sbj</code> files) or run the local server and click <strong>🔄 Refresh Gateway</strong>."
-        : "No matching Remote Gateway jobs found for this filter."
-    }</td></tr>`;
+    const emptyMsg = !CASTEP_STUDIO_STATE.gatewayConnected
+      ? "No Remote Gateway connected on this machine. Click <strong>📂 Mount Gateway Folder</strong> (select <code>dsd</code> / <code>Gateway-x64</code> / <code>jobs-info</code>) or run the local FastAPI server and click <strong>🔄 Refresh Gateway</strong>."
+      : (f === "archived"
+        ? (archTotal > 0 ? "Archived jobs require local backend connection or mounting a folder containing <code>jobs-info-archive</code>." : "No archived Gateway jobs found.")
+        : (activeJobs.length === 0
+          ? "Connected to Materials Studio Remote Gateway — currently 0 active jobs in queue."
+          : "No matching Remote Gateway jobs found for this filter."));
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:22px; color:#475569;">${emptyMsg}</td></tr>`;
     return;
   }
 
   tbody.innerHTML = filtered.map(j => {
     const st = String(j.status || "terminated");
-    const isRunning = /running|starting/i.test(st);
+    const isRunning = /running|starting|queued/i.test(st);
     const isSuccess = /completed|success/i.test(st);
     const stStyle = isRunning
       ? "color:#15803d; font-weight:700;"
       : (isSuccess ? "color:#0369a1; font-weight:700;" : "color:#000000;");
+    const localBadge = j.has_local_files ? ' title="Click to open live Gateway job directory directly in Data Analysis Workbench"' : ' title="Locate matching job in Data Analysis Workbench"';
 
     return `
       <tr>
-        <td style="max-width:210px; line-height:1.35;">${escapeHtml(j.description || j.job_id)}</td>
+        <td style="max-width:210px; line-height:1.35;">${escapeHtml(j.description || j.job_id)}${j.is_archived ? ' <span style="font-size:10px; color:#64748b;">(archived)</span>' : ""}</td>
         <td style="text-align:center; vertical-align:top;">
-          <a href="javascript:void(0)" class="ms-gw-jobid-link" onclick="openMsGatewayJobInStudio('${escapeHtml(j.job_id)}')" title="Locate matching job in Data Analysis Workbench">${escapeHtml(j.job_id)}</a>
+          <a href="javascript:void(0)" class="ms-gw-jobid-link" onclick="openMsGatewayJobInStudio('${escapeHtml(j.job_id)}')"${localBadge}>${escapeHtml(j.job_id)}</a>
         </td>
         <td style="text-align:left;">${escapeHtml(j.server || "CASTEP")}</td>
         <td style="text-align:left;">${escapeHtml(j.owner || "-")}</td>
         <td style="text-align:left; ${stStyle}">${escapeHtml(st)}</td>
-        <td style="max-width:125px; line-height:1.3;">${escapeHtml(j.submitted || "-")}</td>
+        <td style="max-width:130px; line-height:1.3;">${escapeHtml(j.submitted || "-")}</td>
         <td style="text-align:center;">${escapeHtml(j.queue || "-")}</td>
         <td style="text-align:center;">${escapeHtml(j.queued_job_id || "-")}</td>
         <td style="text-align:left;">${escapeHtml(String(j.process_id || "-"))}</td>
         <td style="text-align:center; white-space:nowrap;">
-          <button type="button" class="ms-gw-remove-btn" onclick="removeMsGatewayJob('${escapeHtml(j.job_id)}')">Remove</button>
+          ${j.is_archived ? '<span style="font-size:11px; color:#64748b;">Archived</span>' : `<button type="button" class="ms-gw-remove-btn" onclick="removeMsGatewayJob('${escapeHtml(j.job_id)}')">Remove</button>`}
         </td>
       </tr>
     `;
@@ -6356,31 +6733,88 @@ function renderMsGatewayTable() {
 }
 window.renderMsGatewayTable = renderMsGatewayTable;
 
+const MS_GW_SKIP_DIRS = new Set(["jobs", "logs", "apache", "bin", "mpiruntime", "configurations", "graphics", "commands", "license", ".git", "node_modules"]);
+
+function applyMountedGatewayData(rootName, activeSbjs, archivedSbjs, sbsServers, gwInfoParsed, gwParamsParsed) {
+  activeSbjs.sort((a, b) => {
+    const ar = /running|starting|queued/i.test(a.status || "") ? 0 : 1;
+    const br = /running|starting|queued/i.test(b.status || "") ? 0 : 1;
+    if (ar !== br) return ar - br;
+    return (b.create_ts || 0) - (a.create_ts || 0);
+  });
+  archivedSbjs.sort((a, b) => (b.create_ts || 0) - (a.create_ts || 0));
+  sbsServers.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+
+  const gwKv = gwInfoParsed?.kv || {};
+  const gpKv = gwParamsParsed?.kv || {};
+  const gwItems = (gwInfoParsed?.items || []).filter(it => !it.key.startsWith("_") && it.key !== "versionmajor" && it.key !== "versionminor");
+  const hostName = gwKv.gatewayname || (gwKv.hostname && gwKv.port ? `${gwKv.hostname}_${gwKv.port}` : (gpKv.gw_hostname && gpKv.gw_port ? `${gpKv.gw_hostname}_${gpKv.gw_port}` : `Local Folder (${rootName})`));
+
+  CASTEP_STUDIO_STATE.gatewayJobs = activeSbjs;
+  CASTEP_STUDIO_STATE.gatewayArchivedJobs = archivedSbjs;
+  CASTEP_STUDIO_STATE.gatewayArchivedTotal = archivedSbjs.length;
+  CASTEP_STUDIO_STATE.gatewayArchivedLoaded = true;
+  CASTEP_STUDIO_STATE.gatewayServers = sbsServers;
+  CASTEP_STUDIO_STATE.gatewayData = gwItems;
+  CASTEP_STUDIO_STATE.gatewayConnected = (activeSbjs.length > 0 || archivedSbjs.length > 0 || sbsServers.length > 0 || gwItems.length > 0);
+  CASTEP_STUDIO_STATE.gatewayLiveHttp = false;
+  CASTEP_STUDIO_STATE.gatewaySource = "mounted";
+  CASTEP_STUDIO_STATE.gatewayHost = hostName;
+  CASTEP_STUDIO_STATE.gatewayRoot = rootName;
+  CASTEP_STUDIO_STATE.gatewayPageGenerated = `Loaded from mounted folder "${rootName}" (${activeSbjs.length} active jobs, ${archivedSbjs.length} archived, ${sbsServers.length} servers)`;
+  renderMsGatewayTable();
+}
+
 async function mountMsGatewayFolder() {
   if (typeof window.showDirectoryPicker === "function") {
     try {
       const dirHandle = await window.showDirectoryPicker({ mode: "read" });
-      const sbjList = [];
-      const walkSbj = async (dh, rel, depth) => {
-        if (depth > 4) return;
+      const activeSbjs = [];
+      const archivedSbjs = [];
+      const sbsServers = [];
+      let gwInfoParsed = null;
+      let gwParamsParsed = null;
+
+      const walkGw = async (dh, rel, depth) => {
+        if (depth > 6) return;
         for await (const entry of dh.values()) {
-          if (entry.kind === "file" && entry.name.toLowerCase().endsWith(".sbj")) {
-            const f = await entry.getFile();
-            sbjList.push(parseSbjTextClient(await f.text(), entry.name, rel.toLowerCase().includes("archive")));
+          const low = entry.name.toLowerCase();
+          if (entry.kind === "file") {
+            if (low.endsWith(".sbj")) {
+              const f = await entry.getFile();
+              const isArch = rel.toLowerCase().includes("archive");
+              const rec = parseSbjTextClient(await f.text(), entry.name, isArch);
+              if (isArch) archivedSbjs.push(rec);
+              else activeSbjs.push(rec);
+            } else if (low.endsWith(".sbs")) {
+              const f = await entry.getFile();
+              sbsServers.push(parseSbsTextClient(await f.text(), entry.name));
+            } else if (low === "gw-info.sbd") {
+              const f = await entry.getFile();
+              gwInfoParsed = parseGwKvTextClient(await f.text());
+            } else if (low === "gwparams.cfg") {
+              const f = await entry.getFile();
+              gwParamsParsed = parseGwKvTextClient(await f.text());
+            }
           } else if (entry.kind === "directory") {
-            await walkSbj(entry, `${rel}/${entry.name}`, depth + 1);
+            if (!MS_GW_SKIP_DIRS.has(low) && !low.startsWith(".")) {
+              await walkGw(entry, `${rel}/${entry.name}`, depth + 1);
+            }
           }
         }
       };
-      await walkSbj(dirHandle, dirHandle.name, 0);
-      sbjList.sort((a, b) => (b.create_ts || 0) - (a.create_ts || 0));
-      CASTEP_STUDIO_STATE.gatewayJobs = sbjList;
-      CASTEP_STUDIO_STATE.gatewayConnected = sbjList.length > 0;
-      CASTEP_STUDIO_STATE.gatewayHost = `Local Folder (${dirHandle.name})`;
-      CASTEP_STUDIO_STATE.gatewayRoot = dirHandle.name;
-      renderMsGatewayTable();
+
+      await walkGw(dirHandle, dirHandle.name, 0);
+      applyMountedGatewayData(dirHandle.name, activeSbjs, archivedSbjs, sbsServers, gwInfoParsed, gwParamsParsed);
+
       if (typeof showToast === "function") {
-        showToast(sbjList.length ? `🖥️ Loaded ${sbjList.length} Gateway job(s) from "${dirHandle.name}".` : `No *.sbj Gateway files found in "${dirHandle.name}".`, sbjList.length ? "success" : "warning");
+        const total = activeSbjs.length + archivedSbjs.length + sbsServers.length + (gwInfoParsed ? 1 : 0);
+        showToast(
+          total > 0
+            ? `🖥️ Mounted Gateway "${dirHandle.name}": ${activeSbjs.length} active jobs, ${archivedSbjs.length} archived, ${sbsServers.length} installed servers!`
+            : `No Materials Studio Gateway metadata (*.sbj, *.sbs, gw-info.sbd) found in "${dirHandle.name}".`,
+          total > 0 ? "success" : "warning"
+        );
       }
       return;
     } catch (e) {
@@ -6392,74 +6826,164 @@ async function mountMsGatewayFolder() {
 window.mountMsGatewayFolder = mountMsGatewayFolder;
 
 async function handleMsGatewayFolderUpload(event) {
-  const files = Array.from(event.target?.files || []).filter(f => f.name.toLowerCase().endsWith(".sbj"));
-  const sbjList = [];
-  for (const f of files) {
-    sbjList.push(parseSbjTextClient(await f.text(), f.name, (f.webkitRelativePath || "").toLowerCase().includes("archive")));
+  const allFiles = Array.from(event.target?.files || []);
+  const activeSbjs = [];
+  const archivedSbjs = [];
+  const sbsServers = [];
+  let gwInfoParsed = null;
+  let gwParamsParsed = null;
+  let rootName = "Mounted Gateway Folder";
+
+  for (const f of allFiles) {
+    const rel = (f.webkitRelativePath || f.name).replace(/\\/g, "/");
+    if (rootName === "Mounted Gateway Folder" && rel.includes("/")) {
+      rootName = rel.split("/")[0];
+    }
+    const low = f.name.toLowerCase();
+    if (low.endsWith(".sbj")) {
+      const isArch = rel.toLowerCase().includes("archive");
+      const rec = parseSbjTextClient(await f.text(), f.name, isArch);
+      if (isArch) archivedSbjs.push(rec);
+      else activeSbjs.push(rec);
+    } else if (low.endsWith(".sbs")) {
+      sbsServers.push(parseSbsTextClient(await f.text(), f.name));
+    } else if (low === "gw-info.sbd") {
+      gwInfoParsed = parseGwKvTextClient(await f.text());
+    } else if (low === "gwparams.cfg") {
+      gwParamsParsed = parseGwKvTextClient(await f.text());
+    }
   }
-  sbjList.sort((a, b) => (b.create_ts || 0) - (a.create_ts || 0));
-  CASTEP_STUDIO_STATE.gatewayJobs = sbjList;
-  CASTEP_STUDIO_STATE.gatewayConnected = sbjList.length > 0;
-  CASTEP_STUDIO_STATE.gatewayHost = "Uploaded Gateway Folder";
-  renderMsGatewayTable();
+  applyMountedGatewayData(rootName, activeSbjs, archivedSbjs, sbsServers, gwInfoParsed, gwParamsParsed);
   event.target.value = "";
 }
 window.handleMsGatewayFolderUpload = handleMsGatewayFolderUpload;
 
-function openMsGatewayJobInStudio(gwJobId) {
-  const gwJob = (CASTEP_STUDIO_STATE.gatewayJobs || []).find(j => j.job_id === gwJobId);
+async function openMsGatewayJobInStudio(gwJobId) {
+  const allGw = [...(CASTEP_STUDIO_STATE.gatewayJobs || []), ...(CASTEP_STUDIO_STATE.gatewayArchivedJobs || [])];
+  const gwJob = allGw.find(j => j.job_id === gwJobId);
   if (!gwJob) return;
+
+  // 1) Check if matching job already exists in workspace
   const jobs = CASTEP_STUDIO_STATE.jobs || [];
   const desc = (gwJob.description || "").toLowerCase();
   const baseToken = desc.split(/\s+castep\s+/i)[0].trim();
   const targetStudioJob = jobs.find(j =>
     j.gateway_job_id === gwJobId ||
-    (baseToken && ((j.seed || "").toLowerCase().includes(baseToken) || (j.title || "").toLowerCase().includes(baseToken)))
+    (gwJob.job_directory && j.folder && j.folder.toLowerCase() === gwJob.job_directory.toLowerCase()) ||
+    (baseToken && ((j.seed || "").toLowerCase() === baseToken || (j.title || "").toLowerCase().includes(baseToken)))
   );
-
   if (targetStudioJob) {
-    loadCastepJobIntoStudio(targetStudioJob.id);
+    await loadCastepJobIntoStudio(targetStudioJob.id);
     const nextPane = (/optical/i.test(desc)) ? "optics" : "builder";
     switchCastepStagePane(nextPane);
-    if (typeof showToast === "function") showToast(`🖥️ Opened matching job "${targetStudioJob.title}"!`, "success");
-  } else if (typeof showToast === "function") {
-    showToast(`Job ${gwJobId} (${gwJob.description}) is not mounted in your workspace yet. Mount its project folder to inspect outputs.`, "info");
+    if (typeof showToast === "function") showToast(`🖥️ Opened workspace job "${targetStudioJob.title}"!`, "success");
+    return;
+  }
+
+  // 2) Load directly from local Gateway job working folder via FastAPI bridge!
+  if (CASTEP_STUDIO_STATE.gatewayConnected && CASTEP_STUDIO_STATE.gatewaySource !== "mounted") {
+    const apiBase = getCastepApiBase() || (["localhost", "127.0.0.1", "::1"].includes(window.location.hostname) ? "" : "http://127.0.0.1:8877");
+    try {
+      const resp = await fetch(`${apiBase}/api/castep/gateway/job/${encodeURIComponent(gwJobId)}`);
+      if (resp.ok) {
+        const detail = await resp.json();
+        const newJobId = `gw_${gwJobId}`;
+        const existingIdx = CASTEP_STUDIO_STATE.jobs.findIndex(j => j.id === newJobId);
+        const enriched = enrichCastepJobSummary({
+          ...detail,
+          id: newJobId,
+          gateway_job_id: gwJobId,
+          title: `${gwJob.description || detail.seed} [GW ${gwJobId}]`,
+          project: `Gateway ${CASTEP_STUDIO_STATE.gatewayHost || "18888"}`,
+          _hydrated: true
+        });
+        if (existingIdx >= 0) CASTEP_STUDIO_STATE.jobs[existingIdx] = enriched;
+        else CASTEP_STUDIO_STATE.jobs.unshift(enriched);
+        renderCastepJobsList();
+        updateCastepKpiBar();
+        await loadCastepJobIntoStudio(newJobId);
+        switchCastepStagePane("builder");
+        if (typeof showToast === "function") {
+          showToast(`🖥️ Loaded live Gateway job ${gwJobId} (${detail.seed}, ${(detail.files_list || []).length} files) directly into Data Analysis Workbench!`, "success");
+        }
+        return;
+      }
+    } catch (e) {}
+  }
+
+  if (typeof showToast === "function") {
+    showToast(`Job ${gwJobId} (${gwJob.description}) working files are not available locally. Mount its project folder to inspect outputs.`, "info");
   }
 }
 window.openMsGatewayJobInStudio = openMsGatewayJobInStudio;
 
-function removeMsGatewayJob(gwJobId) {
+async function removeMsGatewayJob(gwJobId) {
+  const gwJob = (CASTEP_STUDIO_STATE.gatewayJobs || []).find(j => j.job_id === gwJobId);
+  if (!gwJob) return;
+
+  if (CASTEP_STUDIO_STATE.gatewayLiveHttp && CASTEP_STUDIO_STATE.gatewaySource !== "mounted") {
+    const ok = window.confirm(`Remove job ${gwJobId} ("${gwJob.description}") from live Materials Studio Remote Gateway (${CASTEP_STUDIO_STATE.gatewayHost})?`);
+    if (!ok) return;
+    const apiBase = getCastepApiBase() || (["localhost", "127.0.0.1", "::1"].includes(window.location.hostname) ? "" : "http://127.0.0.1:8877");
+    const gwUrl = (document.getElementById("ms-gw-url-input")?.value || CASTEP_STUDIO_STATE.gatewayUrl || "http://localhost:18888").trim();
+    try {
+      const resp = await fetch(`${apiBase}/api/castep/gateway/remove`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job_id: gwJobId, gateway_url: gwUrl })
+      });
+      if (resp.ok) {
+        CASTEP_STUDIO_STATE.gatewayJobs = (CASTEP_STUDIO_STATE.gatewayJobs || []).filter(j => j.job_id !== gwJobId);
+        renderMsGatewayTable();
+        if (typeof showToast === "function") showToast(`🗑️ Removed job ${gwJobId} from Materials Studio Remote Gateway.`, "success");
+        return;
+      }
+    } catch (e) {}
+  }
+
   CASTEP_STUDIO_STATE.gatewayJobs = (CASTEP_STUDIO_STATE.gatewayJobs || []).filter(j => j.job_id !== gwJobId);
   renderMsGatewayTable();
+  if (typeof showToast === "function") showToast(`Hid job ${gwJobId} from current Gateway view.`, "info");
 }
 window.removeMsGatewayJob = removeMsGatewayJob;
 
 async function refreshMsGatewayJobsFromServer() {
-  try {
-    const resp = await fetch("/api/castep/gateway?include_archived=true&limit=120");
-    if (resp.ok) {
-      const data = await resp.json();
-      CASTEP_STUDIO_STATE.gatewayConnected = !!data.connected;
-      CASTEP_STUDIO_STATE.gatewayHost = data.gateway_host || "";
-      CASTEP_STUDIO_STATE.gatewayRoot = data.gateway_root || "";
-      CASTEP_STUDIO_STATE.gatewayArchivedTotal = data.archived_total || 0;
-      CASTEP_STUDIO_STATE.gatewayJobs = Array.isArray(data.jobs) ? data.jobs : [];
-      renderMsGatewayTable();
-      if (typeof showToast === "function") {
-        showToast(
-          data.connected
-            ? `🔄 Synchronized ${CASTEP_STUDIO_STATE.gatewayJobs.length} jobs from local Remote Gateway ${data.gateway_host}!`
-            : "Materials Studio Remote Gateway was not detected on this computer.",
-          data.connected ? "success" : "info"
-        );
+  const gwUrl = (document.getElementById("ms-gw-url-input")?.value || CASTEP_STUDIO_STATE.gatewayUrl || "http://localhost:18888").trim();
+  CASTEP_STUDIO_STATE.gatewayUrl = gwUrl;
+  const includeArch = (CASTEP_STUDIO_STATE.gatewayFilter === "archived");
+  const isLocal = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+  const candidates = isLocal ? [""] : (CASTEP_STUDIO_STATE.apiBase ? [CASTEP_STUDIO_STATE.apiBase] : ["http://127.0.0.1:8877"]);
+
+  for (const base of candidates) {
+    try {
+      const resp = await fetchWithTimeout(
+        `${base}/api/castep/gateway?gateway_url=${encodeURIComponent(gwUrl)}&include_archived=${includeArch ? "true" : "false"}&limit=250`,
+        {},
+        8000
+      );
+      if (resp.ok) {
+        if (!isLocal) CASTEP_STUDIO_STATE.apiBase = base;
+        const data = await resp.json();
+        applyGatewayApiPayload(data);
+        if (typeof showToast === "function") {
+          showToast(
+            data.connected
+              ? `🔄 Synced ${CASTEP_STUDIO_STATE.gatewayJobs.length} live jobs, ${(data.installed_servers || []).length} servers & ${(data.gateway_data || []).length} Gateway properties from ${data.gateway_host}!`
+              : `Materials Studio Remote Gateway not reachable at ${gwUrl}.`,
+            data.connected ? "success" : "warning"
+          );
+        }
+        return;
       }
-      return;
-    }
-  } catch (e) {}
+    } catch (e) {}
+  }
+
   CASTEP_STUDIO_STATE.gatewayConnected = false;
+  CASTEP_STUDIO_STATE.gatewayLiveHttp = false;
+  CASTEP_STUDIO_STATE.gatewaySource = "none";
   renderMsGatewayTable();
   if (typeof showToast === "function") {
-    showToast("Local Gateway backend not reachable. Use '📂 Mount Gateway Folder' to load *.sbj job records directly.", "info");
+    showToast("Local FastAPI Gateway bridge (127.0.0.1:8877) not reachable. Click '📂 Mount Gateway Folder' to load dsd / jobs-info directly in browser.", "info");
   }
 }
 window.refreshMsGatewayJobsFromServer = refreshMsGatewayJobsFromServer;
@@ -8433,7 +8957,7 @@ async function loadJobChargFrmIntoChdiff() {
   }
   if (CASTEP_STUDIO_STATE.localBackendConnected && job.folder) {
     try {
-      const resp = await fetch(`/api/castep/charg-frm?folder=${encodeURIComponent(job.folder)}&filename=${encodeURIComponent(fname)}&seed=${encodeURIComponent(job.seed || "")}`);
+      const resp = await fetch(`${getCastepApiBase()}/api/castep/charg-frm?folder=${encodeURIComponent(job.folder)}&filename=${encodeURIComponent(fname)}&seed=${encodeURIComponent(job.seed || "")}`);
       if (resp.ok) {
         const gridObj = await resp.json();
         buildIsosurfaceVoxelsOnGrid(gridObj);
