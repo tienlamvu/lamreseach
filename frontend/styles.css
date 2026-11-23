@@ -11519,7 +11519,7 @@ sup {
 /* ============================================================================
    Menu & Toolbar Margin Overflow Prevention + Materials Studio Gateway UI (v117)
    ============================================================================ */
-.content-container, #tab-castep, .castep-studio-workbench, .castep-main-stage,
+#tab-castep, .castep-studio-workbench, .castep-main-stage,
 .vesta-workspace-body, .vesta-main-viewport-col {
   max-width: 100%;
   min-width: 0;
@@ -11771,5 +11771,133 @@ sup {
   border-left: 2px solid #404040;
   border-right: 2px solid #ffffff;
   border-bottom: 2px solid #ffffff;
+}
+
+
+/* ============================================================================
+   Unified Balanced Page Container Margins Across All Tabs & Header (v118)
+   ============================================================================ */
+:root {
+  --page-max-width: 1280px;
+}
+
+.header-upper,
+.horizontal-tabs,
+.content-container {
+  max-width: var(--page-max-width) !important;
+  width: calc(100% - 72px) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  padding-left: 20px !important;
+  padding-right: 20px !important;
+  box-sizing: border-box !important;
+}
+
+.content-container {
+  padding-top: 22px !important;
+  padding-bottom: 52px !important;
+}
+
+/* Ensure every tab pane and sub-page (including News article view and Data Analysis)
+   aligns identically to the shared content-container margins */
+.tab-pane,
+#tab-dashboard,
+#tab-news,
+#tab-literature,
+#tab-calendar,
+#tab-structures,
+#tab-castep,
+#tab-weekly-report,
+#tab-manuscript,
+#tab-toolkit,
+#tab-cv,
+.news-full-paper-page {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* Single-row balanced top navigation tabs (even with 10 tabs in Admin mode) */
+.horizontal-tabs {
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+  gap: 4px !important;
+  flex-wrap: nowrap !important;
+  justify-content: space-between !important;
+  overflow-x: auto !important;
+  scrollbar-width: none !important;
+}
+.horizontal-tabs::-webkit-scrollbar {
+  display: none !important;
+}
+.nav-btn {
+  flex: 1 1 auto !important;
+  justify-content: center !important;
+  padding: 7px 8px !important;
+  font-size: 12.2px !important;
+  gap: 5px !important;
+  white-space: nowrap !important;
+}
+.nav-btn .nav-icon {
+  font-size: 13px !important;
+}
+
+/* Balanced Data Analysis workbench columns inside 1280px container */
+.castep-studio-workbench {
+  grid-template-columns: 266px minmax(0, 1fr) !important;
+  gap: 12px !important;
+}
+.castep-stage-tabs {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  gap: 3px !important;
+  padding: 7px 8px 0 8px !important;
+  overflow-x: hidden !important;
+}
+.castep-stage-tab {
+  flex: 1 1 auto !important;
+  text-align: center !important;
+  padding: 7px 6px !important;
+  font-size: 11.2px !important;
+  white-space: nowrap !important;
+}
+.vesta-workspace-body {
+  grid-template-columns: 32px 236px minmax(0, 1fr) !important;
+}
+.vesta-top-toolbar {
+  gap: 3px !important;
+  padding: 5px 6px !important;
+}
+.vesta-ax-btn {
+  min-width: 22px !important;
+  height: 23px !important;
+  padding: 0 3px !important;
+  font-size: 11.5px !important;
+}
+.vesta-icon-btn {
+  height: 23px !important;
+  padding: 0 4px !important;
+  font-size: 10.8px !important;
+}
+.vesta-tb-input {
+  width: 38px !important;
+  height: 21px !important;
+  font-size: 10.8px !important;
+}
+
+@media (max-width: 900px) {
+  .header-upper,
+  .horizontal-tabs,
+  .content-container {
+    width: calc(100% - 20px) !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+  .castep-studio-workbench,
+  .vesta-workspace-body {
+    grid-template-columns: 1fr !important;
+  }
 }
 
