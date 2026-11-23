@@ -4937,22 +4937,23 @@ function buildPdosCurvesFromBin(pb, eGrid, sigma, mode, targetVal, flags) {
         if (grp.length) addGroupCurve(`${atoms[0]}-${orb}`, orbColors[orb] || "#2563eb", grp);
       });
     } else {
-      // Multiple atoms -> show up to 10 individual atoms
-      atoms.slice(0, 10).forEach((at, idx) => {
+      // Multiple atoms -> display up to 16 on canvas, or ALL when exporting to CSV/XLSX
+      const atomCap = flags.exportAll ? atoms.length : 16;
+      atoms.slice(0, atomCap).forEach((at, idx) => {
         const grp = matched.filter(c => c.atom === at);
         if (grp.length) addGroupCurve(at, PDOS_CURVE_PALETTE[idx % PDOS_CURVE_PALETTE.length], grp);
       });
     }
   } else {
-    // element_orbital (default): Mo-d, Mo-p, S-p, Se-p, Co-d, Fe-d, N-p...
+    // element_orbital (default): Mo-s, Mo-p, Mo-d, S-s, S-p, Se-s, Se-p, Co-d, Fe-d, N-p...
     const pairs = [];
     const seen = new Set();
     matched.forEach(c => {
       const k = `${c.element}-${c.orbital}`;
       if (!seen.has(k)) { seen.add(k); pairs.push([c.element, c.orbital, k]); }
     });
-    // Sort so d/p orbitals come first cleanly and cap to 12 most informative curves
-    pairs.slice(0, 12).forEach(([el, orb, lbl], idx) => {
+    const pairCap = flags.exportAll ? pairs.length : 24;
+    pairs.slice(0, pairCap).forEach(([el, orb, lbl], idx) => {
       const grp = matched.filter(c => c.element === el && c.orbital === orb);
       if (grp.length) addGroupCurve(lbl, PDOS_CURVE_PALETTE[idx % PDOS_CURVE_PALETTE.length], grp);
     });
@@ -5086,6 +5087,17 @@ function renderCastepElectronicPlots() {
     });
     if (showTot) pdosCurves.push({ label: "Total DOS", color: "#0f172a", up: upArr, dn: dnArr, isTotal: true });
   }
+
+  // Cache exact rendered electronic state for 1-to-1 CSV & multi-tab XLSX export
+  CASTEP_STUDIO_STATE.lastElectronicExport = {
+    jobId: job.id,
+    seed: job.seed || CASTEP_STUDIO_STATE.structure?.formula || "CASTEP",
+    material: job.material || CASTEP_STUDIO_STATE.structure?.formula || job.seed || "",
+    layout, emin, emax, sigma, pdosMode, pdosTarget, spinLayout,
+    showTot, showS, showP, showD, showF, showUp, showDn,
+    bandSeries, bandTicks, gapInfo, gapSummary,
+    eGrid, pdosCurves, isSpinDos, pdosSourceLabel
+  };
 
   // Honest empty state
   if (!bandSeries.length && !pdosCurves.length) {
@@ -6619,32 +6631,576 @@ function exportCastepCanvasPNG(canvasId, filename) {
 }
 window.exportCastepCanvasPNG = exportCastepCanvasPNG;
 
-function exportCastepElectronicCSV() {
-  const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId) || {};
-  let csv = "Series,Segment,X,Energy_or_DOS\n";
-  const bSer = job.band_xcd?.series || [];
-  bSer.forEach(s => {
-    (s.segments || []).forEach((seg, bIdx) => {
-      seg.forEach(pt => { csv += `"Band_${s.name}",${bIdx + 1},${pt[0]},${pt[1]}\n`; });
-    });
+// ============================================================================
+// 8B. Universal Publication Data Exporter (Wide-Format CSV + Native Multi-Tab .xlsx)
+// ============================================================================
+
+const _XLSX_CRC32_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[i] = c >>> 0;
+  }
+  return t;
+})();
+
+function _crc32Bytes(u8) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < u8.length; i++) c = _XLSX_CRC32_TABLE[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
+function _xmlEscape(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function _xlsxColLetter(idx0) {
+  let n = idx0 + 1, out = "";
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    out = String.fromCharCode(65 + rem) + out;
+    n = Math.floor((n - 1) / 26);
+  }
+  return out;
+}
+
+function _sanitizeSheetName(raw, usedSet) {
+  let base = String(raw || "Sheet").replace(/[:\\/?*\[\]]/g, "_").trim() || "Sheet";
+  if (base.length > 31) base = base.slice(0, 31);
+  let name = base, n = 2;
+  while (usedSet.has(name.toLowerCase())) {
+    const suf = `_${n++}`;
+    name = base.slice(0, 31 - suf.length) + suf;
+  }
+  usedSet.add(name.toLowerCase());
+  return name;
+}
+
+function _buildXlsxSheetXml(headers, rows) {
+  const parts = [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>'
+  ];
+  let rowNum = 1;
+  if (headers && headers.length) {
+    let r = `<row r="${rowNum}">`;
+    for (let c = 0; c < headers.length; c++) {
+      const ref = `${_xlsxColLetter(c)}${rowNum}`;
+      r += `<c r="${ref}" s="1" t="inlineStr"><is><t>${_xmlEscape(headers[c])}</t></is></c>`;
+    }
+    r += "</row>";
+    parts.push(r);
+    rowNum++;
+  }
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    let r = `<row r="${rowNum}">`;
+    for (let c = 0; c < row.length; c++) {
+      const val = row[c];
+      if (val === null || val === undefined || val === "") continue;
+      const ref = `${_xlsxColLetter(c)}${rowNum}`;
+      if (typeof val === "number" && Number.isFinite(val)) {
+        r += `<c r="${ref}" t="n"><v>${val}</v></c>`;
+      } else {
+        r += `<c r="${ref}" t="inlineStr"><is><t>${_xmlEscape(val)}</t></is></c>`;
+      }
+    }
+    r += "</row>";
+    parts.push(r);
+    rowNum++;
+  }
+  parts.push("</sheetData></worksheet>");
+  return parts.join("");
+}
+
+function buildXlsxBlob(sheets) {
+  const enc = new TextEncoder();
+  const usedNames = new Set();
+  const normSheets = (sheets || [])
+    .filter(s => s && ((s.headers && s.headers.length) || (s.rows && s.rows.length)))
+    .map(s => ({
+      name: _sanitizeSheetName(s.name, usedNames),
+      headers: s.headers || [],
+      rows: s.rows || []
+    }));
+
+  if (!normSheets.length) return null;
+
+  const files = [];
+  const addFile = (path, contentStr) => files.push({ name: path, data: enc.encode(contentStr) });
+
+  // 1) [Content_Types].xml
+  const overrides = normSheets.map((_, i) =>
+    `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`
+  ).join("");
+  addFile("[Content_Types].xml",
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+    '<Default Extension="xml" ContentType="application/xml"/>' +
+    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+    '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+    overrides +
+    '</Types>'
+  );
+
+  // 2) _rels/.rels
+  addFile("_rels/.rels",
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+    '</Relationships>'
+  );
+
+  // 3) xl/workbook.xml & xl/_rels/workbook.xml.rels
+  const wbSheetsXml = normSheets.map((s, i) =>
+    `<sheet name="${_xmlEscape(s.name)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`
+  ).join("");
+  addFile("xl/workbook.xml",
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+    `<sheets>${wbSheetsXml}</sheets></workbook>`
+  );
+
+  const wbRelsXml = normSheets.map((_, i) =>
+    `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`
+  ).join("") +
+    `<Relationship Id="rId${normSheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>`;
+  addFile("xl/_rels/workbook.xml.rels",
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${wbRelsXml}</Relationships>`
+  );
+
+  // 4) xl/styles.xml (s="0" normal, s="1" bold header)
+  addFile("xl/styles.xml",
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+    '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>' +
+    '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>' +
+    '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+    '<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>' +
+    '</styleSheet>'
+  );
+
+  // 5) Individual worksheet XMLs
+  normSheets.forEach((s, i) => {
+    addFile(`xl/worksheets/sheet${i + 1}.xml`, _buildXlsxSheetXml(s.headers, s.rows));
   });
-  const dSer = job.pdos_xcd?.series || job.dos_xcd?.series || [];
-  dSer.forEach(s => {
-    (s.segments || []).forEach((seg, sIdx) => {
-      seg.forEach(pt => { csv += `"DOS_${s.name}",${sIdx + 1},${pt[0]},${pt[1]}\n`; });
-    });
+
+  // Pack ZIP archive (STORE method 0, exact CRC32 & central directory)
+  const localChunks = [];
+  const centralChunks = [];
+  let offset = 0;
+
+  for (const f of files) {
+    const nameBytes = enc.encode(f.name);
+    const data = f.data;
+    const crc = _crc32Bytes(data);
+
+    const lh = new ArrayBuffer(30);
+    const lhv = new DataView(lh);
+    lhv.setUint32(0, 0x04034b50, true);
+    lhv.setUint16(4, 20, true);
+    lhv.setUint16(6, 0x0800, true);
+    lhv.setUint16(8, 0, true);
+    lhv.setUint16(10, 0, true);
+    lhv.setUint16(12, 0, true);
+    lhv.setUint32(14, crc, true);
+    lhv.setUint32(18, data.length, true);
+    lhv.setUint32(22, data.length, true);
+    lhv.setUint16(26, nameBytes.length, true);
+    lhv.setUint16(28, 0, true);
+    localChunks.push(new Uint8Array(lh), nameBytes, data);
+
+    const ch = new ArrayBuffer(46);
+    const chv = new DataView(ch);
+    chv.setUint32(0, 0x02014b50, true);
+    chv.setUint16(4, 20, true);
+    chv.setUint16(6, 20, true);
+    chv.setUint16(8, 0x0800, true);
+    chv.setUint16(10, 0, true);
+    chv.setUint16(12, 0, true);
+    chv.setUint16(14, 0, true);
+    chv.setUint32(16, crc, true);
+    chv.setUint32(20, data.length, true);
+    chv.setUint32(24, data.length, true);
+    chv.setUint16(28, nameBytes.length, true);
+    chv.setUint16(30, 0, true);
+    chv.setUint16(32, 0, true);
+    chv.setUint16(34, 0, true);
+    chv.setUint16(36, 0, true);
+    chv.setUint32(38, 0, true);
+    chv.setUint32(42, offset, true);
+    centralChunks.push(new Uint8Array(ch), nameBytes);
+
+    offset += 30 + nameBytes.length + data.length;
+  }
+
+  let cdSize = 0;
+  centralChunks.forEach(c => { cdSize += c.length; });
+
+  const eocd = new ArrayBuffer(22);
+  const ev = new DataView(eocd);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(4, 0, true);
+  ev.setUint16(6, 0, true);
+  ev.setUint16(8, files.length, true);
+  ev.setUint16(10, files.length, true);
+  ev.setUint32(12, cdSize, true);
+  ev.setUint32(16, offset, true);
+  ev.setUint16(20, 0, true);
+
+  return new Blob([...localChunks, ...centralChunks, new Uint8Array(eocd)], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
   });
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+}
+window.buildXlsxBlob = buildXlsxBlob;
+
+function buildCsvString(headers, rows) {
+  const esc = (v) => {
+    if (v === null || v === undefined) return "";
+    if (typeof v === "number") return Number.isFinite(v) ? String(v) : "";
+    const s = String(v);
+    return (s.includes(",") || s.includes('"') || s.includes("\n")) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const lines = [];
+  if (headers && headers.length) lines.push(headers.map(esc).join(","));
+  for (let i = 0; i < rows.length; i++) {
+    lines.push(rows[i].map(esc).join(","));
+  }
+  return lines.join("\n") + "\n";
+}
+
+function triggerBlobDownload(blob, filename) {
+  if (!blob) return;
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${job.seed || "CASTEP"}_Band_DOS.csv`;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
-  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 200);
-  if (typeof showToast === "function") showToast("Exported Band & DOS CSV data!", "success");
+  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 250);
+}
+
+function sanitizeExportSeed(raw) {
+  return String(raw || "CASTEP").replace(/[^A-Za-z0-9._\-+]/g, "_").replace(/_+/g, "_");
+}
+
+function buildElectronicExportTables() {
+  const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId) || {};
+  if (!CASTEP_STUDIO_STATE.lastElectronicExport || CASTEP_STUDIO_STATE.lastElectronicExport.jobId !== job.id) {
+    renderCastepElectronicPlots();
+  }
+  const ex = CASTEP_STUDIO_STATE.lastElectronicExport;
+  if (!ex) return null;
+
+  const seed = sanitizeExportSeed(ex.seed || job.seed || "CASTEP");
+
+  // 1) Build FULL PDOS table matching EXACTLY the active PDOS Mode / Filter / Orbitals / Spin settings (zero column cap!)
+  let pdosCurvesFull = ex.pdosCurves || [];
+  let isSpinDos = !!ex.isSpinDos;
+  if (job.pdos_bin_data && Array.isArray(job.pdos_bin_data.channels) && job.pdos_bin_data.channels.length) {
+    const rebuilt = buildPdosCurvesFromBin(job.pdos_bin_data, ex.eGrid, ex.sigma, ex.pdosMode, ex.pdosTarget, {
+      showTot: ex.showTot, showS: ex.showS, showP: ex.showP, showD: ex.showD, showF: ex.showF, exportAll: true
+    });
+    pdosCurvesFull = rebuilt.curves;
+    isSpinDos = rebuilt.isSpin;
+  }
+
+  const useMirror = isSpinDos && ex.spinLayout === "mirror";
+  const pdosHeaders = ["Energy_E_minus_EF_eV"];
+  const pdosColSpecs = [];
+
+  pdosCurvesFull.forEach(c => {
+    const cleanLbl = String(c.label || "Curve").replace(/\s+/g, "_");
+    if (isSpinDos && c.dn) {
+      if (useMirror) {
+        if (ex.showUp) { pdosHeaders.push(`${cleanLbl}_SpinUp`); pdosColSpecs.push({ curve: c, kind: "up" }); }
+        if (ex.showDn) { pdosHeaders.push(`${cleanLbl}_SpinDown_MirrorNeg`); pdosColSpecs.push({ curve: c, kind: "dn_neg" }); }
+        if (ex.showDn) { pdosHeaders.push(`${cleanLbl}_SpinDown_Pos`); pdosColSpecs.push({ curve: c, kind: "dn_pos" }); }
+      } else {
+        pdosHeaders.push(`${cleanLbl}_Total_SpinSum`); pdosColSpecs.push({ curve: c, kind: "sum" });
+        if (ex.showUp) { pdosHeaders.push(`${cleanLbl}_SpinUp`); pdosColSpecs.push({ curve: c, kind: "up" }); }
+        if (ex.showDn) { pdosHeaders.push(`${cleanLbl}_SpinDown`); pdosColSpecs.push({ curve: c, kind: "dn_pos" }); }
+      }
+    } else {
+      pdosHeaders.push(cleanLbl);
+      pdosColSpecs.push({ curve: c, kind: "up" });
+    }
+  });
+
+  const pdosRows = [];
+  if (pdosColSpecs.length && ex.eGrid && ex.eGrid.length) {
+    for (let i = 0; i < ex.eGrid.length; i++) {
+      const row = [Number(ex.eGrid[i].toFixed(6))];
+      for (const spec of pdosColSpecs) {
+        const upV = spec.curve.up ? (spec.curve.up[i] || 0) : 0;
+        const dnV = spec.curve.dn ? (spec.curve.dn[i] || 0) : 0;
+        let val = upV;
+        if (spec.kind === "dn_neg") val = -dnV;
+        else if (spec.kind === "dn_pos") val = dnV;
+        else if (spec.kind === "sum") val = (ex.showUp ? upV : 0) + (ex.showDn ? dnV : 0);
+        row.push(Number(val.toFixed(6)));
+      }
+      pdosRows.push(row);
+    }
+  }
+
+  // 2) Build WIDE Origin-ready Band Structure tables (one row per k-point, one column per Band!)
+  const bandSheets = [];
+  const tickLookup = (xNorm) => {
+    for (const t of (ex.bandTicks || [])) {
+      if (Math.abs(t.pos - xNorm) < 0.008) return t.label === "G" ? "Gamma" : t.label;
+    }
+    return "";
+  };
+
+  (ex.bandSeries || []).forEach((ser, sIdx) => {
+    const isBeta = sIdx === 1 || /beta|dn|down/i.test(ser.name || "");
+    if (!isBeta && !ex.showUp) return;
+    if (isBeta && !ex.showDn) return;
+    const segs = (ser.segments || []).filter(seg => seg && seg.length);
+    if (!segs.length) return;
+
+    // Reference k-path x-coordinates from longest band segment
+    let refSeg = segs[0];
+    segs.forEach(sg => { if (sg.length > refSeg.length) refSeg = sg; });
+    const nk = refSeg.length;
+    const spinTag = ex.bandSeries.length >= 2 ? (isBeta ? "SpinDown" : "SpinUp") : "Band";
+
+    const bHeaders = ["k_Index", "k_Path_Norm", "HighSym_Point"];
+    for (let b = 0; b < segs.length; b++) bHeaders.push(`${spinTag}_Band_${b + 1}_eV`);
+
+    const bRows = [];
+    for (let k = 0; k < nk; k++) {
+      const kx = Number(refSeg[k][0]);
+      const row = [k + 1, Number(kx.toFixed(6)), tickLookup(kx)];
+      for (let b = 0; b < segs.length; b++) {
+        const sg = segs[b];
+        let yVal = null;
+        if (sg.length === nk) {
+          yVal = sg[k][1];
+        } else {
+          // Nearest x match if segment has different sampling
+          let bestD = 1e9, bestY = null;
+          for (let j = 0; j < sg.length; j++) {
+            const d = Math.abs(sg[j][0] - kx);
+            if (d < bestD) { bestD = d; bestY = sg[j][1]; }
+          }
+          if (bestD < 0.02) yVal = bestY;
+        }
+        row.push(yVal !== null && Number.isFinite(yVal) ? Number(yVal.toFixed(6)) : "");
+      }
+      bRows.push(row);
+    }
+
+    bandSheets.push({
+      name: ex.bandSeries.length >= 2 ? (isBeta ? "Band_Spin_Down" : "Band_Spin_Up") : "Band_Structure",
+      spinTag,
+      headers: bHeaders,
+      rows: bRows
+    });
+  });
+
+  // 3) Build High-Symmetry k-Points & Electronic Metadata sheet
+  const metaHeaders = ["Property", "Value"];
+  const metaRows = [
+    ["Material", ex.material],
+    ["Seed", ex.seed],
+    ["PDOS_Mode", ex.pdosMode],
+    ["PDOS_Target_Filter", ex.pdosTarget],
+    ["PDOS_Spin_Layout", ex.spinLayout],
+    ["PDOS_Source", ex.pdosSourceLabel || "N/A"],
+    ["Energy_Window_eV", `${ex.emin} to ${ex.emax}`],
+    ["Gaussian_Smearing_Sigma_eV", ex.sigma],
+    ["Band_Gap_Summary", ex.gapSummary || "N/A"],
+    ["Fermi_Reference_eV", 0.0],
+    ["PDOS_Columns_Exported", Math.max(0, pdosHeaders.length - 1)],
+    ["Band_Sheets_Exported", bandSheets.length],
+    ["", ""],
+    ["HighSym_k_Label", "Normalized_k_Position"]
+  ];
+  (ex.bandTicks || []).forEach(t => {
+    metaRows.push([t.label === "G" ? "Gamma" : t.label, Number(t.pos.toFixed(6))]);
+  });
+
+  return {
+    seed,
+    modeTag: sanitizeExportSeed(ex.pdosMode || "pdos"),
+    pdosSheet: { name: `PDOS_${ex.pdosMode || "All"}`, headers: pdosHeaders, rows: pdosRows },
+    bandSheets,
+    metaSheet: { name: "Summary_KPoints", headers: metaHeaders, rows: metaRows }
+  };
+}
+window.buildElectronicExportTables = buildElectronicExportTables;
+
+function exportCastepElectronicCSV(part = "pdos") {
+  const pkg = buildElectronicExportTables();
+  if (!pkg) {
+    if (typeof showToast === "function") showToast("No Band Structure or PDOS data available to export.", "warning");
+    return;
+  }
+
+  if (part === "band") {
+    if (!pkg.bandSheets.length) {
+      if (typeof showToast === "function") showToast("No Band Structure data found in this calculation.", "warning");
+      return;
+    }
+    // Combine SpinUp + SpinDown band columns cleanly onto shared k_Path_Norm if both exist
+    let headers = [...pkg.bandSheets[0].headers];
+    let rows = pkg.bandSheets[0].rows.map(r => [...r]);
+    if (pkg.bandSheets.length >= 2 && pkg.bandSheets[1].rows.length === rows.length) {
+      headers = headers.concat(pkg.bandSheets[1].headers.slice(3));
+      for (let i = 0; i < rows.length; i++) {
+        rows[i] = rows[i].concat(pkg.bandSheets[1].rows[i].slice(3));
+      }
+    }
+    const csv = buildCsvString(headers, rows);
+    const fname = `${pkg.seed}_Band_Structure.csv`;
+    triggerBlobDownload(new Blob([csv], { type: "text/csv;charset=utf-8" }), fname);
+    if (typeof showToast === "function") {
+      showToast(`Exported ${fname} (${rows.length} k-points × ${headers.length - 3} bands)!`, "success");
+    }
+    return;
+  }
+
+  // Default: Full PDOS CSV matching ALL currently displayed Element / Orbital / Atom / Spin curves!
+  if (!pkg.pdosSheet.rows.length) {
+    if (pkg.bandSheets.length) {
+      exportCastepElectronicCSV("band");
+      return;
+    }
+    if (typeof showToast === "function") showToast("No PDOS curves available to export.", "warning");
+    return;
+  }
+  const csv = buildCsvString(pkg.pdosSheet.headers, pkg.pdosSheet.rows);
+  const fname = `${pkg.seed}_PDOS_${pkg.modeTag}.csv`;
+  triggerBlobDownload(new Blob([csv], { type: "text/csv;charset=utf-8" }), fname);
+  if (typeof showToast === "function") {
+    showToast(`Exported ${fname} (${pkg.pdosSheet.headers.length} columns: ${pkg.pdosSheet.headers.slice(0, 6).join(", ")}${pkg.pdosSheet.headers.length > 6 ? "..." : ""})!`, "success");
+  }
 }
 window.exportCastepElectronicCSV = exportCastepElectronicCSV;
+
+function exportCastepElectronicXLSX() {
+  const pkg = buildElectronicExportTables();
+  if (!pkg) {
+    if (typeof showToast === "function") showToast("No Band Structure or PDOS data available to export.", "warning");
+    return;
+  }
+  const sheets = [];
+  if (pkg.pdosSheet.rows.length) sheets.push(pkg.pdosSheet);
+  pkg.bandSheets.forEach(bs => sheets.push(bs));
+  sheets.push(pkg.metaSheet);
+
+  const blob = buildXlsxBlob(sheets);
+  if (!blob) {
+    if (typeof showToast === "function") showToast("Nothing to export to Excel workbook.", "warning");
+    return;
+  }
+  const fname = `${pkg.seed}_Band_and_PDOS_${pkg.modeTag}.xlsx`;
+  triggerBlobDownload(blob, fname);
+  if (typeof showToast === "function") {
+    showToast(`Exported multi-tab workbook ${fname} (${sheets.map(s => s.name).join(" | ")})!`, "success");
+  }
+}
+window.exportCastepElectronicXLSX = exportCastepElectronicXLSX;
+
+function buildConvergenceExportTables() {
+  const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId) || {};
+  const pl = CASTEP_STUDIO_STATE.parsedLog || {};
+  const seed = sanitizeExportSeed(job.seed || CASTEP_STUDIO_STATE.structure?.formula || "CASTEP");
+
+  const scfHeaders = ["Step", "Label", "Total_Energy_eV", "Fermi_Energy_eV", "dE_per_Atom_eV", "log10_abs_dE", "Time_sec"];
+  const scfRows = [];
+  if (pl.scfCycles && pl.scfCycles.length) {
+    pl.scfCycles.forEach(c => {
+      const de = (c.dEPerAtom !== null && c.dEPerAtom !== undefined && Number.isFinite(Number(c.dEPerAtom))) ? Number(c.dEPerAtom) : "";
+      const logDe = (de !== "" && Math.abs(de) > 0) ? Number(Math.log10(Math.abs(de)).toFixed(6)) : "";
+      scfRows.push([
+        Number(c.step || 0),
+        String(c.label || ""),
+        Number(Number(c.energy || 0).toFixed(6)),
+        Number(Number(c.fermi || 0).toFixed(5)),
+        de,
+        logDe,
+        Number(Number(c.timeSec || 0).toFixed(2))
+      ]);
+    });
+  } else if (job.ener_xcd?.series?.[0]?.segments?.[0]?.length) {
+    const convPts = job.conv_xcd?.series?.[0]?.segments?.[0] || [];
+    job.ener_xcd.series[0].segments[0].forEach((pt, idx) => {
+      scfRows.push([idx + 1, `Step_${idx + 1}`, Number(pt[1].toFixed(6)), "", "", convPts[idx] ? Number(convPts[idx][1].toFixed(6)) : "", ""]);
+    });
+  }
+
+  const geomHeaders = ["Frame", "Total_Energy_eV", "Max_Force_eV_A", "Volume_A3"];
+  const geomRows = (CASTEP_STUDIO_STATE.geomFrames || []).map(f => [
+    Number(f.step || 0),
+    Number((f.energyEv || 0).toFixed(6)),
+    Number((f.maxForceEvA || 0).toFixed(6)),
+    Number((f.volumeA3 || 0).toFixed(4))
+  ]);
+
+  const fcHeaders = ["Atom", "Element", "Fx_eV_A", "Fy_eV_A", "Fz_eV_A", "F_mag_eV_A", "Charge_e", "Spin_muB"];
+  const fcRows = (CASTEP_STUDIO_STATE.structure?.atoms || []).map((at, idx) => {
+    const fx = Number(at.fx || 0), fy = Number(at.fy || 0), fz = Number(at.fz || 0);
+    return [
+      at.label || `${at.element}${idx + 1}`,
+      castepCleanElement(at.element),
+      Number(fx.toFixed(6)),
+      Number(fy.toFixed(6)),
+      Number(fz.toFixed(6)),
+      Number(Math.hypot(fx, fy, fz).toFixed(6)),
+      (at.charge !== null && at.charge !== undefined) ? Number(Number(at.charge).toFixed(4)) : "",
+      (at.spin !== null && at.spin !== undefined) ? Number(Number(at.spin).toFixed(4)) : 0
+    ];
+  });
+
+  return {
+    seed,
+    scfSheet: { name: "SCF_Convergence", headers: scfHeaders, rows: scfRows },
+    geomSheet: { name: "GeomOpt_Trajectory", headers: geomHeaders, rows: geomRows },
+    forcesSheet: { name: "Forces_and_Charges", headers: fcHeaders, rows: fcRows }
+  };
+}
+
+function exportCastepConvergenceCSV() {
+  const pkg = buildConvergenceExportTables();
+  const target = pkg.scfSheet.rows.length ? pkg.scfSheet : (pkg.geomSheet.rows.length ? pkg.geomSheet : pkg.forcesSheet);
+  if (!target.rows.length) {
+    if (typeof showToast === "function") showToast("No SCF or Geometry Convergence data available to export.", "warning");
+    return;
+  }
+  const csv = buildCsvString(target.headers, target.rows);
+  const fname = `${pkg.seed}_${target.name}.csv`;
+  triggerBlobDownload(new Blob([csv], { type: "text/csv;charset=utf-8" }), fname);
+  if (typeof showToast === "function") showToast(`Exported ${fname} (${target.rows.length} rows)!`, "success");
+}
+window.exportCastepConvergenceCSV = exportCastepConvergenceCSV;
+
+function exportCastepConvergenceXLSX() {
+  const pkg = buildConvergenceExportTables();
+  const sheets = [pkg.scfSheet, pkg.geomSheet, pkg.forcesSheet].filter(s => s.rows.length > 0);
+  if (!sheets.length) {
+    if (typeof showToast === "function") showToast("No Convergence or Force data available to export.", "warning");
+    return;
+  }
+  const blob = buildXlsxBlob(sheets);
+  const fname = `${pkg.seed}_Convergence_and_Forces.xlsx`;
+  triggerBlobDownload(blob, fname);
+  if (typeof showToast === "function") {
+    showToast(`Exported multi-tab workbook ${fname} (${sheets.map(s => s.name).join(" | ")})!`, "success");
+  }
+}
+window.exportCastepConvergenceXLSX = exportCastepConvergenceXLSX;
 
 // ============================================================================
 // 9. Materials Studio Remote Gateway Manager (Live HTTP + Local dsd / Mounted)
@@ -8213,30 +8769,164 @@ function initCastepOpticsCanvasHover() {
   });
 }
 
-function exportCastepOpticalCSV() {
+function buildOpticalExportTables() {
   const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId) || {};
   const spec = CASTEP_STUDIO_STATE.lastOpticalSpectra || computeCastepOpticalSpectra(job);
-  if (!spec) {
+  if (!spec) return null;
+
+  const seed = sanitizeExportSeed(job.seed || CASTEP_STUDIO_STATE.structure?.formula || "CASTEP");
+  const tfDir = spec.taucFitDirect || {};
+  const tfInd = spec.taucFitIndirect || {};
+  const m = spec.metrics || {};
+
+  const fullHeaders = [
+    "Photon_Energy_eV", "Wavelength_nm",
+    "Eps1_Real", "Eps2_Imag",
+    "Absorption_cm-1", "Absorption_x1e4_cm-1",
+    "Refractive_Index_n", "Extinction_Coeff_k",
+    "Reflectivity_R", "Reflectivity_Pct",
+    "Conductivity_Re_1_fs", "Conductivity_Im_1_fs",
+    "EELS_Loss_L",
+    "Tauc_Direct_ahv2", "Tauc_Direct_Fit",
+    "Tauc_Indirect_ahv0.5", "Tauc_Indirect_Fit"
+  ];
+  const fullRows = [];
+  const dielRows = [];
+  const absRows = [];
+  const nkRows = [];
+  const rlcRows = [];
+
+  for (let i = 0; i < spec.hwGrid.length; i++) {
+    const hw = Number(spec.hwGrid[i].toFixed(5));
+    const nm = Number((1239.84193 / Math.max(0.01, hw)).toFixed(3));
+    const e1 = Number((spec.eps1[i] || 0).toFixed(6));
+    const e2 = Number((spec.eps2[i] || 0).toFixed(6));
+    const al = Number((spec.alphaCm[i] || 0).toFixed(3));
+    const al4 = Number(((spec.alphaCm[i] || 0) / 1e4).toFixed(6));
+    const nv = Number((spec.nArr[i] || 0).toFixed(6));
+    const kv = Number((spec.kArr[i] || 0).toFixed(6));
+    const rv = Number((spec.reflArr[i] || 0).toFixed(6));
+    const rpct = Number(((spec.reflArr[i] || 0) * 100).toFixed(4));
+    const c1 = Number((spec.cond1Arr[i] || 0).toFixed(6));
+    const c2 = Number((spec.cond2Arr[i] || 0).toFixed(6));
+    const lv = Number((spec.lossArr[i] || 0).toFixed(6));
+    const td = Number((spec.taucDirArr?.[i] || 0).toFixed(6));
+    const ti = Number((spec.taucIndArr?.[i] || 0).toFixed(6));
+    const tdFit = (tfDir.slope > 0 && hw >= tfDir.xStart && hw <= tfDir.xEnd)
+      ? Number(Math.max(0, tfDir.slope * hw + tfDir.intercept).toFixed(6)) : "";
+    const tiFit = (tfInd.slope > 0 && hw >= tfInd.xStart && hw <= tfInd.xEnd)
+      ? Number(Math.max(0, tfInd.slope * hw + tfInd.intercept).toFixed(6)) : "";
+
+    fullRows.push([hw, nm, e1, e2, al, al4, nv, kv, rv, rpct, c1, c2, lv, td, tdFit, ti, tiFit]);
+    dielRows.push([hw, nm, e1, e2]);
+    absRows.push([hw, nm, al, al4, td, tdFit, ti, tiFit]);
+    nkRows.push([hw, nm, nv, kv]);
+    rlcRows.push([hw, nm, rv, rpct, lv, c1, c2]);
+  }
+
+  const summarySheet = {
+    name: "Summary_Metrics",
+    headers: ["Property", "Value", "Units"],
+    rows: [
+      ["Material", job.material || CASTEP_STUDIO_STATE.structure?.formula || seed, ""],
+      ["Data_Source", spec.sourceBadge || "", ""],
+      ["Static_Dielectric_eps1_0", Number((m.eps1Zero || 0).toFixed(5)), "dimensionless"],
+      ["Static_Refractive_Index_n0", Number((m.nZero || 0).toFixed(5)), "dimensionless"],
+      ["Peak_Absorption_alpha_max", Number((m.maxAlpha || 0).toFixed(2)), "cm^-1"],
+      ["Peak_Absorption_Energy", Number((m.maxAlphaEv || 0).toFixed(4)), "eV"],
+      ["Peak_Absorption_Wavelength", Number((m.maxAlphaNm || 0).toFixed(2)), "nm"],
+      ["Peak_Eps2_Imag", Number((m.maxEps2 || 0).toFixed(5)), "dimensionless"],
+      ["Peak_Eps2_Energy", Number((m.maxEps2Ev || 0).toFixed(4)), "eV"],
+      ["Plasmon_Peak_Energy_hwp", Number((m.maxLossEv || 0).toFixed(4)), "eV"],
+      ["Peak_EELS_Loss_L", Number((m.maxLoss || 0).toFixed(5)), "dimensionless"],
+      ["Tauc_Direct_Optical_Gap", Number((tfDir.gapEv || 0).toFixed(4)), "eV"],
+      ["Tauc_Indirect_Optical_Gap", Number((tfInd.gapEv || 0).toFixed(4)), "eV"],
+      ["Scissors_Shift", Number(parseFloat(document.getElementById("castep-opt-scissors")?.value) || 0), "eV"],
+      ["Smearing_Gamma", Number(parseFloat(document.getElementById("castep-opt-smearing")?.value) || 0.25), "eV"]
+    ]
+  };
+
+  // Optional raw .xcd series sheet (captures all individual loaded polarization/tensor optical curves)
+  const rawXcdCols = [];
+  const xcds = (job.optical_xcds && job.optical_xcds.length) ? job.optical_xcds : (job.optical_xcd ? [job.optical_xcd] : []);
+  xcds.forEach((xc, xi) => {
+    const fnRaw = String(xc.filename || `XCD_${xi + 1}`);
+    if (/convergence|energies|band structure|density of states|pdos/i.test(fnRaw)) return;
+    const ftag = sanitizeExportSeed(fnRaw.replace(/\.xcd$/i, ""));
+    (xc.series || []).forEach((s, si) => {
+      const pts = s.segments?.[0] || [];
+      if (pts.length > 5) {
+        const stag = sanitizeExportSeed(s.name || `S${si + 1}`);
+        rawXcdCols.push({ header: `${ftag}_${stag}`, pts });
+      }
+    });
+  });
+
+  let rawSheet = null;
+  if (rawXcdCols.length > 0) {
+    const rHeaders = ["Photon_Energy_eV", ...rawXcdCols.map(c => c.header)];
+    const rRows = [];
+    for (let i = 0; i < spec.hwGrid.length; i++) {
+      const hw = Number(spec.hwGrid[i].toFixed(5));
+      const row = [hw];
+      rawXcdCols.forEach(c => row.push(Number(interpSortedXY(c.pts, hw).toFixed(6))));
+      rRows.push(row);
+    }
+    rawSheet = { name: "Raw_XCD_Series", headers: rHeaders, rows: rRows };
+  }
+
+  return {
+    seed,
+    fullSheet: { name: "All_Optical_Spectra", headers: fullHeaders, rows: fullRows },
+    summarySheet,
+    dielSheet: { name: "Dielectric_Eps", headers: ["Photon_Energy_eV", "Wavelength_nm", "Eps1_Real", "Eps2_Imag"], rows: dielRows },
+    absSheet: { name: "Absorption_Tauc", headers: ["Photon_Energy_eV", "Wavelength_nm", "Absorption_cm-1", "Absorption_x1e4_cm-1", "Tauc_Direct_ahv2", "Tauc_Direct_Fit", "Tauc_Indirect_ahv0.5", "Tauc_Indirect_Fit"], rows: absRows },
+    nkSheet: { name: "Refractive_n_k", headers: ["Photon_Energy_eV", "Wavelength_nm", "Refractive_Index_n", "Extinction_Coeff_k"], rows: nkRows },
+    rlcSheet: { name: "Refl_Loss_Cond", headers: ["Photon_Energy_eV", "Wavelength_nm", "Reflectivity_R", "Reflectivity_Pct", "EELS_Loss_L", "Conductivity_Re_1_fs", "Conductivity_Im_1_fs"], rows: rlcRows },
+    rawSheet
+  };
+}
+window.buildOpticalExportTables = buildOpticalExportTables;
+
+function exportCastepOpticalCSV(mode = "all") {
+  const pkg = buildOpticalExportTables();
+  if (!pkg) {
     if (typeof showToast === "function") showToast("No optical spectra available to export.", "warning");
     return;
   }
-  let csv = "Energy_eV,Wavelength_nm,Eps1_Real,Eps2_Imag,Absorption_cm-1,Refractive_n,Extinction_k,Reflectivity_R,Conductivity_Re_1_fs,Loss_Function_L\n";
-  for (let i = 0; i < spec.hwGrid.length; i++) {
-    const hw = spec.hwGrid[i];
-    const nm = 1239.84193 / Math.max(0.01, hw);
-    csv += `${hw.toFixed(4)},${nm.toFixed(2)},${spec.eps1[i].toFixed(5)},${spec.eps2[i].toFixed(5)},${spec.alphaCm[i].toFixed(2)},${spec.nArr[i].toFixed(5)},${spec.kArr[i].toFixed(5)},${spec.reflArr[i].toFixed(5)},${spec.cond1Arr[i].toFixed(5)},${spec.lossArr[i].toFixed(5)}\n`;
+  const sheetMap = {
+    all: pkg.fullSheet,
+    dielectric: pkg.dielSheet,
+    absorption: pkg.absSheet,
+    refractive: pkg.nkSheet,
+    reflectivity: pkg.rlcSheet
+  };
+  const chosen = sheetMap[mode] || pkg.fullSheet;
+  const csv = buildCsvString(chosen.headers, chosen.rows);
+  const fname = `${pkg.seed}_${chosen.name}.csv`;
+  triggerBlobDownload(new Blob([csv], { type: "text/csv;charset=utf-8" }), fname);
+  if (typeof showToast === "function") {
+    showToast(`Exported ${fname} (${chosen.headers.length} columns × ${chosen.rows.length} points)!`, "success");
   }
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${job.seed || "CASTEP"}_Optical_Properties.csv`;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 200);
-  if (typeof showToast === "function") showToast("Exported CASTEP Optical Properties CSV!", "success");
 }
 window.exportCastepOpticalCSV = exportCastepOpticalCSV;
+
+function exportCastepOpticalXLSX() {
+  const pkg = buildOpticalExportTables();
+  if (!pkg) {
+    if (typeof showToast === "function") showToast("No optical spectra available to export.", "warning");
+    return;
+  }
+  const sheets = [pkg.summarySheet, pkg.dielSheet, pkg.absSheet, pkg.nkSheet, pkg.rlcSheet];
+  if (pkg.rawSheet) sheets.push(pkg.rawSheet);
+  const blob = buildXlsxBlob(sheets);
+  const fname = `${pkg.seed}_Optical_Properties_AllTabs.xlsx`;
+  triggerBlobDownload(blob, fname);
+  if (typeof showToast === "function") {
+    showToast(`Exported multi-tab workbook ${fname} (${sheets.map(s => s.name).join(" | ")})!`, "success");
+  }
+}
+window.exportCastepOpticalXLSX = exportCastepOpticalXLSX;
 
 // ============================================================================
 // 11. EXACT Charge Density Difference (Δρ) Parser, Generator & 3-Panel Viewer
@@ -9362,32 +10052,119 @@ function exportCastepChdiffFile(fmt = "charg_frm") {
 }
 window.exportCastepChdiffFile = exportCastepChdiffFile;
 
-function exportCastepChdiffCSV() {
+function buildChdiffExportTables() {
   const chGrid = getActiveJobChdiffGrid();
-  if (!chGrid) {
-    if (typeof showToast === "function") showToast("No Charge Density Difference data to export.", "warning");
-    return;
-  }
+  if (!chGrid) return null;
+
+  const seed = sanitizeExportSeed(CASTEP_STUDIO_STATE.structure?.formula || "CASTEP");
   const cLen = chGrid.c_length_a || CASTEP_STUDIO_STATE.structure?.lattice?.c || 20.0;
   const prof = chGrid.profile_z || [];
   const profLin = chGrid.profile_z_linear || [];
   const dq = chGrid.delta_q_z || [];
-  let csv = "Fractional_w,Z_Angstrom,Planar_DeltaRho_e_A3,Linear_DeltaRho_e_A,Integrated_DeltaQ_e\n";
-  prof.forEach((v, idx) => {
+
+  // 1) 1D Planar-Averaged Profile & Integrated Charge Transfer ΔQ(z)
+  const headers1D = ["Fractional_w", "Z_Angstrom", "Planar_DeltaRho_e_A3", "Linear_DeltaRho_e_A", "Integrated_DeltaQ_e"];
+  const rows1D = prof.map((v, idx) => {
     const w = idx / Math.max(1, prof.length - 1);
-    csv += `${w.toFixed(5)},${(w * cLen).toFixed(4)},${v.toFixed(7)},${(profLin[idx] || 0).toFixed(7)},${(dq[idx] || 0).toFixed(7)}\n`;
+    return [
+      Number(w.toFixed(6)),
+      Number((w * cLen).toFixed(5)),
+      Number(Number(v || 0).toFixed(7)),
+      Number(Number(profLin[idx] || 0).toFixed(7)),
+      Number(Number(dq[idx] || 0).toFixed(7))
+    ];
   });
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${CASTEP_STUDIO_STATE.structure?.formula || "CASTEP"}_Planar_Charge_Diff.csv`;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 200);
-  if (typeof showToast === "function") showToast("Exported 1D Planar-Averaged Δρ(z) & ΔQ(z) CSV!", "success");
+
+  // 2) Currently displayed 2D Cross-Sectional Slice Matrix (Panel b)
+  const plane = document.getElementById("castep-chdiff-plane")?.value || "xz";
+  const slicePos = parseFloat(document.getElementById("castep-chdiff-slice-pos")?.value) || 0.5;
+  const [nx, ny, nz] = chGrid.sample_dims || [1, 1, 1];
+  const flat = chGrid.grid3d_flat || [];
+  const get3 = (i, j, k) => flat[(i * ny + j) * nz + k] || 0;
+
+  let nU = nx, nV = nz, uLbl = "a_frac", vLbl = "c_frac";
+  if (plane === "yz") { nU = ny; nV = nz; uLbl = "b_frac"; vLbl = "c_frac"; }
+  else if (plane === "xy") { nU = nx; nV = ny; uLbl = "a_frac"; vLbl = "b_frac"; }
+
+  const sIdx = plane === "xz" ? Math.min(ny - 1, Math.round(slicePos * (ny - 1)))
+    : (plane === "yz" ? Math.min(nx - 1, Math.round(slicePos * (nx - 1))) : Math.min(nz - 1, Math.round(slicePos * (nz - 1))));
+
+  const headers2D = [`${vLbl}_vs_${uLbl}`];
+  for (let u = 0; u < nU; u++) headers2D.push(`${uLbl}_${(u / Math.max(1, nU - 1)).toFixed(4)}`);
+  const rows2D = [];
+  for (let v = 0; v < nV; v++) {
+    const row = [Number((v / Math.max(1, nV - 1)).toFixed(5))];
+    for (let u = 0; u < nU; u++) {
+      const val = plane === "xz" ? get3(u, sIdx, v) : (plane === "yz" ? get3(sIdx, u, v) : get3(u, v, sIdx));
+      row.push(Number(val.toFixed(7)));
+    }
+    rows2D.push(row);
+  }
+
+  // 3) Summary Metadata
+  const maxDq = dq.length ? Math.max(...dq.map(Math.abs)) : 0;
+  const metaSheet = {
+    name: "Summary_Metadata",
+    headers: ["Property", "Value"],
+    rows: [
+      ["Formula", CASTEP_STUDIO_STATE.structure?.formula || seed],
+      ["Source", chGrid.source || chGrid.kind || "CASTEP Volumetric Grid"],
+      ["Grid_Dims_nx_ny_nz", `${nx} x ${ny} x ${nz}`],
+      ["Cell_c_Length_A", Number(cLen.toFixed(5))],
+      ["Cell_Volume_A3", Number((chGrid.cell_vol_a3 || 0).toFixed(4))],
+      ["Slice_Plane", plane.toUpperCase()],
+      ["Slice_Fractional_Pos", Number(slicePos.toFixed(3))],
+      ["Isovalue_e_A3", Number(parseFloat(document.getElementById("castep-chdiff-isoval")?.value) || 0.018)],
+      ["Max_Accumulation_e_A3", Number((chGrid.max_val || 0).toFixed(6))],
+      ["Min_Depletion_e_A3", Number((chGrid.min_val || 0).toFixed(6))],
+      ["Peak_Charge_Transfer_abs_dQ_e", Number(maxDq.toFixed(6))]
+    ]
+  };
+
+  return {
+    seed,
+    plane,
+    slicePos,
+    sheet1D: { name: "1D_Planar_Profile", headers: headers1D, rows: rows1D },
+    sheet2D: { name: `2D_Slice_${plane}_${slicePos.toFixed(2)}`, headers: headers2D, rows: rows2D },
+    metaSheet
+  };
+}
+window.buildChdiffExportTables = buildChdiffExportTables;
+
+function exportCastepChdiffCSV(part = "1d") {
+  const pkg = buildChdiffExportTables();
+  if (!pkg) {
+    if (typeof showToast === "function") showToast("No Charge Density Difference data to export.", "warning");
+    return;
+  }
+  const target = (part === "2d") ? pkg.sheet2D : pkg.sheet1D;
+  const csv = buildCsvString(target.headers, target.rows);
+  const fname = (part === "2d")
+    ? `${pkg.seed}_ChargeDiff_2D_${pkg.plane}_pos${pkg.slicePos.toFixed(2)}.csv`
+    : `${pkg.seed}_ChargeDiff_1D_Planar.csv`;
+  triggerBlobDownload(new Blob([csv], { type: "text/csv;charset=utf-8" }), fname);
+  if (typeof showToast === "function") {
+    showToast(`Exported ${fname} (${target.rows.length} rows × ${target.headers.length} columns)!`, "success");
+  }
 }
 window.exportCastepChdiffCSV = exportCastepChdiffCSV;
+
+function exportCastepChdiffXLSX() {
+  const pkg = buildChdiffExportTables();
+  if (!pkg) {
+    if (typeof showToast === "function") showToast("No Charge Density Difference data to export.", "warning");
+    return;
+  }
+  const sheets = [pkg.sheet1D, pkg.sheet2D, pkg.metaSheet];
+  const blob = buildXlsxBlob(sheets);
+  const fname = `${pkg.seed}_Charge_Density_Difference.xlsx`;
+  triggerBlobDownload(blob, fname);
+  if (typeof showToast === "function") {
+    showToast(`Exported multi-tab workbook ${fname} (${sheets.map(s => s.name).join(" | ")})!`, "success");
+  }
+}
+window.exportCastepChdiffXLSX = exportCastepChdiffXLSX;
 
 // ============================================================================
 // 12. Soft 3D Volumetric Cloud Sprites & Independent Per-Panel 2x2 Zoom / Pan
@@ -10443,33 +11220,87 @@ function renderCastepMullikenPane() {
 }
 window.renderCastepMullikenPane = renderCastepMullikenPane;
 
-function exportCastepMullikenCSV(mode = "atoms") {
+function buildMullikenExportTables() {
   const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
   const mull = job ? (job._mullikenCache || parseCastepMullikenAnalysis(job.castep_text || "")) : null;
-  if (!mull) {
+  if (!mull) return null;
+
+  const seed = sanitizeExportSeed(job.seed || CASTEP_STUDIO_STATE.structure?.formula || "CASTEP");
+  const elFilter = document.getElementById("castep-mulliken-el-filter")?.value || "all";
+  const bpFilter = document.getElementById("castep-mulliken-bond-filter")?.value || "all";
+  const visAtoms = elFilter === "all" ? mull.atoms : mull.atoms.filter(a => a.element === elFilter);
+  const visBonds = bpFilter === "all" ? mull.bonds : mull.bonds.filter(b => b.pairType === bpFilter);
+
+  const atomHeaders = ["Atom", "Element", "Ion", "s", "p", "d", "f", "Total", "Mulliken_Charge_e", "Spin_muB", "mu_s", "mu_p", "mu_d", "mu_f", "Hirshfeld_Charge_e"];
+  const atomRows = visAtoms.map(a => [
+    a.label, a.element, a.ion,
+    Number(a.s.toFixed(4)), Number(a.p.toFixed(4)), Number(a.d.toFixed(4)), Number(a.f.toFixed(4)),
+    Number(a.total.toFixed(4)), Number(a.charge.toFixed(4)), Number(a.spin.toFixed(4)),
+    Number(a.muS.toFixed(4)), Number(a.muP.toFixed(4)), Number(a.muD.toFixed(4)), Number(a.muF.toFixed(4)),
+    a.hirshfeldCharge !== null ? Number(a.hirshfeldCharge.toFixed(4)) : ""
+  ]);
+
+  const bondHeaders = ["Bond", "Pair_Type", "Length_Angstrom", "Bond_Population", "Bond_Spin_hbar2", "Character"];
+  const bondRows = visBonds.map(b => [
+    b.bond, b.pairType, Number(b.lengthA.toFixed(5)), Number(b.population.toFixed(4)),
+    b.spin !== null ? Number(b.spin.toFixed(4)) : "", b.character
+  ]);
+
+  const os = mull.orbSpins || { s: 0, p: 0, d: 0, f: 0 };
+  const summaryRows = [
+    ["Magnetic_Phase", mull.magneticOrder, "", "", "", "", "", ""],
+    ["Total_Net_Moment_muB", Number((mull.integratedSpin || 0).toFixed(4)), "", "", "", "", "", ""],
+    ["Total_Abs_Spin_muB", Number((mull.integratedAbsSpin || 0).toFixed(4)), "", "", "", "", "", ""],
+    ["Total_Orbital_Spin_s_p_d_f", Number(os.s.toFixed(4)), Number(os.p.toFixed(4)), Number(os.d.toFixed(4)), Number(os.f.toFixed(4)), "", "", ""],
+    ["", "", "", "", "", "", "", ""],
+    ["Element", "Atom_Count", "Avg_Charge_e", "Sum_Spin_muB", "Mag_Share_Pct", "mu_s", "mu_p", "mu_d"]
+  ];
+  (mull.speciesSummary || []).forEach(sp => {
+    summaryRows.push([
+      sp.element, sp.count, Number(sp.avgCharge.toFixed(4)), Number(sp.sumSpin.toFixed(4)),
+      Number(sp.pctMag.toFixed(2)), Number(sp.muS.toFixed(4)), Number(sp.muP.toFixed(4)), Number(sp.muD.toFixed(4))
+    ]);
+  });
+
+  return {
+    seed,
+    elFilter,
+    bpFilter,
+    summarySheet: { name: "Summary_Magnetism", headers: ["Property_or_Element", "Col2", "Col3", "Col4", "Col5", "Col6", "Col7", "Col8"], rows: summaryRows },
+    atomSheet: { name: "Atomic_Populations", headers: atomHeaders, rows: atomRows },
+    bondSheet: { name: "Bond_Populations", headers: bondHeaders, rows: bondRows }
+  };
+}
+window.buildMullikenExportTables = buildMullikenExportTables;
+
+function exportCastepMullikenCSV(mode = "atoms") {
+  const pkg = buildMullikenExportTables();
+  if (!pkg) {
     if (typeof showToast === "function") showToast("No Mulliken data available to export.", "warning");
     return;
   }
-  let csv = "";
-  let fname = `${job.seed || "CASTEP"}_Mulliken_${mode}.csv`;
-  if (mode === "bonds") {
-    csv = "Bond,Pair_Type,Length_Angstrom,Bond_Population,Bond_Spin_hbar2,Character\n";
-    mull.bonds.forEach(b => {
-      csv += `"${b.bond}","${b.pairType}",${b.lengthA.toFixed(5)},${b.population.toFixed(3)},${b.spin !== null ? b.spin.toFixed(3) : ""},"${b.character}"\n`;
-    });
-  } else {
-    csv = "Atom,Element,Ion,s,p,d,f,Total,Mulliken_Charge_e,Spin_muB,mu_s,mu_p,mu_d,mu_f,Hirshfeld_Charge_e\n";
-    mull.atoms.forEach(a => {
-      csv += `"${a.label}","${a.element}",${a.ion},${a.s.toFixed(4)},${a.p.toFixed(4)},${a.d.toFixed(4)},${a.f.toFixed(4)},${a.total.toFixed(4)},${a.charge.toFixed(4)},${a.spin.toFixed(4)},${a.muS.toFixed(4)},${a.muP.toFixed(4)},${a.muD.toFixed(4)},${a.muF.toFixed(4)},${a.hirshfeldCharge !== null ? a.hirshfeldCharge.toFixed(4) : ""}\n`;
-    });
-  }
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = fname;
-  document.body.appendChild(a); a.click();
-  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 200);
-  if (typeof showToast === "function") showToast(`Exported ${fname}!`, "success");
+  const sheet = (mode === "bonds") ? pkg.bondSheet : pkg.atomSheet;
+  const csv = buildCsvString(sheet.headers, sheet.rows);
+  const fname = `${pkg.seed}_Mulliken_${mode}.csv`;
+  triggerBlobDownload(new Blob([csv], { type: "text/csv;charset=utf-8" }), fname);
+  if (typeof showToast === "function") showToast(`Exported ${fname} (${sheet.rows.length} rows)!`, "success");
 }
 window.exportCastepMullikenCSV = exportCastepMullikenCSV;
+
+function exportCastepMullikenXLSX() {
+  const pkg = buildMullikenExportTables();
+  if (!pkg) {
+    if (typeof showToast === "function") showToast("No Mulliken data available to export.", "warning");
+    return;
+  }
+  const sheets = [pkg.summarySheet, pkg.atomSheet];
+  if (pkg.bondSheet.rows.length) sheets.push(pkg.bondSheet);
+  const blob = buildXlsxBlob(sheets);
+  const fname = `${pkg.seed}_Mulliken_Analysis.xlsx`;
+  triggerBlobDownload(blob, fname);
+  if (typeof showToast === "function") {
+    showToast(`Exported multi-tab workbook ${fname} (${sheets.map(s => s.name).join(" | ")})!`, "success");
+  }
+}
+window.exportCastepMullikenXLSX = exportCastepMullikenXLSX;
 
