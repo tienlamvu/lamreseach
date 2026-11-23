@@ -209,11 +209,24 @@ const CASTEP_STUDIO_STATE = {
   gatewayFilter: "all",
   gatewaySubView: "jobs",
   lastOpticalSpectra: null,
-  optZoom: { emin: 0.0, emax: null, yScale: 1.0, isDragging: false, lastX: 0 },
+  _jobLoadSeq: 0,
+  _dirtyPanes: new Set(["builder", "electronic", "optics", "chdiff", "convergence", "files"]),
+  _optSpectraCacheKey: "",
+  optZoom: { emin: 0.0, emax: null, nmMin: 180, nmMax: 1100, yScale: 1.0, isDragging: false, lastX: 0 },
+  optPanelZooms: {
+    a: { emin: 0.0, emax: null, nmMin: 180, nmMax: 1100, yScale: 1.0 },
+    b: { emin: 0.0, emax: null, nmMin: 180, nmMax: 1100, yScale: 1.0 },
+    c: { emin: 0.0, emax: null, nmMin: 180, nmMax: 1100, yScale: 1.0 },
+    d: { emin: 0.0, emax: null, nmMin: 180, nmMax: 1100, yScale: 1.0 },
+    single: { emin: 0.0, emax: null, nmMin: 180, nmMax: 1100, yScale: 1.0 }
+  },
+  activeOptPanel: "a",
+  optDragState: { isDragging: false, panelKey: "a", lastX: 0 },
   elecZoom: { isDragging: false, lastY: 0 },
   convZoom: { xMinFrac: 0.0, xMaxFrac: 1.0 },
   chdiffState: {
     mode: "chdiff",
+    cloudStyle: "clouds",
     activeGrid: null,
     primaryChargFrm: null,
     refChargFrms: [],
@@ -1496,7 +1509,7 @@ function renderCastepJobsList() {
       : "";
 
     return `
-      <div class="castep-job-item ${isAct ? "active" : ""}" onclick="loadCastepJobIntoStudio('${j.id}')">
+      <div class="castep-job-item ${isAct ? "active" : ""}" data-job-id="${j.id}" onclick="loadCastepJobIntoStudio('${j.id}')">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:6px;">
           <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:800; font-size:12.5px; color:#0f172a;" onclick="event.stopPropagation()">
             <input type="checkbox" ${isChk ? "checked" : ""} onchange="toggleSelectCastepJob('${j.id}', this.checked)" />
@@ -1541,26 +1554,67 @@ function toggleSelectAllCastepJobs(checked) {
 }
 window.toggleSelectAllCastepJobs = toggleSelectAllCastepJobs;
 
+function highlightActiveCastepJobCard(jobId, isLoading = false) {
+  const listEl = document.getElementById("castep-jobs-list");
+  if (!listEl) return;
+  listEl.querySelectorAll(".castep-job-item.active, .castep-job-item.loading-job").forEach(el => {
+    el.classList.remove("active", "loading-job");
+  });
+  const card = listEl.querySelector(`.castep-job-item[data-job-id="${CSS.escape(String(jobId))}"]`);
+  if (card) {
+    card.classList.add("active");
+    if (isLoading) card.classList.add("loading-job");
+  }
+}
+
+function resetAllOptPanelZooms() {
+  const def = () => ({ emin: 0.0, emax: null, nmMin: 180, nmMax: 1100, yScale: 1.0 });
+  CASTEP_STUDIO_STATE.optPanelZooms = { a: def(), b: def(), c: def(), d: def(), single: def() };
+  CASTEP_STUDIO_STATE.optZoom = { ...def(), isDragging: false, lastX: 0 };
+  CASTEP_STUDIO_STATE._optSpectraCacheKey = "";
+}
+
 async function loadCastepJobIntoStudio(jobId) {
-  let job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === jobId);
+  const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === jobId);
   if (!job) return;
+
+  // Monotonic token so rapid clicks across the sidebar cancel stale async loads smoothly
+  const loadSeq = ++CASTEP_STUDIO_STATE._jobLoadSeq;
   CASTEP_STUDIO_STATE.activeJobId = jobId;
 
+  // Instant <1ms active highlight without destroying/rebuilding the sidebar DOM!
+  const needsHydration = !job._hydrated && (
+    (job._fileMap && Object.keys(job._fileMap).length > 0) ||
+    job._dirHandle ||
+    (job.folder && CASTEP_STUDIO_STATE.localBackendConnected)
+  );
+  highlightActiveCastepJobCard(jobId, needsHydration);
+
+  // Yield 1 animation frame so the browser paints the clicked highlight IMMEDIATELY
+  if (needsHydration) {
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    if (loadSeq !== CASTEP_STUDIO_STATE._jobLoadSeq) return;
+  }
+
   // Lazy-hydrate full details from local FastAPI server OR from mounted browser FileHandles/Files
-  if (!job._hydrated) {
+  if (needsHydration) {
     if (job._fileMap && Object.keys(job._fileMap).length > 0) {
-      await hydrateCastepJobFromFileMap(job);
+      await hydrateCastepJobFromFileMap(job, { fastFirst: CASTEP_STUDIO_STATE.activeStagePane !== "chdiff" });
+      if (loadSeq !== CASTEP_STUDIO_STATE._jobLoadSeq) return;
       Object.assign(job, enrichCastepJobSummary(job));
       job._hydrated = true;
     } else if (job._dirHandle) {
       await hydrateCastepJobFromDirHandle(job);
+      if (loadSeq !== CASTEP_STUDIO_STATE._jobLoadSeq) return;
       Object.assign(job, enrichCastepJobSummary(job));
       job._hydrated = true;
     } else if (job.folder && CASTEP_STUDIO_STATE.localBackendConnected) {
       try {
         const resp = await fetch(`/api/castep/job?folder=${encodeURIComponent(job.folder)}&seed=${encodeURIComponent(job.seed || "")}`);
+        if (loadSeq !== CASTEP_STUDIO_STATE._jobLoadSeq) return;
         if (resp.ok) {
           const detail = await resp.json();
+          if (loadSeq !== CASTEP_STUDIO_STATE._jobLoadSeq) return;
           Object.assign(job, detail);
           Object.assign(job, enrichCastepJobSummary(job));
           job._hydrated = true;
@@ -1568,6 +1622,9 @@ async function loadCastepJobIntoStudio(jobId) {
       } catch (e) {}
     }
   }
+
+  if (loadSeq !== CASTEP_STUDIO_STATE._jobLoadSeq) return;
+  highlightActiveCastepJobCard(jobId, false);
 
   // 1) Parse .castep log
   const parsedLog = parseCastepOutputLog(job.castep_text || "");
@@ -1644,21 +1701,19 @@ async function loadCastepJobIntoStudio(jobId) {
     };
   }
 
-  // 3) Parse Geometry Trajectory (.geom) if present
+  // 3) Parse Geometry Trajectory (.geom) lazily only if present
   CASTEP_STUDIO_STATE.geomFrames = job.geom_text ? parseCastepGeomTrajectory(job.geom_text) : [];
   CASTEP_STUDIO_STATE.activeGeomFrameIdx = Math.max(0, CASTEP_STUDIO_STATE.geomFrames.length - 1);
   updateCastepGeomScrubberUI();
 
-  // 4) Sync Working Folder & Seed inputs
+  // 4) Sync Working Folder, Seed & Optical File Selector
   const folderInp = document.getElementById("castep-save-folder-input");
   const seedInp = document.getElementById("castep-save-seed-input");
   if (folderInp) folderInp.value = job.folder || "";
   if (seedInp) seedInp.value = job.seed || "";
-
-  // Populate Optical Spectrum File selector dropdown
   populateCastepOpticalFileSelect(job);
 
-  // 5) Reset viewports & caches and re-render
+  // 5) Reset viewports & caches
   CASTEP_STUDIO_STATE.view3D.distanceMeasurements = [];
   CASTEP_STUDIO_STATE.view3D.angleMeasurements = [];
   CASTEP_STUDIO_STATE.view3D.measureBuffer = [];
@@ -1668,29 +1723,68 @@ async function loadCastepJobIntoStudio(jobId) {
   CASTEP_STUDIO_STATE.view3D._topoCacheKey = "";
   CASTEP_STUDIO_STATE.view3D._legendCacheKey = "";
   CASTEP_STUDIO_STATE.chdiffState.activeGrid = null;
-  CASTEP_STUDIO_STATE.optZoom = { emin: 0.0, emax: null, yScale: 1.0, isDragging: false, lastX: 0 };
+  CASTEP_STUDIO_STATE.chdiffState.rot3DMatrix = null;
+  resetAllOptPanelZooms();
   CASTEP_STUDIO_STATE.convZoom = { xMinFrac: 0.0, xMaxFrac: 1.0 };
 
   setCastep3DView(CASTEP_STUDIO_STATE.view3D.currentAxisPreset || "a", true);
   syncCastepStructureToBuilderInputs();
-  detectCastepAdsorptionSites();
-  renderVestaObjectsTab();
-  renderCastepAtomsTable();
-  renderCastepJobsList();
   updateCastepKpiBar();
-  renderCastep3DScene();
-  updateVestaOutputConsole();
-  renderMsGatewayTable();
-  renderCastepElectronicPlots();
-  renderCastepOpticalPlots();
-  renderCastepChdiffPlots();
-  renderCastepConvergencePlots();
-  populateCastepParamFormFromText(job.param_text || "");
-  refreshCastepFileEditorContent();
+
+  // 6) Mark all non-active panes dirty and render ONLY the currently visible tab immediately!
+  CASTEP_STUDIO_STATE._dirtyPanes = new Set(["builder", "electronic", "optics", "chdiff", "convergence", "files", "atoms", "adsorb"]);
+  const activePane = CASTEP_STUDIO_STATE.activeStagePane || "builder";
+
+  if (activePane === "builder") {
+    CASTEP_STUDIO_STATE._dirtyPanes.delete("builder");
+    renderCastep3DScene();
+    updateVestaOutputConsole();
+    renderVestaObjectsTab();
+    // Defer heavy background table & adsorption site refresh to next idle frame
+    requestAnimationFrame(() => {
+      if (loadSeq !== CASTEP_STUDIO_STATE._jobLoadSeq) return;
+      detectCastepAdsorptionSites();
+      renderCastepAtomsTable();
+      CASTEP_STUDIO_STATE._dirtyPanes.delete("atoms");
+      CASTEP_STUDIO_STATE._dirtyPanes.delete("adsorb");
+    });
+  } else if (activePane === "electronic") {
+    CASTEP_STUDIO_STATE._dirtyPanes.delete("electronic");
+    renderCastepElectronicPlots();
+  } else if (activePane === "optics") {
+    CASTEP_STUDIO_STATE._dirtyPanes.delete("optics");
+    renderCastepOpticalPlots();
+  } else if (activePane === "chdiff") {
+    CASTEP_STUDIO_STATE._dirtyPanes.delete("chdiff");
+    await ensureJobChdiffHydrated(job);
+    if (loadSeq !== CASTEP_STUDIO_STATE._jobLoadSeq) return;
+    renderCastepChdiffPlots();
+  } else if (activePane === "convergence") {
+    CASTEP_STUDIO_STATE._dirtyPanes.delete("convergence");
+    renderCastepConvergencePlots();
+  } else if (activePane === "files") {
+    CASTEP_STUDIO_STATE._dirtyPanes.delete("files");
+    populateCastepParamFormFromText(job.param_text || "");
+    refreshCastepFileEditorContent();
+  }
 }
 window.loadCastepJobIntoStudio = loadCastepJobIntoStudio;
 
-function switchCastepStagePane(paneId, btnEl) {
+async function ensureJobChdiffHydrated(job) {
+  if (!job || job.chdiff_data) return;
+  if (job._fileMap && !job._chdiffChecked) {
+    job._chdiffChecked = true;
+    const entries = Object.entries(job._fileMap);
+    const chdiffE = entries.find(([n]) => n.toLowerCase().endsWith(".chdiff"));
+    if (chdiffE) {
+      const { vol, cLen } = getActiveStructureCellVolAndC();
+      const buf = await readFromFileOrHandle(chdiffE[1], true);
+      if (buf) job.chdiff_data = parseCastepChdiffArrayBuffer(buf, chdiffE[0], vol, cLen);
+    }
+  }
+}
+
+async function switchCastepStagePane(paneId, btnEl) {
   CASTEP_STUDIO_STATE.activeStagePane = paneId;
   document.querySelectorAll(".castep-stage-tab").forEach(b => b.classList.remove("active"));
   document.querySelectorAll(".castep-stage-pane").forEach(p => p.classList.remove("active"));
@@ -1699,15 +1793,35 @@ function switchCastepStagePane(paneId, btnEl) {
   const pane = document.getElementById(`castep-pane-${paneId}`);
   if (pane) pane.classList.add("active");
 
-  setTimeout(() => {
-    if (paneId === "builder") renderCastep3DScene();
-    else if (paneId === "gateway") renderMsGatewayTable();
+  const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
+  if (paneId === "chdiff" && job) {
+    await ensureJobChdiffHydrated(job);
+  }
+
+  requestAnimationFrame(() => {
+    CASTEP_STUDIO_STATE._dirtyPanes.delete(paneId);
+    if (paneId === "builder") {
+      renderCastep3DScene();
+      updateVestaOutputConsole();
+      renderVestaObjectsTab();
+      if (CASTEP_STUDIO_STATE._dirtyPanes.has("atoms")) {
+        renderCastepAtomsTable();
+        CASTEP_STUDIO_STATE._dirtyPanes.delete("atoms");
+      }
+      if (CASTEP_STUDIO_STATE._dirtyPanes.has("adsorb")) {
+        detectCastepAdsorptionSites();
+        CASTEP_STUDIO_STATE._dirtyPanes.delete("adsorb");
+      }
+    } else if (paneId === "gateway") renderMsGatewayTable();
     else if (paneId === "electronic") renderCastepElectronicPlots();
     else if (paneId === "optics") renderCastepOpticalPlots();
     else if (paneId === "chdiff") renderCastepChdiffPlots();
     else if (paneId === "convergence") renderCastepConvergencePlots();
-    else if (paneId === "files") refreshCastepFileEditorContent();
-  }, 40);
+    else if (paneId === "files") {
+      if (job) populateCastepParamFormFromText(job.param_text || "");
+      refreshCastepFileEditorContent();
+    }
+  });
 }
 window.switchCastepStagePane = switchCastepStagePane;
 
@@ -2919,30 +3033,40 @@ function renderCastep3DScene() {
     }
   }
 
-  // 3D Volumetric Charge Density Difference (Δρ) Isosurface Voxels
+  // 3D Volumetric Charge Density Difference (Δρ) Soft Electron Clouds
   if (v3.showChdiffIso && typeof getActiveJobChdiffGrid === "function") {
     const chGrid = getActiveJobChdiffGrid();
     if (chGrid && chGrid.isosurfaceVoxels) {
       const pal = document.getElementById("castep-chdiff-palette")?.value || "yellow-cyan";
-      const posCol = pal === "red-blue" ? "rgba(239, 68, 68, 0.42)" : (pal === "green-magenta" ? "rgba(34, 197, 94, 0.42)" : "rgba(250, 204, 21, 0.48)");
-      const posBorder = pal === "red-blue" ? "rgba(185, 28, 28, 0.65)" : (pal === "green-magenta" ? "rgba(21, 128, 61, 0.65)" : "rgba(202, 138, 4, 0.72)");
-      const negCol = pal === "red-blue" ? "rgba(59, 130, 246, 0.42)" : (pal === "green-magenta" ? "rgba(217, 70, 239, 0.42)" : "rgba(6, 182, 212, 0.45)");
-      const negBorder = pal === "red-blue" ? "rgba(29, 78, 216, 0.65)" : (pal === "green-magenta" ? "rgba(162, 28, 175, 0.65)" : "rgba(14, 116, 144, 0.70)");
+      const cloudStyle = CASTEP_STUDIO_STATE.chdiffState?.cloudStyle || "clouds";
       const isoThresh = Number(v3.chdiffIsoval) || 0.018;
+      const dims = chGrid.sample_dims || [16, 16, 36];
+      const voxelPitch = Math.max(
+        Math.hypot(...aVec) / Math.max(1, dims[0]),
+        Math.hypot(...bVec) / Math.max(1, dims[1]),
+        Math.hypot(...cVec) / Math.max(1, dims[2])
+      );
+      const baseCloudR = Math.max(9.0, Math.min(34.0, voxelPitch * autoScale * (cloudStyle === "clouds" ? 1.65 : 1.28)));
+      const posSprite = getCachedChdiffCloudSprite(pal, true, cloudStyle);
+      const negSprite = getCachedChdiffCloudSprite(pal, false, cloudStyle);
 
       for (let v = 0; v < chGrid.isosurfaceVoxels.length; v++) {
         const vx = chGrid.isosurfaceVoxels[v];
-        if (Math.abs(vx.val) < isoThresh) continue;
+        const mag = Math.abs(vx.val);
+        if (mag < isoThresh) continue;
         const [cx, cy, cz] = castepFracToCart(vx.u, vx.v, vx.w, vecs);
         const p = project(cx, cy, cz);
-        const lobeR = Math.max(4.5, Math.min(18, autoScale * 0.28 * Math.min(1.6, Math.abs(vx.val) / isoThresh)));
+        const excess = Math.min(1.0, (mag - isoThresh) / Math.max(isoThresh * 1.8, 1e-6));
+        const lobeR = baseCloudR * (0.76 + 0.52 * Math.sqrt(excess));
+        const alpha = cloudStyle === "clouds"
+          ? (0.20 + 0.44 * Math.sqrt(excess))
+          : (0.38 + 0.44 * Math.sqrt(excess));
         drawItems.push({
           type: "chdiff_lobe",
           sz: p.sz,
           data: {
-            sx: p.sx, sy: p.sy, r: lobeR,
-            fill: vx.val > 0 ? posCol : negCol,
-            stroke: vx.val > 0 ? posBorder : negBorder
+            sx: p.sx, sy: p.sy, r: lobeR, alpha,
+            sprite: vx.val > 0 ? posSprite : negSprite
           }
         });
       }
@@ -2988,13 +3112,10 @@ function renderCastep3DScene() {
       ctx.stroke();
     } else if (item.type === "chdiff_lobe") {
       const l = item.data;
-      ctx.beginPath();
-      ctx.arc(l.sx, l.sy, l.r, 0, Math.PI * 2);
-      ctx.fillStyle = l.fill;
-      ctx.fill();
-      ctx.lineWidth = 0.9;
-      ctx.strokeStyle = l.stroke;
-      ctx.stroke();
+      const prevAlpha = ctx.globalAlpha;
+      ctx.globalAlpha = l.alpha;
+      ctx.drawImage(l.sprite, l.sx - l.r, l.sy - l.r, l.r * 2, l.r * 2);
+      ctx.globalAlpha = prevAlpha;
     } else if (item.type === "bond") {
       const { a1, a2 } = item.data;
       const mx = (a1.sx + a2.sx) / 2, my = (a1.sy + a2.sy) / 2;
@@ -5442,7 +5563,7 @@ async function readFromFileOrHandle(fileOrHandle, asBinary = false) {
   }
 }
 
-async function hydrateCastepJobFromFileMap(job) {
+async function hydrateCastepJobFromFileMap(job, opts = {}) {
   const map = job._fileMap || {};
   const entries = Object.entries(map);
   if (!entries.length) return;
@@ -5553,7 +5674,7 @@ async function hydrateCastepJobFromFileMap(job) {
   }
 
   const chdiffE = findEntry(l => l.endsWith(".chdiff"));
-  if (chdiffE && !job.chdiff_data) {
+  if (chdiffE && !job.chdiff_data && !opts.fastFirst) {
     const buf = await readFromFileOrHandle(chdiffE[1], true);
     if (buf) {
       job.chdiff_data = parseCastepChdiffArrayBuffer(buf, chdiffE[0], vol, cLen);
@@ -6029,7 +6150,7 @@ window.refreshMsGatewayJobsFromServer = refreshMsGatewayJobsFromServer;
 function setCastepOpticalWindow(emaxEv) {
   const el = document.getElementById("castep-opt-emax");
   if (el) el.value = emaxEv;
-  CASTEP_STUDIO_STATE.optZoom = { emin: 0.0, emax: emaxEv, yScale: 1.0, isDragging: false, lastX: 0 };
+  resetAllOptPanelZooms();
   renderCastepOpticalPlots();
 }
 window.setCastepOpticalWindow = setCastepOpticalWindow;
@@ -6545,8 +6666,17 @@ function renderCastepOpticalPlots() {
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
-  const spec = computeCastepOpticalSpectra(job);
-  CASTEP_STUDIO_STATE.lastOpticalSpectra = spec;
+  const emaxVal = parseFloat(document.getElementById("castep-opt-emax")?.value) || 15.0;
+  const scisVal = parseFloat(document.getElementById("castep-opt-scissors")?.value) || 0.0;
+  const smrVal = parseFloat(document.getElementById("castep-opt-smearing")?.value) || 0.25;
+  const fSelVal = document.getElementById("castep-opt-file-select")?.value || "auto";
+  const optCacheKey = `${job?.id || "none"}_${emaxVal}_${scisVal}_${smrVal}_${fSelVal}_${(job?.optical_xcds || []).length}`;
+  let spec = CASTEP_STUDIO_STATE.lastOpticalSpectra;
+  if (!spec || CASTEP_STUDIO_STATE._optSpectraCacheKey !== optCacheKey) {
+    spec = computeCastepOpticalSpectra(job);
+    CASTEP_STUDIO_STATE.lastOpticalSpectra = spec;
+    CASTEP_STUDIO_STATE._optSpectraCacheKey = optCacheKey;
+  }
 
   const strip = document.getElementById("castep-optics-summary-strip");
   if (!spec) {
@@ -6579,25 +6709,52 @@ function renderCastepOpticalPlots() {
   }
 
   let xVals = spec.hwGrid;
-  const oz = CASTEP_STUDIO_STATE.optZoom || {};
-  let xMin = oz.emin !== undefined && oz.emin !== null ? oz.emin : 0;
-  let xMax = oz.emax || spec.hwGrid[spec.hwGrid.length - 1];
-  if (xMax <= xMin + 0.15) { xMin = 0; xMax = spec.hwGrid[spec.hwGrid.length - 1]; }
+  const fullEmax = spec.hwGrid[spec.hwGrid.length - 1];
   let xTitle = "Photon Energy ħω (eV)";
   if (xAxisMode === "nm") {
-    xMin = oz.nmMin || 180;
-    xMax = oz.nmMax || 1100;
     xTitle = "Wavelength λ (nm)";
     xVals = spec.hwGrid.map(hw => 1239.84193 / Math.max(0.1, hw));
   }
 
   function drawOpticalSubPanel(boxX, boxY, boxW, boxH, cfg) {
+    const pKey = cfg.panelKey || "single";
+    const pz = (CASTEP_STUDIO_STATE.optPanelZooms && CASTEP_STUDIO_STATE.optPanelZooms[pKey]) || { emin: 0, emax: null, nmMin: 180, nmMax: 1100, yScale: 1.0 };
+    let xMin = 0, xMax = fullEmax;
+    if (xAxisMode === "nm") {
+      xMin = pz.nmMin !== undefined ? pz.nmMin : 180;
+      xMax = pz.nmMax !== undefined ? pz.nmMax : 1100;
+      if (xMax <= xMin + 20) { xMin = 180; xMax = 1100; }
+    } else {
+      xMin = pz.emin !== undefined && pz.emin !== null ? pz.emin : 0;
+      xMax = pz.emax !== undefined && pz.emax !== null ? pz.emax : fullEmax;
+      if (xMax <= xMin + 0.12) { xMin = 0; xMax = fullEmax; }
+    }
+
+    const isZoomedX = xAxisMode === "nm"
+      ? (xMax - xMin < 910)
+      : (xMax - xMin < fullEmax - 0.15);
+    const zoomFactorDisp = xAxisMode === "nm"
+      ? (920 / Math.max(1, xMax - xMin))
+      : (fullEmax / Math.max(0.1, xMax - xMin));
+    const isActiveSub = prop === "multigrid" && CASTEP_STUDIO_STATE.activeOptPanel === pKey;
+
     const hasRightAxis = cfg.series.some(s => s.axis === "right");
     const padL = 54, padR = hasRightAxis ? 48 : 16, padT = 28, padB = 34;
     const pw = Math.max(60, boxW - padL - padR);
     const ph = Math.max(50, boxH - padT - padB);
     const px0 = boxX + padL;
     const py0 = boxY + padT;
+
+    // Subtle crisp focus highlight on active 2x2 sub-panel
+    if (isActiveSub) {
+      ctx.save();
+      ctx.fillStyle = "rgba(239, 246, 255, 0.32)";
+      ctx.fillRect(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
+      ctx.strokeStyle = "rgba(37, 99, 235, 0.45)";
+      ctx.lineWidth = 1.4;
+      ctx.strokeRect(boxX + 2.5, boxY + 2.5, boxW - 5, boxH - 5);
+      ctx.restore();
+    }
 
     const computeYRange = (seriesList, yMinForced, yMaxForced) => {
       let yMin = yMinForced !== undefined ? yMinForced : 0;
@@ -6616,7 +6773,7 @@ function renderCastepOpticalPlots() {
       });
       if (!isFinite(yMax) || yMax <= yMin) yMax = yMin + 1.0;
       if (yMaxForced !== undefined) yMax = Math.max(yMax, yMaxForced);
-      const yScaleFactor = Number(CASTEP_STUDIO_STATE.optZoom?.yScale) || 1.0;
+      const yScaleFactor = Number(pz.yScale) || 1.0;
       const ySpan = (yMax - yMin) / yScaleFactor;
       yMax = yMin + ySpan * 1.08;
       if (yMin < 0) yMin -= ySpan * 0.05;
@@ -6731,11 +6888,27 @@ function renderCastepOpticalPlots() {
     }
     ctx.restore();
 
-    // Panel Title
-    ctx.fillStyle = "#0f172a";
+    // Panel Title & independent per-panel zoom badge
+    ctx.fillStyle = isActiveSub ? "#1d4ed8" : "#0f172a";
     ctx.font = "bold 11.5px Inter, sans-serif";
     ctx.textAlign = "left";
     ctx.fillText(cfg.title, px0, boxY + 17);
+    if (isZoomedX || (Number(pz.yScale) || 1.0) > 1.05) {
+      const zTxt = `🔍 ${zoomFactorDisp.toFixed(1)}×`;
+      ctx.save();
+      ctx.font = "bold 9.5px Inter, sans-serif";
+      const tw = ctx.measureText(zTxt).width + 10;
+      ctx.fillStyle = "rgba(37, 99, 235, 0.12)";
+      ctx.strokeStyle = "rgba(37, 99, 235, 0.45)";
+      ctx.lineWidth = 1;
+      ctx.fillRect(px0 + 4, py0 + 4, tw, 16);
+      ctx.strokeRect(px0 + 4, py0 + 4, tw, 16);
+      ctx.fillStyle = "#1d4ed8";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(zTxt, px0 + 9, py0 + 12);
+      ctx.restore();
+    }
 
     // Inline legend (right-aligned inside boxW with zero clipping!)
     let lx = px0 + pw;
@@ -6790,21 +6963,21 @@ function renderCastepOpticalPlots() {
     const hw = Math.floor(width / 2);
     const hh = Math.floor(height / 2);
     drawOpticalSubPanel(0, 0, hw, hh, {
-      title: "(a) Dielectric ε(ω)",
+      panelKey: "a", title: "(a) Dielectric ε(ω)",
       series: [
         { label: "ε₁ Real", values: spec.eps1, color: "#2563eb", width: 2.0 },
         { label: "ε₂ Imag", values: spec.eps2, color: "#dc2626", width: 2.0, fillAlpha: "rgba(220,38,38,0.08)" }
       ]
     });
     drawOpticalSubPanel(hw, 0, width - hw, hh, {
-      title: "(b) Absorption α (×10⁴ cm⁻¹)",
+      panelKey: "b", title: "(b) Absorption α (×10⁴ cm⁻¹)",
       yMinForced: 0,
       series: [
         { label: "α(ω)", values: alpha10k, color: "#0284c7", width: 2.2, fillAlpha: "rgba(2,132,199,0.12)" }
       ]
     });
     drawOpticalSubPanel(0, hh, hw, height - hh, {
-      title: "(c) Refractive n & k",
+      panelKey: "c", title: "(c) Refractive n & k",
       yMinForced: 0,
       series: [
         { label: "n(ω)", values: spec.nArr, color: "#16a34a", width: 2.0 },
@@ -6812,7 +6985,7 @@ function renderCastepOpticalPlots() {
       ]
     });
     drawOpticalSubPanel(hw, hh, width - hw, height - hh, {
-      title: "(d) Reflectivity R & EELS L",
+      panelKey: "d", title: "(d) Reflectivity R & EELS L",
       yMinForced: 0,
       series: [
         { label: "R (Left)", values: spec.reflArr, color: "#7c3aed", width: 2.0, axis: "left" },
@@ -6889,14 +7062,15 @@ function initCastepOpticsCanvasHover() {
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const prop = document.getElementById("castep-opt-property")?.value || "multigrid";
+    const pKey = getOptPanelKeyAtClientPos(canvas, e.clientX, e.clientY);
     const hwPanelW = prop === "multigrid" ? (rect.width / 2) : rect.width;
     const localX = prop === "multigrid" ? (mx % hwPanelW) : mx;
-    const padL = 54, padR = 24;
+    const padL = 54, padR = pKey === "d" ? 48 : 16;
     const pw = hwPanelW - padL - padR;
     const frac = Math.max(0, Math.min(1, (localX - padL) / (pw || 1)));
-    const oz = CASTEP_STUDIO_STATE.optZoom || {};
-    const eMin = oz.emin || 0;
-    const eMax = oz.emax || spec.hwGrid[spec.hwGrid.length - 1];
+    const pz = (CASTEP_STUDIO_STATE.optPanelZooms && CASTEP_STUDIO_STATE.optPanelZooms[pKey]) || {};
+    const eMin = pz.emin || 0;
+    const eMax = pz.emax || spec.hwGrid[spec.hwGrid.length - 1];
     const targetE = eMin + frac * (eMax - eMin);
     let idx = 0, bestD = 1e9;
     for (let i = 0; i < spec.hwGrid.length; i++) {
@@ -7583,39 +7757,70 @@ function renderCastepChdiffPlots() {
     edges.forEach(([i, j]) => { ctx.moveTo(corners[i].sx, corners[i].sy); ctx.lineTo(corners[j].sx, corners[j].sy); });
     ctx.stroke();
 
-    // Collect atoms + volumetric Δρ isosurface lobes sorted by depth
+    // Collect glossy atoms, bonds + smooth volumetric 3D Electron Clouds sorted by depth
     const items = [];
-    const posCol = palette === "red-blue" ? "rgba(239,68,68,0.46)" : (palette === "green-magenta" ? "rgba(34,197,94,0.46)" : "rgba(250,204,21,0.52)");
-    const posStr = palette === "red-blue" ? "rgba(185,28,28,0.72)" : (palette === "green-magenta" ? "rgba(21,128,61,0.72)" : "rgba(202,138,4,0.78)");
-    const negCol = palette === "red-blue" ? "rgba(59,130,246,0.46)" : (palette === "green-magenta" ? "rgba(217,70,239,0.46)" : "rgba(6,182,212,0.48)");
-    const negStr = palette === "red-blue" ? "rgba(29,78,216,0.72)" : (palette === "green-magenta" ? "rgba(162,28,175,0.72)" : "rgba(14,116,144,0.75)");
+    const cloudStyle = CASTEP_STUDIO_STATE.chdiffState?.cloudStyle || "clouds";
+    const posStr = palette === "red-blue" ? "#b91c1c" : (palette === "green-magenta" ? "#15803d" : "#ca8a04");
+    const negStr = palette === "red-blue" ? "#1d4ed8" : (palette === "green-magenta" ? "#a21caf" : "#0e7490");
+    const dims = chGrid.sample_dims || [16, 16, 36];
+    const voxelPitch = Math.max(
+      Math.hypot(...aV) / Math.max(1, dims[0]),
+      Math.hypot(...bV) / Math.max(1, dims[1]),
+      Math.hypot(...cV) / Math.max(1, dims[2])
+    );
+    const baseCloudR = Math.max(8.5, Math.min(28.0, voxelPitch * scale * (cloudStyle === "clouds" ? 1.62 : 1.24)));
+    const posSprite = getCachedChdiffCloudSprite(palette, true, cloudStyle);
+    const negSprite = getCachedChdiffCloudSprite(palette, false, cloudStyle);
 
     (chGrid.isosurfaceVoxels || []).forEach(vx => {
-      if (Math.abs(vx.val) < isoVal) return;
+      const mag = Math.abs(vx.val);
+      if (mag < isoVal) return;
       const [cx, cy, cz] = castepFracToCart(vx.u, vx.v, vx.w, vecs);
       const p = proj(cx, cy, cz);
-      const r = Math.max(3.5, Math.min(13, scale * 0.25 * Math.min(1.5, Math.abs(vx.val) / isoVal)));
-      items.push({ type: "lobe", sz: p.sz, sx: p.sx, sy: p.sy, r, fill: vx.val > 0 ? posCol : negCol, stroke: vx.val > 0 ? posStr : negStr });
+      const excess = Math.min(1.0, (mag - isoVal) / Math.max(isoVal * 1.8, 1e-6));
+      const r = baseCloudR * (0.76 + 0.50 * Math.sqrt(excess));
+      const alpha = cloudStyle === "clouds"
+        ? (0.20 + 0.44 * Math.sqrt(excess))
+        : (0.38 + 0.44 * Math.sqrt(excess));
+      items.push({ type: "lobe", sz: p.sz, sx: p.sx, sy: p.sy, r, alpha, sprite: vx.val > 0 ? posSprite : negSprite });
     });
 
-    (st?.atoms || []).forEach(at => {
+    const projAtomsA = (st?.atoms || []).map(at => {
       const [cx, cy, cz] = castepFracToCart(at.x, at.y, at.z, vecs);
       const p = proj(cx, cy, cz);
       const covR = (typeof COVALENT_RADII !== "undefined" && COVALENT_RADII[at.element]) || 1.15;
-      const r = Math.max(4.5, Math.min(12, covR * scale * 0.20));
-      items.push({ type: "atom", sz: p.sz, sx: p.sx, sy: p.sy, r, color: getVestaElementColor(at.element) });
+      const r = Math.max(4.5, Math.min(11.5, covR * scale * 0.21));
+      return { cx, cy, cz, sx: p.sx, sy: p.sy, sz: p.sz, r, el: at.element, color: getVestaElementColor(at.element) };
     });
+    // Add subtle bonds inside Panel (a) so the molecular/crystal backbone stands out inside the clouds
+    for (let i = 0; i < projAtomsA.length; i++) {
+      for (let j = i + 1; j < projAtomsA.length; j++) {
+        const a1 = projAtomsA[i], a2 = projAtomsA[j];
+        const d = Math.hypot(a1.cx - a2.cx, a1.cy - a2.cy, a1.cz - a2.cz);
+        if (d > 0.45 && d < 2.95) {
+          items.push({ type: "bond", sz: 0.5 * (a1.sz + a2.sz) - 0.02, a1, a2 });
+        }
+      }
+    }
+    projAtomsA.forEach(a => items.push({ type: "atom", sz: a.sz, sx: a.sx, sy: a.sy, r: a.r, color: a.color }));
 
     items.sort((a, b) => a.sz - b.sz);
     items.forEach(it => {
-      ctx.beginPath();
-      ctx.arc(it.sx, it.sy, it.r, 0, Math.PI * 2);
       if (it.type === "lobe") {
-        ctx.fillStyle = it.fill; ctx.fill();
-        ctx.strokeStyle = it.stroke; ctx.lineWidth = 0.7; ctx.stroke();
+        const prevA = ctx.globalAlpha;
+        ctx.globalAlpha = it.alpha;
+        ctx.drawImage(it.sprite, it.sx - it.r, it.sy - it.r, it.r * 2, it.r * 2);
+        ctx.globalAlpha = prevA;
+      } else if (it.type === "bond") {
+        ctx.beginPath();
+        ctx.moveTo(it.a1.sx, it.a1.sy);
+        ctx.lineTo(it.a2.sx, it.a2.sy);
+        ctx.strokeStyle = "rgba(71, 85, 105, 0.72)";
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
       } else {
-        ctx.fillStyle = it.color; ctx.fill();
-        ctx.strokeStyle = "#1e293b"; ctx.lineWidth = 0.8; ctx.stroke();
+        const spr = getCachedSphereSprite(it.color, false);
+        ctx.drawImage(spr, it.sx - it.r, it.sy - it.r, it.r * 2, it.r * 2);
       }
     });
 
@@ -8020,28 +8225,160 @@ function exportCastepChdiffCSV() {
 window.exportCastepChdiffCSV = exportCastepChdiffCSV;
 
 // ============================================================================
-// 12. Interactive Mouse-Wheel Zoom, Drag-Pan & Reset for ALL 2D Charts
+// 12. Soft 3D Volumetric Cloud Sprites & Independent Per-Panel 2x2 Zoom / Pan
 // ============================================================================
 
-function zoomCastepPlot(kind, factor) {
+const _CHDIFF_CLOUD_SPRITE_CACHE = new Map();
+
+function getCachedChdiffCloudSprite(palette, isPositive, styleMode = "clouds") {
+  const key = `${palette}_${isPositive ? "pos" : "neg"}_${styleMode}`;
+  if (_CHDIFF_CLOUD_SPRITE_CACHE.has(key)) return _CHDIFF_CLOUD_SPRITE_CACHE.get(key);
+
+  const sz = 96;
+  const off = document.createElement("canvas");
+  off.width = sz;
+  off.height = sz;
+  const octx = off.getContext("2d");
+  const cx = sz / 2, cy = sz / 2, R = sz * 0.48;
+
+  // Color RGB triplets for bright core & soft halo
+  let coreRGB = [255, 214, 10], midRGB = [245, 178, 0];
+  if (palette === "red-blue") {
+    coreRGB = isPositive ? [248, 86, 86] : [56, 139, 253];
+    midRGB  = isPositive ? [220, 38, 38] : [37, 99, 235];
+  } else if (palette === "green-magenta") {
+    coreRGB = isPositive ? [52, 211, 120] : [232, 92, 246];
+    midRGB  = isPositive ? [22, 163, 74]  : [192, 38, 211];
+  } else {
+    // Yellow (+Δρ Accumulation) / Cyan (−Δρ Depletion)
+    coreRGB = isPositive ? [255, 222, 46] : [34, 211, 238];
+    midRGB  = isPositive ? [234, 170, 8]  : [6, 174, 206];
+  }
+
+  if (styleMode === "shaded") {
+    // Soft 3D Phong-shaded translucent isosurface blob (NO harsh border rings!)
+    const g = octx.createRadialGradient(cx - R * 0.28, cy - R * 0.28, R * 0.05, cx, cy, R);
+    g.addColorStop(0.00, `rgba(255, 255, 255, 0.85)`);
+    g.addColorStop(0.28, `rgba(${coreRGB[0]}, ${coreRGB[1]}, ${coreRGB[2]}, 0.72)`);
+    g.addColorStop(0.72, `rgba(${midRGB[0]}, ${midRGB[1]}, ${midRGB[2]}, 0.44)`);
+    g.addColorStop(0.92, `rgba(${midRGB[0]}, ${midRGB[1]}, ${midRGB[2]}, 0.14)`);
+    g.addColorStop(1.00, `rgba(${midRGB[0]}, ${midRGB[1]}, ${midRGB[2]}, 0.00)`);
+    octx.fillStyle = g;
+    octx.fillRect(0, 0, sz, sz);
+  } else {
+    // True Gaussian Volumetric Electron Cloud Puff (feathers smoothly to 0 alpha at rim!)
+    const g = octx.createRadialGradient(cx - R * 0.12, cy - R * 0.12, 0, cx, cy, R);
+    g.addColorStop(0.00, `rgba(${coreRGB[0]}, ${coreRGB[1]}, ${coreRGB[2]}, 0.74)`);
+    g.addColorStop(0.32, `rgba(${coreRGB[0]}, ${coreRGB[1]}, ${coreRGB[2]}, 0.48)`);
+    g.addColorStop(0.62, `rgba(${midRGB[0]}, ${midRGB[1]}, ${midRGB[2]}, 0.22)`);
+    g.addColorStop(0.84, `rgba(${midRGB[0]}, ${midRGB[1]}, ${midRGB[2]}, 0.06)`);
+    g.addColorStop(1.00, `rgba(${midRGB[0]}, ${midRGB[1]}, ${midRGB[2]}, 0.00)`);
+    octx.fillStyle = g;
+    octx.fillRect(0, 0, sz, sz);
+  }
+
+  _CHDIFF_CLOUD_SPRITE_CACHE.set(key, off);
+  return off;
+}
+
+function syncChdiffCloudStyle(val) {
+  const mode = (val === "shaded") ? "shaded" : "clouds";
+  CASTEP_STUDIO_STATE.chdiffState.cloudStyle = mode;
+  const s1 = document.getElementById("castep-chdiff-cloud-style");
+  const s2 = document.getElementById("vesta-chdiff-cloud-style");
+  if (s1 && s1.value !== mode) s1.value = mode;
+  if (s2 && s2.value !== mode) s2.value = mode;
+  if (CASTEP_STUDIO_STATE.activeStagePane === "chdiff") renderCastepChdiffPlots();
+  if (CASTEP_STUDIO_STATE.activeStagePane === "builder") renderCastep3DScene();
+}
+window.syncChdiffCloudStyle = syncChdiffCloudStyle;
+
+function getOptPanelKeyAtClientPos(canvas, clientX, clientY) {
+  const prop = document.getElementById("castep-opt-property")?.value || "multigrid";
+  if (prop !== "multigrid") return "single";
+  const rect = canvas.getBoundingClientRect();
+  const mx = clientX - rect.left;
+  const my = clientY - rect.top;
+  const isRight = mx >= rect.width / 2;
+  const isBottom = my >= rect.height / 2;
+  if (!isBottom && !isRight) return "a";
+  if (!isBottom && isRight) return "b";
+  if (isBottom && !isRight) return "c";
+  return "d";
+}
+
+function updateActiveOptPanelLabel(panelKey) {
+  if (!["a", "b", "c", "d"].includes(panelKey)) return;
+  CASTEP_STUDIO_STATE.activeOptPanel = panelKey;
+  const sel = document.getElementById("castep-opt-zoom-target");
+  if (sel && sel.options && sel.options[0]) {
+    sel.options[0].textContent = `Zoom: Active Panel (${panelKey})`;
+  }
+}
+
+function onCastepOptZoomTargetChange(val) {
+  if (["a", "b", "c", "d"].includes(val)) {
+    updateActiveOptPanelLabel(val);
+    renderCastepOpticalPlots();
+  }
+}
+window.onCastepOptZoomTargetChange = onCastepOptZoomTargetChange;
+
+function zoomSingleOptPanel(panelKey, factor, anchorFrac = 0.5, zoomY = false) {
+  const xAxisMode = document.getElementById("castep-opt-xaxis")?.value || "ev";
+  if (!CASTEP_STUDIO_STATE.optPanelZooms[panelKey]) {
+    CASTEP_STUDIO_STATE.optPanelZooms[panelKey] = { emin: 0, emax: null, nmMin: 180, nmMax: 1100, yScale: 1.0 };
+  }
+  const pz = CASTEP_STUDIO_STATE.optPanelZooms[panelKey];
+  if (zoomY) {
+    pz.yScale = Math.max(0.5, Math.min(12.0, (Number(pz.yScale) || 1.0) * factor));
+    return;
+  }
+  const frac = Math.max(0.05, Math.min(0.95, anchorFrac));
+  if (xAxisMode === "nm") {
+    const curMin = pz.nmMin !== undefined ? pz.nmMin : 180;
+    const curMax = pz.nmMax !== undefined ? pz.nmMax : 1100;
+    const anchor = curMin + frac * (curMax - curMin);
+    const newSpan = Math.max(60, Math.min(920, (curMax - curMin) / factor));
+    let nMin = anchor - frac * newSpan;
+    let nMax = nMin + newSpan;
+    if (nMin < 180) { nMin = 180; nMax = Math.min(1100, 180 + newSpan); }
+    if (nMax > 1100) { nMax = 1100; nMin = Math.max(180, 1100 - newSpan); }
+    pz.nmMin = nMin;
+    pz.nmMax = nMax;
+  } else {
+    const emaxLimit = parseFloat(document.getElementById("castep-opt-emax")?.value) || 15.0;
+    const curMin = pz.emin !== undefined && pz.emin !== null ? pz.emin : 0;
+    const curMax = pz.emax !== undefined && pz.emax !== null ? pz.emax : emaxLimit;
+    const anchor = curMin + frac * (curMax - curMin);
+    const newSpan = Math.max(0.4, Math.min(emaxLimit, (curMax - curMin) / factor));
+    let nMin = anchor - frac * newSpan;
+    let nMax = nMin + newSpan;
+    if (nMin < 0) { nMin = 0; nMax = Math.min(emaxLimit, newSpan); }
+    if (nMax > emaxLimit) { nMax = emaxLimit; nMin = Math.max(0, emaxLimit - newSpan); }
+    pz.emin = nMin;
+    pz.emax = nMax;
+  }
+}
+
+function zoomCastepPlot(kind, factor, explicitPanelKey = null, anchorFrac = 0.5, zoomY = false) {
   const f = Number(factor) || 1.25;
   if (kind === "optics") {
-    const xAxisMode = document.getElementById("castep-opt-xaxis")?.value || "ev";
-    const oz = CASTEP_STUDIO_STATE.optZoom || (CASTEP_STUDIO_STATE.optZoom = { emin: 0, emax: null, yScale: 1.0 });
-    if (xAxisMode === "nm") {
-      const curMin = oz.nmMin || 180, curMax = oz.nmMax || 1100;
-      const mid = 0.5 * (curMin + curMax);
-      const half = Math.max(40, Math.min(600, 0.5 * (curMax - curMin) / f));
-      oz.nmMin = Math.max(100, mid - half);
-      oz.nmMax = Math.min(1800, mid + half);
+    const prop = document.getElementById("castep-opt-property")?.value || "multigrid";
+    if (prop !== "multigrid") {
+      zoomSingleOptPanel("single", f, anchorFrac, zoomY);
+    } else if (explicitPanelKey) {
+      updateActiveOptPanelLabel(explicitPanelKey);
+      zoomSingleOptPanel(explicitPanelKey, f, anchorFrac, zoomY);
     } else {
-      const emaxLimit = parseFloat(document.getElementById("castep-opt-emax")?.value) || 15.0;
-      const curMin = oz.emin || 0;
-      const curMax = oz.emax || emaxLimit;
-      const mid = 0.5 * (curMin + curMax);
-      const half = Math.max(0.4, Math.min(emaxLimit / 2, 0.5 * (curMax - curMin) / f));
-      oz.emin = Math.max(0, mid - half);
-      oz.emax = Math.min(emaxLimit, mid + half);
+      const target = document.getElementById("castep-opt-zoom-target")?.value || "active";
+      if (target === "all") {
+        ["a", "b", "c", "d"].forEach(k => zoomSingleOptPanel(k, f, anchorFrac, zoomY));
+      } else {
+        const k = target === "active" ? (CASTEP_STUDIO_STATE.activeOptPanel || "a") : target;
+        updateActiveOptPanelLabel(k);
+        zoomSingleOptPanel(k, f, anchorFrac, zoomY);
+      }
     }
     renderCastepOpticalPlots();
   } else if (kind === "electronic") {
@@ -8069,9 +8406,26 @@ function zoomCastepPlot(kind, factor) {
 }
 window.zoomCastepPlot = zoomCastepPlot;
 
-function resetCastepPlotZoom(kind) {
-  if (kind === "optics") {
-    CASTEP_STUDIO_STATE.optZoom = { emin: 0.0, emax: null, nmMin: 180, nmMax: 1100, yScale: 1.0, isDragging: false, lastX: 0 };
+function resetCastepPlotZoom(kind, explicitPanelKey = null) {
+  if (kind === "optics_all") {
+    resetAllOptPanelZooms();
+    renderCastepOpticalPlots();
+  } else if (kind === "optics") {
+    const prop = document.getElementById("castep-opt-property")?.value || "multigrid";
+    const def = () => ({ emin: 0.0, emax: null, nmMin: 180, nmMax: 1100, yScale: 1.0 });
+    if (prop !== "multigrid") {
+      CASTEP_STUDIO_STATE.optPanelZooms.single = def();
+    } else if (explicitPanelKey) {
+      CASTEP_STUDIO_STATE.optPanelZooms[explicitPanelKey] = def();
+    } else {
+      const target = document.getElementById("castep-opt-zoom-target")?.value || "active";
+      if (target === "all") {
+        resetAllOptPanelZooms();
+      } else {
+        const k = target === "active" ? (CASTEP_STUDIO_STATE.activeOptPanel || "a") : target;
+        CASTEP_STUDIO_STATE.optPanelZooms[k] = def();
+      }
+    }
     renderCastepOpticalPlots();
   } else if (kind === "electronic") {
     const elMin = document.getElementById("castep-elec-emin");
@@ -8092,6 +8446,74 @@ function resetCastepPlotZoom(kind) {
 window.resetCastepPlotZoom = resetCastepPlotZoom;
 
 function initCastep2DPlotsWheelZoom() {
+  // Independent per-panel Wheel, Drag-Pan & Double-Click on Optical Properties 2x2 Canvas
+  const optC = document.getElementById("castep-optics-canvas");
+  if (optC && !optC._wheelZoomBound) {
+    optC._wheelZoomBound = true;
+    optC.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const pKey = getOptPanelKeyAtClientPos(optC, e.clientX, e.clientY);
+      const prop = document.getElementById("castep-opt-property")?.value || "multigrid";
+      const rect = optC.getBoundingClientRect();
+      const hwPanelW = prop === "multigrid" ? (rect.width / 2) : rect.width;
+      const localX = prop === "multigrid" ? ((e.clientX - rect.left) % hwPanelW) : (e.clientX - rect.left);
+      const padL = 54, padR = pKey === "d" ? 48 : 16;
+      const frac = Math.max(0.05, Math.min(0.95, (localX - padL) / Math.max(1, hwPanelW - padL - padR)));
+      const factor = e.deltaY < 0 ? 1.20 : 0.83;
+      zoomCastepPlot("optics", factor, pKey, frac, e.shiftKey);
+    }, { passive: false });
+
+    optC.addEventListener("dblclick", (e) => {
+      const pKey = getOptPanelKeyAtClientPos(optC, e.clientX, e.clientY);
+      resetCastepPlotZoom("optics", pKey);
+    });
+
+    optC.addEventListener("mousedown", (e) => {
+      const pKey = getOptPanelKeyAtClientPos(optC, e.clientX, e.clientY);
+      updateActiveOptPanelLabel(pKey);
+      CASTEP_STUDIO_STATE.optDragState = { isDragging: true, panelKey: pKey, lastX: e.clientX };
+      renderCastepOpticalPlots();
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      const ds = CASTEP_STUDIO_STATE.optDragState;
+      if (!ds || !ds.isDragging) return;
+      const dx = e.clientX - ds.lastX;
+      ds.lastX = e.clientX;
+      const pz = CASTEP_STUDIO_STATE.optPanelZooms[ds.panelKey];
+      if (!pz) return;
+      const xAxisMode = document.getElementById("castep-opt-xaxis")?.value || "ev";
+      if (xAxisMode === "nm") {
+        const curMin = pz.nmMin !== undefined ? pz.nmMin : 180;
+        const curMax = pz.nmMax !== undefined ? pz.nmMax : 1100;
+        const span = curMax - curMin;
+        if (span >= 915) return;
+        const shift = -dx * (span / 340);
+        let nMin = curMin + shift, nMax = curMax + shift;
+        if (nMin < 180) { nMin = 180; nMax = 180 + span; }
+        if (nMax > 1100) { nMax = 1100; nMin = Math.max(180, 1100 - span); }
+        pz.nmMin = nMin; pz.nmMax = nMax;
+      } else {
+        const emaxLimit = parseFloat(document.getElementById("castep-opt-emax")?.value) || 15.0;
+        const curMin = pz.emin || 0;
+        const curMax = pz.emax || emaxLimit;
+        const span = curMax - curMin;
+        if (span >= emaxLimit - 0.05) return;
+        const shift = -dx * (span / 340);
+        let nMin = curMin + shift, nMax = curMax + shift;
+        if (nMin < 0) { nMin = 0; nMax = span; }
+        if (nMax > emaxLimit) { nMax = emaxLimit; nMin = Math.max(0, emaxLimit - span); }
+        pz.emin = nMin; pz.emax = nMax;
+      }
+      renderCastepOpticalPlots();
+    });
+
+    window.addEventListener("mouseup", () => {
+      if (CASTEP_STUDIO_STATE.optDragState) CASTEP_STUDIO_STATE.optDragState.isDragging = false;
+    });
+  }
+
+  // Standard Wheel & Double-Click for Band/DOS, Charge Diff & Convergence
   const bindWheel = (canvasId, kind) => {
     const canvas = document.getElementById(canvasId);
     if (!canvas || canvas._wheelZoomBound) return;
@@ -8104,41 +8526,10 @@ function initCastep2DPlotsWheelZoom() {
     canvas.addEventListener("dblclick", () => resetCastepPlotZoom(kind));
   };
 
-  bindWheel("castep-optics-canvas", "optics");
   bindWheel("castep-electronic-canvas", "electronic");
   bindWheel("castep-chdiff-canvas", "chdiff");
   bindWheel("castep-energy-chart-canvas", "convergence");
   bindWheel("castep-conv-chart-canvas", "convergence");
-
-  // Horizontal drag-pan on Optical Properties canvas
-  const optC = document.getElementById("castep-optics-canvas");
-  if (optC && !optC._dragPanBound) {
-    optC._dragPanBound = true;
-    optC.addEventListener("mousedown", (e) => {
-      CASTEP_STUDIO_STATE.optZoom.isDragging = true;
-      CASTEP_STUDIO_STATE.optZoom.lastX = e.clientX;
-    });
-    window.addEventListener("mousemove", (e) => {
-      const oz = CASTEP_STUDIO_STATE.optZoom;
-      if (!oz || !oz.isDragging) return;
-      const dx = e.clientX - oz.lastX;
-      oz.lastX = e.clientX;
-      const emaxLimit = parseFloat(document.getElementById("castep-opt-emax")?.value) || 15.0;
-      const curMin = oz.emin || 0;
-      const curMax = oz.emax || emaxLimit;
-      const span = curMax - curMin;
-      if (span >= emaxLimit - 0.05) return;
-      const shift = -dx * (span / 380);
-      let nMin = curMin + shift, nMax = curMax + shift;
-      if (nMin < 0) { nMin = 0; nMax = span; }
-      if (nMax > emaxLimit) { nMax = emaxLimit; nMin = Math.max(0, emaxLimit - span); }
-      oz.emin = nMin; oz.emax = nMax;
-      renderCastepOpticalPlots();
-    });
-    window.addEventListener("mouseup", () => {
-      if (CASTEP_STUDIO_STATE.optZoom) CASTEP_STUDIO_STATE.optZoom.isDragging = false;
-    });
-  }
 
   // Vertical energy drag-pan on Electronic Band/DOS canvas
   const elC = document.getElementById("castep-electronic-canvas");
