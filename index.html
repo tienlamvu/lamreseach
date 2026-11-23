@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=120_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=120_v116_vesta_viewer" />
+  <link rel="stylesheet" href="styles.css?v=121_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=121_v116_vesta_viewer" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -1364,31 +1364,31 @@
                     <fieldset class="vesta-fieldset">
                       <legend>Display Properties &amp; Bonds</legend>
                       <div class="vesta-prop-row">
-                        <span>Atom radius scale:</span>
+                        <span>Atom radius:</span>
                         <input type="range" id="vesta-atom-scale-slider" min="0.4" max="2.0" step="0.05" value="1.0" oninput="setVestaRenderProperty('atomScale', this.value)" />
                       </div>
                       <div class="vesta-prop-row">
-                        <span>Bond cylinder width:</span>
+                        <span>Bond width:</span>
                         <input type="range" id="vesta-bond-scale-slider" min="0.4" max="2.2" step="0.05" value="1.0" oninput="setVestaRenderProperty('bondScale', this.value)" />
                       </div>
                       <div class="vesta-prop-row">
-                        <span>Bond cutoff factor:</span>
-                        <input type="number" id="vesta-bond-cutoff-input" class="vesta-tb-input" value="1.22" step="0.02" min="0.8" max="1.6" style="width:58px;" onchange="setVestaRenderProperty('bondFactor', this.value)" />
+                        <span>Bond cutoff:</span>
+                        <input type="number" id="vesta-bond-cutoff-input" class="vesta-dock-input" value="1.22" step="0.02" min="0.8" max="1.6" onchange="setVestaRenderProperty('bondFactor', this.value)" />
                       </div>
                       <div class="vesta-prop-row">
-                        <span>Canvas background:</span>
-                        <select id="vesta-bg-select" class="vesta-tb-input" style="width:110px;" onchange="setVestaBackgroundTheme(this.value)">
-                          <option value="white">Pure White (Light)</option>
+                        <span>Background:</span>
+                        <select id="vesta-bg-select" class="vesta-dock-select" onchange="setVestaBackgroundTheme(this.value)">
+                          <option value="white">Pure White</option>
                           <option value="dark">Dark Slate</option>
                         </select>
                       </div>
                     </fieldset>
 
                     <fieldset class="vesta-fieldset">
-                      <legend>Volumetric Δρ Isosurface (*.chdiff / *.charg_frm)</legend>
+                      <legend>Volumetric Δρ Clouds (*.chdiff / *.charg_frm)</legend>
                       <label class="vesta-chk-row">
                         <input type="checkbox" id="vesta-chk-show-chdiff" onchange="toggleCastep3DOption('showChdiffIso', this.checked)" />
-                        Show 3D Charge Density Diff (Δρ)
+                        Show 3D Δρ Electron Clouds
                       </label>
                       <label class="vesta-chk-row">
                         <input type="checkbox" id="vesta-chk-show-chdiff-slice" onchange="toggleCastep3DOption('showChdiffSlice', this.checked)" />
@@ -1396,7 +1396,14 @@
                       </label>
                       <div class="vesta-prop-row" style="margin-top:4px;">
                         <span>Isovalue (e/Å³):</span>
-                        <input type="number" id="vesta-chdiff-iso-input" class="vesta-tb-input" value="0.018" step="0.002" min="0.001" max="0.3" style="width:58px;" onchange="syncChdiffIsoval(this.value)" />
+                        <input type="number" id="vesta-chdiff-iso-input" class="vesta-dock-input" value="0.018" step="0.002" min="0.0005" max="1.5" onchange="syncChdiffIsoval(this.value)" />
+                      </div>
+                      <div class="vesta-prop-row">
+                        <span>Cloud style:</span>
+                        <select id="vesta-chdiff-cloud-style" class="vesta-dock-select" onchange="syncChdiffCloudStyle(this.value)">
+                          <option value="clouds">☁️ Soft Clouds</option>
+                          <option value="shaded">🫧 Shaded Iso</option>
+                        </select>
                       </div>
                     </fieldset>
 
@@ -1412,31 +1419,24 @@
                   <div id="vesta-dock-cell" class="vesta-dock-pane">
                     <fieldset class="vesta-fieldset">
                       <legend>Fractional Boundary Ranges</legend>
-                      <div class="castep-grid-2">
-                        <div>
-                          <label class="castep-field-lbl">x(min) — x(max)</label>
-                          <div style="display:flex; gap:4px;">
-                            <input type="number" id="vesta-bnd-xmin" class="castep-input" step="0.1" value="0.0" />
-                            <input type="number" id="vesta-bnd-xmax" class="castep-input" step="0.1" value="1.0" />
-                          </div>
-                        </div>
-                        <div>
-                          <label class="castep-field-lbl">y(min) — y(max)</label>
-                          <div style="display:flex; gap:4px;">
-                            <input type="number" id="vesta-bnd-ymin" class="castep-input" step="0.1" value="0.0" />
-                            <input type="number" id="vesta-bnd-ymax" class="castep-input" step="0.1" value="1.0" />
-                          </div>
-                        </div>
+                      <div class="vesta-bnd-grid">
+                        <span class="vesta-bnd-lbl">x:</span>
+                        <input type="number" id="vesta-bnd-xmin" class="vesta-dock-input" step="0.1" value="0.0" />
+                        <span class="vesta-bnd-dash">–</span>
+                        <input type="number" id="vesta-bnd-xmax" class="vesta-dock-input" step="0.1" value="1.0" />
+
+                        <span class="vesta-bnd-lbl">y:</span>
+                        <input type="number" id="vesta-bnd-ymin" class="vesta-dock-input" step="0.1" value="0.0" />
+                        <span class="vesta-bnd-dash">–</span>
+                        <input type="number" id="vesta-bnd-ymax" class="vesta-dock-input" step="0.1" value="1.0" />
+
+                        <span class="vesta-bnd-lbl">z:</span>
+                        <input type="number" id="vesta-bnd-zmin" class="vesta-dock-input" step="0.1" value="0.0" />
+                        <span class="vesta-bnd-dash">–</span>
+                        <input type="number" id="vesta-bnd-zmax" class="vesta-dock-input" step="0.1" value="1.0" />
                       </div>
-                      <div style="margin-top:6px;">
-                        <label class="castep-field-lbl">z(min) — z(max)</label>
-                        <div style="display:flex; gap:4px; align-items:center;">
-                          <input type="number" id="vesta-bnd-zmin" class="castep-input" step="0.1" value="0.0" />
-                          <input type="number" id="vesta-bnd-zmax" class="castep-input" step="0.1" value="1.0" />
-                          <button type="button" class="btn btn-primary btn-sm" style="padding:4px 9px; font-size:11px; white-space:nowrap;" onclick="applyVestaBoundaryRange()">Apply</button>
-                        </div>
-                      </div>
-                      <div style="display:flex; gap:3px; flex-wrap:wrap; margin-top:6px;">
+                      <button type="button" class="btn btn-primary btn-sm" style="width:100%; margin-top:6px; padding:4px 8px; font-size:11px;" onclick="applyVestaBoundaryRange()">Apply Boundary Range</button>
+                      <div class="vesta-chip-grid-2" style="margin-top:5px;">
                         <button type="button" class="castep-preset-chip" onclick="setVestaBoundaryPreset(0,1,0,1,0,1)">1×1×1</button>
                         <button type="button" class="castep-preset-chip" onclick="setVestaBoundaryPreset(0,2,0,2,0,1)">2×2×1 View</button>
                         <button type="button" class="castep-preset-chip" onclick="setVestaBoundaryPreset(0,3,0,3,0,1)">3×3×1 View</button>
@@ -1446,67 +1446,67 @@
 
                     <fieldset class="vesta-fieldset">
                       <legend>Supercell &amp; Lattice Parameters</legend>
-                      <div style="display:flex; align-items:center; justify-content:space-between; gap:4px;">
-                        <div style="display:flex; align-items:center; gap:3px;">
-                          <input type="number" id="castep-sc-na" class="castep-input-sm" value="2" min="1" max="12" style="width:40px;" />×
-                          <input type="number" id="castep-sc-nb" class="castep-input-sm" value="2" min="1" max="12" style="width:40px;" />×
-                          <input type="number" id="castep-sc-nc" class="castep-input-sm" value="1" min="1" max="12" style="width:40px;" />
-                        </div>
-                        <button type="button" class="btn btn-primary btn-sm" style="padding:4px 8px; font-size:11px;" onclick="applyCastepSupercell()">Build Supercell</button>
+                      <div class="vesta-sc-row">
+                        <input type="number" id="castep-sc-na" class="vesta-dock-input vesta-num-center" value="2" min="1" max="12" />
+                        <span class="vesta-sc-x">×</span>
+                        <input type="number" id="castep-sc-nb" class="vesta-dock-input vesta-num-center" value="2" min="1" max="12" />
+                        <span class="vesta-sc-x">×</span>
+                        <input type="number" id="castep-sc-nc" class="vesta-dock-input vesta-num-center" value="1" min="1" max="12" />
+                        <button type="button" class="btn btn-primary btn-sm" style="padding:4px 7px; font-size:11px; white-space:nowrap;" onclick="applyCastepSupercell()">Build</button>
                       </div>
-                      <div style="display:flex; gap:3px; flex-wrap:wrap; margin-top:5px;">
+                      <div class="vesta-chip-grid-4" style="margin-top:5px;">
                         <button type="button" class="castep-preset-chip" onclick="quickCastepSupercell(2,2,1)">2×2×1</button>
                         <button type="button" class="castep-preset-chip" onclick="quickCastepSupercell(3,3,1)">3×3×1</button>
                         <button type="button" class="castep-preset-chip" onclick="quickCastepSupercell(4,4,1)">4×4×1</button>
                         <button type="button" class="castep-preset-chip" onclick="quickCastepSupercell(2,2,2)">2×2×2</button>
                       </div>
-                      <div class="castep-grid-3" style="margin-top:6px;">
-                        <div><label class="castep-field-lbl">a (Å)</label><input type="number" id="castep-lat-a" class="castep-input" step="0.001" value="6.594" /></div>
-                        <div><label class="castep-field-lbl">b (Å)</label><input type="number" id="castep-lat-b" class="castep-input" step="0.001" value="6.594" /></div>
-                        <div><label class="castep-field-lbl">c (Å)</label><input type="number" id="castep-lat-c" class="castep-input" step="0.001" value="25.151" /></div>
-                        <div><label class="castep-field-lbl">α (°)</label><input type="number" id="castep-lat-alpha" class="castep-input" step="0.1" value="90.0" /></div>
-                        <div><label class="castep-field-lbl">β (°)</label><input type="number" id="castep-lat-beta" class="castep-input" step="0.1" value="90.0" /></div>
-                        <div><label class="castep-field-lbl">γ (°)</label><input type="number" id="castep-lat-gamma" class="castep-input" step="0.1" value="120.0" /></div>
+                      <div class="vesta-lat-grid" style="margin-top:6px;">
+                        <div><label class="castep-field-lbl">a (Å)</label><input type="number" id="castep-lat-a" class="vesta-dock-input" step="0.001" value="5.000" /></div>
+                        <div><label class="castep-field-lbl">b (Å)</label><input type="number" id="castep-lat-b" class="vesta-dock-input" step="0.001" value="5.000" /></div>
+                        <div><label class="castep-field-lbl">c (Å)</label><input type="number" id="castep-lat-c" class="vesta-dock-input" step="0.001" value="15.000" /></div>
+                        <div><label class="castep-field-lbl">α (°)</label><input type="number" id="castep-lat-alpha" class="vesta-dock-input" step="0.1" value="90.0" /></div>
+                        <div><label class="castep-field-lbl">β (°)</label><input type="number" id="castep-lat-beta" class="vesta-dock-input" step="0.1" value="90.0" /></div>
+                        <div><label class="castep-field-lbl">γ (°)</label><input type="number" id="castep-lat-gamma" class="vesta-dock-input" step="0.1" value="90.0" /></div>
                       </div>
-                      <div style="display:flex; gap:4px; align-items:center; margin-top:6px;">
-                        <span style="font-size:11px; font-weight:700;">Strain ε<sub>xy</sub> (%):</span>
-                        <input type="number" id="castep-strain-pct" class="castep-input-sm" step="0.5" value="0.0" style="width:52px;" />
-                        <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; margin-left:auto;" onclick="applyCastepLatticeAndStrain()">Apply Lattice</button>
+                      <div class="vesta-strain-row" style="margin-top:6px;">
+                        <span style="font-size:10.5px; font-weight:700; white-space:nowrap;">Strain ε<sub>xy</sub> (%):</span>
+                        <input type="number" id="castep-strain-pct" class="vesta-dock-input vesta-num-center" step="0.5" value="0.0" />
+                        <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:10.5px; white-space:nowrap;" onclick="applyCastepLatticeAndStrain()">Apply</button>
                       </div>
                     </fieldset>
 
                     <fieldset class="vesta-fieldset">
                       <legend>Surface Slab Cutter (hkl) &amp; Vacuum</legend>
-                      <div style="display:flex; gap:4px; align-items:center;">
-                        <span style="font-size:11px; font-weight:700;">(hkl):</span>
-                        <input type="number" id="castep-slab-h" class="castep-input-sm" value="0" style="width:36px;" />
-                        <input type="number" id="castep-slab-k" class="castep-input-sm" value="0" style="width:36px;" />
-                        <input type="number" id="castep-slab-l" class="castep-input-sm" value="1" style="width:36px;" />
-                        <span style="font-size:11px;">L:</span>
-                        <input type="number" id="castep-slab-layers" class="castep-input-sm" value="1" min="1" max="10" style="width:36px;" />
-                        <button type="button" class="btn btn-primary btn-sm" style="padding:3px 7px; font-size:11px;" onclick="cutCastepSurfaceSlab()">Cut</button>
+                      <div class="vesta-hkl-row">
+                        <span style="font-size:10.5px; font-weight:700;">hkl:</span>
+                        <input type="number" id="castep-slab-h" class="vesta-dock-input vesta-num-center" value="0" />
+                        <input type="number" id="castep-slab-k" class="vesta-dock-input vesta-num-center" value="0" />
+                        <input type="number" id="castep-slab-l" class="vesta-dock-input vesta-num-center" value="1" />
+                        <span style="font-size:10.5px; font-weight:700;">L:</span>
+                        <input type="number" id="castep-slab-layers" class="vesta-dock-input vesta-num-center" value="1" min="1" max="10" />
+                        <button type="button" class="btn btn-primary btn-sm" style="padding:3px 6px; font-size:10.5px;" onclick="cutCastepSurfaceSlab()">Cut</button>
                       </div>
-                      <div style="display:flex; gap:3px; flex-wrap:wrap; margin-top:5px;">
+                      <div class="vesta-chip-grid-4" style="margin-top:5px;">
                         <button type="button" class="castep-preset-chip" onclick="setCastepMillerPreset(0,0,1)">(001)</button>
                         <button type="button" class="castep-preset-chip" onclick="setCastepMillerPreset(1,0,0)">(100)</button>
                         <button type="button" class="castep-preset-chip" onclick="setCastepMillerPreset(1,1,0)">(110)</button>
                         <button type="button" class="castep-preset-chip" onclick="setCastepMillerPreset(1,1,1)">(111)</button>
                       </div>
-                      <div class="castep-grid-2" style="margin-top:6px;">
+                      <div class="vesta-vac-grid" style="margin-top:6px;">
                         <div>
                           <label class="castep-field-lbl">Vacuum (Å)</label>
-                          <input type="number" id="castep-vac-thickness" class="castep-input" step="0.5" value="20.0" />
+                          <input type="number" id="castep-vac-thickness" class="vesta-dock-input" step="0.5" value="20.0" />
                         </div>
                         <div>
                           <label class="castep-field-lbl">Alignment</label>
-                          <select id="castep-vac-align" class="castep-input">
+                          <select id="castep-vac-align" class="vesta-dock-select">
                             <option value="center">Center (z=0.5)</option>
                             <option value="bottom">Bottom (2.0Å)</option>
                             <option value="keep">Keep Z</option>
                           </select>
                         </div>
                       </div>
-                      <button type="button" class="btn btn-teal btn-sm" style="width:100%; margin-top:6px; font-size:11.5px;" onclick="applyCastepVacuumLayer()">
+                      <button type="button" class="btn btn-teal btn-sm" style="width:100%; margin-top:6px; font-size:11px; padding:5px 8px;" onclick="applyCastepVacuumLayer()">
                         🌌 Apply Vacuum &amp; Center Slab
                       </button>
                     </fieldset>
@@ -1923,9 +1923,18 @@
                   </label>
 
                   <div style="margin-left:auto; display:flex; gap:4px; align-items:center;">
-                    <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('optics', 1.25)" title="Zoom In Spectrum">🔍＋</button>
-                    <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('optics', 0.80)" title="Zoom Out Spectrum">🔍－</button>
-                    <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('optics')" title="Reset Spectrum Zoom">⊡ Reset</button>
+                    <select id="castep-opt-zoom-target" class="castep-input" style="width:auto; padding:2px 6px; font-size:11px; font-weight:700;" title="Choose which panel of the 2×2 grid to zoom (or hover/scroll directly on any panel)" onchange="onCastepOptZoomTargetChange(this.value)">
+                      <option value="active">Zoom: Active Panel (a)</option>
+                      <option value="a">Panel (a) Dielectric</option>
+                      <option value="b">Panel (b) Absorption</option>
+                      <option value="c">Panel (c) Refractive</option>
+                      <option value="d">Panel (d) Refl &amp; EELS</option>
+                      <option value="all">All 4 Panels</option>
+                    </select>
+                    <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('optics', 1.25)" title="Zoom In Selected Panel">🔍＋</button>
+                    <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('optics', 0.80)" title="Zoom Out Selected Panel">🔍－</button>
+                    <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('optics')" title="Reset Active Panel Zoom">⊡ Reset</button>
+                    <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('optics_all')" title="Reset All 4 Panels">↺ All</button>
                     <input type="file" id="castep-opt-file-upload" multiple accept=".xcd,.csv,.txt,.dat,.bands" style="display:none;" onchange="handleCastepOpticalFilesUpload(event)" /><button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px; font-weight:700;" onclick="document.getElementById('castep-opt-file-upload').click()" title="Load CASTEP Optical Properties .xcd, _Optics.bands, or optical CSV/TXT spectrum">📥 Load Optical (.xcd/.csv)</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px;" onclick="exportCastepCanvasPNG('castep-optics-canvas', 'CASTEP_Optical_Properties.png')">📷 PNG</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px;" onclick="exportCastepOpticalCSV()">📊 CSV</button>
@@ -2072,6 +2081,12 @@
 
                   <label class="castep-field-lbl" style="margin:0;">Isovalue (e/Å³):</label>
                   <input type="number" id="castep-chdiff-isoval" class="castep-input-sm" value="0.018" min="0.001" max="0.500" step="0.002" style="width:64px;" onchange="syncChdiffIsoval(this.value)" />
+
+                  <label class="castep-field-lbl" style="margin:0;">3D Mode:</label>
+                  <select id="castep-chdiff-cloud-style" class="castep-input" style="width:auto;" onchange="syncChdiffCloudStyle(this.value)">
+                    <option value="clouds">☁️ Soft Electron Clouds</option>
+                    <option value="shaded">🫧 Shaded Isosurface</option>
+                  </select>
 
                   <label class="castep-field-lbl" style="margin:0;">Palette:</label>
                   <select id="castep-chdiff-palette" class="castep-input" style="width:auto;" onchange="renderCastepChdiffPlots(); renderCastep3DScene();">
@@ -5226,8 +5241,8 @@
 
 <script src="jszip.min.js"></script>
   <script>if (typeof JSZip === "undefined") { document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"><\\/script>'); }</script>
-  <script src="matsci_tools.js?v=120_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=120_v116_vesta_viewer"></script>
-  <script src="app.js?v=120_v116_vesta_viewer" onerror="this.src='/static/app.js?v=120_v116_vesta_viewer"></script>
+  <script src="matsci_tools.js?v=121_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=121_v116_vesta_viewer"></script>
+  <script src="app.js?v=121_v116_vesta_viewer" onerror="this.src='/static/app.js?v=121_v116_vesta_viewer"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
