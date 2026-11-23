@@ -14014,7 +14014,13 @@ function initCrystal3DCanvas() {
     CRYSTAL_3D_STATE.rotX += dy * 0.012;
     CRYSTAL_3D_STATE.lastMouseX = e.clientX;
     CRYSTAL_3D_STATE.lastMouseY = e.clientY;
-    renderCrystal3D();
+    if (!CRYSTAL_3D_STATE._rafPending) {
+      CRYSTAL_3D_STATE._rafPending = true;
+      requestAnimationFrame(() => {
+        CRYSTAL_3D_STATE._rafPending = false;
+        renderCrystal3D();
+      });
+    }
   });
 
   window.addEventListener("mouseup", () => {
