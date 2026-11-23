@@ -11901,3 +11901,70 @@ sup {
   }
 }
 
+/* ============================================================================
+   Plot Canvas Margin Overflow Fix & Responsive Canvas Containment (v119)
+   ============================================================================ */
+.castep-plot-canvas-card {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  padding: 12px !important;
+}
+.castep-plot-canvas-card canvas {
+  width: 100% !important;
+  max-width: 100% !important;
+  display: block !important;
+  cursor: crosshair;
+}
+.castep-conv-charts-grid,
+.castep-conv-tables-grid {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+.castep-conv-charts-grid > *,
+.castep-conv-tables-grid > * {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+/* v120 Strict Chart Containment & No-Overflow Rules */
+.castep-main-stage {
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+.castep-stage-pane {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+.castep-plot-canvas-card {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+.castep-plot-canvas-card canvas {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  box-sizing: border-box !important;
+  cursor: crosshair;
+}
+#castep-chdiff-canvas {
+  cursor: grab;
+}
+#castep-chdiff-canvas:active {
+  cursor: grabbing;
+}
+.castep-conv-charts-grid {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+.castep-conv-charts-grid > .castep-plot-canvas-card {
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
