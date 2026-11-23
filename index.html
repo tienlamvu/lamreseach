@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=122_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=122_v116_vesta_viewer" />
+  <link rel="stylesheet" href="styles.css?v=123_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=123_v116_vesta_viewer" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -1779,27 +1779,36 @@
             <div id="castep-pane-gateway" class="castep-stage-pane">
               <!-- Official Materials Studio Remote Gateway Banner -->
               <div class="ms-gateway-banner">
-                <div class="ms-gateway-title-left">
-                  <div class="ms-gateway-cube-logo" aria-hidden="true">
-                    <span class="ms-cube-outer"></span>
-                    <span class="ms-cube-mid"></span>
-                    <span class="ms-cube-inner"></span>
+                <div class="ms-gateway-banner-top">
+                  <div class="ms-gateway-title-left">
+                    <div class="ms-gateway-cube-logo" aria-hidden="true">
+                      <span class="ms-cube-outer"></span>
+                      <span class="ms-cube-mid"></span>
+                      <span class="ms-cube-inner"></span>
+                    </div>
+                    <div class="ms-gateway-title-text">
+                      <span class="ms-gw-brand">M A T E R I A L S &nbsp; S T U D I O</span>
+                      <span class="ms-gw-pipe">|</span>
+                      <span class="ms-gw-host" id="ms-gw-host-label">Remote Gateway (Not Connected)</span>
+                    </div>
                   </div>
-                  <div class="ms-gateway-title-text">
-                    <span class="ms-gw-brand">M A T E R I A L S &nbsp; S T U D I O</span>
-                    <span class="ms-gw-pipe">|</span>
-                    <span class="ms-gw-host" id="ms-gw-host-label">Remote Gateway (Not Connected)</span>
+                  <div class="ms-gw-conn-wrap">
+                    <span id="ms-gw-source-badge" class="ms-gw-source-badge offline">⚪ Not Connected</span>
+                    <input type="text" id="ms-gw-url-input" class="castep-input-sm ms-gw-url-input" value="http://localhost:18888" placeholder="http://localhost:18888" title="Materials Studio Remote Gateway URL (e.g. http://localhost:18888)" onkeydown="if(event.key==='Enter'){refreshMsGatewayJobsFromServer();}" />
+                    <input type="file" id="ms-gw-sbj-upload-input" webkitdirectory directory multiple style="display:none;" onchange="handleMsGatewayFolderUpload(event)" />
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:4px 9px; font-size:11.5px; white-space:nowrap;" onclick="mountMsGatewayFolder()" title="Mount BIOVIA Gateway dsd / Gateway-x64 / jobs-info folder containing *.sbj, *.sbs, and gw-info.sbd">📂 Mount Gateway Folder</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:4px 9px; font-size:11.5px; white-space:nowrap;" onclick="refreshMsGatewayJobsFromServer()">🔄 Refresh Gateway</button>
                   </div>
                 </div>
                 <div class="ms-gateway-controls-right">
                   <div class="ms-gw-filter-group">
                     <button type="button" class="ms-gw-pill active" data-gwfilter="all" onclick="filterMsGatewayJobs('all', this)">All (<span id="ms-gw-count-all">0</span>)</button>
                     <button type="button" class="ms-gw-pill" data-gwfilter="running" onclick="filterMsGatewayJobs('running', this)">🟢 Running (<span id="ms-gw-count-run">0</span>)</button>
-                    <button type="button" class="ms-gw-pill" data-gwfilter="completed" onclick="filterMsGatewayJobs('completed', this)">✅ Completed</button>
-                    <button type="button" class="ms-gw-pill" data-gwfilter="terminated" onclick="filterMsGatewayJobs('terminated', this)">⏹️ Terminated</button>
+                    <button type="button" class="ms-gw-pill" data-gwfilter="completed" onclick="filterMsGatewayJobs('completed', this)">✅ Completed (<span id="ms-gw-count-comp">0</span>)</button>
+                    <button type="button" class="ms-gw-pill" data-gwfilter="terminated" onclick="filterMsGatewayJobs('terminated', this)">⏹️ Terminated (<span id="ms-gw-count-term">0</span>)</button>
+                    <button type="button" class="ms-gw-pill" data-gwfilter="archived" onclick="filterMsGatewayJobs('archived', this)">📦 Archived (<span id="ms-gw-count-arch">0</span>)</button>
                   </div>
-                  <input type="text" id="ms-gw-search-input" class="castep-input-sm" style="width:190px; font-size:11.5px;" placeholder="Filter Job Id, Description, PID..." oninput="renderMsGatewayTable()" />
-                  <input type="file" id="ms-gw-sbj-upload-input" webkitdirectory directory multiple style="display:none;" onchange="handleMsGatewayFolderUpload(event)" /><button type="button" class="btn btn-outline btn-sm" style="padding:4px 9px; font-size:11.5px;" onclick="mountMsGatewayFolder()" title="Mount BIOVIA Gateway jobs-info / jobs-info-archive folder containing *.sbj files">📂 Mount Gateway Folder</button><button type="button" class="btn btn-outline btn-sm" style="padding:4px 9px; font-size:11.5px;" onclick="refreshMsGatewayJobsFromServer()">🔄 Refresh Gateway</button>
+                  <input type="text" id="ms-gw-search-input" class="castep-input-sm" style="width:210px; font-size:11.5px;" placeholder="Filter Job Id, Description, PID..." oninput="renderMsGatewayTable()" />
                 </div>
               </div>
 
@@ -1807,9 +1816,10 @@
               <div class="ms-gateway-body-grid">
                 <!-- Left Blue Navigation Box matching Remote Gateway UI -->
                 <div class="ms-gateway-left-nav">
-                  <a href="javascript:void(0)" class="ms-gw-nav-link" data-gwview="servers" onclick="switchMsGatewaySubView('servers', this)">Installed<br/>Servers</a>
+                  <a href="javascript:void(0)" class="ms-gw-nav-link" data-gwview="servers" onclick="switchMsGatewaySubView('servers', this)">Installed<br/>Servers <span id="ms-gw-nav-srv-count" class="ms-gw-nav-badge"></span></a>
                   <a href="javascript:void(0)" class="ms-gw-nav-link" data-gwview="data" onclick="switchMsGatewaySubView('data', this)">Gateway Data</a>
-                  <a href="javascript:void(0)" class="ms-gw-nav-link active" data-gwview="jobs" onclick="switchMsGatewaySubView('jobs', this)">Jobs</a>
+                  <a href="javascript:void(0)" class="ms-gw-nav-link active" data-gwview="jobs" onclick="switchMsGatewaySubView('jobs', this)">Jobs <span id="ms-gw-nav-job-count" class="ms-gw-nav-badge"></span></a>
+                  <a id="ms-gw-external-link" href="http://localhost:18888/dsd/commands/dsd_configuregw.pl?jobs=yes" target="_blank" rel="noopener noreferrer" class="ms-gw-nav-ext" style="display:none;" title="Open native Materials Studio Gateway web page">↗ Open Native UI</a>
                 </div>
 
                 <!-- Right Content Area -->
@@ -1820,42 +1830,48 @@
                       <table class="ms-gateway-table">
                         <thead>
                           <tr>
-                            <th>Description</th>
-                            <th>Job<br/>Id</th>
-                            <th>Server</th>
-                            <th>Owner</th>
-                            <th>Status</th>
-                            <th>Submitted</th>
+                            <th class="ms-gw-sortable" onclick="sortMsGatewayJobs('description')">Description</th>
+                            <th class="ms-gw-sortable" onclick="sortMsGatewayJobs('job_id')">Job<br/>Id</th>
+                            <th class="ms-gw-sortable" onclick="sortMsGatewayJobs('server')">Server</th>
+                            <th class="ms-gw-sortable" onclick="sortMsGatewayJobs('owner')">Owner</th>
+                            <th class="ms-gw-sortable" onclick="sortMsGatewayJobs('status')">Status</th>
+                            <th class="ms-gw-sortable" onclick="sortMsGatewayJobs('create_ts')">Submitted</th>
                             <th>Queue</th>
                             <th>Queued<br/>Job Id</th>
-                            <th>Process<br/>Id</th>
+                            <th class="ms-gw-sortable" onclick="sortMsGatewayJobs('process_id')">Process<br/>Id</th>
                             <th>Action</th>
                           </tr>
                         </thead>
                         <tbody id="ms-gateway-jobs-tbody"></tbody>
                       </table>
                     </div>
+                    <div id="ms-gw-footer-note" class="ms-gw-footer-note"></div>
                   </div>
 
                   <!-- Subview 2: Installed Servers -->
                   <div id="ms-gw-subview-servers" class="ms-gw-subview" style="display:none;">
+                    <div class="ms-gw-subbar">
+                      <input type="text" id="ms-gw-server-search" class="castep-input-sm" style="width:220px; font-size:11.5px;" placeholder="Filter Server Name or Category..." oninput="renderMsGatewayServers()" />
+                      <span id="ms-gw-servers-summary" style="font-size:11.5px; color:#475569;"></span>
+                    </div>
                     <div class="ms-gw-table-scroll">
                       <table class="ms-gateway-table">
                         <thead>
                           <tr>
                             <th>Server Name</th>
-                            <th>Module Description</th>
+                            <th>Server Category</th>
+                            <th>Description</th>
                             <th>Version</th>
-                            <th>Gateway Host</th>
-                            <th>Max MPI Cores</th>
+                            <th>Build Date</th>
                             <th>Status</th>
                           </tr>
                         </thead>
                         <tbody id="ms-gateway-servers-tbody">
-                          <tr><td colspan="6" style="text-align:center; padding:16px; color:#64748b;">Connect to a local Materials Studio Gateway server or click "🔄 Refresh Gateway" to detect installed servers.</td></tr>
+                          <tr><td colspan="6" style="text-align:center; padding:16px; color:#64748b;">Connect to a local Materials Studio Gateway server or click "📂 Mount Gateway Folder" to inspect installed servers.</td></tr>
                         </tbody>
                       </table>
                     </div>
+                    <div id="ms-gw-server-detail-box" class="ms-gw-server-detail-box" style="display:none;"></div>
                   </div>
 
                   <!-- Subview 3: Gateway Data & Daemon Diagnostics -->
@@ -1864,12 +1880,12 @@
                       <table class="ms-gateway-table">
                         <thead>
                           <tr>
-                            <th style="width:240px;">Gateway Property</th>
-                            <th>Value / Local Machine Configuration</th>
+                            <th style="width:220px;">&nbsp;</th>
+                            <th>Gateway Data</th>
                           </tr>
                         </thead>
                         <tbody id="ms-gateway-data-tbody">
-                          <tr><td><strong>Connection Status</strong></td><td>Not connected to a local Materials Studio Gateway daemon. Run the local FastAPI backend on the calculation workstation or mount a <code>jobs-info</code> folder containing <code>*.sbj</code> files.</td></tr>
+                          <tr><td><strong>Connection Status</strong></td><td>Not connected to a local Materials Studio Gateway daemon. Run the local FastAPI backend on the calculation workstation or mount a <code>dsd</code> / <code>jobs-info</code> folder.</td></tr>
                         </tbody>
                       </table>
                     </div>
@@ -5380,8 +5396,8 @@
 
 <script src="jszip.min.js"></script>
   <script>if (typeof JSZip === "undefined") { document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"><\\/script>'); }</script>
-  <script src="matsci_tools.js?v=122_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=122_v116_vesta_viewer"></script>
-  <script src="app.js?v=122_v116_vesta_viewer" onerror="this.src='/static/app.js?v=122_v116_vesta_viewer"></script>
+  <script src="matsci_tools.js?v=123_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=123_v116_vesta_viewer"></script>
+  <script src="app.js?v=123_v116_vesta_viewer" onerror="this.src='/static/app.js?v=123_v116_vesta_viewer"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
