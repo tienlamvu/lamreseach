@@ -13651,14 +13651,14 @@ const NON_METALS_SET = new Set([
 ]);
 
 let CRYSTAL_3D_STATE = {
-  rotX: 25 * Math.PI / 180,
-  rotY: -45 * Math.PI / 180,
+  rotX: 22 * Math.PI / 180,
+  rotY: -36 * Math.PI / 180,
   scale: 1.0,
   showBox: true,
-  showLabels: true,
+  showLabels: false,
   showBonds: true,
   style: "ball-stick", // "ball-stick" | "space-fill" | "stick"
-  theme: "dark", // "dark" (default) | "white"
+  theme: "white", // VESTA White default ("white" | "dark")
   isDragging: false,
   lastMouseX: 0,
   lastMouseY: 0,
@@ -14435,13 +14435,11 @@ function renderCrystal3D() {
   drawList.forEach(item => {
     if (item.type === "edge") {
       ctx.beginPath();
-      ctx.strokeStyle = isWhite ? "#64748b" : "#475569";
-      ctx.lineWidth = 1.4;
-      ctx.setLineDash([4, 3]);
+      ctx.strokeStyle = isWhite ? "rgba(71, 85, 105, 0.75)" : "#475569";
+      ctx.lineWidth = 1.2;
       ctx.moveTo(item.p1.sx, item.p1.sy);
       ctx.lineTo(item.p2.sx, item.p2.sy);
       ctx.stroke();
-      ctx.setLineDash([]);
     } else if (item.type === "bond") {
       // Dual-Color 3D Shaded Cylinder (VESTA Style)
       const p1 = item.p1, p2 = item.p2;
