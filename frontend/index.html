@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261123_v115_castep_studio" onerror="this.href='/static/styles.css?v=20261123_v115_castep_studio" />
+  <link rel="stylesheet" href="styles.css?v=20261123_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=20261123_v116_vesta_viewer" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -1181,42 +1181,466 @@
               </button>
             </div>
 
+                        <!-- ============================================================ -->
+            <!-- PANE 1: VESTA-STYLE 3D STRUCTURE VIEWER & SURFACE BUILDER    -->
             <!-- ============================================================ -->
-            <!-- PANE 1: 3D STRUCTURE VIEWER & ADVANCED BUILDER               -->
-            <!-- ============================================================ -->
-            <div id="castep-pane-builder" class="castep-stage-pane active">
-              <div class="castep-builder-grid">
-                <!-- Left: 3D Interactive Canvas + Trajectory Scrubber -->
-                <div class="castep-viewport-card">
-                  <div class="castep-viewport-toolbar">
-                    <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;">
-                      <span style="font-size:11px; font-weight:700; color:#64748b; margin-right:2px;">VIEW:</span>
-                      <button type="button" class="castep-tool-btn" onclick="setCastep3DView('iso')" title="3D Isometric Perspective">3D Iso</button>
-                      <button type="button" class="castep-tool-btn" onclick="setCastep3DView('top')" title="Top View along c-axis (001) xy-plane">Top (001)</button>
-                      <button type="button" class="castep-tool-btn" onclick="setCastep3DView('front')" title="Side View along a-axis (100) yz-plane">Front (100)</button>
-                      <button type="button" class="castep-tool-btn" onclick="setCastep3DView('side')" title="Side View along b-axis (010) xz-plane">Side (010)</button>
-                      <span class="castep-toolbar-sep"></span>
-                      <button type="button" class="castep-tool-btn active" id="castep-btn-bonds" onclick="toggleCastep3DOption('showBonds')" title="Toggle Chemical Bonds">🔗 Bonds</button>
-                      <button type="button" class="castep-tool-btn active" id="castep-btn-box" onclick="toggleCastep3DOption('showBox')" title="Toggle Unit Cell Box">📦 Cell</button>
-                      <button type="button" class="castep-tool-btn active" id="castep-btn-labels" onclick="toggleCastep3DOption('showLabels')" title="Toggle Atom Labels">🏷️ Labels</button>
-                      <button type="button" class="castep-tool-btn active" id="castep-btn-sites" onclick="toggleCastep3DOption('showAdsorptionSites')" title="Show Candidate Surface Adsorption Sites (Top, Bridge, Hollow)">🎯 Sites</button>
-                      <button type="button" class="castep-tool-btn" id="castep-btn-forces" onclick="toggleCastep3DOption('showForces')" title="Show Symmetrised Atomic Force Vectors">➡️ Forces</button>
-                      <button type="button" class="castep-tool-btn" id="castep-btn-style" onclick="cycleCastep3DStyle()" title="Cycle Ball-and-Stick / Space-Fill / Wireframe">🎨 Style</button>
-                      <button type="button" class="castep-tool-btn" id="castep-btn-theme" onclick="toggleCastep3DTheme()" title="Toggle Dark / Light Canvas Background">☀️</button>
-                    </div>
-                    <div style="display:flex; gap:4px; align-items:center;">
-                      <button type="button" class="castep-tool-btn" id="castep-btn-undo" onclick="undoCastepStructureEdit()" title="Undo last structure modification">↩️ Undo</button>
-                      <button type="button" class="castep-tool-btn" id="castep-btn-redo" onclick="redoCastepStructureEdit()" title="Redo structure modification">↪️ Redo</button>
-                      <button type="button" class="castep-tool-btn" onclick="resetCastepStructureToJobOriginal()" title="Reset structure to original job file">🔄 Reset</button>
+            <div id="castep-pane-builder" class="castep-stage-pane active" style="padding:0;">
+              <!-- 1. TOP VESTA TOOLBAR (Axis Projections, Step Rotation, Step Pan, Zoom, Undo/Redo) -->
+              <div class="vesta-top-toolbar">
+                <!-- Axis Projection Buttons: a, b, c, a*, b*, c*, Standard -->
+                <div class="vesta-tb-group">
+                  <button type="button" class="vesta-ax-btn" onclick="setCastep3DView('a')" title="View along a-axis (b right, c up)">a</button>
+                  <button type="button" class="vesta-ax-btn" onclick="setCastep3DView('b')" title="View along b-axis">b</button>
+                  <button type="button" class="vesta-ax-btn" onclick="setCastep3DView('c')" title="View along c-axis (ab-plane top view)">c</button>
+                  <button type="button" class="vesta-ax-btn" onclick="setCastep3DView('a_star')" title="View along reciprocal a*-axis">a*</button>
+                  <button type="button" class="vesta-ax-btn" onclick="setCastep3DView('b_star')" title="View along reciprocal b*-axis">b*</button>
+                  <button type="button" class="vesta-ax-btn" onclick="setCastep3DView('c_star')" title="View along reciprocal c*-axis">c*</button>
+                  <button type="button" class="vesta-ax-btn" onclick="setCastep3DView('iso')" title="Standard 3D Perspective Orientation">🌐</button>
+                </div>
+
+                <span class="vesta-tb-sep"></span>
+
+                <!-- Step Rotation Buttons + Step (deg) -->
+                <div class="vesta-tb-group">
+                  <button type="button" class="vesta-icon-btn" onclick="vestaStepRotate('up')" title="Rotate Up">⬆</button>
+                  <button type="button" class="vesta-icon-btn" onclick="vestaStepRotate('down')" title="Rotate Down">⬇</button>
+                  <button type="button" class="vesta-icon-btn" onclick="vestaStepRotate('left')" title="Rotate Left">⬅</button>
+                  <button type="button" class="vesta-icon-btn" onclick="vestaStepRotate('right')" title="Rotate Right">➡</button>
+                  <button type="button" class="vesta-icon-btn" onclick="vestaStepRotate('ccw')" title="Roll Counter-Clockwise">↺</button>
+                  <button type="button" class="vesta-icon-btn" onclick="vestaStepRotate('cw')" title="Roll Clockwise">↻</button>
+                  <span class="vesta-tb-lbl">Step (°):</span>
+                  <input type="number" id="vesta-rot-step-input" class="vesta-tb-input" value="45.0" step="5" min="1" max="180" />
+                </div>
+
+                <span class="vesta-tb-sep"></span>
+
+                <!-- Step Pan Buttons + Step (px) -->
+                <div class="vesta-tb-group">
+                  <button type="button" class="vesta-icon-btn" onclick="vestaStepPan(0, -1)" title="Pan Up">△</button>
+                  <button type="button" class="vesta-icon-btn" onclick="vestaStepPan(0, 1)" title="Pan Down">▽</button>
+                  <button type="button" class="vesta-icon-btn" onclick="vestaStepPan(-1, 0)" title="Pan Left">◁</button>
+                  <button type="button" class="vesta-icon-btn" onclick="vestaStepPan(1, 0)" title="Pan Right">▷</button>
+                  <span class="vesta-tb-lbl">Step (px):</span>
+                  <input type="number" id="vesta-pan-step-input" class="vesta-tb-input" value="15" step="5" min="1" max="200" style="width:42px;" />
+                </div>
+
+                <span class="vesta-tb-sep"></span>
+
+                <!-- Zoom Buttons + Step (%) -->
+                <div class="vesta-tb-group">
+                  <button type="button" class="vesta-icon-btn" onclick="vestaStepZoom(1)" title="Zoom In">＋</button>
+                  <button type="button" class="vesta-icon-btn" onclick="vestaStepZoom(-1)" title="Zoom Out">－</button>
+                  <button type="button" class="vesta-icon-btn" onclick="vestaFitToScreen()" title="Fit Structure to Screen">⊡</button>
+                  <span class="vesta-tb-lbl">Step (%):</span>
+                  <input type="number" id="vesta-zoom-step-input" class="vesta-tb-input" value="15" step="5" min="5" max="100" style="width:42px;" />
+                </div>
+
+                <span class="vesta-tb-sep"></span>
+
+                <!-- History & Snapshot -->
+                <div class="vesta-tb-group" style="margin-left:auto;">
+                  <button type="button" class="vesta-icon-btn" onclick="undoCastepStructureEdit()" title="Undo structure modification">↩ Undo</button>
+                  <button type="button" class="vesta-icon-btn" onclick="redoCastepStructureEdit()" title="Redo structure modification">↪ Redo</button>
+                  <button type="button" class="vesta-icon-btn" onclick="resetCastepStructureToJobOriginal()" title="Reset to original structure">🔄 Reset</button>
+                  <button type="button" class="vesta-icon-btn" onclick="exportCastepCanvasPNG('castep-3d-canvas', 'VESTA_Crystal_Structure.png')" title="Export High-Resolution VESTA PNG">📷 PNG</button>
+                </div>
+              </div>
+
+              <!-- 2. MAIN VESTA 3-ZONE WORKSPACE (Left Tool Strip | VESTA Control Dock | Main 3D Canvas & Output Console) -->
+              <div class="vesta-workspace-body">
+                <!-- Zone A: Vertical VESTA Left Icon Tool Strip -->
+                <div class="vesta-vertical-tools">
+                  <button type="button" class="vesta-vtool-btn active" id="vesta-tool-rotate" onclick="setVestaInteractionTool('rotate', this)" title="Rotate / Orbit Structure (Drag mouse to rotate, Click atom to select)">
+                    ✥
+                  </button>
+                  <button type="button" class="vesta-vtool-btn" id="vesta-tool-select" onclick="setVestaInteractionTool('select', this)" title="Select / Pick Atoms">
+                    ↖
+                  </button>
+                  <button type="button" class="vesta-vtool-btn" id="vesta-tool-pan" onclick="setVestaInteractionTool('pan', this)" title="Translate / Pan View (Drag mouse to move)">
+                    ✋
+                  </button>
+                  <button type="button" class="vesta-vtool-btn" id="vesta-tool-zoom" onclick="setVestaInteractionTool('zoom', this)" title="Magnify / Zoom">
+                    🔍
+                  </button>
+                  <span class="vesta-vtool-sep"></span>
+                  <button type="button" class="vesta-vtool-btn" id="vesta-tool-distance" onclick="setVestaInteractionTool('distance', this)" title="Measure Interatomic Bond Distance d(i-j) — Click 2 atoms">
+                    📏
+                  </button>
+                  <button type="button" class="vesta-vtool-btn" id="vesta-tool-angle" onclick="setVestaInteractionTool('angle', this)" title="Measure Bond Angle θ(i-j-k) — Click 3 atoms">
+                    📐
+                  </button>
+                  <button type="button" class="vesta-vtool-btn" id="vesta-tool-adsorb" onclick="setVestaInteractionTool('adsorb', this)" title="Click-to-Adsorb Tool: Click any surface atom to place chosen adsorbate above it">
+                    🎯
+                  </button>
+                  <button type="button" class="vesta-vtool-btn" id="vesta-tool-delete" onclick="setVestaInteractionTool('delete', this)" title="Click-to-Delete Atom (Create Point Vacancy)">
+                    🗑️
+                  </button>
+                  <span class="vesta-vtool-sep"></span>
+                  <button type="button" class="vesta-vtool-btn" onclick="clearVestaMeasurementsAndSelection()" title="Clear Selected Atoms &amp; Distance/Angle Measurements">
+                    🧹
+                  </button>
+                </div>
+
+                <!-- Zone B: VESTA Tabbed Control Dock (Style | Boundary & Cell | Adsorption & Defects | Objects) -->
+                <div class="vesta-left-dock">
+                  <div class="vesta-dock-tabs">
+                    <button type="button" class="vesta-dock-tab active" data-dock="style" onclick="switchVestaDockTab('style', this)">Style</button>
+                    <button type="button" class="vesta-dock-tab" data-dock="cell" onclick="switchVestaDockTab('cell', this)">Cell &amp; Slab</button>
+                    <button type="button" class="vesta-dock-tab" data-dock="adsorb" onclick="switchVestaDockTab('adsorb', this)">Adsorb</button>
+                    <button type="button" class="vesta-dock-tab" data-dock="objects" onclick="switchVestaDockTab('objects', this)">Objects</button>
+                  </div>
+
+                  <!-- DOCK TAB 1: VESTA STYLE PANEL -->
+                  <div id="vesta-dock-style" class="vesta-dock-pane active">
+                    <fieldset class="vesta-fieldset">
+                      <legend>Structural models</legend>
+                      <label class="vesta-chk-row">
+                        <input type="checkbox" id="vesta-chk-show-models" checked onchange="toggleCastep3DOption('showModels', this.checked)" />
+                        Show models
+                      </label>
+                      <label class="vesta-chk-row">
+                        <input type="checkbox" id="vesta-chk-boundary-bonds" checked onchange="toggleCastep3DOption('showBoundaryBonds', this.checked)" />
+                        Show bonded boundary atoms (VESTA)
+                      </label>
+                      <label class="vesta-chk-row">
+                        <input type="checkbox" id="vesta-chk-show-bonds" checked onchange="toggleCastep3DOption('showBonds', this.checked)" />
+                        Show chemical bonds
+                      </label>
+                      <label class="vesta-chk-row">
+                        <input type="checkbox" id="vesta-chk-show-box" checked onchange="toggleCastep3DOption('showBox', this.checked)" />
+                        Show unit cell box
+                      </label>
+                      <label class="vesta-chk-row">
+                        <input type="checkbox" id="vesta-chk-show-labels" onchange="toggleCastep3DOption('showLabels', this.checked)" />
+                        Show atom labels
+                      </label>
+                      <label class="vesta-chk-row">
+                        <input type="checkbox" id="vesta-chk-show-sites" onchange="toggleCastep3DOption('showAdsorptionSites', this.checked)" />
+                        Show adsorption candidate sites
+                      </label>
+                      <label class="vesta-chk-row">
+                        <input type="checkbox" id="vesta-chk-show-forces" onchange="toggleCastep3DOption('showForces', this.checked)" />
+                        Show atomic force vectors
+                      </label>
+
+                      <div class="vesta-sub-box">
+                        <div class="vesta-sub-title">Style</div>
+                        <label class="vesta-radio-row">
+                          <input type="radio" name="vesta-model-style" value="ball-stick" checked onchange="setVestaModelStyle('ball-stick')" />
+                          Ball-and-stick
+                        </label>
+                        <label class="vesta-radio-row">
+                          <input type="radio" name="vesta-model-style" value="space-fill" onchange="setVestaModelStyle('space-fill')" />
+                          Space-filling
+                        </label>
+                        <label class="vesta-radio-row">
+                          <input type="radio" name="vesta-model-style" value="polyhedral" onchange="setVestaModelStyle('polyhedral')" />
+                          Polyhedral
+                        </label>
+                        <label class="vesta-radio-row">
+                          <input type="radio" name="vesta-model-style" value="wireframe" onchange="setVestaModelStyle('wireframe')" />
+                          Wireframe
+                        </label>
+                        <label class="vesta-radio-row">
+                          <input type="radio" name="vesta-model-style" value="stick" onchange="setVestaModelStyle('stick')" />
+                          Stick
+                        </label>
+                      </div>
+                    </fieldset>
+
+                    <fieldset class="vesta-fieldset">
+                      <legend>Display Properties &amp; Bonds</legend>
+                      <div class="vesta-prop-row">
+                        <span>Atom radius scale:</span>
+                        <input type="range" id="vesta-atom-scale-slider" min="0.4" max="2.0" step="0.05" value="1.0" oninput="setVestaRenderProperty('atomScale', this.value)" />
+                      </div>
+                      <div class="vesta-prop-row">
+                        <span>Bond cylinder width:</span>
+                        <input type="range" id="vesta-bond-scale-slider" min="0.4" max="2.2" step="0.05" value="1.0" oninput="setVestaRenderProperty('bondScale', this.value)" />
+                      </div>
+                      <div class="vesta-prop-row">
+                        <span>Bond cutoff factor:</span>
+                        <input type="number" id="vesta-bond-cutoff-input" class="vesta-tb-input" value="1.22" step="0.02" min="0.8" max="1.6" style="width:58px;" onchange="setVestaRenderProperty('bondFactor', this.value)" />
+                      </div>
+                      <div class="vesta-prop-row">
+                        <span>Canvas background:</span>
+                        <select id="vesta-bg-select" class="vesta-tb-input" style="width:110px;" onchange="setVestaBackgroundTheme(this.value)">
+                          <option value="white">VESTA White</option>
+                          <option value="dark">Dark Slate</option>
+                        </select>
+                      </div>
+                    </fieldset>
+
+                    <!-- Quick VESTA Action Buttons -->
+                    <div class="vesta-dialog-btns">
+                      <button type="button" class="vesta-dlg-btn" onclick="switchVestaDockTab('cell')">Boundary...</button>
+                      <button type="button" class="vesta-dlg-btn" onclick="switchVestaDockTab('adsorb')">Adsorption...</button>
+                      <button type="button" class="vesta-dlg-btn" onclick="switchVestaDockTab('objects')">Objects...</button>
                     </div>
                   </div>
 
-                  <!-- 3D Canvas Container -->
-                  <div class="castep-3d-canvas-wrap" id="castep-3d-container">
-                    <canvas id="castep-3d-canvas" width="820" height="500"></canvas>
-                    <div id="castep-3d-legend" class="castep-3d-legend"></div>
-                    <div id="castep-3d-selection-hud" class="castep-3d-hud">
-                      Click any atom in 3D view to select/inspect • Drag to rotate • Scroll to zoom
+                  <!-- DOCK TAB 2: BOUNDARY, SUPERCELL, LATTICE & SLAB/VACUUM -->
+                  <div id="vesta-dock-cell" class="vesta-dock-pane">
+                    <fieldset class="vesta-fieldset">
+                      <legend>VESTA Boundary Ranges (Fractional)</legend>
+                      <div class="castep-grid-2">
+                        <div>
+                          <label class="castep-field-lbl">x(min) — x(max)</label>
+                          <div style="display:flex; gap:4px;">
+                            <input type="number" id="vesta-bnd-xmin" class="castep-input" step="0.1" value="0.0" />
+                            <input type="number" id="vesta-bnd-xmax" class="castep-input" step="0.1" value="1.0" />
+                          </div>
+                        </div>
+                        <div>
+                          <label class="castep-field-lbl">y(min) — y(max)</label>
+                          <div style="display:flex; gap:4px;">
+                            <input type="number" id="vesta-bnd-ymin" class="castep-input" step="0.1" value="0.0" />
+                            <input type="number" id="vesta-bnd-ymax" class="castep-input" step="0.1" value="1.0" />
+                          </div>
+                        </div>
+                      </div>
+                      <div style="margin-top:6px;">
+                        <label class="castep-field-lbl">z(min) — z(max)</label>
+                        <div style="display:flex; gap:4px; align-items:center;">
+                          <input type="number" id="vesta-bnd-zmin" class="castep-input" step="0.1" value="0.0" />
+                          <input type="number" id="vesta-bnd-zmax" class="castep-input" step="0.1" value="1.0" />
+                          <button type="button" class="btn btn-primary btn-sm" style="padding:4px 9px; font-size:11px; white-space:nowrap;" onclick="applyVestaBoundaryRange()">Apply</button>
+                        </div>
+                      </div>
+                      <div style="display:flex; gap:3px; flex-wrap:wrap; margin-top:6px;">
+                        <button type="button" class="castep-preset-chip" onclick="setVestaBoundaryPreset(0,1,0,1,0,1)">1×1×1</button>
+                        <button type="button" class="castep-preset-chip" onclick="setVestaBoundaryPreset(0,2,0,2,0,1)">2×2×1 View</button>
+                        <button type="button" class="castep-preset-chip" onclick="setVestaBoundaryPreset(0,3,0,3,0,1)">3×3×1 View</button>
+                        <button type="button" class="castep-preset-chip" onclick="setVestaBoundaryPreset(-0.1,1.1,-0.1,1.1,0,1)">±0.1 Margin</button>
+                      </div>
+                    </fieldset>
+
+                    <fieldset class="vesta-fieldset">
+                      <legend>Supercell &amp; Lattice Parameters</legend>
+                      <div style="display:flex; align-items:center; justify-content:space-between; gap:4px;">
+                        <div style="display:flex; align-items:center; gap:3px;">
+                          <input type="number" id="castep-sc-na" class="castep-input-sm" value="2" min="1" max="12" style="width:40px;" />×
+                          <input type="number" id="castep-sc-nb" class="castep-input-sm" value="2" min="1" max="12" style="width:40px;" />×
+                          <input type="number" id="castep-sc-nc" class="castep-input-sm" value="1" min="1" max="12" style="width:40px;" />
+                        </div>
+                        <button type="button" class="btn btn-primary btn-sm" style="padding:4px 8px; font-size:11px;" onclick="applyCastepSupercell()">Build Supercell</button>
+                      </div>
+                      <div style="display:flex; gap:3px; flex-wrap:wrap; margin-top:5px;">
+                        <button type="button" class="castep-preset-chip" onclick="quickCastepSupercell(2,2,1)">2×2×1</button>
+                        <button type="button" class="castep-preset-chip" onclick="quickCastepSupercell(3,3,1)">3×3×1</button>
+                        <button type="button" class="castep-preset-chip" onclick="quickCastepSupercell(4,4,1)">4×4×1</button>
+                        <button type="button" class="castep-preset-chip" onclick="quickCastepSupercell(2,2,2)">2×2×2</button>
+                      </div>
+                      <div class="castep-grid-3" style="margin-top:6px;">
+                        <div><label class="castep-field-lbl">a (Å)</label><input type="number" id="castep-lat-a" class="castep-input" step="0.001" value="6.594" /></div>
+                        <div><label class="castep-field-lbl">b (Å)</label><input type="number" id="castep-lat-b" class="castep-input" step="0.001" value="6.594" /></div>
+                        <div><label class="castep-field-lbl">c (Å)</label><input type="number" id="castep-lat-c" class="castep-input" step="0.001" value="25.151" /></div>
+                        <div><label class="castep-field-lbl">α (°)</label><input type="number" id="castep-lat-alpha" class="castep-input" step="0.1" value="90.0" /></div>
+                        <div><label class="castep-field-lbl">β (°)</label><input type="number" id="castep-lat-beta" class="castep-input" step="0.1" value="90.0" /></div>
+                        <div><label class="castep-field-lbl">γ (°)</label><input type="number" id="castep-lat-gamma" class="castep-input" step="0.1" value="120.0" /></div>
+                      </div>
+                      <div style="display:flex; gap:4px; align-items:center; margin-top:6px;">
+                        <span style="font-size:11px; font-weight:700;">Strain ε<sub>xy</sub> (%):</span>
+                        <input type="number" id="castep-strain-pct" class="castep-input-sm" step="0.5" value="0.0" style="width:52px;" />
+                        <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; margin-left:auto;" onclick="applyCastepLatticeAndStrain()">Apply Lattice</button>
+                      </div>
+                    </fieldset>
+
+                    <fieldset class="vesta-fieldset">
+                      <legend>Surface Slab Cutter (hkl) &amp; Vacuum</legend>
+                      <div style="display:flex; gap:4px; align-items:center;">
+                        <span style="font-size:11px; font-weight:700;">(hkl):</span>
+                        <input type="number" id="castep-slab-h" class="castep-input-sm" value="0" style="width:36px;" />
+                        <input type="number" id="castep-slab-k" class="castep-input-sm" value="0" style="width:36px;" />
+                        <input type="number" id="castep-slab-l" class="castep-input-sm" value="1" style="width:36px;" />
+                        <span style="font-size:11px;">L:</span>
+                        <input type="number" id="castep-slab-layers" class="castep-input-sm" value="1" min="1" max="10" style="width:36px;" />
+                        <button type="button" class="btn btn-primary btn-sm" style="padding:3px 7px; font-size:11px;" onclick="cutCastepSurfaceSlab()">Cut</button>
+                      </div>
+                      <div style="display:flex; gap:3px; flex-wrap:wrap; margin-top:5px;">
+                        <button type="button" class="castep-preset-chip" onclick="setCastepMillerPreset(0,0,1)">(001)</button>
+                        <button type="button" class="castep-preset-chip" onclick="setCastepMillerPreset(1,0,0)">(100)</button>
+                        <button type="button" class="castep-preset-chip" onclick="setCastepMillerPreset(1,1,0)">(110)</button>
+                        <button type="button" class="castep-preset-chip" onclick="setCastepMillerPreset(1,1,1)">(111)</button>
+                      </div>
+                      <div class="castep-grid-2" style="margin-top:6px;">
+                        <div>
+                          <label class="castep-field-lbl">Vacuum (Å)</label>
+                          <input type="number" id="castep-vac-thickness" class="castep-input" step="0.5" value="20.0" />
+                        </div>
+                        <div>
+                          <label class="castep-field-lbl">Alignment</label>
+                          <select id="castep-vac-align" class="castep-input">
+                            <option value="center">Center (z=0.5)</option>
+                            <option value="bottom">Bottom (2.0Å)</option>
+                            <option value="keep">Keep Z</option>
+                          </select>
+                        </div>
+                      </div>
+                      <button type="button" class="btn btn-teal btn-sm" style="width:100%; margin-top:6px; font-size:11.5px;" onclick="applyCastepVacuumLayer()">
+                        🌌 Apply Vacuum &amp; Center Slab
+                      </button>
+                    </fieldset>
+                  </div>
+
+                  <!-- DOCK TAB 3: ADSORPTION (TOP / BRIDGE / HOLLOW) & DEFECTS / JANUS -->
+                  <div id="vesta-dock-adsorb" class="vesta-dock-pane">
+                    <fieldset class="vesta-fieldset">
+                      <legend>Surface Adsorption (Top / Bridge / Hollow)</legend>
+                      <div>
+                        <label class="castep-field-lbl">Adsorption Site Type</label>
+                        <select id="castep-ads-site-type" class="castep-input" onchange="detectCastepAdsorptionSites()">
+                          <option value="top">🎯 Top (Atop) — Above Surface Atom</option>
+                          <option value="bridge">🌉 Bridge — Midpoint of 2 Surface Atoms</option>
+                          <option value="hollow3">🔺 3-Fold Hollow (FCC / HCP Triangle Center)</option>
+                          <option value="hollow4">💠 4-Fold Hollow (Square Center)</option>
+                          <option value="custom">📍 Custom Fractional (u, v, w)</option>
+                        </select>
+                      </div>
+                      <div style="margin-top:6px;">
+                        <label class="castep-field-lbl">Adsorbate Atom / Molecule</label>
+                        <select id="castep-ads-species" class="castep-input">
+                          <optgroup label="Single Atoms">
+                            <option value="H">H — Hydrogen</option>
+                            <option value="Li">Li — Lithium</option>
+                            <option value="Na">Na — Sodium</option>
+                            <option value="K">K — Potassium</option>
+                            <option value="O">O — Oxygen</option>
+                            <option value="N">N — Nitrogen</option>
+                            <option value="P">P — Phosphorus</option>
+                            <option value="S">S — Sulfur</option>
+                            <option value="Se">Se — Selenium</option>
+                            <option value="Te">Te — Tellurium</option>
+                            <option value="C">C — Carbon</option>
+                            <option value="F">F — Fluorine</option>
+                            <option value="Cl">Cl — Chlorine</option>
+                            <option value="Pt">Pt — Platinum</option>
+                            <option value="Au">Au — Gold</option>
+                            <option value="Fe">Fe — Iron</option>
+                            <option value="Co">Co — Cobalt</option>
+                            <option value="Ni">Ni — Nickel</option>
+                            <option value="Cu">Cu — Copper</option>
+                            <option value="Mo">Mo — Molybdenum</option>
+                            <option value="W">W — Tungsten</option>
+                            <option value="Si">Si — Silicon</option>
+                          </optgroup>
+                          <optgroup label="Molecules &amp; Catalytic Intermediates">
+                            <option value="H2">H2 — Hydrogen Molecule</option>
+                            <option value="O2">O2 — Oxygen Molecule</option>
+                            <option value="H2O">H2O — Water</option>
+                            <option value="OH">*OH — Hydroxyl</option>
+                            <option value="OOH">*OOH — Hydroperoxyl</option>
+                            <option value="CO">CO — Carbon Monoxide</option>
+                            <option value="CO2">CO2 — Carbon Dioxide</option>
+                            <option value="NH3">NH3 — Ammonia</option>
+                            <option value="N2">N2 — Dinitrogen</option>
+                            <option value="NO">NO — Nitric Oxide</option>
+                          </optgroup>
+                        </select>
+                      </div>
+                      <div style="margin-top:6px;">
+                        <div style="display:flex; justify-content:space-between;">
+                          <label class="castep-field-lbl">Candidate Surface Sites</label>
+                          <button type="button" class="castep-link-btn" onclick="detectCastepAdsorptionSites()">🔍 Refresh</button>
+                        </div>
+                        <select id="castep-ads-site-select" class="castep-input" style="font-family:monospace; font-size:11px;" onchange="previewSelectedCastepAdsorptionSite()"></select>
+                      </div>
+                      <div class="castep-grid-3" style="margin-top:6px;">
+                        <div>
+                          <label class="castep-field-lbl">Height d<sub>z</sub> (Å)</label>
+                          <input type="number" id="castep-ads-height" class="castep-input" step="0.1" value="1.80" />
+                        </div>
+                        <div>
+                          <label class="castep-field-lbl">Side</label>
+                          <select id="castep-ads-side" class="castep-input" onchange="detectCastepAdsorptionSites()">
+                            <option value="top">Top (+z)</option>
+                            <option value="bottom">Bottom (-z)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label class="castep-field-lbl">Orient</label>
+                          <select id="castep-ads-orient" class="castep-input">
+                            <option value="vertical">Vertical</option>
+                            <option value="horizontal">Flat</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div id="castep-ads-custom-row" class="castep-grid-3" style="margin-top:6px; display:none;">
+                        <div><label class="castep-field-lbl">u</label><input type="number" id="castep-ads-u" class="castep-input" step="0.01" value="0.3333" /></div>
+                        <div><label class="castep-field-lbl">v</label><input type="number" id="castep-ads-v" class="castep-input" step="0.01" value="0.6667" /></div>
+                        <div><label class="castep-field-lbl">w</label><input type="number" id="castep-ads-w" class="castep-input" step="0.01" value="0.7200" /></div>
+                      </div>
+                      <button type="button" class="btn btn-primary btn-sm" style="width:100%; margin-top:7px; font-size:11.5px;" onclick="placeCastepAdsorbateAtSite()">
+                        ➕ Place Adsorbate at Site
+                      </button>
+                      <button type="button" class="btn btn-outline btn-sm" style="width:100%; margin-top:4px; font-size:11px;" onclick="placeCastepAdsorbateFromSelectedAtoms()">
+                        🎯 Place Above Clicked 3D Atom(s)
+                      </button>
+                    </fieldset>
+
+                    <fieldset class="vesta-fieldset">
+                      <legend>Defects, Janus Layer &amp; Constraints</legend>
+                      <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-outline btn-sm" style="color:#dc2626; border-color:#fecaca; font-size:11px; padding:3px 7px;" onclick="deleteSelectedCastepAtoms()">
+                          🗑️ Vacancy
+                        </button>
+                        <span style="font-size:11px;">Sub →</span>
+                        <input type="text" id="castep-sub-element" class="castep-input-sm" value="P" style="width:38px; text-align:center; font-weight:700;" />
+                        <button type="button" class="btn btn-outline btn-sm" style="font-size:11px; padding:3px 7px;" onclick="substituteSelectedCastepAtoms()">
+                          🔄 Replace
+                        </button>
+                      </div>
+                      <div style="display:flex; gap:3px; align-items:center; margin-top:6px; padding-top:6px; border-top:1px dashed #cbd5e1;">
+                        <select id="castep-janus-layer-side" class="castep-input-sm" style="width:74px;">
+                          <option value="top">Top</option>
+                          <option value="bottom">Bottom</option>
+                        </select>
+                        <input type="text" id="castep-janus-from" class="castep-input-sm" value="N" style="width:34px; text-align:center; font-weight:700;" />
+                        <span>→</span>
+                        <input type="text" id="castep-janus-to" class="castep-input-sm" value="P" style="width:34px; text-align:center; font-weight:700;" />
+                        <button type="button" class="btn btn-teal btn-sm" style="padding:3px 7px; font-size:11px;" onclick="applyCastepJanusLayerSubstitution()">Janus</button>
+                      </div>
+                      <div style="display:flex; gap:3px; flex-wrap:wrap; margin-top:6px; padding-top:6px; border-top:1px dashed #cbd5e1;">
+                        <span style="font-size:11px; font-weight:700;">Fix w&lt;</span>
+                        <input type="number" id="castep-fix-z-thresh" class="castep-input-sm" step="0.05" value="0.45" style="width:48px;" />
+                        <button type="button" class="castep-preset-chip" onclick="applyCastepFixBottomLayers()">Fix</button>
+                        <button type="button" class="castep-preset-chip" onclick="unfixAllCastepAtoms()">Unfix</button>
+                        <button type="button" class="castep-preset-chip" onclick="wrapCastepAtomsToUnitCell()">Wrap</button>
+                      </div>
+                    </fieldset>
+                  </div>
+
+                  <!-- DOCK TAB 4: VESTA OBJECTS & ELEMENT COLORS -->
+                  <div id="vesta-dock-objects" class="vesta-dock-pane">
+                    <fieldset class="vesta-fieldset">
+                      <legend>Elements &amp; VESTA CPK Colors</legend>
+                      <div id="vesta-objects-elements-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+                    </fieldset>
+                  </div>
+                </div>
+
+                <!-- Zone C: Main VESTA White 3D Stage + Bottom VESTA Output/Summary Console -->
+                <div class="vesta-main-viewport-col">
+                  <!-- VESTA Document Tab Bar -->
+                  <div class="vesta-doc-tabbar">
+                    <div class="vesta-doc-tab active">
+                      <span id="vesta-active-doc-label">📄 J1+4_N_P1.cif</span>
+                    </div>
+                    <div id="vesta-active-tool-badge" style="font-size:11px; font-weight:700; color:#1e40af; padding:0 10px;">
+                      Tool: Rotate &amp; Select
+                    </div>
+                    <div style="margin-left:auto; display:flex; gap:6px; align-items:center; padding-right:6px;">
+                      <button type="button" class="castep-preset-chip" onclick="saveCastepStructureToWorkingFolder()" title="Save structure directly to calculation directory">💾 Save to Folder</button>
+                      <button type="button" class="castep-preset-chip" onclick="addCurrentCastepStructureToLibrary()" title="Add structure to Crystal Structures Library">💎 + Crystal Library</button>
+                    </div>
+                  </div>
+
+                  <!-- VESTA 3D Canvas Container (Crisp White Default like VESTA) -->
+                  <div class="vesta-3d-canvas-wrap" id="castep-3d-container">
+                    <canvas id="castep-3d-canvas" width="900" height="500"></canvas>
+                    <div id="castep-3d-legend" class="vesta-3d-legend"></div>
+                    <div id="castep-3d-selection-hud" class="vesta-3d-hud">
+                      VESTA Mode • Click any atom to inspect • Use a, b, c buttons above for crystallographic projections
                     </div>
                   </div>
 
@@ -1236,346 +1660,79 @@
                       <div id="castep-geom-metrics-label" style="font-size:11.5px; color:#334155; font-family:monospace;"></div>
                     </div>
                   </div>
-                </div>
 
-                <!-- Right: Comprehensive Structure Manipulation & Surface Engineering Console -->
-                <div class="castep-engineering-console">
-                  <!-- Tool Module 1: Supercell & Lattice Strain -->
-                  <div class="castep-tool-box">
-                    <div class="castep-tool-box-title">
-                      <span>📐 1. Supercell Expansion &amp; Lattice Strain Engineering</span>
-                      <span class="castep-mini-tag">Periodic Cell</span>
+                  <!-- VESTA Bottom Tabbed Console (Output | Coordinates Table | Save & Export) -->
+                  <div class="vesta-bottom-console">
+                    <div id="vesta-bottom-pane-output" class="vesta-bottom-pane active">
+                      <pre id="vesta-log-output-pre" class="vesta-log-pre"></pre>
                     </div>
-                    <div class="castep-tool-row">
-                      <div style="display:flex; align-items:center; gap:4px;">
-                        <label class="castep-mini-lbl">N<sub>a</sub></label>
-                        <input type="number" id="castep-sc-na" class="castep-input-sm" value="2" min="1" max="12" />
-                        <span>×</span>
-                        <label class="castep-mini-lbl">N<sub>b</sub></label>
-                        <input type="number" id="castep-sc-nb" class="castep-input-sm" value="2" min="1" max="12" />
-                        <span>×</span>
-                        <label class="castep-mini-lbl">N<sub>c</sub></label>
-                        <input type="number" id="castep-sc-nc" class="castep-input-sm" value="1" min="1" max="12" />
+
+                    <div id="vesta-bottom-pane-coords" class="vesta-bottom-pane">
+                      <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+                        <div>
+                          <strong style="font-size:12px;">Atomic Fractional &amp; Cartesian Coordinates</strong>
+                          <span id="castep-atoms-count-badge" class="badge badge-blue" style="margin-left:6px;">28 atoms</span>
+                        </div>
+                        <div style="display:flex; gap:5px;">
+                          <button type="button" class="castep-preset-chip" onclick="addManualCastepAtomRow()">+ Add Atom</button>
+                          <button type="button" class="castep-preset-chip" onclick="sortCastepAtomsBy('z')">Sort by Z</button>
+                          <button type="button" class="castep-preset-chip" onclick="sortCastepAtomsBy('element')">Sort by Element</button>
+                        </div>
                       </div>
-                      <button type="button" class="btn btn-primary btn-sm" style="padding:4px 10px; font-size:11.5px;" onclick="applyCastepSupercell()">
-                        🧱 Build Supercell
-                      </button>
-                    </div>
-                    <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:6px;">
-                      <button type="button" class="castep-preset-chip" onclick="quickCastepSupercell(2,2,1)">2×2×1</button>
-                      <button type="button" class="castep-preset-chip" onclick="quickCastepSupercell(3,3,1)">3×3×1</button>
-                      <button type="button" class="castep-preset-chip" onclick="quickCastepSupercell(4,4,1)">4×4×1</button>
-                      <button type="button" class="castep-preset-chip" onclick="quickCastepSupercell(2,2,2)">2×2×2</button>
-                      <button type="button" class="castep-preset-chip" onclick="quickCastepSupercell(3,2,1)">3×2×1</button>
-                    </div>
-                    <div class="castep-grid-3" style="margin-top:8px;">
-                      <div>
-                        <label class="castep-field-lbl">a (Å)</label>
-                        <input type="number" id="castep-lat-a" class="castep-input" step="0.001" value="6.594" />
-                      </div>
-                      <div>
-                        <label class="castep-field-lbl">b (Å)</label>
-                        <input type="number" id="castep-lat-b" class="castep-input" step="0.001" value="6.594" />
-                      </div>
-                      <div>
-                        <label class="castep-field-lbl">c (Å)</label>
-                        <input type="number" id="castep-lat-c" class="castep-input" step="0.001" value="25.151" />
-                      </div>
-                      <div>
-                        <label class="castep-field-lbl">α (°)</label>
-                        <input type="number" id="castep-lat-alpha" class="castep-input" step="0.1" value="90.0" />
-                      </div>
-                      <div>
-                        <label class="castep-field-lbl">β (°)</label>
-                        <input type="number" id="castep-lat-beta" class="castep-input" step="0.1" value="90.0" />
-                      </div>
-                      <div>
-                        <label class="castep-field-lbl">γ (°)</label>
-                        <input type="number" id="castep-lat-gamma" class="castep-input" step="0.1" value="120.0" />
+                      <div class="castep-atoms-table-scroll" style="max-height:210px; border:none;">
+                        <table class="castep-atoms-table">
+                          <thead>
+                            <tr>
+                              <th style="width:28px;"><input type="checkbox" onchange="toggleSelectAllCastepAtoms(this.checked)" /></th>
+                              <th style="width:36px;">#</th>
+                              <th style="width:65px;">Elem</th>
+                              <th style="width:75px;">Label</th>
+                              <th>Fract u</th>
+                              <th>Fract v</th>
+                              <th>Fract w</th>
+                              <th>Cart X (Å)</th>
+                              <th>Cart Y (Å)</th>
+                              <th>Cart Z (Å)</th>
+                              <th>Region</th>
+                              <th>|F| (eV/Å)</th>
+                              <th>Charge</th>
+                              <th>Fix</th>
+                              <th>Del</th>
+                            </tr>
+                          </thead>
+                          <tbody id="castep-atoms-tbody"></tbody>
+                        </table>
                       </div>
                     </div>
-                    <div style="display:flex; gap:6px; align-items:center; margin-top:8px;">
-                      <label class="castep-field-lbl" style="margin:0; white-space:nowrap;">Biaxial Strain ε<sub>xy</sub> (%):</label>
-                      <input type="number" id="castep-strain-pct" class="castep-input-sm" step="0.5" value="0.0" style="width:68px;" />
-                      <button type="button" class="btn btn-outline btn-sm" style="padding:4px 8px; font-size:11.5px;" onclick="applyCastepLatticeAndStrain()">
-                        Apply Lattice / Strain
-                      </button>
+
+                    <div id="vesta-bottom-pane-export" class="vesta-bottom-pane" style="padding:10px 12px;">
+                      <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                        <span style="font-weight:800; font-size:12px; color:#0f172a;">💾 Target Folder:</span>
+                        <input type="text" id="castep-save-folder-input" class="castep-input" style="flex:1; min-width:200px; font-family:monospace; font-size:11.5px;" placeholder="Target calculation folder path..." />
+                        <input type="text" id="castep-save-subfolder-input" class="castep-input" style="width:130px; font-size:11.5px;" placeholder="Subfolder..." />
+                        <input type="text" id="castep-save-seed-input" class="castep-input" style="width:115px; font-weight:700; font-size:11.5px;" value="ELF+Orbitals" />
+                        <button type="button" class="btn btn-primary btn-sm" onclick="saveCastepStructureToWorkingFolder()">💾 Save All to Folder</button>
+                        <button type="button" class="btn btn-teal btn-sm" onclick="addCurrentCastepStructureToLibrary()">💎 Add to Crystal Library</button>
+                      </div>
+                      <div style="display:flex; gap:5px; align-items:center; flex-wrap:wrap; margin-top:8px;">
+                        <span style="font-size:11.5px; font-weight:700; color:#475569;">Export File:</span>
+                        <button type="button" class="castep-dl-pill" onclick="downloadCastepFormat('cell')">⬇️ .cell (CASTEP)</button>
+                        <button type="button" class="castep-dl-pill" onclick="downloadCastepFormat('param')">⬇️ .param (CASTEP)</button>
+                        <button type="button" class="castep-dl-pill" onclick="downloadCastepFormat('xsd')">⬇️ .xsd (Materials Studio)</button>
+                        <button type="button" class="castep-dl-pill" onclick="downloadCastepFormat('cif')">⬇️ .cif (VESTA / CIF)</button>
+                        <button type="button" class="castep-dl-pill" onclick="downloadCastepFormat('poscar')">⬇️ POSCAR (VASP)</button>
+                        <button type="button" class="castep-dl-pill" onclick="downloadCastepFormat('xyz')">⬇️ .xyz</button>
+                      </div>
+                    </div>
+
+                    <!-- VESTA Bottom Tab Strip (Output | Summary / Coordinates | Export & Save) -->
+                    <div class="vesta-bottom-tabstrip">
+                      <button type="button" class="vesta-btab active" data-bpane="output" onclick="switchVestaBottomPane('output', this)">Output</button>
+                      <button type="button" class="vesta-btab" data-bpane="coords" onclick="switchVestaBottomPane('coords', this)">Summary &amp; Coordinates</button>
+                      <button type="button" class="vesta-btab" data-bpane="export" onclick="switchVestaBottomPane('export', this)">Save &amp; Export Files</button>
+                      <span id="vesta-status-summary-line" style="margin-left:auto; font-size:11px; color:#475569; font-family:monospace; padding-right:8px;"></span>
                     </div>
                   </div>
-
-                  <!-- Tool Module 2: Surface Slab Cutter & Vacuum Layer Engineering -->
-                  <div class="castep-tool-box">
-                    <div class="castep-tool-box-title">
-                      <span>✂️ 2. Surface Slab Cutter (hkl) &amp; Vacuum Layer Builder</span>
-                      <span class="castep-mini-tag">Slab / 2D</span>
-                    </div>
-                    <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-                      <span style="font-size:11.5px; font-weight:700; color:#334155;">Miller (hkl):</span>
-                      <input type="number" id="castep-slab-h" class="castep-input-sm" value="0" min="-6" max="6" style="width:44px;" />
-                      <input type="number" id="castep-slab-k" class="castep-input-sm" value="0" min="-6" max="6" style="width:44px;" />
-                      <input type="number" id="castep-slab-l" class="castep-input-sm" value="1" min="-6" max="6" style="width:44px;" />
-                      <label class="castep-field-lbl" style="margin:0;">Layers:</label>
-                      <input type="number" id="castep-slab-layers" class="castep-input-sm" value="1" min="1" max="12" style="width:48px;" />
-                      <button type="button" class="btn btn-primary btn-sm" style="padding:4px 9px; font-size:11.5px;" onclick="cutCastepSurfaceSlab()">
-                        ✂️ Cut Slab
-                      </button>
-                    </div>
-                    <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:6px;">
-                      <button type="button" class="castep-preset-chip" onclick="setCastepMillerPreset(0,0,1)">(001)</button>
-                      <button type="button" class="castep-preset-chip" onclick="setCastepMillerPreset(1,0,0)">(100)</button>
-                      <button type="button" class="castep-preset-chip" onclick="setCastepMillerPreset(0,1,0)">(010)</button>
-                      <button type="button" class="castep-preset-chip" onclick="setCastepMillerPreset(1,1,0)">(110)</button>
-                      <button type="button" class="castep-preset-chip" onclick="setCastepMillerPreset(1,1,1)">(111)</button>
-                      <button type="button" class="castep-preset-chip" onclick="setCastepMillerPreset(2,1,1)">(211)</button>
-                    </div>
-                    <div class="castep-grid-2" style="margin-top:8px;">
-                      <div>
-                        <label class="castep-field-lbl">Vacuum Thickness (Å)</label>
-                        <input type="number" id="castep-vac-thickness" class="castep-input" step="0.5" value="20.0" min="0" max="100" />
-                      </div>
-                      <div>
-                        <label class="castep-field-lbl">Slab Z-Alignment</label>
-                        <select id="castep-vac-align" class="castep-input">
-                          <option value="center">Center Slab (z = 0.5)</option>
-                          <option value="bottom">Bottom-Align (z = 2.0 Å)</option>
-                          <option value="keep">Keep Current Z-Center</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div style="display:flex; gap:4px; align-items:center; justify-content:space-between; margin-top:6px; flex-wrap:wrap;">
-                      <div style="display:flex; gap:4px;">
-                        <button type="button" class="castep-preset-chip" onclick="quickCastepVacuum(15)">15 Å Vac</button>
-                        <button type="button" class="castep-preset-chip" onclick="quickCastepVacuum(20)">20 Å Vac</button>
-                        <button type="button" class="castep-preset-chip" onclick="quickCastepVacuum(25)">25 Å Vac</button>
-                      </div>
-                      <button type="button" class="btn btn-teal btn-sm" style="padding:4px 10px; font-size:11.5px;" onclick="applyCastepVacuumLayer()">
-                        🌌 Apply Vacuum &amp; Center
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- Tool Module 3: Surface Adsorption & Site-Specific Atom / Molecule Placement -->
-                  <div class="castep-tool-box castep-tool-box-highlight">
-                    <div class="castep-tool-box-title">
-                      <span>🎯 3. Surface Adsorption Builder (Top, Bridge, Hollow, Interstitial)</span>
-                      <span class="castep-mini-tag" style="background:#dbeafe; color:#1d4ed8;">Catalysis / Ads</span>
-                    </div>
-                    <div class="castep-grid-2">
-                      <div>
-                        <label class="castep-field-lbl">Adsorption Site Geometry</label>
-                        <select id="castep-ads-site-type" class="castep-input" onchange="detectCastepAdsorptionSites()">
-                          <option value="top">🎯 Top (Atop) — Above Surface Atom</option>
-                          <option value="bridge">🌉 Bridge — Midpoint of 2 Surface Atoms</option>
-                          <option value="hollow3">🔺 3-Fold Hollow (FCC / HCP Triangle Center)</option>
-                          <option value="hollow4">💠 4-Fold Hollow (Square Center)</option>
-                          <option value="custom">📍 Custom Fractional (u, v, w)</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label class="castep-field-lbl">Adsorbate Atom / Molecule</label>
-                        <select id="castep-ads-species" class="castep-input">
-                          <optgroup label="Single Adsorbate Atoms">
-                            <option value="H">H — Hydrogen Atom</option>
-                            <option value="Li">Li — Lithium Atom</option>
-                            <option value="Na">Na — Sodium Atom</option>
-                            <option value="K">K — Potassium Atom</option>
-                            <option value="O">O — Oxygen Atom</option>
-                            <option value="N">N — Nitrogen Atom</option>
-                            <option value="P">P — Phosphorus Atom</option>
-                            <option value="S">S — Sulfur Atom</option>
-                            <option value="Se">Se — Selenium Atom</option>
-                            <option value="Te">Te — Tellurium Atom</option>
-                            <option value="C">C — Carbon Atom</option>
-                            <option value="F">F — Fluorine Atom</option>
-                            <option value="Cl">Cl — Chlorine Atom</option>
-                            <option value="Pt">Pt — Platinum Single Atom</option>
-                            <option value="Au">Au — Gold Single Atom</option>
-                            <option value="Fe">Fe — Iron Single Atom</option>
-                            <option value="Co">Co — Cobalt Single Atom</option>
-                            <option value="Ni">Ni — Nickel Single Atom</option>
-                            <option value="Cu">Cu — Copper Single Atom</option>
-                            <option value="Mo">Mo — Molybdenum Atom</option>
-                            <option value="W">W — Tungsten Atom</option>
-                            <option value="Si">Si — Silicon Atom</option>
-                          </optgroup>
-                          <optgroup label="Catalytic Molecules &amp; Intermediates">
-                            <option value="H2">H2 — Hydrogen Molecule (H–H)</option>
-                            <option value="O2">O2 — Oxygen Molecule (O=O)</option>
-                            <option value="H2O">H2O — Water Molecule</option>
-                            <option value="OH">*OH — Hydroxyl Intermediate</option>
-                            <option value="OOH">*OOH — Hydroperoxyl Intermediate</option>
-                            <option value="CO">CO — Carbon Monoxide</option>
-                            <option value="CO2">CO2 — Carbon Dioxide</option>
-                            <option value="NH3">NH3 — Ammonia</option>
-                            <option value="N2">N2 — Dinitrogen</option>
-                            <option value="NO">NO — Nitric Oxide</option>
-                          </optgroup>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div style="margin-top:6px;">
-                      <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <label class="castep-field-lbl">Detected Surface Candidate Sites (or select atoms in 3D view)</label>
-                        <button type="button" class="castep-link-btn" onclick="detectCastepAdsorptionSites()">🔍 Refresh Sites</button>
-                      </div>
-                      <select id="castep-ads-site-select" class="castep-input" style="font-family:monospace; font-size:11.5px;" onchange="previewSelectedCastepAdsorptionSite()"></select>
-                    </div>
-
-                    <div class="castep-grid-3" style="margin-top:6px;">
-                      <div>
-                        <label class="castep-field-lbl">Height d<sub>z</sub> (Å)</label>
-                        <input type="number" id="castep-ads-height" class="castep-input" step="0.1" value="1.80" />
-                      </div>
-                      <div>
-                        <label class="castep-field-lbl">Surface Side</label>
-                        <select id="castep-ads-side" class="castep-input" onchange="detectCastepAdsorptionSites()">
-                          <option value="top">Top Surface (+z)</option>
-                          <option value="bottom">Bottom Surface (-z)</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label class="castep-field-lbl">Orientation</label>
-                        <select id="castep-ads-orient" class="castep-input">
-                          <option value="vertical">Vertical (End-on)</option>
-                          <option value="horizontal">Horizontal (Flat)</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <!-- Custom Fractional Coordinates Row (shown when custom is selected or always available) -->
-                    <div id="castep-ads-custom-row" class="castep-grid-3" style="margin-top:6px; display:none;">
-                      <div>
-                        <label class="castep-field-lbl">Fract u</label>
-                        <input type="number" id="castep-ads-u" class="castep-input" step="0.01" value="0.3333" />
-                      </div>
-                      <div>
-                        <label class="castep-field-lbl">Fract v</label>
-                        <input type="number" id="castep-ads-v" class="castep-input" step="0.01" value="0.6667" />
-                      </div>
-                      <div>
-                        <label class="castep-field-lbl">Fract w</label>
-                        <input type="number" id="castep-ads-w" class="castep-input" step="0.01" value="0.7200" />
-                      </div>
-                    </div>
-
-                    <div style="display:flex; gap:6px; margin-top:8px;">
-                      <button type="button" class="btn btn-primary btn-sm" style="flex:1; font-size:12px;" onclick="placeCastepAdsorbateAtSite()">
-                        ➕ Place Adsorbate at Selected Site
-                      </button>
-                      <button type="button" class="btn btn-outline btn-sm" style="font-size:11.5px;" onclick="placeCastepAdsorbateFromSelectedAtoms()" title="Place adsorbate at the centroid (Top / Bridge / Hollow) of the atoms currently clicked in the 3D viewer">
-                        🎯 Place Above Clicked Atom(s)
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- Tool Module 4: Point Defects, Janus Substitution & Ionic Constraints -->
-                  <div class="castep-tool-box">
-                    <div class="castep-tool-box-title">
-                      <span>🔬 4. Point Defects, Janus Layer Substitution &amp; Constraints</span>
-                      <span class="castep-mini-tag">Defects / Fix</span>
-                    </div>
-                    <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-                      <button type="button" class="btn btn-outline btn-sm" style="color:#dc2626; border-color:#fecaca; font-size:11.5px;" onclick="deleteSelectedCastepAtoms()">
-                        🗑️ Delete Selected (Vacancy)
-                      </button>
-                      <span style="font-size:11.5px; color:#475569;">Replace Selected →</span>
-                      <input type="text" id="castep-sub-element" class="castep-input-sm" value="P" placeholder="Elem" style="width:46px; text-align:center; font-weight:700;" />
-                      <button type="button" class="btn btn-outline btn-sm" style="font-size:11.5px;" onclick="substituteSelectedCastepAtoms()">
-                        🔄 Substitute
-                      </button>
-                    </div>
-
-                    <!-- Janus Layer Converter -->
-                    <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap; margin-top:8px; padding-top:6px; border-top:1px dashed #e2e8f0;">
-                      <span style="font-size:11.5px; font-weight:700; color:#334155;">🌗 Janus Layer:</span>
-                      <select id="castep-janus-layer-side" class="castep-input-sm" style="width:92px;">
-                        <option value="top">Top Layer</option>
-                        <option value="bottom">Bottom Layer</option>
-                      </select>
-                      <span style="font-size:11.5px;">of</span>
-                      <input type="text" id="castep-janus-from" class="castep-input-sm" value="N" style="width:38px; text-align:center; font-weight:700;" />
-                      <span>→</span>
-                      <input type="text" id="castep-janus-to" class="castep-input-sm" value="P" style="width:38px; text-align:center; font-weight:700;" />
-                      <button type="button" class="btn btn-teal btn-sm" style="padding:3px 8px; font-size:11.5px;" onclick="applyCastepJanusLayerSubstitution()">
-                        Convert Layer
-                      </button>
-                    </div>
-
-                    <!-- Selective Constraints & Coordinate Cleanup -->
-                    <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap; margin-top:8px; padding-top:6px; border-top:1px dashed #e2e8f0;">
-                      <span style="font-size:11.5px; font-weight:700; color:#334155;">🔒 Fix Atoms w &lt;</span>
-                      <input type="number" id="castep-fix-z-thresh" class="castep-input-sm" step="0.05" value="0.45" style="width:58px;" />
-                      <button type="button" class="castep-preset-chip" onclick="applyCastepFixBottomLayers()">Fix Bottom</button>
-                      <button type="button" class="castep-preset-chip" onclick="unfixAllCastepAtoms()">Unfix All</button>
-                      <button type="button" class="castep-preset-chip" onclick="wrapCastepAtomsToUnitCell()">Wrap [0,1)</button>
-                      <button type="button" class="castep-preset-chip" onclick="rattleCastepAtoms(0.02)">Rattle 0.02Å</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Direct Working Folder Save & Multi-Format Export Bar -->
-              <div class="castep-save-export-bar">
-                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; flex:1;">
-                  <span style="font-weight:800; font-size:12.5px; color:#0f172a; white-space:nowrap;">💾 Working Folder &amp; Export:</span>
-                  <input type="text" id="castep-save-folder-input" class="castep-input" style="flex:1; min-width:240px; font-family:monospace; font-size:11.5px;" placeholder="Target calculation folder path..." />
-                  <input type="text" id="castep-save-subfolder-input" class="castep-input" style="width:155px; font-size:11.5px;" placeholder="Optional subfolder..." />
-                  <input type="text" id="castep-save-seed-input" class="castep-input" style="width:130px; font-weight:700; font-size:11.5px;" value="ELF+Orbitals" placeholder="Seed name" />
-                  <button type="button" class="btn btn-primary btn-sm" onclick="saveCastepStructureToWorkingFolder()">
-                    💾 Save All (.cell, .param, .xsd, .cif, POSCAR) to Folder
-                  </button>
-                  <button type="button" class="btn btn-teal btn-sm" onclick="addCurrentCastepStructureToLibrary()">
-                    💎 Add to Crystal Structures Library
-                  </button>
-                </div>
-                <div style="display:flex; gap:5px; align-items:center; flex-wrap:wrap; margin-top:6px;">
-                  <span style="font-size:11.5px; font-weight:700; color:#475569;">Download Single File:</span>
-                  <button type="button" class="castep-dl-pill" onclick="downloadCastepFormat('cell')">⬇️ .cell (CASTEP)</button>
-                  <button type="button" class="castep-dl-pill" onclick="downloadCastepFormat('param')">⬇️ .param (CASTEP)</button>
-                  <button type="button" class="castep-dl-pill" onclick="downloadCastepFormat('xsd')">⬇️ .xsd (Materials Studio)</button>
-                  <button type="button" class="castep-dl-pill" onclick="downloadCastepFormat('cif')">⬇️ .cif (Crystallographic)</button>
-                  <button type="button" class="castep-dl-pill" onclick="downloadCastepFormat('poscar')">⬇️ POSCAR (VASP)</button>
-                  <button type="button" class="castep-dl-pill" onclick="downloadCastepFormat('xyz')">⬇️ .xyz (Cartesian)</button>
-                </div>
-              </div>
-
-              <!-- Interactive Editable Atomic Coordinates & Constraints Table -->
-              <div class="castep-atoms-table-card">
-                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px;">
-                  <div>
-                    <span style="font-weight:800; font-size:13.5px; color:#0f172a;">⚛️ Atomic Fractional &amp; Cartesian Coordinates, Forces, Hirshfeld Charges &amp; Constraints</span>
-                    <span id="castep-atoms-count-badge" class="badge badge-blue" style="margin-left:6px;">28 atoms</span>
-                  </div>
-                  <div style="display:flex; gap:6px; align-items:center;">
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px;" onclick="addManualCastepAtomRow()">+ Add Atom Row</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px;" onclick="sortCastepAtomsBy('z')">Sort by Z-Height</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px;" onclick="sortCastepAtomsBy('element')">Sort by Element</button>
-                  </div>
-                </div>
-                <div class="castep-atoms-table-scroll">
-                  <table class="castep-atoms-table">
-                    <thead>
-                      <tr>
-                        <th style="width:32px;"><input type="checkbox" onchange="toggleSelectAllCastepAtoms(this.checked)" /></th>
-                        <th style="width:42px;">#</th>
-                        <th style="width:70px;">Element</th>
-                        <th style="width:85px;">Atom Label</th>
-                        <th>Fract u</th>
-                        <th>Fract v</th>
-                        <th>Fract w</th>
-                        <th>Cart X (Å)</th>
-                        <th>Cart Y (Å)</th>
-                        <th>Cart Z (Å)</th>
-                        <th>Layer Region</th>
-                        <th>|Force| (eV/Å)</th>
-                        <th>Charge (e)</th>
-                        <th>Constraint</th>
-                        <th style="width:55px;">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody id="castep-atoms-tbody"></tbody>
-                  </table>
                 </div>
               </div>
             </div>
@@ -4373,6 +4530,7 @@
           <div style="font-size:12.5px; color:var(--text-muted); margin-top:3px;" id="cvm-subtitle"></div>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" onclick="closeModal('cif-view-modal'); if(window.CURRENT_VIEW_CIF && typeof openStructureInCastepStudio==='function') openStructureInCastepStudio(window.CURRENT_VIEW_CIF.id);">🔬 Open in Full-Page VESTA / CASTEP Studio</button>
           <button class="btn btn-outline btn-sm" onclick="downloadCurrentCif()">📥 Download .cif</button>
           <button class="btn btn-teal btn-sm" onclick="downloadCurrentPoscar()">⚡ Export POSCAR</button>
           <button class="btn btn-outline btn-sm" onclick="closeModal('cif-view-modal')">✕ Close</button>
@@ -4754,8 +4912,8 @@
 
 <script src="jszip.min.js"></script>
   <script>if (typeof JSZip === "undefined") { document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"><\\/script>'); }</script>
-  <script src="matsci_tools.js?v=20261123_v115_castep_studio" onerror="this.src='/static/matsci_tools.js?v=20261123_v115_castep_studio"></script>
-  <script src="app.js?v=20261123_v115_castep_studio" onerror="this.src='/static/app.js?v=20261123_v115_castep_studio"></script>
+  <script src="matsci_tools.js?v=20261123_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=20261123_v116_vesta_viewer"></script>
+  <script src="app.js?v=20261123_v116_vesta_viewer" onerror="this.src='/static/app.js?v=20261123_v116_vesta_viewer"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
