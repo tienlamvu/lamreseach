@@ -1905,6 +1905,8 @@ def api_castep_job_detail(folder: str, seed: Optional[str] = None):
     pdos_xcd = _parse_xcd_file_backend(_read(f"{seed} PDOS.xcd", 1500000))
     conv_xcd = _parse_xcd_file_backend(_read(f"{seed} Convergence.xcd", 500000))
     ener_xcd = _parse_xcd_file_backend(_read(f"{seed} Energies.xcd", 500000))
+    opt_fname = next((f for f in all_files if "optical properties.xcd" in f.lower()), f"{seed} Optical Properties.xcd")
+    optical_xcd = _parse_xcd_file_backend(_read(opt_fname, 1500000))
 
     bandstr_bands = _parse_castep_bands_backend(os.path.join(folder, f"{seed}_BandStr.bands"))
     dos_bands = _parse_castep_bands_backend(os.path.join(folder, f"{seed}_DOS.bands")) or _parse_castep_bands_backend(os.path.join(folder, f"{seed}.bands"))
@@ -1925,8 +1927,91 @@ def api_castep_job_detail(folder: str, seed: Optional[str] = None):
         "band_xcd": band_xcd,
         "dos_xcd": dos_xcd,
         "pdos_xcd": pdos_xcd,
+        "optical_xcd": optical_xcd,
         "bandstr_bands": bandstr_bands,
         "dos_bands": dos_bands,
+    }
+
+
+@app.get("/api/castep/gateway")
+def api_castep_gateway_jobs(include_archived: bool = True, limit: int = 120):
+    import glob
+    import time
+    gw_root = r"C:\ProgramData\BIOVIA\Materials Studio\26.1\Gateway-x64\root_default\dsd"
+    info_dir = os.path.join(gw_root, "jobs-info")
+    arch_dir = os.path.join(gw_root, "jobs-info-archive")
+
+    def _parse_sbj(path, is_archived=False):
+        jid = os.path.splitext(os.path.basename(path))[0]
+        item = {
+            "job_id": jid,
+            "description": jid,
+            "server": "CASTEP",
+            "owner": "Vu_Tien_Lam",
+            "status": "terminated",
+            "create_ts": 0,
+            "submitted": "-",
+            "queue": "-",
+            "queued_job_id": "-",
+            "process_id": "-",
+            "cpu_cores": 15,
+            "job_directory": "",
+            "is_archived": is_archived,
+        }
+        try:
+            with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                for line in f:
+                    line = line.strip()
+                    if "=" not in line:
+                        continue
+                    k, v = line.split("=", 1)
+                    k, v = k.strip().lower(), v.strip()
+                    if k == "job-description":
+                        item["description"] = v
+                    elif k == "job-server":
+                        item["server"] = v
+                    elif k == "job-uid":
+                        item["owner"] = v
+                    elif k == "job-status":
+                        item["status"] = v
+                    elif k == "job-create":
+                        try:
+                            ts = int(v)
+                            item["create_ts"] = ts
+                            t_st = time.localtime(ts)
+                            day_num = int(time.strftime("%d", t_st))
+                            item["submitted"] = time.strftime(f"%a %b {day_num} %H:%M:%S %Y", t_st)
+                        except Exception:
+                            pass
+                    elif k == "job-primary-processid":
+                        item["process_id"] = v
+                    elif k == "job-processid" and item["process_id"] == "-":
+                        item["process_id"] = v
+                    elif k == "job-cpu-number":
+                        try:
+                            item["cpu_cores"] = int(v)
+                        except Exception:
+                            pass
+                    elif k == "job-directory":
+                        item["job_directory"] = v.replace("/", "\\")
+        except Exception:
+            pass
+        return item
+
+    jobs = []
+    if os.path.exists(info_dir):
+        for p in sorted(glob.glob(os.path.join(info_dir, "*.sbj"))):
+            jobs.append(_parse_sbj(p, False))
+    if include_archived and os.path.exists(arch_dir):
+        arch = [_parse_sbj(p, True) for p in glob.glob(os.path.join(arch_dir, "*.sbj"))]
+        arch.sort(key=lambda x: x["create_ts"], reverse=True)
+        jobs.extend(arch[: max(0, limit - len(jobs))])
+
+    return {
+        "gateway_host": "desktop-bvgr3ea_18888",
+        "gateway_root": gw_root,
+        "total_jobs": len(jobs),
+        "jobs": jobs[:limit],
     }
 
 
