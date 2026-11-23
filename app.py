@@ -30,13 +30,25 @@ app = FastAPI(
     version="2.0.0",
 )
 
-app.add_middleware(
-    CORSMiddleware,
+import inspect as _inspect
+
+_cors_kwargs = dict(
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+if "allow_private_network" in _inspect.signature(CORSMiddleware.__init__).parameters:
+    _cors_kwargs["allow_private_network"] = True
+app.add_middleware(CORSMiddleware, **_cors_kwargs)
+
+
+@app.middleware("http")
+async def add_private_network_access_header(request: Request, call_next):
+    """Ensure Private Network Access header is present for HTTPS -> local 127.0.0.1 bridge."""
+    response = await call_next(request)
+    response.headers["Access-Control-Allow-Private-Network"] = "true"
+    return response
 
 FRONTEND_DIR = Path(__file__).parent / "frontend"
 
@@ -2686,106 +2698,545 @@ def api_castep_charg_frm(folder: str, filename: str, seed: Optional[str] = None,
     return _summarize_volumetric_grid(grid, fp, kind, cell_vol_a3, c_len_a)
 
 
-@app.get("/api/castep/gateway")
-def api_castep_gateway_jobs(include_archived: bool = True, limit: int = 120):
+def _find_local_ms_gateway_root():
     import glob
+    patterns = [
+        r"C:\ProgramData\BIOVIA\Materials Studio\*\Gateway-x64\root_default\dsd",
+        r"C:\ProgramData\BIOVIA\Materials Studio\*\Gateway\root_default\dsd",
+        r"C:\Program Files (x86)\BIOVIA\Materials Studio*\etc\Gateway\root_default\dsd",
+        r"C:\Program Files\BIOVIA\Materials Studio*\etc\Gateway\root_default\dsd",
+        r"C:\Program Files (x86)\Accelrys\Materials Studio*\etc\Gateway\root_default\dsd",
+    ]
+    candidates = []
+    for pat in patterns:
+        candidates.extend(glob.glob(pat))
+    candidates = sorted(set(candidates), reverse=True)
+    for c in candidates:
+        if os.path.isdir(c) and (
+            os.path.isdir(os.path.join(c, "jobs-info"))
+            or os.path.isdir(os.path.join(c, "conf"))
+            or os.path.isdir(os.path.join(c, "servers-info"))
+        ):
+            return c
+    return ""
+
+
+def _parse_gw_kv_file(path: str):
+    items = []
+    kv = {}
+    if not path or not os.path.isfile(path):
+        return items, kv
+    try:
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            for raw in f:
+                line = raw.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                k = k.strip()
+                v = v.strip()
+                if not k:
+                    continue
+                kv[k] = v
+                items.append({"key": k, "value": v})
+    except Exception:
+        pass
+    return items, kv
+
+
+def _parse_sbj_file(path: str, is_archived: bool = False, gw_root: str = ""):
     import time
+    jid = os.path.splitext(os.path.basename(path))[0]
+    item = {
+        "job_id": jid,
+        "description": jid,
+        "server": "CASTEP",
+        "owner": "",
+        "status": "terminated",
+        "create_ts": 0,
+        "start_ts": 0,
+        "finish_ts": 0,
+        "submitted": "-",
+        "queue": "-",
+        "queued_job_id": "-",
+        "process_id": "-",
+        "cpu_cores": 0,
+        "job_directory": "",
+        "client_ip": "",
+        "is_archived": is_archived,
+        "has_local_files": False,
+        "job_href": f"/dsd/jobs/{jid}/",
+    }
+    try:
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                line = line.strip()
+                if "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                k, v = k.strip().lower(), v.strip()
+                if k == "job-description":
+                    item["description"] = v
+                elif k == "job-server":
+                    item["server"] = v
+                elif k == "job-uid":
+                    item["owner"] = v
+                elif k == "job-status":
+                    item["status"] = v
+                elif k == "job-create":
+                    try:
+                        ts = int(v)
+                        item["create_ts"] = ts
+                        t_st = time.localtime(ts)
+                        day_num = int(time.strftime("%d", t_st))
+                        item["submitted"] = time.strftime(f"%a %b {day_num:2d} %H:%M:%S %Y", t_st).replace("  ", " ")
+                    except Exception:
+                        pass
+                elif k == "job-start":
+                    try:
+                        item["start_ts"] = int(v)
+                    except Exception:
+                        pass
+                elif k == "job-finish":
+                    try:
+                        item["finish_ts"] = int(v)
+                    except Exception:
+                        pass
+                elif k == "job-primary-processid":
+                    item["process_id"] = v
+                elif k == "job-processid" and item["process_id"] == "-":
+                    item["process_id"] = v
+                elif k == "job-queue" and v:
+                    item["queue"] = v
+                elif k == "job-queued-id" and v:
+                    item["queued_job_id"] = v
+                elif k == "job-cpu-number":
+                    try:
+                        item["cpu_cores"] = int(v)
+                    except Exception:
+                        pass
+                elif k == "job-directory":
+                    item["job_directory"] = v.replace("/", "\\")
+                elif k == "job-client-ip":
+                    item["client_ip"] = v
+    except Exception:
+        pass
+
+    cand_dir = item["job_directory"] or (os.path.join(gw_root, "jobs", jid) if gw_root else "")
+    if cand_dir and os.path.isdir(cand_dir):
+        item["job_directory"] = cand_dir
+        item["has_local_files"] = True
+    return item
+
+
+def _parse_local_sbs_servers(gw_root: str):
+    import glob
+    servers = []
+    sbs_dir = os.path.join(gw_root, "servers-info") if gw_root else ""
+    if not sbs_dir or not os.path.isdir(sbs_dir):
+        return servers
+    for p in sorted(glob.glob(os.path.join(sbs_dir, "*.sbs")), key=lambda x: os.path.basename(x).lower()):
+        name = os.path.splitext(os.path.basename(p))[0]
+        items, kv = _parse_gw_kv_file(p)
+        ver_maj = kv.get("VersionMajor", "")
+        ver_min = kv.get("VersionMinor", "")
+        rev = kv.get("Revision", "")
+        ver_str = f"{ver_maj}.{ver_min}" + (f".{rev}" if rev else "") if ver_maj else ""
+        servers.append({
+            "name": name,
+            "category": kv.get("Category", "Other"),
+            "description": kv.get("Description", f"{name} Server Application"),
+            "version": ver_str or "Installed",
+            "build_date": kv.get("Builddate", "-"),
+            "executable": kv.get("server-executable", ""),
+            "shell": kv.get("shell", ""),
+            "wait_for_start": kv.get("WaitForStart", ""),
+            "timeout": kv.get("Timeout", ""),
+            "polling_interval": kv.get("MinimumPollingInterval", ""),
+            "max_cores": kv.get("MaxCoresPerProcessor", "0"),
+            "clean_tmp": kv.get("CleanTmp", ""),
+            "sbs_file": os.path.basename(p),
+            "details": items,
+        })
+    return servers
+
+
+def _strip_html_tags(s: str) -> str:
+    import html as _html
+    txt = re.sub(r"<[^>]+>", " ", s or "")
+    txt = _html.unescape(txt)
+    return re.sub(r"\s+", " ", txt).strip()
+
+
+def _fetch_live_ms_gateway_http(gateway_url: str, timeout: float = 2.5):
+    import urllib.request
+    import html as _html
+
+    base = (gateway_url or "").strip().rstrip("/")
+    if not re.match(r"^https?://[A-Za-z0-9.\-_:\[\]]+$", base):
+        return {"reachable": False, "error": "Invalid Gateway URL"}
+
+    # Avoid Windows IPv6 ::1 2.0s TCP fallback timeout against BIOVIA Apache (IPv4-only listener)
+    fetch_base = re.sub(r"^(https?://)localhost(?=:|$)", r"\g<1>127.0.0.1", base, flags=re.I)
+
+    def _get(path: str):
+        req = urllib.request.Request(
+            fetch_base + path,
+            headers={"User-Agent": "MatSciNexus-GatewayBridge/1.0"},
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.read().decode("utf-8", errors="ignore")
+
+    result = {
+        "reachable": False,
+        "gateway_url": base,
+        "gateway_host": "",
+        "page_generated": "",
+        "jobs": [],
+        "gateway_data": [],
+        "installed_servers": [],
+        "error": "",
+    }
+
+    try:
+        jobs_html = _get("/dsd/commands/dsd_configuregw.pl?jobs=yes")
+    except Exception as exc:
+        result["error"] = str(exc)
+        return result
+
+    result["reachable"] = True
+
+    m_title = re.search(r"<title>\s*Remote Gateway\s+([^<]+)</title>", jobs_html, re.I)
+    if m_title:
+        result["gateway_host"] = _html.unescape(m_title.group(1)).strip()
+
+    m_gen = re.search(r"Page generated on\s+([^<]+)", jobs_html, re.I)
+    if m_gen:
+        result["page_generated"] = _strip_html_tags(m_gen.group(0))
+
+    # Parse live Jobs table rows (note: Materials Studio nests tiny <table> inside <th> headers,
+    # so slice from contenttables up to the footer <table class="main" instead of first </table>!)
+    m_tbl_start = re.search(r'<table[^>]*class="[^"]*contenttables[^"]*"[^>]*>', jobs_html, re.I)
+    if m_tbl_start:
+        sub_html = jobs_html[m_tbl_start.end():]
+        m_footer = re.search(r'<table[^>]*class="main"', sub_html, re.I)
+        tbl_body = sub_html[:m_footer.start()] if m_footer else sub_html
+        for tr_m in re.finditer(r"<tr>\s*<td(.*?)</tr>", tbl_body, re.I | re.S):
+            row_html = "<td" + tr_m.group(1)
+            tds = re.findall(r"<td([^>]*)>(.*?)</td>", row_html, re.I | re.S)
+            if len(tds) < 9:
+                continue
+            desc = _strip_html_tags(tds[0][1])
+            job_id = _strip_html_tags(tds[1][1])
+            m_href = re.search(r'href="([^"]+)"', tds[1][1], re.I)
+            job_href = _html.unescape(m_href.group(1)) if m_href else f"/dsd/jobs/{job_id}/"
+            server = _strip_html_tags(tds[2][1]) or "CASTEP"
+            owner = _strip_html_tags(tds[3][1]) or "-"
+            status = _strip_html_tags(tds[4][1]) or "unknown"
+            submitted = _strip_html_tags(tds[5][1]) or "-"
+            m_ts = re.search(r'sorttable-customkey="(\d+)"', tds[5][0], re.I)
+            create_ts = int(m_ts.group(1)) if m_ts else 0
+            queue = _strip_html_tags(tds[6][1]) or "-"
+            queued_job_id = _strip_html_tags(tds[7][1]) or "-"
+            process_id = _strip_html_tags(tds[8][1]) or "-"
+            action_html = tds[9][1] if len(tds) > 9 else ""
+            has_remove = "deletejob=yes" in action_html.lower() or "remove" in action_html.lower()
+            has_stop = "stopjob=yes" in action_html.lower() or "stop" in action_html.lower()
+            if not job_id:
+                continue
+            result["jobs"].append({
+                "job_id": job_id,
+                "description": desc or job_id,
+                "server": server,
+                "owner": owner,
+                "status": status,
+                "create_ts": create_ts,
+                "submitted": submitted,
+                "queue": queue,
+                "queued_job_id": queued_job_id,
+                "process_id": process_id,
+                "cpu_cores": 0,
+                "job_directory": "",
+                "job_href": job_href,
+                "job_url": base + job_href if job_href.startswith("/") else job_href,
+                "is_archived": False,
+                "has_local_files": False,
+                "can_remove": has_remove,
+                "can_stop": has_stop,
+            })
+
+    # Parse live Gateway Data table
+    try:
+        gw_html = _get("/dsd/commands/dsd_configuregw.pl?file=gw-info.sbd")
+        m_gtbl = re.search(r'<table[^>]*class="[^"]*contenttables[^"]*"[^>]*>(.*?)</table>', gw_html, re.I | re.S)
+        if m_gtbl:
+            for tr_m in re.finditer(r"<tr>(.*?)</tr>", m_gtbl.group(1), re.I | re.S):
+                tds = re.findall(r"<td[^>]*>(.*?)</td>", tr_m.group(1), re.I | re.S)
+                if len(tds) >= 2:
+                    k = _strip_html_tags(tds[0])
+                    v = _strip_html_tags(tds[1])
+                    if k:
+                        result["gateway_data"].append({"key": k, "value": v})
+    except Exception:
+        pass
+
+    # Parse live Installed Servers table
+    try:
+        srv_html = _get("/dsd/commands/u/dsd_configure.pl")
+        m_stbl = re.search(r'<table[^>]*class="[^"]*contenttables[^"]*"[^>]*>(.*?)</table>', srv_html, re.I | re.S)
+        if m_stbl:
+            for tr_m in re.finditer(r"<tr>(.*?)</tr>", m_stbl.group(1), re.I | re.S):
+                tds = re.findall(r"<td[^>]*>(.*?)</td>", tr_m.group(1), re.I | re.S)
+                if len(tds) >= 2:
+                    sname = _strip_html_tags(tds[0])
+                    scat = _strip_html_tags(tds[1])
+                    m_shref = re.search(r'href="([^"]+)"', tds[0], re.I)
+                    shref = _html.unescape(m_shref.group(1)) if m_shref else ""
+                    if sname:
+                        result["installed_servers"].append({
+                            "name": sname,
+                            "category": scat or "Other",
+                            "detail_url": base + shref if shref.startswith("/") else shref,
+                        })
+    except Exception:
+        pass
+
+    return result
+
+
+@app.get("/api/castep/gateway")
+def api_castep_gateway_jobs(
+    gateway_url: Optional[str] = None,
+    include_archived: bool = False,
+    limit: int = 200,
+):
+    import glob
     import socket
+    from urllib.parse import urlparse
 
     hostname = socket.gethostname().lower()
-    gw_candidates = sorted(
-        glob.glob(r"C:\ProgramData\BIOVIA\Materials Studio\*\Gateway-x64\root_default\dsd"),
-        reverse=True,
+    gw_root = _find_local_ms_gateway_root()
+
+    # Load local conf/gw-info.sbd & servers-info/*.sbs when installed on this machine
+    local_gw_items, local_gw_kv = _parse_gw_kv_file(os.path.join(gw_root, "conf", "gw-info.sbd")) if gw_root else ([], {})
+    _, local_params_kv = _parse_gw_kv_file(os.path.join(gw_root, "conf", "gwparams.cfg")) if gw_root else ([], {})
+    local_port = local_gw_kv.get("port") or local_params_kv.get("gw_port") or "18888"
+    local_host_label = local_gw_kv.get("gatewayname") or f"{hostname}_{local_port}"
+
+    target_url = (gateway_url or "").strip()
+    if not target_url:
+        target_url = f"http://localhost:{local_port}"
+    elif not re.match(r"^https?://", target_url, re.I):
+        target_url = "http://" + target_url
+
+    parsed_u = urlparse(target_url)
+    req_host = (parsed_u.hostname or "").lower()
+    is_local_target = req_host in (
+        "localhost", "127.0.0.1", "::1", hostname,
+        (local_gw_kv.get("hostname") or "").lower(),
+        (local_gw_kv.get("ipaddress") or "").lower(),
     )
-    gw_root = gw_candidates[0] if gw_candidates else ""
-    if not gw_root or not os.path.isdir(gw_root):
+
+    # Probe live Materials Studio Remote Gateway HTTP server
+    live = _fetch_live_ms_gateway_http(target_url, timeout=2.5)
+    live_ok = bool(live.get("reachable"))
+
+    # Parse local disk .sbj / .sbs when targeting this workstation
+    disk_active_map = {}
+    disk_active_list = []
+    archived_list = []
+    archived_total = 0
+    local_servers_map = {}
+    local_servers_list = []
+
+    if is_local_target and gw_root:
+        info_dir = os.path.join(gw_root, "jobs-info")
+        arch_dir = os.path.join(gw_root, "jobs-info-archive")
+        if os.path.isdir(info_dir):
+            for p in sorted(glob.glob(os.path.join(info_dir, "*.sbj"))):
+                rec = _parse_sbj_file(p, False, gw_root)
+                disk_active_map[rec["job_id"]] = rec
+                disk_active_list.append(rec)
+        if os.path.isdir(arch_dir):
+            arch_files = glob.glob(os.path.join(arch_dir, "*.sbj"))
+            archived_total = len(arch_files)
+            if include_archived and arch_files:
+                arch_parsed = [_parse_sbj_file(p, True, gw_root) for p in arch_files]
+                arch_parsed.sort(key=lambda x: x["create_ts"], reverse=True)
+                archived_list = arch_parsed[:limit]
+        local_servers_list = _parse_local_sbs_servers(gw_root)
+        local_servers_map = {s["name"].lower(): s for s in local_servers_list}
+
+    if not live_ok and not (is_local_target and gw_root):
         return {
             "connected": False,
-            "gateway_host": f"{hostname}_18888",
+            "live_http_reachable": False,
+            "source": "none",
+            "gateway_url": target_url,
+            "gateway_host": "",
             "gateway_root": "",
+            "page_generated": "",
+            "error": live.get("error") or "Materials Studio Remote Gateway not found.",
             "total_jobs": 0,
+            "running_jobs": 0,
             "archived_total": 0,
             "jobs": [],
+            "archived_jobs": [],
+            "installed_servers": [],
+            "gateway_data": [],
         }
 
-    info_dir = os.path.join(gw_root, "jobs-info")
-    arch_dir = os.path.join(gw_root, "jobs-info-archive")
+    # Build final active jobs list (live HTTP is authoritative when reachable!)
+    if live_ok:
+        jobs = []
+        for lj in live["jobs"]:
+            dj = disk_active_map.get(lj["job_id"])
+            if dj:
+                lj["cpu_cores"] = dj.get("cpu_cores", 0)
+                lj["job_directory"] = dj.get("job_directory", "")
+                lj["has_local_files"] = dj.get("has_local_files", False)
+                lj["start_ts"] = dj.get("start_ts", 0)
+                lj["finish_ts"] = dj.get("finish_ts", 0)
+                lj["client_ip"] = dj.get("client_ip", "")
+            jobs.append(lj)
+    else:
+        jobs = disk_active_list
 
-    def _parse_sbj(path, is_archived=False):
-        jid = os.path.splitext(os.path.basename(path))[0]
-        item = {
-            "job_id": jid,
-            "description": jid,
-            "server": "CASTEP",
-            "owner": "",
-            "status": "terminated",
-            "create_ts": 0,
-            "submitted": "-",
-            "queue": "-",
-            "queued_job_id": "-",
-            "process_id": "-",
-            "cpu_cores": 0,
-            "job_directory": "",
-            "is_archived": is_archived,
-        }
-        try:
-            with open(path, "r", encoding="utf-8", errors="ignore") as f:
-                for line in f:
-                    line = line.strip()
-                    if "=" not in line:
-                        continue
-                    k, v = line.split("=", 1)
-                    k, v = k.strip().lower(), v.strip()
-                    if k == "job-description":
-                        item["description"] = v
-                    elif k == "job-server":
-                        item["server"] = v
-                    elif k == "job-uid":
-                        item["owner"] = v
-                    elif k == "job-status":
-                        item["status"] = v
-                    elif k == "job-create":
-                        try:
-                            ts = int(v)
-                            item["create_ts"] = ts
-                            t_st = time.localtime(ts)
-                            day_num = int(time.strftime("%d", t_st))
-                            item["submitted"] = time.strftime(f"%a %b {day_num} %H:%M:%S %Y", t_st)
-                        except Exception:
-                            pass
-                    elif k == "job-primary-processid":
-                        item["process_id"] = v
-                    elif k == "job-processid" and item["process_id"] == "-":
-                        item["process_id"] = v
-                    elif k == "job-cpu-number":
-                        try:
-                            item["cpu_cores"] = int(v)
-                        except Exception:
-                            pass
-                    elif k == "job-directory":
-                        item["job_directory"] = v.replace("/", "\\")
-        except Exception:
-            pass
-        return item
+    # Sort running/starting/queued first, then newest create_ts descending
+    def _job_sort_key(j):
+        st = (j.get("status") or "").lower()
+        is_active = 0 if any(k in st for k in ("running", "starting", "queued", "setup")) else 1
+        return (is_active, -(j.get("create_ts") or 0), j.get("job_id") or "")
 
-    jobs = []
-    if os.path.exists(info_dir):
-        for p in sorted(glob.glob(os.path.join(info_dir, "*.sbj"))):
-            jobs.append(_parse_sbj(p, False))
-    arch_files = glob.glob(os.path.join(arch_dir, "*.sbj")) if os.path.exists(arch_dir) else []
-    if include_archived and arch_files:
-        arch = [_parse_sbj(p, True) for p in arch_files]
-        arch.sort(key=lambda x: x["create_ts"], reverse=True)
-        jobs.extend(arch[: max(0, limit - len(jobs))])
+    jobs.sort(key=_job_sort_key)
+
+    # Build final Installed Servers list
+    if live_ok and live["installed_servers"]:
+        installed_servers = []
+        for ls in live["installed_servers"]:
+            loc = local_servers_map.get(ls["name"].lower())
+            if loc:
+                merged = dict(loc)
+                merged["category"] = ls.get("category") or loc.get("category")
+                merged["detail_url"] = ls.get("detail_url", "")
+                installed_servers.append(merged)
+            else:
+                installed_servers.append({
+                    "name": ls["name"],
+                    "category": ls.get("category", "Other"),
+                    "description": f"{ls['name']} Server Application",
+                    "version": "Installed",
+                    "build_date": "-",
+                    "executable": "",
+                    "shell": "",
+                    "wait_for_start": "",
+                    "timeout": "",
+                    "polling_interval": "",
+                    "max_cores": "0",
+                    "clean_tmp": "",
+                    "detail_url": ls.get("detail_url", ""),
+                    "details": [],
+                })
+    else:
+        installed_servers = local_servers_list
+
+    # Build final Gateway Data key-value table (filtering out internal _apacheroot unless useful)
+    if live_ok and live["gateway_data"]:
+        gateway_data = live["gateway_data"]
+    else:
+        gateway_data = [
+            it for it in local_gw_items
+            if not it["key"].startswith("_") and it["key"] not in ("versionmajor", "versionminor")
+        ]
+
+    final_host = live.get("gateway_host") or local_host_label
+    running_cnt = sum(
+        1 for j in jobs
+        if any(k in (j.get("status") or "").lower() for k in ("running", "starting", "queued"))
+    )
 
     return {
         "connected": True,
-        "gateway_host": f"{hostname}_18888",
-        "gateway_root": gw_root,
+        "live_http_reachable": live_ok,
+        "source": "live_http+disk" if (live_ok and is_local_target and gw_root) else ("live_http" if live_ok else "local_disk"),
+        "gateway_url": target_url,
+        "gateway_host": final_host,
+        "gateway_root": gw_root if is_local_target else "",
+        "page_generated": live.get("page_generated", ""),
         "total_jobs": len(jobs),
-        "archived_total": len(arch_files),
+        "running_jobs": running_cnt,
+        "archived_total": archived_total,
         "jobs": jobs[:limit],
+        "archived_jobs": archived_list,
+        "installed_servers": installed_servers,
+        "gateway_data": gateway_data,
+        "local_processes": _detect_castep_processes() if is_local_target else [],
     }
+
+
+@app.get("/api/castep/gateway/job/{job_id}")
+def api_castep_gateway_job_detail(job_id: str):
+    if not re.match(r"^[A-Za-z0-9_-]{2,24}$", job_id or ""):
+        raise HTTPException(status_code=400, detail="Invalid Gateway Job Id.")
+    gw_root = _find_local_ms_gateway_root()
+    if not gw_root:
+        raise HTTPException(status_code=404, detail="Local Materials Studio Gateway directory not found.")
+
+    job_dir = ""
+    for sub in ("jobs-info", "jobs-info-archive"):
+        sbj_path = os.path.join(gw_root, sub, f"{job_id}.sbj")
+        if os.path.isfile(sbj_path):
+            rec = _parse_sbj_file(sbj_path, sub == "jobs-info-archive", gw_root)
+            if rec.get("job_directory") and os.path.isdir(rec["job_directory"]):
+                job_dir = rec["job_directory"]
+                break
+    if not job_dir:
+        cand = os.path.join(gw_root, "jobs", job_id)
+        if os.path.isdir(cand):
+            job_dir = cand
+    if not job_dir or not os.path.isdir(job_dir):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Working directory for Gateway job {job_id} no longer exists on disk (already cleaned or archived).",
+        )
+    detail = api_castep_job_detail(folder=job_dir)
+    detail["gateway_job_id"] = job_id
+    return detail
+
+
+@app.post("/api/castep/gateway/remove")
+async def api_castep_gateway_remove_job(request: Request):
+    import urllib.request
+    import html as _html
+
+    body = await request.json()
+    job_id = str(body.get("job_id") or "").strip()
+    gateway_url = str(body.get("gateway_url") or "http://localhost:18888").strip().rstrip("/")
+    if not re.match(r"^[A-Za-z0-9_-]{2,24}$", job_id):
+        raise HTTPException(status_code=400, detail="Invalid Gateway Job Id.")
+    if not re.match(r"^https?://[A-Za-z0-9.\-_:\[\]]+$", gateway_url):
+        raise HTTPException(status_code=400, detail="Invalid Gateway URL.")
+    fetch_base = re.sub(r"^(https?://)localhost(?=:|$)", r"\g<1>127.0.0.1", gateway_url, flags=re.I)
+
+    try:
+        jobs_html = urllib.request.urlopen(
+            f"{fetch_base}/dsd/commands/dsd_configuregw.pl?jobs=yes", timeout=3.5
+        ).read().decode("utf-8", errors="ignore")
+        m_del = re.search(
+            rf'href="([^"]*deletejob=yes[^"]*job-id={re.escape(job_id)}[^"]*)"',
+            jobs_html,
+            re.I,
+        )
+        if not m_del:
+            raise HTTPException(status_code=404, detail=f"Job {job_id} not found or cannot be removed on live Gateway.")
+        del_href = _html.unescape(m_del.group(1))
+        del_url = fetch_base + del_href if del_href.startswith("/") else del_href
+        urllib.request.urlopen(del_url, timeout=5.0).read()
+        return {"ok": True, "job_id": job_id, "removed_from_live_gateway": True}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Failed to remove job {job_id} on Gateway: {exc}")
 
 
 @app.post("/api/castep/save")
