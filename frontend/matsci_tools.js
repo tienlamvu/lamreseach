@@ -210,7 +210,7 @@ const CASTEP_STUDIO_STATE = {
   gatewaySubView: "jobs",
   lastOpticalSpectra: null,
   _jobLoadSeq: 0,
-  _dirtyPanes: new Set(["builder", "electronic", "optics", "chdiff", "convergence", "files"]),
+  _dirtyPanes: new Set(["builder", "electronic", "optics", "chdiff", "mulliken", "convergence", "files"]),
   _optSpectraCacheKey: "",
   optZoom: { emin: 0.0, emax: null, nmMin: 180, nmMax: 1100, yScale: 1.0, isDragging: false, lastX: 0 },
   optPanelZooms: {
@@ -304,6 +304,7 @@ const CASTEP_STUDIO_STATE = {
     showLabels: false,
     showAdsorptionSites: false,
     showForces: false,
+    showSpins: false,
     showChdiffIso: false,
     showChdiffSlice: false,
     chdiffIsoval: 0.018,
@@ -1142,6 +1143,7 @@ function initCastepStudioTab() {
           else if (pane === "electronic") renderCastepElectronicPlots();
           else if (pane === "optics") renderCastepOpticalPlots();
           else if (pane === "chdiff") renderCastepChdiffPlots();
+          else if (pane === "mulliken") renderCastepMullikenPane();
           else if (pane === "convergence") renderCastepConvergencePlots();
         });
       });
@@ -1164,6 +1166,7 @@ function initCastepStudioTab() {
     if (CASTEP_STUDIO_STATE.activeStagePane === "electronic") renderCastepElectronicPlots();
     if (CASTEP_STUDIO_STATE.activeStagePane === "optics") renderCastepOpticalPlots();
     if (CASTEP_STUDIO_STATE.activeStagePane === "chdiff") renderCastepChdiffPlots();
+    if (CASTEP_STUDIO_STATE.activeStagePane === "mulliken") renderCastepMullikenPane();
     if (CASTEP_STUDIO_STATE.activeStagePane === "convergence") renderCastepConvergencePlots();
   }, 60);
 }
@@ -1712,6 +1715,8 @@ async function loadCastepJobIntoStudio(jobId) {
   if (folderInp) folderInp.value = job.folder || "";
   if (seedInp) seedInp.value = job.seed || "";
   populateCastepOpticalFileSelect(job);
+  populateCastepPdosTargetSelect(job);
+  attachMullikenSpinsToStructure(job);
 
   // 5) Reset viewports & caches
   CASTEP_STUDIO_STATE.view3D.distanceMeasurements = [];
@@ -1732,7 +1737,7 @@ async function loadCastepJobIntoStudio(jobId) {
   updateCastepKpiBar();
 
   // 6) Mark all non-active panes dirty and render ONLY the currently visible tab immediately!
-  CASTEP_STUDIO_STATE._dirtyPanes = new Set(["builder", "electronic", "optics", "chdiff", "convergence", "files", "atoms", "adsorb"]);
+  CASTEP_STUDIO_STATE._dirtyPanes = new Set(["builder", "electronic", "optics", "chdiff", "mulliken", "convergence", "files", "atoms", "adsorb"]);
   const activePane = CASTEP_STUDIO_STATE.activeStagePane || "builder";
 
   if (activePane === "builder") {
@@ -1759,6 +1764,9 @@ async function loadCastepJobIntoStudio(jobId) {
     await ensureJobChdiffHydrated(job);
     if (loadSeq !== CASTEP_STUDIO_STATE._jobLoadSeq) return;
     renderCastepChdiffPlots();
+  } else if (activePane === "mulliken") {
+    CASTEP_STUDIO_STATE._dirtyPanes.delete("mulliken");
+    renderCastepMullikenPane();
   } else if (activePane === "convergence") {
     CASTEP_STUDIO_STATE._dirtyPanes.delete("convergence");
     renderCastepConvergencePlots();
@@ -1816,6 +1824,7 @@ async function switchCastepStagePane(paneId, btnEl) {
     else if (paneId === "electronic") renderCastepElectronicPlots();
     else if (paneId === "optics") renderCastepOpticalPlots();
     else if (paneId === "chdiff") renderCastepChdiffPlots();
+    else if (paneId === "mulliken") renderCastepMullikenPane();
     else if (paneId === "convergence") renderCastepConvergencePlots();
     else if (paneId === "files") {
       if (job) populateCastepParamFormFromText(job.param_text || "");
@@ -2721,6 +2730,7 @@ function getOrBuildCastep3DTopology(st, vecs, v3) {
                 label: at.label || `${el}${idx+1}`,
                 fixed: Boolean(at.fixed),
                 fx: at.fx || 0, fy: at.fy || 0, fz: at.fz || 0,
+                spin: at.spin || 0,
                 fracU: u, fracV: v, fracW: w,
                 cartX: cx, cartY: cy, cartZ: cz,
                 isBoundaryImage: !(da === 0 && db === 0 && dc === 0)
@@ -3165,6 +3175,37 @@ function renderCastep3DScene() {
       const sprite = getCachedSphereSprite(a.color, a.fixed);
       const drawR = a.radius * (32 / 28);
       ctx.drawImage(sprite, a.sx - drawR, a.sy - drawR, drawR * 2, drawR * 2);
+
+      if (v3.showSpins && a.spin !== undefined && a.spin !== null && Math.abs(a.spin) >= 0.04) {
+        const sVal = Number(a.spin);
+        const dir = sVal >= 0 ? 1 : -1;
+        const lenA = Math.min(3.2, Math.max(1.05, 0.85 + Math.abs(sVal) * 1.15));
+        const pTail = project(a.cartX, a.cartY, a.cartZ - dir * lenA * 0.35);
+        const pTip  = project(a.cartX, a.cartY, a.cartZ + dir * lenA * 0.85);
+        const col = dir > 0 ? "#dc2626" : "#2563eb";
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(pTail.sx, pTail.sy);
+        ctx.lineTo(pTip.sx, pTip.sy);
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 3.2;
+        ctx.lineCap = "round";
+        ctx.stroke();
+        const ang = Math.atan2(pTip.sy - pTail.sy, pTip.sx - pTail.sx);
+        const hl = 9.0;
+        ctx.beginPath();
+        ctx.moveTo(pTip.sx, pTip.sy);
+        ctx.lineTo(pTip.sx - hl * Math.cos(ang - 0.42), pTip.sy - hl * Math.sin(ang - 0.42));
+        ctx.lineTo(pTip.sx - hl * Math.cos(ang + 0.42), pTip.sy - hl * Math.sin(ang + 0.42));
+        ctx.closePath();
+        ctx.fillStyle = col;
+        ctx.fill();
+        ctx.font = "bold 10px Inter, sans-serif";
+        ctx.fillStyle = col;
+        ctx.textAlign = "center";
+        ctx.fillText(`${sVal > 0 ? "+" : ""}${sVal.toFixed(2)}μB`, pTip.sx, pTip.sy - 7);
+        ctx.restore();
+      }
 
       if (v3.showForces && Math.hypot(a.fx, a.fy, a.fz) > 0.005) {
         const fScale = 8.0;
@@ -4342,25 +4383,37 @@ function generateCastepXyzContent() {
 
 function computeBandGapFromBandsObj(bandsObj) {
   if (!bandsObj || !bandsObj.kpoints || !bandsObj.kpoints.length) return null;
-  let vbm = -1e9, cbm = 1e9, vbmK = 0, cbmK = 0;
-  bandsObj.kpoints.forEach((kp, kIdx) => {
-    (kp.e || []).forEach(spinBands => {
+  const calcForSpin = (sIdx) => {
+    let vbm = -1e9, cbm = 1e9, vbmK = 0, cbmK = 0;
+    bandsObj.kpoints.forEach((kp, kIdx) => {
+      const spinBands = kp.e?.[sIdx];
+      if (!spinBands) return;
       spinBands.forEach(ev => {
         if (ev <= 0.005 && ev > vbm) { vbm = ev; vbmK = kIdx; }
         if (ev > 0.005 && ev < cbm) { cbm = ev; cbmK = kIdx; }
       });
     });
-  });
-  if (vbm < -1e5 || cbm > 1e5) return null;
-  const gap = Math.max(0, cbm - vbm);
-  return {
-    gapEv: Math.round(gap * 1000) / 1000,
-    vbmEv: Math.round(vbm * 1000) / 1000,
-    cbmEv: Math.round(cbm * 1000) / 1000,
-    isDirect: vbmK === cbmK,
-    vbmK,
-    cbmK
+    if (vbm < -1e5 || cbm > 1e5) return null;
+    const gap = Math.max(0, cbm - vbm);
+    return {
+      gapEv: Math.round(gap * 1000) / 1000,
+      vbmEv: Math.round(vbm * 1000) / 1000,
+      cbmEv: Math.round(cbm * 1000) / 1000,
+      isDirect: vbmK === cbmK,
+      vbmK, cbmK
+    };
   };
+  const up = calcForSpin(0);
+  const dn = (bandsObj.ns >= 2) ? calcForSpin(1) : null;
+  if (!up) return null;
+  const overallGap = dn ? Math.min(up.gapEv, dn.gapEv) : up.gapEv;
+  let phase = overallGap > 0.03 ? "Semiconductor / Insulator" : "Metallic";
+  if (dn) {
+    if ((up.gapEv > 0.05 && dn.gapEv <= 0.05) || (dn.gapEv > 0.05 && up.gapEv <= 0.05)) phase = "Half-Metal";
+    else if (up.gapEv > 0.05 && dn.gapEv > 0.05) phase = Math.abs(up.gapEv - dn.gapEv) > 0.03 ? "Spin-Split Semiconductor" : "Collinear Semiconductor";
+    else phase = "Collinear Spin-Polarized Metal";
+  }
+  return { ...up, gapEv: overallGap, upGapEv: up.gapEv, dnGapEv: dn ? dn.gapEv : null, isCollinear: !!dn, phase };
 }
 
 function setCastepElecWindow(emin, emax) {
@@ -4372,6 +4425,201 @@ function setCastepElecWindow(emin, emax) {
 }
 window.setCastepElecWindow = setCastepElecWindow;
 
+function onCastepPdosModeChange() {
+  const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
+  populateCastepPdosTargetSelect(job);
+  renderCastepElectronicPlots();
+}
+window.onCastepPdosModeChange = onCastepPdosModeChange;
+
+function populateCastepPdosTargetSelect(job) {
+  const sel = document.getElementById("castep-pdos-target-select");
+  if (!sel) return;
+  const prevVal = sel.value || "all";
+  const mode = document.getElementById("castep-pdos-mode")?.value || "element_orbital";
+  const pb = job?.pdos_bin_data;
+  let html = `<option value="all">All Atoms / Species</option>`;
+  if (pb && Array.isArray(pb.channels) && pb.channels.length) {
+    const elements = [...new Set(pb.channels.map(c => c.element))];
+    const atoms = [...new Set(pb.channels.map(c => c.atom))];
+    if (mode !== "atom") {
+      elements.forEach(el => {
+        html += `<option value="el:${escapeHtml(el)}">Element: ${escapeHtml(el)}</option>`;
+      });
+    }
+    atoms.slice(0, 80).forEach(at => {
+      html += `<option value="atom:${escapeHtml(at)}">Atom: ${escapeHtml(at)}</option>`;
+    });
+  }
+  sel.innerHTML = html;
+  if ([...sel.options].some(o => o.value === prevVal)) sel.value = prevVal;
+}
+
+async function handleCastepPdosFilesUpload(event) {
+  const files = Array.from(event.target?.files || []);
+  if (!files.length) return;
+  let job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
+  if (!job) {
+    const seed = normalizeCastepSeedClient(files[0].name);
+    job = enrichCastepJobSummary({
+      id: "pdos_imp_" + Date.now(), title: `${seed} (PDOS Import)`, project: "Electronic Analysis",
+      material: seed, folder: "Imported Electronic Files", seed, status: "Completed",
+      files_list: files.map(f => f.name), _hydrated: true
+    });
+    CASTEP_STUDIO_STATE.jobs.unshift(job);
+    CASTEP_STUDIO_STATE.activeJobId = job.id;
+  }
+  let pdosBuf = null, pdosName = "";
+  for (const f of files) {
+    const low = f.name.toLowerCase();
+    if (low.endsWith(".pdos_bin")) {
+      pdosBuf = await f.arrayBuffer();
+      pdosName = f.name;
+    } else if (low.endsWith("_bandstr.bands")) {
+      job.bandstr_bands = parseCastepBandsTextClient(await f.text());
+    } else if (low.endsWith(".bands")) {
+      job.dos_bands = parseCastepBandsTextClient(await f.text());
+    } else if (low.endsWith(".xcd")) {
+      const txt = await f.text();
+      if (low.includes("band")) job.band_xcd = parseCastepXcdXmlClient(txt, true);
+      else if (low.includes("pdos") || low.includes("partial")) job.pdos_xcd = parseCastepXcdXmlClient(txt, false);
+      else job.dos_xcd = parseCastepXcdXmlClient(txt, false);
+    }
+  }
+  if (pdosBuf) {
+    const refBands = job.dos_bands || job.bandstr_bands;
+    if (refBands) {
+      const spOrder = extractSpeciesOrderFromJobText(job);
+      job.pdos_bin_data = parseCastepPdosBinArrayBuffer(pdosBuf, refBands, spOrder, pdosName);
+    } else if (typeof showToast === "function") {
+      showToast("Tip: Please select both *.pdos_bin AND *_DOS.bands together so eigenvalues match exact orbital weights!", "warning");
+    }
+  }
+  job.has_band_dos = true;
+  populateCastepPdosTargetSelect(job);
+  renderCastepElectronicPlots();
+  if (typeof showToast === "function") showToast("Loaded CASTEP Electronic / PDOS files!", "success");
+  event.target.value = "";
+}
+window.handleCastepPdosFilesUpload = handleCastepPdosFilesUpload;
+
+function convolveSparseHistGaussian(sparsePairs, eMinHist, dEHist, eGrid, sigma) {
+  const nOut = eGrid.length;
+  const out = new Float64Array(nOut);
+  if (!sparsePairs || !sparsePairs.length) return out;
+  const invSig = 1.0 / Math.max(0.015, sigma);
+  const norm = invSig / Math.sqrt(2.0 * Math.PI);
+  const cutoff = 4.0 * sigma;
+  const outMin = eGrid[0], outMax = eGrid[nOut - 1];
+  const outStep = (outMax - outMin) / Math.max(1, nOut - 1);
+  const invOutStep = 1.0 / (outStep || 1e-6);
+
+  for (let p = 0; p < sparsePairs.length; p++) {
+    const binIdx = sparsePairs[p][0];
+    const wt = sparsePairs[p][1];
+    const ev = eMinHist + (binIdx + 0.5) * dEHist;
+    if (ev < outMin - cutoff || ev > outMax + cutoff) continue;
+    const iStart = Math.max(0, Math.floor((ev - cutoff - outMin) * invOutStep));
+    const iEnd = Math.min(nOut - 1, Math.ceil((ev + cutoff - outMin) * invOutStep));
+    for (let i = iStart; i <= iEnd; i++) {
+      const z = (eGrid[i] - ev) * invSig;
+      out[i] += wt * Math.exp(-0.5 * z * z) * norm;
+    }
+  }
+  return out;
+}
+
+const PDOS_CURVE_PALETTE = [
+  "#2563eb", "#dc2626", "#16a34a", "#d97706", "#9333ea",
+  "#0891b2", "#db2777", "#4f46e5", "#059669", "#ea580c"
+];
+
+function buildPdosCurvesFromBin(pb, eGrid, sigma, mode, targetVal, flags) {
+  const isSpin = (pb.ns >= 2);
+  const eMinH = pb.e_min, dEH = pb.dE;
+  const curves = [];
+
+  const filterOrbitals = (ch) => {
+    if (ch.orbital === "s" && !flags.showS) return false;
+    if (ch.orbital === "p" && !flags.showP) return false;
+    if (ch.orbital === "d" && !flags.showD) return false;
+    if (ch.orbital === "f" && !flags.showF) return false;
+    return true;
+  };
+  const filterTarget = (ch) => {
+    if (!targetVal || targetVal === "all") return true;
+    if (targetVal.startsWith("el:")) return ch.element === targetVal.slice(3);
+    if (targetVal.startsWith("atom:")) return ch.atom === targetVal.slice(5);
+    return true;
+  };
+
+  // Helper to sum multiple channels' sparse histograms onto dense grid and convolve
+  const addGroupCurve = (label, color, chanList, isTotal = false) => {
+    const sumUp = new Float64Array(eGrid.length);
+    const sumDn = isSpin ? new Float64Array(eGrid.length) : null;
+    for (const ch of chanList) {
+      const u = convolveSparseHistGaussian(ch.up, eMinH, dEH, eGrid, sigma);
+      for (let i = 0; i < eGrid.length; i++) sumUp[i] += u[i];
+      if (isSpin && ch.dn) {
+        const d = convolveSparseHistGaussian(ch.dn, eMinH, dEH, eGrid, sigma);
+        for (let i = 0; i < eGrid.length; i++) sumDn[i] += d[i];
+      }
+    }
+    curves.push({ label, color, up: sumUp, dn: sumDn, isTotal });
+  };
+
+  if (flags.showTot && pb.total_hist) {
+    const totUp = convolveSparseHistGaussian(pb.total_hist.up, eMinH, dEH, eGrid, sigma);
+    const totDn = (isSpin && pb.total_hist.dn) ? convolveSparseHistGaussian(pb.total_hist.dn, eMinH, dEH, eGrid, sigma) : null;
+    curves.push({ label: "Total DOS", color: "#0f172a", up: totUp, dn: totDn, isTotal: true });
+  }
+
+  const matched = (pb.channels || []).filter(ch => filterOrbitals(ch) && filterTarget(ch));
+  const orbColors = { s: "#2563eb", p: "#16a34a", d: "#dc2626", f: "#9333ea" };
+
+  if (mode === "orbital") {
+    ["s", "p", "d", "f"].forEach(orb => {
+      const grp = matched.filter(c => c.orbital === orb);
+      if (grp.length) addGroupCurve(`${orb}-orbital`, orbColors[orb] || "#2563eb", grp);
+    });
+  } else if (mode === "element") {
+    const els = [...new Set(matched.map(c => c.element))];
+    els.forEach((el, idx) => {
+      const grp = matched.filter(c => c.element === el);
+      if (grp.length) addGroupCurve(`${el} (all)`, PDOS_CURVE_PALETTE[idx % PDOS_CURVE_PALETTE.length], grp);
+    });
+  } else if (mode === "atom") {
+    const atoms = [...new Set(matched.map(c => c.atom))];
+    if (atoms.length === 1) {
+      // Single atom selected -> break down its s, p, d, f orbitals!
+      ["s", "p", "d", "f"].forEach(orb => {
+        const grp = matched.filter(c => c.orbital === orb);
+        if (grp.length) addGroupCurve(`${atoms[0]}-${orb}`, orbColors[orb] || "#2563eb", grp);
+      });
+    } else {
+      // Multiple atoms -> show up to 10 individual atoms
+      atoms.slice(0, 10).forEach((at, idx) => {
+        const grp = matched.filter(c => c.atom === at);
+        if (grp.length) addGroupCurve(at, PDOS_CURVE_PALETTE[idx % PDOS_CURVE_PALETTE.length], grp);
+      });
+    }
+  } else {
+    // element_orbital (default): Mo-d, Mo-p, S-p, Se-p, Co-d, Fe-d, N-p...
+    const pairs = [];
+    const seen = new Set();
+    matched.forEach(c => {
+      const k = `${c.element}-${c.orbital}`;
+      if (!seen.has(k)) { seen.add(k); pairs.push([c.element, c.orbital, k]); }
+    });
+    // Sort so d/p orbitals come first cleanly and cap to 12 most informative curves
+    pairs.slice(0, 12).forEach(([el, orb, lbl], idx) => {
+      const grp = matched.filter(c => c.element === el && c.orbital === orb);
+      if (grp.length) addGroupCurve(lbl, PDOS_CURVE_PALETTE[idx % PDOS_CURVE_PALETTE.length], grp);
+    });
+  }
+  return { curves, isSpin };
+}
+
 function renderCastepElectronicPlots() {
   const canvas = document.getElementById("castep-electronic-canvas");
   if (!canvas) return;
@@ -4380,10 +4628,21 @@ function renderCastepElectronicPlots() {
   const emin = parseFloat(document.getElementById("castep-elec-emin")?.value) || -5.0;
   const emax = parseFloat(document.getElementById("castep-elec-emax")?.value) || 5.0;
   const sigma = parseFloat(document.getElementById("castep-dos-sigma")?.value) || 0.12;
+  const pdosMode = document.getElementById("castep-pdos-mode")?.value || "element_orbital";
+  const pdosTarget = document.getElementById("castep-pdos-target-select")?.value || "all";
+  const spinLayout = document.getElementById("castep-pdos-spin-layout")?.value || "mirror";
+
+  const showTot = document.getElementById("castep-show-dos-total")?.checked !== false;
+  const showS = document.getElementById("castep-show-dos-s")?.checked !== false;
+  const showP = document.getElementById("castep-show-dos-p")?.checked !== false;
+  const showD = document.getElementById("castep-show-dos-d")?.checked !== false;
+  const showF = document.getElementById("castep-show-dos-f")?.checked !== false;
+  const showUp = document.getElementById("castep-show-spin-up")?.checked !== false;
+  const showDn = document.getElementById("castep-show-spin-dn")?.checked !== false;
 
   const parentW = canvas.parentElement ? (canvas.parentElement.clientWidth - 24) : 880;
   const width = Math.max(320, Math.floor(parentW));
-  const height = 500;
+  const height = 510;
   const dpr = window.devicePixelRatio || 1;
   if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
     canvas.width = Math.round(width * dpr);
@@ -4395,9 +4654,10 @@ function renderCastepElectronicPlots() {
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
-  // Extract Band Structure data (either from band_xcd or bandstr_bands or dos_bands)
+  // 1) Extract Band Structure data
   let bandSeries = [];
   let bandTicks = [{ pos: 0, label: "Γ" }, { pos: 0.366, label: "M" }, { pos: 0.577, label: "K" }, { pos: 1.0, label: "Γ" }];
+  let gapInfo = null;
   let gapSummary = "";
 
   if (job.band_xcd && job.band_xcd.series && job.band_xcd.series.length) {
@@ -4421,72 +4681,82 @@ function renderCastepElectronicPlots() {
       }
       bandSeries.push({ name: s === 0 ? "alpha" : "beta", segments: segs });
     }
-    const bg = computeBandGapFromBandsObj(bObj);
-    if (bg) gapSummary = `Band gap is ${bg.gapEv.toFixed(3)} eV (${bg.isDirect ? "Direct" : "Indirect"})`;
+  }
+  if (job.bandstr_bands || job.dos_bands) {
+    gapInfo = computeBandGapFromBandsObj(job.bandstr_bands || job.dos_bands);
+    if (gapInfo && !gapSummary) {
+      gapSummary = gapInfo.isCollinear
+        ? `${gapInfo.phase} • E_g(↑)=${gapInfo.upGapEv.toFixed(3)} eV, E_g(↓)=${gapInfo.dnGapEv.toFixed(3)} eV`
+        : `Band gap = ${gapInfo.gapEv.toFixed(3)} eV (${gapInfo.isDirect ? "Direct" : "Indirect"})`;
+    }
   }
 
-  // Extract DOS / PDOS data (from pdos_xcd, dos_xcd, or synthesized via Gaussian smearing from dos_bands / bandstr_bands)
-  let dosSeries = [];
-  if (job.pdos_xcd && job.pdos_xcd.series && job.pdos_xcd.series.length) {
-    dosSeries = job.pdos_xcd.series;
-  } else if (job.dos_xcd && job.dos_xcd.series && job.dos_xcd.series.length) {
-    dosSeries = job.dos_xcd.series;
-  } else if (job.dos_bands || job.bandstr_bands || bandSeries.length) {
-    // Synthesize smooth Total DOS via Gaussian broadening
-    const eGrid = [];
-    const nPts = 240;
-    for (let i = 0; i <= nPts; i++) eGrid.push(emin + (emax - emin) * (i / nPts));
-    const dosVals = new Array(eGrid.length).fill(0);
+  // 2) Extract PDOS / DOS curves (Priority 1: Exact *.pdos_bin! Priority 2: .xcd! Priority 3: Gaussian DOS from .bands!)
+  const nPts = 280;
+  const eGrid = new Array(nPts + 1);
+  for (let i = 0; i <= nPts; i++) eGrid[i] = emin + (emax - emin) * (i / nPts);
+
+  let pdosCurves = [];
+  let isSpinDos = false;
+  let pdosSourceLabel = "";
+
+  if (job.pdos_bin_data && Array.isArray(job.pdos_bin_data.channels) && job.pdos_bin_data.channels.length) {
+    const built = buildPdosCurvesFromBin(job.pdos_bin_data, eGrid, sigma, pdosMode, pdosTarget, { showTot, showS, showP, showD, showF });
+    pdosCurves = built.curves;
+    isSpinDos = built.isSpin;
+    pdosSourceLabel = `Exact CASTEP ${job.pdos_bin_data.source_file} (${isSpinDos ? "Collinear Spin-Polarized" : "Non-Spin"}, ${job.pdos_bin_data.norb} orbitals)`;
+  } else if (job.pdos_xcd?.series?.length || job.dos_xcd?.series?.length) {
+    const srcSer = job.pdos_xcd?.series?.length ? job.pdos_xcd.series : job.dos_xcd.series;
+    const colorMap = { s: "#2563eb", p: "#16a34a", d: "#dc2626", f: "#9333ea", sum: "#0f172a", total: "#0f172a" };
+    pdosSourceLabel = job.pdos_xcd ? "CASTEP PDOS (.xcd)" : "CASTEP DOS (.xcd)";
+    srcSer.forEach((s, idx) => {
+      const k = s.name.trim().toLowerCase();
+      if (k === "s" && !showS) return;
+      if (k === "p" && !showP) return;
+      if (k === "d" && !showD) return;
+      if (k === "f" && !showF) return;
+      if ((k.includes("sum") || k.includes("total")) && !showTot) return;
+      const pts = s.segments?.[0] || [];
+      if (!pts.length) return;
+      const arr = new Float64Array(eGrid.length);
+      for (let i = 0; i < eGrid.length; i++) arr[i] = Math.max(0, interpSortedXY(pts, eGrid[i]));
+      pdosCurves.push({ label: s.name, color: colorMap[k] || PDOS_CURVE_PALETTE[idx % PDOS_CURVE_PALETTE.length], up: arr, dn: null, isTotal: k.includes("sum") || k.includes("total") });
+    });
+  } else if (job.dos_bands || job.bandstr_bands) {
     const srcB = job.dos_bands || job.bandstr_bands;
-    if (srcB && srcB.kpoints) {
-      srcB.kpoints.forEach(kp => {
-        const wt = kp.w || (1.0 / srcB.kpoints.length);
-        (kp.e || []).forEach(sp => {
-          sp.forEach(ev => {
-            if (ev < emin - 2 || ev > emax + 2) return;
-            for (let g = 0; g < eGrid.length; g++) {
-              const de = (eGrid[g] - ev) / sigma;
-              if (Math.abs(de) < 4.5) {
-                dosVals[g] += wt * Math.exp(-0.5 * de * de) / (sigma * Math.sqrt(2 * Math.PI));
-              }
-            }
-          });
-        });
-      });
-    } else if (bandSeries.length) {
-      bandSeries[0].segments.forEach(seg => {
-        const wt = 1.0 / Math.max(1, seg.length);
-        seg.forEach(pt => {
-          const ev = pt[1];
-          if (ev < emin - 2 || ev > emax + 2) return;
+    isSpinDos = (srcB.ns >= 2);
+    pdosSourceLabel = `Total DOS from CASTEP .bands (${isSpinDos ? "Collinear Spin α/β" : "Non-Spin"})`;
+    const upArr = new Float64Array(eGrid.length);
+    const dnArr = isSpinDos ? new Float64Array(eGrid.length) : null;
+    const invSig = 1.0 / Math.max(0.02, sigma);
+    const norm = invSig / Math.sqrt(2.0 * Math.PI);
+    const deg = isSpinDos ? 1.0 : 2.0;
+    (srcB.kpoints || []).forEach(kp => {
+      const wt = (kp.w || (1.0 / srcB.kpoints.length)) * deg;
+      (kp.e || []).forEach((sp, sIdx) => {
+        const targetArr = (sIdx === 1 && dnArr) ? dnArr : upArr;
+        sp.forEach(ev => {
+          if (ev < emin - 4 * sigma || ev > emax + 4 * sigma) return;
           for (let g = 0; g < eGrid.length; g++) {
-            const de = (eGrid[g] - ev) / sigma;
-            if (Math.abs(de) < 4.5) {
-              dosVals[g] += wt * Math.exp(-0.5 * de * de) / (sigma * Math.sqrt(2 * Math.PI));
-            }
+            const z = (eGrid[g] - ev) * invSig;
+            if (Math.abs(z) < 4.0) targetArr[g] += wt * Math.exp(-0.5 * z * z) * norm;
           }
         });
       });
-    }
-    dosSeries = [{
-      name: "Total DOS",
-      segments: [eGrid.map((e, idx) => [e, dosVals[idx]])]
-    }];
+    });
+    if (showTot) pdosCurves.push({ label: "Total DOS", color: "#0f172a", up: upArr, dn: dnArr, isTotal: true });
   }
 
-  // Honest empty state if no Band Structure or DOS data exists in this job
-  if (!bandSeries.length && !dosSeries.length) {
+  // Honest empty state
+  if (!bandSeries.length && !pdosCurves.length) {
     const stripEmpty = document.getElementById("castep-electronic-summary-strip");
     if (stripEmpty) {
-      stripEmpty.innerHTML = `<span><strong>Status:</strong> No Band Structure or DOS/PDOS files found in the active calculation.</span>`;
+      stripEmpty.innerHTML = `<span><strong>Status:</strong> No Band Structure, DOS, or *.pdos_bin files found in the active calculation.</span>`;
     }
-    ctx.fillStyle = "#334155";
-    ctx.font = "700 15px Inter, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("No Band Structure or DOS/PDOS Data Available", width / 2, height / 2 - 14);
-    ctx.fillStyle = "#64748b";
-    ctx.font = "12.5px Inter, sans-serif";
-    ctx.fillText("Mount a folder or import CASTEP *_BandStr.bands, *_DOS.bands, *Band Structure*.xcd, or *DOS/PDOS*.xcd files.", width / 2, height / 2 + 12);
+    ctx.fillStyle = "#334155"; ctx.font = "700 15px Inter, sans-serif"; ctx.textAlign = "center";
+    ctx.fillText("No Band Structure or PDOS Data Available", width / 2, height / 2 - 14);
+    ctx.fillStyle = "#64748b"; ctx.font = "12.5px Inter, sans-serif";
+    ctx.fillText("Mount a CASTEP Collinear/Band folder or click '📥 .pdos_bin/.bands' above to load atomic & orbital PDOS.", width / 2, height / 2 + 12);
     ctx.restore();
     return;
   }
@@ -4496,258 +4766,301 @@ function renderCastepElectronicPlots() {
   if (strip) {
     const pathLabels = bandTicks.map(t => t.label === "G" ? "Γ" : t.label).join(" → ");
     strip.innerHTML = `
-      <span><strong>Material:</strong> ${escapeHtml(job.material || CASTEP_STUDIO_STATE.structure.formula)}</span>
-      <span><strong>Result:</strong> ${escapeHtml(gapSummary || (job.bandGapEv ? `Band gap = ${job.bandGapEv} eV` : "Electronic Dispersion & DOS"))}</span>
-      <span><strong>Brillouin Zone Path:</strong> ${escapeHtml(pathLabels)}</span>
-      <span><strong>Reference:</strong> Fermi Level E<sub>F</sub> = 0.000 eV</span>
-      <span><strong>XC Functional:</strong> ${escapeHtml(job.functional || "PBE")} (${job.cutoffEv || 700} eV)</span>
+      <span><strong>Material:</strong> ${escapeHtml(job.material || CASTEP_STUDIO_STATE.structure?.formula || job.seed || "")}</span>
+      <span><strong>Electronic:</strong> ${escapeHtml(gapSummary || "Band Dispersion & PDOS")}</span>
+      <span style="color:#0369a1;"><strong>PDOS Source:</strong> ${escapeHtml(pdosSourceLabel || "Band Structure Only")}</span>
+      <span><strong>BZ Path:</strong> ${escapeHtml(pathLabels)}</span>
+      <span><strong>E<sub>F</sub>:</strong> 0.000 eV</span>
     `;
   }
 
-  const padT = 36, padB = 46, padL = 62, padR = 26;
+  const padT = 36, padB = 44, padL = 56, padR = 20;
   const plotH = height - padT - padB;
   const eToY = (e) => padT + plotH * (1 - (e - emin) / ((emax - emin) || 1));
 
-  // Determine panel horizontal geometry
   let bandX0 = padL, bandW = width - padL - padR;
   let dosX0 = padL, dosW = width - padL - padR;
   if (layout === "joint") {
-    bandW = Math.round((width - padL - padR - 28) * 0.64);
-    dosX0 = bandX0 + bandW + 28;
+    bandW = Math.round((width - padL - padR - 26) * 0.56);
+    dosX0 = bandX0 + bandW + 26;
     dosW = width - dosX0 - padR;
   }
 
-  const showUp = document.getElementById("castep-show-spin-up")?.checked !== false;
-  const showDn = document.getElementById("castep-show-spin-dn")?.checked !== false;
+  const stepE = (emax - emin) <= 8 ? 1 : 2;
 
-  // --- Draw Band Structure Panel ---
+  // --- PANEL 1: Electronic Band Structure ---
   if (layout === "joint" || layout === "band") {
     ctx.save();
-    ctx.strokeStyle = "#cbd5e1";
-    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 1.2;
     ctx.strokeRect(bandX0, padT, bandW, plotH);
+    ctx.beginPath(); ctx.rect(bandX0, padT, bandW, plotH); ctx.clip();
 
-    // Clip to band panel
-    ctx.beginPath();
-    ctx.rect(bandX0, padT, bandW, plotH);
-    ctx.clip();
-
-    // High-symmetry vertical lines
     bandTicks.forEach(t => {
       const tx = bandX0 + t.pos * bandW;
-      ctx.beginPath();
-      ctx.moveTo(tx, padT);
-      ctx.lineTo(tx, padT + plotH);
-      ctx.strokeStyle = "#e2e8f0";
-      ctx.lineWidth = 1.0;
-      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(tx, padT); ctx.lineTo(tx, padT + plotH);
+      ctx.strokeStyle = "#e2e8f0"; ctx.lineWidth = 1.0; ctx.stroke();
     });
 
-    // Horizontal energy grid lines + E_F = 0 dashed line
-    const stepE = (emax - emin) <= 8 ? 1 : 2;
     for (let e = Math.ceil(emin); e <= Math.floor(emax); e += stepE) {
       const y = eToY(e);
-      ctx.beginPath();
-      ctx.moveTo(bandX0, y);
-      ctx.lineTo(bandX0 + bandW, y);
-      if (e === 0) {
-        ctx.setLineDash([5, 4]);
-        ctx.strokeStyle = "#0f172a";
-        ctx.lineWidth = 1.4;
-      } else {
-        ctx.setLineDash([]);
-        ctx.strokeStyle = "#f1f5f9";
-        ctx.lineWidth = 1.0;
-      }
+      ctx.beginPath(); ctx.moveTo(bandX0, y); ctx.lineTo(bandX0 + bandW, y);
+      if (e === 0) { ctx.setLineDash([5, 4]); ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 1.4; }
+      else { ctx.setLineDash([]); ctx.strokeStyle = "#f1f5f9"; ctx.lineWidth = 1.0; }
       ctx.stroke();
     }
     ctx.setLineDash([]);
 
-    // Draw bands
     bandSeries.forEach((ser, sIdx) => {
       const isBeta = sIdx === 1 || /beta|dn|down/i.test(ser.name);
       if (!isBeta && !showUp) return;
       if (isBeta && !showDn) return;
-      ctx.strokeStyle = isBeta ? "#ef4444" : "#2563eb";
-      ctx.lineWidth = isBeta ? 1.3 : 1.6;
-      if (isBeta) ctx.setLineDash([4, 3]);
-      else ctx.setLineDash([]);
-
+      ctx.strokeStyle = isBeta ? "#dc2626" : "#2563eb";
+      ctx.lineWidth = isBeta ? 1.35 : 1.65;
+      if (isBeta) ctx.setLineDash([4, 3]); else ctx.setLineDash([]);
       (ser.segments || []).forEach(seg => {
         if (!seg.length) return;
         ctx.beginPath();
         seg.forEach((pt, i) => {
           const px = bandX0 + pt[0] * bandW;
           const py = eToY(pt[1]);
-          if (i === 0) ctx.moveTo(px, py);
-          else ctx.lineTo(px, py);
+          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
         });
         ctx.stroke();
       });
     });
     ctx.restore();
 
-    // Axes Labels & High-symmetry ticks
-    ctx.fillStyle = "#0f172a";
-    ctx.font = "bold 12.5px Inter, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(`CASTEP Electronic Band Structure (${job.seed || st.formula})`, bandX0 + bandW / 2, 20);
+    ctx.fillStyle = "#0f172a"; ctx.font = "bold 12px Inter, sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(`Band Structure${bandSeries.length >= 2 ? " (— α Up / ┄ β Down)" : ""}`, bandX0 + bandW / 2, 20);
 
     bandTicks.forEach(t => {
       const tx = bandX0 + t.pos * bandW;
-      const lbl = t.label === "G" ? "Γ" : t.label;
-      ctx.font = "bold 12px Inter, sans-serif";
-      ctx.fillStyle = "#0f172a";
-      ctx.fillText(lbl, tx, padT + plotH + 20);
+      ctx.font = "bold 11.5px Inter, sans-serif"; ctx.fillStyle = "#0f172a";
+      ctx.fillText(t.label === "G" ? "Γ" : t.label, tx, padT + plotH + 18);
     });
 
-    // Y-axis ticks
-    ctx.textAlign = "right";
-    ctx.textBaseline = "middle";
-    ctx.font = "11px Inter, sans-serif";
+    ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.font = "10.5px Inter, sans-serif";
     for (let e = Math.ceil(emin); e <= Math.floor(emax); e += stepE) {
-      const y = eToY(e);
       ctx.fillStyle = "#334155";
-      ctx.fillText(`${e}`, bandX0 - 8, y);
+      ctx.fillText(`${e}`, bandX0 - 7, eToY(e));
     }
     ctx.save();
-    ctx.translate(18, padT + plotH / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.textAlign = "center";
-    ctx.font = "bold 12px Inter, sans-serif";
-    ctx.fillStyle = "#0f172a";
-    ctx.fillText("Energy E - E_F (eV)", 0, 0);
+    ctx.translate(16, padT + plotH / 2); ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = "center"; ctx.font = "bold 11.5px Inter, sans-serif"; ctx.fillStyle = "#0f172a";
+    ctx.fillText("Energy E − E_F (eV)", 0, 0);
     ctx.restore();
   }
 
-  // --- Draw DOS / PDOS Panel ---
+  // --- PANEL 2: Atomic / Orbital-Resolved Collinear PDOS ---
   if (layout === "joint" || layout === "dos") {
-    const showTot = document.getElementById("castep-show-dos-total")?.checked !== false;
-    const showS = document.getElementById("castep-show-dos-s")?.checked !== false;
-    const showP = document.getElementById("castep-show-dos-p")?.checked !== false;
-    const showD = document.getElementById("castep-show-dos-d")?.checked !== false;
-    const showF = document.getElementById("castep-show-dos-f")?.checked !== false;
-
-    const colorMap = {
-      "s": "#2563eb",
-      "p": "#16a34a",
-      "d": "#dc2626",
-      "f": "#9333ea",
-      "sum": "#0f172a",
-      "total": "#0f172a",
-      "total dos": "#0f172a"
-    };
-
-    const activeDosSeries = dosSeries.filter(s => {
-      const n = s.name.trim().toLowerCase();
-      if (n === "s" && !showS) return false;
-      if (n === "p" && !showP) return false;
-      if (n === "d" && !showD) return false;
-      if (n === "f" && !showF) return false;
-      if ((n.includes("sum") || n.includes("total")) && !showTot) return false;
-      return true;
+    const useMirror = isSpinDos && spinLayout === "mirror" && showUp && showDn;
+    let maxDos = 0.5;
+    pdosCurves.forEach(c => {
+      for (let i = 0; i < eGrid.length; i++) {
+        if (useMirror) {
+          if (showUp && c.up[i] > maxDos) maxDos = c.up[i];
+          if (showDn && c.dn && c.dn[i] > maxDos) maxDos = c.dn[i];
+        } else {
+          const v = (showUp ? c.up[i] : 0) + (showDn && c.dn ? c.dn[i] : 0);
+          if (v > maxDos) maxDos = v;
+        }
+      }
     });
-
-    // Find max DOS within [emin, emax]
-    let maxDos = 1.0;
-    activeDosSeries.forEach(s => {
-      (s.segments || []).forEach(seg => {
-        seg.forEach(pt => {
-          if (pt[0] >= emin && pt[0] <= emax && pt[1] > maxDos) maxDos = pt[1];
-        });
-      });
-    });
-    maxDos *= 1.08;
+    maxDos *= 1.12;
 
     ctx.save();
-    ctx.strokeStyle = "#cbd5e1";
-    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 1.2;
     ctx.strokeRect(dosX0, padT, dosW, plotH);
-    ctx.beginPath();
-    ctx.rect(dosX0, padT, dosW, plotH);
-    ctx.clip();
+    ctx.beginPath(); ctx.rect(dosX0, padT, dosW, plotH); ctx.clip();
 
-    const stepE = (emax - emin) <= 8 ? 1 : 2;
     if (layout === "joint") {
-      // Rotated DOS: Y-axis is Energy [emin, emax] aligned with Band Structure, X-axis is DOS [0, maxDos]
+      // Vertical Energy axis aligned with Band Structure; Horizontal DOS axis
+      const xZeroDos = useMirror ? (dosX0 + dosW * 0.5) : dosX0;
+      const halfSpan = useMirror ? (dosW * 0.48) : (dosW * 0.96);
+
       for (let e = Math.ceil(emin); e <= Math.floor(emax); e += stepE) {
         const y = eToY(e);
-        ctx.beginPath();
-        ctx.moveTo(dosX0, y);
-        ctx.lineTo(dosX0 + dosW, y);
-        if (e === 0) {
-          ctx.setLineDash([5, 4]);
-          ctx.strokeStyle = "#0f172a";
-          ctx.lineWidth = 1.4;
-        } else {
-          ctx.setLineDash([]);
-          ctx.strokeStyle = "#f1f5f9";
-          ctx.lineWidth = 1.0;
-        }
+        ctx.beginPath(); ctx.moveTo(dosX0, y); ctx.lineTo(dosX0 + dosW, y);
+        if (e === 0) { ctx.setLineDash([5, 4]); ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 1.4; }
+        else { ctx.setLineDash([]); ctx.strokeStyle = "#f1f5f9"; ctx.lineWidth = 1.0; }
         ctx.stroke();
       }
       ctx.setLineDash([]);
 
-      activeDosSeries.forEach(ser => {
-        const key = ser.name.trim().toLowerCase();
-        const col = colorMap[key] || "#2563eb";
-        (ser.segments || []).forEach(seg => {
-          if (!seg.length) return;
+      if (useMirror) {
+        ctx.beginPath(); ctx.moveTo(xZeroDos, padT); ctx.lineTo(xZeroDos, padT + plotH);
+        ctx.strokeStyle = "#475569"; ctx.lineWidth = 1.1; ctx.stroke();
+      }
+
+      pdosCurves.forEach(c => {
+        // Draw Spin-Up (or Sum) to right of xZeroDos
+        if (showUp || !useMirror) {
           ctx.beginPath();
-          seg.forEach((pt, idx) => {
-            const x = dosX0 + (pt[1] / maxDos) * dosW;
-            const y = eToY(pt[0]);
-            if (idx === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-          });
-          ctx.strokeStyle = col;
-          ctx.lineWidth = (key.includes("sum") || key.includes("total")) ? 1.8 : 1.4;
+          for (let i = 0; i < eGrid.length; i++) {
+            const val = useMirror ? c.up[i] : ((showUp ? c.up[i] : 0) + (showDn && c.dn ? c.dn[i] : 0));
+            const sx = xZeroDos + (val / maxDos) * halfSpan;
+            const sy = eToY(eGrid[i]);
+            if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+          }
+          ctx.strokeStyle = c.color;
+          ctx.lineWidth = c.isTotal ? 1.8 : 1.45;
           ctx.stroke();
-        });
+          if (!c.isTotal) {
+            ctx.lineTo(xZeroDos, eToY(eGrid[eGrid.length - 1]));
+            ctx.lineTo(xZeroDos, eToY(eGrid[0]));
+            ctx.closePath();
+            ctx.fillStyle = c.color + "1c";
+            ctx.fill();
+          }
+        }
+        // Draw Spin-Down mirrored to left of xZeroDos
+        if (useMirror && showDn && c.dn) {
+          ctx.beginPath();
+          for (let i = 0; i < eGrid.length; i++) {
+            const sx = xZeroDos - (c.dn[i] / maxDos) * halfSpan;
+            const sy = eToY(eGrid[i]);
+            if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+          }
+          ctx.strokeStyle = c.color;
+          ctx.lineWidth = c.isTotal ? 1.8 : 1.45;
+          ctx.stroke();
+          if (!c.isTotal) {
+            ctx.lineTo(xZeroDos, eToY(eGrid[eGrid.length - 1]));
+            ctx.lineTo(xZeroDos, eToY(eGrid[0]));
+            ctx.closePath();
+            ctx.fillStyle = c.color + "14";
+            ctx.fill();
+          }
+        }
       });
+
+      if (useMirror) {
+        ctx.fillStyle = "#dc2626"; ctx.font = "bold 10px Inter, sans-serif"; ctx.textAlign = "left";
+        ctx.fillText("← Spin ↓ (β)", dosX0 + 6, padT + 14);
+        ctx.fillStyle = "#2563eb"; ctx.textAlign = "right";
+        ctx.fillText("Spin ↑ (α) →", dosX0 + dosW - 6, padT + 14);
+      }
     } else {
-      // Standalone Horizontal DOS: X-axis is Energy [emin, emax], Y-axis is DOS [0, maxDos]
+      // Standalone Horizontal Energy axis; Vertical DOS axis (Spin ↑ up, Spin ↓ mirrored down!)
       const eToX = (e) => dosX0 + ((e - emin) / ((emax - emin) || 1)) * dosW;
-      const dToY = (d) => padT + plotH * (1 - d / maxDos);
-      const xZero = eToX(0);
-      ctx.beginPath();
-      ctx.moveTo(xZero, padT);
-      ctx.lineTo(xZero, padT + plotH);
-      ctx.setLineDash([5, 4]);
-      ctx.strokeStyle = "#0f172a";
-      ctx.lineWidth = 1.4;
-      ctx.stroke();
+      const yZeroDos = useMirror ? (padT + plotH * 0.5) : (padT + plotH);
+      const halfH = useMirror ? (plotH * 0.47) : (plotH * 0.96);
+
+      // Vertical grid & Fermi line
+      for (let e = Math.ceil(emin); e <= Math.floor(emax); e += stepE) {
+        const x = eToX(e);
+        ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, padT + plotH);
+        if (e === 0) { ctx.setLineDash([5, 4]); ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 1.4; }
+        else { ctx.setLineDash([]); ctx.strokeStyle = "#f1f5f9"; ctx.lineWidth = 1.0; }
+        ctx.stroke();
+      }
       ctx.setLineDash([]);
 
-      activeDosSeries.forEach(ser => {
-        const key = ser.name.trim().toLowerCase();
-        const col = colorMap[key] || "#2563eb";
-        (ser.segments || []).forEach(seg => {
-          if (!seg.length) return;
+      if (useMirror) {
+        ctx.beginPath(); ctx.moveTo(dosX0, yZeroDos); ctx.lineTo(dosX0 + dosW, yZeroDos);
+        ctx.strokeStyle = "#334155"; ctx.lineWidth = 1.2; ctx.stroke();
+      }
+
+      pdosCurves.forEach(c => {
+        if (showUp || !useMirror) {
           ctx.beginPath();
-          seg.forEach((pt, idx) => {
-            const x = eToX(pt[0]);
-            const y = dToY(pt[1]);
-            if (idx === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-          });
-          ctx.strokeStyle = col;
-          ctx.lineWidth = 1.8;
-          ctx.stroke();
-        });
+          for (let i = 0; i < eGrid.length; i++) {
+            const val = useMirror ? c.up[i] : ((showUp ? c.up[i] : 0) + (showDn && c.dn ? c.dn[i] : 0));
+            const sx = eToX(eGrid[i]);
+            const sy = yZeroDos - (val / maxDos) * halfH;
+            if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+          }
+          ctx.strokeStyle = c.color; ctx.lineWidth = c.isTotal ? 2.0 : 1.55; ctx.stroke();
+          if (!c.isTotal) {
+            ctx.lineTo(eToX(eGrid[eGrid.length - 1]), yZeroDos);
+            ctx.lineTo(eToX(eGrid[0]), yZeroDos);
+            ctx.closePath(); ctx.fillStyle = c.color + "1c"; ctx.fill();
+          }
+        }
+        if (useMirror && showDn && c.dn) {
+          ctx.beginPath();
+          for (let i = 0; i < eGrid.length; i++) {
+            const sx = eToX(eGrid[i]);
+            const sy = yZeroDos + (c.dn[i] / maxDos) * halfH;
+            if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+          }
+          ctx.strokeStyle = c.color; ctx.lineWidth = c.isTotal ? 2.0 : 1.55; ctx.stroke();
+          if (!c.isTotal) {
+            ctx.lineTo(eToX(eGrid[eGrid.length - 1]), yZeroDos);
+            ctx.lineTo(eToX(eGrid[0]), yZeroDos);
+            ctx.closePath(); ctx.fillStyle = c.color + "14"; ctx.fill();
+          }
+        }
       });
+
+      if (useMirror) {
+        ctx.fillStyle = "#2563eb"; ctx.font = "bold 10.5px Inter, sans-serif"; ctx.textAlign = "left";
+        ctx.fillText("Spin ↑ (+α)", dosX0 + 8, padT + 15);
+        ctx.fillStyle = "#dc2626";
+        ctx.fillText("Spin ↓ (−β)", dosX0 + 8, padT + plotH - 8);
+      }
     }
     ctx.restore();
 
-    ctx.fillStyle = "#0f172a";
-    ctx.font = "bold 12.5px Inter, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(layout === "joint" ? "DOS / PDOS (el/eV)" : `CASTEP Total & Partial Density of States (${job.seed || st.formula})`, dosX0 + dosW / 2, 20);
-    ctx.font = "11px Inter, sans-serif";
-    ctx.fillStyle = "#475569";
-    ctx.fillText(layout === "joint" ? `0 → ${maxDos.toFixed(1)} electrons/eV` : "Energy E - E_F (eV)", dosX0 + dosW / 2, padT + plotH + 22);
-  }
+    // Panel Title & Clean Legend Strip
+    ctx.fillStyle = "#0f172a"; ctx.font = "bold 12px Inter, sans-serif"; ctx.textAlign = "center";
+    const modeLabel = pdosMode === "atom" ? "Atomic-Resolved PDOS" : (pdosMode === "element" ? "Element-Resolved PDOS" : (pdosMode === "orbital" ? "Orbital-Resolved PDOS" : "Element + Orbital PDOS"));
+    ctx.fillText(modeLabel, dosX0 + dosW / 2, 20);
 
+    // Compact legend box inside top-right of DOS panel
+    if (pdosCurves.length) {
+      const legX = dosX0 + dosW - 6;
+      let legY = padT + (useMirror && layout === "joint" ? 28 : 14);
+      ctx.font = "bold 10px Inter, sans-serif";
+      ctx.textAlign = "right";
+      pdosCurves.slice(0, 10).forEach(c => {
+        ctx.fillStyle = c.color;
+        ctx.fillText(`● ${c.label}`, legX, legY);
+        legY += 13;
+      });
+    }
+
+    // DOS Axes ticks
+    ctx.fillStyle = "#475569"; ctx.font = "10px Inter, sans-serif";
+    if (layout === "joint") {
+      ctx.textAlign = "center";
+      if (useMirror) {
+        ctx.fillText(`-${maxDos.toFixed(1)}`, dosX0 + 10, padT + plotH + 14);
+        ctx.fillText("0", dosX0 + dosW * 0.5, padT + plotH + 14);
+        ctx.fillText(`+${maxDos.toFixed(1)}`, dosX0 + dosW - 10, padT + plotH + 14);
+      } else {
+        ctx.fillText("0", dosX0, padT + plotH + 14);
+        ctx.fillText((maxDos / 2).toFixed(1), dosX0 + dosW * 0.5, padT + plotH + 14);
+        ctx.fillText(maxDos.toFixed(1), dosX0 + dosW - 6, padT + plotH + 14);
+      }
+      ctx.font = "bold 11px Inter, sans-serif"; ctx.fillStyle = "#334155";
+      ctx.fillText("PDOS (states/eV)", dosX0 + dosW / 2, padT + plotH + 30);
+    } else {
+      const eToX = (e) => dosX0 + ((e - emin) / ((emax - emin) || 1)) * dosW;
+      ctx.textAlign = "center";
+      for (let e = Math.ceil(emin); e <= Math.floor(emax); e += stepE) {
+        ctx.fillText(`${e}`, eToX(e), padT + plotH + 15);
+      }
+      ctx.font = "bold 11.5px Inter, sans-serif"; ctx.fillStyle = "#0f172a";
+      ctx.fillText("Energy E − E_F (eV)", dosX0 + dosW / 2, padT + plotH + 31);
+
+      ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.font = "10px Inter, sans-serif";
+      if (useMirror) {
+        ctx.fillText(`+${maxDos.toFixed(1)}`, dosX0 - 6, padT + 8);
+        ctx.fillText("0.0", dosX0 - 6, padT + plotH * 0.5);
+        ctx.fillText(`-${maxDos.toFixed(1)}`, dosX0 - 6, padT + plotH - 6);
+      } else {
+        ctx.fillText(maxDos.toFixed(1), dosX0 - 6, padT + 8);
+        ctx.fillText((maxDos / 2).toFixed(1), dosX0 - 6, padT + plotH * 0.5);
+        ctx.fillText("0.0", dosX0 - 6, padT + plotH);
+      }
+      ctx.save();
+      ctx.translate(16, padT + plotH / 2); ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = "center"; ctx.font = "bold 11.5px Inter, sans-serif"; ctx.fillStyle = "#0f172a";
+      ctx.fillText("PDOS (states/eV)", 0, 0);
+      ctx.restore();
+    }
+  }
   ctx.restore();
 }
 window.renderCastepElectronicPlots = renderCastepElectronicPlots;
@@ -5426,7 +5739,7 @@ async function mountCastepLocalDirectory() {
 }
 window.mountCastepLocalDirectory = mountCastepLocalDirectory;
 
-const CASTEP_RELEVANT_EXT_RE = /\.(cell|param|castep|geom|bands|xcd|xsd|cif|chdiff|charg_frm|den_fmt|cube|xyz|csv|dat)$/i;
+const CASTEP_RELEVANT_EXT_RE = /\.(cell|param|castep|geom|bands|xcd|xsd|cif|chdiff|charg_frm|den_fmt|cube|pdos_bin|xyz|csv|dat)$/i;
 const CASTEP_SKIP_DIRS = new Set([".git", "node_modules", "__pycache__", "$recycle.bin", "system volume information"]);
 
 function parseSbjTextClient(sbjText, filename, isArchived = false) {
@@ -5655,6 +5968,15 @@ async function hydrateCastepJobFromFileMap(job, opts = {}) {
   if (optBE && !job.optics_bands) {
     const t = await readFromFileOrHandle(optBE[1], false);
     if (t) job.optics_bands = parseCastepBandsTextClient(t);
+  }
+  const pdosBinE = findEntry(l => l.endsWith("_dos.pdos_bin")) || findEntry(l => l.endsWith(".pdos_bin"));
+  if (pdosBinE && !job.pdos_bin_data) {
+    const refBands = job.dos_bands || job.bandstr_bands;
+    if (refBands) {
+      const spOrder = extractSpeciesOrderFromJobText(job);
+      const buf = await readFromFileOrHandle(pdosBinE[1], true);
+      if (buf) job.pdos_bin_data = parseCastepPdosBinArrayBuffer(buf, refBands, spOrder, pdosBinE[0]);
+    }
   }
 
   // 4) Exact Cell Volume & c-length for volumetric .chdiff / .charg_frm conversion to physical e/Å³
@@ -6219,6 +6541,8 @@ async function handleCastepOpticalFilesUpload(event) {
   }
   job.has_optics = true;
   populateCastepOpticalFileSelect(job);
+  populateCastepPdosTargetSelect(job);
+  attachMullikenSpinsToStructure(job);
   renderCastepJobsList();
   updateCastepKpiBar();
   renderCastepOpticalPlots();
@@ -7157,13 +7481,17 @@ function summarizeRawVolumetricGridJS(rawCellGrid, ngx, ngy, ngz, sourceFile, ki
   const profZ = [];
   const profZLin = [];
   const dqZ = [];
+  const mCells = new Float64Array(ngz);
+  for (let iz = 0; iz < ngz; iz++) mCells[iz] = meanXYCell[iz] / nxy;
   let cumQ = 0.0;
   let maxAbsDq = 0.0;
-  for (let iz = 0; iz < ngz; iz++) {
-    const mCell = meanXYCell[iz] / nxy;
+  // Include periodic closing point z = c so ΔQ(0) = ΔQ(c) = 0 exactly
+  for (let iz = 0; iz <= ngz; iz++) {
+    const mCell = mCells[iz % ngz];
     profZ.push(mCell / vol);
     profZLin.push(mCell / cLen);
-    cumQ += mCell / ngz;
+    if (iz === 0) cumQ = 0.0;
+    else cumQ += 0.5 * (mCells[iz - 1] + mCell) / ngz;
     dqZ.push(cumQ);
     if (Math.abs(cumQ) > maxAbsDq) maxAbsDq = Math.abs(cumQ);
   }
@@ -7941,7 +8269,9 @@ function renderCastepChdiffPlots() {
     const ph = Math.max(60, bh - padT - padB);
     const px0 = bx + padL, py0 = by + padT;
 
-    const prof = chGrid.profile_z || [];
+    const unit1D = document.getElementById("castep-chdiff-1d-unit")?.value || "ea3";
+    const prof = (unit1D === "ea" && chGrid.profile_z_linear?.length) ? chGrid.profile_z_linear : (chGrid.profile_z || []);
+    const unit1DLbl = unit1D === "ea" ? "e/Å" : (chGrid.unit || "e/Å³");
     const dq = chGrid.delta_q_z || [];
     const cLen = chGrid.c_length_a || CASTEP_STUDIO_STATE.structure?.lattice?.c || 20.0;
     const zoom = Math.max(1.0, CASTEP_STUDIO_STATE.chdiffState.zoom1D || 1.0);
@@ -8033,11 +8363,11 @@ function renderCastepChdiffPlots() {
     }
     ctx.restore();
 
-    // Titles & Ticks
-    ctx.fillStyle = "#0f172a"; ctx.font = "bold 11.5px Inter, sans-serif"; ctx.textAlign = "left";
-    ctx.fillText(`(c) Planar Δρ(z) & ΔQ(z)`, px0, by + 17);
-    ctx.fillStyle = "#7c3aed"; ctx.font = "bold 10px Inter, sans-serif"; ctx.textAlign = "right";
-    ctx.fillText("┄ ΔQ (e)", px0 + pw, by + 17);
+    // Titles & Clear Two-Curve Legend (Black = Δρ(z) Left, Purple = ΔQ(z) Right)
+    ctx.fillStyle = "#0f172a"; ctx.font = "bold 11px Inter, sans-serif"; ctx.textAlign = "left";
+    ctx.fillText(`(c) ━━ Δρ(z) [${unit1DLbl}]`, px0, by + 17);
+    ctx.fillStyle = "#7c3aed"; ctx.font = "bold 10.5px Inter, sans-serif"; ctx.textAlign = "right";
+    ctx.fillText("┄┄ ΔQ(z) [e]", px0 + pw, by + 17);
 
     // Left Y ticks (Δρ)
     ctx.fillStyle = "#334155"; ctx.font = "9.5px Inter, sans-serif"; ctx.textAlign = "right";
@@ -8162,6 +8492,36 @@ function initCastepChdiffCanvasEvents() {
   window.addEventListener("mouseup", () => {
     CASTEP_STUDIO_STATE.chdiffState.isDragging3D = false;
     CASTEP_STUDIO_STATE.chdiffState.isDragging1D = false;
+  });
+
+  canvas.addEventListener("mousemove", (e) => {
+    const chGrid = getActiveJobChdiffGrid();
+    const readout = document.getElementById("castep-chdiff-readout");
+    if (!chGrid || !readout || CASTEP_STUDIO_STATE.chdiffState.isDragging3D) return;
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const layout = document.getElementById("castep-chdiff-layout")?.value || "tri";
+    const bx = layout === "tri" ? rect.width * 0.67 : (layout === "profile1d" ? 0 : rect.width);
+    const bw = layout === "tri" ? rect.width * 0.33 : (layout === "profile1d" ? rect.width : 0);
+    if (bw > 0 && mx >= bx + 56 && mx <= bx + bw - 46) {
+      const frac = Math.max(0, Math.min(1, (mx - (bx + 56)) / Math.max(1, bw - 102)));
+      const cLen = chGrid.c_length_a || 20.0;
+      const zoom = Math.max(1.0, CASTEP_STUDIO_STATE.chdiffState.zoom1D || 1.0);
+      const pan = CASTEP_STUDIO_STATE.chdiffState.pan1D || 0.0;
+      const spanZ = cLen / zoom;
+      const zMin = Math.max(0, Math.min(cLen - spanZ, (cLen - spanZ) / 2 + pan * cLen));
+      const zVal = zMin + frac * spanZ;
+      const zFrac = Math.max(0, Math.min(1, zVal / cLen));
+      const pArr = chGrid.profile_z || [];
+      const pLin = chGrid.profile_z_linear || [];
+      const qArr = chGrid.delta_q_z || [];
+      const idx = Math.min(pArr.length - 1, Math.max(0, Math.round(zFrac * (pArr.length - 1))));
+      readout.innerHTML =
+        `<strong>z = ${zVal.toFixed(2)} Å</strong> (w=${zFrac.toFixed(3)}) • ` +
+        `<strong>━━ Black Δρ(z) = ${(pArr[idx] || 0).toExponential(3)} ${chGrid.unit || "e/Å³"}</strong> ` +
+        `(${(pLin[idx] || 0).toFixed(4)} e/Å) • ` +
+        `<strong style="color:#7c3aed;">┄┄ Purple ΔQ(z) = ${(qArr[idx] || 0) >= 0 ? "+" : ""}${(qArr[idx] || 0).toFixed(4)} e</strong>`;
+    }
   });
 
   canvas.addEventListener("dblclick", () => resetCastepPlotZoom("chdiff"));
@@ -8559,4 +8919,752 @@ function initCastep2DPlotsWheelZoom() {
     });
   }
 }
+
+
+// ============================================================================
+// 13. Client-Side Binary *.pdos_bin Parser & Full Mulliken / Magnetism Analyzer
+// ============================================================================
+
+function extractSpeciesOrderFromJobText(job) {
+  const order = [];
+  const seen = new Set();
+  const addEl = (raw) => {
+    const clean = castepCleanElement(raw);
+    if (clean && !seen.has(clean)) { seen.add(clean); order.push(clean); }
+  };
+  if (job?.cell_text) {
+    const m = job.cell_text.match(/%BLOCK\s+POSITIONS_(?:FRAC|ABS)([\s\S]*?)%ENDBLOCK\s+POSITIONS_(?:FRAC|ABS)/i);
+    if (m) {
+      m[1].split(/\r?\n/).forEach(l => {
+        const c = l.split(/[#!\r]/)[0].trim();
+        const p = c.split(/\s+/);
+        if (p.length >= 4) addEl(p[0]);
+      });
+    }
+  }
+  if (!order.length && CASTEP_STUDIO_STATE.structure?.atoms?.length) {
+    CASTEP_STUDIO_STATE.structure.atoms.forEach(a => addEl(a.element));
+  }
+  return order;
+}
+
+function parseCastepPdosBinArrayBuffer(arrayBuffer, bandsObj, speciesOrder, filename) {
+  if (!arrayBuffer || arrayBuffer.byteLength < 120 || !bandsObj || !bandsObj.kpoints?.length) return null;
+  try {
+    const dv = new DataView(arrayBuffer);
+    const totalLen = arrayBuffer.byteLength;
+    const r0Be = dv.getInt32(0, false);
+    const le = !(r0Be === 8 && dv.getInt32(12, false) === 8);
+    let pos = 0;
+    const readRec = () => {
+      if (pos + 4 > totalLen) return null;
+      const rl = dv.getInt32(pos, le);
+      if (rl < 0 || pos + 4 + rl + 4 > totalLen) return null;
+      const start = pos + 4;
+      pos += 4 + rl + 4;
+      return { start, len: rl };
+    };
+
+    const _v = readRec();
+    const _h = readRec();
+    const nkR = readRec(), nsR = readRec(), norbR = readRec(), neigR = readRec();
+    if (!nkR || !nsR || !norbR || !neigR) return null;
+    const nk = dv.getInt32(nkR.start, le);
+    const ns = dv.getInt32(nsR.start, le);
+    const norb = dv.getInt32(norbR.start, le);
+    if (nk <= 0 || ns <= 0 || norb <= 0 || norb > 10000) return null;
+
+    const spR = readRec(), ionR = readRec(), amR = readRec();
+    if (!spR || !ionR || !amR) return null;
+    const lNames = ["s", "p", "d", "f"];
+    const chanMeta = {};
+    const orbKeys = new Array(norb);
+    for (let o = 0; o < norb; o++) {
+      const spIdx = dv.getInt32(spR.start + o * 4, le);
+      const ion = dv.getInt32(ionR.start + o * 4, le);
+      const am = dv.getInt32(amR.start + o * 4, le);
+      const el = (spIdx >= 1 && spIdx <= speciesOrder.length) ? speciesOrder[spIdx - 1] : `Sp${spIdx}`;
+      const orb = lNames[am] || "s";
+      const ck = `${el}|${ion}|${orb}`;
+      orbKeys[o] = ck;
+      if (!chanMeta[ck]) chanMeta[ck] = { element: el, ion, atom: `${el}${ion}`, orbital: orb };
+    }
+
+    const eMin = -12.0, eMax = 8.0, nBins = 800;
+    const dE = (eMax - eMin) / nBins;
+    const invDE = 1.0 / dE;
+    const chanKeys = Object.keys(chanMeta).sort((a, b) => {
+      const ma = chanMeta[a], mb = chanMeta[b];
+      return ma.element.localeCompare(mb.element) || (ma.ion - mb.ion) || ("spdf".indexOf(ma.orbital) - "spdf".indexOf(mb.orbital));
+    });
+    const keyToCidx = {};
+    chanKeys.forEach((k, i) => { keyToCidx[k] = i; });
+    const orbToCidx = orbKeys.map(k => keyToCidx[k]);
+    const nChans = chanKeys.length;
+
+    const bins = Array.from({ length: ns }, () => Array.from({ length: nChans }, () => new Float64Array(nBins)));
+    const totBins = Array.from({ length: ns }, () => new Float64Array(nBins));
+    const kptsBands = bandsObj.kpoints || [];
+    const spinDeg = ns >= 2 ? 1.0 : 2.0;
+
+    for (let ik = 0; ik < nk; ik++) {
+      const kr = readRec();
+      if (!kr || kr.len < 28) break;
+      const kIdx = dv.getInt32(kr.start, le);
+      const kx = dv.getFloat64(kr.start + 4, le);
+      const ky = dv.getFloat64(kr.start + 12, le);
+      const kz = dv.getFloat64(kr.start + 20, le);
+
+      let kpMatch = null;
+      if (kIdx >= 1 && kIdx <= kptsBands.length) {
+        const cand = kptsBands[kIdx - 1];
+        const ck = cand.k || [0, 0, 0];
+        if (Math.abs(ck[0] - kx) + Math.abs(ck[1] - ky) + Math.abs(ck[2] - kz) < 0.02) kpMatch = cand;
+      }
+      if (!kpMatch) {
+        let bestD = 1e9;
+        for (const cand of kptsBands) {
+          const ck = cand.k || [0, 0, 0];
+          const d = Math.abs(ck[0] - kx) + Math.abs(ck[1] - ky) + Math.abs(ck[2] - kz);
+          if (d < bestD) { bestD = d; kpMatch = cand; }
+        }
+      }
+      const wtEff = (kpMatch?.w || (1.0 / nk)) * spinDeg;
+
+      for (let is = 0; is < ns; is++) {
+        const sR = readRec(), nbR = readRec();
+        if (!sR || !nbR) break;
+        let sIdx = dv.getInt32(sR.start, le) - 1;
+        if (sIdx < 0 || sIdx >= ns) sIdx = is;
+        const nb = dv.getInt32(nbR.start, le);
+        const eigList = kpMatch?.e?.[sIdx] || null;
+        for (let b = 0; b < nb; b++) {
+          const wR = readRec();
+          if (!wR || wR.len < norb * 8) break;
+          if (!eigList || b >= eigList.length) continue;
+          const ev = eigList[b];
+          if (ev < eMin || ev >= eMax) continue;
+          const bIdx = Math.floor((ev - eMin) * invDE);
+          if (bIdx < 0 || bIdx >= nBins) continue;
+          totBins[sIdx][bIdx] += wtEff;
+          const cBins = bins[sIdx];
+          for (let o = 0; o < norb; o++) {
+            const wv = dv.getFloat64(wR.start + o * 8, le);
+            if (wv > 1e-6) cBins[orbToCidx[o]][bIdx] += wtEff * wv;
+          }
+        }
+      }
+    }
+
+    const toSparse = (arr) => {
+      const out = [];
+      for (let i = 0; i < arr.length; i++) if (arr[i] > 1e-6) out.push([i, Number(arr[i].toFixed(5))]);
+      return out;
+    };
+    const channels = chanKeys.map((ck, ci) => {
+      const m = chanMeta[ck];
+      const obj = { element: m.element, ion: m.ion, atom: m.atom, orbital: m.orbital, up: toSparse(bins[0][ci]) };
+      if (ns >= 2) obj.dn = toSparse(bins[1][ci]);
+      return obj;
+    });
+    const total_hist = { up: toSparse(totBins[0]) };
+    if (ns >= 2) total_hist.dn = toSparse(totBins[1]);
+
+    return {
+      source_file: filename, nk, ns, norb, e_min: eMin, e_max: eMax, n_bins: nBins, dE,
+      elements: speciesOrder, total_hist, channels
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+// --- Full CASTEP Mulliken Population, Spin Magnetism & Bond Length Parser ---
+function parseCastepMullikenAnalysis(castepText) {
+  if (!castepText || !castepText.includes("Atomic Populations (Mulliken)")) return null;
+  const txt = castepText.replace(/\r\n/g, "\n");
+
+  // 1) Extract last Integrated Spin Density & Integrated |Spin Density| (in hbar/2 == mu_B)
+  let integratedSpin = null;
+  let integratedAbsSpin = null;
+  const spinMatches = [...txt.matchAll(/Integrated Spin Density\s*=\s*([-\d.E+]+)\s*(hbar\/2|hbar)?/gi)];
+  if (spinMatches.length) {
+    const last = spinMatches[spinMatches.length - 1];
+    const mult = (last[2] && last[2].toLowerCase() === "hbar") ? 2.0 : 1.0;
+    integratedSpin = parseFloat(last[1]) * mult;
+  }
+  const absSpinMatches = [...txt.matchAll(/Integrated \|Spin Density\|\s*=\s*([-\d.E+]+)\s*(hbar\/2|hbar)?/gi)];
+  if (absSpinMatches.length) {
+    const last = absSpinMatches[absSpinMatches.length - 1];
+    const mult = (last[2] && last[2].toLowerCase() === "hbar") ? 2.0 : 1.0;
+    integratedAbsSpin = parseFloat(last[1]) * mult;
+  }
+
+  // 2) Extract last Hirshfeld Analysis table for side-by-side comparison
+  const hirshMap = {};
+  const hIdx = txt.lastIndexOf("Hirshfeld Analysis");
+  if (hIdx !== -1) {
+    const hSub = txt.slice(hIdx, hIdx + 15000);
+    const hm = hSub.match(/={15,}\n([\s\S]*?)={15,}/);
+    if (hm) {
+      hm[1].split("\n").forEach(l => {
+        const m = l.match(/^\s*([A-Za-z]{1,2})\s+(\d+)\s+([-\d.]+)(?:\s+([-\d.]+))?/);
+        if (m) {
+          hirshMap[`${castepCleanElement(m[1])}${m[2]}`] = {
+            charge: parseFloat(m[3]),
+            spin: m[4] !== undefined ? parseFloat(m[4]) : null
+          };
+        }
+      });
+    }
+  }
+
+  // 3) Extract last Atomic Populations (Mulliken) table
+  const mIdx = txt.lastIndexOf("Atomic Populations (Mulliken)");
+  const mSub = txt.slice(mIdx, mIdx + 45000);
+  const tblM = mSub.match(/={20,}\n([\s\S]*?)={20,}/);
+  if (!tblM) return null;
+
+  const isSpinHeader = /Spin\s*\(/i.test(mSub.slice(0, mSub.indexOf("====================")));
+  const lines = tblM[1].split("\n");
+  const atoms = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (isSpinHeader) {
+      const mUp = line.match(/^\s*([A-Za-z]{1,2})\s+(\d+)\s+up:\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)/);
+      if (mUp) {
+        const el = castepCleanElement(mUp[1]);
+        const ion = parseInt(mUp[2], 10);
+        const sUp = parseFloat(mUp[3]), pUp = parseFloat(mUp[4]), dUp = parseFloat(mUp[5]), fUp = parseFloat(mUp[6]), totUp = parseFloat(mUp[7]);
+        const charge = parseFloat(mUp[8]), spin = parseFloat(mUp[9]);
+        let sDn = sUp, pDn = pUp, dDn = dUp, fDn = fUp, totDn = totUp;
+        if (i + 1 < lines.length) {
+          const mDn = lines[i + 1].match(/^\s*(\d+)\s+dn:\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)/);
+          if (mDn) {
+            sDn = parseFloat(mDn[2]); pDn = parseFloat(mDn[3]); dDn = parseFloat(mDn[4]); fDn = parseFloat(mDn[5]); totDn = parseFloat(mDn[6]);
+            i++;
+          }
+        }
+        const label = `${el}${ion}`;
+        const h = hirshMap[label] || {};
+        atoms.push({
+          element: el, ion, label,
+          sUp, pUp, dUp, fUp, totUp,
+          sDn, pDn, dDn, fDn, totDn,
+          s: sUp + sDn, p: pUp + pDn, d: dUp + dDn, f: fUp + fDn, total: totUp + totDn,
+          charge, spin,
+          muS: sUp - sDn, muP: pUp - pDn, muD: dUp - dDn, muF: fUp - fDn,
+          hirshfeldCharge: h.charge !== undefined ? h.charge : null,
+          hirshfeldSpin: h.spin !== undefined ? h.spin : null
+        });
+      }
+    } else {
+      const m1 = line.match(/^\s*([A-Za-z]{1,2})\s+(\d+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)/);
+      if (m1) {
+        const el = castepCleanElement(m1[1]);
+        const ion = parseInt(m1[2], 10);
+        const s = parseFloat(m1[3]), p = parseFloat(m1[4]), d = parseFloat(m1[5]), f = parseFloat(m1[6]), total = parseFloat(m1[7]), charge = parseFloat(m1[8]);
+        const label = `${el}${ion}`;
+        const h = hirshMap[label] || {};
+        atoms.push({
+          element: el, ion, label,
+          sUp: s / 2, pUp: p / 2, dUp: d / 2, fUp: f / 2, totUp: total / 2,
+          sDn: s / 2, pDn: p / 2, dDn: d / 2, fDn: f / 2, totDn: total / 2,
+          s, p, d, f, total, charge, spin: 0.0,
+          muS: 0, muP: 0, muD: 0, muF: 0,
+          hirshfeldCharge: h.charge !== undefined ? h.charge : null,
+          hirshfeldSpin: h.spin !== undefined ? h.spin : null
+        });
+      }
+    }
+  }
+  if (!atoms.length) return null;
+
+  // 4) Extract Bond Populations & Bond Lengths table following Mulliken block
+  const bonds = [];
+  const afterAtoms = mSub.slice(mSub.indexOf(tblM[0]) + tblM[0].length);
+  const bHdrIdx = afterAtoms.search(/Bond\s+Population/i);
+  if (bHdrIdx !== -1) {
+    const bSub = afterAtoms.slice(bHdrIdx, bHdrIdx + 35000);
+    const bTblM = bSub.match(/={20,}\n([\s\S]*?)={20,}/);
+    if (bTblM) {
+      bTblM[1].split("\n").forEach(l => {
+        // Spin-polarized format: "  C 23 -- N 23   1.81   -0.01   1.19146"
+        const ms = l.match(/^\s*([A-Za-z]{1,2})\s+(\d+)\s+--\s+([A-Za-z]{1,2})\s+(\d+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)/);
+        if (ms) {
+          const e1 = castepCleanElement(ms[1]), i1 = ms[2], e2 = castepCleanElement(ms[3]), i2 = ms[4];
+          const pop = parseFloat(ms[5]), bSpin = parseFloat(ms[6]), lenA = parseFloat(ms[7]);
+          const pairType = [e1, e2].sort().join("–");
+          const charLbl = pop < -0.02 ? "Antibonding" : (pop >= 0.75 ? "Strong Covalent" : (pop >= 0.30 ? "Covalent" : "Weak / Ionic"));
+          bonds.push({ bond: `${e1}${i1} – ${e2}${i2}`, atom1: `${e1}${i1}`, atom2: `${e2}${i2}`, pairType, population: pop, spin: bSpin, lengthA: lenA, character: charLbl });
+          return;
+        }
+        // Non-spin format: "  C 18 -- C 32   1.10   1.41662"
+        const mn = l.match(/^\s*([A-Za-z]{1,2})\s+(\d+)\s+--\s+([A-Za-z]{1,2})\s+(\d+)\s+([-\d.]+)\s+([-\d.]+)/);
+        if (mn) {
+          const e1 = castepCleanElement(mn[1]), i1 = mn[2], e2 = castepCleanElement(mn[3]), i2 = mn[4];
+          const pop = parseFloat(mn[5]), lenA = parseFloat(mn[6]);
+          const pairType = [e1, e2].sort().join("–");
+          const charLbl = pop < -0.02 ? "Antibonding" : (pop >= 0.75 ? "Strong Covalent" : (pop >= 0.30 ? "Covalent" : "Weak / Ionic"));
+          bonds.push({ bond: `${e1}${i1} – ${e2}${i2}`, atom1: `${e1}${i1}`, atom2: `${e2}${i2}`, pairType, population: pop, spin: null, lengthA: lenA, character: charLbl });
+        }
+      });
+    }
+  }
+
+  // 5) Aggregate Species, Orbital Magnetism, & Global Magnetic Order
+  const sumSpin = atoms.reduce((s, a) => s + a.spin, 0);
+  const sumAbsSpin = atoms.reduce((s, a) => s + Math.abs(a.spin), 0);
+  const sumCharge = atoms.reduce((s, a) => s + a.charge, 0);
+  const orbSpins = {
+    s: atoms.reduce((acc, a) => acc + a.muS, 0),
+    p: atoms.reduce((acc, a) => acc + a.muP, 0),
+    d: atoms.reduce((acc, a) => acc + a.muD, 0),
+    f: atoms.reduce((acc, a) => acc + a.muF, 0)
+  };
+  const netMag = integratedSpin !== null ? integratedSpin : sumSpin;
+  const absMag = integratedAbsSpin !== null ? integratedAbsSpin : sumAbsSpin;
+  let magneticOrder = "Non-Magnetic (NM)";
+  if (absMag >= 0.03) {
+    const ratio = Math.abs(netMag) / Math.max(absMag, 1e-6);
+    if (ratio >= 0.80) magneticOrder = "Ferromagnetic (FM)";
+    else if (Math.abs(netMag) < 0.08) magneticOrder = "Antiferromagnetic (AFM)";
+    else magneticOrder = "Ferrimagnetic (FiM)";
+  }
+
+  const spMap = {};
+  atoms.forEach(a => {
+    if (!spMap[a.element]) {
+      spMap[a.element] = { element: a.element, count: 0, sumCharge: 0, sumSpin: 0, absSpin: 0, s: 0, p: 0, d: 0, f: 0, muS: 0, muP: 0, muD: 0, muF: 0 };
+    }
+    const g = spMap[a.element];
+    g.count++; g.sumCharge += a.charge; g.sumSpin += a.spin; g.absSpin += Math.abs(a.spin);
+    g.s += a.s; g.p += a.p; g.d += a.d; g.f += a.f;
+    g.muS += a.muS; g.muP += a.muP; g.muD += a.muD; g.muF += a.muF;
+  });
+  const speciesSummary = Object.values(spMap).map(g => ({
+    ...g,
+    avgCharge: g.sumCharge / g.count,
+    avgSpin: g.sumSpin / g.count,
+    pctMag: absMag > 0.01 ? (g.absSpin / Math.max(sumAbsSpin, 1e-6)) * 100 : 0
+  })).sort((a, b) => b.absSpin - a.absSpin);
+
+  return {
+    isSpinPolarized: isSpinHeader,
+    magneticOrder,
+    integratedSpin: netMag,
+    integratedAbsSpin: absMag,
+    totalMullikenSpin: sumSpin,
+    totalMullikenAbsSpin: sumAbsSpin,
+    totalMullikenCharge: sumCharge,
+    orbSpins,
+    atoms,
+    speciesSummary,
+    bonds
+  };
+}
+
+function attachMullikenSpinsToStructure(job) {
+  if (!job || !job.castep_text) return;
+  const mull = parseCastepMullikenAnalysis(job.castep_text);
+  job._mullikenCache = mull;
+  if (!mull || !CASTEP_STUDIO_STATE.structure?.atoms?.length) return;
+  const byLbl = {};
+  mull.atoms.forEach(a => { byLbl[a.label] = a; });
+  CASTEP_STUDIO_STATE.structure.atoms.forEach(stAt => {
+    const m = byLbl[stAt.label];
+    if (m) {
+      stAt.spin = m.spin;
+      if (stAt.charge === null || stAt.charge === undefined) stAt.charge = m.charge;
+    }
+  });
+  CASTEP_STUDIO_STATE.view3D._topoCacheKey = "";
+}
+
+function toggleSpinsInMain3DViewer() {
+  CASTEP_STUDIO_STATE.view3D.showSpins = true;
+  const chk = document.getElementById("vesta-chk-show-spins");
+  if (chk) chk.checked = true;
+  const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
+  if (job) attachMullikenSpinsToStructure(job);
+  switchCastepStagePane("builder");
+  renderCastep3DScene();
+}
+window.toggleSpinsInMain3DViewer = toggleSpinsInMain3DViewer;
+
+function renderCastepMullikenPane() {
+  const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
+  const mull = job ? (job._mullikenCache !== undefined ? job._mullikenCache : (job._mullikenCache = parseCastepMullikenAnalysis(job.castep_text || ""))) : null;
+
+  const strip = document.getElementById("castep-mulliken-summary-strip");
+  const magCanvas = document.getElementById("castep-mulliken-mag-canvas");
+  const bondCanvas = document.getElementById("castep-mulliken-bond-canvas");
+  const spCards = document.getElementById("castep-mulliken-species-cards");
+  const atBody = document.getElementById("castep-mulliken-atoms-tbody");
+  const bdBody = document.getElementById("castep-mulliken-bonds-tbody");
+
+  if (!mull) {
+    if (strip) strip.innerHTML = `<span><strong>Status:</strong> No Mulliken Population Analysis found in this job's <code>.castep</code> output log.</span>`;
+    if (spCards) spCards.innerHTML = "";
+    if (atBody) atBody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:18px; color:#64748b;">No Mulliken atomic populations in active job. Select a calculation with <code>.castep</code> Mulliken output.</td></tr>`;
+    if (bdBody) bdBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:18px; color:#64748b;">No Mulliken bond populations found.</td></tr>`;
+    [magCanvas, bondCanvas].forEach(c => {
+      if (!c) return;
+      const w = Math.max(260, Math.floor((c.parentElement?.clientWidth || 440) - 24));
+      const h = 290, dpr = window.devicePixelRatio || 1;
+      c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+      const ctx = c.getContext("2d"); ctx.save(); ctx.scale(dpr, dpr);
+      ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = "#64748b"; ctx.font = "12.5px Inter, sans-serif"; ctx.textAlign = "center";
+      ctx.fillText("No Mulliken Population Analysis data in active .castep log", w / 2, h / 2);
+      ctx.restore();
+    });
+    return;
+  }
+
+  // Populate Element & Bond Pair Filter Dropdowns (preserving selection if valid)
+  const elSel = document.getElementById("castep-mulliken-el-filter");
+  if (elSel) {
+    const prev = elSel.value || "all";
+    const els = mull.speciesSummary.map(s => s.element);
+    elSel.innerHTML = `<option value="all">All Elements (${mull.atoms.length})</option>` +
+      els.map(e => `<option value="${escapeHtml(e)}">${escapeHtml(e)}</option>`).join("");
+    if ([...elSel.options].some(o => o.value === prev)) elSel.value = prev;
+  }
+  const bpSel = document.getElementById("castep-mulliken-bond-filter");
+  if (bpSel) {
+    const prev = bpSel.value || "all";
+    const pairs = [...new Set(mull.bonds.map(b => b.pairType))];
+    bpSel.innerHTML = `<option value="all">All Pairs (${mull.bonds.length})</option>` +
+      pairs.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join("");
+    if ([...bpSel.options].some(o => o.value === prev)) bpSel.value = prev;
+  }
+
+  const elFilter = elSel?.value || "all";
+  const bpFilter = bpSel?.value || "all";
+  const chartMode = document.getElementById("castep-mulliken-chart-mode")?.value || "spin_atomic";
+
+  const visAtoms = elFilter === "all" ? mull.atoms : mull.atoms.filter(a => a.element === elFilter);
+  const visBonds = bpFilter === "all" ? mull.bonds : mull.bonds.filter(b => b.pairType === bpFilter);
+
+  // 1) Update Global Magnetism & Population KPI Strip
+  if (strip) {
+    const phaseColor = mull.magneticOrder.includes("FM") ? "#dc2626" : (mull.magneticOrder.includes("AFM") ? "#2563eb" : (mull.magneticOrder.includes("FiM") ? "#9333ea" : "#475569"));
+    const avgLen = mull.bonds.length ? (mull.bonds.reduce((s, b) => s + b.lengthA, 0) / mull.bonds.length) : 0;
+    const os = mull.orbSpins;
+    const domOrb = Object.entries(os).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))[0];
+    strip.innerHTML = `
+      <span style="color:${phaseColor};"><strong>Magnetic Phase:</strong> ${escapeHtml(mull.magneticOrder)}</span>
+      <span><strong>Total Net Moment M<sub>net</sub>:</strong> ${mull.integratedSpin >= 0 ? "+" : ""}${mull.integratedSpin.toFixed(3)} μ<sub>B</sub></span>
+      <span><strong>Absolute Spin M<sub>abs</sub>:</strong> ${mull.integratedAbsSpin.toFixed(3)} μ<sub>B</sub></span>
+      <span><strong>Orbital Spin (s/p/d/f):</strong> ${os.s.toFixed(2)} / ${os.p.toFixed(2)} / ${os.d.toFixed(2)} / ${os.f.toFixed(2)} μ<sub>B</sub></span>
+      <span><strong>Dominant:</strong> ${domOrb ? `${domOrb[0]}-orbital (${domOrb[1] >= 0 ? "+" : ""}${domOrb[1].toFixed(2)} μB)` : "—"}</span>
+      <span><strong>Bonds:</strong> ${mull.bonds.length} (Avg ${avgLen.toFixed(3)} Å)</span>
+    `;
+  }
+
+  // 2) Render Species / Element Contribution Summary Cards
+  if (spCards) {
+    spCards.innerHTML = mull.speciesSummary.map(sp => {
+      const col = getVestaElementColor(sp.element);
+      return `
+        <div class="castep-mulliken-sp-card">
+          <div class="castep-mulliken-sp-head">
+            <span style="display:inline-flex; align-items:center; gap:5px;">
+              <span style="width:10px; height:10px; border-radius:50%; background:${col}; border:1px solid #334155;"></span>
+              ${escapeHtml(sp.element)} <span style="font-weight:600; color:#64748b;">(${sp.count} atoms)</span>
+            </span>
+            <span style="color:${sp.sumSpin >= 0 ? "#dc2626" : "#2563eb"};">${sp.sumSpin >= 0 ? "+" : ""}${sp.sumSpin.toFixed(3)} μ<sub>B</sub></span>
+          </div>
+          <div class="castep-mulliken-orb-row"><span>Avg Charge:</span><strong>${sp.avgCharge >= 0 ? "+" : ""}${sp.avgCharge.toFixed(3)} e</strong></div>
+          <div class="castep-mulliken-orb-row"><span>Mag. Share:</span><strong>${sp.pctMag.toFixed(1)}%</strong></div>
+          <div class="castep-mulliken-orb-row"><span>μ<sub>s</sub> / μ<sub>p</sub>:</span><span>${sp.muS.toFixed(3)} / ${sp.muP.toFixed(3)}</span></div>
+          <div class="castep-mulliken-orb-row"><span>μ<sub>d</sub> / μ<sub>f</sub>:</span><span><strong>${sp.muD.toFixed(3)}</strong> / ${sp.muF.toFixed(3)}</span></div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  // 3) Render Left Chart: Atomic / Orbital Magnetism or Charge Comparison
+  if (magCanvas) {
+    const w = Math.max(260, Math.floor((magCanvas.parentElement?.clientWidth || 440) - 24));
+    const h = 300, dpr = window.devicePixelRatio || 1;
+    magCanvas.width = Math.round(w * dpr); magCanvas.height = Math.round(h * dpr);
+    const ctx = magCanvas.getContext("2d");
+    ctx.save(); ctx.scale(dpr, dpr);
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, w, h);
+
+    const padL = 52, padR = 16, padT = 26, padB = 46;
+    const pw = w - padL - padR, ph = h - padT - padB;
+    ctx.strokeStyle = "#cbd5e1"; ctx.strokeRect(padL, padT, pw, ph);
+
+    const titleEl = document.getElementById("castep-mulliken-mag-title");
+
+    if (chartMode === "spin_atomic") {
+      if (titleEl) titleEl.textContent = "Atomic Magnetic Moment Contribution μ_i (μ_B)";
+      // Sort top 24 most magnetic atoms (or all if <= 24)
+      const sorted = [...visAtoms].sort((a, b) => Math.abs(b.spin) - Math.abs(a.spin)).slice(0, 24);
+      let maxAbs = Math.max(0.1, ...sorted.map(a => Math.abs(a.spin))) * 1.15;
+      const toY = (v) => padT + ph * (0.5 - v / (2 * maxAbs));
+      const y0 = toY(0);
+      ctx.beginPath(); ctx.moveTo(padL, y0); ctx.lineTo(padL + pw, y0);
+      ctx.strokeStyle = "#475569"; ctx.lineWidth = 1.1; ctx.stroke();
+
+      const bw = Math.max(4, (pw / Math.max(1, sorted.length)) * 0.72);
+      const step = pw / Math.max(1, sorted.length);
+      sorted.forEach((a, i) => {
+        const cx = padL + (i + 0.5) * step;
+        const yv = toY(a.spin);
+        ctx.fillStyle = a.spin >= 0 ? "#dc2626" : "#2563eb";
+        ctx.fillRect(cx - bw / 2, Math.min(y0, yv), bw, Math.max(1.5, Math.abs(yv - y0)));
+        if (sorted.length <= 16 || i % 2 === 0) {
+          ctx.save(); ctx.translate(cx, padT + ph + 8); ctx.rotate(-Math.PI / 4);
+          ctx.fillStyle = "#334155"; ctx.font = "9.5px Inter, sans-serif"; ctx.textAlign = "right";
+          ctx.fillText(a.label, 0, 0); ctx.restore();
+        }
+      });
+      ctx.fillStyle = "#475569"; ctx.font = "10px Inter, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+      ctx.fillText(`+${maxAbs.toFixed(2)}`, padL - 5, padT + 4);
+      ctx.fillText("0.00", padL - 5, y0);
+      ctx.fillText(`-${maxAbs.toFixed(2)}`, padL - 5, padT + ph - 4);
+      ctx.fillStyle = "#dc2626"; ctx.font = "bold 10px Inter, sans-serif"; ctx.textAlign = "right";
+      ctx.fillText("■ +μ_B (↑)   ", padL + pw - 58, padT - 10);
+      ctx.fillStyle = "#2563eb"; ctx.fillText("■ −μ_B (↓)", padL + pw, padT - 10);
+    } else if (chartMode === "spin_orbital" || chartMode === "elec_orbital") {
+      const isMag = chartMode === "spin_orbital";
+      if (titleEl) titleEl.textContent = isMag ? "Orbital Magnetic Contribution (μ_s, μ_p, μ_d, μ_f) by Element" : "Avg Orbital Electron Population (s, p, d, f) by Element";
+      const spList = elFilter === "all" ? mull.speciesSummary : mull.speciesSummary.filter(s => s.element === elFilter);
+      const orbKeys = isMag ? ["muS", "muP", "muD", "muF"] : ["s", "p", "d", "f"];
+      const orbCols = ["#2563eb", "#16a34a", "#dc2626", "#9333ea"];
+      const orbLbls = isMag ? ["μ_s", "μ_p", "μ_d", "μ_f"] : ["s", "p", "d", "f"];
+
+      let minV = 0, maxV = 0.1;
+      spList.forEach(sp => {
+        orbKeys.forEach(k => {
+          const val = isMag ? sp[k] : (sp[k] / sp.count);
+          if (val < minV) minV = val;
+          if (val > maxV) maxV = val;
+        });
+      });
+      const absMax = Math.max(Math.abs(minV), Math.abs(maxV), 0.1) * 1.15;
+      const toY = isMag
+        ? (v) => padT + ph * (0.5 - v / (2 * absMax))
+        : (v) => padT + ph * (1 - v / absMax);
+      const y0 = toY(0);
+      ctx.beginPath(); ctx.moveTo(padL, y0); ctx.lineTo(padL + pw, y0);
+      ctx.strokeStyle = "#475569"; ctx.lineWidth = 1.1; ctx.stroke();
+
+      const grpW = pw / Math.max(1, spList.length);
+      const barW = Math.max(5, Math.min(20, (grpW * 0.72) / 4));
+      spList.forEach((sp, si) => {
+        const gx = padL + (si + 0.5) * grpW;
+        orbKeys.forEach((k, oi) => {
+          const val = isMag ? sp[k] : (sp[k] / sp.count);
+          const bx = gx + (oi - 1.5) * (barW + 1.5) - barW / 2;
+          const yv = toY(val);
+          ctx.fillStyle = orbCols[oi];
+          ctx.fillRect(bx, Math.min(y0, yv), barW, Math.max(1.5, Math.abs(yv - y0)));
+        });
+        ctx.fillStyle = "#0f172a"; ctx.font = "bold 11px Inter, sans-serif"; ctx.textAlign = "center";
+        ctx.fillText(sp.element, gx, padT + ph + 15);
+      });
+      ctx.fillStyle = "#475569"; ctx.font = "10px Inter, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+      ctx.fillText(absMax.toFixed(2), padL - 5, padT + 4);
+      ctx.fillText("0.00", padL - 5, y0);
+      if (isMag) ctx.fillText((-absMax).toFixed(2), padL - 5, padT + ph - 4);
+      let lx = padL + pw;
+      ctx.font = "bold 10px Inter, sans-serif"; ctx.textAlign = "right";
+      for (let oi = 3; oi >= 0; oi--) {
+        ctx.fillStyle = orbCols[oi];
+        const t = `■ ${orbLbls[oi]}`;
+        ctx.fillText(t, lx, padT - 10);
+        lx -= ctx.measureText(t).width + 9;
+      }
+    } else {
+      if (titleEl) titleEl.textContent = "Atomic Charge Comparison: Mulliken vs. Hirshfeld (e)";
+      const sample = visAtoms.slice(0, 20);
+      let absMax = Math.max(0.2, ...sample.map(a => Math.max(Math.abs(a.charge), Math.abs(a.hirshfeldCharge || 0)))) * 1.18;
+      const toY = (v) => padT + ph * (0.5 - v / (2 * absMax));
+      const y0 = toY(0);
+      ctx.beginPath(); ctx.moveTo(padL, y0); ctx.lineTo(padL + pw, y0);
+      ctx.strokeStyle = "#475569"; ctx.lineWidth = 1.1; ctx.stroke();
+      const step = pw / Math.max(1, sample.length);
+      const bw = Math.max(3, Math.min(12, step * 0.36));
+      sample.forEach((a, i) => {
+        const cx = padL + (i + 0.5) * step;
+        const ym = toY(a.charge);
+        ctx.fillStyle = "#2563eb";
+        ctx.fillRect(cx - bw - 0.5, Math.min(y0, ym), bw, Math.max(1.5, Math.abs(ym - y0)));
+        if (a.hirshfeldCharge !== null) {
+          const yh = toY(a.hirshfeldCharge);
+          ctx.fillStyle = "#ea580c";
+          ctx.fillRect(cx + 0.5, Math.min(y0, yh), bw, Math.max(1.5, Math.abs(yh - y0)));
+        }
+        ctx.save(); ctx.translate(cx, padT + ph + 8); ctx.rotate(-Math.PI / 4);
+        ctx.fillStyle = "#334155"; ctx.font = "9.5px Inter, sans-serif"; ctx.textAlign = "right";
+        ctx.fillText(a.label, 0, 0); ctx.restore();
+      });
+      ctx.fillStyle = "#475569"; ctx.font = "10px Inter, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+      ctx.fillText(`+${absMax.toFixed(2)}`, padL - 5, padT + 4);
+      ctx.fillText("0.00", padL - 5, y0);
+      ctx.fillText(`-${absMax.toFixed(2)}`, padL - 5, padT + ph - 4);
+      ctx.fillStyle = "#2563eb"; ctx.font = "bold 10px Inter, sans-serif"; ctx.textAlign = "right";
+      ctx.fillText("■ Mulliken   ", padL + pw - 62, padT - 10);
+      ctx.fillStyle = "#ea580c"; ctx.fillText("■ Hirshfeld", padL + pw, padT - 10);
+    }
+    ctx.restore();
+  }
+
+  // 4) Render Right Chart: Mulliken Bond Population vs Bond Length (Å)
+  if (bondCanvas) {
+    const w = Math.max(260, Math.floor((bondCanvas.parentElement?.clientWidth || 440) - 24));
+    const h = 300, dpr = window.devicePixelRatio || 1;
+    bondCanvas.width = Math.round(w * dpr); bondCanvas.height = Math.round(h * dpr);
+    const ctx = bondCanvas.getContext("2d");
+    ctx.save(); ctx.scale(dpr, dpr);
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, w, h);
+
+    const padL = 52, padR = 16, padT = 26, padB = 42;
+    const pw = w - padL - padR, ph = h - padT - padB;
+    ctx.strokeStyle = "#cbd5e1"; ctx.strokeRect(padL, padT, pw, ph);
+
+    if (!visBonds.length) {
+      ctx.fillStyle = "#64748b"; ctx.font = "12px Inter, sans-serif"; ctx.textAlign = "center";
+      ctx.fillText("No Mulliken bond pairs available", padL + pw / 2, padT + ph / 2);
+      ctx.restore();
+    } else {
+      let minL = Math.min(...visBonds.map(b => b.lengthA));
+      let maxL = Math.max(...visBonds.map(b => b.lengthA));
+      const padSpanL = Math.max(0.15, (maxL - minL) * 0.12);
+      minL = Math.max(0.5, minL - padSpanL); maxL += padSpanL;
+
+      let minP = Math.min(0, ...visBonds.map(b => b.population)) - 0.1;
+      let maxP = Math.max(0.5, ...visBonds.map(b => b.population)) * 1.15;
+
+      const toX = (x) => padL + ((x - minL) / ((maxL - minL) || 1)) * pw;
+      const toY = (y) => padT + ph * (1 - (y - minP) / ((maxP - minP) || 1));
+
+      // Pop = 0 antibonding/bonding divider
+      const yZero = toY(0);
+      ctx.beginPath(); ctx.moveTo(padL, yZero); ctx.lineTo(padL + pw, yZero);
+      ctx.setLineDash([4, 3]); ctx.strokeStyle = "#64748b"; ctx.lineWidth = 1.1; ctx.stroke(); ctx.setLineDash([]);
+
+      const pairTypes = [...new Set(visBonds.map(b => b.pairType))];
+      const pairCol = {};
+      pairTypes.forEach((pt, idx) => { pairCol[pt] = PDOS_CURVE_PALETTE[idx % PDOS_CURVE_PALETTE.length]; });
+
+      visBonds.forEach(b => {
+        const sx = toX(b.lengthA), sy = toY(b.population);
+        ctx.beginPath();
+        ctx.arc(sx, sy, 5.2, 0, Math.PI * 2);
+        ctx.fillStyle = pairCol[b.pairType] + "cc";
+        ctx.fill();
+        ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 0.8; ctx.stroke();
+      });
+
+      // Legend for bond pairs
+      let lx = padL + pw;
+      ctx.font = "bold 10px Inter, sans-serif"; ctx.textAlign = "right";
+      for (let i = Math.min(pairTypes.length - 1, 5); i >= 0; i--) {
+        const pt = pairTypes[i];
+        ctx.fillStyle = pairCol[pt];
+        const lbl = `● ${pt}`;
+        ctx.fillText(lbl, lx, padT - 10);
+        lx -= ctx.measureText(lbl).width + 9;
+      }
+
+      // Ticks
+      ctx.fillStyle = "#475569"; ctx.font = "10px Inter, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+      for (let g = 0; g <= 4; g++) {
+        const pv = minP + (maxP - minP) * (g / 4);
+        ctx.fillText(pv.toFixed(2), padL - 5, toY(pv));
+      }
+      ctx.textAlign = "center"; ctx.textBaseline = "top";
+      for (let g = 0; g <= 4; g++) {
+        const lv = minL + (maxL - minL) * (g / 4);
+        ctx.fillText(lv.toFixed(2), toX(lv), padT + ph + 5);
+      }
+      ctx.font = "bold 10.5px Inter, sans-serif"; ctx.fillStyle = "#334155";
+      ctx.fillText("Bond Length (Å)", padL + pw / 2, padT + ph + 21);
+      ctx.restore();
+    }
+  }
+
+  // 5) Populate Atomic Mulliken Table
+  const atBadge = document.getElementById("castep-mulliken-atoms-count");
+  if (atBadge) atBadge.textContent = `${visAtoms.length} atoms`;
+  if (atBody) {
+    atBody.innerHTML = visAtoms.map(a => {
+      const spStyle = Math.abs(a.spin) >= 0.05 ? (a.spin > 0 ? "color:#dc2626; font-weight:800;" : "color:#2563eb; font-weight:800;") : "color:#64748b;";
+      return `
+        <tr>
+          <td><strong>${escapeHtml(a.label)}</strong></td>
+          <td>${a.s.toFixed(3)}</td>
+          <td>${a.p.toFixed(3)}</td>
+          <td>${a.d.toFixed(3)}</td>
+          <td>${a.f.toFixed(3)}</td>
+          <td><strong>${a.total.toFixed(3)}</strong></td>
+          <td>${a.charge >= 0 ? "+" : ""}${a.charge.toFixed(3)}</td>
+          <td style="${spStyle}">${a.spin >= 0 ? "+" : ""}${a.spin.toFixed(3)}</td>
+          <td>${a.muS.toFixed(3)}</td>
+          <td>${a.muP.toFixed(3)}</td>
+          <td style="${Math.abs(a.muD) >= 0.05 ? "font-weight:800;" : ""}">${a.muD.toFixed(3)}</td>
+          <td>${a.muF.toFixed(3)}</td>
+          <td>${a.hirshfeldCharge !== null ? a.hirshfeldCharge.toFixed(2) : "—"}</td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  // 6) Populate Bond Populations & Lengths Table
+  const bdBadge = document.getElementById("castep-mulliken-bonds-count");
+  if (bdBadge) bdBadge.textContent = `${visBonds.length} bonds`;
+  if (bdBody) {
+    bdBody.innerHTML = visBonds.length ? visBonds.map(b => {
+      const popStyle = b.population < 0 ? "color:#dc2626; font-weight:700;" : (b.population >= 0.75 ? "color:#15803d; font-weight:800;" : "color:#0f172a; font-weight:700;");
+      return `
+        <tr>
+          <td><strong>${escapeHtml(b.bond)}</strong></td>
+          <td><span class="castep-file-chip">${escapeHtml(b.pairType)}</span></td>
+          <td><strong>${b.lengthA.toFixed(5)}</strong></td>
+          <td style="${popStyle}">${b.population.toFixed(2)}</td>
+          <td>${b.spin !== null ? b.spin.toFixed(2) : "—"}</td>
+          <td style="font-size:10.5px;">${escapeHtml(b.character)}</td>
+        </tr>
+      `;
+    }).join("") : `<tr><td colspan="6" style="text-align:center; padding:14px; color:#64748b;">No bonds match the selected pair filter.</td></tr>`;
+  }
+}
+window.renderCastepMullikenPane = renderCastepMullikenPane;
+
+function exportCastepMullikenCSV(mode = "atoms") {
+  const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
+  const mull = job ? (job._mullikenCache || parseCastepMullikenAnalysis(job.castep_text || "")) : null;
+  if (!mull) {
+    if (typeof showToast === "function") showToast("No Mulliken data available to export.", "warning");
+    return;
+  }
+  let csv = "";
+  let fname = `${job.seed || "CASTEP"}_Mulliken_${mode}.csv`;
+  if (mode === "bonds") {
+    csv = "Bond,Pair_Type,Length_Angstrom,Bond_Population,Bond_Spin_hbar2,Character\n";
+    mull.bonds.forEach(b => {
+      csv += `"${b.bond}","${b.pairType}",${b.lengthA.toFixed(5)},${b.population.toFixed(3)},${b.spin !== null ? b.spin.toFixed(3) : ""},"${b.character}"\n`;
+    });
+  } else {
+    csv = "Atom,Element,Ion,s,p,d,f,Total,Mulliken_Charge_e,Spin_muB,mu_s,mu_p,mu_d,mu_f,Hirshfeld_Charge_e\n";
+    mull.atoms.forEach(a => {
+      csv += `"${a.label}","${a.element}",${a.ion},${a.s.toFixed(4)},${a.p.toFixed(4)},${a.d.toFixed(4)},${a.f.toFixed(4)},${a.total.toFixed(4)},${a.charge.toFixed(4)},${a.spin.toFixed(4)},${a.muS.toFixed(4)},${a.muP.toFixed(4)},${a.muD.toFixed(4)},${a.muF.toFixed(4)},${a.hirshfeldCharge !== null ? a.hirshfeldCharge.toFixed(4) : ""}\n`;
+    });
+  }
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 200);
+  if (typeof showToast === "function") showToast(`Exported ${fname}!`, "success");
+}
+window.exportCastepMullikenCSV = exportCastepMullikenCSV;
 
