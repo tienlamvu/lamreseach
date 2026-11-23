@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=125_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=125_v116_vesta_viewer" />
+  <link rel="stylesheet" href="styles.css?v=126_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=126_v116_vesta_viewer" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -2028,6 +2028,10 @@
                   <select id="castep-pdos-spin-layout" class="castep-input" style="width:auto;" onchange="renderCastepElectronicPlots()" title="Collinear Spin-Polarized PDOS Display">
                     <option value="mirror">↕️ Spin Mirror (+α / −β)</option>
                     <option value="sum">➕ Total (α + β)</option>
+                  </select>
+                  <select id="castep-elec-zero-ref" class="castep-input" style="width:auto; font-weight:700;" onchange="renderCastepElectronicPlots()" title="Synchronize Band Structure and PDOS zero energy reference (VBM = 0 for semiconductors, E_F = 0 for metals)">
+                    <option value="vbm_auto" selected>🎯 Zero: VBM / E_F (Synced)</option>
+                    <option value="raw_fermi">⚡ Zero: Raw CASTEP E_F</option>
                   </select>
                   <input type="file" id="castep-pdos-file-upload" multiple accept=".pdos_bin,.bands,.xcd" style="display:none;" onchange="handleCastepPdosFilesUpload(event)" />
                   <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px; font-weight:700;" onclick="document.getElementById('castep-pdos-file-upload').click()" title="Load CASTEP *.pdos_bin and *_DOS.bands files">📥 .pdos_bin/.bands</button>
@@ -5415,8 +5419,8 @@
 
 <script src="jszip.min.js"></script>
   <script>if (typeof JSZip === "undefined") { document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"><\\/script>'); }</script>
-  <script src="matsci_tools.js?v=125_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=125_v116_vesta_viewer"></script>
-  <script src="app.js?v=125_v116_vesta_viewer" onerror="this.src='/static/app.js?v=125_v116_vesta_viewer"></script>
+  <script src="matsci_tools.js?v=126_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=126_v116_vesta_viewer"></script>
+  <script src="app.js?v=126_v116_vesta_viewer" onerror="this.src='/static/app.js?v=126_v116_vesta_viewer"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
