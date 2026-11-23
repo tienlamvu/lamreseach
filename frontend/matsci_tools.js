@@ -232,24 +232,49 @@ const CASTEP_STUDIO_STATE = {
   undoStack: [],
   redoStack: [],
 
-  // 3D Viewport State
+  // VESTA 3D Viewport State
   view3D: {
-    rotX: 24 * Math.PI / 180,
-    rotY: -38 * Math.PI / 180,
+    rotX: 0,
+    rotY: 0,
+    // 3x3 orthonormal rotation matrix R (rows are screen X-right, Y-up, Z-out)
+    // Default 'a' projection: b -> +X (right), c -> +Y (up), a -> +Z (out toward viewer)
+    rotMatrix: [
+      [0, 1, 0],
+      [0, 0, 1],
+      [1, 0, 0]
+    ],
+    currentAxisPreset: "a",
+    panX: 0,
+    panY: 0,
     scale: 1.0,
+    atomScale: 1.0,
+    bondWidthScale: 1.0,
+    bondCutoffFactor: 1.22,
+    showModels: true,
+    showBoundaryBonds: true,
     showBonds: true,
     showBox: true,
-    showLabels: true,
-    showAdsorptionSites: true,
+    showLabels: false,
+    showAdsorptionSites: false,
     showForces: false,
-    style: "ball-stick", // "ball-stick" | "space-fill" | "stick"
-    theme: "dark", // "dark" | "white"
+    boundary: { xmin: 0.0, xmax: 1.0, ymin: 0.0, ymax: 1.0, zmin: 0.0, zmax: 1.0 },
+    style: "ball-stick", // "ball-stick" | "space-fill" | "polyhedral" | "wireframe" | "stick"
+    theme: "white", // VESTA pure white default ("white" | "dark")
+    activeTool: "rotate", // "rotate" | "select" | "pan" | "zoom" | "distance" | "angle" | "adsorb" | "delete"
     isDragging: false,
+    dragButton: 0,
     dragMoved: false,
     lastX: 0,
     lastY: 0,
     renderedAtomsScreen: [],
     selectedAtomIndices: new Set(),
+    lastClickedAtomLog: null,
+    distanceMeasurements: [],
+    angleMeasurements: [],
+    measureBuffer: [],
+    customElementColors: {},
+    hiddenElements: new Set(),
+    lastStats: { atomsCount: 0, unitCellAtoms: 0, bondsCount: 0, polyCount: 0, cpuMs: 1 },
     candidateSites: [],
     previewSiteIndex: 0
   },
@@ -1362,13 +1387,22 @@ async function loadCastepJobIntoStudio(jobId) {
   if (folderInp) folderInp.value = job.folder || "D:\\DATA LAM\\DATA TINH TOAN\\2026";
   if (seedInp) seedInp.value = job.seed || "CASTEP_Job";
 
-  // 5) Sync UI panels
+  // 5) Sync UI panels & VESTA default orientation
+  CASTEP_STUDIO_STATE.view3D.distanceMeasurements = [];
+  CASTEP_STUDIO_STATE.view3D.angleMeasurements = [];
+  CASTEP_STUDIO_STATE.view3D.measureBuffer = [];
+  CASTEP_STUDIO_STATE.view3D.panX = 0;
+  CASTEP_STUDIO_STATE.view3D.panY = 0;
+  CASTEP_STUDIO_STATE.view3D.scale = 1.0;
+  setCastep3DView(CASTEP_STUDIO_STATE.view3D.currentAxisPreset || "a", true);
   syncCastepStructureToBuilderInputs();
   detectCastepAdsorptionSites();
+  renderVestaObjectsTab();
   renderCastepAtomsTable();
   renderCastepJobsList();
   updateCastepKpiBar();
   renderCastep3DScene();
+  updateVestaOutputConsole();
   renderCastepElectronicPlots();
   renderCastepConvergencePlots();
   populateCastepParamFormFromText(job.param_text || "");
@@ -1395,39 +1429,200 @@ function switchCastepStagePane(paneId, btnEl) {
 window.switchCastepStagePane = switchCastepStagePane;
 
 // ============================================================================
-// 4. Interactive 3D Crystal & Surface Canvas Renderer + Atom / Site Picking
+// 4. VESTA 3D Crystal & Surface Renderer, Boundary Bonds, Axis Triad & Tools
 // ============================================================================
+
+const VESTA_CPK_COLORS = {
+  H: "#ffcccc", He: "#d9ffff", Li: "#cc80ff", Be: "#c2ff00", B: "#ffb5b5",
+  C: "#804929", N: "#2b52ff", O: "#ff0d0d", F: "#90e050", Ne: "#b3e3f5",
+  Na: "#ab5cf2", Mg: "#8aff00", Al: "#bfa6a6", Si: "#8c96c6", P: "#a67c9e",
+  S: "#ffff30", Cl: "#1ff01f", Ar: "#80d1e3", K: "#8f40d4", Ca: "#3dff00",
+  Sc: "#e6e6e6", Ti: "#bfc2c7", V: "#a6a6ab", Cr: "#8a99c7", Mn: "#9c7ac7",
+  Fe: "#e06633", Co: "#f090a0", Ni: "#50d050", Cu: "#c88033", Zn: "#7d80b0",
+  Ga: "#c28f8f", Ge: "#668f8f", As: "#bd80e3", Se: "#ffa100", Br: "#a62929",
+  Kr: "#5cb8d1", Rb: "#702eb0", Sr: "#00ff00", Y: "#94ffff", Zr: "#94e0e0",
+  Nb: "#73c2c9", Mo: "#8856a7", Tc: "#3b9e9e", Ru: "#248f8f", Rh: "#0a7d8c",
+  Pd: "#006985", Ag: "#c0c0c0", Cd: "#ffd98f", In: "#a67573", Sn: "#668080",
+  Sb: "#9e63b5", Te: "#d47a00", I: "#940094", Xe: "#429eb0", Cs: "#57178f",
+  Ba: "#00c900", La: "#70d4ff", Ce: "#ffffc7", Hf: "#4dc2ff", Ta: "#4da6ff",
+  W: "#2194d6", Re: "#267dab", Os: "#266696", Ir: "#175487", Pt: "#d0d0e0",
+  Au: "#ffd123", Hg: "#b8b8d0", Pb: "#575961", Bi: "#9e4fb5"
+};
+
+const VESTA_POLYHEDRAL_CENTERS = new Set([
+  "Mo", "W", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
+  "Si", "Al", "Ga", "Ge", "Sn", "Zr", "Nb", "Hf", "Ta", "Ru", "Rh", "Pd", "Pt", "Mg", "Ca"
+]);
+
+const VESTA_CATION_SET = new Set([
+  "Li", "Na", "K", "Rb", "Cs", "Be", "Mg", "Ca", "Sr", "Ba",
+  "Sc", "Y", "La", "Ce", "Pr", "Nd", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu",
+  "Ti", "Zr", "Hf", "V", "Nb", "Ta", "Cr", "Mo", "W", "Mn", "Tc", "Re",
+  "Fe", "Ru", "Os", "Co", "Rh", "Ir", "Ni", "Pd", "Pt", "Cu", "Ag", "Au",
+  "Zn", "Cd", "Hg", "Al", "Ga", "In", "Tl", "Si", "Ge", "Sn", "Pb", "Sb", "Bi"
+]);
+
+const VESTA_ANION_SET = new Set([
+  "H", "B", "C", "N", "O", "F", "P", "S", "Cl", "As", "Se", "Br", "Te", "I"
+]);
+
+function isVestaChemicalBond(el1, el2, dist, cutoffFactor, hasBothCationAndAnion) {
+  if (dist <= 0.42) return false;
+  const r1 = (typeof COVALENT_RADII !== "undefined" && COVALENT_RADII[el1]) || 1.20;
+  const r2 = (typeof COVALENT_RADII !== "undefined" && COVALENT_RADII[el2]) || 1.20;
+  if (hasBothCationAndAnion) {
+    const c1 = VESTA_CATION_SET.has(el1), c2 = VESTA_CATION_SET.has(el2);
+    const a1 = VESTA_ANION_SET.has(el1), a2 = VESTA_ANION_SET.has(el2);
+    // In ionic/covalent compounds (e.g. MoSi2N2P2, TiO2, MoS2), cations do not bond directly to cations
+    if (c1 && c2) return false;
+    // Two anions only bond if they form a short molecular/dimer covalent bond (e.g. O-H, C-O, N2, O2, H2O)
+    if (a1 && a2) {
+      return dist <= (r1 + r2) * 0.98 && dist <= 1.85;
+    }
+  }
+  return dist <= (r1 + r2) * (cutoffFactor || 1.16);
+}
+
+function getVestaElementColor(el) {
+  const clean = castepCleanElement(el);
+  const custom = CASTEP_STUDIO_STATE.view3D.customElementColors?.[clean];
+  if (custom) return custom;
+  if (VESTA_CPK_COLORS[clean]) return VESTA_CPK_COLORS[clean];
+  if (typeof getElementColor === "function") return getElementColor(clean);
+  return "#3b82f6";
+}
+window.getVestaElementColor = getVestaElementColor;
+
+function vestaVecNorm(v) {
+  const len = Math.hypot(v[0], v[1], v[2]) || 1.0;
+  return [v[0] / len, v[1] / len, v[2] / len];
+}
+
+function vestaVecCross(u, v) {
+  return [
+    u[1] * v[2] - u[2] * v[1],
+    u[2] * v[0] - u[0] * v[2],
+    u[0] * v[1] - u[1] * v[0]
+  ];
+}
+
+function vestaVecDot(u, v) {
+  return u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
+}
+
+function vestaMatMul3x3(A, B) {
+  const out = [[0,0,0],[0,0,0],[0,0,0]];
+  for (let i = 0; i < 3; i++) {
+    for (let j = 0; j < 3; j++) {
+      out[i][j] = A[i][0]*B[0][j] + A[i][1]*B[1][j] + A[i][2]*B[2][j];
+    }
+  }
+  return out;
+}
+
+function vestaRotScreenAxisMatrix(axis, deg) {
+  const r = (deg * Math.PI) / 180.0;
+  const c = Math.cos(r), s = Math.sin(r);
+  if (axis === "x") {
+    return [[1, 0, 0], [0, c, -s], [0, s, c]];
+  } else if (axis === "y") {
+    return [[c, 0, s], [0, 1, 0], [-s, 0, c]];
+  } else {
+    return [[c, -s, 0], [s, c, 0], [0, 0, 1]];
+  }
+}
+
+function computeVestaOrientationMatrix(preset, vecs) {
+  const [aVec, bVec, cVec] = vecs || [[6.594,0,0],[0,6.594,0],[0,0,25.151]];
+  const aHat = vestaVecNorm(aVec);
+  const bHat = vestaVecNorm(bVec);
+  const cHat = vestaVecNorm(cVec);
+  const aStar = vestaVecNorm(vestaVecCross(bVec, cVec));
+  const bStar = vestaVecNorm(vestaVecCross(cVec, aVec));
+  const cStar = vestaVecNorm(vestaVecCross(aVec, bVec));
+
+  let vOut = aHat;
+  let uRef = cHat;
+  const p = String(preset || "a").toLowerCase();
+
+  if (p === "a" || p === "side") {
+    vOut = aHat; uRef = cHat;
+  } else if (p === "b" || p === "front") {
+    vOut = bHat; uRef = cHat;
+  } else if (p === "c" || p === "top") {
+    vOut = cHat; uRef = bHat;
+  } else if (p === "a*" || p === "a_star") {
+    vOut = aStar; uRef = cHat;
+  } else if (p === "b*" || p === "b_star") {
+    vOut = bStar; uRef = cHat;
+  } else if (p === "c*" || p === "c_star") {
+    vOut = cStar; uRef = bHat;
+  } else {
+    // Standard 3D Isometric view based on 'a' view tilted slightly
+    const baseR = computeVestaOrientationMatrix("a", vecs);
+    const tiltY = vestaRotScreenAxisMatrix("y", -24);
+    const tiltX = vestaRotScreenAxisMatrix("x", 16);
+    return vestaMatMul3x3(tiltX, vestaMatMul3x3(tiltY, baseR));
+  }
+
+  const ez = vestaVecNorm(vOut);
+  const dotUR = vestaVecDot(uRef, ez);
+  let uPerp = [uRef[0] - dotUR * ez[0], uRef[1] - dotUR * ez[1], uRef[2] - dotUR * ez[2]];
+  if (Math.hypot(...uPerp) < 1e-6) {
+    uPerp = Math.abs(ez[2]) < 0.9 ? [0, 0, 1] : [0, 1, 0];
+  }
+  const ey = vestaVecNorm(uPerp);
+  const ex = vestaVecNorm(vestaVecCross(ey, ez));
+  return [ex, ey, ez];
+}
 
 function initCastep3DCanvasEvents() {
   const canvas = document.getElementById("castep-3d-canvas");
   if (!canvas || canvas._castepEventsBound) return;
   canvas._castepEventsBound = true;
 
+  canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
   canvas.addEventListener("mousedown", (e) => {
-    CASTEP_STUDIO_STATE.view3D.isDragging = true;
-    CASTEP_STUDIO_STATE.view3D.dragMoved = false;
-    CASTEP_STUDIO_STATE.view3D.lastX = e.clientX;
-    CASTEP_STUDIO_STATE.view3D.lastY = e.clientY;
-    canvas.style.cursor = "grabbing";
+    const v3 = CASTEP_STUDIO_STATE.view3D;
+    v3.isDragging = true;
+    v3.dragButton = e.button;
+    v3.dragMoved = false;
+    v3.lastX = e.clientX;
+    v3.lastY = e.clientY;
+    canvas.style.cursor = (v3.activeTool === "pan" || e.button === 2 || e.shiftKey) ? "move" : "grabbing";
   });
 
   window.addEventListener("mousemove", (e) => {
-    if (!CASTEP_STUDIO_STATE.view3D.isDragging) return;
-    const dx = e.clientX - CASTEP_STUDIO_STATE.view3D.lastX;
-    const dy = e.clientY - CASTEP_STUDIO_STATE.view3D.lastY;
-    if (Math.hypot(dx, dy) > 3) CASTEP_STUDIO_STATE.view3D.dragMoved = true;
-    CASTEP_STUDIO_STATE.view3D.rotY += dx * 0.012;
-    CASTEP_STUDIO_STATE.view3D.rotX += dy * 0.012;
-    CASTEP_STUDIO_STATE.view3D.lastX = e.clientX;
-    CASTEP_STUDIO_STATE.view3D.lastY = e.clientY;
+    const v3 = CASTEP_STUDIO_STATE.view3D;
+    if (!v3.isDragging) return;
+    const dx = e.clientX - v3.lastX;
+    const dy = e.clientY - v3.lastY;
+    if (Math.hypot(dx, dy) > 2.5) v3.dragMoved = true;
+
+    if (v3.activeTool === "pan" || v3.dragButton === 2 || e.shiftKey) {
+      v3.panX += dx;
+      v3.panY += dy;
+    } else if (v3.activeTool === "zoom") {
+      const factor = Math.exp(-dy * 0.008);
+      v3.scale = Math.max(0.25, Math.min(6.0, v3.scale * factor));
+    } else {
+      // Smooth screen-space trackball rotation
+      const ry = vestaRotScreenAxisMatrix("y", dx * 0.65);
+      const rx = vestaRotScreenAxisMatrix("x", dy * 0.65);
+      v3.rotMatrix = vestaMatMul3x3(rx, vestaMatMul3x3(ry, v3.rotMatrix));
+    }
+    v3.lastX = e.clientX;
+    v3.lastY = e.clientY;
     renderCastep3DScene();
   });
 
   window.addEventListener("mouseup", (e) => {
-    if (!CASTEP_STUDIO_STATE.view3D.isDragging) return;
-    const wasClick = !CASTEP_STUDIO_STATE.view3D.dragMoved;
-    CASTEP_STUDIO_STATE.view3D.isDragging = false;
-    canvas.style.cursor = "grab";
+    const v3 = CASTEP_STUDIO_STATE.view3D;
+    if (!v3.isDragging) return;
+    const wasClick = !v3.dragMoved;
+    v3.isDragging = false;
+    canvas.style.cursor = v3.activeTool === "pan" ? "move" : (v3.activeTool === "rotate" ? "grab" : "crosshair");
     if (wasClick && e.target === canvas) {
       handleCastep3DCanvasClick(e, canvas);
     }
@@ -1435,8 +1630,8 @@ function initCastep3DCanvasEvents() {
 
   canvas.addEventListener("wheel", (e) => {
     e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.09 : 0.91;
-    CASTEP_STUDIO_STATE.view3D.scale = Math.max(0.35, Math.min(4.0, CASTEP_STUDIO_STATE.view3D.scale * factor));
+    const factor = e.deltaY < 0 ? 1.11 : 0.90;
+    CASTEP_STUDIO_STATE.view3D.scale = Math.max(0.25, Math.min(6.0, CASTEP_STUDIO_STATE.view3D.scale * factor));
     renderCastep3DScene();
   }, { passive: false });
 }
@@ -1445,52 +1640,440 @@ function handleCastep3DCanvasClick(e, canvas) {
   const rect = canvas.getBoundingClientRect();
   const mx = e.clientX - rect.left;
   const my = e.clientY - rect.top;
-  const rendered = CASTEP_STUDIO_STATE.view3D.renderedAtomsScreen || [];
-  // Search front-most atom hit
+  const v3 = CASTEP_STUDIO_STATE.view3D;
+  const rendered = v3.renderedAtomsScreen || [];
+
+  // Search front-most atom hit (drawn last = highest index in sorted draw order)
   let hitAtom = null;
   for (let i = rendered.length - 1; i >= 0; i--) {
     const a = rendered[i];
-    if (a.isGhost) continue;
     const d = Math.hypot(mx - a.sx, my - a.sy);
-    if (d <= Math.max(12, a.radius + 4)) {
+    if (d <= Math.max(11, a.radius + 4)) {
       hitAtom = a;
       break;
     }
   }
-  if (hitAtom && hitAtom.atomIndex !== undefined) {
-    const sel = CASTEP_STUDIO_STATE.view3D.selectedAtomIndices;
-    if (sel.has(hitAtom.atomIndex)) sel.delete(hitAtom.atomIndex);
-    else sel.add(hitAtom.atomIndex);
+
+  if (!hitAtom) return;
+  const st = CASTEP_STUDIO_STATE.structure;
+  const baseIdx = hitAtom.atomIndex;
+  const baseAtom = st.atoms[baseIdx];
+
+  // Record VESTA atom click log entry
+  v3.lastClickedAtomLog = {
+    number: baseIdx + 1,
+    element: hitAtom.element,
+    label: hitAtom.label,
+    u: hitAtom.fracU,
+    v: hitAtom.fracV,
+    w: hitAtom.fracW,
+    cartX: hitAtom.cartX,
+    cartY: hitAtom.cartY,
+    cartZ: hitAtom.cartZ,
+    isBoundaryImage: Boolean(hitAtom.isBoundaryImage)
+  };
+
+  const tool = v3.activeTool || "rotate";
+
+  if (tool === "delete") {
+    if (baseIdx !== undefined && st.atoms[baseIdx]) {
+      pushCastepUndoSnapshot();
+      const delLbl = st.atoms[baseIdx].label || st.atoms[baseIdx].element;
+      st.atoms.splice(baseIdx, 1);
+      v3.selectedAtomIndices.clear();
+      afterCastepStructureModified(`Deleted atom ${delLbl} (#${baseIdx + 1}).`);
+    }
+    return;
+  }
+
+  if (tool === "adsorb") {
+    const species = document.getElementById("castep-ads-species")?.value || "H";
+    const heightA = parseFloat(document.getElementById("castep-ads-height")?.value || "1.80");
+    const side = document.getElementById("castep-ads-side")?.value || "top";
+    const orient = document.getElementById("castep-ads-orient")?.value || "vertical";
+    pushCastepUndoSnapshot();
+    const added = insertAdsorbateAtCartesianBase(hitAtom.cartX, hitAtom.cartY, hitAtom.cartZ, side, heightA, species, orient);
+    afterCastepStructureModified(`Placed ${species} (${added.join(", ")}) directly on ${hitAtom.label} (d_z = ${heightA.toFixed(2)} Å).`);
+    return;
+  }
+
+  if (tool === "distance") {
+    v3.measureBuffer.push(hitAtom);
+    if (v3.measureBuffer.length >= 2) {
+      const a1 = v3.measureBuffer[0], a2 = v3.measureBuffer[1];
+      const dist = Math.hypot(a1.cartX - a2.cartX, a1.cartY - a2.cartY, a1.cartZ - a2.cartZ);
+      v3.distanceMeasurements.push({
+        label1: a1.label, label2: a2.label,
+        u1: a1.fracU, v1: a1.fracV, w1: a1.fracW,
+        u2: a2.fracU, v2: a2.fracV, w2: a2.fracW,
+        c1: [a1.cartX, a1.cartY, a1.cartZ],
+        c2: [a2.cartX, a2.cartY, a2.cartZ],
+        distA: dist
+      });
+      v3.measureBuffer = [];
+      if (typeof showToast === "function") {
+        showToast(`📏 Distance d(${a1.label} – ${a2.label}) = ${dist.toFixed(5)} Å`, "success");
+      }
+    }
+    if (baseIdx !== undefined) v3.selectedAtomIndices.add(baseIdx);
+    renderCastep3DScene();
+    updateVestaOutputConsole();
+    updateCastep3DSelectionHud();
+    return;
+  }
+
+  if (tool === "angle") {
+    v3.measureBuffer.push(hitAtom);
+    if (v3.measureBuffer.length >= 3) {
+      const a1 = v3.measureBuffer[0], a2 = v3.measureBuffer[1], a3 = v3.measureBuffer[2];
+      const v1 = [a1.cartX - a2.cartX, a1.cartY - a2.cartY, a1.cartZ - a2.cartZ];
+      const v2 = [a3.cartX - a2.cartX, a3.cartY - a2.cartY, a3.cartZ - a2.cartZ];
+      const n1 = Math.hypot(...v1) || 1, n2 = Math.hypot(...v2) || 1;
+      const cosA = Math.max(-1, Math.min(1, (v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2]) / (n1 * n2)));
+      const deg = Math.acos(cosA) * 180 / Math.PI;
+      v3.angleMeasurements.push({
+        label1: a1.label, label2: a2.label, label3: a3.label,
+        c1: [a1.cartX, a1.cartY, a1.cartZ],
+        c2: [a2.cartX, a2.cartY, a2.cartZ],
+        c3: [a3.cartX, a3.cartY, a3.cartZ],
+        angleDeg: deg
+      });
+      v3.measureBuffer = [];
+      if (typeof showToast === "function") {
+        showToast(`📐 Bond Angle θ(${a1.label}–${a2.label}–${a3.label}) = ${deg.toFixed(2)}°`, "success");
+      }
+    }
+    if (baseIdx !== undefined) v3.selectedAtomIndices.add(baseIdx);
+    renderCastep3DScene();
+    updateVestaOutputConsole();
+    updateCastep3DSelectionHud();
+    return;
+  }
+
+  // Default: toggle atom selection
+  if (baseIdx !== undefined) {
+    const sel = v3.selectedAtomIndices;
+    if (sel.has(baseIdx)) sel.delete(baseIdx);
+    else sel.add(baseIdx);
     renderCastep3DScene();
     renderCastepAtomsTable();
+    updateVestaOutputConsole();
     updateCastep3DSelectionHud();
   }
 }
 
+function setVestaInteractionTool(toolName, btnEl) {
+  const v3 = CASTEP_STUDIO_STATE.view3D;
+  v3.activeTool = toolName || "rotate";
+  v3.measureBuffer = [];
+  document.querySelectorAll(".vesta-vtool-btn, .vesta-toolstrip-btn").forEach(b => b.classList.remove("active"));
+  const btn = btnEl || document.getElementById(`vesta-tool-${toolName}`);
+  if (btn) btn.classList.add("active");
+  const toolNames = {
+    rotate: "Rotate & Select",
+    select: "Select / Pick Atoms",
+    pan: "Translate / Pan View",
+    zoom: "Magnify / Zoom",
+    distance: "Measure Distance d(i–j)",
+    angle: "Measure Bond Angle θ(i–j–k)",
+    adsorb: "Click-to-Adsorb on Surface",
+    delete: "Click-to-Delete Atom (Vacancy)"
+  };
+  const badge = document.getElementById("vesta-active-tool-badge");
+  if (badge) badge.textContent = `Tool: ${toolNames[v3.activeTool] || v3.activeTool}`;
+  const canvas = document.getElementById("castep-3d-canvas");
+  if (canvas) {
+    canvas.style.cursor = toolName === "pan" ? "move" : (toolName === "rotate" ? "grab" : "crosshair");
+  }
+  updateCastep3DSelectionHud();
+}
+window.setVestaInteractionTool = setVestaInteractionTool;
+
+function clearVestaMeasurementsAndSelection() {
+  const v3 = CASTEP_STUDIO_STATE.view3D;
+  v3.selectedAtomIndices.clear();
+  v3.distanceMeasurements = [];
+  v3.angleMeasurements = [];
+  v3.measureBuffer = [];
+  v3.lastClickedAtomLog = null;
+  renderCastep3DScene();
+  renderCastepAtomsTable();
+  updateVestaOutputConsole();
+  updateCastep3DSelectionHud();
+}
+window.clearVestaMeasurementsAndSelection = clearVestaMeasurementsAndSelection;
+
+function switchVestaSideTab(tabKey, btnEl) {
+  document.querySelectorAll(".vesta-dock-tab").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".vesta-dock-pane").forEach(p => p.classList.remove("active"));
+  const btn = btnEl || document.querySelector(`.vesta-dock-tab[data-dock="${tabKey}"], .vesta-dock-tab[data-vtab="${tabKey}"]`);
+  if (btn) btn.classList.add("active");
+  const pane = document.getElementById(`vesta-dock-${tabKey}`);
+  if (pane) pane.classList.add("active");
+  if (tabKey === "objects") renderVestaObjectsTab();
+}
+window.switchVestaSideTab = switchVestaSideTab;
+window.switchVestaDockTab = switchVestaSideTab;
+
+function switchVestaConsoleTab(tabKey, btnEl) {
+  const key = tabKey === "summary" ? "coords" : tabKey;
+  document.querySelectorAll(".vesta-btab, .vesta-console-tab").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".vesta-bottom-pane, .vesta-console-pane").forEach(p => p.classList.remove("active"));
+  const btn = btnEl || document.querySelector(`.vesta-btab[data-bpane="${key}"]`);
+  if (btn) btn.classList.add("active");
+  const pane = document.getElementById(`vesta-bottom-pane-${key}`) || document.getElementById(`vesta-console-${key}`);
+  if (pane) pane.classList.add("active");
+}
+window.switchVestaConsoleTab = switchVestaConsoleTab;
+window.switchVestaBottomPane = switchVestaConsoleTab;
+
+function setCastep3DView(preset, skipRender = false) {
+  const v3 = CASTEP_STUDIO_STATE.view3D;
+  const st = CASTEP_STUDIO_STATE.structure;
+  const vecs = st.vectors || castepParamsToVectors(st.lattice.a, st.lattice.b, st.lattice.c, st.lattice.alpha, st.lattice.beta, st.lattice.gamma);
+  const p = String(preset || "a");
+  v3.currentAxisPreset = p;
+  v3.rotMatrix = computeVestaOrientationMatrix(p, vecs);
+  v3.panX = 0;
+  v3.panY = 0;
+
+  // Highlight active axis button in VESTA toolbar
+  document.querySelectorAll(".vesta-ax-btn").forEach(btn => {
+    const oc = btn.getAttribute("onclick") || "";
+    btn.classList.toggle("active", oc.includes(`'${p}'`));
+  });
+
+  if (!skipRender) renderCastep3DScene();
+}
+window.setCastep3DView = setCastep3DView;
+
+function vestaStepRotate(axisOrDir, maybeDir) {
+  const stepDeg = parseFloat(document.getElementById("vesta-rot-step-input")?.value || document.getElementById("vesta-rot-step-deg")?.value || "45.0") || 45.0;
+  let axis = "x", dir = 1;
+  if (maybeDir !== undefined) {
+    axis = axisOrDir; dir = maybeDir;
+  } else {
+    const m = String(axisOrDir).toLowerCase();
+    if (m === "up") { axis = "x"; dir = -1; }
+    else if (m === "down") { axis = "x"; dir = 1; }
+    else if (m === "left") { axis = "y"; dir = -1; }
+    else if (m === "right") { axis = "y"; dir = 1; }
+    else if (m === "ccw") { axis = "z"; dir = 1; }
+    else if (m === "cw") { axis = "z"; dir = -1; }
+  }
+  const delta = vestaRotScreenAxisMatrix(axis, dir * stepDeg);
+  CASTEP_STUDIO_STATE.view3D.rotMatrix = vestaMatMul3x3(delta, CASTEP_STUDIO_STATE.view3D.rotMatrix);
+  renderCastep3DScene();
+}
+window.vestaStepRotate = vestaStepRotate;
+
+function vestaStepPan(dxSign, dySign) {
+  const stepPx = parseFloat(document.getElementById("vesta-pan-step-input")?.value || document.getElementById("vesta-pan-step-px")?.value || "15") || 15;
+  CASTEP_STUDIO_STATE.view3D.panX += dxSign * stepPx;
+  CASTEP_STUDIO_STATE.view3D.panY += dySign * stepPx;
+  renderCastep3DScene();
+}
+window.vestaStepPan = vestaStepPan;
+
+function vestaStepZoom(dir) {
+  const stepPct = parseFloat(document.getElementById("vesta-zoom-step-input")?.value || document.getElementById("vesta-zoom-step-pct")?.value || "15") || 15;
+  const factor = dir > 0 ? (1 + stepPct / 100.0) : (1 / (1 + stepPct / 100.0));
+  CASTEP_STUDIO_STATE.view3D.scale = Math.max(0.25, Math.min(6.0, CASTEP_STUDIO_STATE.view3D.scale * factor));
+  renderCastep3DScene();
+}
+window.vestaStepZoom = vestaStepZoom;
+
+function vestaFitToScreen() {
+  CASTEP_STUDIO_STATE.view3D.scale = 1.0;
+  CASTEP_STUDIO_STATE.view3D.panX = 0;
+  CASTEP_STUDIO_STATE.view3D.panY = 0;
+  renderCastep3DScene();
+}
+window.vestaFitToScreen = vestaFitToScreen;
+
+function setVestaRenderStyle(styleName) {
+  CASTEP_STUDIO_STATE.view3D.style = styleName || "ball-stick";
+  document.querySelectorAll('input[name="vesta-model-style"], input[name="vesta-render-style"]').forEach(r => {
+    r.checked = (r.value === styleName) || (r.getAttribute("onchange") || "").includes(`'${styleName}'`);
+  });
+  renderCastep3DScene();
+  updateVestaOutputConsole();
+}
+window.setVestaRenderStyle = setVestaRenderStyle;
+window.setVestaModelStyle = setVestaRenderStyle;
+
+function setVestaProperty(propKey, val) {
+  const numVal = parseFloat(val);
+  const v3 = CASTEP_STUDIO_STATE.view3D;
+  if (propKey === "atomScale") v3.atomScale = isNaN(numVal) ? 1.0 : numVal;
+  else if (propKey === "bondScale" || propKey === "bondWidthScale") v3.bondWidthScale = isNaN(numVal) ? 1.0 : numVal;
+  else if (propKey === "bondFactor" || propKey === "bondCutoffFactor") v3.bondCutoffFactor = isNaN(numVal) ? 1.16 : numVal;
+  else v3[propKey] = val;
+  renderCastep3DScene();
+  updateVestaOutputConsole();
+}
+window.setVestaProperty = setVestaProperty;
+window.setVestaRenderProperty = setVestaProperty;
+
+function setVestaBackgroundTheme(themeVal) {
+  CASTEP_STUDIO_STATE.view3D.theme = themeVal === "dark" ? "dark" : "white";
+  const wrap = document.getElementById("castep-3d-container");
+  if (wrap) wrap.style.background = CASTEP_STUDIO_STATE.view3D.theme === "white" ? "#ffffff" : "#0b1120";
+  const sel = document.getElementById("vesta-bg-select");
+  if (sel) sel.value = CASTEP_STUDIO_STATE.view3D.theme;
+  renderCastep3DScene();
+}
+window.setVestaBackgroundTheme = setVestaBackgroundTheme;
+
+function setVestaBoundaryPreset(xmin, xmax, ymin, ymax, zmin, zmax) {
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  setVal("vesta-bnd-xmin", xmin); setVal("vesta-bnd-xmax", xmax);
+  setVal("vesta-bnd-ymin", ymin); setVal("vesta-bnd-ymax", ymax);
+  setVal("vesta-bnd-zmin", zmin); setVal("vesta-bnd-zmax", zmax);
+  applyVestaBoundaryRange();
+}
+window.setVestaBoundaryPreset = setVestaBoundaryPreset;
+
+function applyVestaBoundaryRange() {
+  const getNum = (id, d) => {
+    const v = parseFloat(document.getElementById(id)?.value);
+    return isNaN(v) ? d : v;
+  };
+  CASTEP_STUDIO_STATE.view3D.boundary = {
+    xmin: getNum("vesta-bnd-xmin", 0.0),
+    xmax: getNum("vesta-bnd-xmax", 1.0),
+    ymin: getNum("vesta-bnd-ymin", 0.0),
+    ymax: getNum("vesta-bnd-ymax", 1.0),
+    zmin: getNum("vesta-bnd-zmin", 0.0),
+    zmax: getNum("vesta-bnd-zmax", 1.0)
+  };
+  renderCastep3DScene();
+  updateVestaOutputConsole();
+}
+window.applyVestaBoundaryRange = applyVestaBoundaryRange;
+
+function toggleCastep3DOption(key, explicitVal) {
+  const v3 = CASTEP_STUDIO_STATE.view3D;
+  v3[key] = explicitVal !== undefined ? Boolean(explicitVal) : !v3[key];
+  const chkMap = {
+    showBonds: "vesta-chk-bonds",
+    showBox: "vesta-chk-box",
+    showLabels: "vesta-chk-labels",
+    showAdsorptionSites: "vesta-chk-sites",
+    showForces: "vesta-chk-forces"
+  };
+  const chk = document.getElementById(chkMap[key]);
+  if (chk) chk.checked = Boolean(v3[key]);
+  renderCastep3DScene();
+}
+window.toggleCastep3DOption = toggleCastep3DOption;
+
+function cycleCastep3DStyle() {
+  const styles = ["ball-stick", "space-fill", "polyhedral", "wireframe", "stick"];
+  const idx = styles.indexOf(CASTEP_STUDIO_STATE.view3D.style);
+  setVestaRenderStyle(styles[(idx + 1) % styles.length]);
+}
+window.cycleCastep3DStyle = cycleCastep3DStyle;
+
+function toggleCastep3DTheme() {
+  const next = CASTEP_STUDIO_STATE.view3D.theme === "white" ? "dark" : "white";
+  setVestaBackgroundTheme(next);
+}
+window.toggleCastep3DTheme = toggleCastep3DTheme;
+
+function renderVestaObjectsTab() {
+  const container = document.getElementById("vesta-objects-elements-list");
+  if (!container) return;
+  const st = CASTEP_STUDIO_STATE.structure;
+  const v3 = CASTEP_STUDIO_STATE.view3D;
+  const counts = {};
+  (st.atoms || []).forEach(a => {
+    const el = castepCleanElement(a.element);
+    counts[el] = (counts[el] || 0) + 1;
+  });
+  const els = Object.keys(counts);
+  if (!els.length) {
+    container.innerHTML = `<div style="color:#64748b; font-size:11px;">No elements loaded.</div>`;
+    return;
+  }
+  container.innerHTML = els.map(el => {
+    const col = getVestaElementColor(el);
+    const covR = (typeof COVALENT_RADII !== "undefined" && COVALENT_RADII[el]) || 1.20;
+    const visible = !v3.hiddenElements.has(el);
+    return `
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; padding:4px 6px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:4px;">
+        <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:#0f172a; cursor:pointer; margin:0;">
+          <input type="checkbox" ${visible ? "checked" : ""} onchange="toggleVestaElementVisibility('${el}', this.checked)" />
+          <span style="width:12px; height:12px; border-radius:50%; background:${col}; display:inline-block; border:1px solid rgba(0,0,0,0.25);"></span>
+          <span>${escapeHtml(el)}</span>
+          <span style="color:#64748b; font-weight:500; font-size:10.5px;">(${counts[el]} atoms, r=${covR.toFixed(2)}Å)</span>
+        </label>
+        <input type="color" value="${col}" style="width:24px; height:20px; border:none; padding:0; background:transparent; cursor:pointer;" onchange="setVestaElementCustomColor('${el}', this.value)" title="Customize ${el} VESTA Color" />
+      </div>
+    `;
+  }).join("");
+}
+window.renderVestaObjectsTab = renderVestaObjectsTab;
+
+function toggleVestaElementVisibility(el, visible) {
+  if (visible) CASTEP_STUDIO_STATE.view3D.hiddenElements.delete(el);
+  else CASTEP_STUDIO_STATE.view3D.hiddenElements.add(el);
+  renderCastep3DScene();
+}
+window.toggleVestaElementVisibility = toggleVestaElementVisibility;
+
+function setVestaElementCustomColor(el, hexColor) {
+  CASTEP_STUDIO_STATE.view3D.customElementColors[el] = hexColor;
+  renderVestaObjectsTab();
+  renderCastep3DScene();
+  renderCastepAtomsTable();
+}
+window.setVestaElementCustomColor = setVestaElementCustomColor;
+
 function updateCastep3DSelectionHud() {
   const hud = document.getElementById("castep-3d-selection-hud");
   if (!hud) return;
-  const sel = Array.from(CASTEP_STUDIO_STATE.view3D.selectedAtomIndices);
+  const v3 = CASTEP_STUDIO_STATE.view3D;
+  const sel = Array.from(v3.selectedAtomIndices);
   const atoms = CASTEP_STUDIO_STATE.structure.atoms || [];
   const vecs = CASTEP_STUDIO_STATE.structure.vectors;
 
+  if (v3.activeTool === "distance") {
+    const n = v3.measureBuffer.length;
+    hud.innerHTML = `📏 <strong>Distance Tool:</strong> ${n === 0 ? "Click 1st atom" : `1st: <strong>${v3.measureBuffer[0].label}</strong> → Click 2nd atom`} (${v3.distanceMeasurements.length} measured)`;
+    return;
+  }
+  if (v3.activeTool === "angle") {
+    const n = v3.measureBuffer.length;
+    hud.innerHTML = `📐 <strong>Bond Angle Tool:</strong> ${n === 0 ? "Click 1st atom" : (n === 1 ? `1st: <strong>${v3.measureBuffer[0].label}</strong> → Click vertex (2nd) atom` : `Click 3rd atom`)} (${v3.angleMeasurements.length} measured)`;
+    return;
+  }
+  if (v3.activeTool === "adsorb") {
+    const sp = document.getElementById("castep-ads-species")?.value || "H";
+    hud.innerHTML = `🎯 <strong>Click-to-Adsorb Mode:</strong> Click any surface atom to place <strong>${escapeHtml(sp)}</strong> above it`;
+    return;
+  }
+  if (v3.activeTool === "delete") {
+    hud.innerHTML = `🗑️ <strong>Click-to-Delete Mode:</strong> Click any atom in 3D view to create a vacancy defect`;
+    return;
+  }
+
   if (sel.length === 0) {
-    hud.innerHTML = `Click any atom in 3D view to select/inspect • Drag to rotate • Scroll to zoom • <strong>${atoms.length} atoms</strong> in cell`;
+    hud.innerHTML = `View: <strong>${escapeHtml(v3.currentAxisPreset || "a")}</strong> • <strong>${v3.lastStats.atomsCount || atoms.length}</strong> atoms, <strong>${v3.lastStats.bondsCount || 0}</strong> bonds`;
     return;
   }
   if (sel.length === 1) {
     const a = atoms[sel[0]];
     if (!a) return;
     const [cx, cy, cz] = castepFracToCart(a.x, a.y, a.z, vecs);
-    hud.innerHTML = `Selected <strong>#${sel[0]+1} ${escapeHtml(a.label || a.element)}</strong>: Fract (${a.x.toFixed(4)}, ${a.y.toFixed(4)}, ${a.z.toFixed(4)}) • Cart (${cx.toFixed(3)}, ${cy.toFixed(3)}, ${cz.toFixed(3)} Å)`;
+    hud.innerHTML = `Selected <strong>#${sel[0]+1} ${escapeHtml(a.label || a.element)}</strong> (${a.x.toFixed(4)}, ${a.y.toFixed(4)}, ${a.z.toFixed(4)}) • (${cx.toFixed(2)}, ${cy.toFixed(2)}, ${cz.toFixed(2)} Å)`;
   } else if (sel.length === 2) {
     const a1 = atoms[sel[0]], a2 = atoms[sel[1]];
     if (!a1 || !a2) return;
     const c1 = castepFracToCart(a1.x, a1.y, a1.z, vecs);
     const c2 = castepFracToCart(a2.x, a2.y, a2.z, vecs);
     const dist = Math.hypot(c1[0]-c2[0], c1[1]-c2[1], c1[2]-c2[2]);
-    const midU = ((a1.x + a2.x)/2).toFixed(4), midV = ((a1.y + a2.y)/2).toFixed(4), midW = ((a1.z + a2.z)/2).toFixed(4);
-    hud.innerHTML = `2 Atoms Selected (<strong>${a1.label} – ${a2.label}</strong>) • Distance d = <strong>${dist.toFixed(4)} Å</strong> • Bridge Midpoint: (${midU}, ${midV}, ${midW})`;
+    hud.innerHTML = `<strong>${a1.label} – ${a2.label}</strong> • Distance d = <strong>${dist.toFixed(4)} Å</strong>`;
   } else if (sel.length === 3) {
     const a1 = atoms[sel[0]], a2 = atoms[sel[1]], a3 = atoms[sel[2]];
     if (!a1 || !a2 || !a3) return;
@@ -1502,63 +2085,161 @@ function updateCastep3DSelectionHud() {
     const n1 = Math.hypot(...v1) || 1, n2 = Math.hypot(...v2) || 1;
     const cosA = Math.max(-1, Math.min(1, (v1[0]*v2[0]+v1[1]*v2[1]+v1[2]*v2[2])/(n1*n2)));
     const ang = (Math.acos(cosA) * 180 / Math.PI).toFixed(2);
-    const hU = ((a1.x + a2.x + a3.x)/3).toFixed(4), hV = ((a1.y + a2.y + a3.y)/3).toFixed(4), hW = ((a1.z + a2.z + a3.z)/3).toFixed(4);
-    hud.innerHTML = `3 Atoms Selected (<strong>${a1.label}–${a2.label}–${a3.label}</strong>) • Angle θ = <strong>${ang}°</strong> • 3-Fold Hollow Center: (${hU}, ${hV}, ${hW})`;
+    hud.innerHTML = `<strong>${a1.label}–${a2.label}–${a3.label}</strong> • Angle θ = <strong>${ang}°</strong>`;
   } else {
-    hud.innerHTML = `<strong>${sel.length} atoms selected</strong> • Click "Place Above Clicked Atom(s)", "Substitute", or "Delete Selected (Vacancy)"`;
+    hud.innerHTML = `<strong>${sel.length} atoms selected</strong>`;
   }
 }
 
-function setCastep3DView(preset) {
-  const v = CASTEP_STUDIO_STATE.view3D;
-  if (preset === "top") { v.rotX = 0; v.rotY = 0; }
-  else if (preset === "front") { v.rotX = Math.PI / 2; v.rotY = 0; }
-  else if (preset === "side") { v.rotX = 0; v.rotY = Math.PI / 2; }
-  else { v.rotX = 24 * Math.PI / 180; v.rotY = -38 * Math.PI / 180; v.scale = 1.0; }
-  renderCastep3DScene();
-}
-window.setCastep3DView = setCastep3DView;
+function updateVestaOutputConsole() {
+  const logEl = document.getElementById("vesta-log-output-pre") || document.getElementById("castep-vesta-output-log");
+  if (!logEl) return;
+  const st = CASTEP_STUDIO_STATE.structure;
+  const v3 = CASTEP_STUDIO_STATE.view3D;
+  const lat = st.lattice || { a: 6.594, b: 6.594, c: 25.151, alpha: 90, beta: 90, gamma: 120 };
+  const stats = v3.lastStats || { atomsCount: (st.atoms || []).length, unitCellAtoms: (st.atoms || []).length, bondsCount: 0, polyCount: 0, cpuMs: 1 };
 
-function toggleCastep3DOption(key) {
-  CASTEP_STUDIO_STATE.view3D[key] = !CASTEP_STUDIO_STATE.view3D[key];
-  const btnMap = {
-    showBonds: "castep-btn-bonds",
-    showBox: "castep-btn-box",
-    showLabels: "castep-btn-labels",
-    showAdsorptionSites: "castep-btn-sites",
-    showForces: "castep-btn-forces"
-  };
-  const btn = document.getElementById(btnMap[key]);
-  if (btn) btn.classList.toggle("active", Boolean(CASTEP_STUDIO_STATE.view3D[key]));
-  renderCastep3DScene();
-}
-window.toggleCastep3DOption = toggleCastep3DOption;
+  const lines = [];
+  if (v3.lastClickedAtomLog) {
+    const c = v3.lastClickedAtomLog;
+    lines.push(
+      `  ${String(c.number).padStart(3, " ")} ${c.element.padEnd(3, " ")} ${c.label.padEnd(8, " ")} ` +
+      `${Number(c.u).toFixed(5).padStart(9, " ")} ${Number(c.v).toFixed(5).padStart(9, " ")} ${Number(c.w).toFixed(5).padStart(9, " ")}   1.000   ` +
+      `(${c.cartX.toFixed(3)}, ${c.cartY.toFixed(3)}, ${c.cartZ.toFixed(3)} Å)${c.isBoundaryImage ? " [Boundary Bonded]" : ""}`
+    );
+  } else if (st.atoms && st.atoms.length > 0) {
+    const a0 = st.atoms[0];
+    lines.push(
+      `    1 ${a0.element.padEnd(3, " ")} ${(a0.label || a0.element + "1").padEnd(8, " ")} ` +
+      `${Number(a0.x).toFixed(5).padStart(9, " ")} ${Number(a0.y).toFixed(5).padStart(9, " ")} ${Number(a0.z).toFixed(5).padStart(9, " ")}   1.000   0.000   1a       1`
+    );
+  }
 
-function cycleCastep3DStyle() {
-  const styles = ["ball-stick", "space-fill", "stick"];
-  const idx = styles.indexOf(CASTEP_STUDIO_STATE.view3D.style);
-  CASTEP_STUDIO_STATE.view3D.style = styles[(idx + 1) % styles.length];
-  renderCastep3DScene();
-}
-window.cycleCastep3DStyle = cycleCastep3DStyle;
+  v3.distanceMeasurements.forEach((m, i) => {
+    lines.push(`  [Distance #${i+1}] d(${m.label1} — ${m.label2}) = ${m.distA.toFixed(5)} Å`);
+  });
+  v3.angleMeasurements.forEach((m, i) => {
+    lines.push(`  [Angle #${i+1}]    θ(${m.label1} — ${m.label2} — ${m.label3}) = ${m.angleDeg.toFixed(3)}°`);
+  });
 
-function toggleCastep3DTheme() {
-  CASTEP_STUDIO_STATE.view3D.theme = CASTEP_STUDIO_STATE.view3D.theme === "dark" ? "white" : "dark";
-  const isWhite = CASTEP_STUDIO_STATE.view3D.theme === "white";
-  const wrap = document.getElementById("castep-3d-container");
-  if (wrap) wrap.style.background = isWhite ? "#ffffff" : "#0b1120";
-  const btn = document.getElementById("castep-btn-theme");
-  if (btn) btn.textContent = isWhite ? "🌙" : "☀️";
-  renderCastep3DScene();
+  lines.push("--------------------------------------------------------------------------------");
+  lines.push(
+    `Lattice: a = ${Number(lat.a).toFixed(5)} Å, b = ${Number(lat.b).toFixed(5)} Å, c = ${Number(lat.c).toFixed(5)} Å, ` +
+    `α = ${Number(lat.alpha).toFixed(2)}°, β = ${Number(lat.beta).toFixed(2)}°, γ = ${Number(lat.gamma).toFixed(2)}° (Space group: ${st.spaceGroup || "P 1"})`
+  );
+  lines.push(
+    `${stats.atomsCount} atoms (${stats.unitCellAtoms} asymmetric/cell + ${Math.max(0, stats.atomsCount - stats.unitCellAtoms)} boundary-bonded), ` +
+    `${stats.bondsCount} bonds, ${stats.polyCount} polyhedra; CPU time = ${stats.cpuMs} ms`
+  );
+  logEl.textContent = lines.join("\n");
+  const sumLine = document.getElementById("vesta-status-summary-line");
+  if (sumLine) sumLine.textContent = `${stats.atomsCount} atoms, ${stats.bondsCount} bonds, ${stats.polyCount} polyhedra; CPU time = ${stats.cpuMs} ms`;
 }
-window.toggleCastep3DTheme = toggleCastep3DTheme;
+window.updateVestaOutputConsole = updateVestaOutputConsole;
+
+function drawVestaAxisTriad(ctx, width, height, vecs, R, isWhite) {
+  const ox = 86;
+  const oy = height - 64;
+  const axisLen = 46;
+  const [aVec, bVec, cVec] = vecs;
+  const axes = [
+    { label: "a", unit: vestaVecNorm(aVec), color: "#dc2626", dark: "#7f1d1d" },
+    { label: "b", unit: vestaVecNorm(bVec), color: "#16a34a", dark: "#14532d" },
+    { label: "c", unit: vestaVecNorm(cVec), color: "#2563eb", dark: "#1e3a8a" }
+  ].map(ax => {
+    const u = ax.unit;
+    const rx = R[0][0]*u[0] + R[0][1]*u[1] + R[0][2]*u[2];
+    const ry = R[1][0]*u[0] + R[1][1]*u[1] + R[1][2]*u[2];
+    const rz = R[2][0]*u[0] + R[2][1]*u[1] + R[2][2]*u[2];
+    return { ...ax, rx, ry, rz };
+  });
+
+  // Sort back-to-front by rz
+  axes.sort((p, q) => p.rz - q.rz);
+
+  axes.forEach(ax => {
+    const tx = ox + ax.rx * axisLen;
+    const ty = oy - ax.ry * axisLen;
+    const projLen = Math.hypot(tx - ox, ty - oy);
+
+    if (projLen < 7.5) {
+      // Axis points almost straight at viewer (or away): draw VESTA 3D origin cap circle with label inside
+      const grad = ctx.createRadialGradient(ox - 2, oy - 2, 1, ox, oy, 7.5);
+      grad.addColorStop(0, "#ffffff");
+      grad.addColorStop(0.45, ax.color);
+      grad.addColorStop(1, ax.dark);
+      ctx.beginPath();
+      ctx.arc(ox, oy, 7.2, 0, Math.PI * 2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = "#1e293b";
+      ctx.stroke();
+
+      ctx.font = "bold 11.5px Arial, sans-serif";
+      ctx.fillStyle = isWhite ? "#0f172a" : "#f8fafc";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(ax.label, ox, oy);
+    } else {
+      const ang = Math.atan2(ty - oy, tx - ox);
+      const headLen = 12.5;
+      const headHalfW = 5.6;
+      const shaftEndX = tx - Math.cos(ang) * (headLen * 0.72);
+      const shaftEndY = ty - Math.sin(ang) * (headLen * 0.72);
+
+      // 3D cylindrical shaft (dark border + colored body + highlight core)
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(ox, oy);
+      ctx.lineTo(shaftEndX, shaftEndY);
+      ctx.strokeStyle = ax.dark;
+      ctx.lineWidth = 5.4;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(ox, oy);
+      ctx.lineTo(shaftEndX, shaftEndY);
+      ctx.strokeStyle = ax.color;
+      ctx.lineWidth = 3.8;
+      ctx.stroke();
+
+      // 3D conical arrowhead
+      const bx = tx - Math.cos(ang) * headLen;
+      const by = ty - Math.sin(ang) * headLen;
+      const px = -Math.sin(ang) * headHalfW;
+      const py = Math.cos(ang) * headHalfW;
+
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(bx + px, by + py);
+      ctx.lineTo(bx - px, by - py);
+      ctx.closePath();
+      ctx.fillStyle = ax.color;
+      ctx.fill();
+      ctx.lineWidth = 1.0;
+      ctx.strokeStyle = ax.dark;
+      ctx.stroke();
+
+      // Bold black VESTA axis label (a, b, c)
+      const lx = tx + Math.cos(ang) * 12;
+      const ly = ty + Math.sin(ang) * 12;
+      ctx.font = "bold 13px Arial, sans-serif";
+      ctx.fillStyle = isWhite ? "#0f172a" : "#f8fafc";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(ax.label, lx, ly);
+    }
+  });
+}
 
 function renderCastep3DScene() {
+  const t0 = performance.now();
   const canvas = document.getElementById("castep-3d-canvas");
   if (!canvas || !canvas.parentElement) return;
   const rect = canvas.getBoundingClientRect();
-  const width = rect.width || 820;
-  const height = rect.height || 510;
+  const width = rect.width || 860;
+  const height = rect.height || 530;
   const dpr = window.devicePixelRatio || 1;
   if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
     canvas.width = Math.round(width * dpr);
@@ -1569,7 +2250,7 @@ function renderCastep3DScene() {
   ctx.scale(dpr, dpr);
 
   const v3 = CASTEP_STUDIO_STATE.view3D;
-  const isWhite = v3.theme === "white";
+  const isWhite = v3.theme !== "dark";
   ctx.fillStyle = isWhite ? "#ffffff" : "#0b1120";
   ctx.fillRect(0, 0, width, height);
 
@@ -1577,56 +2258,244 @@ function renderCastep3DScene() {
   const vecs = st.vectors || castepParamsToVectors(st.lattice.a, st.lattice.b, st.lattice.c, st.lattice.alpha, st.lattice.beta, st.lattice.gamma);
   const [aVec, bVec, cVec] = vecs;
 
-  let centerX = (aVec[0] + bVec[0] + cVec[0]) / 2;
-  let centerY = (aVec[1] + bVec[1] + cVec[1]) / 2;
-  let centerZ = (aVec[2] + bVec[2] + cVec[2]) / 2;
-  if (st.atoms && st.atoms.length > 0) {
-    let sx = 0, sy = 0, sz = 0;
-    st.atoms.forEach(at => {
-      const [cx, cy, cz] = castepFracToCart(at.x, at.y, at.z, vecs);
-      sx += cx; sy += cy; sz += cz;
-    });
-    centerX = sx / st.atoms.length;
-    centerY = sy / st.atoms.length;
-    centerZ = sz / st.atoms.length;
+  // Update file tab label in VESTA stage top bar
+  const fileTabEl = document.getElementById("vesta-active-doc-label") || document.getElementById("vesta-stage-file-tab-name");
+  if (fileTabEl) {
+    const activeJob = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
+    const seedName = activeJob?.seed || st.formula || st.name || "Structure";
+    fileTabEl.textContent = `📄 ${seedName}.cif — ${st.formula || ""}`;
   }
 
-  const spanA = Math.hypot(...aVec), spanB = Math.hypot(...bVec), spanC = Math.hypot(...cVec);
-  const maxSpan = Math.max(spanA, spanB, Math.min(spanC, Math.max(spanA, spanB) * 1.65), 4.5);
-  const autoScale = (Math.min(width, height) / (maxSpan * 1.62)) * v3.scale;
+  // Ensure rotation matrix R is initialized
+  if (!v3.rotMatrix || v3.rotMatrix.length !== 3) {
+    v3.rotMatrix = computeVestaOrientationMatrix(v3.currentAxisPreset || "a", vecs);
+  }
+  const R = v3.rotMatrix;
 
-  const cosY = Math.cos(v3.rotY), sinY = Math.sin(v3.rotY);
-  const cosX = Math.cos(v3.rotX), sinX = Math.sin(v3.rotX);
+  // Center of unit cell box [0,1]^3 in Cartesian space
+  const bnd = v3.boundary || { xmin: 0, xmax: 1, ymin: 0, ymax: 1, zmin: 0, zmax: 1 };
+  const midU = (bnd.xmin + bnd.xmax) / 2.0;
+  const midV = (bnd.ymin + bnd.ymax) / 2.0;
+  const midW = (bnd.zmin + bnd.zmax) / 2.0;
+  const [centerX, centerY, centerZ] = castepFracToCart(midU, midV, midW, vecs);
+
+  const spanA = Math.hypot(...aVec) * Math.max(1, bnd.xmax - bnd.xmin);
+  const spanB = Math.hypot(...bVec) * Math.max(1, bnd.ymax - bnd.ymin);
+  const spanC = Math.hypot(...cVec) * Math.max(1, bnd.zmax - bnd.zmin);
+  const maxBoxSpan = Math.max(spanA, spanB, spanC, 5.0);
+  const autoScale = (Math.min(width, height) * 0.76 / maxBoxSpan) * v3.scale;
 
   function project(x, y, z) {
     const xr = x - centerX;
     const yr = y - centerY;
     const zr = z - centerZ;
-    const x1 = xr * cosY + zr * sinY;
-    const z1 = -xr * sinY + zr * cosY;
-    const y2 = yr * cosX - z1 * sinX;
-    const z2 = yr * sinX + z1 * cosX;
+    const xRot = R[0][0]*xr + R[0][1]*yr + R[0][2]*zr;
+    const yRot = R[1][0]*xr + R[1][1]*yr + R[1][2]*zr;
+    const zRot = R[2][0]*xr + R[2][1]*yr + R[2][2]*zr;
     return {
-      sx: width / 2 + x1 * autoScale,
-      sy: height / 2 - y2 * autoScale,
-      sz: z2
+      sx: width / 2 + v3.panX + xRot * autoScale,
+      sy: height / 2 + v3.panY - yRot * autoScale,
+      sz: zRot
     };
   }
 
-  // Update element legend
+  // Update element legend in top-right overlay
   const legendEl = document.getElementById("castep-3d-legend");
   if (legendEl) {
-    const uniq = [...new Set((st.atoms || []).map(a => a.element))];
+    const uniq = [...new Set((st.atoms || []).map(a => castepCleanElement(a.element)))];
     legendEl.innerHTML = uniq.map(el => {
-      const col = typeof getElementColor === "function" ? getElementColor(el) : "#38bdf8";
-      return `<span style="display:inline-flex; align-items:center; gap:5px; font-weight:700;">
-        <span style="width:11px; height:11px; border-radius:50%; background:${col}; display:inline-block; border:1px solid rgba(255,255,255,0.4);"></span>
+      const col = getVestaElementColor(el);
+      return `<span style="display:inline-flex; align-items:center; gap:4px; font-weight:700; color:${isWhite ? "#1e293b" : "#f8fafc"};">
+        <span style="width:11px; height:11px; border-radius:50%; background:${col}; display:inline-block; border:1px solid rgba(15,23,42,0.35);"></span>
         ${escapeHtml(el)}
       </span>`;
     }).join("");
   }
 
-  // 1) Draw Unit Cell Box (8 corners, 12 edges)
+  // 1) Expand atoms inside fractional boundary + VESTA Bond-Completing Boundary Atoms
+  const expandedAtoms = [];
+  const baseAtoms = st.atoms || [];
+  const eps = 1e-3;
+  const iMin = Math.floor(bnd.xmin - eps), iMax = Math.ceil(bnd.xmax + eps);
+  const jMin = Math.floor(bnd.ymin - eps), jMax = Math.ceil(bnd.ymax + eps);
+  const kMin = Math.floor(bnd.zmin - eps), kMax = Math.ceil(bnd.zmax + eps);
+  const seenPosKeys = new Set();
+
+  if (v3.showModels !== false) {
+    // Pass 1: In-boundary atoms (including unit-cell face images at u=1, v=1, w=1 like VESTA)
+    baseAtoms.forEach((at, idx) => {
+      const el = castepCleanElement(at.element);
+      if (v3.hiddenElements.has(el)) return;
+      const u0 = Number(at.x) || 0;
+      const v0 = Number(at.y) || 0;
+      const w0 = Number(at.z) || 0;
+
+      for (let da = iMin; da <= iMax; da++) {
+        for (let db = jMin; db <= jMax; db++) {
+          for (let dc = kMin; dc <= kMax; dc++) {
+            const u = u0 + da, v = v0 + db, w = w0 + dc;
+            if (u >= bnd.xmin - eps && u <= bnd.xmax + eps &&
+                v >= bnd.ymin - eps && v <= bnd.ymax + eps &&
+                w >= bnd.zmin - eps && w <= bnd.zmax + eps) {
+              const key = `${el}_${Math.round(u*1000)}_${Math.round(v*1000)}_${Math.round(w*1000)}`;
+              if (seenPosKeys.has(key)) continue;
+              seenPosKeys.add(key);
+              const [cx, cy, cz] = castepFracToCart(u, v, w, vecs);
+              expandedAtoms.push({
+                atomIndex: idx,
+                element: el,
+                label: at.label || `${el}${idx+1}`,
+                fixed: Boolean(at.fixed),
+                fx: at.fx || 0, fy: at.fy || 0, fz: at.fz || 0,
+                fracU: u, fracV: v, fracW: w,
+                cartX: cx, cartY: cy, cartZ: cz,
+                isBoundaryImage: !(da === 0 && db === 0 && dc === 0)
+              });
+            }
+          }
+        }
+      }
+    });
+
+    // Determine if structure has both cations and anions
+    const hasCations = baseAtoms.some(a => VESTA_CATION_SET.has(castepCleanElement(a.element)));
+    const hasAnions = baseAtoms.some(a => VESTA_ANION_SET.has(castepCleanElement(a.element)));
+    const hasBothCA = hasCations && hasAnions;
+
+    // Pass 2: VESTA Bond-Completing Boundary Search
+    // Include periodic image atoms outside the boundary box if chemically bonded to any Pass-1 atom!
+    if (v3.showBoundaryBonds && expandedAtoms.length > 0 && expandedAtoms.length <= 240) {
+      const inBoxCount = expandedAtoms.length;
+      const cutoffFactor = Number(v3.bondCutoffFactor) || 1.16;
+      baseAtoms.forEach((at, idx) => {
+        const el = castepCleanElement(at.element);
+        if (v3.hiddenElements.has(el)) return;
+        const u0 = Number(at.x) || 0, v0 = Number(at.y) || 0, w0 = Number(at.z) || 0;
+
+        for (let da = iMin - 1; da <= iMax + 1; da++) {
+          for (let db = jMin - 1; db <= jMax + 1; db++) {
+            for (let dc = kMin - 1; dc <= kMax + 1; dc++) {
+              const u = u0 + da, v = v0 + db, w = w0 + dc;
+              const key = `${el}_${Math.round(u*1000)}_${Math.round(v*1000)}_${Math.round(w*1000)}`;
+              if (seenPosKeys.has(key)) continue;
+              const [cx, cy, cz] = castepFracToCart(u, v, w, vecs);
+
+              // Check if chemically bonded to any in-box atom
+              let bondedToInBox = false;
+              for (let m = 0; m < inBoxCount; m++) {
+                const inAt = expandedAtoms[m];
+                const dist = Math.hypot(cx - inAt.cartX, cy - inAt.cartY, cz - inAt.cartZ);
+                if (isVestaChemicalBond(inAt.element, el, dist, cutoffFactor, hasBothCA)) {
+                  bondedToInBox = true;
+                  break;
+                }
+              }
+              if (bondedToInBox) {
+                seenPosKeys.add(key);
+                expandedAtoms.push({
+                  atomIndex: idx,
+                  element: el,
+                  label: at.label || `${el}${idx+1}`,
+                  fixed: Boolean(at.fixed),
+                  fx: 0, fy: 0, fz: 0,
+                  fracU: u, fracV: v, fracW: w,
+                  cartX: cx, cartY: cy, cartZ: cz,
+                  isBoundaryImage: true
+                });
+              }
+            }
+          }
+        }
+      });
+    }
+  }
+
+  // Project all expanded atoms
+  const atomScale = Number(v3.atomScale) || 1.0;
+  const projectedAtoms = expandedAtoms.map(at => {
+    const p = project(at.cartX, at.cartY, at.cartZ);
+    const covR = (typeof COVALENT_RADII !== "undefined" && COVALENT_RADII[at.element]) || 1.20;
+    let radius = Math.max(5.5, Math.min(22, covR * autoScale * 0.25 * atomScale));
+    if (v3.style === "space-fill") {
+      radius = Math.max(10, covR * autoScale * 0.68 * atomScale);
+    } else if (v3.style === "stick" || v3.style === "wireframe") {
+      radius = v3.style === "wireframe" ? 2.5 : 4.2;
+    }
+    return {
+      ...at,
+      sx: p.sx, sy: p.sy, sz: p.sz,
+      radius,
+      color: getVestaElementColor(at.element)
+    };
+  });
+
+  // 2) Compute Chemical Bonds & Polyhedra (VESTA Coordination Rules)
+  const bonds = [];
+  const adjList = new Map();
+  const cutoffFactor = Number(v3.bondCutoffFactor) || 1.16;
+  const hasCationsAll = baseAtoms.some(a => VESTA_CATION_SET.has(castepCleanElement(a.element)));
+  const hasAnionsAll = baseAtoms.some(a => VESTA_ANION_SET.has(castepCleanElement(a.element)));
+  const hasBothCAAll = hasCationsAll && hasAnionsAll;
+
+  if ((v3.showBonds || v3.style === "polyhedral" || v3.style === "wireframe" || v3.style === "stick") && v3.style !== "space-fill") {
+    for (let i = 0; i < projectedAtoms.length; i++) {
+      const a1 = projectedAtoms[i];
+      for (let j = i + 1; j < projectedAtoms.length; j++) {
+        const a2 = projectedAtoms[j];
+        // VESTA rule: do not bond two exterior boundary-expansion atoms to each other
+        if (a1.isBoundaryImage && a2.isBoundaryImage) continue;
+        const dist = Math.hypot(a1.cartX - a2.cartX, a1.cartY - a2.cartY, a1.cartZ - a2.cartZ);
+        if (isVestaChemicalBond(a1.element, a2.element, dist, cutoffFactor, hasBothCAAll)) {
+          bonds.push({ a1, a2, dist, sz: (a1.sz + a2.sz) / 2 });
+          if (!adjList.has(i)) adjList.set(i, []);
+          if (!adjList.has(j)) adjList.set(j, []);
+          adjList.get(i).push(j);
+          adjList.get(j).push(i);
+        }
+      }
+    }
+  }
+
+  // Count coordination polyhedra & build triangular faces when in 'polyhedral' mode
+  let polyCount = 0;
+  const polyFaces = [];
+  projectedAtoms.forEach((centerAt, cIdx) => {
+    const neighbors = adjList.get(cIdx) || [];
+    if (VESTA_POLYHEDRAL_CENTERS.has(centerAt.element) && neighbors.length >= 3) {
+      polyCount++;
+      if (v3.style === "polyhedral") {
+        const ligs = neighbors.map(nIdx => projectedAtoms[nIdx]);
+        for (let i = 0; i < ligs.length; i++) {
+          for (let j = i + 1; j < ligs.length; j++) {
+            const L1 = ligs[i], L2 = ligs[j];
+            const d12 = Math.hypot(L1.cartX - L2.cartX, L1.cartY - L2.cartY, L1.cartZ - L2.cartZ);
+            if (d12 <= 4.35) {
+              polyFaces.push({
+                pts: [centerAt, L1, L2],
+                color: centerAt.color,
+                sz: (centerAt.sz + L1.sz + L2.sz) / 3 - 0.05
+              });
+            }
+            for (let k = j + 1; k < ligs.length; k++) {
+              const L3 = ligs[k];
+              const d13 = Math.hypot(L1.cartX - L3.cartX, L1.cartY - L3.cartY, L1.cartZ - L3.cartZ);
+              const d23 = Math.hypot(L2.cartX - L3.cartX, L2.cartY - L3.cartY, L2.cartZ - L3.cartZ);
+              if (d12 <= 4.35 && d13 <= 4.35 && d23 <= 4.35) {
+                polyFaces.push({
+                  pts: [L1, L2, L3],
+                  color: centerAt.color,
+                  sz: (L1.sz + L2.sz + L3.sz) / 3
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // 3) Unit Cell Wireframe Edges (VESTA dark-gray clean wireframe)
+  const unitCellEdges = [];
   if (v3.showBox) {
     const corners = [
       [0,0,0],
@@ -1639,75 +2508,37 @@ function renderCastep3DScene() {
       [aVec[0]+bVec[0]+cVec[0], aVec[1]+bVec[1]+cVec[1], aVec[2]+bVec[2]+cVec[2]]
     ].map(pt => project(pt[0], pt[1], pt[2]));
 
-    const edges = [
-      [0,1,"#ef4444"], [0,2,"#22c55e"], [0,3,"#3b82f6"],
+    const edgeIndices = [
+      [0,1], [0,2], [0,3],
       [1,4], [2,4], [1,5], [3,5], [2,6], [3,6], [4,7], [5,7], [6,7]
     ];
-    edges.forEach(([i, j, axisCol]) => {
-      ctx.beginPath();
-      ctx.moveTo(corners[i].sx, corners[i].sy);
-      ctx.lineTo(corners[j].sx, corners[j].sy);
-      ctx.strokeStyle = axisCol || (isWhite ? "rgba(71,85,105,0.45)" : "rgba(148,163,184,0.38)");
-      ctx.lineWidth = axisCol ? 2.2 : 1.1;
-      ctx.stroke();
+    edgeIndices.forEach(([i, j]) => {
+      unitCellEdges.push({
+        p1: corners[i],
+        p2: corners[j],
+        sz: (corners[i].sz + corners[j].sz) / 2
+      });
     });
-    // Axis labels a, b, c
-    ctx.font = "bold 11px Inter, sans-serif";
-    ctx.fillStyle = "#ef4444"; ctx.fillText("a", corners[1].sx + 5, corners[1].sy);
-    ctx.fillStyle = "#22c55e"; ctx.fillText("b", corners[2].sx + 5, corners[2].sy);
-    ctx.fillStyle = "#3b82f6"; ctx.fillText("c", corners[3].sx + 5, corners[3].sy);
   }
 
-  // 2) Project Atoms
-  const projectedAtoms = [];
-  (st.atoms || []).forEach((at, idx) => {
-    const u = ((at.x % 1) + 1) % 1;
-    const v = ((at.y % 1) + 1) % 1;
-    const w = ((at.z % 1) + 1) % 1;
-    // Use actual fractional coordinates (or wrapped if near cell)
-    const [cx, cy, cz] = castepFracToCart(at.x, at.y, at.z, vecs);
-    const p = project(cx, cy, cz);
-    const covR = (typeof COVALENT_RADII !== "undefined" && COVALENT_RADII[at.element]) || 1.2;
-    const radius = v3.style === "space-fill"
-      ? Math.max(10, covR * autoScale * 0.72)
-      : (v3.style === "stick" ? 4.5 : Math.max(6.5, Math.min(20, covR * autoScale * 0.34)));
-
-    projectedAtoms.push({
-      atomIndex: idx,
-      element: at.element,
-      label: at.label || `${at.element}${idx+1}`,
-      fixed: Boolean(at.fixed),
-      fx: at.fx || 0, fy: at.fy || 0, fz: at.fz || 0,
-      cartX: cx, cartY: cy, cartZ: cz,
-      sx: p.sx, sy: p.sy, sz: p.sz,
-      radius,
-      color: typeof getElementColor === "function" ? getElementColor(at.element) : "#38bdf8"
-    });
+  // Draw back-facing unit cell edges first
+  unitCellEdges.forEach(e => {
+    ctx.beginPath();
+    ctx.moveTo(e.p1.sx, e.p1.sy);
+    ctx.lineTo(e.p2.sx, e.p2.sy);
+    ctx.strokeStyle = isWhite ? "rgba(71, 85, 105, 0.72)" : "rgba(148, 163, 184, 0.45)";
+    ctx.lineWidth = 1.15;
+    ctx.stroke();
   });
 
-  // 3) Compute Bonds
-  const bonds = [];
-  if (v3.showBonds && v3.style !== "space-fill") {
-    for (let i = 0; i < projectedAtoms.length; i++) {
-      const a1 = projectedAtoms[i];
-      const r1 = (typeof COVALENT_RADII !== "undefined" && COVALENT_RADII[a1.element]) || 1.25;
-      for (let j = i + 1; j < projectedAtoms.length; j++) {
-        const a2 = projectedAtoms[j];
-        const r2 = (typeof COVALENT_RADII !== "undefined" && COVALENT_RADII[a2.element]) || 1.25;
-        const dist = Math.hypot(a1.cartX - a2.cartX, a1.cartY - a2.cartY, a1.cartZ - a2.cartZ);
-        if (dist > 0.45 && dist <= (r1 + r2) * 1.22) {
-          bonds.push({ a1, a2, sz: (a1.sz + a2.sz) / 2 });
-        }
-      }
-    }
-  }
-
-  // Sort draw primitives by depth sz
+  // Combine depth-sorted 3D primitives (polyhedra faces, bonds, atoms, adsorption sites)
   const drawItems = [];
-  bonds.forEach(b => drawItems.push({ type: "bond", sz: b.sz, data: b }));
+  polyFaces.forEach(f => drawItems.push({ type: "poly", sz: f.sz, data: f }));
+  if (v3.showBonds || v3.style === "wireframe" || v3.style === "stick") {
+    bonds.forEach(b => drawItems.push({ type: "bond", sz: b.sz, data: b }));
+  }
   projectedAtoms.forEach(a => drawItems.push({ type: "atom", sz: a.sz, data: a }));
 
-  // 4) Candidate Adsorption Sites Overlay
   if (v3.showAdsorptionSites && Array.isArray(v3.candidateSites)) {
     v3.candidateSites.forEach((site, sIdx) => {
       const [cx, cy, cz] = castepFracToCart(site.u, site.v, site.w, vecs);
@@ -1722,67 +2553,119 @@ function renderCastep3DScene() {
 
   drawItems.sort((a, b) => a.sz - b.sz);
 
-  // Render sorted primitives
+  const bondWidthBase = (v3.style === "stick" ? 5.6 : (v3.style === "wireframe" ? 1.6 : 4.2)) * (Number(v3.bondWidthScale) || 1.0);
+
+  // Render sorted 3D items
   drawItems.forEach(item => {
-    if (item.type === "bond") {
+    if (item.type === "poly") {
+      const { pts, color } = item.data;
+      ctx.beginPath();
+      ctx.moveTo(pts[0].sx, pts[0].sy);
+      ctx.lineTo(pts[1].sx, pts[1].sy);
+      ctx.lineTo(pts[2].sx, pts[2].sy);
+      ctx.closePath();
+      ctx.fillStyle = color + "52"; // ~32% opacity hex
+      ctx.fill();
+      ctx.strokeStyle = isWhite ? "rgba(51, 65, 85, 0.45)" : "rgba(226, 232, 240, 0.35)";
+      ctx.lineWidth = 0.85;
+      ctx.stroke();
+    } else if (item.type === "bond") {
       const { a1, a2 } = item.data;
       const mx = (a1.sx + a2.sx) / 2, my = (a1.sy + a2.sy) / 2;
-      ctx.beginPath();
-      ctx.moveTo(a1.sx, a1.sy);
-      ctx.lineTo(mx, my);
-      ctx.strokeStyle = a1.color;
-      ctx.lineWidth = v3.style === "stick" ? 3.5 : 4.2;
-      ctx.stroke();
 
-      ctx.beginPath();
-      ctx.moveTo(mx, my);
-      ctx.lineTo(a2.sx, a2.sy);
-      ctx.strokeStyle = a2.color;
-      ctx.lineWidth = v3.style === "stick" ? 3.5 : 4.2;
-      ctx.stroke();
+      if (v3.style === "wireframe") {
+        ctx.beginPath();
+        ctx.moveTo(a1.sx, a1.sy);
+        ctx.lineTo(mx, my);
+        ctx.strokeStyle = a1.color;
+        ctx.lineWidth = 1.6;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(mx, my);
+        ctx.lineTo(a2.sx, a2.sy);
+        ctx.strokeStyle = a2.color;
+        ctx.lineWidth = 1.6;
+        ctx.stroke();
+      } else {
+        // VESTA 3D Shaded Cylindrical Bond (dark outer casing + element color body + specular core)
+        ctx.lineCap = "round";
+        // Dark cylinder rim
+        ctx.beginPath();
+        ctx.moveTo(a1.sx, a1.sy);
+        ctx.lineTo(a2.sx, a2.sy);
+        ctx.strokeStyle = isWhite ? "rgba(30, 41, 59, 0.65)" : "rgba(15, 23, 42, 0.8)";
+        ctx.lineWidth = bondWidthBase + 1.5;
+        ctx.stroke();
+
+        // Half 1 body
+        ctx.beginPath();
+        ctx.moveTo(a1.sx, a1.sy);
+        ctx.lineTo(mx, my);
+        ctx.strokeStyle = a1.color;
+        ctx.lineWidth = bondWidthBase;
+        ctx.stroke();
+
+        // Half 2 body
+        ctx.beginPath();
+        ctx.moveTo(mx, my);
+        ctx.lineTo(a2.sx, a2.sy);
+        ctx.strokeStyle = a2.color;
+        ctx.lineWidth = bondWidthBase;
+        ctx.stroke();
+
+        // Specular cylinder highlight line
+        ctx.beginPath();
+        ctx.moveTo(a1.sx, a1.sy);
+        ctx.lineTo(a2.sx, a2.sy);
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+        ctx.lineWidth = Math.max(1.0, bondWidthBase * 0.28);
+        ctx.stroke();
+      }
     } else if (item.type === "atom") {
       const a = item.data;
       const isSel = v3.selectedAtomIndices.has(a.atomIndex);
       if (isSel) {
         ctx.beginPath();
-        ctx.arc(a.sx, a.sy, a.radius + 5, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(250, 204, 21, 0.35)";
+        ctx.arc(a.sx, a.sy, a.radius + 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(250, 204, 21, 0.38)";
         ctx.fill();
-        ctx.lineWidth = 2.5;
-        ctx.strokeStyle = "#facc15";
+        ctx.lineWidth = 2.2;
+        ctx.strokeStyle = "#eab308";
         ctx.stroke();
       }
 
+      // VESTA 3D Phong Glossy Sphere Shading
       const grad = ctx.createRadialGradient(
-        a.sx - a.radius * 0.32, a.sy - a.radius * 0.32, a.radius * 0.1,
+        a.sx - a.radius * 0.34, a.sy - a.radius * 0.34, a.radius * 0.08,
         a.sx, a.sy, a.radius
       );
-      grad.addColorStop(0, typeof lightenColor === "function" ? lightenColor(a.color, 0.45) : "#ffffff");
-      grad.addColorStop(0.65, a.color);
-      grad.addColorStop(1, typeof darkenColor === "function" ? darkenColor(a.color, 0.38) : "#0f172a");
+      grad.addColorStop(0, "#ffffff");
+      grad.addColorStop(0.24, typeof lightenColor === "function" ? lightenColor(a.color, 0.38) : a.color);
+      grad.addColorStop(0.70, a.color);
+      grad.addColorStop(1, typeof darkenColor === "function" ? darkenColor(a.color, 0.42) : "#0f172a");
 
       ctx.beginPath();
       ctx.arc(a.sx, a.sy, a.radius, 0, Math.PI * 2);
       ctx.fillStyle = grad;
       ctx.fill();
-      ctx.lineWidth = a.fixed ? 2.0 : 1.0;
-      ctx.strokeStyle = a.fixed ? "#f97316" : "rgba(15,23,42,0.55)";
+      ctx.lineWidth = a.fixed ? 2.0 : 0.9;
+      ctx.strokeStyle = a.fixed ? "#ea580c" : "rgba(15, 23, 42, 0.55)";
       ctx.stroke();
 
-      // Force vector arrow
+      // Atomic Force vector arrow
       if (v3.showForces && Math.hypot(a.fx, a.fy, a.fz) > 0.005) {
         const fScale = 8.0;
         const fp = project(a.cartX + a.fx * fScale, a.cartY + a.fy * fScale, a.cartZ + a.fz * fScale);
         ctx.beginPath();
         ctx.moveTo(a.sx, a.sy);
         ctx.lineTo(fp.sx, fp.sy);
-        ctx.strokeStyle = "#fb7185";
+        ctx.strokeStyle = "#e11d48";
         ctx.lineWidth = 2.2;
         ctx.stroke();
       }
 
       if (v3.showLabels) {
-        ctx.font = "bold 10px Inter, sans-serif";
+        ctx.font = "bold 10px Inter, Arial, sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillStyle = isWhite ? "#0f172a" : "#f8fafc";
@@ -1790,27 +2673,97 @@ function renderCastep3DScene() {
       }
     } else if (item.type === "site") {
       const s = item.data;
-      const r = s.isSelected ? 7.5 : 4.5;
+      const r = s.isSelected ? 7.0 : 4.5;
       ctx.save();
       ctx.translate(s.sx, s.sy);
       ctx.rotate(Math.PI / 4);
-      ctx.fillStyle = s.isSelected ? "#facc15" : "rgba(56, 189, 248, 0.78)";
-      ctx.strokeStyle = s.isSelected ? "#dc2626" : "#0284c7";
-      ctx.lineWidth = s.isSelected ? 2.2 : 1.2;
+      ctx.fillStyle = s.isSelected ? "#facc15" : "rgba(14, 165, 233, 0.80)";
+      ctx.strokeStyle = s.isSelected ? "#dc2626" : "#0369a1";
+      ctx.lineWidth = s.isSelected ? 2.0 : 1.2;
       ctx.fillRect(-r, -r, r * 2, r * 2);
       ctx.strokeRect(-r, -r, r * 2, r * 2);
       ctx.restore();
       if (s.isSelected) {
         ctx.font = "bold 10.5px Inter, sans-serif";
-        ctx.fillStyle = "#fde047";
+        ctx.fillStyle = isWhite ? "#b91c1c" : "#fde047";
         ctx.textAlign = "center";
-        ctx.fillText(`🎯 ${s.shortLabel}`, s.sx, s.sy - 13);
+        ctx.fillText(`🎯 ${s.shortLabel}`, s.sx, s.sy - 12);
       }
     }
   });
 
+  // 4) On-Canvas VESTA Interatomic Distance & Bond Angle Callouts
+  (v3.distanceMeasurements || []).forEach(m => {
+    const p1 = project(m.c1[0], m.c1[1], m.c1[2]);
+    const p2 = project(m.c2[0], m.c2[1], m.c2[2]);
+    ctx.save();
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.moveTo(p1.sx, p1.sy);
+    ctx.lineTo(p2.sx, p2.sy);
+    ctx.strokeStyle = "#dc2626";
+    ctx.lineWidth = 2.0;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const mx = (p1.sx + p2.sx) / 2, my = (p1.sy + p2.sy) / 2;
+    const txt = `${m.distA.toFixed(3)} Å`;
+    ctx.font = "bold 10.5px Consolas, monospace";
+    const tw = ctx.measureText(txt).width + 10;
+    ctx.fillStyle = "rgba(254, 242, 242, 0.94)";
+    ctx.strokeStyle = "#dc2626";
+    ctx.lineWidth = 1.2;
+    ctx.fillRect(mx - tw / 2, my - 9, tw, 18);
+    ctx.strokeRect(mx - tw / 2, my - 9, tw, 18);
+    ctx.fillStyle = "#991b1b";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(txt, mx, my);
+    ctx.restore();
+  });
+
+  (v3.angleMeasurements || []).forEach(m => {
+    const p1 = project(m.c1[0], m.c1[1], m.c1[2]);
+    const p2 = project(m.c2[0], m.c2[1], m.c2[2]);
+    const p3 = project(m.c3[0], m.c3[1], m.c3[2]);
+    ctx.save();
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(p1.sx, p1.sy);
+    ctx.lineTo(p2.sx, p2.sy);
+    ctx.lineTo(p3.sx, p3.sy);
+    ctx.strokeStyle = "#7c3aed";
+    ctx.lineWidth = 1.8;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const txt = `${m.angleDeg.toFixed(1)}°`;
+    ctx.font = "bold 10.5px Consolas, monospace";
+    const tw = ctx.measureText(txt).width + 10;
+    ctx.fillStyle = "rgba(245, 243, 255, 0.94)";
+    ctx.strokeStyle = "#7c3aed";
+    ctx.lineWidth = 1.2;
+    ctx.fillRect(p2.sx - tw / 2, p2.sy - 24, tw, 18);
+    ctx.strokeRect(p2.sx - tw / 2, p2.sy - 24, tw, 18);
+    ctx.fillStyle = "#5b21b6";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(txt, p2.sx, p2.sy - 15);
+    ctx.restore();
+  });
+
+  // 5) Draw Bottom-Left VESTA 3D RGB Coordinate Axis Triad (a, b, c)
+  drawVestaAxisTriad(ctx, width, height, vecs, R, isWhite);
+
+  const cpuMs = Math.max(0, Math.round(performance.now() - t0));
+  v3.lastStats = {
+    atomsCount: projectedAtoms.length,
+    unitCellAtoms: baseAtoms.length,
+    bondsCount: bonds.length,
+    polyCount,
+    cpuMs
+  };
   v3.renderedAtomsScreen = projectedAtoms;
   ctx.restore();
+  updateCastep3DSelectionHud();
 }
 window.renderCastep3DScene = renderCastep3DScene;
 
@@ -1865,9 +2818,11 @@ function afterCastepStructureModified(toastMsg = "") {
 
   syncCastepStructureToBuilderInputs();
   detectCastepAdsorptionSites();
+  renderVestaObjectsTab();
   renderCastepAtomsTable();
   updateCastepKpiBar();
   renderCastep3DScene();
+  updateVestaOutputConsole();
   updateCastep3DSelectionHud();
   refreshCastepFileEditorContent();
   if (toastMsg && typeof showToast === "function") showToast(toastMsg, "success");
