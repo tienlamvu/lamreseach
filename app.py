@@ -1900,6 +1900,8 @@ def _parse_castep_bands_backend(bands_path: str, e_window: float = 12.0):
         with open(bands_path, "r", encoding="latin1", errors="ignore") as f:
             lines = f.readlines()
         nk = 0; ns = 1; neig = 0; ef_ha = 0.0; nelec = 0.0
+        ef_ha_spins = []
+        nelec_spins = []
         i = 0
         while i < len(lines):
             l = lines[i].strip()
@@ -1908,17 +1910,27 @@ def _parse_castep_bands_backend(bands_path: str, e_window: float = 12.0):
             elif l.startswith("Number of spin components"):
                 ns = int(l.split()[-1])
             elif l.startswith("Number of electrons"):
-                nelec = float(l.split()[3])
+                nums = []
+                for tok in l.split()[3:]:
+                    try:
+                        nums.append(float(tok))
+                    except Exception:
+                        pass
+                if nums:
+                    nelec_spins = nums
+                    nelec = sum(nums) if len(nums) > 1 else nums[0]
             elif l.startswith("Number of eigenvalues"):
                 neig = int(l.split()[3])
             elif l.startswith("Fermi energ"):
-                parts = l.split()
-                for tok in reversed(parts):
+                nums = []
+                for tok in l.split():
                     try:
-                        ef_ha = float(tok)
-                        break
+                        nums.append(float(tok))
                     except Exception:
                         pass
+                if nums:
+                    ef_ha_spins = nums
+                    ef_ha = sum(nums) / len(nums)
             elif l.startswith("Unit cell vectors"):
                 i += 4
                 break
@@ -1939,7 +1951,7 @@ def _parse_castep_bands_backend(bands_path: str, e_window: float = 12.0):
                     for b in range(neig):
                         if i < len(lines):
                             val_ha = float(lines[i].strip())
-                            ev_list.append(round((val_ha - ef_ha) * HA_EV, 4))
+                            ev_list.append(round((val_ha - ef_ha) * HA_EV, 5))
                             i += 1
                     spins.append(ev_list)
                 if 0 <= kidx < len(kpts):
@@ -1951,20 +1963,26 @@ def _parse_castep_bands_backend(bands_path: str, e_window: float = 12.0):
             return None
         keep_bands = []
         for b in range(neig):
-            vals = [kp["e"][0][b] for kp in kpts if b < len(kp["e"][0])]
+            vals = []
+            for kp in kpts:
+                for sp in kp["e"]:
+                    if b < len(sp):
+                        vals.append(sp[b])
             if vals and max(vals) >= -e_window and min(vals) <= e_window:
                 keep_bands.append(b)
         all_e_by_k = [kp["e"] for kp in kpts]
         for kp in kpts:
-            kp["e"] = [[round(sp[b], 4) for b in keep_bands if b < len(sp)] for sp in kp["e"]]
+            kp["e"] = [[round(sp[b], 5) for b in keep_bands if b < len(sp)] for sp in kp["e"]]
         return {
             "nk": len(kpts),
             "ns": ns,
             "neig": len(keep_bands),
             "total_bands": neig,
-            "nelec": nelec,
+            "nelec": round(nelec, 4),
+            "nelec_spins": [round(x, 4) for x in nelec_spins],
             "ef_ha": round(ef_ha, 6),
-            "ef_ev": round(ef_ha * HA_EV, 4),
+            "ef_ev": round(ef_ha * HA_EV, 5),
+            "ef_ev_spins": [round(x * HA_EV, 5) for x in ef_ha_spins],
             "kpoints": kpts,
             "_all_e_by_k": all_e_by_k,
         }
@@ -2075,8 +2093,8 @@ def _parse_pdos_bin_backend(pdos_path: str, bands_obj: dict, species_order: list
             if ckey not in chan_meta:
                 chan_meta[ckey] = {"element": el, "ion": ion, "atom": f"{el}{ion}", "orbital": l_ch}
 
-        # Build fine energy histogram grid [-12.0, +8.0] eV (800 bins, dE = 0.025 eV)
-        e_min, e_max, n_bins = -12.0, 8.0, 800
+        # Build fine energy histogram grid [-20.0, +15.0] eV (1400 bins, dE = 0.025 eV)
+        e_min, e_max, n_bins = -20.0, 15.0, 1400
         dE = (e_max - e_min) / n_bins
         inv_dE = 1.0 / dE
         chan_keys = sorted(chan_meta.keys(), key=lambda k: (chan_meta[k]["element"], chan_meta[k]["ion"], "spdf".find(chan_meta[k]["orbital"])))
@@ -2194,6 +2212,7 @@ def _parse_pdos_bin_backend(pdos_path: str, bands_obj: dict, species_order: list
             "e_max": e_max,
             "n_bins": n_bins,
             "dE": dE,
+            "ef_ev": bands_obj.get("ef_ev", 0.0),
             "elements": species_order,
             "total_hist": total_out,
             "channels": channels_out,
