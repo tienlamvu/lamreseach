@@ -1682,12 +1682,14 @@ async def compare_word_documents_api(request: Request):
 # Materials Studio & CASTEP Simulation Studio Endpoints (Local Machine Bridge)
 # ============================================================================
 
-CASTEP_DEFAULT_ROOTS = [
-    r"D:\DATA LAM\DATA TINH TOAN\2026",
-    r"C:\Users\Vu Tien Lam\Documents\Materials Studio Projects",
-    r"D:\Data_Server",
-    r"D:\DATA LAM\DATA TINH TOAN\2025",
-]
+def _discover_default_castep_roots():
+    candidates = [
+        os.path.expanduser(r"~\Documents\Materials Studio Projects"),
+        r"D:\DATA LAM\DATA TINH TOAN\2026",
+        r"D:\Data_Server",
+    ]
+    return [p for p in candidates if p and os.path.isdir(p)]
+
 
 def _detect_castep_processes():
     import subprocess
@@ -1703,6 +1705,129 @@ def _detect_castep_processes():
     except Exception:
         pass
     return procs
+
+
+def _extract_cell_geometry_from_folder(folder: str, seed: str):
+    """Return (volume_A3, c_length_A, lattice_vectors) from .cell or .castep in folder."""
+    import math
+    vol = None
+    c_len = None
+    vecs = None
+
+    def _vecs_vol_c(v):
+        a, b, c = v[0], v[1], v[2]
+        cross_bc = (
+            b[1]*c[2] - b[2]*c[1],
+            b[2]*c[0] - b[0]*c[2],
+            b[0]*c[1] - b[1]*c[0],
+        )
+        v_det = abs(a[0]*cross_bc[0] + a[1]*cross_bc[1] + a[2]*cross_bc[2])
+        c_mag = math.sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2])
+        return v_det, c_mag
+
+    cell_path = os.path.join(folder, f"{seed}.cell")
+    if not os.path.exists(cell_path):
+        cands = [f for f in os.listdir(folder) if f.lower().endswith(".cell") and not f.lower().endswith(("_bandstr.cell", "_dos.cell", "_optics.cell"))]
+        if cands:
+            cell_path = os.path.join(folder, cands[0])
+    if os.path.exists(cell_path):
+        try:
+            with open(cell_path, "r", encoding="latin1", errors="ignore") as f:
+                txt = f.read()
+            m_cart = re.search(r"%BLOCK\s+LATTICE_CART\s*(.*?)%ENDBLOCK\s+LATTICE_CART", txt, re.I | re.S)
+            if m_cart:
+                rows = []
+                scale = 1.0
+                for line in m_cart.group(1).splitlines():
+                    line = line.split("#")[0].split("!")[0].strip()
+                    if not line:
+                        continue
+                    if line.lower().startswith("bohr"):
+                        scale = 0.529177210903
+                        continue
+                    if line.lower().startswith("ang"):
+                        scale = 1.0
+                        continue
+                    parts = line.split()
+                    if len(parts) >= 3:
+                        try:
+                            rows.append([float(parts[0])*scale, float(parts[1])*scale, float(parts[2])*scale])
+                        except Exception:
+                            pass
+                if len(rows) >= 3:
+                    vecs = rows[:3]
+                    vol, c_len = _vecs_vol_c(vecs)
+            if vol is None:
+                m_abc = re.search(r"%BLOCK\s+LATTICE_ABC\s*(.*?)%ENDBLOCK\s+LATTICE_ABC", txt, re.I | re.S)
+                if m_abc:
+                    nums = []
+                    scale = 1.0
+                    for line in m_abc.group(1).splitlines():
+                        line = line.split("#")[0].split("!")[0].strip()
+                        if not line:
+                            continue
+                        if line.lower().startswith("bohr"):
+                            scale = 0.529177210903
+                            continue
+                        if line.lower().startswith("ang"):
+                            continue
+                        for p in line.split():
+                            try:
+                                nums.append(float(p))
+                            except Exception:
+                                pass
+                    if len(nums) >= 6:
+                        a, b, c = nums[0]*scale, nums[1]*scale, nums[2]*scale
+                        al, be, ga = math.radians(nums[3]), math.radians(nums[4]), math.radians(nums[5])
+                        cal, cbe, cga = math.cos(al), math.cos(be), math.cos(ga)
+                        vol = a * b * c * math.sqrt(max(1e-12, 1 - cal*cal - cbe*cbe - cga*cga + 2*cal*cbe*cga))
+                        c_len = c
+        except Exception:
+            pass
+
+    if vol is None:
+        castep_path = os.path.join(folder, f"{seed}.castep")
+        if os.path.exists(castep_path):
+            try:
+                with open(castep_path, "r", encoding="latin1", errors="ignore") as f:
+                    txt = f.read(200000)
+                mv = re.findall(r"Current cell volume\s*=\s*([\d.]+)\s*A\*\*3", txt)
+                if mv:
+                    vol = float(mv[-1])
+                mc = re.findall(r"\bc\s*=\s*([\d.]+)\s+gamma\s*=", txt)
+                if mc:
+                    c_len = float(mc[-1])
+            except Exception:
+                pass
+
+    return (vol if (vol and vol > 1e-6) else 1.0, c_len if (c_len and c_len > 1e-6) else 1.0, vecs)
+
+
+def _normalize_castep_seed(filename: str):
+    """Extract base CASTEP calculation seed by stripping standard Materials Studio suffixes."""
+    name = filename
+    lower = name.lower()
+    for ext in (
+        ".cell", ".param", ".castep", ".geom", ".bands", ".xcd", ".xsd", ".cif",
+        ".chdiff", ".charg_frm", ".den_fmt", ".cube", ".xyz", ".bib", ".ome_bin",
+        ".pdos_bin", ".castep_bin", ".cst_esp", ".check", ".kptaux", ".trjaux", ".xgd"
+    ):
+        if lower.endswith(ext):
+            name = name[:-len(ext)]
+            break
+    # Strip trailing copy counters like " (2)", " (3)"
+    name = re.sub(r"\s*\(\d+\)\s*$", "", name).strip()
+    # Strip Materials Studio chart & sub-calculation suffixes
+    for suf in (
+        " Optical Properties", " Partial Density of States", " Density of States",
+        " Band Structure", " Convergence", " Energies", " Potential", " PDOS", " DOS",
+        "_BandStr", "_DOS", "_Optics", "_Efield", "_Phonon", "_ELF", "_MagRes"
+    ):
+        if name.lower().endswith(suf.lower()) and len(name) > len(suf):
+            name = name[:-len(suf)].strip()
+            break
+    return name or filename
+
 
 def _parse_xcd_file_backend(xml_text: str, is_band: bool = False):
     if not xml_text:
@@ -1732,7 +1857,7 @@ def _parse_xcd_file_backend(xml_text: str, is_band: bool = False):
                         segments.append(cur_seg)
                         cur_seg = []
                 else:
-                    cur_seg.append([round(x, 4), round(y, 4)])
+                    cur_seg.append([round(x, 5), round(y, 5)])
             except Exception:
                 pass
         if cur_seg:
@@ -1742,7 +1867,7 @@ def _parse_xcd_file_backend(xml_text: str, is_band: bool = False):
             ys = [pt[1] for pt in seg]
             if not ys:
                 continue
-            if is_band and (max(ys) < -8.0 or min(ys) > 8.0):
+            if is_band and (max(ys) < -10.0 or min(ys) > 10.0):
                 continue
             filtered.append(seg)
         series_list.append({"name": sname, "segments": filtered})
@@ -1754,8 +1879,9 @@ def _parse_xcd_file_backend(xml_text: str, is_band: bool = False):
         "series": series_list,
     }
 
-def _parse_castep_bands_backend(bands_path: str, e_window: float = 8.5):
-    if not os.path.exists(bands_path):
+
+def _parse_castep_bands_backend(bands_path: str, e_window: float = 12.0):
+    if not bands_path or not os.path.exists(bands_path):
         return None
     HA_EV = 27.211386245988
     try:
@@ -1774,7 +1900,13 @@ def _parse_castep_bands_backend(bands_path: str, e_window: float = 8.5):
             elif l.startswith("Number of eigenvalues"):
                 neig = int(l.split()[3])
             elif l.startswith("Fermi energ"):
-                ef_ha = float(l.split()[5])
+                parts = l.split()
+                for tok in reversed(parts):
+                    try:
+                        ef_ha = float(tok)
+                        break
+                    except Exception:
+                        pass
             elif l.startswith("Unit cell vectors"):
                 i += 4
                 break
@@ -1799,7 +1931,7 @@ def _parse_castep_bands_backend(bands_path: str, e_window: float = 8.5):
                             i += 1
                     spins.append(ev_list)
                 if 0 <= kidx < len(kpts):
-                    kpts[kidx] = {"k": [round(kx, 4), round(ky, 4), round(kz, 4)], "w": round(wt, 4), "e": spins}
+                    kpts[kidx] = {"k": [round(kx, 5), round(ky, 5), round(kz, 5)], "w": round(wt, 5), "e": spins}
             else:
                 i += 1
         kpts = [k for k in kpts if k is not None]
@@ -1811,7 +1943,7 @@ def _parse_castep_bands_backend(bands_path: str, e_window: float = 8.5):
             if vals and max(vals) >= -e_window and min(vals) <= e_window:
                 keep_bands.append(b)
         for kp in kpts:
-            kp["e"] = [[round(sp[b], 3) for b in keep_bands if b < len(sp)] for sp in kp["e"]]
+            kp["e"] = [[round(sp[b], 4) for b in keep_bands if b < len(sp)] for sp in kp["e"]]
         return {
             "nk": len(kpts),
             "ns": ns,
@@ -1826,54 +1958,278 @@ def _parse_castep_bands_backend(bands_path: str, e_window: float = 8.5):
         return None
 
 
+def _summarize_volumetric_grid(raw_tuple, source_file: str, kind: str, cell_vol_a3: float, c_len_a: float):
+    """
+    Pure-Python (zero numpy dependency) conversion of a 3D CASTEP volumetric grid
+    in raw electrons/cell units into exact physical e/A^3, planar-averaged DeltaRho(z) [e/A^3],
+    linear density [e/A], and cumulative charge transfer DeltaQ(z) [e].
+    """
+    import math
+    ngx, ngy, ngz, flat_cell = raw_tuple
+    vol = cell_vol_a3 if (cell_vol_a3 and cell_vol_a3 > 1e-6) else 1.0
+    c_len = c_len_a if (c_len_a and c_len_a > 1e-6) else 1.0
+    has_real_vol = cell_vol_a3 is not None and cell_vol_a3 > 1e-3
+    inv_vol = 1.0 / vol
+
+    nxy = ngx * ngy
+    total_pts = max(1, nxy * ngz)
+    sum_z = [0.0] * ngz
+    min_ea3 = 1e30
+    max_ea3 = -1e30
+    sum_cell = 0.0
+    sum_sq_ea3 = 0.0
+
+    # Fast indexed loop over flattened (ix * ngy + iy) * ngz + iz array
+    for xy in range(nxy):
+        base = xy * ngz
+        for iz in range(ngz):
+            v_cell = flat_cell[base + iz]
+            sum_z[iz] += v_cell
+            sum_cell += v_cell
+            v_ea3 = v_cell * inv_vol
+            if v_ea3 < min_ea3:
+                min_ea3 = v_ea3
+            if v_ea3 > max_ea3:
+                max_ea3 = v_ea3
+            sum_sq_ea3 += v_ea3 * v_ea3
+
+    mean_ea3 = (sum_cell / total_pts) * inv_vol
+    std_ea3 = math.sqrt(max(0.0, (sum_sq_ea3 / total_pts) - mean_ea3 * mean_ea3))
+
+    planar_ea3 = []
+    planar_ea = []
+    delta_q_z = []
+    cum_q = 0.0
+    max_abs_dq = 0.0
+    inv_nxy = 1.0 / max(1, nxy)
+    inv_ngz = 1.0 / max(1, ngz)
+    inv_c = 1.0 / c_len
+
+    for iz in range(ngz):
+        m_cell = sum_z[iz] * inv_nxy
+        planar_ea3.append(m_cell * inv_vol)
+        planar_ea.append(m_cell * inv_c)
+        cum_q += m_cell * inv_ngz
+        delta_q_z.append(cum_q)
+        if abs(cum_q) > max_abs_dq:
+            max_abs_dq = abs(cum_q)
+
+    def _ds1d(arr, max_n=200):
+        n = len(arr)
+        if n <= max_n:
+            return [round(float(x), 7) for x in arr]
+        return [round(float(arr[int(round(i * (n - 1) / (max_n - 1)))]), 7) for i in range(max_n)]
+
+    nx_s, ny_s, nz_s = min(20, ngx), min(20, ngy), min(44, ngz)
+    ix_list = [int(round(i * (ngx - 1) / max(1, nx_s - 1))) if nx_s > 1 else 0 for i in range(nx_s)]
+    iy_list = [int(round(j * (ngy - 1) / max(1, ny_s - 1))) if ny_s > 1 else 0 for j in range(ny_s)]
+    iz_list = [int(round(k * (ngz - 1) / max(1, nz_s - 1))) if nz_s > 1 else 0 for k in range(nz_s)]
+
+    sub_flat = []
+    for ix in ix_list:
+        for iy in iy_list:
+            base = (ix * ngy + iy) * ngz
+            for iz in iz_list:
+                sub_flat.append(round(float(flat_cell[base + iz] * inv_vol), 6))
+
+    return {
+        "source_file": os.path.basename(source_file),
+        "kind": kind,
+        "unit": "e/Å³" if has_real_vol else "e/cell",
+        "cell_volume_a3": round(float(vol), 4),
+        "c_length_a": round(float(c_len), 4),
+        "ngx": int(ngx),
+        "ngy": int(ngy),
+        "ngz": int(ngz),
+        "sample_dims": [int(nx_s), int(ny_s), int(nz_s)],
+        "min_val": round(float(min_ea3), 6),
+        "max_val": round(float(max_ea3), 6),
+        "std_val": round(float(std_ea3), 6),
+        "mean_cell_electrons": round(float(sum_cell / total_pts), 6),
+        "max_abs_dq_e": round(float(max_abs_dq), 6),
+        "profile_z": _ds1d(planar_ea3, 200),
+        "profile_z_linear": _ds1d(planar_ea, 200),
+        "delta_q_z": _ds1d(delta_q_z, 200),
+        "grid3d_flat": sub_flat,
+    }
+
+
+def _read_chdiff_grid_raw(filepath: str):
+    import struct
+    from array import array
+    with open(filepath, "rb") as f:
+        raw = f.read()
+    if len(raw) < 28:
+        return None
+    endian = ">"
+    rlen1, ngx, ngy, ngz, rlen1_end = struct.unpack(">5i", raw[:20])
+    if rlen1 != 12 or rlen1_end != 12 or ngx <= 0 or ngy <= 0 or ngz <= 0 or ngx > 2048:
+        endian = "<"
+        rlen1, ngx, ngy, ngz, rlen1_end = struct.unpack("<5i", raw[:20])
+        if rlen1 != 12 or rlen1_end != 12 or ngx <= 0 or ngy <= 0 or ngz <= 0 or ngx > 2048:
+            return None
+
+    flat = array("d", [0.0]) * (ngx * ngy * ngz)
+    offset = 20
+    total_len = len(raw)
+    fmt_c128 = f"{endian}{ngz * 2}d"
+    fmt_f64 = f"{endian}{ngz}d"
+    rec_hdr_fmt = f"{endian}3i"
+
+    for _ in range(ngx * ngy):
+        if offset + 12 > total_len:
+            break
+        rlen, ix, iy = struct.unpack_from(rec_hdr_fmt, raw, offset)
+        if offset + 4 + rlen + 4 > total_len:
+            break
+        if 1 <= ix <= ngx and 1 <= iy <= ngy:
+            base = ((ix - 1) * ngy + (iy - 1)) * ngz
+            if rlen == 8 + ngz * 16:
+                vals = struct.unpack_from(fmt_c128, raw, offset + 12)
+                for iz in range(ngz):
+                    flat[base + iz] = vals[iz * 2]
+            elif rlen == 8 + ngz * 8:
+                vals = struct.unpack_from(fmt_f64, raw, offset + 12)
+                for iz in range(ngz):
+                    flat[base + iz] = vals[iz]
+        offset += 4 + rlen + 4
+    return (ngx, ngy, ngz, flat)
+
+
+def _read_charg_frm_grid_raw(filepath: str):
+    from array import array
+    ia_list, ib_list, ic_list, val_list = [], [], [], []
+    ngx = ngy = ngz = 0
+    with open(filepath, "r", encoding="latin1", errors="ignore") as f:
+        for line in f:
+            parts = line.split()
+            if len(parts) < 4:
+                continue
+            try:
+                ia = int(parts[0]); ib = int(parts[1]); ic = int(parts[2]); val = float(parts[3])
+                ia_list.append(ia); ib_list.append(ib); ic_list.append(ic); val_list.append(val)
+                if ia > ngx: ngx = ia
+                if ib > ngy: ngy = ib
+                if ic > ngz: ngz = ic
+            except Exception:
+                continue
+    if not val_list or ngx <= 0 or ngy <= 0 or ngz <= 0:
+        return None
+    flat = array("d", [0.0]) * (ngx * ngy * ngz)
+    for ia, ib, ic, v in zip(ia_list, ib_list, ic_list, val_list):
+        flat[((ia - 1) * ngy + (ib - 1)) * ngz + (ic - 1)] = v
+    return (ngx, ngy, ngz, flat)
+
+
+def _parse_chdiff_binary_backend(filepath: str, cell_vol_a3: float = 1.0, c_len_a: float = 1.0):
+    if not filepath or not os.path.exists(filepath):
+        return None
+    try:
+        raw_t = _read_chdiff_grid_raw(filepath)
+        if raw_t is None:
+            return None
+        return _summarize_volumetric_grid(raw_t, filepath, "chdiff", cell_vol_a3, c_len_a)
+    except Exception:
+        return None
+
+
 @app.get("/api/castep/scan")
-def api_castep_scan(root_path: Optional[str] = None, limit: int = 80):
+def api_castep_scan(root_path: Optional[str] = None, limit: int = 120):
     import time
-    roots = [root_path] if (root_path and os.path.exists(root_path)) else [r for r in CASTEP_DEFAULT_ROOTS if os.path.exists(r)]
+    req_path = (root_path or "").strip()
+    if req_path:
+        if not os.path.exists(req_path) or not os.path.isdir(req_path):
+            raise HTTPException(status_code=404, detail=f"Directory not found on local machine: {req_path}")
+        roots = [req_path]
+    else:
+        roots = _discover_default_castep_roots()
+
     procs = _detect_castep_processes()
     discovered = []
+    relevant_exts = (
+        ".cell", ".param", ".castep", ".geom", ".bands", ".xcd", ".xsd", ".cif",
+        ".chdiff", ".charg_frm", ".den_fmt", ".cube"
+    )
+    skip_dirs = {".git", "node_modules", "__pycache__", "$recycle.bin", "system volume information"}
+
     for base in roots:
         for cur_root, dirs, files in os.walk(base):
-            castep_files = [f for f in files if f.endswith((".cell", ".param", ".castep", "Status.txt", ".xcd", ".geom", ".bands"))]
-            if not any(f.endswith((".cell", ".castep")) for f in castep_files):
+            dirs[:] = [d for d in dirs if d.lower() not in skip_dirs and not d.startswith(".")]
+            rel_files = [f for f in files if f.lower().endswith(relevant_exts) or f.lower() == "status.txt"]
+            if not rel_files:
                 continue
-            cell_files = [f for f in files if f.endswith(".cell") and not f.endswith(("_BandStr.cell", "_DOS.cell", "_Optics.cell"))]
-            castep_logs = [f for f in files if f.endswith(".castep") and not f.endswith(("_BandStr.castep", "_DOS.castep", "_Optics.castep"))]
-            seed = ""
-            if castep_logs:
-                seed = castep_logs[0][:-7]
-            elif cell_files:
-                seed = cell_files[0][:-5]
-            elif any(f.endswith(".cell") for f in files):
-                seed = [f for f in files if f.endswith(".cell")][0][:-5]
-            if not seed:
-                continue
-            mtimes = []
-            for f in castep_files:
-                try:
-                    mtimes.append(os.path.getmtime(os.path.join(cur_root, f)))
-                except Exception:
-                    pass
-            max_mt = max(mtimes) if mtimes else 0
-            has_castep = os.path.exists(os.path.join(cur_root, f"{seed}.castep"))
-            has_status = os.path.exists(os.path.join(cur_root, "Status.txt"))
-            status_str = "Completed" if has_castep else ("Running" if has_status else "Input Ready")
-            if has_status and not has_castep:
-                status_str = "Running"
-            rel_proj = os.path.relpath(cur_root, base) if cur_root.startswith(base) else cur_root
-            discovered.append({
-                "id": "local_" + str(abs(hash(cur_root))),
-                "title": f"{seed} ({os.path.basename(cur_root)})",
-                "project": rel_proj.split(os.sep)[0] if os.sep in rel_proj else os.path.basename(base),
-                "folder": cur_root,
-                "seed": seed,
-                "status": status_str,
-                "mtime": max_mt,
-                "updated_at": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(max_mt)) if max_mt else "",
-                "files_list": sorted([f for f in files if not f.endswith((".castep_bin", ".cst_esp", ".chdiff", ".3ed", ".charg_frm", ".pdos_bin", ".check"))]),
-            })
+
+            # Group files by base calculation seed within cur_root
+            seed_groups = {}
+            status_exists = any(f.lower() == "status.txt" for f in files)
+            for fn in rel_files:
+                if fn.lower() == "status.txt":
+                    continue
+                seed = _normalize_castep_seed(fn)
+                seed_groups.setdefault(seed, []).append(fn)
+
+            # Attach standalone Status.txt to all groups in the folder
+            for seed, sfiles in seed_groups.items():
+                has_struct_or_calc = any(
+                    f.lower().endswith((".cell", ".castep", ".xsd", ".cif", ".chdiff", ".charg_frm", ".bands", ".xcd"))
+                    for f in sfiles
+                )
+                if not has_struct_or_calc:
+                    continue
+                if status_exists and "Status.txt" not in sfiles:
+                    sfiles.append("Status.txt")
+
+                mtimes = []
+                for f in sfiles:
+                    try:
+                        mtimes.append(os.path.getmtime(os.path.join(cur_root, f)))
+                    except Exception:
+                        pass
+                max_mt = max(mtimes) if mtimes else 0
+
+                has_castep = any(f.lower() == f"{seed.lower()}.castep" for f in sfiles)
+                castep_completed = False
+                if has_castep:
+                    try:
+                        with open(os.path.join(cur_root, f"{seed}.castep"), "rb") as cf:
+                            cf.seek(0, os.SEEK_END)
+                            sz = cf.tell()
+                            cf.seek(max(0, sz - 4096))
+                            tail = cf.read().decode("latin1", errors="ignore")
+                            if "Total time" in tail or "finished" in tail.lower():
+                                castep_completed = True
+                    except Exception:
+                        pass
+                if castep_completed:
+                    status_str = "Completed"
+                elif status_exists and not castep_completed:
+                    status_str = "Active / Running"
+                elif has_castep:
+                    status_str = "Completed"
+                else:
+                    status_str = "Input Ready"
+
+                rel_proj = os.path.relpath(cur_root, base) if cur_root.startswith(base) else cur_root
+                job_key = f"{cur_root}::{seed}"
+                discovered.append({
+                    "id": "local_" + str(abs(hash(job_key))),
+                    "title": f"{seed} ({os.path.basename(cur_root)})",
+                    "project": rel_proj.split(os.sep)[0] if os.sep in rel_proj else os.path.basename(base),
+                    "folder": cur_root,
+                    "seed": seed,
+                    "status": status_str,
+                    "mtime": max_mt,
+                    "updated_at": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(max_mt)) if max_mt else "",
+                    "files_list": sorted(sfiles),
+                    "has_chdiff": any(f.lower().endswith(".chdiff") for f in sfiles),
+                    "has_charg_frm": any(f.lower().endswith(".charg_frm") for f in sfiles),
+                    "has_optics": any(("optical" in f.lower() and f.lower().endswith(".xcd")) or f.lower().endswith("_optics.bands") for f in sfiles),
+                    "has_band_dos": any(f.lower().endswith(("_bandstr.bands", "_dos.bands")) or ("band structure" in f.lower() or "dos" in f.lower() or "density of states" in f.lower()) and f.lower().endswith(".xcd") for f in sfiles),
+                })
+
     discovered.sort(key=lambda x: x["mtime"], reverse=True)
     return {
+        "ok": True,
         "processes": procs,
         "roots": roots,
         "total_found": len(discovered),
@@ -1888,56 +2244,216 @@ def api_castep_job_detail(folder: str, seed: Optional[str] = None):
         raise HTTPException(status_code=404, detail=f"Job directory not found: {folder}")
     all_files = sorted([f for f in os.listdir(folder) if os.path.isfile(os.path.join(folder, f))])
     if not seed:
-        cells = [f[:-5] for f in all_files if f.endswith(".cell") and not f.endswith(("_BandStr.cell", "_DOS.cell"))]
-        casteps = [f[:-7] for f in all_files if f.endswith(".castep") and not f.endswith(("_BandStr.castep", "_DOS.castep"))]
+        cells = [f[:-5] for f in all_files if f.lower().endswith(".cell") and not f.lower().endswith(("_bandstr.cell", "_dos.cell", "_optics.cell"))]
+        casteps = [f[:-7] for f in all_files if f.lower().endswith(".castep") and not f.lower().endswith(("_bandstr.castep", "_dos.castep", "_optics.castep"))]
         seed = (casteps[0] if casteps else (cells[0] if cells else "CASTEP_Job"))
 
-    def _read(fname, limit_b=300000):
+    def _read(fname, limit_b=500000):
+        if not fname:
+            return ""
         fp = os.path.join(folder, fname)
         if not os.path.exists(fp):
             return ""
         with open(fp, "r", encoding="latin1", errors="ignore") as f:
             return f.read(limit_b)
 
-    mtime = max([os.path.getmtime(os.path.join(folder, f)) for f in all_files]) if all_files else time.time()
-    band_xcd = _parse_xcd_file_backend(_read(f"{seed} Band Structure.xcd", 2000000), is_band=True)
-    dos_xcd = _parse_xcd_file_backend(_read(f"{seed} DOS.xcd", 1500000))
-    pdos_xcd = _parse_xcd_file_backend(_read(f"{seed} PDOS.xcd", 1500000))
-    conv_xcd = _parse_xcd_file_backend(_read(f"{seed} Convergence.xcd", 500000))
-    ener_xcd = _parse_xcd_file_backend(_read(f"{seed} Energies.xcd", 500000))
-    opt_fname = next((f for f in all_files if "optical properties.xcd" in f.lower()), f"{seed} Optical Properties.xcd")
-    optical_xcd = _parse_xcd_file_backend(_read(opt_fname, 1500000))
+    def _find_match(pred):
+        # Prefer files starting with seed
+        for f in all_files:
+            if f.lower().startswith(seed.lower()) and pred(f.lower()):
+                return f
+        for f in all_files:
+            if pred(f.lower()):
+                return f
+        return None
 
-    bandstr_bands = _parse_castep_bands_backend(os.path.join(folder, f"{seed}_BandStr.bands"))
-    dos_bands = _parse_castep_bands_backend(os.path.join(folder, f"{seed}_DOS.bands")) or _parse_castep_bands_backend(os.path.join(folder, f"{seed}.bands"))
+    mtime = max([os.path.getmtime(os.path.join(folder, f)) for f in all_files]) if all_files else time.time()
+
+    band_xcd_f = _find_match(lambda l: l.endswith(".xcd") and "band structure" in l)
+    pdos_xcd_f = _find_match(lambda l: l.endswith(".xcd") and ("pdos" in l or "partial density of states" in l))
+    dos_xcd_f = _find_match(lambda l: l.endswith(".xcd") and ("density of states" in l or " dos" in l or l == "dos.xcd") and "partial" not in l and "pdos" not in l)
+    conv_xcd_f = _find_match(lambda l: l.endswith(".xcd") and "convergence" in l)
+    ener_xcd_f = _find_match(lambda l: l.endswith(".xcd") and "energies" in l)
+
+    band_xcd = _parse_xcd_file_backend(_read(band_xcd_f, 2500000), is_band=True)
+    dos_xcd = _parse_xcd_file_backend(_read(dos_xcd_f, 2000000))
+    pdos_xcd = _parse_xcd_file_backend(_read(pdos_xcd_f, 2000000))
+    conv_xcd = _parse_xcd_file_backend(_read(conv_xcd_f, 500000))
+    ener_xcd = _parse_xcd_file_backend(_read(ener_xcd_f, 500000))
+
+    # Parse ALL optical .xcd files in the folder (Absorption, Re/Im Epsilon, Refractive, Reflectivity, Loss, Conductivity)
+    opt_files = [
+        f for f in all_files
+        if f.lower().endswith(".xcd") and any(k in f.lower() for k in ("optical", "dielectric", "absorption", "reflectiv", "refractiv", "loss", "conductiv"))
+    ]
+    optical_xcds = []
+    for ofn in opt_files:
+        parsed_opt = _parse_xcd_file_backend(_read(ofn, 2000000))
+        if parsed_opt and parsed_opt.get("series"):
+            parsed_opt["filename"] = ofn
+            optical_xcds.append(parsed_opt)
+    optical_xcd = optical_xcds[0] if optical_xcds else None
+
+    # Exact unit cell volume & c-axis for physical e/A^3 normalization of .chdiff / .charg_frm
+    cell_vol_a3, c_len_a, _ = _extract_cell_geometry_from_folder(folder, seed)
+
+    chdiff_fname = _find_match(lambda l: l.endswith(".chdiff"))
+    chdiff_data = _parse_chdiff_binary_backend(os.path.join(folder, chdiff_fname), cell_vol_a3, c_len_a) if chdiff_fname else None
+    charg_frm_files = [f for f in all_files if f.lower().endswith((".charg_frm", ".den_fmt", ".cube"))]
+
+    bandstr_f = _find_match(lambda l: l.endswith("_bandstr.bands"))
+    dos_bands_f = _find_match(lambda l: l.endswith("_dos.bands")) or _find_match(lambda l: l.endswith(".bands") and not l.endswith(("_bandstr.bands", "_optics.bands")))
+    optics_bands_f = _find_match(lambda l: l.endswith("_optics.bands"))
+
+    bandstr_bands = _parse_castep_bands_backend(os.path.join(folder, bandstr_f)) if bandstr_f else None
+    dos_bands = _parse_castep_bands_backend(os.path.join(folder, dos_bands_f)) if dos_bands_f else None
+    optics_bands = _parse_castep_bands_backend(os.path.join(folder, optics_bands_f)) if optics_bands_f else None
+
+    cif_f = _find_match(lambda l: l.endswith(".cif"))
 
     return {
         "folder": folder,
         "seed": seed,
         "updated_at": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(mtime)),
         "files_list": all_files,
-        "cell_text": _read(f"{seed}.cell"),
-        "param_text": _read(f"{seed}.param"),
-        "castep_text": _read(f"{seed}.castep"),
-        "geom_text": _read(f"{seed}.geom"),
+        "cell_text": _read(_find_match(lambda l: l.endswith(".cell") and not l.endswith(("_bandstr.cell", "_dos.cell", "_optics.cell")))),
+        "param_text": _read(_find_match(lambda l: l.endswith(".param") and not l.endswith(("_bandstr.param", "_dos.param", "_optics.param")))),
+        "castep_text": _read(_find_match(lambda l: l.endswith(".castep") and not l.endswith(("_bandstr.castep", "_dos.castep", "_optics.castep")))),
+        "optics_castep_text": _read(_find_match(lambda l: l.endswith("_optics.castep")), 200000),
+        "geom_text": _read(_find_match(lambda l: l.endswith(".geom")), 1000000),
         "status_text": _read("Status.txt"),
-        "xsd_text": _read(f"{seed}.xsd", 180000),
+        "xsd_text": _read(_find_match(lambda l: l.endswith(".xsd")), 250000),
+        "cif_text": _read(cif_f, 250000) if cif_f else "",
         "conv_xcd": conv_xcd,
         "ener_xcd": ener_xcd,
         "band_xcd": band_xcd,
         "dos_xcd": dos_xcd,
         "pdos_xcd": pdos_xcd,
         "optical_xcd": optical_xcd,
+        "optical_xcds": optical_xcds,
+        "chdiff_data": chdiff_data,
+        "charg_frm_files": charg_frm_files,
         "bandstr_bands": bandstr_bands,
         "dos_bands": dos_bands,
+        "optics_bands": optics_bands,
     }
+
+
+def _extract_atoms_frac_from_cell(folder: str, seed: str):
+    cell_path = os.path.join(folder, f"{seed}.cell")
+    if not os.path.exists(cell_path):
+        cands = [f for f in os.listdir(folder) if f.lower().endswith(".cell") and not f.lower().endswith(("_bandstr.cell", "_dos.cell", "_optics.cell"))]
+        if cands:
+            cell_path = os.path.join(folder, cands[0])
+    if not os.path.exists(cell_path):
+        return []
+    atoms = []
+    try:
+        with open(cell_path, "r", encoding="latin1", errors="ignore") as f:
+            txt = f.read()
+        m = re.search(r"%BLOCK\s+POSITIONS_FRAC\s*(.*?)%ENDBLOCK\s+POSITIONS_FRAC", txt, re.I | re.S)
+        if m:
+            for line in m.group(1).splitlines():
+                line = line.split("#")[0].split("!")[0].strip()
+                parts = line.split()
+                if len(parts) >= 4:
+                    el = re.sub(r"[^A-Za-z]", "", parts[0])[:2]
+                    try:
+                        atoms.append((el, float(parts[1]) % 1.0, float(parts[2]) % 1.0, float(parts[3]) % 1.0))
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+    return atoms
+
+
+@app.get("/api/castep/charg-frm")
+def api_castep_charg_frm(folder: str, filename: str, seed: Optional[str] = None, subtract_promol: bool = True):
+    """Parse a CASTEP .charg_frm (or .chdiff) file on local disk into exact e/A^3 summary & 3D grid."""
+    import math
+    from array import array
+    fp = os.path.join(folder, os.path.basename(filename))
+    if not os.path.exists(fp):
+        raise HTTPException(status_code=404, detail=f"File not found: {fp}")
+    eff_seed = seed or _normalize_castep_seed(filename)
+    cell_vol_a3, c_len_a, vecs = _extract_cell_geometry_from_folder(folder, eff_seed)
+    if fp.lower().endswith(".chdiff"):
+        grid = _read_chdiff_grid_raw(fp)
+        kind = "chdiff"
+    else:
+        grid = _read_charg_frm_grid_raw(fp)
+        kind = "charg_frm"
+        if grid is not None and subtract_promol and vecs:
+            atoms = _extract_atoms_frac_from_cell(folder, eff_seed)
+            if atoms:
+                ngx, ngy, ngz, flat = grid
+                val_e = {"H":1,"Li":1,"B":3,"C":4,"N":5,"O":6,"F":7,"Na":1,"Mg":2,"Al":3,"Si":4,"P":5,"S":6,"Cl":7,"K":1,"Ti":4,"V":5,"Cr":6,"Mn":7,"Fe":8,"Co":9,"Ni":10,"Cu":11,"Zn":12,"Se":6,"Mo":6,"W":6,"Te":6}
+                aV, bV, cV = vecs[0], vecs[1], vecs[2]
+                # Sample down to fast promolecule subtraction on exact grid (using analytical Gaussian atom superposition)
+                total_pts = ngx * ngy * ngz
+                promol = array("d", [0.0]) * total_pts
+                p_sum = 0.0
+                orig_sum = sum(flat)
+                atom_specs = [(u, v, w, float(val_e.get(el, 4)), 0.65) for (el, u, v, w) in atoms]
+                for ix in range(ngx):
+                    u = ix / ngx
+                    for iy in range(ngy):
+                        v = iy / ngy
+                        base = (ix * ngy + iy) * ngz
+                        for iz in range(ngz):
+                            w = iz / ngz
+                            val = 0.0
+                            for au, av, aw, zv, sig in atom_specs:
+                                du = u - au
+                                if du > 0.5: du -= 1.0
+                                elif du < -0.5: du += 1.0
+                                dv = v - av
+                                if dv > 0.5: dv -= 1.0
+                                elif dv < -0.5: dv += 1.0
+                                dw = w - aw
+                                if dw > 0.5: dw -= 1.0
+                                elif dw < -0.5: dw += 1.0
+                                dx = du*aV[0] + dv*bV[0] + dw*cV[0]
+                                dy = du*aV[1] + dv*bV[1] + dw*cV[1]
+                                dz = du*aV[2] + dv*bV[2] + dw*cV[2]
+                                r2 = dx*dx + dy*dy + dz*dz
+                                arg = r2 / (2.0 * sig * sig)
+                                if arg < 10.0:
+                                    val += zv * math.exp(-arg)
+                            promol[base + iz] = val
+                            p_sum += val
+                if p_sum > 1e-12:
+                    sc = orig_sum / p_sum
+                    diff = array("d", (flat[i] - promol[i] * sc for i in range(total_pts)))
+                    grid = (ngx, ngy, ngz, diff)
+                    kind = "charg_frm_promol"
+    if grid is None:
+        raise HTTPException(status_code=400, detail=f"Failed to parse volumetric grid in {filename}")
+    return _summarize_volumetric_grid(grid, fp, kind, cell_vol_a3, c_len_a)
 
 
 @app.get("/api/castep/gateway")
 def api_castep_gateway_jobs(include_archived: bool = True, limit: int = 120):
     import glob
     import time
-    gw_root = r"C:\ProgramData\BIOVIA\Materials Studio\26.1\Gateway-x64\root_default\dsd"
+    import socket
+
+    hostname = socket.gethostname().lower()
+    gw_candidates = sorted(
+        glob.glob(r"C:\ProgramData\BIOVIA\Materials Studio\*\Gateway-x64\root_default\dsd"),
+        reverse=True,
+    )
+    gw_root = gw_candidates[0] if gw_candidates else ""
+    if not gw_root or not os.path.isdir(gw_root):
+        return {
+            "connected": False,
+            "gateway_host": f"{hostname}_18888",
+            "gateway_root": "",
+            "total_jobs": 0,
+            "archived_total": 0,
+            "jobs": [],
+        }
+
     info_dir = os.path.join(gw_root, "jobs-info")
     arch_dir = os.path.join(gw_root, "jobs-info-archive")
 
@@ -1947,14 +2463,14 @@ def api_castep_gateway_jobs(include_archived: bool = True, limit: int = 120):
             "job_id": jid,
             "description": jid,
             "server": "CASTEP",
-            "owner": "Vu_Tien_Lam",
+            "owner": "",
             "status": "terminated",
             "create_ts": 0,
             "submitted": "-",
             "queue": "-",
             "queued_job_id": "-",
             "process_id": "-",
-            "cpu_cores": 15,
+            "cpu_cores": 0,
             "job_directory": "",
             "is_archived": is_archived,
         }
@@ -2002,15 +2518,18 @@ def api_castep_gateway_jobs(include_archived: bool = True, limit: int = 120):
     if os.path.exists(info_dir):
         for p in sorted(glob.glob(os.path.join(info_dir, "*.sbj"))):
             jobs.append(_parse_sbj(p, False))
-    if include_archived and os.path.exists(arch_dir):
-        arch = [_parse_sbj(p, True) for p in glob.glob(os.path.join(arch_dir, "*.sbj"))]
+    arch_files = glob.glob(os.path.join(arch_dir, "*.sbj")) if os.path.exists(arch_dir) else []
+    if include_archived and arch_files:
+        arch = [_parse_sbj(p, True) for p in arch_files]
         arch.sort(key=lambda x: x["create_ts"], reverse=True)
         jobs.extend(arch[: max(0, limit - len(jobs))])
 
     return {
-        "gateway_host": "desktop-bvgr3ea_18888",
+        "connected": True,
+        "gateway_host": f"{hostname}_18888",
         "gateway_root": gw_root,
         "total_jobs": len(jobs),
+        "archived_total": len(arch_files),
         "jobs": jobs[:limit],
     }
 
