@@ -93,7 +93,7 @@ const TAB_TITLES = {
     "Manage *.cif crystallographic files, lattice parameters, DFT functionals & auto-generate VASP POSCAR"
   ],
   "castep": [
-    "BIOVIA Materials Studio & CASTEP Simulation Studio",
+    "Computational Materials Data Analysis & Simulation Workbench",
     "Live Local Machine Job Manager, 3D Crystal/Slab/Adsorption Builder, Electronic Band Structure, DOS/PDOS & Convergence Analytics"
   ],
   "weekly-report": [
@@ -269,7 +269,7 @@ const TAB_META = {
   "literature": ["📚", "References"],
   "calendar": ["📅", "Calendar & GCal"],
   "structures": ["💎", "Crystal Structures"],
-  "castep": ["⚡", "CASTEP Studio"],
+  "castep": ["📊", "Data Analysis"],
   "weekly-report": ["📽️", "Weekly Report"],
   "manuscript": ["🎯", "Journal Finder & Plag"],
   "toolkit": ["⚛️", "Periodic Table & Calc"],
