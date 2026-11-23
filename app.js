@@ -92,6 +92,10 @@ const TAB_TITLES = {
     "Crystal Structures & Computational Database (*.cif / POSCAR)",
     "Manage *.cif crystallographic files, lattice parameters, DFT functionals & auto-generate VASP POSCAR"
   ],
+  "castep": [
+    "BIOVIA Materials Studio & CASTEP Simulation Studio",
+    "Live Local Machine Job Manager, 3D Crystal/Slab/Adsorption Builder, Electronic Band Structure, DOS/PDOS & Convergence Analytics"
+  ],
   "weekly-report": [
     "Weekly Group Meeting Report & PowerPoint (.pptx) Generator",
     "Compile weekly simulation achievements, DFT calculations & literature review into a 16:9 slide deck"
@@ -257,7 +261,7 @@ function confirmAction(message, itemDesc = "") {
   });
 }
 
-const TABS_ORDER = ["dashboard", "news", "literature", "calendar", "structures", "weekly-report", "manuscript", "toolkit", "cv"];
+const TABS_ORDER = ["dashboard", "news", "literature", "calendar", "structures", "castep", "weekly-report", "manuscript", "toolkit", "cv"];
 
 const TAB_META = {
   "dashboard": ["📊", "Dashboard"],
@@ -265,6 +269,7 @@ const TAB_META = {
   "literature": ["📚", "References"],
   "calendar": ["📅", "Calendar & GCal"],
   "structures": ["💎", "Crystal Structures"],
+  "castep": ["⚡", "CASTEP Studio"],
   "weekly-report": ["📽️", "Weekly Report"],
   "manuscript": ["🎯", "Journal Finder & Plag"],
   "toolkit": ["⚛️", "Periodic Table & Calc"],
@@ -338,6 +343,8 @@ function switchTab(tabId, btnEl) {
     updateCalendarActiveAccountDisplay();
   } else if (tabId === "structures") {
     renderStructuresList();
+  } else if (tabId === "castep") {
+    if (typeof initCastepStudioTab === "function") initCastepStudioTab();
   } else if (tabId === "toolkit") {
     if (typeof renderPeriodicTable === "function") renderPeriodicTable();
   } else if (tabId === "news") {
@@ -12609,6 +12616,9 @@ function renderStructuresList() {
           <button class="btn btn-teal btn-sm" onclick="downloadPoscarById(${s.id})" style="flex:1; height:32px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; justify-content:center; gap:4px;">
             ⚡ POSCAR
           </button>
+          <button class="btn btn-outline btn-sm" onclick="openStructureInCastepStudio(${s.id})" style="flex:1.2; height:32px; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; gap:4px; background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe;" title="Open in full-page CASTEP Studio 3D Supercell/Slab/Adsorption Builder">
+            🧱 CASTEP Studio
+          </button>
         </div>
       </div>
     `;
@@ -12742,6 +12752,7 @@ function renderStructuresList() {
       tdHtml += `
         <td class="mp-td mp-td-actions">
           <div class="mp-row-actions">
+            <button type="button" class="mp-icon-btn" onclick="openStructureInCastepStudio(${s.id})" title="Open in CASTEP Studio 3D Builder (Supercell / Slab / Adsorption)" style="color:#2563eb; font-weight:800; font-size:11px;">⚡</button>
             <button type="button" class="mp-icon-btn" onclick="downloadCifById(${s.id})" title="Download CIF">${svgDownload}</button>
             <button type="button" class="mp-icon-btn" onclick="downloadPoscarById(${s.id})" title="Download VASP POSCAR">${svgPoscar}</button>
             ${canModifyItem ? `
