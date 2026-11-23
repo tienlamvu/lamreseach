@@ -1080,15 +1080,26 @@ function parseCastepBandsTextClient(bandsText) {
   const HA_EV = 27.211386245988;
   const lines = bandsText.replace(/\r\n/g, "\n").split("\n");
   let nk = 0, ns = 1, neig = 0, efHa = 0.0, nelec = 0.0;
+  let efHaSpins = [], nelecSpins = [];
   let i = 0;
   while (i < lines.length) {
     const l = lines[i].trim();
     if (l.startsWith("Number of k-points")) nk = parseInt(l.split(/\s+/).pop(), 10);
     else if (l.startsWith("Number of spin components")) ns = parseInt(l.split(/\s+/).pop(), 10);
-    else if (l.startsWith("Number of electrons")) nelec = parseFloat(l.split(/\s+/)[3]);
-    else if (l.startsWith("Number of eigenvalues")) neig = parseInt(l.split(/\s+/)[3], 10);
-    else if (l.startsWith("Fermi energ")) efHa = parseFloat(l.split(/\s+/)[5]);
-    else if (l.startsWith("Unit cell vectors")) { i += 4; break; }
+    else if (l.startsWith("Number of electrons")) {
+      const nums = l.split(/\s+/).slice(3).map(Number).filter(v => !isNaN(v));
+      if (nums.length) {
+        nelecSpins = nums;
+        nelec = nums.length > 1 ? nums.reduce((a, b) => a + b, 0) : nums[0];
+      }
+    } else if (l.startsWith("Number of eigenvalues")) neig = parseInt(l.split(/\s+/)[3], 10);
+    else if (l.startsWith("Fermi energ")) {
+      const nums = l.split(/\s+/).map(Number).filter(v => !isNaN(v));
+      if (nums.length) {
+        efHaSpins = nums;
+        efHa = nums.reduce((a, b) => a + b, 0) / nums.length;
+      }
+    } else if (l.startsWith("Unit cell vectors")) { i += 4; break; }
     i++;
   }
   const kpts = new Array(Math.max(1, nk)).fill(null);
@@ -1121,15 +1132,17 @@ function parseCastepBandsTextClient(bandsText) {
   }
   const validKpts = kpts.filter(Boolean);
   if (!validKpts.length) return null;
-  return {
-    nk: validKpts.length,
-    ns,
-    neig,
-    nelec,
-    ef_ha: efHa,
-    ef_ev: efHa * HA_EV,
-    kpoints: validKpts
-  };
+    return {
+      nk: validKpts.length,
+      ns,
+      neig,
+      nelec,
+      nelec_spins: nelecSpins,
+      ef_ha: efHa,
+      ef_ev: efHa * HA_EV,
+      ef_ev_spins: efHaSpins.map(x => x * HA_EV),
+      kpoints: validKpts
+    };
 }
 
 // ============================================================================
@@ -4843,7 +4856,7 @@ async function handleCastepPdosFilesUpload(event) {
 }
 window.handleCastepPdosFilesUpload = handleCastepPdosFilesUpload;
 
-function convolveSparseHistGaussian(sparsePairs, eMinHist, dEHist, eGrid, sigma) {
+function convolveSparseHistGaussian(sparsePairs, eMinHist, dEHist, eGrid, sigma, energyShift = 0.0) {
   const nOut = eGrid.length;
   const out = new Float64Array(nOut);
   if (!sparsePairs || !sparsePairs.length) return out;
@@ -4857,7 +4870,7 @@ function convolveSparseHistGaussian(sparsePairs, eMinHist, dEHist, eGrid, sigma)
   for (let p = 0; p < sparsePairs.length; p++) {
     const binIdx = sparsePairs[p][0];
     const wt = sparsePairs[p][1];
-    const ev = eMinHist + (binIdx + 0.5) * dEHist;
+    const ev = eMinHist + (binIdx + 0.5) * dEHist + energyShift;
     if (ev < outMin - cutoff || ev > outMax + cutoff) continue;
     const iStart = Math.max(0, Math.floor((ev - cutoff - outMin) * invOutStep));
     const iEnd = Math.min(nOut - 1, Math.ceil((ev + cutoff - outMin) * invOutStep));
@@ -4874,7 +4887,125 @@ const PDOS_CURVE_PALETTE = [
   "#0891b2", "#db2777", "#4f46e5", "#059669", "#ea580c"
 ];
 
-function buildPdosCurvesFromBin(pb, eGrid, sigma, mode, targetVal, flags) {
+function computeElectronicEnergyAlignment(job, alignMode = "vbm_auto") {
+  // Exact physics synchronization between Materials Studio .xcd (VBM = 0 for semiconductors,
+  // E_F = 0 for metals) and raw CASTEP .bands / .pdos_bin (mid-gap E_F = 0).
+  const bandObj = job?.bandstr_bands || null;
+  const dosObj  = job?.dos_bands || null;
+  const pbObj   = job?.pdos_bin_data || null;
+  const refObj  = bandObj || dosObj;
+
+  // 1) Inspect raw bands eigenvalues across ALL spins & k-points to detect gap & raw VBM/CBM
+  let vbmRaw = -1e9, cbmRaw = 1e9;
+  let anyBandCrossesZero = false;
+  if (refObj && Array.isArray(refObj.kpoints) && refObj.kpoints.length) {
+    const ns = refObj.ns || 1;
+    for (let s = 0; s < ns; s++) {
+      const nb = (refObj.kpoints[0]?.e?.[s] || []).length;
+      for (let b = 0; b < nb; b++) {
+        let bMin = 1e9, bMax = -1e9;
+        for (let k = 0; k < refObj.kpoints.length; k++) {
+          const ev = refObj.kpoints[k]?.e?.[s]?.[b];
+          if (ev === undefined || !Number.isFinite(ev)) continue;
+          if (ev < bMin) bMin = ev;
+          if (ev > bMax) bMax = ev;
+          if (ev <= 0.015 && ev > vbmRaw) vbmRaw = ev;
+          if (ev > 0.015 && ev < cbmRaw) cbmRaw = ev;
+        }
+        if (bMin < -0.025 && bMax > 0.025) anyBandCrossesZero = true;
+      }
+    }
+  }
+  const hasRawGap = (!anyBandCrossesZero && vbmRaw > -1e5 && cbmRaw < 1e5 && (cbmRaw - vbmRaw) >= 0.04);
+
+  // 2) Inspect Materials Studio band_xcd VBM/CBM if present
+  let hasBandXcd = !!(job?.band_xcd?.series?.length);
+  let vbmXcd = -1e9, cbmXcd = 1e9;
+  if (hasBandXcd) {
+    job.band_xcd.series.forEach(s => {
+      (s.segments || []).forEach(seg => {
+        seg.forEach(pt => {
+          const y = pt[1];
+          if (!Number.isFinite(y)) return;
+          if (y <= 0.015 && y > vbmXcd) vbmXcd = y;
+          if (y > 0.015 && y < cbmXcd) cbmXcd = y;
+        });
+      });
+    });
+  }
+  const xcdHasVbmAtZero = hasBandXcd && vbmXcd > -0.03 && vbmXcd <= 0.015 && cbmXcd < 1e5 && (cbmXcd - vbmXcd) >= 0.04;
+
+  // 3) Reconcile any small Fermi header difference between _BandStr.bands and _DOS.bands/.pdos_bin
+  //    e_dos_on_band_axis = e_dos + (ef_dos - ef_bandstr)
+  const efBandEv = (bandObj && Number.isFinite(bandObj.ef_ev)) ? Number(bandObj.ef_ev) : null;
+  const efDosEv  = (dosObj && Number.isFinite(dosObj.ef_ev))
+    ? Number(dosObj.ef_ev)
+    : ((pbObj && Number.isFinite(pbObj.ef_ev)) ? Number(pbObj.ef_ev) : null);
+  const dosToBandEfDelta = (efBandEv !== null && efDosEv !== null) ? (efDosEv - efBandEv) : 0.0;
+
+  let bandXcdShift = 0.0;
+  let bandRawShift = 0.0;
+  let dosXcdShift  = 0.0;
+  let dosRawShift  = dosToBandEfDelta;
+  let label = "E_F = 0.000 eV";
+
+  if (alignMode === "raw_fermi") {
+    // Align EVERYTHING onto raw CASTEP E - E_F = 0
+    bandRawShift = 0.0;
+    dosRawShift = dosToBandEfDelta;
+    if (xcdHasVbmAtZero && hasRawGap) {
+      bandXcdShift = vbmRaw - vbmXcd;
+      dosXcdShift = bandXcdShift;
+      label = `Raw CASTEP E_F = 0 (Band .xcd shifted ${bandXcdShift.toFixed(3)} eV)`;
+    } else {
+      label = "Raw CASTEP E_F = 0.000 eV";
+    }
+  } else {
+    // Default "vbm_auto" (Materials Studio standard):
+    // Semiconductors/insulators -> VBM = 0.000 eV on BOTH Band Structure AND PDOS!
+    // Metals / half-metals      -> E_F = 0.000 eV on BOTH Band Structure AND PDOS!
+    if (xcdHasVbmAtZero && hasRawGap) {
+      const exactShift = vbmXcd - vbmRaw;
+      bandXcdShift = 0.0;
+      dosXcdShift = 0.0;
+      bandRawShift = exactShift;
+      dosRawShift = exactShift + dosToBandEfDelta;
+      label = `VBM = 0.000 eV (PDOS synced ${dosRawShift >= 0 ? "+" : ""}${dosRawShift.toFixed(3)} eV)`;
+    } else if (hasRawGap) {
+      const exactShift = -vbmRaw;
+      bandXcdShift = 0.0;
+      dosXcdShift = 0.0;
+      bandRawShift = exactShift;
+      dosRawShift = exactShift + dosToBandEfDelta;
+      label = `VBM = 0.000 eV (Synced ${exactShift >= 0 ? "+" : ""}${exactShift.toFixed(3)} eV from E_F)`;
+    } else {
+      // Metallic / half-metallic: E_F = 0 on both panels
+      bandXcdShift = 0.0;
+      dosXcdShift = 0.0;
+      bandRawShift = 0.0;
+      dosRawShift = dosToBandEfDelta;
+      label = "E_F = 0.000 eV (Metallic / Half-Metallic)";
+    }
+  }
+
+  return {
+    alignMode,
+    hasRawGap,
+    vbmRaw: vbmRaw > -1e5 ? vbmRaw : null,
+    cbmRaw: cbmRaw < 1e5 ? cbmRaw : null,
+    vbmXcd: vbmXcd > -1e5 ? vbmXcd : null,
+    cbmXcd: cbmXcd < 1e5 ? cbmXcd : null,
+    bandXcdShift,
+    bandRawShift,
+    dosXcdShift,
+    dosRawShift,
+    dosToBandEfDelta,
+    label
+  };
+}
+window.computeElectronicEnergyAlignment = computeElectronicEnergyAlignment;
+
+function buildPdosCurvesFromBin(pb, eGrid, sigma, mode, targetVal, flags, energyShift = 0.0) {
   const isSpin = (pb.ns >= 2);
   const eMinH = pb.e_min, dEH = pb.dE;
   const curves = [];
@@ -4898,10 +5029,10 @@ function buildPdosCurvesFromBin(pb, eGrid, sigma, mode, targetVal, flags) {
     const sumUp = new Float64Array(eGrid.length);
     const sumDn = isSpin ? new Float64Array(eGrid.length) : null;
     for (const ch of chanList) {
-      const u = convolveSparseHistGaussian(ch.up, eMinH, dEH, eGrid, sigma);
+      const u = convolveSparseHistGaussian(ch.up, eMinH, dEH, eGrid, sigma, energyShift);
       for (let i = 0; i < eGrid.length; i++) sumUp[i] += u[i];
       if (isSpin && ch.dn) {
-        const d = convolveSparseHistGaussian(ch.dn, eMinH, dEH, eGrid, sigma);
+        const d = convolveSparseHistGaussian(ch.dn, eMinH, dEH, eGrid, sigma, energyShift);
         for (let i = 0; i < eGrid.length; i++) sumDn[i] += d[i];
       }
     }
@@ -4909,8 +5040,8 @@ function buildPdosCurvesFromBin(pb, eGrid, sigma, mode, targetVal, flags) {
   };
 
   if (flags.showTot && pb.total_hist) {
-    const totUp = convolveSparseHistGaussian(pb.total_hist.up, eMinH, dEH, eGrid, sigma);
-    const totDn = (isSpin && pb.total_hist.dn) ? convolveSparseHistGaussian(pb.total_hist.dn, eMinH, dEH, eGrid, sigma) : null;
+    const totUp = convolveSparseHistGaussian(pb.total_hist.up, eMinH, dEH, eGrid, sigma, energyShift);
+    const totDn = (isSpin && pb.total_hist.dn) ? convolveSparseHistGaussian(pb.total_hist.dn, eMinH, dEH, eGrid, sigma, energyShift) : null;
     curves.push({ label: "Total DOS", color: "#0f172a", up: totUp, dn: totDn, isTotal: true });
   }
 
@@ -4972,6 +5103,8 @@ function renderCastepElectronicPlots() {
   const pdosMode = document.getElementById("castep-pdos-mode")?.value || "element_orbital";
   const pdosTarget = document.getElementById("castep-pdos-target-select")?.value || "all";
   const spinLayout = document.getElementById("castep-pdos-spin-layout")?.value || "mirror";
+  const alignMode = document.getElementById("castep-elec-zero-ref")?.value || "vbm_auto";
+  const align = computeElectronicEnergyAlignment(job, alignMode);
 
   const showTot = document.getElementById("castep-show-dos-total")?.checked !== false;
   const showS = document.getElementById("castep-show-dos-s")?.checked !== false;
@@ -4995,18 +5128,25 @@ function renderCastepElectronicPlots() {
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
-  // 1) Extract Band Structure data
+  // 1) Extract Band Structure data (synchronized to exact shared zero reference!)
   let bandSeries = [];
   let bandTicks = [{ pos: 0, label: "Γ" }, { pos: 0.366, label: "M" }, { pos: 0.577, label: "K" }, { pos: 1.0, label: "Γ" }];
   let gapInfo = null;
   let gapSummary = "";
 
   if (job.band_xcd && job.band_xcd.series && job.band_xcd.series.length) {
-    bandSeries = job.band_xcd.series;
+    const sh = align.bandXcdShift || 0.0;
+    bandSeries = Math.abs(sh) < 1e-6
+      ? job.band_xcd.series
+      : job.band_xcd.series.map(s => ({
+          ...s,
+          segments: (s.segments || []).map(seg => seg.map(pt => [pt[0], pt[1] + sh]))
+        }));
     if (job.band_xcd.ticks && job.band_xcd.ticks.length) bandTicks = job.band_xcd.ticks;
     gapSummary = job.band_xcd.title || "";
   } else if (job.bandstr_bands || job.dos_bands) {
     const bObj = job.bandstr_bands || job.dos_bands;
+    const sh = job.bandstr_bands ? (align.bandRawShift || 0.0) : (align.dosRawShift || 0.0);
     const nk = bObj.kpoints.length;
     for (let s = 0; s < (bObj.ns || 1); s++) {
       const nb = (bObj.kpoints[0]?.e?.[s] || []).length;
@@ -5016,7 +5156,7 @@ function renderCastepElectronicPlots() {
         for (let k = 0; k < nk; k++) {
           const xNorm = nk > 1 ? k / (nk - 1) : 0;
           const yEv = bObj.kpoints[k].e[s][b];
-          if (yEv !== undefined) seg.push([xNorm, yEv]);
+          if (yEv !== undefined) seg.push([xNorm, yEv + sh]);
         }
         segs.push(seg);
       }
@@ -5032,7 +5172,7 @@ function renderCastepElectronicPlots() {
     }
   }
 
-  // 2) Extract PDOS / DOS curves (Priority 1: Exact *.pdos_bin! Priority 2: .xcd! Priority 3: Gaussian DOS from .bands!)
+  // 2) Extract PDOS / DOS curves on the EXACT SAME aligned energy reference as Band Structure!
   const nPts = 280;
   const eGrid = new Array(nPts + 1);
   for (let i = 0; i <= nPts; i++) eGrid[i] = emin + (emax - emin) * (i / nPts);
@@ -5042,12 +5182,17 @@ function renderCastepElectronicPlots() {
   let pdosSourceLabel = "";
 
   if (job.pdos_bin_data && Array.isArray(job.pdos_bin_data.channels) && job.pdos_bin_data.channels.length) {
-    const built = buildPdosCurvesFromBin(job.pdos_bin_data, eGrid, sigma, pdosMode, pdosTarget, { showTot, showS, showP, showD, showF });
+    const built = buildPdosCurvesFromBin(
+      job.pdos_bin_data, eGrid, sigma, pdosMode, pdosTarget,
+      { showTot, showS, showP, showD, showF },
+      align.dosRawShift || 0.0
+    );
     pdosCurves = built.curves;
     isSpinDos = built.isSpin;
     pdosSourceLabel = `Exact CASTEP ${job.pdos_bin_data.source_file} (${isSpinDos ? "Collinear Spin-Polarized" : "Non-Spin"}, ${job.pdos_bin_data.norb} orbitals)`;
   } else if (job.pdos_xcd?.series?.length || job.dos_xcd?.series?.length) {
     const srcSer = job.pdos_xcd?.series?.length ? job.pdos_xcd.series : job.dos_xcd.series;
+    const sh = align.dosXcdShift || 0.0;
     const colorMap = { s: "#2563eb", p: "#16a34a", d: "#dc2626", f: "#9333ea", sum: "#0f172a", total: "#0f172a" };
     pdosSourceLabel = job.pdos_xcd ? "CASTEP PDOS (.xcd)" : "CASTEP DOS (.xcd)";
     srcSer.forEach((s, idx) => {
@@ -5060,11 +5205,12 @@ function renderCastepElectronicPlots() {
       const pts = s.segments?.[0] || [];
       if (!pts.length) return;
       const arr = new Float64Array(eGrid.length);
-      for (let i = 0; i < eGrid.length; i++) arr[i] = Math.max(0, interpSortedXY(pts, eGrid[i]));
+      for (let i = 0; i < eGrid.length; i++) arr[i] = Math.max(0, interpSortedXY(pts, eGrid[i] - sh));
       pdosCurves.push({ label: s.name, color: colorMap[k] || PDOS_CURVE_PALETTE[idx % PDOS_CURVE_PALETTE.length], up: arr, dn: null, isTotal: k.includes("sum") || k.includes("total") });
     });
   } else if (job.dos_bands || job.bandstr_bands) {
     const srcB = job.dos_bands || job.bandstr_bands;
+    const sh = job.dos_bands ? (align.dosRawShift || 0.0) : (align.bandRawShift || 0.0);
     isSpinDos = (srcB.ns >= 2);
     pdosSourceLabel = `Total DOS from CASTEP .bands (${isSpinDos ? "Collinear Spin α/β" : "Non-Spin"})`;
     const upArr = new Float64Array(eGrid.length);
@@ -5076,7 +5222,8 @@ function renderCastepElectronicPlots() {
       const wt = (kp.w || (1.0 / srcB.kpoints.length)) * deg;
       (kp.e || []).forEach((sp, sIdx) => {
         const targetArr = (sIdx === 1 && dnArr) ? dnArr : upArr;
-        sp.forEach(ev => {
+        sp.forEach(evRaw => {
+          const ev = evRaw + sh;
           if (ev < emin - 4 * sigma || ev > emax + 4 * sigma) return;
           for (let g = 0; g < eGrid.length; g++) {
             const z = (eGrid[g] - ev) * invSig;
@@ -5093,7 +5240,10 @@ function renderCastepElectronicPlots() {
     jobId: job.id,
     seed: job.seed || CASTEP_STUDIO_STATE.structure?.formula || "CASTEP",
     material: job.material || CASTEP_STUDIO_STATE.structure?.formula || job.seed || "",
-    layout, emin, emax, sigma, pdosMode, pdosTarget, spinLayout,
+    layout, emin, emax, sigma, pdosMode, pdosTarget, spinLayout, alignMode,
+    dosRawShift: align.dosRawShift || 0.0,
+    bandRawShift: align.bandRawShift || 0.0,
+    alignLabel: align.label,
     showTot, showS, showP, showD, showF, showUp, showDn,
     bandSeries, bandTicks, gapInfo, gapSummary,
     eGrid, pdosCurves, isSpinDos, pdosSourceLabel
@@ -5122,7 +5272,7 @@ function renderCastepElectronicPlots() {
       <span><strong>Electronic:</strong> ${escapeHtml(gapSummary || "Band Dispersion & PDOS")}</span>
       <span style="color:#0369a1;"><strong>PDOS Source:</strong> ${escapeHtml(pdosSourceLabel || "Band Structure Only")}</span>
       <span><strong>BZ Path:</strong> ${escapeHtml(pathLabels)}</span>
-      <span><strong>E<sub>F</sub>:</strong> 0.000 eV</span>
+      <span style="color:#047857;"><strong>Zero Ref:</strong> ${escapeHtml(align.label)}</span>
     `;
   }
 
@@ -6907,9 +7057,11 @@ function buildElectronicExportTables() {
   let pdosCurvesFull = ex.pdosCurves || [];
   let isSpinDos = !!ex.isSpinDos;
   if (job.pdos_bin_data && Array.isArray(job.pdos_bin_data.channels) && job.pdos_bin_data.channels.length) {
-    const rebuilt = buildPdosCurvesFromBin(job.pdos_bin_data, ex.eGrid, ex.sigma, ex.pdosMode, ex.pdosTarget, {
-      showTot: ex.showTot, showS: ex.showS, showP: ex.showP, showD: ex.showD, showF: ex.showF, exportAll: true
-    });
+    const rebuilt = buildPdosCurvesFromBin(
+      job.pdos_bin_data, ex.eGrid, ex.sigma, ex.pdosMode, ex.pdosTarget,
+      { showTot: ex.showTot, showS: ex.showS, showP: ex.showP, showD: ex.showD, showF: ex.showF, exportAll: true },
+      ex.dosRawShift || 0.0
+    );
     pdosCurvesFull = rebuilt.curves;
     isSpinDos = rebuilt.isSpin;
   }
@@ -7021,7 +7173,8 @@ function buildElectronicExportTables() {
     ["Energy_Window_eV", `${ex.emin} to ${ex.emax}`],
     ["Gaussian_Smearing_Sigma_eV", ex.sigma],
     ["Band_Gap_Summary", ex.gapSummary || "N/A"],
-    ["Fermi_Reference_eV", 0.0],
+    ["Zero_Energy_Reference", ex.alignLabel || "VBM / E_F = 0.000 eV"],
+    ["PDOS_Alignment_Shift_eV", Number((ex.dosRawShift || 0).toFixed(6))],
     ["PDOS_Columns_Exported", Math.max(0, pdosHeaders.length - 1)],
     ["Band_Sheets_Exported", bandSheets.length],
     ["", ""],
@@ -10572,7 +10725,7 @@ function parseCastepPdosBinArrayBuffer(arrayBuffer, bandsObj, speciesOrder, file
       if (!chanMeta[ck]) chanMeta[ck] = { element: el, ion, atom: `${el}${ion}`, orbital: orb };
     }
 
-    const eMin = -12.0, eMax = 8.0, nBins = 800;
+    const eMin = -20.0, eMax = 15.0, nBins = 1400;
     const dE = (eMax - eMin) / nBins;
     const invDE = 1.0 / dE;
     const chanKeys = Object.keys(chanMeta).sort((a, b) => {
@@ -10654,6 +10807,7 @@ function parseCastepPdosBinArrayBuffer(arrayBuffer, bandsObj, speciesOrder, file
 
     return {
       source_file: filename, nk, ns, norb, e_min: eMin, e_max: eMax, n_bins: nBins, dE,
+      ef_ev: bandsObj.ef_ev || 0.0,
       elements: speciesOrder, total_hist, channels
     };
   } catch (e) {
