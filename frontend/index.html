@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=20261123_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=20261123_v116_vesta_viewer" />
+  <link rel="stylesheet" href="styles.css?v=120_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=120_v116_vesta_viewer" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -1070,9 +1070,9 @@
               <h2 style="margin:0; font-size:20px; font-weight:800; color:#0f172a; letter-spacing:-0.02em;">
                 Computational Materials Data Analysis &amp; Simulation Workbench
               </h2>
-              <span id="castep-machine-status-pill" class="castep-live-pill">
-                <span class="castep-pulse-dot"></span>
-                MatStudio.exe Active (PID 18556 • 15 MPI Cores) • Local Disk Connected
+              <span id="castep-machine-status-pill" class="castep-live-pill" style="background:#f1f5f9; color:#334155; border-color:#cbd5e1;">
+                <span class="castep-pulse-dot" style="background:#64748b; animation:none;"></span>
+                Ready • Mount Local Folder or Connect Local Server
               </span>
             </div>
             <p style="margin:4px 0 0 0; font-size:12.5px; color:#475569;">
@@ -1080,7 +1080,7 @@
             </p>
           </div>
           <div class="castep-header-actions">
-            <input type="file" id="castep-file-upload-input" multiple accept=".cell,.param,.castep,.xsd,.geom,.bands,.xcd,.cif,.xyz,.msi,.outmol,.txt,POSCAR,CONTCAR" style="display:none;" onchange="handleCastepFilesUpload(event)" />
+            <input type="file" id="castep-file-upload-input" multiple accept=".cell,.param,.castep,.xsd,.geom,.bands,.xcd,.cif,.xyz,.msi,.outmol,.chdiff,.charg_frm,.den_fmt,.cube,.csv,.dat,.sbj,.txt,POSCAR,CONTCAR" style="display:none;" onchange="handleCastepFilesUpload(event)" />
             <input type="file" id="castep-folder-upload-input" webkitdirectory directory multiple style="display:none;" onchange="handleCastepFolderFallbackUpload(event)" />
             <button type="button" class="btn btn-outline btn-sm castep-action-btn" onclick="mountCastepLocalDirectory()" title="Mount a local Materials Studio / CASTEP calculation folder with direct browser read &amp; write access">
               📂 Mount Local Folder (Read/Write)
@@ -1104,23 +1104,23 @@
         <div class="castep-kpi-grid" id="castep-kpi-bar">
           <div class="castep-kpi-card">
             <div class="castep-kpi-label">🟢 ACTIVE / RUNNING JOBS ON MACHINE</div>
-            <div class="castep-kpi-val" id="castep-kpi-running">1 Active</div>
-            <div class="castep-kpi-sub" id="castep-kpi-running-sub">MatStudio.exe • 15 MPI Cores • 700 eV PBE</div>
+            <div class="castep-kpi-val" id="castep-kpi-running">0 Active</div>
+            <div class="castep-kpi-sub" id="castep-kpi-running-sub">Mount a folder or connect local server</div>
           </div>
           <div class="castep-kpi-card">
             <div class="castep-kpi-label">✅ COMPLETED CASTEP CALCULATIONS</div>
-            <div class="castep-kpi-val" id="castep-kpi-completed">8 Jobs</div>
-            <div class="castep-kpi-sub" id="castep-kpi-completed-sub">GeomOpt, Band Structure, DOS/PDOS &amp; ELF</div>
+            <div class="castep-kpi-val" id="castep-kpi-completed">0 Jobs</div>
+            <div class="castep-kpi-sub" id="castep-kpi-completed-sub">No local calculations loaded yet</div>
           </div>
           <div class="castep-kpi-card">
             <div class="castep-kpi-label">🧱 ACTIVE STRUCTURE IN 3D BUILDER</div>
-            <div class="castep-kpi-val" id="castep-kpi-formula">Mo4Si8N9P7</div>
-            <div class="castep-kpi-sub" id="castep-kpi-lattice">28 atoms • a=6.594 Å, c=25.151 Å • P3m1</div>
+            <div class="castep-kpi-val" id="castep-kpi-formula">—</div>
+            <div class="castep-kpi-sub" id="castep-kpi-lattice">Mount folder or import .cell / .cif / .xsd</div>
           </div>
           <div class="castep-kpi-card">
             <div class="castep-kpi-label">⚡ ENERGETICS &amp; ELECTRONIC BAND GAP</div>
-            <div class="castep-kpi-val" id="castep-kpi-energy">-5427.682 eV</div>
-            <div class="castep-kpi-sub" id="castep-kpi-bandgap">Eg = 0.718 eV • ΔE = 2.35e-7 eV/atom</div>
+            <div class="castep-kpi-val" id="castep-kpi-energy">—</div>
+            <div class="castep-kpi-sub" id="castep-kpi-bandgap">Load .castep / .bands / .xcd results</div>
           </div>
         </div>
 
@@ -1131,11 +1131,11 @@
             <div class="castep-sidebar-head">
               <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
                 <span style="font-weight:800; font-size:13.5px; color:#0f172a;">📁 Local Machine CASTEP Jobs</span>
-                <span id="castep-jobs-total-badge" class="badge badge-blue">9 jobs</span>
+                <span id="castep-jobs-total-badge" class="badge badge-blue">0 jobs</span>
               </div>
               <!-- Directory Path Bar -->
               <div style="display:flex; gap:4px; margin-top:8px;">
-                <input type="text" id="castep-root-path-input" class="castep-input" value="D:\DATA LAM\DATA TINH TOAN\2026" placeholder="Local calculation directory path..." style="font-size:11.5px; font-family:monospace;" />
+                <input type="text" id="castep-root-path-input" class="castep-input" value="" placeholder="Local folder path (or click Mount)..." style="font-size:11.5px; font-family:monospace;" />
                 <button type="button" class="btn btn-outline btn-sm" style="padding:4px 8px; font-size:11.5px; white-space:nowrap;" onclick="scanCastepLocalMachineJobs()">Scan</button>
               </div>
               <!-- Project Quick Filters -->
@@ -1145,9 +1145,10 @@
                 <button type="button" class="castep-pill" data-filter="geom" onclick="filterCastepJobs('geom', this)">📐 GeomOpt</button>
                 <button type="button" class="castep-pill" data-filter="banddos" onclick="filterCastepJobs('banddos', this)">📈 Band/DOS</button>
                 <button type="button" class="castep-pill" data-filter="optics" onclick="filterCastepJobs('optics', this)">🌈 Optics</button>
+                <button type="button" class="castep-pill" data-filter="chdiff" onclick="filterCastepJobs('chdiff', this)">🔋 Δρ</button>
               </div>
               <button type="button" class="btn btn-outline btn-sm" style="width:100%; margin-top:7px; font-size:11.5px; font-weight:700; color:#0369a1; border-color:#7dd3fc; background:#f0f9ff;" onclick="switchCastepStagePane('gateway')">
-                🖥️ Remote Gateway (70)
+                🖥️ Remote Gateway (<span id="castep-sidebar-gw-count">0</span>)
               </button>
               <!-- Search & Batch Select -->
               <div style="display:flex; gap:6px; align-items:center; margin-top:8px;">
@@ -1158,7 +1159,7 @@
                   <input type="checkbox" id="castep-select-all-jobs" onchange="toggleSelectAllCastepJobs(this.checked)" />
                   Select All Visible
                 </label>
-                <button type="button" class="castep-link-btn" onclick="addCurrentCastepStructureToLibrary()">+ Add Active to Library</button>
+                <div style="display:flex; gap:8px; align-items:center;"><button type="button" class="castep-link-btn" style="color:#dc2626;" onclick="clearLoadedCastepJobs()" title="Clear loaded workspace jobs">Clear</button><button type="button" class="castep-link-btn" onclick="addCurrentCastepStructureToLibrary()">+ Library</button></div>
               </div>
             </div>
 
@@ -1180,13 +1181,16 @@
                 📈 Band &amp; DOS
               </button>
               <button type="button" class="castep-stage-tab" data-pane="optics" onclick="switchCastepStagePane('optics', this)">
-                🌈 Optical Properties
+                🌈 Optical
+              </button>
+              <button type="button" class="castep-stage-tab" data-pane="chdiff" onclick="switchCastepStagePane('chdiff', this)">
+                🔋 Charge Diff (Δρ)
               </button>
               <button type="button" class="castep-stage-tab" data-pane="convergence" onclick="switchCastepStagePane('convergence', this)">
-                ⚡ Convergence &amp; Forces
+                ⚡ Convergence
               </button>
               <button type="button" class="castep-stage-tab" data-pane="files" onclick="switchCastepStagePane('files', this)">
-                📝 Files &amp; Parameters
+                📝 Files &amp; .param
               </button>
             </div>
 
@@ -1377,6 +1381,22 @@
                           <option value="white">Pure White (Light)</option>
                           <option value="dark">Dark Slate</option>
                         </select>
+                      </div>
+                    </fieldset>
+
+                    <fieldset class="vesta-fieldset">
+                      <legend>Volumetric Δρ Isosurface (*.chdiff / *.charg_frm)</legend>
+                      <label class="vesta-chk-row">
+                        <input type="checkbox" id="vesta-chk-show-chdiff" onchange="toggleCastep3DOption('showChdiffIso', this.checked)" />
+                        Show 3D Charge Density Diff (Δρ)
+                      </label>
+                      <label class="vesta-chk-row">
+                        <input type="checkbox" id="vesta-chk-show-chdiff-slice" onchange="toggleCastep3DOption('showChdiffSlice', this.checked)" />
+                        Show 2D Volumetric Slice in Cell
+                      </label>
+                      <div class="vesta-prop-row" style="margin-top:4px;">
+                        <span>Isovalue (e/Å³):</span>
+                        <input type="number" id="vesta-chdiff-iso-input" class="vesta-tb-input" value="0.018" step="0.002" min="0.001" max="0.3" style="width:58px;" onchange="syncChdiffIsoval(this.value)" />
                       </div>
                     </fieldset>
 
@@ -1633,7 +1653,7 @@
                   <!-- VESTA Document Tab Bar -->
                   <div class="vesta-doc-tabbar">
                     <div class="vesta-doc-tab active">
-                      <span id="vesta-active-doc-label">📄 J1+4_N_P1.cif</span>
+                      <span id="vesta-active-doc-label">📄 No Structure Loaded</span>
                     </div>
                     <div id="vesta-active-tool-badge" style="font-size:11px; font-weight:700; color:#1e40af; padding:0 10px;">
                       Tool: Rotate &amp; Select
@@ -1719,7 +1739,7 @@
                         <span style="font-weight:800; font-size:12px; color:#0f172a;">💾 Target Folder:</span>
                         <input type="text" id="castep-save-folder-input" class="castep-input" style="flex:1; min-width:200px; font-family:monospace; font-size:11.5px;" placeholder="Target calculation folder path..." />
                         <input type="text" id="castep-save-subfolder-input" class="castep-input" style="width:130px; font-size:11.5px;" placeholder="Subfolder..." />
-                        <input type="text" id="castep-save-seed-input" class="castep-input" style="width:115px; font-weight:700; font-size:11.5px;" value="ELF+Orbitals" />
+                        <input type="text" id="castep-save-seed-input" class="castep-input" style="width:115px; font-weight:700; font-size:11.5px;" value="" placeholder="Seed name..." />
                         <button type="button" class="btn btn-primary btn-sm" onclick="saveCastepStructureToWorkingFolder()">💾 Save All to Folder</button>
                         <button type="button" class="btn btn-teal btn-sm" onclick="addCurrentCastepStructureToLibrary()">💎 Add to Crystal Library</button>
                       </div>
@@ -1761,7 +1781,7 @@
                   <div class="ms-gateway-title-text">
                     <span class="ms-gw-brand">M A T E R I A L S &nbsp; S T U D I O</span>
                     <span class="ms-gw-pipe">|</span>
-                    <span class="ms-gw-host" id="ms-gw-host-label">Remote Gateway desktop-bvgr3ea_18888</span>
+                    <span class="ms-gw-host" id="ms-gw-host-label">Remote Gateway (Not Connected)</span>
                   </div>
                 </div>
                 <div class="ms-gateway-controls-right">
@@ -1772,7 +1792,7 @@
                     <button type="button" class="ms-gw-pill" data-gwfilter="terminated" onclick="filterMsGatewayJobs('terminated', this)">⏹️ Terminated</button>
                   </div>
                   <input type="text" id="ms-gw-search-input" class="castep-input-sm" style="width:190px; font-size:11.5px;" placeholder="Filter Job Id, Description, PID..." oninput="renderMsGatewayTable()" />
-                  <button type="button" class="btn btn-outline btn-sm" style="padding:4px 9px; font-size:11.5px;" onclick="refreshMsGatewayJobsFromServer()">🔄 Refresh Gateway</button>
+                  <input type="file" id="ms-gw-sbj-upload-input" webkitdirectory directory multiple style="display:none;" onchange="handleMsGatewayFolderUpload(event)" /><button type="button" class="btn btn-outline btn-sm" style="padding:4px 9px; font-size:11.5px;" onclick="mountMsGatewayFolder()" title="Mount BIOVIA Gateway jobs-info / jobs-info-archive folder containing *.sbj files">📂 Mount Gateway Folder</button><button type="button" class="btn btn-outline btn-sm" style="padding:4px 9px; font-size:11.5px;" onclick="refreshMsGatewayJobsFromServer()">🔄 Refresh Gateway</button>
                 </div>
               </div>
 
@@ -1824,15 +1844,8 @@
                             <th>Status</th>
                           </tr>
                         </thead>
-                        <tbody>
-                          <tr><td><strong>CASTEP</strong></td><td>First-Principles Plane-Wave Pseudopotential DFT Server</td><td>26.1 (x64)</td><td>desktop-bvgr3ea_18888</td><td>15 / 16 Cores</td><td><span style="color:#15803d; font-weight:700;">● Active</span></td></tr>
-                          <tr><td><strong>DMol3</strong></td><td>All-Electron Numerical Atomic Orbital DFT Server</td><td>26.1 (x64)</td><td>desktop-bvgr3ea_18888</td><td>15 / 16 Cores</td><td><span style="color:#15803d; font-weight:700;">● Installed</span></td></tr>
-                          <tr><td><strong>DFTB+</strong></td><td>Density Functional Based Tight Binding Server</td><td>26.1 (x64)</td><td>desktop-bvgr3ea_18888</td><td>15 / 16 Cores</td><td><span style="color:#15803d; font-weight:700;">● Installed</span></td></tr>
-                          <tr><td><strong>Forcite</strong></td><td>Classical Molecular Mechanics &amp; MD Server</td><td>26.1 (x64)</td><td>desktop-bvgr3ea_18888</td><td>15 / 16 Cores</td><td><span style="color:#15803d; font-weight:700;">● Installed</span></td></tr>
-                          <tr><td><strong>GULP</strong></td><td>General Utility Lattice Program Server</td><td>26.1 (x64)</td><td>desktop-bvgr3ea_18888</td><td>15 / 16 Cores</td><td><span style="color:#15803d; font-weight:700;">● Installed</span></td></tr>
-                          <tr><td><strong>AdsorptionLocator</strong></td><td>Monte Carlo Surface Adsorption Site Finder</td><td>26.1 (x64)</td><td>desktop-bvgr3ea_18888</td><td>15 / 16 Cores</td><td><span style="color:#15803d; font-weight:700;">● Installed</span></td></tr>
-                          <tr><td><strong>AmorphousCell</strong></td><td>Amorphous Polymer &amp; Packing Builder Server</td><td>26.1 (x64)</td><td>desktop-bvgr3ea_18888</td><td>15 / 16 Cores</td><td><span style="color:#15803d; font-weight:700;">● Installed</span></td></tr>
-                          <tr><td><strong>Reflex</strong></td><td>Powder X-Ray Diffraction Simulation &amp; Rietveld Server</td><td>26.1 (x64)</td><td>desktop-bvgr3ea_18888</td><td>15 / 16 Cores</td><td><span style="color:#15803d; font-weight:700;">● Installed</span></td></tr>
+                        <tbody id="ms-gateway-servers-tbody">
+                          <tr><td colspan="6" style="text-align:center; padding:16px; color:#64748b;">Connect to a local Materials Studio Gateway server or click "🔄 Refresh Gateway" to detect installed servers.</td></tr>
                         </tbody>
                       </table>
                     </div>
@@ -1848,17 +1861,8 @@
                             <th>Value / Local Machine Configuration</th>
                           </tr>
                         </thead>
-                        <tbody>
-                          <tr><td><strong>Remote Gateway Daemon</strong></td><td><code>desktop-bvgr3ea_18888</code> (HTTP Port 18888 • Apache/Perl DSD Daemon)</td></tr>
-                          <tr><td><strong>BIOVIA Server Version</strong></td><td>Materials Studio 26.1 x64 Server (Windows 10/11 x64)</td></tr>
-                          <tr><td><strong>Gateway Document Root</strong></td><td><code>C:\ProgramData\BIOVIA\Materials Studio.1\Gateway-x64
-oot_default</code></td></tr>
-                          <tr><td><strong>Active Jobs Directory</strong></td><td><code>C:\ProgramData\BIOVIA\Materials Studio.1\Gateway-x64
-oot_default\dsd\jobs-info</code></td></tr>
-                          <tr><td><strong>Archived Jobs History</strong></td><td><code>C:\ProgramData\BIOVIA\Materials Studio.1\Gateway-x64
-oot_default\dsd\jobs-info-archive</code> (522 total records)</td></tr>
-                          <tr><td><strong>Default Job Owner</strong></td><td><code>Vu_Tien_Lam</code> (127.0.0.1)</td></tr>
-                          <tr><td><strong>Active MPI Configuration</strong></td><td>Intel MPI / MS-MPI • 15 CPU Cores per CASTEP Job • OpenMP Enabled</td></tr>
+                        <tbody id="ms-gateway-data-tbody">
+                          <tr><td><strong>Connection Status</strong></td><td>Not connected to a local Materials Studio Gateway daemon. Run the local FastAPI backend on the calculation workstation or mount a <code>jobs-info</code> folder containing <code>*.sbj</code> files.</td></tr>
                         </tbody>
                       </table>
                     </div>
@@ -1902,11 +1906,9 @@ oot_default\dsd\jobs-info-archive</code> (522 total records)</td></tr>
                 </div>
 
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:6px;">
-                  <label class="castep-field-lbl" style="margin:0;">Polarization:</label>
-                  <select id="castep-opt-pol" class="castep-input" style="width:auto;" onchange="renderCastepOpticalPlots()">
-                    <option value="inplane">In-Plane E ⊥ c (1 0 0 / xx, yy)</option>
-                    <option value="outplane">Out-of-Plane E ∥ c (0 0 1 / zz)</option>
-                    <option value="poly">Polycrystalline Isotropic Average</option>
+                  <label class="castep-field-lbl" style="margin:0;">Spectrum File:</label>
+                  <select id="castep-opt-file-select" class="castep-input" style="width:auto; max-width:210px;" onchange="renderCastepOpticalPlots()">
+                    <option value="auto">Auto (All Optical Files in Job)</option>
                   </select>
 
                   <label class="castep-field-lbl" style="margin:0;">Scissors ΔE (eV):</label>
@@ -1920,10 +1922,13 @@ oot_default\dsd\jobs-info-archive</code> (522 total records)</td></tr>
                     🌈 Visible Light Band (1.65–3.26 eV)
                   </label>
 
-                  <div style="margin-left:auto; display:flex; gap:6px;">
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px;" onclick="loadDemoMoSSeOpticalJob()" title="Load MoSSe -1.0 CASTEP Optical Properties Dataset">⚡ Load MoSSe Optics</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px;" onclick="exportCastepCanvasPNG('castep-optics-canvas', 'CASTEP_Optical_Properties.png')">📷 Export PNG</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px;" onclick="exportCastepOpticalCSV()">📊 Export CSV</button>
+                  <div style="margin-left:auto; display:flex; gap:4px; align-items:center;">
+                    <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('optics', 1.25)" title="Zoom In Spectrum">🔍＋</button>
+                    <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('optics', 0.80)" title="Zoom Out Spectrum">🔍－</button>
+                    <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('optics')" title="Reset Spectrum Zoom">⊡ Reset</button>
+                    <input type="file" id="castep-opt-file-upload" multiple accept=".xcd,.csv,.txt,.dat,.bands" style="display:none;" onchange="handleCastepOpticalFilesUpload(event)" /><button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px; font-weight:700;" onclick="document.getElementById('castep-opt-file-upload').click()" title="Load CASTEP Optical Properties .xcd, _Optics.bands, or optical CSV/TXT spectrum">📥 Load Optical (.xcd/.csv)</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px;" onclick="exportCastepCanvasPNG('castep-optics-canvas', 'CASTEP_Optical_Properties.png')">📷 PNG</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px;" onclick="exportCastepOpticalCSV()">📊 CSV</button>
                   </div>
                 </div>
               </div>
@@ -1933,7 +1938,7 @@ oot_default\dsd\jobs-info-archive</code> (522 total records)</td></tr>
 
               <!-- High-DPI Optical Properties Canvas -->
               <div class="castep-plot-canvas-card">
-                <canvas id="castep-optics-canvas" width="1120" height="540"></canvas>
+                <canvas id="castep-optics-canvas" width="900" height="520"></canvas>
                 <div id="castep-optics-readout" class="castep-plot-readout">
                   Hover over any optical spectrum to inspect exact Photon Energy ħω (eV), Wavelength λ (nm), Dielectric Function ε₁/ε₂, Absorption α (cm⁻¹), Refractive Index n/k, and Reflectivity R.
                 </div>
@@ -1974,9 +1979,12 @@ oot_default\dsd\jobs-info-archive</code> (522 total records)</td></tr>
                   <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-dos-f" checked onchange="renderCastepElectronicPlots()" /> <span style="color:#9333ea;">● f-orbital</span></label>
                   <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-spin-up" checked onchange="renderCastepElectronicPlots()" /> Spin α (Solid)</label>
                   <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-spin-dn" checked onchange="renderCastepElectronicPlots()" /> Spin β (Dashed)</label>
-                  <div style="margin-left:auto; display:flex; gap:6px;">
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px;" onclick="exportCastepCanvasPNG('castep-electronic-canvas', 'CASTEP_Band_DOS.png')">📷 Export PNG</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px;" onclick="exportCastepElectronicCSV()">📊 Export CSV</button>
+                  <div style="margin-left:auto; display:flex; gap:4px; align-items:center;">
+                    <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('electronic', 1.25)" title="Zoom In Energy Window">🔍＋</button>
+                    <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('electronic', 0.80)" title="Zoom Out Energy Window">🔍－</button>
+                    <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('electronic')" title="Reset Zoom">⊡ Reset</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px;" onclick="exportCastepCanvasPNG('castep-electronic-canvas', 'CASTEP_Band_DOS.png')">📷 PNG</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px;" onclick="exportCastepElectronicCSV()">📊 CSV</button>
                   </div>
                 </div>
               </div>
@@ -1986,9 +1994,109 @@ oot_default\dsd\jobs-info-archive</code> (522 total records)</td></tr>
 
               <!-- High-DPI Electronic Plot Canvas -->
               <div class="castep-plot-canvas-card">
-                <canvas id="castep-electronic-canvas" width="1120" height="540"></canvas>
+                <canvas id="castep-electronic-canvas" width="900" height="520"></canvas>
                 <div id="castep-electronic-readout" class="castep-plot-readout">
                   Hover over Band Structure or DOS/PDOS plot to inspect exact k-point, band energy (E - E<sub>F</sub>), and density of states.
+                </div>
+              </div>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- PANE 5: CASTEP CHARGE DENSITY DIFFERENCE (Δρ) ANALYZER       -->
+            <!-- ============================================================ -->
+            <div id="castep-pane-chdiff" class="castep-stage-pane">
+              <div class="castep-plot-toolbar">
+                <!-- Row 1: Data Source (.chdiff / .charg_frm), File Loaders & Generators -->
+                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                  <label class="castep-field-lbl" style="margin:0;">Δρ Source:</label>
+                  <select id="castep-chdiff-mode" class="castep-input" style="width:auto; font-weight:700;" onchange="onCastepChdiffModeChange()">
+                    <option value="chdiff">⚡ CASTEP *.chdiff Output (Δρ = ρ_SCF − Σρ_atom)</option>
+                    <option value="charg_frm_auto">🧪 Generate Δρ from Single *.charg_frm (ρ_total − ρ_promolecule)</option>
+                    <option value="charg_frm_sub">➖ Differential *.charg_frm Subtraction (Δρ = ρ_AB − ρ_A − ρ_B)</option>
+                  </select>
+
+                  <input type="file" id="castep-chdiff-file-input" accept=".chdiff,.charg_frm,.den_fmt,.cube,.txt" style="display:none;" onchange="handleCastepChdiffPrimaryUpload(event)" />
+                  <input type="file" id="castep-chdiff-ref-input" multiple accept=".charg_frm,.chdiff,.den_fmt,.txt" style="display:none;" onchange="handleCastepChdiffReferenceUpload(event)" />
+
+                  <button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px; font-weight:700;" onclick="document.getElementById('castep-chdiff-file-input').click()" title="Load CASTEP binary *.chdiff or ASCII *.charg_frm file">
+                    📥 Load *.chdiff / *.charg_frm
+                  </button>
+                  <button type="button" id="castep-chdiff-ref-btn" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px; display:none;" onclick="document.getElementById('castep-chdiff-ref-input').click()" title="Load reference fragment ρ_A and/or ρ_B (*.charg_frm) to subtract from ρ_AB">
+                    ➖ Load Ref ρ_A / ρ_B (*.charg_frm)
+                  </button>
+                  <button type="button" class="btn btn-teal btn-sm" style="padding:3px 9px; font-size:11.5px;" onclick="toggleChdiffInMain3DViewer()" title="Overlay 3D Charge Density Difference isosurfaces directly in the 3D Structure Builder tab">
+                    🧱 View 3D Isosurface in Structure Tab
+                  </button>
+
+                  <div style="margin-left:auto; display:flex; gap:5px;">
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px;" onclick="exportCastepChdiffFile('charg_frm')" title="Export computed Δρ grid in CASTEP .charg_frm format">⬇️ .charg_frm</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px;" onclick="exportCastepChdiffCSV()" title="Export 1D Planar-Averaged Δρ(z) and ΔQ(z) profile to CSV">📊 Export CSV</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px;" onclick="exportCastepCanvasPNG('castep-chdiff-canvas', 'CASTEP_Charge_Density_Difference.png')">📷 PNG</button>
+                  </div>
+                </div>
+
+                <!-- Row 1B: Multi-file Differential Subtraction Builder (Δρ = ρ_AB - ρ_A - ρ_B) -->
+                <div id="castep-chdiff-diff-bar" style="display:none; align-items:center; gap:6px; flex-wrap:wrap; margin-top:7px; padding:7px 10px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; font-size:11.5px;">
+                  <strong style="color:#1e3a8a;">Δρ = ρ<sub>AB</sub> − ρ<sub>A</sub> − ρ<sub>B</sub>:</strong>
+                  <input type="file" id="castep-chdiff-ab-input" accept=".charg_frm,.chdiff,.den_fmt,.cube,.txt" style="display:none;" onchange="handleCastepChdiffSlotUpload('ab', event)" />
+                  <input type="file" id="castep-chdiff-a-input" accept=".charg_frm,.chdiff,.den_fmt,.cube,.txt" style="display:none;" onchange="handleCastepChdiffSlotUpload('a', event)" />
+                  <input type="file" id="castep-chdiff-b-input" accept=".charg_frm,.chdiff,.den_fmt,.cube,.txt" style="display:none;" onchange="handleCastepChdiffSlotUpload('b', event)" />
+                  <button type="button" class="castep-preset-chip" onclick="document.getElementById('castep-chdiff-ab-input').click()">1) ρ<sub>AB</sub>: <span id="castep-chdiff-slot-ab-lbl">Not loaded</span></button>
+                  <span style="font-weight:800;">−</span>
+                  <button type="button" class="castep-preset-chip" onclick="document.getElementById('castep-chdiff-a-input').click()">2) ρ<sub>A</sub>: <span id="castep-chdiff-slot-a-lbl">Not loaded</span></button>
+                  <span style="font-weight:800;">−</span>
+                  <button type="button" class="castep-preset-chip" onclick="document.getElementById('castep-chdiff-b-input').click()">3) ρ<sub>B</sub> (opt): <span id="castep-chdiff-slot-b-lbl">None</span></button>
+                  <button type="button" class="btn btn-primary btn-sm" style="padding:3px 9px; font-size:11px; margin-left:auto;" onclick="computeDifferentialChargeDensity()">⚡ Compute Δρ</button>
+                </div>
+
+                <!-- Row 2: Layout, Slice Plane, Slice Position, Isovalue, Color Palette & Zoom Controls -->
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:7px;">
+                  <label class="castep-field-lbl" style="margin:0;">Layout:</label>
+                  <select id="castep-chdiff-layout" class="castep-input" style="width:auto;" onchange="renderCastepChdiffPlots()">
+                    <option value="tri">📊 3-Panel Synchronized (3D Isosurface + 2D Contour Slice + 1D Planar Δρ(z))</option>
+                    <option value="iso2d">🧱 3D Isosurface + 2D Cross-Section Slice</option>
+                    <option value="slice2d">🗺️ 2D Cross-Section Heatmap &amp; Contours Only</option>
+                    <option value="profile1d">📈 1D Planar-Averaged Profile Δρ(z) &amp; Charge Transfer ΔQ(z) Only</option>
+                  </select>
+
+                  <label class="castep-field-lbl" style="margin:0;">Slice Plane:</label>
+                  <select id="castep-chdiff-plane" class="castep-input" style="width:auto;" onchange="renderCastepChdiffPlots()">
+                    <option value="xz">(010) a–c Vertical Slice (Across Slab Z)</option>
+                    <option value="yz">(100) b–c Vertical Slice (Across Slab Z)</option>
+                    <option value="xy">(001) a–b In-Plane Horizontal Slice</option>
+                  </select>
+
+                  <label class="castep-field-lbl" style="margin:0;">Pos:</label>
+                  <input type="range" id="castep-chdiff-slice-pos" min="0.0" max="1.0" step="0.02" value="0.50" style="width:76px;" oninput="document.getElementById('castep-chdiff-pos-lbl').textContent=Number(this.value).toFixed(2); renderCastepChdiffPlots();" />
+                  <span id="castep-chdiff-pos-lbl" style="font-size:11px; font-weight:700; font-family:monospace; color:#1e40af;">0.50</span>
+
+                  <label class="castep-field-lbl" style="margin:0;">Isovalue (e/Å³):</label>
+                  <input type="number" id="castep-chdiff-isoval" class="castep-input-sm" value="0.018" min="0.001" max="0.500" step="0.002" style="width:64px;" onchange="syncChdiffIsoval(this.value)" />
+
+                  <label class="castep-field-lbl" style="margin:0;">Palette:</label>
+                  <select id="castep-chdiff-palette" class="castep-input" style="width:auto;" onchange="renderCastepChdiffPlots(); renderCastep3DScene();">
+                    <option value="yellow-cyan">🟡 Yellow (+Δρ Acc.) / 🔵 Cyan (−Δρ Dep.)</option>
+                    <option value="red-blue">🔴 Red (+Δρ Acc.) / 🔵 Blue (−Δρ Dep.)</option>
+                    <option value="green-magenta">🟢 Green (+Δρ Acc.) / 🟣 Magenta (−Δρ Dep.)</option>
+                  </select>
+
+                  <div style="margin-left:auto; display:flex; gap:3px; align-items:center;">
+                    <span style="font-size:11px; font-weight:700; color:#475569;">Zoom:</span>
+                    <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('chdiff', 1.25)" title="Zoom In">＋</button>
+                    <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('chdiff', 0.80)" title="Zoom Out">－</button>
+                    <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('chdiff')" title="Reset Zoom &amp; Pan">⊡ Reset</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Key Charge Density Difference Metrics Strip -->
+              <div id="castep-chdiff-summary-strip" class="castep-elec-summary-strip"></div>
+
+              <!-- High-DPI Synchronized 3D + 2D + 1D Charge Density Difference Canvas -->
+              <div class="castep-plot-canvas-card">
+                <canvas id="castep-chdiff-canvas" width="920" height="500"></canvas>
+                <div id="castep-chdiff-readout" class="castep-plot-readout">
+                  Drag in Panel (a) to rotate 3D isosurface • Scroll wheel on any panel to zoom • Yellow (+Δρ &gt; 0) = Electron Accumulation, Cyan (−Δρ &lt; 0) = Electron Depletion.
                 </div>
               </div>
             </div>
@@ -2003,6 +2111,9 @@ oot_default\dsd\jobs-info-archive</code> (522 total records)</td></tr>
                   <div style="font-size:12px; color:#64748b;">Real-time SCF loop energy convergence, LBFGS/TPSD geometry optimization enthalpy, maximum ionic forces, and Hirshfeld population analysis.</div>
                 </div>
                 <div style="display:flex; gap:6px;">
+                  <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('convergence', 1.25)" title="Zoom In Convergence">🔍＋</button>
+                  <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('convergence', 0.80)" title="Zoom Out Convergence">🔍－</button>
+                  <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('convergence')" title="Reset Convergence Zoom">⊡ Reset</button>
                   <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepCanvasPNG('castep-energy-chart-canvas', 'CASTEP_Energy_Profile.png')">📷 Save Energy PNG</button>
                   <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepCanvasPNG('castep-conv-chart-canvas', 'CASTEP_Convergence.png')">📷 Save Convergence PNG</button>
                 </div>
@@ -5115,8 +5226,8 @@ oot_default\dsd\jobs-info-archive</code> (522 total records)</td></tr>
 
 <script src="jszip.min.js"></script>
   <script>if (typeof JSZip === "undefined") { document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"><\\/script>'); }</script>
-  <script src="matsci_tools.js?v=20261123_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=20261123_v116_vesta_viewer"></script>
-  <script src="app.js?v=20261123_v116_vesta_viewer" onerror="this.src='/static/app.js?v=20261123_v116_vesta_viewer"></script>
+  <script src="matsci_tools.js?v=120_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=120_v116_vesta_viewer"></script>
+  <script src="app.js?v=120_v116_vesta_viewer" onerror="this.src='/static/app.js?v=120_v116_vesta_viewer"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
