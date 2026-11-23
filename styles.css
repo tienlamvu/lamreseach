@@ -11177,3 +11177,341 @@ sup {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+
+/* ============================================================================
+   VESTA-Style Crystallographic Interface & 3D Viewport (v116)
+   ============================================================================ */
+.vesta-top-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  background: linear-gradient(180deg, #f8fafc 0%, #eef2f6 100%);
+  border-bottom: 1px solid #cbd5e1;
+  user-select: none;
+}
+.vesta-tb-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.vesta-ax-btn {
+  min-width: 28px;
+  height: 26px;
+  padding: 0 6px;
+  font-family: "Georgia", "Times New Roman", serif;
+  font-weight: 800;
+  font-size: 13px;
+  color: #0f172a;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: 0 1px 1px rgba(0,0,0,0.04);
+}
+.vesta-ax-btn:hover, .vesta-ax-btn.active {
+  background: #dbeafe;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+}
+.vesta-icon-btn {
+  height: 26px;
+  padding: 0 7px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #1e293b;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.vesta-icon-btn:hover {
+  background: #eff6ff;
+  border-color: #60a5fa;
+}
+.vesta-tb-lbl {
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+  margin-left: 3px;
+}
+.vesta-tb-input {
+  width: 50px;
+  height: 24px;
+  padding: 2px 5px;
+  font-size: 11.5px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #0f172a;
+}
+.vesta-tb-sep {
+  width: 1px;
+  height: 20px;
+  background: #cbd5e1;
+  margin: 0 3px;
+}
+.vesta-workspace-body {
+  display: grid;
+  grid-template-columns: 38px 280px minmax(0, 1fr);
+  min-height: 670px;
+  background: #f1f5f9;
+}
+.vesta-vertical-tools {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px;
+  background: #eef2f6;
+  border-right: 1px solid #cbd5e1;
+}
+.vesta-vtool-btn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  cursor: pointer;
+  color: #1e293b;
+}
+.vesta-vtool-btn:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+.vesta-vtool-btn.active {
+  background: #dbeafe;
+  border-color: #2563eb;
+  color: #1d4ed8;
+  box-shadow: inset 0 1px 2px rgba(29,78,216,0.15);
+}
+.vesta-vtool-sep {
+  width: 22px;
+  height: 1px;
+  background: #cbd5e1;
+  margin: 3px 0;
+}
+.vesta-left-dock {
+  background: #f8fafc;
+  border-right: 1px solid #cbd5e1;
+  display: flex;
+  flex-direction: column;
+}
+.vesta-dock-tabs {
+  display: flex;
+  background: #e2e8f0;
+  padding: 4px 4px 0 4px;
+  gap: 2px;
+  border-bottom: 1px solid #cbd5e1;
+}
+.vesta-dock-tab {
+  flex: 1;
+  padding: 5px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  background: #eef2f6;
+  border: 1px solid #cbd5e1;
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+  text-align: center;
+}
+.vesta-dock-tab.active {
+  background: #f8fafc;
+  color: #0f172a;
+  font-weight: 800;
+}
+.vesta-dock-pane {
+  display: none;
+  padding: 8px 10px;
+  overflow-y: auto;
+  max-height: 635px;
+}
+.vesta-dock-pane.active {
+  display: block;
+}
+.vesta-fieldset {
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  padding: 7px 9px 9px 9px;
+  margin: 0 0 8px 0;
+  background: #ffffff;
+}
+.vesta-fieldset legend {
+  font-size: 11px;
+  font-weight: 800;
+  color: #1e293b;
+  padding: 0 5px;
+}
+.vesta-chk-row, .vesta-radio-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: #1e293b;
+  margin-bottom: 4px;
+  cursor: pointer;
+}
+.vesta-sub-box {
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-top: 6px;
+  background: #f8fafc;
+}
+.vesta-sub-title {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #475569;
+  margin-bottom: 4px;
+}
+.vesta-prop-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #334155;
+  margin-bottom: 6px;
+}
+.vesta-prop-row input[type="range"] {
+  width: 105px;
+}
+.vesta-dialog-btns {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  margin-top: 6px;
+}
+.vesta-dlg-btn {
+  padding: 5px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  color: #1e293b;
+  cursor: pointer;
+}
+.vesta-dlg-btn:hover {
+  background: #eff6ff;
+  border-color: #60a5fa;
+}
+.vesta-main-viewport-col {
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+}
+.vesta-doc-tabbar {
+  display: flex;
+  align-items: center;
+  background: #eef2f6;
+  border-bottom: 1px solid #cbd5e1;
+  padding: 3px 6px 0 6px;
+}
+.vesta-doc-tab {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-bottom: none;
+  padding: 4px 12px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #0f172a;
+  border-radius: 4px 4px 0 0;
+}
+.vesta-3d-canvas-wrap {
+  position: relative;
+  width: 100%;
+  height: 470px;
+  background: #ffffff;
+  border-bottom: 1px solid #cbd5e1;
+  overflow: hidden;
+}
+.vesta-3d-legend {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  font-size: 11.5px;
+  pointer-events: none;
+}
+.vesta-3d-hud {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.90);
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  font-size: 11px;
+  font-weight: 600;
+  pointer-events: none;
+}
+.vesta-bottom-console {
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+}
+.vesta-bottom-pane {
+  display: none;
+}
+.vesta-bottom-pane.active {
+  display: block;
+}
+.vesta-log-pre {
+  margin: 0;
+  padding: 8px 12px;
+  height: 128px;
+  overflow-y: auto;
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: #0f172a;
+  background: #ffffff;
+}
+.vesta-bottom-tabstrip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 8px;
+  background: #eef2f6;
+  border-top: 1px solid #cbd5e1;
+}
+.vesta-btab {
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #e2e8f0;
+  border: 1px solid #cbd5e1;
+  border-radius: 3px;
+  color: #334155;
+  cursor: pointer;
+}
+.vesta-btab.active {
+  background: #ffffff;
+  color: #0f172a;
+  font-weight: 800;
+}
+@media (max-width: 1100px) {
+  .vesta-workspace-body {
+    grid-template-columns: 38px 1fr;
+  }
+  .vesta-main-viewport-col {
+    grid-column: 1 / -1;
+  }
+}
