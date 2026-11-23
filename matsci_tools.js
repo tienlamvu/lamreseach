@@ -308,7 +308,9 @@ const CASTEP_STUDIO_STATE = {
     scale: 1.0,
     atomScale: 1.0,
     bondWidthScale: 1.0,
-    bondCutoffFactor: 1.22,
+    bondCutoffFactor: 1.15,
+    bondColorMode: "bicolor", // "bicolor" | "uniform"
+    boundaryMode: "complete", // "complete" | "in-cell" | "asymmetric"
     showModels: true,
     showBoundaryBonds: true,
     showBonds: true,
@@ -1902,54 +1904,107 @@ window.switchCastepStagePane = switchCastepStagePane;
 // ============================================================================
 
 const VESTA_CPK_COLORS = {
-  H: "#ffcccc", He: "#d9ffff", Li: "#cc80ff", Be: "#c2ff00", B: "#ffb5b5",
-  C: "#804929", N: "#2b52ff", O: "#ff0d0d", F: "#90e050", Ne: "#b3e3f5",
-  Na: "#ab5cf2", Mg: "#8aff00", Al: "#bfa6a6", Si: "#8c96c6", P: "#a67c9e",
-  S: "#ffff30", Cl: "#1ff01f", Ar: "#80d1e3", K: "#8f40d4", Ca: "#3dff00",
-  Sc: "#e6e6e6", Ti: "#bfc2c7", V: "#a6a6ab", Cr: "#8a99c7", Mn: "#9c7ac7",
-  Fe: "#e06633", Co: "#f090a0", Ni: "#50d050", Cu: "#c88033", Zn: "#7d80b0",
-  Ga: "#c28f8f", Ge: "#668f8f", As: "#bd80e3", Se: "#ffa100", Br: "#a62929",
-  Kr: "#5cb8d1", Rb: "#702eb0", Sr: "#00ff00", Y: "#94ffff", Zr: "#94e0e0",
-  Nb: "#73c2c9", Mo: "#8856a7", Tc: "#3b9e9e", Ru: "#248f8f", Rh: "#0a7d8c",
-  Pd: "#006985", Ag: "#c0c0c0", Cd: "#ffd98f", In: "#a67573", Sn: "#668080",
-  Sb: "#9e63b5", Te: "#d47a00", I: "#940094", Xe: "#429eb0", Cs: "#57178f",
-  Ba: "#00c900", La: "#70d4ff", Ce: "#ffffc7", Hf: "#4dc2ff", Ta: "#4da6ff",
-  W: "#2194d6", Re: "#267dab", Os: "#266696", Ir: "#175487", Pt: "#d0d0e0",
-  Au: "#ffd123", Hg: "#b8b8d0", Pb: "#575961", Bi: "#9e4fb5"
+  H: "#e5e7eb", He: "#d9ffff", Li: "#cc80ff", Be: "#a3e635", B: "#f49797",
+  C: "#52525b", N: "#3050f8", O: "#e52b2b", F: "#84cc16", Ne: "#b3e3f5",
+  Na: "#ab5cf2", Mg: "#65d41a", Al: "#b8a3a3", Si: "#8c9ec9", P: "#a376a8",
+  S: "#e5c100", Cl: "#22c55e", Ar: "#80d1e3", K: "#8f40d4", Ca: "#38b000",
+  Sc: "#cbd5e1", Ti: "#9ca3af", V: "#8b92a1", Cr: "#7b8ec7", Mn: "#9c7ac7",
+  Fe: "#d96b38", Co: "#e67391", Ni: "#44bd55", Cu: "#c87b33", Zn: "#7d80b0",
+  Ga: "#c28f8f", Ge: "#668f8f", As: "#b67ce0", Se: "#e88c1e", Br: "#a62929",
+  Kr: "#5cb8d1", Rb: "#702eb0", Sr: "#16a34a", Y: "#67d7e0", Zr: "#6bc5cf",
+  Nb: "#62b5be", Mo: "#7c5ba6", Tc: "#3b9e9e", Ru: "#248f8f", Rh: "#0a7d8c",
+  Pd: "#006985", Ag: "#b8c0cc", Cd: "#e5b869", In: "#a67573", Sn: "#668080",
+  Sb: "#9e63b5", Te: "#c87528", I: "#940094", Xe: "#429eb0", Cs: "#57178f",
+  Ba: "#16a34a", La: "#5cc8f5", Ce: "#e5d98a", Hf: "#4dc2ff", Ta: "#4da6ff",
+  W: "#2194d6", Re: "#267dab", Os: "#266696", Ir: "#175487", Pt: "#c4c9d9",
+  Au: "#eab308", Hg: "#a8a8c0", Pb: "#575961", Bi: "#9e4fb5"
 };
+
+// Cordero (2008) & Pyykko crystallographic covalent radii (Angstrom)
+const CRYSTAL_COV_RADII = {
+  H: 0.31, He: 0.28, Li: 1.28, Be: 0.96, B: 0.84, C: 0.76, N: 0.71, O: 0.66, F: 0.57, Ne: 0.58,
+  Na: 1.66, Mg: 1.41, Al: 1.21, Si: 1.11, P: 1.07, S: 1.05, Cl: 1.02, Ar: 1.06,
+  K: 2.03, Ca: 1.76, Sc: 1.70, Ti: 1.60, V: 1.53, Cr: 1.39, Mn: 1.39, Fe: 1.32, Co: 1.26, Ni: 1.24, Cu: 1.32, Zn: 1.22,
+  Ga: 1.22, Ge: 1.20, As: 1.19, Se: 1.20, Br: 1.20, Kr: 1.16,
+  Rb: 2.20, Sr: 1.95, Y: 1.90, Zr: 1.75, Nb: 1.64, Mo: 1.54, Tc: 1.47, Ru: 1.46, Rh: 1.42, Pd: 1.39, Ag: 1.45, Cd: 1.44,
+  In: 1.42, Sn: 1.39, Sb: 1.39, Te: 1.38, I: 1.39, Xe: 1.40,
+  Cs: 2.44, Ba: 2.15, La: 2.07, Ce: 2.04, Hf: 1.75, Ta: 1.70, W: 1.62, Re: 1.51, Os: 1.44, Ir: 1.41, Pt: 1.36, Au: 1.36, Hg: 1.32,
+  Tl: 1.45, Pb: 1.46, Bi: 1.48
+};
+
+function getCrystalCovRadius(el) {
+  const clean = castepCleanElement(el);
+  if (CRYSTAL_COV_RADII[clean]) return CRYSTAL_COV_RADII[clean];
+  if (typeof COVALENT_RADII !== "undefined" && COVALENT_RADII[clean]) return COVALENT_RADII[clean];
+  return 1.20;
+}
 
 const VESTA_POLYHEDRAL_CENTERS = new Set([
   "Mo", "W", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
   "Si", "Al", "Ga", "Ge", "Sn", "Zr", "Nb", "Hf", "Ta", "Ru", "Rh", "Pd", "Pt", "Mg", "Ca"
 ]);
 
-const VESTA_CATION_SET = new Set([
-  "Li", "Na", "K", "Rb", "Cs", "Be", "Mg", "Ca", "Sr", "Ba",
+const CRYSTAL_TRANSITION_METALS = new Set([
   "Sc", "Y", "La", "Ce", "Pr", "Nd", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu",
   "Ti", "Zr", "Hf", "V", "Nb", "Ta", "Cr", "Mo", "W", "Mn", "Tc", "Re",
-  "Fe", "Ru", "Os", "Co", "Rh", "Ir", "Ni", "Pd", "Pt", "Cu", "Ag", "Au",
-  "Zn", "Cd", "Hg", "Al", "Ga", "In", "Tl", "Si", "Ge", "Sn", "Pb", "Sb", "Bi"
+  "Fe", "Ru", "Os", "Co", "Rh", "Ir", "Ni", "Pd", "Pt", "Cu", "Ag", "Au", "Zn", "Cd", "Hg"
+]);
+
+const CRYSTAL_ALKALI_GUESTS = new Set(["Li", "Na", "K", "Rb", "Cs"]);
+
+const VESTA_CATION_SET = new Set([
+  "Li", "Na", "K", "Rb", "Cs", "Be", "Mg", "Ca", "Sr", "Ba",
+  ...CRYSTAL_TRANSITION_METALS,
+  "Al", "Ga", "In", "Tl", "Si", "Ge", "Sn", "Pb", "Sb", "Bi"
 ]);
 
 const VESTA_ANION_SET = new Set([
   "H", "B", "C", "N", "O", "F", "P", "S", "Cl", "As", "Se", "Br", "Te", "I"
 ]);
 
-function isVestaChemicalBond(el1, el2, dist, cutoffFactor, hasBothCationAndAnion) {
-  if (dist <= 0.42) return false;
-  const r1 = (typeof COVALENT_RADII !== "undefined" && COVALENT_RADII[el1]) || 1.20;
-  const r2 = (typeof COVALENT_RADII !== "undefined" && COVALENT_RADII[el2]) || 1.20;
+function isVestaChemicalBond(el1, el2, dist, cutoffFactor, hasBothCationAndAnion, elSet = null) {
+  if (dist <= 0.45) return false;
+  const tol = Number(cutoffFactor) || 1.15;
+  const r1 = getCrystalCovRadius(el1);
+  const r2 = getCrystalCovRadius(el2);
+  const sumR = r1 + r2;
+
+  // Hard physical upper bound so oversized radii never create cross-cell spiderwebs
+  const maxAllowed = Math.min(3.35, sumR * tol);
+  if (dist > maxAllowed) return false;
+
+  const isAlk1 = CRYSTAL_ALKALI_GUESTS.has(el1), isAlk2 = CRYSTAL_ALKALI_GUESTS.has(el2);
+  const isTM1 = CRYSTAL_TRANSITION_METALS.has(el1), isTM2 = CRYSTAL_TRANSITION_METALS.has(el2);
+  const isA1 = VESTA_ANION_SET.has(el1), isA2 = VESTA_ANION_SET.has(el2);
+
+  // 1) In transition-metal + covalent frameworks (e.g. KCoHCF), guest alkali ions (K, Rb, Cs)
+  //    sit in interstitial cages and should not draw fake spiderweb bonds to C/N/TM
+  if ((isAlk1 || isAlk2) && elSet) {
+    const hasTM = [...elSet].some(e => CRYSTAL_TRANSITION_METALS.has(e));
+    if (hasTM && (el1 === "K" || el2 === "K" || el1 === "Rb" || el2 === "Rb" || el1 === "Cs" || el2 === "Cs")) {
+      return false;
+    }
+    // Even for Li/Na, avoid Li-TM / Na-TM and Li-C/Na-C when O/N/S/F is present
+    if ((isAlk1 && isTM2) || (isAlk2 && isTM1)) return false;
+  }
+
   if (hasBothCationAndAnion) {
-    const c1 = VESTA_CATION_SET.has(el1), c2 = VESTA_CATION_SET.has(el2);
-    const a1 = VESTA_ANION_SET.has(el1), a2 = VESTA_ANION_SET.has(el2);
-    // In ionic/covalent compounds (e.g. MoSi2N2P2, TiO2, MoS2), cations do not bond directly to cations
-    if (c1 && c2) return false;
-    // Two anions only bond if they form a short molecular/dimer covalent bond (e.g. O-H, C-O, N2, O2, H2O)
-    if (a1 && a2) {
-      return dist <= (r1 + r2) * 0.98 && dist <= 1.85;
+    // 2) In compound semiconductors/ceramics (e.g. MoSSe, MoSi2N2P2, TiO2, KCoHCF):
+    //    suppress spurious TM-TM and TM-Si/Ge/Al bonds when anions mediate bonding
+    if (isTM1 && isTM2) return false;
+    const isSemi1 = (el1 === "Si" || el1 === "Ge" || el1 === "Al" || el1 === "Ga");
+    const isSemi2 = (el2 === "Si" || el2 === "Ge" || el2 === "Al" || el2 === "Ga");
+    if ((isTM1 && isSemi2) || (isTM2 && isSemi1)) return false;
+
+    // 3) Non-metal to non-metal bonds (B-N, C-N, C-C, P-P, S-S, Se-Se, Te-Te, O-H):
+    //    allow genuine covalent dimers/networks (using tighter 1.12 covalent factor)
+    //    so Te-Te (2.84 A <= 3.09 A) and B-N (1.45 A) bond cleanly, while intra-layer
+    //    non-bonded S...S (3.22 A > 2.35 A) or N...N (3.29 A > 1.59 A) stay cleanly unbonded!
+    if (isA1 && isA2) {
+      return dist <= sumR * Math.min(tol, 1.12);
     }
   }
-  return dist <= (r1 + r2) * (cutoffFactor || 1.16);
+  return true;
 }
 
 function getVestaElementColor(el) {
@@ -2356,6 +2411,7 @@ function vestaFitToScreen() {
   CASTEP_STUDIO_STATE.view3D.scale = 1.0;
   CASTEP_STUDIO_STATE.view3D.panX = 0;
   CASTEP_STUDIO_STATE.view3D.panY = 0;
+  CASTEP_STUDIO_STATE.view3D._fitScaleKey = "";
   renderCastep3DScene();
 }
 window.vestaFitToScreen = vestaFitToScreen;
@@ -2376,13 +2432,26 @@ function setVestaProperty(propKey, val) {
   const v3 = CASTEP_STUDIO_STATE.view3D;
   if (propKey === "atomScale") v3.atomScale = isNaN(numVal) ? 1.0 : numVal;
   else if (propKey === "bondScale" || propKey === "bondWidthScale") v3.bondWidthScale = isNaN(numVal) ? 1.0 : numVal;
-  else if (propKey === "bondFactor" || propKey === "bondCutoffFactor") v3.bondCutoffFactor = isNaN(numVal) ? 1.16 : numVal;
+  else if (propKey === "bondFactor" || propKey === "bondCutoffFactor") v3.bondCutoffFactor = isNaN(numVal) ? 1.15 : numVal;
+  else if (propKey === "bondColorMode") v3.bondColorMode = (val === "uniform") ? "uniform" : "bicolor";
   else v3[propKey] = val;
   renderCastep3DScene();
   updateVestaOutputConsole();
 }
 window.setVestaProperty = setVestaProperty;
 window.setVestaRenderProperty = setVestaProperty;
+
+function setCastepBoundaryDisplayMode(mode) {
+  const v3 = CASTEP_STUDIO_STATE.view3D;
+  const cleanMode = (mode === "in-cell" || mode === "asymmetric") ? mode : "complete";
+  v3.boundaryMode = cleanMode;
+  v3.showBoundaryBonds = (cleanMode === "complete");
+  const sel = document.getElementById("vesta-boundary-mode-select");
+  if (sel) sel.value = cleanMode;
+  renderCastep3DScene();
+  updateVestaOutputConsole();
+}
+window.setCastepBoundaryDisplayMode = setCastepBoundaryDisplayMode;
 
 function setVestaBackgroundTheme(themeVal) {
   CASTEP_STUDIO_STATE.view3D.theme = themeVal === "dark" ? "dark" : "white";
@@ -2705,31 +2774,112 @@ function drawVestaAxisTriad(ctx, width, height, vecs, R, isWhite) {
 const _VESTA_SPHERE_SPRITE_CACHE = new Map();
 
 function getCachedSphereSprite(colorHex, isFixed) {
-  const key = `${colorHex}_${isFixed ? 1 : 0}`;
+  const key = `v124_${colorHex}_${isFixed ? 1 : 0}`;
   if (_VESTA_SPHERE_SPRITE_CACHE.has(key)) return _VESTA_SPHERE_SPRITE_CACHE.get(key);
-  const sz = 64;
+  const sz = 96;
   const off = document.createElement("canvas");
   off.width = sz;
   off.height = sz;
   const octx = off.getContext("2d");
-  const r = 28;
-  const cx = 32, cy = 32;
-  const grad = octx.createRadialGradient(cx - r * 0.34, cy - r * 0.34, r * 0.08, cx, cy, r);
-  grad.addColorStop(0, "#ffffff");
-  grad.addColorStop(0.24, typeof lightenColor === "function" ? lightenColor(colorHex, 0.38) : colorHex);
-  grad.addColorStop(0.70, colorHex);
-  grad.addColorStop(1, typeof darkenColor === "function" ? darkenColor(colorHex, 0.42) : "#0f172a");
+  const r = 42;
+  const cx = 48, cy = 48;
+
+  // Materials Studio / crystallographic glossy Phong sphere shading
+  const lightCol = typeof lightenColor === "function" ? lightenColor(colorHex, 0.44) : colorHex;
+  const midDark  = typeof darkenColor === "function" ? darkenColor(colorHex, 0.24) : colorHex;
+  const deepDark = typeof darkenColor === "function" ? darkenColor(colorHex, 0.48) : "#0f172a";
+
+  const grad = octx.createRadialGradient(cx - r * 0.34, cy - r * 0.34, r * 0.05, cx, cy, r);
+  grad.addColorStop(0.00, "#ffffff");
+  grad.addColorStop(0.16, lightCol);
+  grad.addColorStop(0.56, colorHex);
+  grad.addColorStop(0.86, midDark);
+  grad.addColorStop(1.00, deepDark);
 
   octx.beginPath();
   octx.arc(cx, cy, r, 0, Math.PI * 2);
   octx.fillStyle = grad;
   octx.fill();
-  octx.lineWidth = isFixed ? 3.2 : 1.5;
-  octx.strokeStyle = isFixed ? "#ea580c" : "rgba(15, 23, 42, 0.58)";
+
+  // Subtle rim reflection on lower-right hemisphere for depth readability
+  const rimGrad = octx.createRadialGradient(cx + r * 0.32, cy + r * 0.36, r * 0.1, cx, cy, r);
+  rimGrad.addColorStop(0.0, "rgba(255, 255, 255, 0.14)");
+  rimGrad.addColorStop(0.55, "rgba(255, 255, 255, 0.0)");
+  rimGrad.addColorStop(1.0, "rgba(0, 0, 0, 0.0)");
+  octx.beginPath();
+  octx.arc(cx, cy, r, 0, Math.PI * 2);
+  octx.fillStyle = rimGrad;
+  octx.fill();
+
+  // Crisp subtle contour outline so spheres remain distinct against white or dark backgrounds
+  octx.beginPath();
+  octx.arc(cx, cy, r, 0, Math.PI * 2);
+  octx.lineWidth = isFixed ? 4.4 : 1.9;
+  octx.strokeStyle = isFixed ? "#ea580c" : "rgba(15, 23, 42, 0.48)";
   octx.stroke();
 
   _VESTA_SPHERE_SPRITE_CACHE.set(key, off);
   return off;
+}
+
+function drawShadedHalfBondCylinder(ctx, x1, y1, x2, y2, halfWidth, colorHex, isWhite, roundCapAtStart = false) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.hypot(dx, dy);
+  if (len < 0.6 || halfWidth < 0.4) return;
+
+  const ux = dx / len, uy = dy / len;
+  const nx = -uy, ny = ux;
+  const mx = (x1 + x2) * 0.5, my = (y1 + y2) * 0.5;
+
+  // Perpendicular 3D cylindrical Phong lighting gradient across the stick diameter
+  const lightBand = typeof lightenColor === "function" ? lightenColor(colorHex, 0.52) : "#ffffff";
+  const darkEdge  = typeof darkenColor === "function" ? darkenColor(colorHex, 0.38) : "#1e293b";
+  const deepEdge  = typeof darkenColor === "function" ? darkenColor(colorHex, 0.52) : "#0f172a";
+
+  // Align specular highlight consistently toward upper-left light vector (-0.707, -0.707)
+  const flip = (nx * -0.707 + ny * -0.707) < 0 ? -1 : 1;
+  const gnx = nx * flip, gny = ny * flip;
+
+  const grad = ctx.createLinearGradient(
+    mx + gnx * halfWidth, my + gny * halfWidth,
+    mx - gnx * halfWidth, my - gny * halfWidth
+  );
+  grad.addColorStop(0.00, darkEdge);
+  grad.addColorStop(0.26, lightBand);
+  grad.addColorStop(0.54, colorHex);
+  grad.addColorStop(0.86, darkEdge);
+  grad.addColorStop(1.00, deepEdge);
+
+  // Slight 0.6px overlap at bond midpoint prevents hairline seam between half-cylinders
+  const ex = x2 + ux * 0.55;
+  const ey = y2 + uy * 0.55;
+
+  ctx.beginPath();
+  ctx.moveTo(x1 - nx * halfWidth, y1 - ny * halfWidth);
+  ctx.lineTo(ex - nx * halfWidth, ey - ny * halfWidth);
+  ctx.lineTo(ex + nx * halfWidth, ey + ny * halfWidth);
+  ctx.lineTo(x1 + nx * halfWidth, y1 + ny * halfWidth);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  if (roundCapAtStart) {
+    ctx.beginPath();
+    ctx.arc(x1, y1, halfWidth, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+  }
+
+  // Subtle side-edge contour strokes (left and right silhouette of cylinder only — no line across midpoint seam!)
+  ctx.beginPath();
+  ctx.moveTo(x1 - nx * halfWidth, y1 - ny * halfWidth);
+  ctx.lineTo(ex - nx * halfWidth, ey - ny * halfWidth);
+  ctx.moveTo(x1 + nx * halfWidth, y1 + ny * halfWidth);
+  ctx.lineTo(ex + nx * halfWidth, ey + ny * halfWidth);
+  ctx.strokeStyle = isWhite ? "rgba(15, 23, 42, 0.34)" : "rgba(0, 0, 0, 0.55)";
+  ctx.lineWidth = 0.75;
+  ctx.stroke();
 }
 
 function scheduleCastep3DRender() {
@@ -2746,6 +2896,7 @@ window.scheduleCastep3DRender = scheduleCastep3DRender;
 function getOrBuildCastep3DTopology(st, vecs, v3) {
   const baseAtoms = st.atoms || [];
   const bnd = v3.boundary || { xmin: 0, xmax: 1, ymin: 0, ymax: 1, zmin: 0, zmax: 1 };
+  const bMode = v3.boundaryMode || (v3.showBoundaryBonds === false ? "in-cell" : "complete");
   const firstAt = baseAtoms[0] ? `${baseAtoms[0].element}_${baseAtoms[0].x.toFixed(4)}_${baseAtoms[0].z.toFixed(4)}` : "0";
   const lastAt = baseAtoms.length ? `${baseAtoms[baseAtoms.length-1].element}_${baseAtoms[baseAtoms.length-1].x.toFixed(4)}_${baseAtoms[baseAtoms.length-1].z.toFixed(4)}` : "0";
   const key = [
@@ -2756,7 +2907,7 @@ function getOrBuildCastep3DTopology(st, vecs, v3) {
     lastAt,
     vecs[0][0].toFixed(3), vecs[1][1].toFixed(3), vecs[2][2].toFixed(3),
     bnd.xmin, bnd.xmax, bnd.ymin, bnd.ymax, bnd.zmin, bnd.zmax,
-    v3.showModels, v3.showBoundaryBonds, v3.showBonds, v3.bondCutoffFactor, v3.style,
+    v3.showModels, bMode, v3.showBonds, v3.bondCutoffFactor, v3.style,
     Array.from(v3.hiddenElements).join(",")
   ].join("|");
 
@@ -2764,53 +2915,44 @@ function getOrBuildCastep3DTopology(st, vecs, v3) {
     return v3._topoCache;
   }
 
-  const expandedAtoms = [];
-  const eps = 1e-3;
+  let expandedAtoms = [];
+  const eps = 1.5e-3;
   const iMin = Math.floor(bnd.xmin - eps), iMax = Math.ceil(bnd.xmax + eps);
   const jMin = Math.floor(bnd.ymin - eps), jMax = Math.ceil(bnd.ymax + eps);
   const kMin = Math.floor(bnd.zmin - eps), kMax = Math.ceil(bnd.zmax + eps);
   const seenPosKeys = new Set();
 
+  const elSet = new Set(baseAtoms.map(a => castepCleanElement(a.element)));
+  const hasCations = baseAtoms.some(a => VESTA_CATION_SET.has(castepCleanElement(a.element)));
+  const hasAnions = baseAtoms.some(a => VESTA_ANION_SET.has(castepCleanElement(a.element)));
+  const hasBothCA = hasCations && hasAnions;
+  const cutoffFactor = Number(v3.bondCutoffFactor) || 1.15;
+
   if (v3.showModels !== false) {
-    baseAtoms.forEach((at, idx) => {
-      const el = castepCleanElement(at.element);
-      if (v3.hiddenElements.has(el)) return;
-      const u0 = Number(at.x) || 0, v0 = Number(at.y) || 0, w0 = Number(at.z) || 0;
-      for (let da = iMin; da <= iMax; da++) {
-        for (let db = jMin; db <= jMax; db++) {
-          for (let dc = kMin; dc <= kMax; dc++) {
-            const u = u0 + da, v = v0 + db, w = w0 + dc;
-            if (u >= bnd.xmin - eps && u <= bnd.xmax + eps &&
-                v >= bnd.ymin - eps && v <= bnd.ymax + eps &&
-                w >= bnd.zmin - eps && w <= bnd.zmax + eps) {
-              const pKey = `${el}_${Math.round(u*1000)}_${Math.round(v*1000)}_${Math.round(w*1000)}`;
-              if (seenPosKeys.has(pKey)) continue;
-              seenPosKeys.add(pKey);
-              const [cx, cy, cz] = castepFracToCart(u, v, w, vecs);
-              expandedAtoms.push({
-                atomIndex: idx,
-                element: el,
-                label: at.label || `${el}${idx+1}`,
-                fixed: Boolean(at.fixed),
-                fx: at.fx || 0, fy: at.fy || 0, fz: at.fz || 0,
-                spin: at.spin || 0,
-                fracU: u, fracV: v, fracW: w,
-                cartX: cx, cartY: cy, cartZ: cz,
-                isBoundaryImage: !(da === 0 && db === 0 && dc === 0)
-              });
-            }
-          }
-        }
-      }
-    });
-
-    const hasCations = baseAtoms.some(a => VESTA_CATION_SET.has(castepCleanElement(a.element)));
-    const hasAnions = baseAtoms.some(a => VESTA_ANION_SET.has(castepCleanElement(a.element)));
-    const hasBothCA = hasCations && hasAnions;
-
-    if (v3.showBoundaryBonds && expandedAtoms.length > 0 && expandedAtoms.length <= 240) {
-      const inBoxCount = expandedAtoms.length;
-      const cutoffFactor = Number(v3.bondCutoffFactor) || 1.16;
+    if (bMode === "asymmetric") {
+      // Raw input unit cell atoms only (zero periodic copies)
+      baseAtoms.forEach((at, idx) => {
+        const el = castepCleanElement(at.element);
+        if (v3.hiddenElements.has(el)) return;
+        const u = Number(at.x) || 0, v = Number(at.y) || 0, w = Number(at.z) || 0;
+        const [cx, cy, cz] = castepFracToCart(u, v, w, vecs);
+        expandedAtoms.push({
+          atomIndex: idx,
+          element: el,
+          label: at.label || `${el}${idx+1}`,
+          fixed: Boolean(at.fixed),
+          fx: at.fx || 0, fy: at.fy || 0, fz: at.fz || 0,
+          spin: at.spin || 0,
+          fracU: u, fracV: v, fracW: w,
+          cartX: cx, cartY: cy, cartZ: cz,
+          inBox: true,
+          isExternalBondAtom: false,
+          isBoundaryImage: false
+        });
+      });
+    } else {
+      // Step 1: All atoms strictly inside [bnd.xmin..xmax] x [ymin..ymax] x [zmin..zmax]
+      //         INCLUDING symmetric equivalents sitting on box faces/edges/corners (all marked inBox=true!)
       baseAtoms.forEach((at, idx) => {
         const el = castepCleanElement(at.element);
         if (v3.hiddenElements.has(el)) return;
@@ -2819,53 +2961,95 @@ function getOrBuildCastep3DTopology(st, vecs, v3) {
           for (let db = jMin - 1; db <= jMax + 1; db++) {
             for (let dc = kMin - 1; dc <= kMax + 1; dc++) {
               const u = u0 + da, v = v0 + db, w = w0 + dc;
-              const pKey = `${el}_${Math.round(u*1000)}_${Math.round(v*1000)}_${Math.round(w*1000)}`;
-              if (seenPosKeys.has(pKey)) continue;
-              const [cx, cy, cz] = castepFracToCart(u, v, w, vecs);
-              let bondedToInBox = false;
-              for (let m = 0; m < inBoxCount; m++) {
-                const inAt = expandedAtoms[m];
-                const dist = Math.hypot(cx - inAt.cartX, cy - inAt.cartY, cz - inAt.cartZ);
-                if (isVestaChemicalBond(inAt.element, el, dist, cutoffFactor, hasBothCA)) {
-                  bondedToInBox = true;
-                  break;
-                }
-              }
-              if (bondedToInBox) {
+              if (u >= bnd.xmin - eps && u <= bnd.xmax + eps &&
+                  v >= bnd.ymin - eps && v <= bnd.ymax + eps &&
+                  w >= bnd.zmin - eps && w <= bnd.zmax + eps) {
+                const pKey = `${el}_${Math.round(u * 500)}_${Math.round(v * 500)}_${Math.round(w * 500)}`;
+                if (seenPosKeys.has(pKey)) continue;
                 seenPosKeys.add(pKey);
+                const [cx, cy, cz] = castepFracToCart(u, v, w, vecs);
                 expandedAtoms.push({
                   atomIndex: idx,
                   element: el,
                   label: at.label || `${el}${idx+1}`,
                   fixed: Boolean(at.fixed),
-                  fx: 0, fy: 0, fz: 0,
+                  fx: at.fx || 0, fy: at.fy || 0, fz: at.fz || 0,
+                  spin: at.spin || 0,
                   fracU: u, fracV: v, fracW: w,
                   cartX: cx, cartY: cy, cartZ: cz,
-                  isBoundaryImage: true
+                  inBox: true,
+                  isExternalBondAtom: false,
+                  isBoundaryImage: !(da === 0 && db === 0 && dc === 0)
                 });
               }
             }
           }
         }
       });
+
+      // Step 2: In "complete" mode, add ONLY direct 1st-neighbor bonded partners of inBox atoms
+      //         so every boundary bond is cleanly completed without dangling fragments
+      if (bMode === "complete" && expandedAtoms.length > 0 && expandedAtoms.length <= 260) {
+        const inBoxCount = expandedAtoms.length;
+        baseAtoms.forEach((at, idx) => {
+          const el = castepCleanElement(at.element);
+          if (v3.hiddenElements.has(el)) return;
+          const u0 = Number(at.x) || 0, v0 = Number(at.y) || 0, w0 = Number(at.z) || 0;
+          for (let da = iMin - 1; da <= iMax + 1; da++) {
+            for (let db = jMin - 1; db <= jMax + 1; db++) {
+              for (let dc = kMin - 1; dc <= kMax + 1; dc++) {
+                const u = u0 + da, v = v0 + db, w = w0 + dc;
+                const pKey = `${el}_${Math.round(u * 500)}_${Math.round(v * 500)}_${Math.round(w * 500)}`;
+                if (seenPosKeys.has(pKey)) continue;
+                const [cx, cy, cz] = castepFracToCart(u, v, w, vecs);
+                let bondedToInBox = false;
+                for (let m = 0; m < inBoxCount; m++) {
+                  const inAt = expandedAtoms[m];
+                  const dist = Math.hypot(cx - inAt.cartX, cy - inAt.cartY, cz - inAt.cartZ);
+                  if (isVestaChemicalBond(inAt.element, el, dist, cutoffFactor, hasBothCA, elSet)) {
+                    bondedToInBox = true;
+                    break;
+                  }
+                }
+                if (bondedToInBox) {
+                  seenPosKeys.add(pKey);
+                  expandedAtoms.push({
+                    atomIndex: idx,
+                    element: el,
+                    label: at.label || `${el}${idx+1}`,
+                    fixed: Boolean(at.fixed),
+                    fx: 0, fy: 0, fz: 0,
+                    spin: at.spin || 0,
+                    fracU: u, fracV: v, fracW: w,
+                    cartX: cx, cartY: cy, cartZ: cz,
+                    inBox: false,
+                    isExternalBondAtom: true,
+                    isBoundaryImage: true
+                  });
+                }
+              }
+            }
+          }
+        });
+      }
     }
   }
 
-  const bondPairs = [];
+  // Step 3: Build ALL valid chemical bonds cleanly:
+  //   - ALWAYS allow inBox <-> inBox (including symmetric face/edge/corner atoms!)
+  //   - ALWAYS allow inBox <-> external 1st-neighbor bond atoms
+  //   - ONLY skip external <-> external so outer shells never tangle
+  let bondPairs = [];
   const adjList = new Map();
-  const cutoffFactor = Number(v3.bondCutoffFactor) || 1.16;
-  const hasCationsAll = baseAtoms.some(a => VESTA_CATION_SET.has(castepCleanElement(a.element)));
-  const hasAnionsAll = baseAtoms.some(a => VESTA_ANION_SET.has(castepCleanElement(a.element)));
-  const hasBothCAAll = hasCationsAll && hasAnionsAll;
 
   if ((v3.showBonds || v3.style === "polyhedral" || v3.style === "wireframe" || v3.style === "stick") && v3.style !== "space-fill") {
     for (let i = 0; i < expandedAtoms.length; i++) {
       const a1 = expandedAtoms[i];
       for (let j = i + 1; j < expandedAtoms.length; j++) {
         const a2 = expandedAtoms[j];
-        if (a1.isBoundaryImage && a2.isBoundaryImage) continue;
+        if (a1.isExternalBondAtom && a2.isExternalBondAtom) continue;
         const dist = Math.hypot(a1.cartX - a2.cartX, a1.cartY - a2.cartY, a1.cartZ - a2.cartZ);
-        if (isVestaChemicalBond(a1.element, a2.element, dist, cutoffFactor, hasBothCAAll)) {
+        if (isVestaChemicalBond(a1.element, a2.element, dist, cutoffFactor, hasBothCA, elSet)) {
           bondPairs.push({ i, j, dist });
           if (!adjList.has(i)) adjList.set(i, []);
           if (!adjList.has(j)) adjList.set(j, []);
@@ -2876,6 +3060,33 @@ function getOrBuildCastep3DTopology(st, vecs, v3) {
     }
   }
 
+  // Orphan-Pruner Guarantee: NEVER leave a detached external atom floating unbonded!
+  if (bMode === "complete" && expandedAtoms.some(a => a.isExternalBondAtom)) {
+    const keepMap = new Map();
+    const cleanedAtoms = [];
+    expandedAtoms.forEach((a, oldIdx) => {
+      if (a.isExternalBondAtom && !(adjList.get(oldIdx) && adjList.get(oldIdx).length > 0)) {
+        return; // Drop unbonded external orphan
+      }
+      keepMap.set(oldIdx, cleanedAtoms.length);
+      cleanedAtoms.push(a);
+    });
+    if (cleanedAtoms.length !== expandedAtoms.length) {
+      expandedAtoms = cleanedAtoms;
+      bondPairs = bondPairs
+        .filter(bp => keepMap.has(bp.i) && keepMap.has(bp.j))
+        .map(bp => ({ i: keepMap.get(bp.i), j: keepMap.get(bp.j), dist: bp.dist }));
+      adjList.clear();
+      bondPairs.forEach(bp => {
+        if (!adjList.has(bp.i)) adjList.set(bp.i, []);
+        if (!adjList.has(bp.j)) adjList.set(bp.j, []);
+        adjList.get(bp.i).push(bp.j);
+        adjList.get(bp.j).push(bp.i);
+      });
+    }
+  }
+
+  // Step 4: Build coordination polyhedra
   let polyCount = 0;
   const polyTriplets = [];
   expandedAtoms.forEach((centerAt, cIdx) => {
@@ -2888,14 +3099,11 @@ function getOrBuildCastep3DTopology(st, vecs, v3) {
           for (let b = a + 1; b < neighbors.length; b++) {
             const i2 = neighbors[b], L2 = expandedAtoms[i2];
             const d12 = Math.hypot(L1.cartX - L2.cartX, L1.cartY - L2.cartY, L1.cartZ - L2.cartZ);
-            if (d12 <= 4.35) {
-              polyTriplets.push({ indices: [cIdx, i1, i2], centerIdx: cIdx, offsetZ: -0.05 });
-            }
             for (let c = b + 1; c < neighbors.length; c++) {
               const i3 = neighbors[c], L3 = expandedAtoms[i3];
               const d13 = Math.hypot(L1.cartX - L3.cartX, L1.cartY - L3.cartY, L1.cartZ - L3.cartZ);
               const d23 = Math.hypot(L2.cartX - L3.cartX, L2.cartY - L3.cartY, L2.cartZ - L3.cartZ);
-              if (d12 <= 4.35 && d13 <= 4.35 && d23 <= 4.35) {
+              if (d12 <= 4.4 && d13 <= 4.4 && d23 <= 4.4) {
                 polyTriplets.push({ indices: [i1, i2, i3], centerIdx: cIdx, offsetZ: 0 });
               }
             }
@@ -2907,6 +3115,8 @@ function getOrBuildCastep3DTopology(st, vecs, v3) {
 
   v3._topoCacheKey = key;
   v3._topoCache = { expandedAtoms, bondPairs, polyTriplets, polyCount };
+  // Trigger clean auto-fit recalculation when structure or boundary mode changes
+  v3._fitScaleKey = "";
   return v3._topoCache;
 }
 
@@ -2955,6 +3165,12 @@ function renderCastep3DScene() {
     v3.rotMatrix = computeVestaOrientationMatrix(v3.currentAxisPreset || "a", vecs);
   }
   const R = v3.rotMatrix;
+  const r00 = R[0][0], r01 = R[0][1], r02 = R[0][2];
+  const r10 = R[1][0], r11 = R[1][1], r12 = R[1][2];
+  const r20 = R[2][0], r21 = R[2][1], r22 = R[2][2];
+
+  // Retrieve cached topology (0 ms during rotation!)
+  const topo = getOrBuildCastep3DTopology(st, vecs, v3);
 
   const bnd = v3.boundary || { xmin: 0, xmax: 1, ymin: 0, ymax: 1, zmin: 0, zmax: 1 };
   const midU = (bnd.xmin + bnd.xmax) / 2.0;
@@ -2962,15 +3178,38 @@ function renderCastep3DScene() {
   const midW = (bnd.zmin + bnd.zmax) / 2.0;
   const [centerX, centerY, centerZ] = castepFracToCart(midU, midV, midW, vecs);
 
-  const spanA = Math.hypot(...aVec) * Math.max(1, bnd.xmax - bnd.xmin);
-  const spanB = Math.hypot(...bVec) * Math.max(1, bnd.ymax - bnd.ymin);
-  const spanC = Math.hypot(...cVec) * Math.max(1, bnd.zmax - bnd.zmin);
-  const maxBoxSpan = Math.max(spanA, spanB, spanC, 5.0);
-  const autoScale = (Math.min(width, height) * 0.76 / maxBoxSpan) * v3.scale;
+  // Unit cell corners (relative to boundary box)
+  const boxCorners3D = [
+    castepFracToCart(0, 0, 0, vecs),
+    castepFracToCart(1, 0, 0, vecs),
+    castepFracToCart(0, 1, 0, vecs),
+    castepFracToCart(0, 0, 1, vecs),
+    castepFracToCart(1, 1, 0, vecs),
+    castepFracToCart(1, 0, 1, vecs),
+    castepFracToCart(0, 1, 1, vecs),
+    castepFracToCart(1, 1, 1, vecs)
+  ];
 
-  const r00 = R[0][0], r01 = R[0][1], r02 = R[0][2];
-  const r10 = R[1][0], r11 = R[1][1], r12 = R[1][2];
-  const r20 = R[2][0], r21 = R[2][1], r22 = R[2][2];
+  // Compute smart Auto-Fit scale ONCE per structure/preset/canvas-resize (stays rock-steady during drag!)
+  const fitKey = `${v3._topoCacheKey}|${v3.currentAxisPreset}|${width}x${height}`;
+  if (!v3._baseAutoScale || v3._fitScaleKey !== fitKey) {
+    let maxAbsX = 2.0, maxAbsY = 2.0;
+    const considerPt = (px, py, pz, padA = 0.0) => {
+      const xr = px - centerX, yr = py - centerY, zr = pz - centerZ;
+      const rx = Math.abs(r00 * xr + r01 * yr + r02 * zr) + padA;
+      const ry = Math.abs(r10 * xr + r11 * yr + r12 * zr) + padA;
+      if (rx > maxAbsX) maxAbsX = rx;
+      if (ry > maxAbsY) maxAbsY = ry;
+    };
+    boxCorners3D.forEach(c => considerPt(c[0], c[1], c[2], 0.35));
+    topo.expandedAtoms.forEach(a => considerPt(a.cartX, a.cartY, a.cartZ, 0.85));
+    const scaleX = (width * 0.43) / maxAbsX;
+    const scaleY = (height * 0.42) / maxAbsY;
+    v3._baseAutoScale = Math.max(4.5, Math.min(scaleX, scaleY, 68.0));
+    v3._fitScaleKey = fitKey;
+  }
+  const autoScale = v3._baseAutoScale * (Number(v3.scale) || 1.0);
+
   const halfW = width / 2 + v3.panX;
   const halfH = height / 2 + v3.panY;
 
@@ -3008,20 +3247,29 @@ function renderCastep3DScene() {
     }
   }
 
-  // Retrieve cached topology (0 ms during rotation!)
-  const topo = getOrBuildCastep3DTopology(st, vecs, v3);
   const atomScale = Number(v3.atomScale) || 1.0;
+  const bondWidthScale = Number(v3.bondWidthScale) || 1.0;
+
+  // Materials Studio / crystallographic Ball-and-stick proportional radii
+  const stickHalfW = v3.style === "stick"
+    ? Math.max(3.2, Math.min(11.5, autoScale * 0.175 * bondWidthScale))
+    : Math.max(1.85, Math.min(7.8, autoScale * 0.115 * bondWidthScale));
 
   const projectedAtoms = new Array(topo.expandedAtoms.length);
   for (let i = 0; i < topo.expandedAtoms.length; i++) {
     const at = topo.expandedAtoms[i];
     const p = project(at.cartX, at.cartY, at.cartZ);
-    const covR = (typeof COVALENT_RADII !== "undefined" && COVALENT_RADII[at.element]) || 1.20;
-    let radius = Math.max(5.5, Math.min(22, covR * autoScale * 0.25 * atomScale));
+    const covR = getCrystalCovRadius(at.element);
+    let radius;
     if (v3.style === "space-fill") {
-      radius = Math.max(10, covR * autoScale * 0.68 * atomScale);
-    } else if (v3.style === "stick" || v3.style === "wireframe") {
-      radius = v3.style === "wireframe" ? 2.5 : 4.2;
+      radius = Math.max(9.0, Math.min(62.0, covR * autoScale * 0.84 * atomScale));
+    } else if (v3.style === "stick") {
+      radius = stickHalfW * 1.04;
+    } else if (v3.style === "wireframe") {
+      radius = 2.4;
+    } else {
+      // Ball-and-stick & Polyhedral: clean element size hierarchy, always clearly larger than stick!
+      radius = Math.max(stickHalfW * 1.55, Math.min(34.0, covR * autoScale * 0.34 * atomScale));
     }
     projectedAtoms[i] = {
       ...at,
@@ -3031,29 +3279,7 @@ function renderCastep3DScene() {
     };
   }
 
-  // Unit cell wireframe
-  if (v3.showBox) {
-    const corners = [
-      [0,0,0], aVec, bVec, cVec,
-      [aVec[0]+bVec[0], aVec[1]+bVec[1], aVec[2]+bVec[2]],
-      [aVec[0]+cVec[0], aVec[1]+cVec[1], aVec[2]+cVec[2]],
-      [bVec[0]+cVec[0], bVec[1]+cVec[1], bVec[2]+cVec[2]],
-      [aVec[0]+bVec[0]+cVec[0], aVec[1]+bVec[1]+cVec[1], aVec[2]+bVec[2]+cVec[2]]
-    ].map(pt => project(pt[0], pt[1], pt[2]));
-
-    const edgeIndices = [[0,1],[0,2],[0,3],[1,4],[2,4],[1,5],[3,5],[2,6],[3,6],[4,7],[5,7],[6,7]];
-    ctx.strokeStyle = isWhite ? "rgba(71, 85, 105, 0.72)" : "rgba(148, 163, 184, 0.45)";
-    ctx.lineWidth = 1.15;
-    ctx.beginPath();
-    for (let e = 0; e < edgeIndices.length; e++) {
-      const [i, j] = edgeIndices[e];
-      ctx.moveTo(corners[i].sx, corners[i].sy);
-      ctx.lineTo(corners[j].sx, corners[j].sy);
-    }
-    ctx.stroke();
-  }
-
-  // Optional 2D Volumetric Slice Plane inside 3D Cell
+  // Optional 2D Volumetric Slice Plane inside 3D Cell (drawn behind atoms/bonds)
   if (v3.showChdiffSlice) {
     const sPos = parseFloat(document.getElementById("castep-chdiff-slice-pos")?.value) || 0.5;
     const sPlane = document.getElementById("castep-chdiff-plane")?.value || "xz";
@@ -3084,25 +3310,81 @@ function renderCastep3DScene() {
 
   const drawItems = [];
 
-  // Polyhedra faces
-  if (v3.style === "polyhedral") {
-    for (let p = 0; p < topo.polyTriplets.length; p++) {
-      const t = topo.polyTriplets[p];
-      const p0 = projectedAtoms[t.indices[0]], p1 = projectedAtoms[t.indices[1]], p2 = projectedAtoms[t.indices[2]];
+  // Depth-sorted unit cell box edges (back edges sit behind atoms, front edges cleanly wrap in front!)
+  if (v3.showBox) {
+    const corners = boxCorners3D.map(pt => project(pt[0], pt[1], pt[2]));
+    const edgeIndices = [[0,1],[0,2],[0,3],[1,4],[2,4],[1,5],[3,5],[2,6],[3,6],[4,7],[5,7],[6,7]];
+    for (let e = 0; e < edgeIndices.length; e++) {
+      const [i, j] = edgeIndices[e];
+      const p1 = corners[i], p2 = corners[j];
+      const midZ = (p1.sz + p2.sz) * 0.5;
       drawItems.push({
-        type: "poly",
-        sz: (p0.sz + p1.sz + p2.sz) / 3 + t.offsetZ,
-        data: { pts: [p0, p1, p2], color: projectedAtoms[t.centerIdx].color }
+        type: "box_edge",
+        sz: midZ,
+        data: { p1, p2, isFront: midZ >= 0 }
       });
     }
   }
 
-  // Bonds
-  if (v3.showBonds || v3.style === "wireframe" || v3.style === "stick") {
+  // Shaded Polyhedra faces (with Lambertian lighting from top-left light vector)
+  if (v3.style === "polyhedral") {
+    for (let p = 0; p < topo.polyTriplets.length; p++) {
+      const t = topo.polyTriplets[p];
+      const p0 = projectedAtoms[t.indices[0]], p1 = projectedAtoms[t.indices[1]], p2 = projectedAtoms[t.indices[2]];
+      // Screen-space 3D triangle normal for crisp directional shading
+      const ux = p1.sx - p0.sx, uy = p1.sy - p0.sy, uz = (p1.sz - p0.sz) * autoScale;
+      const vx = p2.sx - p0.sx, vy = p2.sy - p0.sy, vz = (p2.sz - p0.sz) * autoScale;
+      const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+      const nLen = Math.hypot(nx, ny, nz) || 1;
+      const ndotl = Math.abs((nx * -0.35 + ny * -0.45 + nz * 0.82) / nLen);
+      drawItems.push({
+        type: "poly",
+        sz: (p0.sz + p1.sz + p2.sz) / 3 + t.offsetZ,
+        data: { pts: [p0, p1, p2], color: projectedAtoms[t.centerIdx].color, shade: ndotl }
+      });
+    }
+  }
+
+  // Half-bond depth-sorted 3D cylindrical sticks (eliminates z-fighting & bond pop-over glitches!)
+  const uniformStick = (v3.bondColorMode === "uniform");
+  const uniformColor = isWhite ? "#94a3b8" : "#cbd5e1";
+
+  if ((v3.showBonds || v3.style === "wireframe" || v3.style === "stick") && v3.style !== "space-fill") {
     for (let b = 0; b < topo.bondPairs.length; b++) {
       const bp = topo.bondPairs[b];
       const a1 = projectedAtoms[bp.i], a2 = projectedAtoms[bp.j];
-      drawItems.push({ type: "bond", sz: (a1.sz + a2.sz) / 2, data: { a1, a2 } });
+      const mx = (a1.sx + a2.sx) * 0.5;
+      const my = (a1.sy + a2.sy) * 0.5;
+      const dx = a2.sx - a1.sx, dy = a2.sy - a1.sy;
+      const segLen = Math.hypot(dx, dy);
+      if (segLen < 0.8) continue;
+
+      // Trim bond start slightly into the sphere surface so sticks join spheres cleanly without tail bleed
+      const ux = dx / segLen, uy = dy / segLen;
+      const trim1 = v3.style === "ball-stick" || v3.style === "polyhedral" ? Math.min(a1.radius * 0.52, segLen * 0.35) : 0;
+      const trim2 = v3.style === "ball-stick" || v3.style === "polyhedral" ? Math.min(a2.radius * 0.52, segLen * 0.35) : 0;
+
+      const s1x = a1.sx + ux * trim1, s1y = a1.sy + uy * trim1;
+      const s2x = a2.sx - ux * trim2, s2y = a2.sy - uy * trim2;
+
+      drawItems.push({
+        type: "half_bond",
+        sz: 0.68 * a1.sz + 0.32 * a2.sz - 0.04,
+        data: {
+          x1: s1x, y1: s1y, x2: mx, y2: my,
+          color: uniformStick ? uniformColor : a1.color,
+          roundCap: v3.style === "stick"
+        }
+      });
+      drawItems.push({
+        type: "half_bond",
+        sz: 0.32 * a1.sz + 0.68 * a2.sz - 0.04,
+        data: {
+          x1: s2x, y1: s2y, x2: mx, y2: my,
+          color: uniformStick ? uniformColor : a2.color,
+          roundCap: v3.style === "stick"
+        }
+      });
     }
   }
 
@@ -3167,20 +3449,34 @@ function renderCastep3DScene() {
 
   drawItems.sort((a, b) => a.sz - b.sz);
 
-  const bondWidthBase = (v3.style === "stick" ? 5.6 : (v3.style === "wireframe" ? 1.6 : 4.2)) * (Number(v3.bondWidthScale) || 1.0);
-
   for (let idx = 0; idx < drawItems.length; idx++) {
     const item = drawItems[idx];
-    if (item.type === "poly") {
-      const { pts, color } = item.data;
+    if (item.type === "box_edge") {
+      const { p1, p2, isFront } = item.data;
+      ctx.beginPath();
+      ctx.moveTo(p1.sx, p1.sy);
+      ctx.lineTo(p2.sx, p2.sy);
+      ctx.strokeStyle = isWhite
+        ? (isFront ? "rgba(51, 65, 85, 0.72)" : "rgba(100, 116, 139, 0.42)")
+        : (isFront ? "rgba(203, 213, 225, 0.55)" : "rgba(148, 163, 184, 0.28)");
+      ctx.lineWidth = isFront ? 1.15 : 0.95;
+      ctx.stroke();
+    } else if (item.type === "poly") {
+      const { pts, color, shade } = item.data;
+      const shadedCol = typeof lightenColor === "function" && shade > 0.55
+        ? lightenColor(color, (shade - 0.55) * 0.45)
+        : (typeof darkenColor === "function" && shade < 0.45 ? darkenColor(color, (0.45 - shade) * 0.35) : color);
       ctx.beginPath();
       ctx.moveTo(pts[0].sx, pts[0].sy);
       ctx.lineTo(pts[1].sx, pts[1].sy);
       ctx.lineTo(pts[2].sx, pts[2].sy);
       ctx.closePath();
-      ctx.fillStyle = color + "52";
+      ctx.save();
+      ctx.globalAlpha = 0.34 + 0.20 * shade;
+      ctx.fillStyle = shadedCol;
       ctx.fill();
-      ctx.strokeStyle = isWhite ? "rgba(51, 65, 85, 0.45)" : "rgba(226, 232, 240, 0.35)";
+      ctx.restore();
+      ctx.strokeStyle = isWhite ? "rgba(51, 65, 85, 0.42)" : "rgba(226, 232, 240, 0.35)";
       ctx.lineWidth = 0.85;
       ctx.stroke();
     } else if (item.type === "chdiff_lobe") {
@@ -3189,37 +3485,18 @@ function renderCastep3DScene() {
       ctx.globalAlpha = l.alpha;
       ctx.drawImage(l.sprite, l.sx - l.r, l.sy - l.r, l.r * 2, l.r * 2);
       ctx.globalAlpha = prevAlpha;
-    } else if (item.type === "bond") {
-      const { a1, a2 } = item.data;
-      const mx = (a1.sx + a2.sx) / 2, my = (a1.sy + a2.sy) / 2;
+    } else if (item.type === "half_bond") {
+      const hb = item.data;
       if (v3.style === "wireframe") {
         ctx.beginPath();
-        ctx.moveTo(a1.sx, a1.sy); ctx.lineTo(mx, my);
-        ctx.strokeStyle = a1.color; ctx.lineWidth = 1.6; ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(mx, my); ctx.lineTo(a2.sx, a2.sy);
-        ctx.strokeStyle = a2.color; ctx.lineWidth = 1.6; ctx.stroke();
-      } else {
+        ctx.moveTo(hb.x1, hb.y1);
+        ctx.lineTo(hb.x2, hb.y2);
+        ctx.strokeStyle = hb.color;
+        ctx.lineWidth = 1.7;
         ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.moveTo(a1.sx, a1.sy); ctx.lineTo(a2.sx, a2.sy);
-        ctx.strokeStyle = isWhite ? "rgba(30, 41, 59, 0.65)" : "rgba(15, 23, 42, 0.8)";
-        ctx.lineWidth = bondWidthBase + 1.5;
         ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(a1.sx, a1.sy); ctx.lineTo(mx, my);
-        ctx.strokeStyle = a1.color; ctx.lineWidth = bondWidthBase; ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(mx, my); ctx.lineTo(a2.sx, a2.sy);
-        ctx.strokeStyle = a2.color; ctx.lineWidth = bondWidthBase; ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(a1.sx, a1.sy); ctx.lineTo(a2.sx, a2.sy);
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
-        ctx.lineWidth = Math.max(1.0, bondWidthBase * 0.28);
-        ctx.stroke();
+      } else {
+        drawShadedHalfBondCylinder(ctx, hb.x1, hb.y1, hb.x2, hb.y2, stickHalfW, hb.color, isWhite, hb.roundCap);
       }
     } else if (item.type === "atom") {
       const a = item.data;
@@ -3234,9 +3511,9 @@ function renderCastep3DScene() {
         ctx.stroke();
       }
 
-      // Draw pre-cached 64x64 Phong glossy sphere sprite (ultra-fast hardware blit!)
+      // Draw pre-cached 96x96 Phong glossy sphere sprite (ultra-fast hardware blit!)
       const sprite = getCachedSphereSprite(a.color, a.fixed);
-      const drawR = a.radius * (32 / 28);
+      const drawR = a.radius * (48 / 42);
       ctx.drawImage(sprite, a.sx - drawR, a.sy - drawR, drawR * 2, drawR * 2);
 
       if (v3.showSpins && a.spin !== undefined && a.spin !== null && Math.abs(a.spin) >= 0.04) {
@@ -8640,17 +8917,25 @@ function renderCastepChdiffPlots() {
     const projAtomsA = (st?.atoms || []).map(at => {
       const [cx, cy, cz] = castepFracToCart(at.x, at.y, at.z, vecs);
       const p = proj(cx, cy, cz);
-      const covR = (typeof COVALENT_RADII !== "undefined" && COVALENT_RADII[at.element]) || 1.15;
-      const r = Math.max(4.5, Math.min(11.5, covR * scale * 0.21));
-      return { cx, cy, cz, sx: p.sx, sy: p.sy, sz: p.sz, r, el: at.element, color: getVestaElementColor(at.element) };
+      const covR = getCrystalCovRadius(at.element);
+      const r = Math.max(5.0, Math.min(14.5, covR * scale * 0.28));
+      return { cx, cy, cz, sx: p.sx, sy: p.sy, sz: p.sz, r, el: castepCleanElement(at.element), color: getVestaElementColor(at.element) };
     });
-    // Add subtle bonds inside Panel (a) so the molecular/crystal backbone stands out inside the clouds
+    const elSetA = new Set(projAtomsA.map(a => a.el));
+    const hasCationsA = projAtomsA.some(a => VESTA_CATION_SET.has(a.el));
+    const hasAnionsA = projAtomsA.some(a => VESTA_ANION_SET.has(a.el));
+    const hasBothCAA = hasCationsA && hasAnionsA;
+    const stickHalfA = Math.max(1.6, Math.min(4.2, scale * 0.095));
+
+    // Exact chemical half-bonds inside Panel (a) so the crystal backbone renders cleanly inside clouds
     for (let i = 0; i < projAtomsA.length; i++) {
       for (let j = i + 1; j < projAtomsA.length; j++) {
         const a1 = projAtomsA[i], a2 = projAtomsA[j];
         const d = Math.hypot(a1.cx - a2.cx, a1.cy - a2.cy, a1.cz - a2.cz);
-        if (d > 0.45 && d < 2.95) {
-          items.push({ type: "bond", sz: 0.5 * (a1.sz + a2.sz) - 0.02, a1, a2 });
+        if (isVestaChemicalBond(a1.el, a2.el, d, 1.15, hasBothCAA, elSetA)) {
+          const mx = (a1.sx + a2.sx) * 0.5, my = (a1.sy + a2.sy) * 0.5;
+          items.push({ type: "half_bond", sz: 0.68 * a1.sz + 0.32 * a2.sz - 0.03, x1: a1.sx, y1: a1.sy, x2: mx, y2: my, color: a1.color });
+          items.push({ type: "half_bond", sz: 0.32 * a1.sz + 0.68 * a2.sz - 0.03, x1: a2.sx, y1: a2.sy, x2: mx, y2: my, color: a2.color });
         }
       }
     }
@@ -8663,16 +8948,12 @@ function renderCastepChdiffPlots() {
         ctx.globalAlpha = it.alpha;
         ctx.drawImage(it.sprite, it.sx - it.r, it.sy - it.r, it.r * 2, it.r * 2);
         ctx.globalAlpha = prevA;
-      } else if (it.type === "bond") {
-        ctx.beginPath();
-        ctx.moveTo(it.a1.sx, it.a1.sy);
-        ctx.lineTo(it.a2.sx, it.a2.sy);
-        ctx.strokeStyle = "rgba(71, 85, 105, 0.72)";
-        ctx.lineWidth = 2.2;
-        ctx.stroke();
+      } else if (it.type === "half_bond") {
+        drawShadedHalfBondCylinder(ctx, it.x1, it.y1, it.x2, it.y2, stickHalfA, it.color, true, false);
       } else {
         const spr = getCachedSphereSprite(it.color, false);
-        ctx.drawImage(spr, it.sx - it.r, it.sy - it.r, it.r * 2, it.r * 2);
+        const drawR = it.r * (48 / 42);
+        ctx.drawImage(spr, it.sx - drawR, it.sy - drawR, drawR * 2, drawR * 2);
       }
     });
 
