@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-23T06:57:41.823Z",
+  "exported_at": "2026-11-23T06:59:43.353Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -7086,44 +7086,6 @@
       "article_number": "3"
     },
     {
-      "id": "news_20251015_001",
-      "title": "First-Principles Prediction of Two-Dimensional Ferroelectric Rashba Semiconductors in Janus Group-IV Chalcogenides",
-      "category": "Research Article",
-      "authors": "Vu Tien Lam¹*, Jaewon Kim¹, Jin-Woo Park²",
-      "affiliations": "¹ School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea\n² Center for Computational Materials Science, Korea Institute of Science and Technology (KIST), Seoul 02792, Republic of Korea",
-      "corresponding_email": "lamvt.skku@gmail.com",
-      "received_date": "",
-      "revised_date": "",
-      "published_date": "2025-10-15",
-      "volume": "Volume 2 (2025)",
-      "article_number": "1",
-      "doi": "10.skku.matsci/news.2025.001",
-      "keywords": "Janus Monolayers, Ferroelectricity, Rashba Effect, Spintronics, DFT",
-      "status": "Published",
-      "cover_image": "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80",
-      "abstract": "Two-dimensional Janus monochalcogenides exhibit robust out-of-plane electric polarization and giant Rashba spin splitting. Here, through first-principles relativistic density functional theory calculations, we predict dynamic stability and room-temperature spontaneous electric polarization in Janus Ge2SeTe monolayers with strong spin-orbit coupling.",
-      "content_html": "<h2>1. Introduction</h2><p>Two-dimensional ferroelectrics with non-centrosymmetric structures provide an exceptional platform for nonvolatile spintronic memories. In this work, we investigate Janus group-IV monochalcogenide monolayers using hybrid DFT.</p><h2>2. Methodology & Stabilities</h2><p>Phonon dispersion curves calculated using density functional perturbation theory (DFPT) confirm kinetic stability across the full Brillouin zone without imaginary modes.</p><h2>3. Rashba Spin Splitting</h2><p>The broken inversion symmetry accompanied by vertical dipole gives rise to a giant Rashba parameter alpha_R = 1.82 eV·Å at the conduction band edge.</p><h2>4. References</h2><ol><li>Lam, V. T. et al. <em>SKKU Comp. Mater.</em> <strong>2</strong>, 101-110 (2025).</li></ol>"
-    },
-    {
-      "id": "news_20240905_001",
-      "title": "Benchmark Analysis of Many-Body GW Approximations and Bethe-Salpeter Equation for Excitonic Spectra in Monolayer MoS2",
-      "category": "Computational",
-      "authors": "Vu Tien Lam¹*, Dinh Loc Duong²",
-      "affiliations": "¹ School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea\n² Frontier Institute for Research in Sensor Technologies, University of Maine, USA",
-      "corresponding_email": "lamvt.skku@gmail.com",
-      "received_date": "",
-      "revised_date": "",
-      "published_date": "2024-09-05",
-      "volume": "Volume 1 (2024)",
-      "article_number": "1",
-      "doi": "10.skku.matsci/news.2024.001",
-      "keywords": "Many-Body Perturbation Theory, GW0, BSE, Excitons, MoS2, Optical Absorption",
-      "status": "Published",
-      "cover_image": "https://images.unsplash.com/photo-1507668077129-56e32842fceb?auto=format&fit=crop&w=1200&q=80",
-      "abstract": "Accurate optical and quasiparticle band structures of single-layer transition metal dichalcogenides require treating many-body electron-electron and electron-hole interactions. Using state-of-the-art GW+BSE approaches implemented in VASP 6.3, we systematically analyze k-point convergence and screened Coulomb cutoffs for excitonic binding energies.",
-      "content_html": "<h2>1. Introduction</h2><p>Monolayer transition metal dichalcogenides host tightly bound excitons due to quantum confinement and reduced dielectric screening. We evaluate quasiparticle band gaps using single-shot G0W0 and partially self-consistent GW0.</p><h2>2. Many-Body Computational Framework</h2><p>Calculations were performed with a 24x24x1 Gamma-centered k-mesh and 480 empty bands, achieving exciton binding energy convergence within 15 meV.</p><h2>3. Results</h2><p>The computed A and B exciton peaks align with low-temperature photoluminescence measurements within 0.03 eV.</p><h2>4. References</h2><ol><li>Lam, V. T. & Duong, D. L. <em>SKKU Comp. Mater.</em> <strong>1</strong>, 45-52 (2024).</li></ol>"
-    },
-    {
       "id": "news_1795184933021",
       "title": "Imec demonstrates first wafer-scale fabrication of solid-state nanopores using EUV lithography",
       "category": "Communication",
@@ -7161,15 +7123,37 @@
     }
   ],
   "deleted_news_articles": [
-    "news_20261119_001",
+    "news_1795065759528",
     "news_1795065626633",
     "news_1795064184580",
-    "news_1795071397513"
+    "news_20261119_001",
+    "news_1795071397513",
+    "news_1795072095532",
+    "news_1795135260574",
+    "news_1795135298222",
+    "news_1795135330461",
+    "news_1795135354485",
+    "news_1795135680362",
+    "news_1795077188150",
+    "news_1795149607560",
+    "news_20240905_001",
+    "news_20251015_001"
   ],
   "deleted_news_articles_map": {
-    "news_20261119_001": 1795071472584,
-    "news_1795065626633": 1795071474544,
-    "news_1795064184580": 1795071476208,
-    "news_1795071397513": 1795071478176
+    "news_1795065759528": 1795149435584,
+    "news_1795065626633": 1795136900942,
+    "news_1795064184580": 1795136900942,
+    "news_20261119_001": 1795136900942,
+    "news_1795071397513": 1795136900942,
+    "news_1795072095532": 1795135289979,
+    "news_1795135260574": 1795149435584,
+    "news_1795135298222": 1795149435584,
+    "news_1795135330461": 1795149435584,
+    "news_1795135354485": 1795149435584,
+    "news_1795135680362": 1795149435584,
+    "news_1795077188150": 1795170366824,
+    "news_1795149607560": 1795170366824,
+    "news_20240905_001": 1795399410782,
+    "news_20251015_001": 1795399410782
   }
 }
