@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=123_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=123_v116_vesta_viewer" />
+  <link rel="stylesheet" href="styles.css?v=124_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=124_v116_vesta_viewer" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -1314,10 +1314,14 @@
                         <input type="checkbox" id="vesta-chk-show-models" checked onchange="toggleCastep3DOption('showModels', this.checked)" />
                         Show models
                       </label>
-                      <label class="vesta-chk-row">
-                        <input type="checkbox" id="vesta-chk-boundary-bonds" checked onchange="toggleCastep3DOption('showBoundaryBonds', this.checked)" />
-                        Show bonded boundary atoms
-                      </label>
+                      <div class="vesta-prop-row" style="margin:3px 0 4px 0;">
+                        <span>Boundary:</span>
+                        <select id="vesta-boundary-mode-select" class="vesta-dock-select" onchange="setCastepBoundaryDisplayMode(this.value)" title="Periodic boundary display mode">
+                          <option value="complete" selected>Complete</option>
+                          <option value="in-cell">In-Cell</option>
+                          <option value="asymmetric">Raw Cell</option>
+                        </select>
+                      </div>
                       <label class="vesta-chk-row">
                         <input type="checkbox" id="vesta-chk-show-bonds" checked onchange="toggleCastep3DOption('showBonds', this.checked)" />
                         Show chemical bonds
@@ -1344,14 +1348,18 @@
                       </label>
 
                       <div class="vesta-sub-box">
-                        <div class="vesta-sub-title">Style</div>
+                        <div class="vesta-sub-title">Display Style</div>
                         <label class="vesta-radio-row">
                           <input type="radio" name="vesta-model-style" value="ball-stick" checked onchange="setVestaModelStyle('ball-stick')" />
                           Ball-and-stick
                         </label>
                         <label class="vesta-radio-row">
+                          <input type="radio" name="vesta-model-style" value="stick" onchange="setVestaModelStyle('stick')" />
+                          Stick
+                        </label>
+                        <label class="vesta-radio-row">
                           <input type="radio" name="vesta-model-style" value="space-fill" onchange="setVestaModelStyle('space-fill')" />
-                          Space-filling
+                          Space-filling (CPK)
                         </label>
                         <label class="vesta-radio-row">
                           <input type="radio" name="vesta-model-style" value="polyhedral" onchange="setVestaModelStyle('polyhedral')" />
@@ -1361,26 +1369,29 @@
                           <input type="radio" name="vesta-model-style" value="wireframe" onchange="setVestaModelStyle('wireframe')" />
                           Wireframe
                         </label>
-                        <label class="vesta-radio-row">
-                          <input type="radio" name="vesta-model-style" value="stick" onchange="setVestaModelStyle('stick')" />
-                          Stick
-                        </label>
                       </div>
                     </fieldset>
 
                     <fieldset class="vesta-fieldset">
                       <legend>Display Properties &amp; Bonds</legend>
                       <div class="vesta-prop-row">
-                        <span>Atom radius:</span>
+                        <span>Ball radius:</span>
                         <input type="range" id="vesta-atom-scale-slider" min="0.4" max="2.0" step="0.05" value="1.0" oninput="setVestaRenderProperty('atomScale', this.value)" />
                       </div>
                       <div class="vesta-prop-row">
-                        <span>Bond width:</span>
+                        <span>Stick width:</span>
                         <input type="range" id="vesta-bond-scale-slider" min="0.4" max="2.2" step="0.05" value="1.0" oninput="setVestaRenderProperty('bondScale', this.value)" />
                       </div>
                       <div class="vesta-prop-row">
                         <span>Bond cutoff:</span>
-                        <input type="number" id="vesta-bond-cutoff-input" class="vesta-dock-input" value="1.22" step="0.02" min="0.8" max="1.6" onchange="setVestaRenderProperty('bondFactor', this.value)" />
+                        <input type="number" id="vesta-bond-cutoff-input" class="vesta-dock-input" value="1.15" step="0.02" min="0.8" max="1.6" onchange="setVestaRenderProperty('bondFactor', this.value)" />
+                      </div>
+                      <div class="vesta-prop-row">
+                        <span>Bond color:</span>
+                        <select id="vesta-bond-color-select" class="vesta-dock-select" onchange="setVestaRenderProperty('bondColorMode', this.value)">
+                          <option value="bicolor" selected>Bi-color</option>
+                          <option value="uniform">Silver</option>
+                        </select>
                       </div>
                       <div class="vesta-prop-row">
                         <span>Background:</span>
@@ -5396,8 +5407,8 @@
 
 <script src="jszip.min.js"></script>
   <script>if (typeof JSZip === "undefined") { document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"><\\/script>'); }</script>
-  <script src="matsci_tools.js?v=123_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=123_v116_vesta_viewer"></script>
-  <script src="app.js?v=123_v116_vesta_viewer" onerror="this.src='/static/app.js?v=123_v116_vesta_viewer"></script>
+  <script src="matsci_tools.js?v=124_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=124_v116_vesta_viewer"></script>
+  <script src="app.js?v=124_v116_vesta_viewer" onerror="this.src='/static/app.js?v=124_v116_vesta_viewer"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
