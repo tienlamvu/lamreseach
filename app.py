@@ -1809,7 +1809,7 @@ def _normalize_castep_seed(filename: str):
     lower = name.lower()
     for ext in (
         ".cell", ".param", ".castep", ".geom", ".bands", ".xcd", ".xsd", ".cif",
-        ".chdiff", ".charg_frm", ".den_fmt", ".cube", ".xyz", ".bib", ".ome_bin",
+        ".chdiff", ".charg_frm", ".den_fmt", ".cube", ".pdos_bin", ".xyz", ".bib", ".ome_bin",
         ".pdos_bin", ".castep_bin", ".cst_esp", ".check", ".kptaux", ".trjaux", ".xgd"
     ):
         if lower.endswith(ext):
@@ -1942,6 +1942,7 @@ def _parse_castep_bands_backend(bands_path: str, e_window: float = 12.0):
             vals = [kp["e"][0][b] for kp in kpts if b < len(kp["e"][0])]
             if vals and max(vals) >= -e_window and min(vals) <= e_window:
                 keep_bands.append(b)
+        all_e_by_k = [kp["e"] for kp in kpts]
         for kp in kpts:
             kp["e"] = [[round(sp[b], 4) for b in keep_bands if b < len(sp)] for sp in kp["e"]]
         return {
@@ -1953,6 +1954,237 @@ def _parse_castep_bands_backend(bands_path: str, e_window: float = 12.0):
             "ef_ha": round(ef_ha, 6),
             "ef_ev": round(ef_ha * HA_EV, 4),
             "kpoints": kpts,
+            "_all_e_by_k": all_e_by_k,
+        }
+    except Exception:
+        return None
+
+
+
+def _extract_species_order_from_folder(folder: str, seed: str):
+    """Return ordered list of unique element symbols as they appear in .cell POSITIONS_FRAC or .castep."""
+    order = []
+    seen = set()
+    cell_cands = [f"{seed}_DOS.cell", f"{seed}.cell"]
+    for fn in os.listdir(folder):
+        if fn.lower().endswith(".cell") and fn not in cell_cands:
+            cell_cands.append(fn)
+    for cf in cell_cands:
+        fp = os.path.join(folder, cf)
+        if not os.path.exists(fp):
+            continue
+        try:
+            with open(fp, "r", encoding="latin1", errors="ignore") as f:
+                txt = f.read()
+            m = re.search(r"%BLOCK\s+POSITIONS_(?:FRAC|ABS)\s*(.*?)%ENDBLOCK\s+POSITIONS_(?:FRAC|ABS)", txt, re.I | re.S)
+            if m:
+                for line in m.group(1).splitlines():
+                    line = line.split("#")[0].split("!")[0].strip()
+                    parts = line.split()
+                    if len(parts) >= 4:
+                        el = re.sub(r"[^A-Za-z]", "", parts[0])[:2]
+                        if el:
+                            el = el[0].upper() + (el[1:].lower() if len(el) > 1 else "")
+                            if el not in seen:
+                                seen.add(el)
+                                order.append(el)
+                if order:
+                    return order
+        except Exception:
+            pass
+    return order
+
+
+def _parse_pdos_bin_backend(pdos_path: str, bands_obj: dict, species_order: list):
+    """
+    Pure-Python parser for CASTEP binary Fortran unformatted *.pdos_bin files.
+    Combines exact per-atom, per-orbital (s, p, d, f) projection weights with
+    *_DOS.bands eigenvalues & k-point weights onto a fine 0.025 eV energy grid
+    so frontend can instantaneously broaden & slice Atomic / Element / Orbital / Spin PDOS.
+    """
+    import struct
+    if not pdos_path or not os.path.exists(pdos_path) or not bands_obj or not bands_obj.get("kpoints"):
+        return None
+    try:
+        with open(pdos_path, "rb") as f:
+            raw = f.read()
+        total_len = len(raw)
+        if total_len < 120:
+            return None
+
+        # Detect Big-Endian vs Little-Endian Fortran record marker
+        r0_be = struct.unpack_from(">i", raw, 0)[0]
+        endian = ">" if (r0_be == 8 and struct.unpack_from(">i", raw, 12)[0] == 8) else "<"
+
+        pos = 0
+        def read_rec():
+            nonlocal pos
+            if pos + 4 > total_len:
+                return None
+            rl = struct.unpack_from(f"{endian}i", raw, pos)[0]
+            if rl < 0 or pos + 4 + rl + 4 > total_len:
+                return None
+            body = raw[pos + 4: pos + 4 + rl]
+            pos += 4 + rl + 4
+            return body
+
+        _ver_b = read_rec()
+        hdr_b = read_rec()
+        if hdr_b is None:
+            return None
+        nk_b = read_rec(); ns_b = read_rec(); norb_b = read_rec(); neig_b = read_rec()
+        if not (nk_b and ns_b and norb_b and neig_b):
+            return None
+        nk = struct.unpack(f"{endian}i", nk_b)[0]
+        ns = struct.unpack(f"{endian}i", ns_b)[0]
+        norb = struct.unpack(f"{endian}i", norb_b)[0]
+        neig_max = struct.unpack(f"{endian}i", neig_b)[0]
+        if nk <= 0 or ns <= 0 or norb <= 0 or norb > 10000:
+            return None
+
+        sp_b = read_rec(); ion_b = read_rec(); am_b = read_rec()
+        if not (sp_b and ion_b and am_b):
+            return None
+        species_arr = struct.unpack(f"{endian}{norb}i", sp_b)
+        ions_arr = struct.unpack(f"{endian}{norb}i", ion_b)
+        am_arr = struct.unpack(f"{endian}{norb}i", am_b)
+
+        l_names = {0: "s", 1: "p", 2: "d", 3: "f"}
+        # Map each orbital index -> (channel_key: (species_symbol, ion_index, l_char))
+        orb_to_chan = []
+        chan_meta = {}
+        for o in range(norb):
+            sp_idx = species_arr[o]
+            el = species_order[sp_idx - 1] if (1 <= sp_idx <= len(species_order)) else f"Sp{sp_idx}"
+            ion = ions_arr[o]
+            l_ch = l_names.get(am_arr[o], "s")
+            ckey = f"{el}|{ion}|{l_ch}"
+            orb_to_chan.append(ckey)
+            if ckey not in chan_meta:
+                chan_meta[ckey] = {"element": el, "ion": ion, "atom": f"{el}{ion}", "orbital": l_ch}
+
+        # Build fine energy histogram grid [-12.0, +8.0] eV (800 bins, dE = 0.025 eV)
+        e_min, e_max, n_bins = -12.0, 8.0, 800
+        dE = (e_max - e_min) / n_bins
+        inv_dE = 1.0 / dE
+        chan_keys = sorted(chan_meta.keys(), key=lambda k: (chan_meta[k]["element"], chan_meta[k]["ion"], "spdf".find(chan_meta[k]["orbital"])))
+        key_to_cidx = {k: i for i, k in enumerate(chan_keys)}
+        orb_to_cidx = [key_to_cidx[ck] for ck in orb_to_chan]
+        n_chans = len(chan_keys)
+
+        # Allocate bins[spin][chan][bin] and total_bins[spin][bin]
+        bins = [[[0.0] * n_bins for _ in range(n_chans)] for _ in range(ns)]
+        total_bins = [[0.0] * n_bins for _ in range(ns)]
+
+        # Index bands_obj kpoints for matching k-vectors or 1-based k_idx
+        kpts_bands = bands_obj.get("kpoints") or []
+        band_keep_indices = bands_obj.get("keep_indices")  # optional map from filtered band -> original band
+        all_eig_by_k = bands_obj.get("all_e_by_k")  # full unfiltered eigenvalues if present
+
+        # Spin degeneracy factor: 2 for non-spin-polarized, 1 per spin channel for collinear spin-polarized
+        spin_deg = 1.0 if ns >= 2 else 2.0
+        orb_fmt = f"{endian}{norb}d"
+
+        for _ik in range(nk):
+            krec = read_rec()
+            if not krec or len(krec) < 28:
+                break
+            k_idx = struct.unpack_from(f"{endian}i", krec, 0)[0]
+            kx, ky, kz = struct.unpack_from(f"{endian}3d", krec, 4)
+
+            # Match corresponding kpoint in bands_obj (prefer exact k_idx-1 if coords match, else nearest k-vector)
+            kp_match = None
+            kp_idx_matched = -1
+            if 1 <= k_idx <= len(kpts_bands):
+                cand = kpts_bands[k_idx - 1]
+                ck = cand.get("k", [0, 0, 0])
+                if abs(ck[0] - kx) + abs(ck[1] - ky) + abs(ck[2] - kz) < 0.02:
+                    kp_match = cand
+                    kp_idx_matched = k_idx - 1
+            if kp_match is None:
+                best_d = 1e9
+                for idx_b, cand in enumerate(kpts_bands):
+                    ck = cand.get("k", [0, 0, 0])
+                    d = abs(ck[0] - kx) + abs(ck[1] - ky) + abs(ck[2] - kz)
+                    if d < best_d:
+                        best_d = d
+                        kp_match = cand
+                        kp_idx_matched = idx_b
+
+            wt = float(kp_match.get("w", 1.0 / nk)) if kp_match else (1.0 / nk)
+            wt_eff = wt * spin_deg
+
+            for _is in range(ns):
+                s_b = read_rec(); nb_b = read_rec()
+                if not (s_b and nb_b):
+                    break
+                s_idx = struct.unpack(f"{endian}i", s_b)[0] - 1
+                nb = struct.unpack(f"{endian}i", nb_b)[0]
+                if s_idx < 0 or s_idx >= ns:
+                    s_idx = min(ns - 1, max(0, _is))
+
+                # Full eigenvalue list for this (k, s)
+                eig_list = None
+                if all_eig_by_k and 0 <= kp_idx_matched < len(all_eig_by_k):
+                    sp_e = all_eig_by_k[kp_idx_matched]
+                    if s_idx < len(sp_e):
+                        eig_list = sp_e[s_idx]
+                elif kp_match and s_idx < len(kp_match.get("e", [])):
+                    eig_list = kp_match["e"][s_idx]
+
+                for b in range(nb):
+                    wb = read_rec()
+                    if not wb or len(wb) < norb * 8:
+                        break
+                    if not eig_list or b >= len(eig_list):
+                        continue
+                    ev = eig_list[b]
+                    if ev < e_min or ev >= e_max:
+                        continue
+                    b_idx = int((ev - e_min) * inv_dE)
+                    if b_idx < 0 or b_idx >= n_bins:
+                        continue
+                    total_bins[s_idx][b_idx] += wt_eff
+                    w_vals = struct.unpack(orb_fmt, wb)
+                    c_bins = bins[s_idx]
+                    for o in range(norb):
+                        wv = w_vals[o]
+                        if wv > 1e-6:
+                            c_bins[orb_to_cidx[o]][b_idx] += wt_eff * wv
+
+        # Sparse-encode non-zero bins per channel to keep JSON compact and fast
+        channels_out = []
+        for cidx, ck in enumerate(chan_keys):
+            meta = chan_meta[ck]
+            ch_entry = {
+                "element": meta["element"],
+                "ion": meta["ion"],
+                "atom": meta["atom"],
+                "orbital": meta["orbital"],
+                "up": [[i, round(v, 5)] for i, v in enumerate(bins[0][cidx]) if v > 1e-6],
+            }
+            if ns >= 2:
+                ch_entry["dn"] = [[i, round(v, 5)] for i, v in enumerate(bins[1][cidx]) if v > 1e-6]
+            channels_out.append(ch_entry)
+
+        total_out = {
+            "up": [[i, round(v, 5)] for i, v in enumerate(total_bins[0]) if v > 1e-6],
+        }
+        if ns >= 2:
+            total_out["dn"] = [[i, round(v, 5)] for i, v in enumerate(total_bins[1]) if v > 1e-6]
+
+        return {
+            "source_file": os.path.basename(pdos_path),
+            "nk": nk,
+            "ns": ns,
+            "norb": norb,
+            "e_min": e_min,
+            "e_max": e_max,
+            "n_bins": n_bins,
+            "dE": dE,
+            "elements": species_order,
+            "total_hist": total_out,
+            "channels": channels_out,
         }
     except Exception:
         return None
@@ -2005,11 +2237,17 @@ def _summarize_volumetric_grid(raw_tuple, source_file: str, kind: str, cell_vol_
     inv_ngz = 1.0 / max(1, ngz)
     inv_c = 1.0 / c_len
 
-    for iz in range(ngz):
-        m_cell = sum_z[iz] * inv_nxy
+    m_cells = [sum_z[iz] * inv_nxy for iz in range(ngz)]
+    # Include periodic closing point z = c (wrap iz = 0) so trapezoidal integral ΔQ(0) = ΔQ(c) = 0 exactly
+    cum_q = 0.0
+    for iz in range(ngz + 1):
+        m_cell = m_cells[iz % ngz]
         planar_ea3.append(m_cell * inv_vol)
         planar_ea.append(m_cell * inv_c)
-        cum_q += m_cell * inv_ngz
+        if iz == 0:
+            cum_q = 0.0
+        else:
+            cum_q += 0.5 * (m_cells[iz - 1] + m_cell) * inv_ngz
         delta_q_z.append(cum_q)
         if abs(cum_q) > max_abs_dq:
             max_abs_dq = abs(cum_q)
@@ -2148,7 +2386,7 @@ def api_castep_scan(root_path: Optional[str] = None, limit: int = 120):
     discovered = []
     relevant_exts = (
         ".cell", ".param", ".castep", ".geom", ".bands", ".xcd", ".xsd", ".cif",
-        ".chdiff", ".charg_frm", ".den_fmt", ".cube"
+        ".chdiff", ".charg_frm", ".den_fmt", ".cube", ".pdos_bin"
     )
     skip_dirs = {".git", "node_modules", "__pycache__", "$recycle.bin", "system volume information"}
 
@@ -2224,7 +2462,7 @@ def api_castep_scan(root_path: Optional[str] = None, limit: int = 120):
                     "has_chdiff": any(f.lower().endswith(".chdiff") for f in sfiles),
                     "has_charg_frm": any(f.lower().endswith(".charg_frm") for f in sfiles),
                     "has_optics": any(("optical" in f.lower() and f.lower().endswith(".xcd")) or f.lower().endswith("_optics.bands") for f in sfiles),
-                    "has_band_dos": any(f.lower().endswith(("_bandstr.bands", "_dos.bands")) or ("band structure" in f.lower() or "dos" in f.lower() or "density of states" in f.lower()) and f.lower().endswith(".xcd") for f in sfiles),
+                    "has_band_dos": any(f.lower().endswith(("_bandstr.bands", "_dos.bands")) or (("band structure" in f.lower() or "dos" in f.lower() or "density of states" in f.lower()) and f.lower().endswith(".xcd")) or f.lower().endswith(".pdos_bin") for f in sfiles),
                 })
 
     discovered.sort(key=lambda x: x["mtime"], reverse=True)
@@ -2309,6 +2547,21 @@ def api_castep_job_detail(folder: str, seed: Optional[str] = None):
     dos_bands = _parse_castep_bands_backend(os.path.join(folder, dos_bands_f)) if dos_bands_f else None
     optics_bands = _parse_castep_bands_backend(os.path.join(folder, optics_bands_f)) if optics_bands_f else None
 
+    pdos_bin_f = _find_match(lambda l: l.endswith("_dos.pdos_bin")) or _find_match(lambda l: l.endswith(".pdos_bin"))
+    pdos_bin_data = None
+    if pdos_bin_f:
+        sp_order = _extract_species_order_from_folder(folder, seed)
+        ref_bands = dos_bands or bandstr_bands
+        if ref_bands:
+            ref_with_all = dict(ref_bands)
+            ref_with_all["all_e_by_k"] = ref_bands.get("_all_e_by_k")
+            pdos_bin_data = _parse_pdos_bin_backend(os.path.join(folder, pdos_bin_f), ref_with_all, sp_order)
+
+    # Strip temporary _all_e_by_k before serializing JSON
+    for _bo in (bandstr_bands, dos_bands, optics_bands):
+        if _bo and "_all_e_by_k" in _bo:
+            del _bo["_all_e_by_k"]
+
     cif_f = _find_match(lambda l: l.endswith(".cif"))
 
     return {
@@ -2318,7 +2571,7 @@ def api_castep_job_detail(folder: str, seed: Optional[str] = None):
         "files_list": all_files,
         "cell_text": _read(_find_match(lambda l: l.endswith(".cell") and not l.endswith(("_bandstr.cell", "_dos.cell", "_optics.cell")))),
         "param_text": _read(_find_match(lambda l: l.endswith(".param") and not l.endswith(("_bandstr.param", "_dos.param", "_optics.param")))),
-        "castep_text": _read(_find_match(lambda l: l.endswith(".castep") and not l.endswith(("_bandstr.castep", "_dos.castep", "_optics.castep")))),
+        "castep_text": _read(_find_match(lambda l: l.endswith(".castep") and not l.endswith(("_bandstr.castep", "_dos.castep", "_optics.castep"))), 2500000),
         "optics_castep_text": _read(_find_match(lambda l: l.endswith("_optics.castep")), 200000),
         "geom_text": _read(_find_match(lambda l: l.endswith(".geom")), 1000000),
         "status_text": _read("Status.txt"),
@@ -2329,6 +2582,7 @@ def api_castep_job_detail(folder: str, seed: Optional[str] = None):
         "band_xcd": band_xcd,
         "dos_xcd": dos_xcd,
         "pdos_xcd": pdos_xcd,
+        "pdos_bin_data": pdos_bin_data,
         "optical_xcd": optical_xcd,
         "optical_xcds": optical_xcds,
         "chdiff_data": chdiff_data,
