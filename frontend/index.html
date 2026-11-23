@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=124_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=124_v116_vesta_viewer" />
+  <link rel="stylesheet" href="styles.css?v=125_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=125_v116_vesta_viewer" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -1970,8 +1970,9 @@
                     <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('optics')" title="Reset Active Panel Zoom">⊡ Reset</button>
                     <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('optics_all')" title="Reset All 4 Panels">↺ All</button>
                     <input type="file" id="castep-opt-file-upload" multiple accept=".xcd,.csv,.txt,.dat,.bands" style="display:none;" onchange="handleCastepOpticalFilesUpload(event)" /><button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px; font-weight:700;" onclick="document.getElementById('castep-opt-file-upload').click()" title="Load CASTEP Optical Properties .xcd, _Optics.bands, or optical CSV/TXT spectrum">📥 Load Optical (.xcd/.csv)</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px;" onclick="exportCastepCanvasPNG('castep-optics-canvas', 'CASTEP_Optical_Properties.png')">📷 PNG</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px;" onclick="exportCastepOpticalCSV()">📊 CSV</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepCanvasPNG('castep-optics-canvas', 'CASTEP_Optical_Properties.png')">📷 PNG</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepOpticalCSV('all')" title="Export all Optical Spectra &amp; Tauc Fit columns to CSV">📊 CSV</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="exportCastepOpticalXLSX()" title="Export multi-tab Excel workbook (Summary, Dielectric, Absorption+Tauc, n/k, Reflectivity/EELS/Conductivity, Raw XCD)">📗 Excel</button>
                   </div>
                 </div>
               </div>
@@ -2044,8 +2045,10 @@
                     <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('electronic', 1.25)" title="Zoom In Energy Window">🔍＋</button>
                     <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('electronic', 0.80)" title="Zoom Out Energy Window">🔍－</button>
                     <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('electronic')" title="Reset Zoom">⊡ Reset</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="exportCastepCanvasPNG('castep-electronic-canvas', 'CASTEP_Band_PDOS.png')">📷 PNG</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="exportCastepElectronicCSV()">📊 CSV</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepCanvasPNG('castep-electronic-canvas', 'CASTEP_Band_PDOS.png')">📷 PNG</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepElectronicCSV('pdos')" title="Export all displayed PDOS Element / Orbital / Atom / Spin columns to CSV">📊 PDOS CSV</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepElectronicCSV('band')" title="Export Band Structure k-path and every band column to a separate CSV">📈 Band CSV</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="exportCastepElectronicXLSX()" title="Export multi-tab Excel workbook with PDOS, Band Structure (Spin Up/Down), and High-Symmetry k-Points on separate tabs">📗 Excel</button>
                   </div>
                 </div>
               </div>
@@ -2089,10 +2092,12 @@
                     🧱 View 3D Isosurface in Structure Tab
                   </button>
 
-                  <div style="margin-left:auto; display:flex; gap:5px;">
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px;" onclick="exportCastepChdiffFile('charg_frm')" title="Export computed Δρ grid in CASTEP .charg_frm format">⬇️ .charg_frm</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px;" onclick="exportCastepChdiffCSV()" title="Export 1D Planar-Averaged Δρ(z) and ΔQ(z) profile to CSV">📊 Export CSV</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px;" onclick="exportCastepCanvasPNG('castep-chdiff-canvas', 'CASTEP_Charge_Density_Difference.png')">📷 PNG</button>
+                  <div style="margin-left:auto; display:flex; gap:4px; flex-wrap:wrap;">
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepChdiffFile('charg_frm')" title="Export computed Δρ grid in CASTEP .charg_frm format">⬇️ .charg_frm</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepChdiffCSV('1d')" title="Export 1D Planar-Averaged Δρ(z) and ΔQ(z) profile to CSV">📊 1D CSV</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepChdiffCSV('2d')" title="Export currently displayed 2D cross-section slice matrix to CSV">🗺️ 2D CSV</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="exportCastepChdiffXLSX()" title="Export multi-tab Excel workbook (1D Planar Profile + 2D Slice Matrix + Metadata)">📗 Excel</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepCanvasPNG('castep-chdiff-canvas', 'CASTEP_Charge_Density_Difference.png')">📷 PNG</button>
                   </div>
                 </div>
 
@@ -2202,9 +2207,10 @@
                     <button type="button" class="btn btn-teal btn-sm" style="padding:3px 9px; font-size:11px;" onclick="toggleSpinsInMain3DViewer()" title="Overlay 3D magnetic spin arrows (↑ red / ↓ blue) on atoms in 3D Structure Viewer">
                       🧲 3D Spin Arrows
                     </button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="exportCastepMullikenCSV('atoms')">📊 Atomic CSV</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="exportCastepMullikenCSV('bonds')">🔗 Bonds CSV</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="exportCastepCanvasPNG('castep-mulliken-mag-canvas', 'CASTEP_Mulliken_Magnetism.png')">📷 PNG</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepMullikenCSV('atoms')">📊 Atomic CSV</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepMullikenCSV('bonds')">🔗 Bonds CSV</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="exportCastepMullikenXLSX()" title="Export multi-tab Excel workbook (Magnetism Summary, Atomic Populations, Bond Populations)">📗 Excel</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepCanvasPNG('castep-mulliken-mag-canvas', 'CASTEP_Mulliken_Magnetism.png')">📷 PNG</button>
                   </div>
                 </div>
               </div>
@@ -2295,8 +2301,10 @@
                   <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('convergence', 1.25)" title="Zoom In Convergence">🔍＋</button>
                   <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('convergence', 0.80)" title="Zoom Out Convergence">🔍－</button>
                   <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('convergence')" title="Reset Convergence Zoom">⊡ Reset</button>
-                  <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepCanvasPNG('castep-energy-chart-canvas', 'CASTEP_Energy_Profile.png')">📷 Save Energy PNG</button>
-                  <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepCanvasPNG('castep-conv-chart-canvas', 'CASTEP_Convergence.png')">📷 Save Convergence PNG</button>
+                  <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="exportCastepConvergenceCSV()" title="Export SCF / Energy convergence table to CSV">📊 CSV</button>
+                  <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px; font-weight:700;" onclick="exportCastepConvergenceXLSX()" title="Export multi-tab Excel workbook (SCF Convergence, GeomOpt Trajectory, Forces &amp; Charges)">📗 Excel</button>
+                  <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="exportCastepCanvasPNG('castep-energy-chart-canvas', 'CASTEP_Energy_Profile.png')">📷 Energy PNG</button>
+                  <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="exportCastepCanvasPNG('castep-conv-chart-canvas', 'CASTEP_Convergence.png')">📷 Conv PNG</button>
                 </div>
               </div>
 
@@ -5407,8 +5415,8 @@
 
 <script src="jszip.min.js"></script>
   <script>if (typeof JSZip === "undefined") { document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"><\\/script>'); }</script>
-  <script src="matsci_tools.js?v=124_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=124_v116_vesta_viewer"></script>
-  <script src="app.js?v=124_v116_vesta_viewer" onerror="this.src='/static/app.js?v=124_v116_vesta_viewer"></script>
+  <script src="matsci_tools.js?v=125_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=125_v116_vesta_viewer"></script>
+  <script src="app.js?v=125_v116_vesta_viewer" onerror="this.src='/static/app.js?v=125_v116_vesta_viewer"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
