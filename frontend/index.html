@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=133_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=133_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=137_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=137_v116_vesta_viewer'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -2058,63 +2058,71 @@
             <!-- ============================================================ -->
             <div id="castep-pane-optics" class="castep-stage-pane">
               <div class="castep-plot-toolbar">
-                <!-- Row 1: Materials Studio CASTEP Optical Properties Calculation Settings -->
-                <div style="display:flex; align-items:center; gap:7px; flex-wrap:wrap;">
-                  <label class="castep-field-lbl" style="margin:0;">Results:</label>
-                  <select id="castep-opt-file-select" class="castep-input" style="width:auto; max-width:230px; font-weight:700;" onchange="onCastepOptSourceChange()" title="Select live CASTEP *.ome_bin 3×3 optical tensor or exported Optical Properties *.xcd file">
-                    <option value="auto">Auto (All Optical Files in Job)</option>
-                  </select>
+                <!-- Row 1: Materials Studio CASTEP Optical Calculation Settings -->
+                <div class="castep-tb-row">
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Results:</label>
+                    <select id="castep-opt-file-select" class="castep-input" style="max-width:315px; font-weight:700;" onchange="onCastepOptSourceChange()" title="Select live CASTEP *.ome_bin 3×3 optical tensor or exported Optical Properties *.xcd file">
+                      <option value="auto">Auto (All Optical Files)</option>
+                    </select>
+                  </span>
 
-                  <label class="castep-field-lbl" style="margin:0;">Calculation:</label>
-                  <select id="castep-opt-calc-mode" class="castep-input" style="width:auto; font-weight:700;" onchange="onCastepOptCalcModeChange()" title="Materials Studio CASTEP optical geometry: Polarized (along E vector), Unpolarized (averaged ⊥ to Incidence vector), or Polycrystalline (isotropic 1/3 trace)">
-                    <option value="polarized">Polarized</option>
-                    <option value="unpolarized" selected>Unpolarized</option>
-                    <option value="polycrystalline">Polycrystalline</option>
-                  </select>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Mode:</label>
+                    <select id="castep-opt-calc-mode" class="castep-input" style="font-weight:700;" onchange="onCastepOptCalcModeChange()" title="Optical geometry: Polarized (along E vector), Unpolarized (⊥ to Incidence), or Polycrystalline (isotropic 1/3 trace)">
+                      <option value="polarized">Polarized</option>
+                      <option value="unpolarized" selected>Unpolarized</option>
+                      <option value="polycrystalline">Polycrystalline</option>
+                    </select>
+                  </span>
 
-                  <div id="castep-opt-vec-wrap" style="display:inline-flex; align-items:center; gap:4px; flex-wrap:wrap;">
-                    <label id="castep-opt-vec-label" class="castep-field-lbl" style="margin:0; min-width:62px;">Incidence:</label>
-                    <input type="number" id="castep-opt-vx" class="castep-input-sm" value="0.0" step="0.1" style="width:46px; text-align:center;" title="X component of Polarization / Incidence vector" onchange="renderCastepOpticalPlots()" />
-                    <input type="number" id="castep-opt-vy" class="castep-input-sm" value="0.0" step="0.1" style="width:46px; text-align:center;" title="Y component of Polarization / Incidence vector" onchange="renderCastepOpticalPlots()" />
-                    <input type="number" id="castep-opt-vz" class="castep-input-sm" value="1.0" step="0.1" style="width:46px; text-align:center;" title="Z component of Polarization / Incidence vector" onchange="renderCastepOpticalPlots()" />
-                    <button type="button" class="castep-preset-chip" style="padding:2px 5px; font-size:10.5px;" onclick="setCastepOpticalVector(1,0,0)" title="Set direction [1 0 0]">[100]</button>
-                    <button type="button" class="castep-preset-chip" style="padding:2px 5px; font-size:10.5px;" onclick="setCastepOpticalVector(0,1,0)" title="Set direction [0 1 0]">[010]</button>
-                    <button type="button" class="castep-preset-chip" style="padding:2px 5px; font-size:10.5px;" onclick="setCastepOpticalVector(0,0,1)" title="Set direction [0 0 1]">[001]</button>
-                    <button type="button" class="castep-preset-chip" style="padding:2px 5px; font-size:10.5px;" onclick="setCastepOpticalVector(1,1,0)" title="Set direction [1 1 0]">[110]</button>
-                    <button type="button" class="castep-preset-chip" style="padding:2px 5px; font-size:10.5px;" onclick="setCastepOpticalVector(1,1,1)" title="Set direction [1 1 1]">[111]</button>
+                  <div id="castep-opt-vec-wrap" class="castep-ctrl-grp">
+                    <label id="castep-opt-vec-label" class="castep-field-lbl">Incidence:</label>
+                    <input type="number" id="castep-opt-vx" class="castep-input-sm" value="0.0" step="0.1" style="width:48px; text-align:center;" title="X component of Polarization / Incidence vector" onchange="renderCastepOpticalPlots()" />
+                    <input type="number" id="castep-opt-vy" class="castep-input-sm" value="0.0" step="0.1" style="width:48px; text-align:center;" title="Y component of Polarization / Incidence vector" onchange="renderCastepOpticalPlots()" />
+                    <input type="number" id="castep-opt-vz" class="castep-input-sm" value="1.0" step="0.1" style="width:48px; text-align:center;" title="Z component of Polarization / Incidence vector" onchange="renderCastepOpticalPlots()" />
+                    <button type="button" class="castep-preset-chip" onclick="setCastepOpticalVector(1,0,0)" title="Set direction [1 0 0]">[100]</button>
+                    <button type="button" class="castep-preset-chip" onclick="setCastepOpticalVector(0,1,0)" title="Set direction [0 1 0]">[010]</button>
+                    <button type="button" class="castep-preset-chip" onclick="setCastepOpticalVector(0,0,1)" title="Set direction [0 0 1]">[001]</button>
+                    <button type="button" class="castep-preset-chip" onclick="setCastepOpticalVector(1,1,0)" title="Set direction [1 1 0]">[110]</button>
+                    <button type="button" class="castep-preset-chip" onclick="setCastepOpticalVector(1,1,1)" title="Set direction [1 1 1]">[111]</button>
                   </div>
 
-                  <label class="castep-field-lbl" style="margin:0;">Smearing (eV):</label>
-                  <input type="number" id="castep-opt-smearing" class="castep-input-sm" value="0.50" step="0.05" min="0.02" max="2.00" style="width:56px;" title="Instrumental Gaussian smearing width (Materials Studio default: 0.50 eV)" onchange="renderCastepOpticalPlots()" />
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">σ (eV):</label>
+                    <input type="number" id="castep-opt-smearing" class="castep-input-sm" value="0.50" step="0.05" min="0.02" max="2.00" style="width:58px;" title="Instrumental Gaussian smearing width (Materials Studio default: 0.50 eV)" onchange="renderCastepOpticalPlots()" />
+                  </span>
 
-                  <label class="castep-field-lbl" style="margin:0;">Scissors (eV):</label>
-                  <input type="number" id="castep-opt-scissors" class="castep-input-sm" value="0.00" step="0.10" min="-2.0" max="6.0" style="width:56px;" title="Rigid conduction-band scissors shift Δ (eV)" onchange="renderCastepOpticalPlots()" />
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Scissors:</label>
+                    <input type="number" id="castep-opt-scissors" class="castep-input-sm" value="0.00" step="0.10" min="-2.0" max="6.0" style="width:58px;" title="Rigid conduction-band scissors shift Δ (eV)" onchange="renderCastepOpticalPlots()" />
+                  </span>
 
-                  <button type="button" id="castep-opt-more-btn" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px; font-weight:700; margin-left:auto;" onclick="toggleCastepOptMorePanel()" title="Advanced Optical Parameters: Drude plasma frequency, Drude damping, Absorption formula &amp; Visible band">
+                  <button type="button" id="castep-opt-more-btn" class="btn btn-outline btn-sm" style="font-weight:700; margin-left:auto;" onclick="toggleCastepOptMorePanel()" title="Advanced Optical Parameters: Drude plasma frequency, Drude damping, Absorption formula &amp; Visible band">
                     ⚙️ More...
                   </button>
                 </div>
 
                 <!-- Row 1B: Collapsible Advanced Optical Options (Materials Studio More... dialog) -->
-                <div id="castep-opt-more-panel" style="display:none; align-items:center; gap:10px; flex-wrap:wrap; margin-top:6px; padding:7px 10px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; font-size:11.5px;">
+                <div id="castep-opt-more-panel" style="display:none; align-items:center; gap:10px; flex-wrap:wrap; margin-top:6px; padding:7px 10px; background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; font-size:11.5px;">
                   <label class="castep-chk-lbl" style="font-weight:700; color:#0f172a;">
                     <input type="checkbox" id="castep-opt-use-drude" onchange="renderCastepOpticalPlots()" />
                     Include Drude (Metals)
                   </label>
-                  <span style="display:inline-flex; align-items:center; gap:4px;">
-                    <label class="castep-field-lbl" style="margin:0;">Plasma ω<sub>p</sub> (eV):</label>
-                    <input type="number" id="castep-opt-plasma" class="castep-input-sm" value="0.00" step="0.10" min="0.0" max="25.0" style="width:58px;" onchange="renderCastepOpticalPlots()" />
-                    <button type="button" class="castep-preset-chip" style="padding:2px 6px; font-size:10.5px;" onclick="applyAutoCastepDrudePlasma()" title="Fill directional plasma frequency ωp computed from CASTEP .ome_bin intraband velocities">Auto</button>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Plasma ω<sub>p</sub> (eV):</label>
+                    <input type="number" id="castep-opt-plasma" class="castep-input-sm" value="0.00" step="0.10" min="0.0" max="25.0" style="width:60px;" onchange="renderCastepOpticalPlots()" />
+                    <button type="button" class="castep-preset-chip" onclick="applyAutoCastepDrudePlasma()" title="Fill directional plasma frequency ωp computed from CASTEP .ome_bin intraband velocities">Auto</button>
                   </span>
-                  <span style="display:inline-flex; align-items:center; gap:4px;">
-                    <label class="castep-field-lbl" style="margin:0;">Drude Damping γ<sub>D</sub> (eV):</label>
-                    <input type="number" id="castep-opt-drude-damp" class="castep-input-sm" value="0.05" step="0.01" min="0.005" max="2.0" style="width:56px;" title="Drude intraband damping (Materials Studio default: 0.05 eV)" onchange="renderCastepOpticalPlots()" />
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Damping γ<sub>D</sub> (eV):</label>
+                    <input type="number" id="castep-opt-drude-damp" class="castep-input-sm" value="0.05" step="0.01" min="0.005" max="2.0" style="width:58px;" title="Drude intraband damping (Materials Studio default: 0.05 eV)" onchange="renderCastepOpticalPlots()" />
                   </span>
-                  <span style="display:inline-flex; align-items:center; gap:4px;">
-                    <label class="castep-field-lbl" style="margin:0;">α(ω) Formula:</label>
-                    <select id="castep-opt-alpha-conv" class="castep-input" style="width:auto; font-size:11px; padding:2px 6px;" onchange="renderCastepOpticalPlots()" title="Materials Studio CASTEP uses 2k/λ; Standard SI textbooks use 4πk/λ">
-                      <option value="ms_castep" selected>Materials Studio CASTEP (2k/λ)</option>
-                      <option value="standard_si">Standard Physics / SI (4πk/λ)</option>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">α(ω) Formula:</label>
+                    <select id="castep-opt-alpha-conv" class="castep-input" onchange="renderCastepOpticalPlots()" title="Materials Studio CASTEP uses 2k/λ; Standard SI textbooks use 4πk/λ">
+                      <option value="ms_castep" selected>Materials Studio (2k/λ)</option>
+                      <option value="standard_si">Standard SI (4πk/λ)</option>
                     </select>
                   </span>
                   <label class="castep-chk-lbl" style="margin-left:auto;">
@@ -2123,60 +2131,71 @@
                   </label>
                 </div>
 
-                <!-- Row 2: View Properties (Function, Units, Energy Window, Zoom & Export) -->
-                <div style="display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin-top:6px;">
-                  <label class="castep-field-lbl" style="margin:0;">Function:</label>
-                  <select id="castep-opt-property" class="castep-input" style="width:auto; font-weight:700;" onchange="renderCastepOpticalPlots()">
-                    <option value="multigrid">📊 4-Panel Overview (Dielectric ε₁/ε₂, Absorption α, Refractive n/k, Refl. R &amp; Loss L)</option>
-                    <option value="dielectric">⚡ Dielectric Function ε₁(ω) &amp; ε₂(ω)</option>
-                    <option value="absorption">🌈 Absorption Coefficient α(ω) (cm⁻¹)</option>
-                    <option value="refractive">💎 Refractive Index n(ω) &amp; Extinction k(ω)</option>
-                    <option value="reflectivity">🪞 Reflectivity R(ω)</option>
-                    <option value="conductivity">🔌 Optical Conductivity σ₁(ω) &amp; σ₂(ω) (1/fs)</option>
-                    <option value="loss">📉 Loss Function (EELS) L(ω) = Im[−1/ε(ω)]</option>
-                    <option value="tauc">📐 Tauc Plot Optical Band Gap (αħω)² &amp; (αħω)¹/²</option>
-                    <option value="anisotropy">🧭 Anisotropy Comparison (Pol. [100]/[010]/[001], Unpol., Poly.)</option>
-                  </select>
+                <!-- Row 2: View Properties (Function, Units, Energy Window) -->
+                <div class="castep-tb-row">
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Function:</label>
+                    <select id="castep-opt-property" class="castep-input" style="font-weight:700;" onchange="renderCastepOpticalPlots()">
+                      <option value="multigrid">📊 4-Panel Overview (ε, α, n/k, R &amp; L)</option>
+                      <option value="dielectric">⚡ Dielectric ε₁(ω) &amp; ε₂(ω)</option>
+                      <option value="absorption">🌈 Absorption α(ω) (cm⁻¹)</option>
+                      <option value="refractive">💎 Refractive n(ω) &amp; k(ω)</option>
+                      <option value="reflectivity">🪞 Reflectivity R(ω)</option>
+                      <option value="conductivity">🔌 Conductivity σ₁ &amp; σ₂ (1/fs)</option>
+                      <option value="loss">📉 Loss Function EELS L(ω)</option>
+                      <option value="tauc">📐 Tauc Optical Gap Fit</option>
+                      <option value="anisotropy">🧭 Anisotropy Comparison</option>
+                    </select>
+                  </span>
 
-                  <label class="castep-field-lbl" style="margin:0;">Units:</label>
-                  <select id="castep-opt-xaxis" class="castep-input" style="width:auto; font-weight:700;" onchange="resetAllOptPanelZooms(); renderCastepOpticalPlots()">
-                    <option value="ev" selected>eV</option>
-                    <option value="nm">nm</option>
-                    <option value="cm-1">cm⁻¹</option>
-                    <option value="thz">THz</option>
-                  </select>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Units:</label>
+                    <select id="castep-opt-xaxis" class="castep-input" style="font-weight:700;" onchange="resetAllOptPanelZooms(); renderCastepOpticalPlots()">
+                      <option value="ev" selected>eV</option>
+                      <option value="nm">nm</option>
+                      <option value="cm-1">cm⁻¹</option>
+                      <option value="thz">THz</option>
+                    </select>
+                  </span>
 
-                  <label class="castep-field-lbl" style="margin:0;">E<sub>max</sub> (eV):</label>
-                  <input type="number" id="castep-opt-emax" class="castep-input-sm" value="15.0" step="1.0" min="2" max="100" style="width:54px;" onchange="renderCastepOpticalPlots()" />
-                  <div style="display:flex; gap:3px;">
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">E<sub>max</sub>:</label>
+                    <input type="number" id="castep-opt-emax" class="castep-input-sm" value="15.0" step="1.0" min="2" max="100" style="width:58px;" onchange="renderCastepOpticalPlots()" />
                     <button type="button" class="castep-preset-chip" onclick="setCastepOpticalWindow(6)">0–6</button>
                     <button type="button" class="castep-preset-chip" onclick="setCastepOpticalWindow(15)">0–15</button>
                     <button type="button" class="castep-preset-chip" onclick="setCastepOpticalWindow(30)">0–30</button>
                     <button type="button" class="castep-preset-chip" onclick="setCastepOpticalWindow(60)">0–60</button>
-                  </div>
+                  </span>
 
-                  <div style="margin-left:auto; display:flex; gap:4px; align-items:center; flex-wrap:wrap;">
-                    <select id="castep-opt-zoom-target" class="castep-input" style="width:auto; padding:2px 6px; font-size:11px; font-weight:700;" title="Choose which panel of the 2×2 grid to zoom (or hover/scroll directly on any panel)" onchange="onCastepOptZoomTargetChange(this.value)">
-                      <option value="active">Zoom: Active Panel (a)</option>
+                  <span class="castep-ctrl-grp" style="margin-left:auto;">
+                    <select id="castep-opt-zoom-target" class="castep-input" style="font-weight:700;" title="Choose which panel of the 2×2 grid to zoom (or right-click any sub-panel to copy it individually)" onchange="onCastepOptZoomTargetChange(this.value)">
+                      <option value="active">Zoom: Panel (a)</option>
                       <option value="a">Panel (a) Dielectric</option>
                       <option value="b">Panel (b) Absorption</option>
                       <option value="c">Panel (c) Refractive</option>
                       <option value="d">Panel (d) Refl &amp; EELS</option>
                       <option value="all">All 4 Panels</option>
                     </select>
-                    <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('optics', 1.25)" title="Zoom In Selected Panel">🔍＋</button>
-                    <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('optics', 0.80)" title="Zoom Out Selected Panel">🔍－</button>
+                    <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('optics', 1.25)" title="Zoom In">🔍＋</button>
+                    <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('optics', 0.80)" title="Zoom Out">🔍－</button>
                     <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('optics')" title="Reset Active Panel Zoom">⊡ Reset</button>
-                    <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('optics_all')" title="Reset All 4 Panels">↺ All</button>
-                    <input type="file" id="castep-opt-file-upload" multiple accept=".ome_bin,.cst_ome,.bands,.cell,.castep,.xcd,.csv,.txt,.dat" style="display:none;" onchange="handleCastepOpticalFilesUpload(event)" />
-                    <input type="file" id="castep-opt-folder-upload" webkitdirectory directory multiple style="display:none;" onchange="handleCastepOpticalFolderFallback(event)" />
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px; font-weight:700;" onclick="pickCastepOpticsFolder()" title="Open an Optical CASTEP Energy folder directly (auto-loads *_Optics.castep + *.ome_bin + *_Optics.bands + *_Optics.cell)">📂 Optics Folder</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px; font-weight:700;" onclick="document.getElementById('castep-opt-file-upload').click()" title="Load CASTEP *.ome_bin + *_Optics.bands (full 3×3 tensor), Optical Properties *.xcd, or CSV spectrum">📥 .ome_bin/.xcd</button>
-                    <button type="button" class="btn btn-teal btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="copyCastepCanvasHD('castep-optics-canvas', 'Optical Properties')" title="Copy High-Resolution Optical Plot Image (400–600 DPI) to Clipboard — paste directly into Word / PowerPoint">📋 Copy HD</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="copyCastepPlotData('optics')" title="Copy all active Optical spectrum columns directly to Clipboard (TSV — Ctrl+V straight into Excel / OriginPro)">📋 Copy Data</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepCanvasPNG('castep-optics-canvas', 'CASTEP_Optical_Properties.png')">📷 PNG</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepOpticalCSV('all')" title="Export all Optical Spectra &amp; Tauc Fit columns to CSV">📊 CSV</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="exportCastepOpticalXLSX()" title="Export multi-tab Excel workbook (Summary, Dielectric, Absorption+Tauc, n/k, Reflectivity/EELS/Conductivity, Anisotropy Tensor, Raw XCD)">📗 Excel</button>
+                    <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('optics_all')" title="Reset All Panels">↺ All</button>
+                  </span>
+                </div>
+
+                <!-- Row 3: Import & Full Figure / Data Export Actions -->
+                <div class="castep-tb-row">
+                  <input type="file" id="castep-opt-file-upload" multiple accept=".ome_bin,.cst_ome,.bands,.cell,.castep,.xcd,.csv,.txt,.dat" style="display:none;" onchange="handleCastepOpticalFilesUpload(event)" />
+                  <input type="file" id="castep-opt-folder-upload" webkitdirectory directory multiple style="display:none;" onchange="handleCastepOpticalFolderFallback(event)" />
+                  <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="pickCastepOpticsFolder()" title="Open an Optical CASTEP Energy folder directly">📂 Optics Folder</button>
+                  <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="document.getElementById('castep-opt-file-upload').click()" title="Load CASTEP *.ome_bin + *_Optics.bands or *.xcd files">📥 .ome_bin/.xcd</button>
+                  <span style="font-size:10.5px; color:#64748b;">💡 Right-click any sub-panel (a–d) to copy that single plot or its data</span>
+                  <div class="castep-tb-actions">
+                    <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="copyCastepCanvasHD('castep-optics-canvas', 'Optical Properties (Full)')" title="Copy FULL Optical Plot Image (400–600 DPI) to Clipboard">📋 Copy HD</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="copyCastepPlotData('optics', 'all')" title="Copy FULL Optical Spectra Data (all columns, TSV → Excel / OriginPro)">📋 Copy Data</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepCanvasPNG('castep-optics-canvas', 'CASTEP_Optical_Properties.png')">📷 PNG</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepOpticalCSV('all')" title="Export all Optical Spectra &amp; Tauc Fit columns to CSV">📊 CSV</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="exportCastepOpticalXLSX()" title="Export multi-tab Excel workbook">📗 Excel</button>
                   </div>
                 </div>
               </div>
@@ -2198,67 +2217,86 @@
             <!-- ============================================================ -->
             <div id="castep-pane-electronic" class="castep-stage-pane">
               <div class="castep-plot-toolbar">
-                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                  <label class="castep-field-lbl" style="margin:0;">Layout:</label>
-                  <select id="castep-elec-layout" class="castep-input" style="width:auto;" onchange="renderCastepElectronicPlots()">
-                    <option value="joint">📊 Synchronized Band Structure + DOS / PDOS (Side-by-Side)</option>
-                    <option value="band">📈 Electronic Band Structure Only</option>
-                    <option value="dos">🌊 Total &amp; Partial Density of States (DOS / PDOS) Only</option>
-                  </select>
-                  <label class="castep-field-lbl" style="margin:0;">E<sub>min</sub> (eV):</label>
-                  <input type="number" id="castep-elec-emin" class="castep-input-sm" value="-5.0" step="0.5" style="width:62px;" onchange="renderCastepElectronicPlots()" />
-                  <label class="castep-field-lbl" style="margin:0;">E<sub>max</sub> (eV):</label>
-                  <input type="number" id="castep-elec-emax" class="castep-input-sm" value="5.0" step="0.5" style="width:62px;" onchange="renderCastepElectronicPlots()" />
-                  <div style="display:flex; gap:3px;">
+                <!-- Row 1: Layout, Energy Window & Smearing -->
+                <div class="castep-tb-row">
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Layout:</label>
+                    <select id="castep-elec-layout" class="castep-input" style="font-weight:700;" onchange="renderCastepElectronicPlots()">
+                      <option value="joint">📊 Band + DOS / PDOS (Side-by-Side)</option>
+                      <option value="band">📈 Band Structure Only</option>
+                      <option value="dos">🌊 DOS / PDOS Only</option>
+                    </select>
+                  </span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">E<sub>min</sub>:</label>
+                    <input type="number" id="castep-elec-emin" class="castep-input-sm" value="-5.0" step="0.5" style="width:64px;" onchange="renderCastepElectronicPlots()" />
+                  </span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">E<sub>max</sub>:</label>
+                    <input type="number" id="castep-elec-emax" class="castep-input-sm" value="5.0" step="0.5" style="width:64px;" onchange="renderCastepElectronicPlots()" />
+                  </span>
+                  <span class="castep-ctrl-grp">
                     <button type="button" class="castep-preset-chip" onclick="setCastepElecWindow(-3,3)">[-3,+3]</button>
                     <button type="button" class="castep-preset-chip" onclick="setCastepElecWindow(-5,5)">[-5,+5]</button>
                     <button type="button" class="castep-preset-chip" onclick="setCastepElecWindow(-8,8)">[-8,+8]</button>
                     <button type="button" class="castep-preset-chip" onclick="setCastepElecWindow(-15,10)">[-15,+10]</button>
-                  </div>
-                  <label class="castep-field-lbl" style="margin:0;">DOS Smearing σ (eV):</label>
-                  <input type="number" id="castep-dos-sigma" class="castep-input-sm" value="0.12" step="0.02" min="0.02" max="0.6" style="width:60px;" onchange="renderCastepElectronicPlots()" />
+                  </span>
+                  <span class="castep-ctrl-grp" style="margin-left:auto;">
+                    <label class="castep-field-lbl">σ (eV):</label>
+                    <input type="number" id="castep-dos-sigma" class="castep-input-sm" value="0.12" step="0.02" min="0.02" max="0.6" style="width:58px;" title="Gaussian DOS smearing width σ (eV)" onchange="renderCastepElectronicPlots()" />
+                  </span>
                 </div>
-                <div style="display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin-top:6px;">
-                  <label class="castep-field-lbl" style="margin:0;">PDOS Mode:</label>
-                  <select id="castep-pdos-mode" class="castep-input" style="width:auto; font-weight:700;" onchange="onCastepPdosModeChange()">
-                    <option value="element_orbital">🔬 Element + Orbital (e.g. Mo-d, S-p, Co-d)</option>
-                    <option value="orbital">⚛️ Orbital-Resolved (Total, s, p, d, f)</option>
-                    <option value="element">🧬 Element-Resolved (Sum per Species)</option>
-                    <option value="atom">📍 Atomic-Resolved (Individual Atom / Ion)</option>
+
+                <!-- Row 2: PDOS Mode, Target, Spin, Zero Ref, Load & Zoom -->
+                <div class="castep-tb-row">
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">PDOS:</label>
+                    <select id="castep-pdos-mode" class="castep-input" style="font-weight:700;" onchange="onCastepPdosModeChange()">
+                      <option value="element_orbital">🔬 Element + Orbital</option>
+                      <option value="orbital">⚛️ Orbital (s, p, d, f)</option>
+                      <option value="element">🧬 Element-Resolved</option>
+                      <option value="atom">📍 Atomic-Resolved</option>
+                    </select>
+                  </span>
+                  <select id="castep-pdos-target-select" class="castep-input" style="max-width:140px;" onchange="renderCastepElectronicPlots()" title="Filter PDOS by specific Element or individual Atom">
+                    <option value="all">All Species</option>
                   </select>
-                  <select id="castep-pdos-target-select" class="castep-input" style="width:auto; max-width:170px;" onchange="renderCastepElectronicPlots()" title="Filter PDOS by specific Element or individual Atom">
-                    <option value="all">All Atoms / Species</option>
-                  </select>
-                  <select id="castep-pdos-spin-layout" class="castep-input" style="width:auto;" onchange="renderCastepElectronicPlots()" title="Collinear Spin-Polarized PDOS Display">
-                    <option value="mirror">↕️ Spin Mirror (+α / −β)</option>
+                  <select id="castep-pdos-spin-layout" class="castep-input" onchange="renderCastepElectronicPlots()" title="Collinear Spin-Polarized PDOS Display">
+                    <option value="mirror">↕️ Spin Mirror (+α/−β)</option>
                     <option value="sum">➕ Total (α + β)</option>
                   </select>
-                  <select id="castep-elec-zero-ref" class="castep-input" style="width:auto; font-weight:700;" onchange="renderCastepElectronicPlots()" title="Synchronize Band Structure and PDOS zero energy reference (VBM = 0 for semiconductors, Fermi level = 0 for metals)">
-                    <option value="vbm_auto" selected>🎯 Zero: VBM / Fermi Level (Synced)</option>
-                    <option value="raw_fermi">⚡ Zero: Raw CASTEP Fermi Level</option>
+                  <select id="castep-elec-zero-ref" class="castep-input" style="font-weight:700;" onchange="renderCastepElectronicPlots()" title="Synchronize Band Structure and PDOS zero energy reference">
+                    <option value="vbm_auto" selected>🎯 Zero: VBM / Fermi (Synced)</option>
+                    <option value="raw_fermi">⚡ Zero: Raw Fermi Level</option>
                   </select>
-                  <input type="file" id="castep-pdos-file-upload" multiple accept=".pdos_bin,.bands,.xcd" style="display:none;" onchange="handleCastepPdosFilesUpload(event)" />
-                  <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px; font-weight:700;" onclick="document.getElementById('castep-pdos-file-upload').click()" title="Load CASTEP *.pdos_bin and *_DOS.bands files">📥 .pdos_bin/.bands</button>
-                </div>
-                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:6px;">
-                  <span style="font-size:11px; font-weight:700; color:#334155;">Channels:</span>
-                  <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-dos-total" checked onchange="renderCastepElectronicPlots()" /> Total</label>
-                  <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-dos-s" checked onchange="renderCastepElectronicPlots()" /> <span style="color:#2563eb;">● s</span></label>
-                  <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-dos-p" checked onchange="renderCastepElectronicPlots()" /> <span style="color:#16a34a;">● p</span></label>
-                  <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-dos-d" checked onchange="renderCastepElectronicPlots()" /> <span style="color:#dc2626;">● d</span></label>
-                  <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-dos-f" checked onchange="renderCastepElectronicPlots()" /> <span style="color:#9333ea;">● f</span></label>
-                  <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-spin-up" checked onchange="renderCastepElectronicPlots()" /> Spin ↑ (α)</label>
-                  <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-spin-dn" checked onchange="renderCastepElectronicPlots()" /> Spin ↓ (β)</label>
-                  <div style="margin-left:auto; display:flex; gap:4px; align-items:center;">
+                  <span class="castep-ctrl-grp" style="margin-left:auto;">
+                    <input type="file" id="castep-pdos-file-upload" multiple accept=".pdos_bin,.bands,.xcd" style="display:none;" onchange="handleCastepPdosFilesUpload(event)" />
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="document.getElementById('castep-pdos-file-upload').click()" title="Load CASTEP *.pdos_bin and *_DOS.bands files">📥 .pdos_bin/.bands</button>
                     <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('electronic', 1.25)" title="Zoom In Energy Window">🔍＋</button>
                     <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('electronic', 0.80)" title="Zoom Out Energy Window">🔍－</button>
                     <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('electronic')" title="Reset Zoom">⊡ Reset</button>
-                    <button type="button" class="btn btn-teal btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="copyCastepCanvasHD('castep-electronic-canvas', 'Band & PDOS')" title="Copy High-Resolution Band &amp; PDOS Image (400–600 DPI) to Clipboard — Ctrl+V into Word / PowerPoint">📋 Copy HD</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="copyCastepPlotData('electronic', 'auto')" title="Copy displayed PDOS / Band numerical data directly to Clipboard (TSV — Ctrl+V straight into Excel / OriginPro; right-click plot to pick PDOS vs Band)">📋 Copy Data</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepCanvasPNG('castep-electronic-canvas', 'CASTEP_Band_PDOS.png')">📷 PNG</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepElectronicCSV('pdos')" title="Export all displayed PDOS Element / Orbital / Atom / Spin columns to CSV">📊 PDOS CSV</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepElectronicCSV('band')" title="Export Band Structure k-path and every band column to a separate CSV">📈 Band CSV</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="exportCastepElectronicXLSX()" title="Export multi-tab Excel workbook with PDOS, Band Structure (Spin Up/Down), and High-Symmetry k-Points on separate tabs">📗 Excel</button>
+                  </span>
+                </div>
+
+                <!-- Row 3: Active Channels & Full Figure / Data Actions -->
+                <div class="castep-tb-row">
+                  <span class="castep-ctrl-grp" style="gap:6px;">
+                    <span class="castep-field-lbl">Channels:</span>
+                    <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-dos-total" checked onchange="renderCastepElectronicPlots()" /> Total</label>
+                    <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-dos-s" checked onchange="renderCastepElectronicPlots()" /> <span style="color:#2563eb;">● s</span></label>
+                    <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-dos-p" checked onchange="renderCastepElectronicPlots()" /> <span style="color:#16a34a;">● p</span></label>
+                    <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-dos-d" checked onchange="renderCastepElectronicPlots()" /> <span style="color:#dc2626;">● d</span></label>
+                    <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-dos-f" checked onchange="renderCastepElectronicPlots()" /> <span style="color:#9333ea;">● f</span></label>
+                    <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-spin-up" checked onchange="renderCastepElectronicPlots()" /> ↑(α)</label>
+                    <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-spin-dn" checked onchange="renderCastepElectronicPlots()" /> ↓(β)</label>
+                  </span>
+                  <div class="castep-tb-actions">
+                    <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="copyCastepCanvasHD('castep-electronic-canvas', 'Band & PDOS (Full)')" title="Copy FULL Band &amp; PDOS Image (400–600 DPI) to Clipboard — right-click Band or PDOS half to copy separately">📋 Copy HD</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="copyCastepPlotData('electronic', 'full')" title="Copy FULL Band &amp; PDOS numerical data (TSV → Excel / OriginPro; right-click to copy Band or PDOS separately)">📋 Copy Data</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepCanvasPNG('castep-electronic-canvas', 'CASTEP_Band_PDOS.png')">📷 PNG</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepElectronicCSV('pdos')" title="Export all displayed PDOS columns to CSV">📊 PDOS CSV</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepElectronicCSV('band')" title="Export Band Structure k-path and every band column to CSV">📈 Band CSV</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="exportCastepElectronicXLSX()" title="Export multi-tab Excel workbook (PDOS, Band Spin Up/Down, High-Symmetry k-Points)">📗 Excel</button>
                   </div>
                 </div>
               </div>
@@ -2422,9 +2460,9 @@
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepMullikenCSV('atoms')">📊 Atomic CSV</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepMullikenCSV('bonds')">🔗 Bonds CSV</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="exportCastepMullikenXLSX()" title="Export multi-tab Excel workbook (Magnetism Summary, Orbital Spin Matrix, Atomic Populations, Bond Populations)">📗 Excel</button>
-                    <button type="button" class="btn btn-teal btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="copyCastepCanvasHD('castep-mulliken-mag-canvas', 'Mulliken Magnetism')" title="Copy High-Resolution Mulliken Magnetism Plot Image to Clipboard">📋 Copy HD</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="copyCastepPlotData('mulliken', 'atoms')" title="Copy Atomic Mulliken &amp; Spin table directly to Clipboard (TSV — Ctrl+V into Excel / OriginPro)">📋 Copy Data</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepCanvasPNG('castep-mulliken-mag-canvas', 'CASTEP_Mulliken_Magnetism.png')">📷 PNG</button>
+                    <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="copyCastepCanvasPairHD(['castep-mulliken-mag-canvas', 'castep-mulliken-bond-canvas'], 'Mulliken Magnetism & Bonds')" title="Copy BOTH Mulliken Magnetism &amp; Bond Charts side-by-side (400–600 DPI) — right-click either chart to copy individually">📋 Copy HD</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="copyCastepPlotData('mulliken', 'full')" title="Copy FULL Atomic + Bond Mulliken tables directly to Clipboard (TSV → Excel / OriginPro)">📋 Copy Data</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepCanvasPNG('castep-mulliken-mag-canvas', 'CASTEP_Mulliken_Magnetism.png')">📷 PNG</button>
                   </div>
                 </div>
               </div>
@@ -2442,8 +2480,8 @@
                   <div style="display:flex; gap:5px; align-items:center; flex-wrap:wrap;">
                     <input id="castep-spinmat-file-input" type="file" accept=".castep,.pdos_bin,.bands" multiple style="display:none;" onchange="handleCastepSpinMatrixFileUpload(event)" />
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="document.getElementById('castep-spinmat-file-input')?.click()" title="Load CASTEP .castep (with Orbital Populations) or .pdos_bin + .bands">📂 .castep/.pdos_bin</button>
-                    <button type="button" class="btn btn-teal btn-sm" style="padding:3px 8px; font-size:11px; font-weight:700;" onclick="copyCastepCanvasHD('castep-spinmat-canvas', 'Orbital Spin Matrix')" title="Copy High-Resolution Spin Matrix Image (400–600 DPI) to Clipboard — paste directly into Word / PowerPoint">📋 Copy HD</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px; font-weight:700;" onclick="copyCastepPlotData('spinmat')" title="Copy Spin Matrix &amp; orbital spin values directly to Clipboard (TSV — Ctrl+V straight into Excel / OriginPro)">📋 Copy Data</button>
+                    <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="copyCastepCanvasHD('castep-spinmat-canvas', 'Orbital Spin Matrix (Full)')" title="Copy FULL Spin Matrix Image (400–600 DPI) to Clipboard — right-click any element in All-Elements Grid to copy individually">📋 Copy HD</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="copyCastepPlotData('spinmat', 'full')" title="Copy FULL Spin Matrix + all-element orbital spin table directly to Clipboard (TSV → Excel / OriginPro)">📋 Copy Data</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="exportCastepSpinMatrixCSV()" title="Export current Spin Matrix & all-element orbital spin table to CSV">📊 Matrix CSV</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px; font-weight:700;" onclick="exportCastepSpinMatrixPNG()" title="Export publication-ready Hi-DPI Spin Matrix PNG">📷 Matrix PNG</button>
                   </div>
@@ -2621,9 +2659,9 @@
                   <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('convergence', 1.25)" title="Zoom In Convergence">🔍＋</button>
                   <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('convergence', 0.80)" title="Zoom Out Convergence">🔍－</button>
                   <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('convergence')" title="Reset Convergence Zoom">⊡ Reset</button>
-                  <button type="button" class="btn btn-teal btn-sm" style="padding:3px 8px; font-size:11px; font-weight:700;" onclick="copyCastepCanvasHD('castep-energy-chart-canvas', 'Energy Profile')" title="Copy High-Resolution Energy Profile Plot to Clipboard (right-click either chart to copy individually)">📋 Copy HD</button>
-                  <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px; font-weight:700;" onclick="copyCastepPlotData('convergence')" title="Copy SCF / Energy Convergence table directly to Clipboard (TSV — Ctrl+V into Excel / OriginPro)">📋 Copy Data</button>
-                  <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="exportCastepConvergenceCSV()" title="Export SCF / Energy convergence table to CSV">📊 CSV</button>
+                  <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="copyCastepCanvasPairHD(['castep-energy-chart-canvas', 'castep-conv-chart-canvas'], 'Energy & Convergence')" title="Copy BOTH Energy Profile &amp; Convergence Charts side-by-side (400–600 DPI) — right-click either chart to copy individually">📋 Copy HD</button>
+                  <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="copyCastepPlotData('convergence', 'full')" title="Copy FULL SCF &amp; GeomOpt Convergence data directly to Clipboard (TSV → Excel / OriginPro)">📋 Copy Data</button>
+                  <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepConvergenceCSV()" title="Export SCF / Energy convergence table to CSV">📊 CSV</button>
                   <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px; font-weight:700;" onclick="exportCastepConvergenceXLSX()" title="Export multi-tab Excel workbook (SCF Convergence, GeomOpt Trajectory, Forces &amp; Charges)">📗 Excel</button>
                   <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="exportCastepCanvasPNG('castep-energy-chart-canvas', 'CASTEP_Energy_Profile.png')">📷 Energy PNG</button>
                   <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="exportCastepCanvasPNG('castep-conv-chart-canvas', 'CASTEP_Convergence.png')">📷 Conv PNG</button>
@@ -5736,9 +5774,9 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=136_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=136_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=136_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=136_v116_vesta_viewer'"></script>
-  <script src="app.js?v=136_v116_vesta_viewer" onerror="this.src='/static/app.js?v=136_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=137_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=137_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=137_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=137_v116_vesta_viewer'"></script>
+  <script src="app.js?v=137_v116_vesta_viewer" onerror="this.src='/static/app.js?v=137_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
