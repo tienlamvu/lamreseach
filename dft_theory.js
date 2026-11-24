@@ -1,14 +1,44 @@
 /* ============================================================================
-   DFT Theory Curriculum Module (v142) — Publication Math (KaTeX) + Dual-Mode CMS
-   Word Equation (Cambria Math) / MathType (STIX/Times) / LaTeX (Computer Modern)
-   Strict-Admin Visual (WYSIWYG) + Simultaneous Split + HTML/LaTeX Code Editor
+   DFT Theory Curriculum Module (v143) — Word Equation (Cambria) + Auto-Wrap
+   Auto-Fetch DOI References + Academic Author/Updated Byline + Dual-Mode CMS
    ============================================================================ */
 
 (function () {
   const STORAGE_KEY = "dft_theory_lectures_v2";
   const LEGACY_KEY = "dft_theory_lectures_v1";
   const ACTIVE_KEY = "dft_theory_active_lec";
-  const MATH_FONT_KEY = "dft_math_font_pref";
+  const DEFAULT_AUTHOR = "Vu Tien Lam";
+  const DEFAULT_AFFILIATION = "Sungkyunkwan University";
+  const DEFAULT_UPDATED_AT = "November 24, 2026";
+
+  function formatEnglishDate(d = new Date()) {
+    try {
+      return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+    } catch (_) {
+      return DEFAULT_UPDATED_AT;
+    }
+  }
+
+  function getDefaultLectureAuthor() {
+    if (typeof STATE !== "undefined" && STATE.profile && STATE.profile.name) {
+      return String(STATE.profile.name).trim() || DEFAULT_AUTHOR;
+    }
+    return DEFAULT_AUTHOR;
+  }
+
+  function getDefaultLectureAffiliation() {
+    if (typeof STATE !== "undefined" && STATE.profile && STATE.profile.affiliation) {
+      const raw = String(STATE.profile.affiliation).trim();
+      if (raw) {
+        const parts = raw.split(/\s*,\s*/).filter(Boolean);
+        if (parts.length >= 2) {
+          return `${parts[0]}, ${parts[parts.length - 1]}`;
+        }
+        return raw;
+      }
+    }
+    return DEFAULT_AFFILIATION;
+  }
 
   function escAttr(str) {
     return String(str == null ? "" : str)
@@ -69,29 +99,51 @@
   }
 
   // =========================================================================
-  // KATEX EQUATION ENGINE & MATH FONT PRESET (WORD CAMBRIA / MATHTYPE / LATEX)
+  // KATEX EQUATION ENGINE — UNIFIED WORD EQUATION (CAMBRIA) + AUTO LINE-WRAP
   // =========================================================================
   let _katexRetryTimer = null;
 
-  function applyDftMathFont(mode) {
-    const valid = ["cambria", "mathtype", "latex"].includes(mode) ? mode : "cambria";
-    try { localStorage.setItem(MATH_FONT_KEY, valid); } catch (_) {}
-    ["tab-dft-theory", "dft-lecture-editor-modal", "dft-eq-builder-modal"].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.setAttribute("data-math-font", valid);
-    });
-    const sel = document.getElementById("dft-math-font-select");
-    if (sel && sel.value !== valid) sel.value = valid;
-    return valid;
-  }
-  window.applyDftMathFont = applyDftMathFont;
-
-  function getSavedDftMathFont() {
-    try {
-      const v = localStorage.getItem(MATH_FONT_KEY);
-      if (["cambria", "mathtype", "latex"].includes(v)) return v;
-    } catch (_) {}
-    return "cambria";
+  // Split compound LaTeX display equations at top-level \qquad (outside {...} and \left...\right)
+  function splitTopLevelQquad(tex) {
+    const parts = [];
+    let buf = "";
+    let braceDepth = 0;
+    let leftDepth = 0;
+    let i = 0;
+    while (i < tex.length) {
+      const ch = tex[i];
+      if (ch === "\\") {
+        // Check \left / \right / \qquad
+        if (tex.startsWith("\\left", i) && !/[a-zA-Z]/.test(tex[i + 5] || "")) {
+          leftDepth++;
+          buf += "\\left";
+          i += 5;
+          continue;
+        }
+        if (tex.startsWith("\\right", i) && !/[a-zA-Z]/.test(tex[i + 6] || "")) {
+          leftDepth = Math.max(0, leftDepth - 1);
+          buf += "\\right";
+          i += 6;
+          continue;
+        }
+        if (braceDepth === 0 && leftDepth === 0 && tex.startsWith("\\qquad", i) && !/[a-zA-Z]/.test(tex[i + 6] || "")) {
+          if (buf.trim()) parts.push(buf.trim());
+          buf = "";
+          i += 6;
+          continue;
+        }
+        // Keep escaped char together (e.g. \{, \}, \\)
+        buf += tex.slice(i, i + 2);
+        i += 2;
+        continue;
+      }
+      if (ch === "{") braceDepth++;
+      else if (ch === "}") braceDepth = Math.max(0, braceDepth - 1);
+      buf += ch;
+      i++;
+    }
+    if (buf.trim()) parts.push(buf.trim());
+    return parts.length ? parts : [tex];
   }
 
   function renderSingleKatexNode(el, displayMode) {
@@ -99,6 +151,28 @@
     if (!tex) return false;
     if (typeof window.katex !== "undefined" && typeof window.katex.render === "function") {
       try {
+        if (displayMode) {
+          const segs = splitTopLevelQquad(tex);
+          if (segs.length > 1) {
+            el.innerHTML = "";
+            const wrap = document.createElement("div");
+            wrap.className = "dft-eq-seg-wrap";
+            segs.forEach(seg => {
+              const segEl = document.createElement("span");
+              segEl.className = "dft-eq-seg";
+              window.katex.render(seg, segEl, {
+                displayMode: true,
+                throwOnError: false,
+                strict: "ignore",
+                trust: false
+              });
+              wrap.appendChild(segEl);
+            });
+            el.appendChild(wrap);
+            el.setAttribute("data-katex-rendered", "1");
+            return true;
+          }
+        }
         window.katex.render(tex, el, {
           displayMode: Boolean(displayMode),
           throwOnError: false,
@@ -168,7 +242,7 @@
         const bar = document.createElement("div");
         bar.className = "dft-vis-eq-actions";
         bar.setAttribute("data-editor-ui", "1");
-        bar.innerHTML = `<button type="button" class="dft-vis-eq-btn" onclick="openDftEquationBuilderForVisualNode(this.closest('.dft-eq-box'))" title="Edit equation in MathType / LaTeX builder">&#9999;&#65039; Edit Eq</button><button type="button" class="dft-vis-eq-btn dft-vis-eq-del" onclick="removeDftVisualEquationNode(this.closest('.dft-eq-box'))" title="Remove equation">&times;</button>`;
+        bar.innerHTML = `<button type="button" class="dft-vis-eq-btn" onclick="openDftEquationBuilderForVisualNode(this.closest('.dft-eq-box'))" title="Edit equation in Word/LaTeX builder">&#9999;&#65039; Edit Eq</button><button type="button" class="dft-vis-eq-btn dft-vis-eq-del" onclick="removeDftVisualEquationNode(this.closest('.dft-eq-box'))" title="Remove equation">&times;</button>`;
         box.appendChild(bar);
       }
     });
@@ -181,7 +255,6 @@
 
   function renderDftMathInElement(rootEl, opts = {}) {
     if (!rootEl) return;
-    applyDftMathFont(getSavedDftMathFont());
     if (typeof window.katex === "undefined") {
       if (!_katexRetryTimer) {
         _katexRetryTimer = setInterval(() => {
@@ -258,7 +331,7 @@
 
         <h3>1.2 Electron Density, Hohenberg–Kohn Theorems &amp; Levy–Lieb Search</h3>
         <p>Instead of the 3<i>N</i>-dimensional wavefunction, DFT uses the <strong>3-dimensional electron number density</strong> <i>n</i>(${vec('r')})—a scalar physical observable depending on only three spatial coordinates (<i>x</i>, <i>y</i>, <i>z</i>):</p>
-        ${eq(String.raw`n(\mathbf{r}) = N \int \mathrm{d}^3\mathbf{r}_2 \cdots \mathrm{d}^3\mathbf{r}_N \,\left|\psi(\mathbf{r}, \mathbf{r}_2, \dots, \mathbf{r}_N)\right|^2, \qquad \int n(\mathbf{r})\,\mathrm{d}^3\mathbf{r} = N`, "1.4")}
+        ${eq(String.raw`n(\mathbf{r}) = N \int \mathrm{d}^3\mathbf{r}_2 \cdots \mathrm{d}^3\mathbf{r}_N \allowbreak\,\left|\psi(\mathbf{r}, \mathbf{r}_2, \dots, \mathbf{r}_N)\right|^2, \qquad \int n(\mathbf{r})\,\mathrm{d}^3\mathbf{r} = N`, "1.4")}
 
         <div class="dft-two-col">
           ${defBox("Hohenberg–Kohn Theorem I (Uniqueness)",
@@ -587,7 +660,7 @@
       contentHtml: `
         <h3>4.1 The Hellmann–Feynman Force Theorem</h3>
         <p>Locating the equilibrium crystal structure requires the force ${vec('F')}<sub><i>I</i></sub> = &minus;&part;<i>E</i>/&part;${vec('R')}<sub><i>I</i></sub> acting on every nucleus <i>I</i>. Differentiating <i>E</i> = &lang;&Psi;|${hat('H')}|&Psi;&rang; appears to involve costly wavefunction derivatives &part;&Psi;/&part;${vec('R')}<sub><i>I</i></sub>. Remarkably, for any normalized eigenstate &lang;&Psi;|&Psi;&rang; = 1, those terms cancel identically:</p>
-        ${eq(String.raw`\mathbf{F}_I = -\frac{\partial E}{\partial \mathbf{R}_I} = -\left\langle \Psi \left|\frac{\partial \hat{H}}{\partial \mathbf{R}_I}\right| \Psi \right\rangle = -\int n(\mathbf{r})\,\frac{\partial v_{\mathrm{ext}}(\mathbf{r})}{\partial \mathbf{R}_I}\,\mathrm{d}^3\mathbf{r} - \frac{\partial E_{\mathrm{II}}}{\partial \mathbf{R}_I}`, "4.1",
+        ${eq(String.raw`\mathbf{F}_I = -\frac{\partial E}{\partial \mathbf{R}_I} = -\left\langle \Psi \left|\frac{\partial \hat{H}}{\partial \mathbf{R}_I}\right| \Psi \right\rangle \allowbreak = -\int n(\mathbf{r})\,\frac{\partial v_{\mathrm{ext}}(\mathbf{r})}{\partial \mathbf{R}_I}\,\mathrm{d}^3\mathbf{r} - \frac{\partial E_{\mathrm{II}}}{\partial \mathbf{R}_I}`, "4.1",
           "Because plane waves <i>e</i><sup><i>i</i>(<b>k</b>+<b>G</b>)&middot;<b>r</b></sup> do not depend on atomic coordinates <b>R</b><sub><i>I</i></sub>, there are zero Pulay basis-derivative forces once SCF is tightly converged.")}
 
         <h3>4.2 Stress Tensor &amp; Variable-Cell Relaxation</h3>
@@ -771,7 +844,7 @@
       contentHtml: `
         <h3>6.1 Semiclassical Dynamics &amp; Band-Edge Effective Mass Tensor</h3>
         <p>Under an external electric field, a Bloch electron wavepacket centered at wavevector ${vec('k')} propagates at group velocity ${vec('v')}<sub>g</sub> = (1/&#8463;)&nabla;<sub>${vec('k')}</sub><i>E<sub>n</sub></i>(${vec('k')}) and responds to crystal forces with an inertia set by band curvature—the <strong>inverse effective mass tensor</strong>:</p>
-        ${eq(String.raw`\frac{1}{m^*_{\alpha\beta}} = \frac{1}{\hbar^2}\frac{\partial^2 E_n(\mathbf{k})}{\partial k_\alpha \partial k_\beta} \;\implies\; \frac{m^*}{m_0} = \frac{7.61996\;\mathrm{eV}\!\cdot\!\text{Å}^2}{\partial^2 E / \partial k^2}`, "6.1",
+        ${eq(String.raw`\frac{1}{m^*_{\alpha\beta}} = \frac{1}{\hbar^2}\frac{\partial^2 E_n(\mathbf{k})}{\partial k_\alpha \partial k_\beta} \allowbreak\;\implies\; \frac{m^*}{m_0} = \frac{7.61996\;\mathrm{eV}\!\cdot\!\text{Å}^2}{\partial^2 E / \partial k^2}`, "6.1",
           "Steeply dispersing bands yield light, high-mobility carriers (small <i>m</i>*); flat localized bands (3<i>d</i>/4<i>f</i> states) yield heavy carriers (large <i>m</i>*). At the VBM, &part;<sup>2</sup><i>E</i>/&part;<i>k</i><sup>2</sup> &lt; 0, giving positive hole mass <i>m</i>*<sub>h</sub> = &minus;&#8463;<sup>2</sup>/(&part;<sup>2</sup><i>E</i>/&part;<i>k</i><sup>2</sup>) &gt; 0.")}
         <p>Away from the immediate band extremum (especially in narrow-gap semiconductors and heavily doped degenerate conductors), band coupling softens dispersion via the <strong>Kane Non-Parabolic Model</strong>:</p>
         ${eq(String.raw`\Delta E\left(1 + \alpha_{\mathrm{K}}\Delta E\right) = \frac{\hbar^2 q^2}{2m_0^*}, \qquad q = \left|\mathbf{k} - \mathbf{k}_0\right|`, "6.2",
@@ -866,7 +939,7 @@
       contentHtml: `
         <h3>7.1 Complex Dielectric Tensor &amp; Interband Transitions (<code>*.ome_bin</code>)</h3>
         <p>When light of photon energy &#8463;&omega; illuminates a crystal, vertical interband transitions promote electrons from occupied valence bands <i>v</i> to unoccupied conduction bands <i>c</i> at virtually unchanged wavevector ${vec('k')} (<i>q</i><sub>photon</sub> &approx; 0). Within the independent-particle dipole approximation (IPA / Fermi's Golden Rule), the imaginary part of the symmetrized 3&times;3 dielectric tensor &varepsilon;<sub>2,&alpha;&beta;</sub>(&omega;) is built directly from the optical momentum matrix elements ${vec('p')}<sub><i>cv</i>${vec('k')}}</sub> = &lang;&psi;<sub><i>c</i>${vec('k')}}</sub>|${hat('p')}|&psi;<sub><i>v</i>${vec('k')}}</sub>&rang; stored in CASTEP binary <code>*.ome_bin</code> files:</p>
-        ${eq(String.raw`\varepsilon_{2,\alpha\beta}(\omega) = \frac{4\pi^2 e^2}{\Omega m_0^2 \omega^2}\sum_{v,c,\mathbf{k}} g_{\mathrm{s}}\,w_{\mathbf{k}}\,(f_{v\mathbf{k}} - f_{c\mathbf{k}})\,\langle \psi_{c\mathbf{k}}|\hat{p}_\alpha|\psi_{v\mathbf{k}}\rangle\langle \psi_{v\mathbf{k}}|\hat{p}_\beta|\psi_{c\mathbf{k}}\rangle\,\delta(E_{c\mathbf{k}} - E_{v\mathbf{k}} - \hbar\omega)`, "7.1",
+        ${eq(String.raw`\varepsilon_{2,\alpha\beta}(\omega) = \frac{4\pi^2 e^2}{\Omega m_0^2 \omega^2}\sum_{v,c,\mathbf{k}} g_{\mathrm{s}}\,w_{\mathbf{k}}\,(f_{v\mathbf{k}} - f_{c\mathbf{k}})\allowbreak\,\langle \psi_{c\mathbf{k}}|\hat{p}_\alpha|\psi_{v\mathbf{k}}\rangle\allowbreak\langle \psi_{v\mathbf{k}}|\hat{p}_\beta|\psi_{c\mathbf{k}}\rangle\allowbreak\,\delta(E_{c\mathbf{k}} - E_{v\mathbf{k}} - \hbar\omega)`, "7.1",
           "A rigid <strong>Levine–Allan scissors shift</strong> &Delta;<sub>sc</sub> corrects semilocal PBE gap underestimation (<i>E<sub>c</sub></i> &minus; <i>E<sub>v</sub></i> &rarr; <i>E<sub>c</sub></i> &minus; <i>E<sub>v</sub></i> + &Delta;<sub>sc</sub>) while renormalizing matrix elements by (<i>E<sub>cv</sub></i> + &Delta;<sub>sc</sub>)/<i>E<sub>cv</sub></i> to preserve the optical f-sum rule.")}
 
         <div class="dft-diagram-wrap">
@@ -1272,6 +1345,9 @@
           toolName: String(l.toolName || TOOL_META_MAP[toolPane] || "Data Analysis").trim(),
           title: String(l.title || `Lecture ${num}: Untitled DFT Topic`).trim(),
           subtitle: String(l.subtitle || "").trim(),
+          author: String(l.author || getDefaultLectureAuthor()).trim(),
+          affiliation: String(l.affiliation || getDefaultLectureAffiliation()).trim(),
+          updatedAt: String(l.updatedAt || DEFAULT_UPDATED_AT).trim(),
           keywords: String(l.keywords || "").trim(),
           objectives: Array.isArray(l.objectives)
             ? l.objectives.map(x => String(x || "").trim()).filter(Boolean)
@@ -1474,6 +1550,13 @@
           </div>
           <h2 class="dft-lec-title">${found.title}</h2>
           <p class="dft-lec-subtitle">${found.subtitle}</p>
+          <div class="dft-byline-bar" aria-label="Lecture authorship and revision info">
+            <span class="dft-byline-item">&#9997;&#65039; <strong>Compiled by:</strong> ${escHtml(found.author || getDefaultLectureAuthor())}${found.affiliation ? ` <span class="dft-byline-sep">&middot;</span> <em>${escHtml(found.affiliation)}</em>` : ""}</span>
+            <span class="dft-byline-divider">|</span>
+            <span class="dft-byline-item">&#128197; <strong>Last Updated:</strong> ${escHtml(found.updatedAt || DEFAULT_UPDATED_AT)}</span>
+            <span class="dft-byline-divider">|</span>
+            <span class="dft-byline-item">&#128218; <strong>References:</strong> ${(found.references || []).length} peer-reviewed</span>
+          </div>
           ${objItems ? `<div class="dft-obj-box"><div class="dft-obj-title">&#127919; Learning Objectives</div><ul>${objItems}</ul></div>` : ""}
         </header>
 
@@ -1537,7 +1620,6 @@
   window.filterDftLectures = filterDftLectures;
 
   function renderDftTheoryTab(lecIdOverride, forceRebuild = false) {
-    applyDftMathFont(getSavedDftMathFont());
     const lectures = getDftTheoryLectures();
     const tabsBar = document.getElementById("dft-theory-lecture-tabs");
     if (tabsBar && (forceRebuild || !tabsBar.dataset.built)) {
@@ -1868,7 +1950,6 @@
     if (!modal) return;
     saveDftVisualSelection();
     _eqBuilderTargetNode = targetNode || null;
-    applyDftMathFont(getSavedDftMathFont());
 
     const lectures = getDftTheoryLectures();
     const lecNum = _editingLectureId
@@ -2027,29 +2108,266 @@
   window.confirmDftEquationBuilder = confirmDftEquationBuilder;
 
   // =========================================================================
-  // REFERENCE ROWS & MAIN MODAL LIFECYCLE
+  // AUTO-FETCH DOI REFERENCES (CROSSREF + OPENALEX) & MAIN MODAL LIFECYCLE
   // =========================================================================
-  function buildRefEditorRowHtml(ref = {}) {
+  function cleanDoiString(raw) {
+    return String(raw || "")
+      .trim()
+      .replace(/^https?:\/\/(dx\.)?doi\.org\//i, "")
+      .replace(/^doi:\s*/i, "")
+      .replace(/[.,;)\]]+$/, "")
+      .trim();
+  }
+
+  function formatAuthorsFromCrossref(authorsArr) {
+    if (!Array.isArray(authorsArr) || !authorsArr.length) return "";
+    const formatted = authorsArr.map(a => {
+      const family = String(a.family || "").trim();
+      const given = String(a.given || "").trim();
+      if (!family && !given) return String(a.name || "").trim();
+      if (!given) return family;
+      const initials = given
+        .split(/[\s-]+/)
+        .filter(Boolean)
+        .map(p => (p[0] ? `${p[0].toUpperCase()}.` : ""))
+        .join(" ");
+      return `${initials} ${family}`.trim();
+    }).filter(Boolean);
+    if (!formatted.length) return "";
+    if (formatted.length === 1) return formatted[0];
+    if (formatted.length > 6) return `${formatted[0]} et al.`;
+    return `${formatted.slice(0, -1).join(", ")} & ${formatted[formatted.length - 1]}`;
+  }
+
+  function formatAuthorsFromOpenAlex(authorships) {
+    if (!Array.isArray(authorships) || !authorships.length) return "";
+    const formatted = authorships.map(a => {
+      const nm = String(a?.author?.display_name || "").trim();
+      if (!nm) return "";
+      const parts = nm.split(/\s+/).filter(Boolean);
+      if (parts.length <= 1) return nm;
+      const last = parts.pop();
+      const inits = parts.map(p => `${p[0].toUpperCase()}.`).join(" ");
+      return `${inits} ${last}`;
+    }).filter(Boolean);
+    if (!formatted.length) return "";
+    if (formatted.length === 1) return formatted[0];
+    if (formatted.length > 6) return `${formatted[0]} et al.`;
+    return `${formatted.slice(0, -1).join(", ")} & ${formatted[formatted.length - 1]}`;
+  }
+
+  async function fetchCitationMetadataByDoi(rawDoi) {
+    const doi = cleanDoiString(rawDoi);
+    if (!doi || !/^10\.\d{4,9}\/\S+$/i.test(doi)) {
+      throw new Error(`Invalid DOI format: "${rawDoi}"`);
+    }
+
+    // 1. Primary: Crossref REST API
+    try {
+      const res = await fetch(`https://api.crossref.org/works/${encodeURIComponent(doi)}?mailto=lamvt.skku@gmail.com`);
+      if (res.ok) {
+        const json = await res.json();
+        const m = json && json.message;
+        if (m) {
+          const authors = formatAuthorsFromCrossref(m.author) || formatAuthorsFromCrossref(m.editor) || "Unknown Author";
+          const rawTitle = Array.isArray(m.title) ? m.title[0] : (m.title || "");
+          const title = String(rawTitle).replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+          const journal = (Array.isArray(m["short-container-title"]) && m["short-container-title"][0])
+            || (Array.isArray(m["container-title"]) && m["container-title"][0])
+            || m.publisher || "";
+          const vol = m.volume ? ` ${m.volume}` : "";
+          const pageOrArt = m.page || m["article-number"] || "";
+          const pages = pageOrArt ? `, ${String(pageOrArt).replace(/-/g, "\u2013")}` : "";
+          const venue = `${String(journal).trim()}${vol}${pages}`.trim();
+          const dateParts = (m["published-print"] && m["published-print"]["date-parts"])
+            || (m["published-online"] && m["published-online"]["date-parts"])
+            || (m.issued && m.issued["date-parts"])
+            || (m.created && m.created["date-parts"]);
+          const year = dateParts && dateParts[0] && dateParts[0][0] ? String(dateParts[0][0]) : "";
+          if (title) {
+            return { authors, title, venue, year, doi: cleanDoiString(m.DOI || doi) };
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 2. Fallback: OpenAlex Works API
+    const oaRes = await fetch(`https://api.openalex.org/works/https://doi.org/${encodeURIComponent(doi)}?mailto=lamvt.skku@gmail.com`);
+    if (oaRes.ok) {
+      const w = await oaRes.json();
+      const authors = formatAuthorsFromOpenAlex(w.authorships) || "Unknown Author";
+      const title = String(w.display_name || w.title || "").replace(/<[^>]+>/g, "").trim();
+      const srcName = w?.primary_location?.source?.display_name || "";
+      const vol = w?.biblio?.volume ? ` ${w.biblio.volume}` : "";
+      const fp = w?.biblio?.first_page || "";
+      const lp = w?.biblio?.last_page || "";
+      const pages = fp ? (lp && lp !== fp ? `, ${fp}\u2013${lp}` : `, ${fp}`) : "";
+      const venue = `${srcName}${vol}${pages}`.trim();
+      const year = w.publication_year ? String(w.publication_year) : "";
+      if (title) {
+        return { authors, title, venue, year, doi: cleanDoiString(w.doi || doi) };
+      }
+    }
+
+    throw new Error(`DOI not found in Crossref or OpenAlex: ${doi}`);
+  }
+  window.fetchCitationMetadataByDoi = fetchCitationMetadataByDoi;
+
+  function updateRefCardPreview(cardEl) {
+    if (!cardEl) return;
+    const authors = (cardEl.querySelector(".dft-ref-authors")?.value || "").trim() || "Untitled Author";
+    const title = (cardEl.querySelector(".dft-ref-title")?.value || "").trim() || "Untitled Reference";
+    const venue = (cardEl.querySelector(".dft-ref-venue")?.value || "").trim();
+    const year = (cardEl.querySelector(".dft-ref-year")?.value || "").trim();
+    const doi = cleanDoiString(cardEl.querySelector(".dft-ref-doi")?.value || "");
+    const summaryEl = cardEl.querySelector(".dft-ref-card-summary");
+    if (summaryEl) {
+      const doiHtml = doi
+        ? ` <a class="dft-doi-pill" href="https://doi.org/${encodeURI(doi)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">DOI: ${escHtml(doi)} &#8599;</a>`
+        : "";
+      summaryEl.innerHTML = `<strong>${escHtml(authors)}</strong>, &ldquo;${escHtml(title)},&rdquo;${venue ? ` <em>${escHtml(venue)}</em>` : ""}${year ? ` (${escHtml(year)}).` : "."}${doiHtml}`;
+    }
+  }
+  window.updateRefCardPreview = updateRefCardPreview;
+
+  function renumberDftRefCards() {
+    document.querySelectorAll("#dft-ed-refs-list .dft-ref-edit-card").forEach((c, i) => {
+      const badge = c.querySelector(".dft-ref-card-num");
+      if (badge) badge.textContent = `[${i + 1}]`;
+    });
+  }
+
+  function buildRefEditorCardHtml(ref = {}, startExpanded = false) {
+    const authors = String(ref.authors || "").trim();
+    const title = String(ref.title || "").trim();
+    const venue = String(ref.venue || "").trim();
+    const year = String(ref.year || "").trim();
+    const doi = cleanDoiString(ref.doi || "");
+    const doiHtml = doi
+      ? ` <a class="dft-doi-pill" href="https://doi.org/${encodeURI(doi)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">DOI: ${escHtml(doi)} &#8599;</a>`
+      : "";
+    const summaryHtml = (authors || title)
+      ? `<strong>${escHtml(authors || "Author")}</strong>, &ldquo;${escHtml(title || "Title")},&rdquo;${venue ? ` <em>${escHtml(venue)}</em>` : ""}${year ? ` (${escHtml(year)}).` : "."}${doiHtml}`
+      : `<span style="color:#64748b; font-style:italic;">New manual reference &mdash; fill details below...</span>`;
+
     return `
-      <div class="dft-ref-edit-row">
-        <input type="text" class="form-input dft-ref-authors" placeholder="Authors (e.g. P. Hohenberg &amp; W. Kohn)" value="${escHtml(ref.authors || "")}" />
-        <input type="text" class="form-input dft-ref-title" placeholder="Paper or Textbook Title" value="${escHtml(ref.title || "")}" />
-        <input type="text" class="form-input dft-ref-venue" placeholder="Journal / Publisher, Vol, Pages" value="${escHtml(ref.venue || "")}" />
-        <input type="text" class="form-input dft-ref-year" placeholder="Year" value="${escHtml(ref.year || "")}" />
-        <input type="text" class="form-input dft-ref-doi" placeholder="DOI (e.g. 10.1103/PhysRev.136.B864)" value="${escHtml(ref.doi || "")}" />
-        <button type="button" class="dft-ref-rm-btn" onclick="this.closest('.dft-ref-edit-row').remove()" title="Remove reference">&times;</button>
+      <div class="dft-ref-edit-card${startExpanded ? " is-open" : ""}">
+        <div class="dft-ref-card-top">
+          <span class="dft-ref-card-num">[1]</span>
+          <div class="dft-ref-card-summary">${summaryHtml}</div>
+          <div class="dft-ref-card-actions">
+            <button type="button" class="dft-ref-mini-btn" onclick="this.closest('.dft-ref-edit-card').classList.toggle('is-open')" title="Edit citation fields">&#9999;&#65039;</button>
+            <button type="button" class="dft-ref-mini-btn" onclick="moveDftRefCard(this.closest('.dft-ref-edit-card'), -1)" title="Move up">&#8593;</button>
+            <button type="button" class="dft-ref-mini-btn" onclick="moveDftRefCard(this.closest('.dft-ref-edit-card'), 1)" title="Move down">&#8595;</button>
+            <button type="button" class="dft-ref-rm-btn" onclick="const c=this.closest('.dft-ref-edit-card'); c.remove(); renumberDftRefCards();" title="Remove reference">&times;</button>
+          </div>
+        </div>
+        <div class="dft-ref-edit-fields">
+          <input type="text" class="form-input dft-ref-authors" placeholder="Authors (e.g. P. Hohenberg &amp; W. Kohn)" value="${escHtml(authors)}" oninput="updateRefCardPreview(this.closest('.dft-ref-edit-card'))" />
+          <input type="text" class="form-input dft-ref-title" placeholder="Paper or Textbook Title" value="${escHtml(title)}" oninput="updateRefCardPreview(this.closest('.dft-ref-edit-card'))" />
+          <input type="text" class="form-input dft-ref-venue" placeholder="Journal / Publisher, Vol, Pages" value="${escHtml(venue)}" oninput="updateRefCardPreview(this.closest('.dft-ref-edit-card'))" />
+          <input type="text" class="form-input dft-ref-year" placeholder="Year" value="${escHtml(year)}" oninput="updateRefCardPreview(this.closest('.dft-ref-edit-card'))" />
+          <input type="text" class="form-input dft-ref-doi" placeholder="DOI (e.g. 10.1103/PhysRev.136.B864)" value="${escHtml(doi)}" oninput="updateRefCardPreview(this.closest('.dft-ref-edit-card'))" />
+        </div>
       </div>
     `;
   }
 
-  function addDftRefRow(ref = {}) {
+  function moveDftRefCard(cardEl, delta) {
+    if (!cardEl || !cardEl.parentElement) return;
+    const parent = cardEl.parentElement;
+    if (delta < 0 && cardEl.previousElementSibling) {
+      parent.insertBefore(cardEl, cardEl.previousElementSibling);
+    } else if (delta > 0 && cardEl.nextElementSibling) {
+      parent.insertBefore(cardEl.nextElementSibling, cardEl);
+    }
+    renumberDftRefCards();
+  }
+  window.moveDftRefCard = moveDftRefCard;
+  window.renumberDftRefCards = renumberDftRefCards;
+
+  function addDftRefRow(ref = {}, startExpanded = false) {
     const listEl = document.getElementById("dft-ed-refs-list");
     if (!listEl) return;
     const wrap = document.createElement("div");
-    wrap.innerHTML = buildRefEditorRowHtml(ref).trim();
-    if (wrap.firstElementChild) listEl.appendChild(wrap.firstElementChild);
+    wrap.innerHTML = buildRefEditorCardHtml(ref, startExpanded).trim();
+    if (wrap.firstElementChild) {
+      listEl.appendChild(wrap.firstElementChild);
+      renumberDftRefCards();
+    }
   }
   window.addDftRefRow = addDftRefRow;
+
+  async function fetchAndAddDftRefFromDoi() {
+    const inp = document.getElementById("dft-ed-doi-quick-input");
+    const btn = document.getElementById("dft-ed-doi-fetch-btn");
+    const statusEl = document.getElementById("dft-ed-doi-status");
+    if (!inp) return;
+    const raw = inp.value.trim();
+    if (!raw) {
+      notifyUser("Paste one or more DOIs (e.g. 10.1103/PhysRevLett.77.3865).", "error");
+      inp.focus();
+      return;
+    }
+
+    const tokens = raw.split(/[\n,;]+/).map(cleanDoiString).filter(Boolean);
+    if (!tokens.length) return;
+
+    // Collect existing DOIs to prevent duplicates
+    const existingDois = new Set(
+      [...document.querySelectorAll("#dft-ed-refs-list .dft-ref-doi")]
+        .map(el => cleanDoiString(el.value).toLowerCase())
+        .filter(Boolean)
+    );
+
+    const origBtnText = btn ? btn.innerHTML : "";
+    if (btn) { btn.disabled = true; btn.innerHTML = "&#8987; Fetching DOI..."; }
+    if (statusEl) { statusEl.textContent = `Fetching metadata for ${tokens.length} DOI(s)...`; statusEl.className = "dft-doi-status is-loading"; }
+
+    let added = 0;
+    let skipped = 0;
+    const failed = [];
+
+    for (const doi of tokens) {
+      if (existingDois.has(doi.toLowerCase())) {
+        skipped++;
+        continue;
+      }
+      try {
+        const meta = await fetchCitationMetadataByDoi(doi);
+        addDftRefRow(meta, false);
+        existingDois.add(meta.doi.toLowerCase());
+        added++;
+      } catch (err) {
+        failed.push(doi);
+      }
+    }
+
+    if (btn) { btn.disabled = false; btn.innerHTML = origBtnText; }
+    if (added > 0 && failed.length === 0) {
+      inp.value = "";
+      const msg = skipped > 0
+        ? `Added ${added} reference(s) from DOI (${skipped} duplicate skipped).`
+        : `Added ${added} peer-reviewed reference(s) automatically from DOI!`;
+      if (statusEl) { statusEl.textContent = `\u2714 ${msg}`; statusEl.className = "dft-doi-status is-ok"; }
+      notifyUser(msg, "success");
+    } else if (added > 0 && failed.length > 0) {
+      inp.value = failed.join(", ");
+      const msg = `Added ${added} reference(s); failed to resolve: ${failed.join(", ")}`;
+      if (statusEl) { statusEl.textContent = msg; statusEl.className = "dft-doi-status is-err"; }
+      notifyUser(msg, "warning");
+    } else if (skipped > 0 && failed.length === 0) {
+      inp.value = "";
+      const msg = `DOI already exists in this lecture's reference list (${skipped} skipped).`;
+      if (statusEl) { statusEl.textContent = msg; statusEl.className = "dft-doi-status is-ok"; }
+      notifyUser(msg, "info");
+    } else {
+      const msg = `Could not resolve DOI: ${failed.join(", ")}. Check format or use "+ Add Manual".`;
+      if (statusEl) { statusEl.textContent = msg; statusEl.className = "dft-doi-status is-err"; }
+      notifyUser(msg, "error");
+    }
+  }
+  window.fetchAndAddDftRefFromDoi = fetchAndAddDftRefFromDoi;
 
   function openDftLectureEditorModal(lecIdOrNull) {
     if (!isAdminAuthorized()) {
@@ -2061,7 +2379,6 @@
     const lectures = getDftTheoryLectures();
     const existing = lecIdOrNull ? lectures.find(l => l.id === lecIdOrNull) : null;
     _editingLectureId = existing ? existing.id : null;
-    applyDftMathFont(getSavedDftMathFont());
 
     const nextNum = existing ? existing.num : lectures.length + 1;
     const headingEl = document.getElementById("dft-ed-modal-title");
@@ -2078,9 +2395,15 @@
     setVal("dft-ed-levelclass", existing ? existing.levelClass : "adv");
     setVal("dft-ed-readtime", existing ? existing.readTime : "15 min");
     setVal("dft-ed-toolpane", existing ? existing.toolPane : "electronic");
+    setVal("dft-ed-author", existing ? (existing.author || getDefaultLectureAuthor()) : getDefaultLectureAuthor());
+    setVal("dft-ed-affiliation", existing ? (existing.affiliation || getDefaultLectureAffiliation()) : getDefaultLectureAffiliation());
     setVal("dft-ed-subtitle", existing ? existing.subtitle : "");
     setVal("dft-ed-keywords", existing ? existing.keywords : "");
     setVal("dft-ed-objectives", existing ? (existing.objectives || []).join("\n") : "");
+    setVal("dft-ed-doi-quick-input", "");
+    const doiStat = document.getElementById("dft-ed-doi-status");
+    if (doiStat) { doiStat.textContent = ""; doiStat.className = "dft-doi-status"; }
+
     setVal("dft-ed-body", existing
       ? existing.contentHtml
       : `<h3>${nextNum}.1 Core Physical Principles</h3>\n<p>Introduce the theoretical definitions and physical motivation here...</p>\n\n<div class="dft-eq-box" data-eqnum="${nextNum}.1"><div class="dft-eq-inner"><div class="dft-eq-math" data-tex="E(\\mathbf{k}) = E_0 + \\frac{\\hbar^2 k^2}{2m^*}">E(\\mathbf{k}) = E_0 + \\frac{\\hbar^2 k^2}{2m^*}</div><div class="dft-eq-num">(${nextNum}.1)</div></div><div class="dft-eq-note">Add physical explanation of symbols and units here.</div></div>\n\n<h3>${nextNum}.2 Practical Application in Data Analysis</h3>\n<p>Describe how researchers apply this concept on real CASTEP calculations.</p>`
@@ -2089,13 +2412,10 @@
     const refsListEl = document.getElementById("dft-ed-refs-list");
     if (refsListEl) {
       refsListEl.innerHTML = "";
-      const refs = existing && Array.isArray(existing.references) && existing.references.length
-        ? existing.references
-        : [{ authors: "", title: "", venue: "", year: "", doi: "" }];
-      refs.forEach(r => addDftRefRow(r));
+      const refs = existing && Array.isArray(existing.references) ? existing.references : [];
+      refs.forEach(r => addDftRefRow(r, false));
     }
 
-    // Bind double-click equation editing once on the visual editor surface
     const vis = document.getElementById("dft-ed-visual");
     if (vis && !vis.dataset.dblBound) {
       vis.dataset.dblBound = "1";
@@ -2116,8 +2436,7 @@
 
     modal.style.display = "flex";
     document.body.style.overflow = "hidden";
-    // Default into Split Mode so Admin sees Visual (WYSIWYG) + Code simultaneously!
-    _editorMode = "code"; // force clean sync Code -> Visual on open
+    _editorMode = "code";
     setDftEditorMode("split");
 
     setTimeout(() => {
@@ -2136,14 +2455,14 @@
   window.closeDftLectureEditorModal = closeDftLectureEditorModal;
 
   function collectRefsFromEditorModal() {
-    const rows = document.querySelectorAll("#dft-ed-refs-list .dft-ref-edit-row");
+    const cards = document.querySelectorAll("#dft-ed-refs-list .dft-ref-edit-card");
     const refs = [];
-    rows.forEach(row => {
-      const authors = (row.querySelector(".dft-ref-authors")?.value || "").trim();
-      const title = (row.querySelector(".dft-ref-title")?.value || "").trim();
-      const venue = (row.querySelector(".dft-ref-venue")?.value || "").trim();
-      const year = (row.querySelector(".dft-ref-year")?.value || "").trim();
-      const doi = (row.querySelector(".dft-ref-doi")?.value || "").trim().replace(/^https?:\/\/(dx\.)?doi\.org\//i, "");
+    cards.forEach(card => {
+      const authors = (card.querySelector(".dft-ref-authors")?.value || "").trim();
+      const title = (card.querySelector(".dft-ref-title")?.value || "").trim();
+      const venue = (card.querySelector(".dft-ref-venue")?.value || "").trim();
+      const year = (card.querySelector(".dft-ref-year")?.value || "").trim();
+      const doi = cleanDoiString(card.querySelector(".dft-ref-doi")?.value || "");
       if (authors || title) {
         refs.push({ authors, title, venue, year, doi });
       }
@@ -2156,7 +2475,6 @@
       notifyUser("Administrator privileges required to save DFT lectures.", "error");
       return;
     }
-    // Always sync visual edits to the clean HTML source before saving (unless user is strictly in code mode)
     if (_editorMode === "visual") {
       syncDftVisualToCodeNow();
     }
@@ -2175,6 +2493,9 @@
       .map(s => s.trim())
       .filter(Boolean);
     const references = collectRefsFromEditorModal();
+    const author = getVal("dft-ed-author") || getDefaultLectureAuthor();
+    const affiliation = getVal("dft-ed-affiliation") || getDefaultLectureAffiliation();
+    const updatedAt = formatEnglishDate(new Date());
 
     let savedId = _editingLectureId;
     if (_editingLectureId) {
@@ -2190,6 +2511,9 @@
           readTime: getVal("dft-ed-readtime") || "15 min",
           toolPane,
           toolName: TOOL_META_MAP[toolPane] || "Data Analysis",
+          author,
+          affiliation,
+          updatedAt,
           subtitle: getVal("dft-ed-subtitle"),
           keywords: getVal("dft-ed-keywords"),
           objectives,
@@ -2209,6 +2533,9 @@
         readTime: getVal("dft-ed-readtime") || "15 min",
         toolPane,
         toolName: TOOL_META_MAP[toolPane] || "Data Analysis",
+        author,
+        affiliation,
+        updatedAt,
         title,
         subtitle: getVal("dft-ed-subtitle"),
         keywords: getVal("dft-ed-keywords"),
@@ -2221,7 +2548,7 @@
     const wasEdit = Boolean(_editingLectureId);
     closeDftLectureEditorModal();
     saveDftTheoryLectures(lectures, { focusId: savedId });
-    notifyUser(wasEdit ? "Lecture updated and saved." : `Added new Lecture (${lectures.length} total).`, "success");
+    notifyUser(wasEdit ? `Lecture updated (${updatedAt}).` : `Added new Lecture (${lectures.length} total).`, "success");
   }
   window.saveDftLectureFromModal = saveDftLectureFromModal;
 
@@ -2278,11 +2605,9 @@
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {
-      applyDftMathFont(getSavedDftMathFont());
-      initDashboardDftCard();
+        initDashboardDftCard();
     });
   } else {
-    applyDftMathFont(getSavedDftMathFont());
     initDashboardDftCard();
   }
 })();
