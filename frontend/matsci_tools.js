@@ -12128,8 +12128,16 @@ function parseCastepPdosBinArrayBuffer(arrayBuffer, bandsObj, speciesOrder, file
     const spR = readRec(), ionR = readRec(), amR = readRec();
     if (!spR || !ionR || !amR) return null;
     const lNames = ["s", "p", "d", "f"];
+    const orbMNames = {
+      0: ["S"],
+      1: ["Px", "Py", "Pz"],
+      2: ["Dzz", "Dzy", "Dzx", "Dxx-yy", "Dxy"],
+      3: ["Fzzz", "Fzzx", "Fzzy", "Fz(xx-yy)", "Fxyz", "Fx(xx-3yy)", "Fy(3xx-yy)"]
+    };
     const chanMeta = {};
     const orbKeys = new Array(norb);
+    const orbToMl = new Array(norb);
+    const seenMl = {};
     for (let o = 0; o < norb; o++) {
       const spIdx = dv.getInt32(spR.start + o * 4, le);
       const ion = dv.getInt32(ionR.start + o * 4, le);
@@ -12139,6 +12147,12 @@ function parseCastepPdosBinArrayBuffer(arrayBuffer, bandsObj, speciesOrder, file
       const ck = `${el}|${ion}|${orb}`;
       orbKeys[o] = ck;
       if (!chanMeta[ck]) chanMeta[ck] = { element: el, ion, atom: `${el}${ion}`, orbital: orb };
+      const mlKey = `${el}|${ion}|${am}`;
+      const mCnt = seenMl[mlKey] || 0;
+      seenMl[mlKey] = mCnt + 1;
+      const mList = orbMNames[am];
+      const mLbl = mList ? mList[mCnt % mList.length] : `L${am}_${mCnt}`;
+      orbToMl[o] = { element: el, ion, mLbl };
     }
 
     const eMin = -20.0, eMax = 15.0, nBins = 1400;
@@ -12155,6 +12169,7 @@ function parseCastepPdosBinArrayBuffer(arrayBuffer, bandsObj, speciesOrder, file
 
     const bins = Array.from({ length: ns }, () => Array.from({ length: nChans }, () => new Float64Array(nBins)));
     const totBins = Array.from({ length: ns }, () => new Float64Array(nBins));
+    const orbOcc = Array.from({ length: ns }, () => new Float64Array(norb));
     const kptsBands = bandsObj.kpoints || [];
     const spinDeg = ns >= 2 ? 1.0 : 2.0;
 
@@ -12180,7 +12195,8 @@ function parseCastepPdosBinArrayBuffer(arrayBuffer, bandsObj, speciesOrder, file
           if (d < bestD) { bestD = d; kpMatch = cand; }
         }
       }
-      const wtEff = (kpMatch?.w || (1.0 / nk)) * spinDeg;
+      const wt = kpMatch?.w || (1.0 / nk);
+      const wtEff = wt * spinDeg;
 
       for (let is = 0; is < ns; is++) {
         const sR = readRec(), nbR = readRec();
@@ -12194,14 +12210,27 @@ function parseCastepPdosBinArrayBuffer(arrayBuffer, bandsObj, speciesOrder, file
           if (!wR || wR.len < norb * 8) break;
           if (!eigList || b >= eigList.length) continue;
           const ev = eigList[b];
-          if (ev < eMin || ev >= eMax) continue;
-          const bIdx = Math.floor((ev - eMin) * invDE);
-          if (bIdx < 0 || bIdx >= nBins) continue;
-          totBins[sIdx][bIdx] += wtEff;
-          const cBins = bins[sIdx];
-          for (let o = 0; o < norb; o++) {
-            const wv = dv.getFloat64(wR.start + o * 8, le);
-            if (wv > 1e-6) cBins[orbToCidx[o]][bIdx] += wtEff * wv;
+          const fOcc = ev <= -1.0 ? 1.0 : (ev >= 1.0 ? 0.0 : (1.0 / (1.0 + Math.exp(ev / 0.05))));
+          const inHist = (ev >= eMin && ev < eMax);
+          if (!inHist && fOcc <= 1e-9) continue;
+          if (fOcc > 1e-9) {
+            const occWt = wt * fOcc;
+            const oAcc = orbOcc[sIdx];
+            for (let o = 0; o < norb; o++) {
+              const wv = dv.getFloat64(wR.start + o * 8, le);
+              if (wv !== 0.0) oAcc[o] += occWt * wv;
+            }
+          }
+          if (inHist) {
+            const bIdx = Math.floor((ev - eMin) * invDE);
+            if (bIdx >= 0 && bIdx < nBins) {
+              totBins[sIdx][bIdx] += wtEff;
+              const cBins = bins[sIdx];
+              for (let o = 0; o < norb; o++) {
+                const wv = dv.getFloat64(wR.start + o * 8, le);
+                if (wv > 1e-6) cBins[orbToCidx[o]][bIdx] += wtEff * wv;
+              }
+            }
           }
         }
       }
@@ -12221,10 +12250,55 @@ function parseCastepPdosBinArrayBuffer(arrayBuffer, bandsObj, speciesOrder, file
     const total_hist = { up: toSparse(totBins[0]) };
     if (ns >= 2) total_hist.dn = toSparse(totBins[1]);
 
+    // Aggregate m-resolved orbital populations summing duplicate radial shells
+    const atomOrbMap = {};
+    const atomOrbOrder = [];
+    for (let o = 0; o < norb; o++) {
+      const { element: el, ion, mLbl } = orbToMl[o];
+      const akey = `${el}|${ion}`;
+      if (!atomOrbMap[akey]) {
+        atomOrbMap[akey] = { element: el, ion, label: `${el}${ion}`, orbitals: {} };
+        atomOrbOrder.push(akey);
+      }
+      const orbs = atomOrbMap[akey].orbitals;
+      if (!orbs[mLbl]) orbs[mLbl] = { up: 0, dn: 0, charge: 0, spin: 0 };
+      if (ns >= 2) {
+        const u = orbOcc[0][o], d = orbOcc[1][o];
+        orbs[mLbl].up += u;
+        orbs[mLbl].dn += d;
+        orbs[mLbl].charge += (u + d);
+        orbs[mLbl].spin += (u - d);
+      } else {
+        const u = orbOcc[0][o];
+        orbs[mLbl].up += u;
+        orbs[mLbl].dn += u;
+        orbs[mLbl].charge += (2.0 * u);
+      }
+    }
+    const orbPopAtoms = atomOrbOrder.map(akey => {
+      const ent = atomOrbMap[akey];
+      const rOrbs = {};
+      Object.entries(ent.orbitals).forEach(([k, v]) => {
+        rOrbs[k] = {
+          up: Number(v.up.toFixed(5)),
+          dn: Number(v.dn.toFixed(5)),
+          charge: Number(v.charge.toFixed(5)),
+          spin: Number(v.spin.toFixed(5))
+        };
+      });
+      return { element: ent.element, ion: ent.ion, label: ent.label, orbitals: rOrbs };
+    });
+
     return {
       source_file: filename, nk, ns, norb, e_min: eMin, e_max: eMax, n_bins: nBins, dE,
       ef_ev: bandsObj.ef_ev || 0.0,
-      elements: speciesOrder, total_hist, channels
+      elements: speciesOrder, total_hist, channels,
+      orbital_populations: {
+        mode: ns >= 2 ? "collinear" : "nonspin",
+        source: "pdos_bin",
+        source_file: filename,
+        atoms: orbPopAtoms
+      }
     };
   } catch (e) {
     return null;
@@ -12472,6 +12546,7 @@ function renderCastepMullikenPane() {
       ctx.fillText("No Mulliken Population Analysis data in active .castep log", w / 2, h / 2);
       ctx.restore();
     });
+    renderCastepSpinMatrix();
     return;
   }
 
@@ -12792,8 +12867,1167 @@ function renderCastepMullikenPane() {
       `;
     }).join("") : `<tr><td colspan="6" style="text-align:center; padding:14px; color:#64748b;">No bonds match the selected pair filter.</td></tr>`;
   }
+
+  // 7) Render Orbital-Resolved Spin Matrix Card (all elements & s/p/d/f sub-orbitals)
+  renderCastepSpinMatrix();
 }
 window.renderCastepMullikenPane = renderCastepMullikenPane;
+
+// ============================================================================
+// Orbital-Resolved Spin Matrix Engine & Publication Heatmap Renderer (v134)
+// Supports ALL elements & ALL s/p/d/f sub-orbitals from:
+//   1) CASTEP .castep "Orbital Populations" (Collinear, Non-Collinear SOC, Non-Spin)
+//   2) CASTEP *.pdos_bin + *.bands exact m-resolved integration below E_F
+//   3) Mulliken Atomic Populations shell-level (s, p, d, f) fallback
+// ============================================================================
+
+const CASTEP_ORBITAL_SHELLS = {
+  s: ["S"],
+  p: ["Px", "Py", "Pz"],
+  d: ["Dzz", "Dzy", "Dzx", "Dxx-yy", "Dxy"],
+  f: ["Fzzz", "Fzzx", "Fzzy", "Fz(xx-yy)", "Fxyz", "Fx(xx-3yy)", "Fy(3xx-yy)"],
+  spdf: ["shell_s", "shell_p", "shell_d", "shell_f"]
+};
+
+const CASTEP_ORBITAL_ALL_ORDER = [
+  ...CASTEP_ORBITAL_SHELLS.s,
+  ...CASTEP_ORBITAL_SHELLS.p,
+  ...CASTEP_ORBITAL_SHELLS.d,
+  ...CASTEP_ORBITAL_SHELLS.f
+];
+
+const CASTEP_ORBITAL_SPEC = {
+  "S":          { shell: "s", base: "s", sub: [], html: "<i>s</i>", plain: "s" },
+  "Px":         { shell: "p", base: "p", sub: [{ t: "x", it: true }], html: "<i>p</i><sub><i>x</i></sub>", plain: "px" },
+  "Py":         { shell: "p", base: "p", sub: [{ t: "y", it: true }], html: "<i>p</i><sub><i>y</i></sub>", plain: "py" },
+  "Pz":         { shell: "p", base: "p", sub: [{ t: "z", it: true }], html: "<i>p</i><sub><i>z</i></sub>", plain: "pz" },
+  "Dzz":        { shell: "d", base: "d", sub: [{ t: "z", it: true }, { t: "2", sup: true }], html: "<i>d</i><sub><i>z</i><sup>2</sup></sub>", plain: "dz2" },
+  "Dzy":        { shell: "d", base: "d", sub: [{ t: "zy", it: true }], html: "<i>d</i><sub><i>zy</i></sub>", plain: "dzy" },
+  "Dzx":        { shell: "d", base: "d", sub: [{ t: "zx", it: true }], html: "<i>d</i><sub><i>zx</i></sub>", plain: "dzx" },
+  "Dxx-yy":     { shell: "d", base: "d", sub: [{ t: "x", it: true }, { t: "2", sup: true }, { t: "\u2212", it: false }, { t: "y", it: true }, { t: "2", sup: true }], html: "<i>d</i><sub><i>x</i><sup>2</sup>\u2212<i>y</i><sup>2</sup></sub>", plain: "dx2-y2" },
+  "Dxy":        { shell: "d", base: "d", sub: [{ t: "xy", it: true }], html: "<i>d</i><sub><i>xy</i></sub>", plain: "dxy" },
+  "Fzzz":       { shell: "f", base: "f", sub: [{ t: "z", it: true }, { t: "3", sup: true }], html: "<i>f</i><sub><i>z</i><sup>3</sup></sub>", plain: "fz3" },
+  "Fzzx":       { shell: "f", base: "f", sub: [{ t: "xz", it: true }, { t: "2", sup: true }], html: "<i>f</i><sub><i>xz</i><sup>2</sup></sub>", plain: "fxz2" },
+  "Fzzy":       { shell: "f", base: "f", sub: [{ t: "yz", it: true }, { t: "2", sup: true }], html: "<i>f</i><sub><i>yz</i><sup>2</sup></sub>", plain: "fyz2" },
+  "Fz(xx-yy)":  { shell: "f", base: "f", sub: [{ t: "z", it: true }, { t: "(", it: false }, { t: "x", it: true }, { t: "2", sup: true }, { t: "\u2212", it: false }, { t: "y", it: true }, { t: "2", sup: true }, { t: ")", it: false }], html: "<i>f</i><sub><i>z</i>(<i>x</i><sup>2</sup>\u2212<i>y</i><sup>2</sup>)</sub>", plain: "fz(x2-y2)" },
+  "Fxyz":       { shell: "f", base: "f", sub: [{ t: "xyz", it: true }], html: "<i>f</i><sub><i>xyz</i></sub>", plain: "fxyz" },
+  "Fx(xx-3yy)": { shell: "f", base: "f", sub: [{ t: "x", it: true }, { t: "(", it: false }, { t: "x", it: true }, { t: "2", sup: true }, { t: "\u22123", it: false }, { t: "y", it: true }, { t: "2", sup: true }, { t: ")", it: false }], html: "<i>f</i><sub><i>x</i>(<i>x</i><sup>2</sup>\u22123<i>y</i><sup>2</sup>)</sub>", plain: "fx(x2-3y2)" },
+  "Fy(3xx-yy)": { shell: "f", base: "f", sub: [{ t: "y", it: true }, { t: "(3", it: false }, { t: "x", it: true }, { t: "2", sup: true }, { t: "\u2212", it: false }, { t: "y", it: true }, { t: "2", sup: true }, { t: ")", it: false }], html: "<i>f</i><sub><i>y</i>(3<i>x</i><sup>2</sup>\u2212<i>y</i><sup>2</sup>)</sub>", plain: "fy(3x2-y2)" },
+  "shell_s":    { shell: "spdf", base: "s", sub: [], html: "<i>s</i>-shell", plain: "s" },
+  "shell_p":    { shell: "spdf", base: "p", sub: [], html: "<i>p</i>-shell", plain: "p" },
+  "shell_d":    { shell: "spdf", base: "d", sub: [], html: "<i>d</i>-shell", plain: "d" },
+  "shell_f":    { shell: "spdf", base: "f", sub: [], html: "<i>f</i>-shell", plain: "f" }
+};
+
+function canonicalizeCastepOrbitalName(raw) {
+  if (!raw) return "";
+  const s = String(raw).trim();
+  if (CASTEP_ORBITAL_SPEC[s]) return s;
+  const low = s.toLowerCase().replace(/\s+/g, "");
+  const alias = {
+    "s": "S", "px": "Px", "py": "Py", "pz": "Pz",
+    "dzz": "Dzz", "dz2": "Dzz", "d3z2-r2": "Dzz",
+    "dzy": "Dzy", "dyz": "Dzy",
+    "dzx": "Dzx", "dxz": "Dzx",
+    "dxx-yy": "Dxx-yy", "dx2-y2": "Dxx-yy",
+    "dxy": "Dxy",
+    "fzzz": "Fzzz", "fz3": "Fzzz",
+    "fzzx": "Fzzx", "fxz2": "Fzzx",
+    "fzzy": "Fzzy", "fyz2": "Fzzy",
+    "fz(xx-yy)": "Fz(xx-yy)", "fz(x2-y2)": "Fz(xx-yy)",
+    "fxyz": "Fxyz",
+    "fx(xx-3yy)": "Fx(xx-3yy)", "fx(x2-3y2)": "Fx(xx-3yy)",
+    "fy(3xx-yy)": "Fy(3xx-yy)", "fy(3x2-y2)": "Fy(3xx-yy)"
+  };
+  return alias[low] || s;
+}
+
+function parseCastepOrbitalPopulations(castepText) {
+  if (!castepText || !castepText.includes("Orbital Populations")) return null;
+  const txt = castepText.replace(/\r\n/g, "\n");
+  const idx = txt.lastIndexOf("Orbital Populations");
+  if (idx === -1) return null;
+  const sub = txt.slice(idx, idx + 250000);
+  const lines = sub.split("\n");
+
+  let hdrIdx = -1;
+  let mode = "nonspin";
+  for (let i = 0; i < Math.min(lines.length, 15); i++) {
+    const l = lines[i];
+    if (/Ion\s+Atom\s+Orbital/i.test(l)) {
+      hdrIdx = i;
+      if (/Spin\s*\(\s*Sx/i.test(l)) mode = "noncollinear";
+      else if (/Up\s+Down\s+Spin/i.test(l)) mode = "collinear";
+      else mode = "nonspin";
+      break;
+    }
+  }
+  if (hdrIdx === -1) return null;
+
+  const atomMap = {};
+  const atomOrder = [];
+  let parsedRows = 0;
+
+  for (let i = hdrIdx + 1; i < lines.length; i++) {
+    const l = lines[i];
+    if (/Atomic Populations|Bond\s+Population/i.test(l)) break;
+    if (/^\s*[-=]{15,}\s*$/.test(l)) {
+      if (parsedRows > 0) break;
+      continue;
+    }
+    const m = l.match(/^\s*([A-Za-z]{1,2})\s+(\d+)\s+([A-Za-z0-9()\-]+)\s+(.+)$/);
+    if (!m) continue;
+    const el = castepCleanElement(m[1]);
+    const ion = parseInt(m[2], 10);
+    const orb = canonicalizeCastepOrbitalName(m[3]);
+    const nums = m[4].trim().split(/\s+/).map(Number).filter(v => !isNaN(v));
+    if (!nums.length) continue;
+
+    const akey = `${el}|${ion}`;
+    if (!atomMap[akey]) {
+      atomMap[akey] = { element: el, ion, label: `${el}${ion}`, orbitals: {} };
+      atomOrder.push(akey);
+    }
+    const orbs = atomMap[akey].orbitals;
+    if (!orbs[orb]) {
+      orbs[orb] = { up: 0, dn: 0, spin: 0, charge: 0, sx: 0, sy: 0, sz: 0, smag: 0 };
+    }
+    const slot = orbs[orb];
+    if (mode === "collinear" && nums.length >= 3) {
+      slot.up += nums[0];
+      slot.dn += nums[1];
+      slot.spin += nums[2];
+      slot.charge += (nums[0] + nums[1]);
+    } else if (mode === "noncollinear" && nums.length >= 4) {
+      slot.charge += nums[0];
+      slot.sx += nums[1];
+      slot.sy += nums[2];
+      slot.sz += nums[3];
+      slot.spin = slot.sz;
+    } else {
+      slot.charge += nums[0];
+      slot.up += nums[0] / 2;
+      slot.dn += nums[0] / 2;
+      slot.spin += 0;
+    }
+    parsedRows++;
+  }
+
+  if (!atomOrder.length) return null;
+
+  const atoms = atomOrder.map(akey => {
+    const ent = atomMap[akey];
+    Object.values(ent.orbitals).forEach(v => {
+      if (mode === "noncollinear") {
+        v.smag = Math.hypot(v.sx, v.sy, v.sz);
+        v.spin = v.sz;
+        v.up = 0.5 * (v.charge + v.smag);
+        v.dn = 0.5 * (v.charge - v.smag);
+      }
+    });
+    return ent;
+  });
+
+  return {
+    mode,
+    source: "castep_orbital_pop",
+    sourceLabel: mode === "noncollinear"
+      ? "CASTEP Orbital Populations • Non-Collinear SOC (Sx, Sy, Sz)"
+      : (mode === "collinear" ? "CASTEP Orbital Populations • Collinear Spin (↑ / ↓)" : "CASTEP Orbital Populations • Non-Spin"),
+    atoms
+  };
+}
+window.parseCastepOrbitalPopulations = parseCastepOrbitalPopulations;
+
+function getActiveJobOrbitalSpinData(job) {
+  if (!job) return null;
+
+  // Priority 1: Exact CASTEP .castep "Orbital Populations" table
+  if (job._orbPopCache === undefined) {
+    job._orbPopCache = parseCastepOrbitalPopulations(job.castep_text || "");
+  }
+  if (job._orbPopCache && job._orbPopCache.atoms?.length) {
+    return job._orbPopCache;
+  }
+
+  // Priority 2: Direct m-resolved occupation integration from *.pdos_bin + *_DOS.bands
+  const pdosOrb = job.pdos_bin_data?.orbital_populations;
+  if (pdosOrb && pdosOrb.atoms?.length) {
+    return {
+      mode: pdosOrb.mode || "collinear",
+      source: "pdos_bin",
+      sourceLabel: `m-Resolved .pdos_bin Integration (${pdosOrb.source_file || "DOS"})`,
+      atoms: pdosOrb.atoms
+    };
+  }
+
+  // Priority 3: Shell-level fallback from Mulliken Atomic Populations (s, p, d, f)
+  const mull = job._mullikenCache !== undefined ? job._mullikenCache : (job._mullikenCache = parseCastepMullikenAnalysis(job.castep_text || ""));
+  if (mull && mull.atoms?.length) {
+    return {
+      mode: mull.isSpinPolarized ? "collinear" : "nonspin",
+      source: "mulliken_shell",
+      sourceLabel: "Mulliken Shell-Level (s, p, d, f) • Load .castep Orbital Pop or .pdos_bin for m-Resolved Matrix",
+      atoms: mull.atoms.map(a => ({
+        element: a.element,
+        ion: a.ion,
+        label: a.label,
+        orbitals: {
+          shell_s: { up: a.sUp, dn: a.sDn, spin: a.muS, charge: a.s },
+          shell_p: { up: a.pUp, dn: a.pDn, spin: a.muP, charge: a.p },
+          shell_d: { up: a.dUp, dn: a.dDn, spin: a.muD, charge: a.d },
+          shell_f: { up: a.fUp, dn: a.fDn, spin: a.muF, charge: a.f }
+        }
+      }))
+    };
+  }
+  return null;
+}
+window.getActiveJobOrbitalSpinData = getActiveJobOrbitalSpinData;
+
+function getOrbitalMetricValue(orbObj, qty, mode) {
+  if (!orbObj) return 0;
+  if (mode === "noncollinear") {
+    if (qty === "sx") return orbObj.sx || 0;
+    if (qty === "sy") return orbObj.sy || 0;
+    if (qty === "sz" || qty === "spin") return orbObj.sz || 0;
+    if (qty === "smag") return orbObj.smag !== undefined ? orbObj.smag : Math.hypot(orbObj.sx || 0, orbObj.sy || 0, orbObj.sz || 0);
+    if (qty === "charge") return orbObj.charge || 0;
+  }
+  if (qty === "up") return orbObj.up || 0;
+  if (qty === "dn") return orbObj.dn || 0;
+  if (qty === "charge") return orbObj.charge !== undefined ? orbObj.charge : ((orbObj.up || 0) + (orbObj.dn || 0));
+  return orbObj.spin !== undefined ? orbObj.spin : ((orbObj.up || 0) - (orbObj.dn || 0));
+}
+
+function aggregateElementOrbitals(atomsOfEl, atomMode, mode) {
+  if (!atomsOfEl || !atomsOfEl.length) return { label: "—", orbitals: {}, atomCount: 0 };
+  if (atomMode !== "avg" && atomMode !== "sum") {
+    const exact = atomsOfEl.find(a => a.label === atomMode) || atomsOfEl[0];
+    return { label: exact.label, orbitals: exact.orbitals || {}, atomCount: 1 };
+  }
+  const agg = {};
+  const n = atomsOfEl.length;
+  const div = atomMode === "avg" ? n : 1;
+  atomsOfEl.forEach(a => {
+    Object.entries(a.orbitals || {}).forEach(([k, v]) => {
+      if (!agg[k]) agg[k] = { up: 0, dn: 0, spin: 0, charge: 0, sx: 0, sy: 0, sz: 0, smag: 0 };
+      agg[k].up += (v.up || 0);
+      agg[k].dn += (v.dn || 0);
+      agg[k].spin += (v.spin || 0);
+      agg[k].charge += (v.charge || 0);
+      agg[k].sx += (v.sx || 0);
+      agg[k].sy += (v.sy || 0);
+      agg[k].sz += (v.sz || 0);
+    });
+  });
+  Object.values(agg).forEach(v => {
+    v.up /= div; v.dn /= div; v.spin /= div; v.charge /= div;
+    v.sx /= div; v.sy /= div; v.sz /= div;
+    if (mode === "noncollinear") {
+      v.smag = Math.hypot(v.sx, v.sy, v.sz);
+      v.spin = v.sz;
+    }
+  });
+  const el = atomsOfEl[0].element;
+  return {
+    label: atomMode === "avg" ? `${el} (Avg of ${n})` : `${el} (Sum of ${n})`,
+    orbitals: agg,
+    atomCount: n
+  };
+}
+
+function buildShellSummaryOrbitals(orbMap, mode) {
+  if (orbMap.shell_s || orbMap.shell_p || orbMap.shell_d || orbMap.shell_f) {
+    return {
+      shell_s: orbMap.shell_s || { up: 0, dn: 0, spin: 0, charge: 0, sx: 0, sy: 0, sz: 0, smag: 0 },
+      shell_p: orbMap.shell_p || { up: 0, dn: 0, spin: 0, charge: 0, sx: 0, sy: 0, sz: 0, smag: 0 },
+      shell_d: orbMap.shell_d || { up: 0, dn: 0, spin: 0, charge: 0, sx: 0, sy: 0, sz: 0, smag: 0 },
+      shell_f: orbMap.shell_f || { up: 0, dn: 0, spin: 0, charge: 0, sx: 0, sy: 0, sz: 0, smag: 0 }
+    };
+  }
+  const out = {};
+  ["s", "p", "d", "f"].forEach(sh => {
+    const acc = { up: 0, dn: 0, spin: 0, charge: 0, sx: 0, sy: 0, sz: 0, smag: 0 };
+    CASTEP_ORBITAL_SHELLS[sh].forEach(ok => {
+      const v = orbMap[ok];
+      if (!v) return;
+      acc.up += (v.up || 0); acc.dn += (v.dn || 0); acc.spin += (v.spin || 0); acc.charge += (v.charge || 0);
+      acc.sx += (v.sx || 0); acc.sy += (v.sy || 0); acc.sz += (v.sz || 0);
+    });
+    if (mode === "noncollinear") { acc.smag = Math.hypot(acc.sx, acc.sy, acc.sz); acc.spin = acc.sz; }
+    out[`shell_${sh}`] = acc;
+  });
+  return out;
+}
+
+function pickAutoShellForOrbitals(orbMap, source, qty, mode) {
+  if (source === "mulliken_shell" || orbMap.shell_s || orbMap.shell_d) return "spdf";
+  const presentShells = [];
+  ["f", "d", "p", "s"].forEach(sh => {
+    const keys = CASTEP_ORBITAL_SHELLS[sh];
+    if (keys.some(k => orbMap[k] !== undefined)) {
+      const score = keys.reduce((acc, k) => acc + Math.abs(getOrbitalMetricValue(orbMap[k], qty, mode)), 0);
+      const chg = keys.reduce((acc, k) => acc + Math.abs(orbMap[k]?.charge || 0), 0);
+      presentShells.push({ sh, score, chg });
+    }
+  });
+  if (!presentShells.length) return "spdf";
+  const maxScore = Math.max(...presentShells.map(x => x.score));
+  if (maxScore > 1e-4) {
+    presentShells.sort((a, b) => b.score - a.score);
+    return presentShells[0].sh;
+  }
+  // Non-magnetic or zero spin: prefer highest angular momentum shell with non-trivial population (f > d > p > s)
+  const nonEmpty = presentShells.filter(x => x.chg > 0.05);
+  return (nonEmpty.length ? nonEmpty[0].sh : presentShells[0].sh);
+}
+
+function resolveSpinMatrixEntries(orbMap, requestedShell, source, qty, mode) {
+  let effectiveShell = requestedShell;
+  let missingNote = "";
+  if (source === "mulliken_shell" && requestedShell !== "spdf") {
+    effectiveShell = "spdf";
+    if (requestedShell !== "auto") missingNote = "Shell-level Mulliken data only (load .castep Orbital Populations or .pdos_bin for m-resolved matrix)";
+  } else if (requestedShell === "auto") {
+    effectiveShell = pickAutoShellForOrbitals(orbMap, source, qty, mode);
+  }
+
+  let keys = [];
+  let lookup = orbMap;
+  if (effectiveShell === "spdf") {
+    keys = [...CASTEP_ORBITAL_SHELLS.spdf];
+    lookup = buildShellSummaryOrbitals(orbMap, mode);
+  } else if (effectiveShell === "all_m") {
+    keys = CASTEP_ORBITAL_ALL_ORDER.filter(k => orbMap[k] !== undefined);
+    if (!keys.length) {
+      keys = [...CASTEP_ORBITAL_SHELLS.spdf];
+      lookup = buildShellSummaryOrbitals(orbMap, mode);
+      effectiveShell = "spdf";
+    }
+  } else {
+    keys = [...(CASTEP_ORBITAL_SHELLS[effectiveShell] || CASTEP_ORBITAL_SHELLS.d)];
+    if (!keys.some(k => orbMap[k] !== undefined)) {
+      const avail = ["s", "p", "d", "f"].filter(sh => CASTEP_ORBITAL_SHELLS[sh].some(k => orbMap[k] !== undefined));
+      missingNote = `No ${effectiveShell}-projectors in pseudopotential (available: ${avail.join(", ") || "none"})`;
+    }
+  }
+
+  const entries = keys.map(k => {
+    const obj = lookup[k] || { up: 0, dn: 0, spin: 0, charge: 0, sx: 0, sy: 0, sz: 0, smag: 0 };
+    return { key: k, spec: CASTEP_ORBITAL_SPEC[k] || { base: k, sub: [], html: escapeHtml(k), plain: k }, val: getOrbitalMetricValue(obj, qty, mode), raw: obj };
+  });
+  return { effectiveShell, entries, missingNote };
+}
+
+function formatSpinMatrixNumber(v, decimals) {
+  const thr = 0.5 * Math.pow(10, -decimals);
+  if (!isFinite(v) || Math.abs(v) < thr) return "0";
+  const absStr = Math.abs(v).toFixed(decimals);
+  return v < 0 ? `\u2212${absStr}` : absStr;
+}
+
+function measureOrbitalMathLabel(ctx, orbKey, basePx) {
+  const spec = CASTEP_ORBITAL_SPEC[orbKey] || { base: orbKey, sub: [] };
+  const subPx = Math.max(8, basePx * 0.66);
+  const supPx = Math.max(6.5, basePx * 0.46);
+  const prevFont = ctx.font;
+  ctx.font = `bold italic ${basePx}px "Times New Roman", Georgia, serif`;
+  let w = ctx.measureText(spec.base).width;
+  if (spec.sub && spec.sub.length) {
+    w += basePx * 0.05;
+    for (const tok of spec.sub) {
+      if (tok.sup) {
+        ctx.font = `bold ${supPx}px "Times New Roman", Georgia, serif`;
+      } else {
+        ctx.font = tok.it === false
+          ? `bold ${subPx}px "Times New Roman", Georgia, serif`
+          : `bold italic ${subPx}px "Times New Roman", Georgia, serif`;
+      }
+      w += ctx.measureText(tok.t).width;
+    }
+  }
+  ctx.font = prevFont;
+  return w;
+}
+
+function drawOrbitalMathLabel(ctx, orbKey, x, y, basePx, align = "center") {
+  const spec = CASTEP_ORBITAL_SPEC[orbKey] || { base: orbKey, sub: [] };
+  const subPx = Math.max(8, basePx * 0.66);
+  const supPx = Math.max(6.5, basePx * 0.46);
+  const totalW = measureOrbitalMathLabel(ctx, orbKey, basePx);
+
+  let curX = x;
+  if (align === "center") curX = x - totalW * 0.5;
+  else if (align === "right") curX = x - totalW;
+
+  ctx.save();
+  ctx.fillStyle = "#000000";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.font = `bold italic ${basePx}px "Times New Roman", Georgia, serif`;
+  ctx.fillText(spec.base, curX, y);
+  curX += ctx.measureText(spec.base).width + (spec.sub?.length ? basePx * 0.05 : 0);
+
+  if (spec.sub && spec.sub.length) {
+    const subY = y + basePx * 0.28;
+    const supInSubY = subY - subPx * 0.34;
+    for (const tok of spec.sub) {
+      if (tok.sup) {
+        ctx.font = `bold ${supPx}px "Times New Roman", Georgia, serif`;
+        ctx.fillText(tok.t, curX, supInSubY);
+      } else {
+        ctx.font = tok.it === false
+          ? `bold ${subPx}px "Times New Roman", Georgia, serif`
+          : `bold italic ${subPx}px "Times New Roman", Georgia, serif`;
+        ctx.fillText(tok.t, curX, subY);
+      }
+      curX += ctx.measureText(tok.t).width;
+    }
+  }
+  ctx.restore();
+}
+
+function getSpinMatrixCellColors(val, maxAbs, palette, decimals) {
+  const thr = 0.5 * Math.pow(10, -decimals);
+  const norm = maxAbs > 1e-9 ? Math.max(-1, Math.min(1, val / maxAbs)) : 0;
+  const t = Math.abs(norm);
+  const lerp = (a, b, f) => Math.round(a + (b - a) * f);
+  const rgb = (r, g, b) => `rgb(${r},${g},${b})`;
+
+  if (palette === "journal_green") {
+    // Exact publication aesthetic matching reference figure:
+    // zero -> soft pale ivory-green #f9fcf2; positive -> crisp pale sage/olive green; negative -> pure white / soft pearl
+    if (Math.abs(val) < thr) return { bg: "#f9fcf2", fg: "#000000" };
+    if (val > 0) {
+      const f = Math.pow(t, 0.78);
+      return {
+        bg: rgb(lerp(247, 198, f), lerp(251, 230, f), lerp(238, 170, f)),
+        fg: "#000000"
+      };
+    } else {
+      // Tiny negative -> crisp pure white #ffffff (exact match to bottom-left -0.003 tile); larger negative -> ultra-subtle lavender tint
+      const f = Math.pow(t, 0.85);
+      if (Math.abs(val) <= 0.015) return { bg: "#ffffff", fg: "#000000" };
+      return {
+        bg: rgb(lerp(255, 224, f), lerp(255, 229, f), lerp(255, 248, f)),
+        fg: "#000000"
+      };
+    }
+  }
+
+  if (palette === "diverging_rb") {
+    if (Math.abs(val) < thr) return { bg: "#f8fafc", fg: "#334155" };
+    const f = Math.pow(t, 0.75);
+    if (val > 0) {
+      const r = lerp(254, 220, f), g = lerp(242, 38, f), b = lerp(242, 38, f);
+      return { bg: rgb(r, g, b), fg: f > 0.62 ? "#ffffff" : "#0f172a" };
+    } else {
+      const r = lerp(239, 37, f), g = lerp(246, 99, f), b = lerp(255, 235, f);
+      return { bg: rgb(r, g, b), fg: f > 0.62 ? "#ffffff" : "#0f172a" };
+    }
+  }
+
+  // blue_orange (colorblind-safe Teal / Amber)
+  if (Math.abs(val) < thr) return { bg: "#f8fafc", fg: "#334155" };
+  const f = Math.pow(t, 0.75);
+  if (val > 0) {
+    const r = lerp(255, 217, f), g = lerp(247, 119, f), b = lerp(237, 6, f);
+    return { bg: rgb(r, g, b), fg: f > 0.66 ? "#ffffff" : "#0f172a" };
+  } else {
+    const r = lerp(240, 15, f), g = lerp(253, 118, f), b = lerp(250, 110, f);
+    return { bg: rgb(r, g, b), fg: f > 0.62 ? "#ffffff" : "#0f172a" };
+  }
+}
+
+function drawSingleSpinMatrixPanel(ctx, boxX, boxY, boxSize, entries, opts) {
+  const N = Math.max(1, entries.length);
+  const decimals = opts.decimals ?? 3;
+  const palette = opts.palette || "journal_green";
+  const cell = boxSize / N;
+  const maxAbs = Math.max(1e-6, ...entries.map(e => Math.abs(e.val)));
+  const labelPx = opts.labelPx || Math.max(9.5, Math.min(18, cell * (N <= 5 ? (opts.compact ? 0.27 : 0.30) : (N <= 7 ? 0.25 : 0.23))));
+  const numPx = opts.numPx || Math.max(8.5, Math.min(18, cell * (opts.compact && N >= 5 ? 0.225 : (N <= 5 ? 0.28 : (N <= 7 ? 0.24 : 0.21)))));
+
+  // 1) Draw N×N cells with diagonal bottom-left (i=0,j=0) -> top-right (i=N-1,j=N-1)
+  for (let row = 0; row < N; row++) {
+    // row 0 is bottom (y = boxY + (N - 1 - row) * cell), matching user's reference figure!
+    const cy = boxY + (N - 1 - row) * cell;
+    for (let col = 0; col < N; col++) {
+      const cx = boxX + col * cell;
+      const val = (row === col) ? entries[row].val : 0;
+      const { bg, fg } = getSpinMatrixCellColors(val, maxAbs, palette, decimals);
+      ctx.fillStyle = bg;
+      ctx.fillRect(cx, cy, cell + 0.5, cell + 0.5);
+      if (palette !== "journal_green") {
+        ctx.strokeStyle = "rgba(15, 23, 42, 0.08)";
+        ctx.lineWidth = 0.7;
+        ctx.strokeRect(cx + 0.5, cy + 0.5, cell - 1, cell - 1);
+      }
+
+      // Draw formatted cell value
+      const str = formatSpinMatrixNumber(val, decimals);
+      ctx.save();
+      ctx.fillStyle = fg;
+      ctx.font = `${row === col && Math.abs(val) >= 0.5 * Math.pow(10, -decimals) && palette !== "journal_green" ? "bold " : ""}${numPx}px "Times New Roman", Georgia, serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(str, cx + cell * 0.5, cy + cell * 0.52);
+      ctx.restore();
+    }
+  }
+
+  // 2) Crisp solid black outer frame + inward-pointing ticks (matching reference screenshot)
+  ctx.save();
+  ctx.strokeStyle = "#000000";
+  ctx.lineWidth = opts.compact ? 1.4 : 1.9;
+  ctx.strokeRect(Math.round(boxX) + 0.5, Math.round(boxY) + 0.5, Math.round(boxSize), Math.round(boxSize));
+
+  const tickLen = opts.compact ? 2.5 : 5.5;
+  ctx.lineWidth = opts.compact ? 1.1 : 1.6;
+  for (let i = 0; i < N; i++) {
+    const ty = boxY + (N - 0.5 - i) * cell;
+    const tx = boxX + (i + 0.5) * cell;
+    // Left inward tick
+    ctx.beginPath();
+    ctx.moveTo(boxX + 0.5, ty);
+    ctx.lineTo(boxX + 0.5 + tickLen, ty);
+    ctx.stroke();
+    // Bottom inward tick
+    ctx.beginPath();
+    ctx.moveTo(tx, boxY + boxSize + 0.5);
+    ctx.lineTo(tx, boxY + boxSize + 0.5 - Math.max(3, tickLen - 1));
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // 3) Y-axis orbital labels (left of box, bottom -> top) & X-axis orbital labels (below box, left -> right)
+  const yPad = opts.compact ? 6 : 9;
+  const xPad = opts.compact ? 14 : 20;
+  const maxXLabelW = Math.max(...entries.map(e => measureOrbitalMathLabel(ctx, e.key, labelPx)));
+  const rotateX = (maxXLabelW > cell * 0.94);
+
+  for (let i = 0; i < N; i++) {
+    const ty = boxY + (N - 0.5 - i) * cell;
+    const tx = boxX + (i + 0.5) * cell;
+    drawOrbitalMathLabel(ctx, entries[i].key, boxX - yPad, ty, labelPx, "right");
+    if (rotateX) {
+      ctx.save();
+      ctx.translate(tx + 2, boxY + boxSize + 10);
+      ctx.rotate(-Math.PI / 5.5);
+      drawOrbitalMathLabel(ctx, entries[i].key, 0, 0, Math.max(9.5, labelPx * 0.88), "right");
+      ctx.restore();
+    } else {
+      drawOrbitalMathLabel(ctx, entries[i].key, tx, boxY + boxSize + xPad, labelPx, "center");
+    }
+  }
+
+  // 4) Optional title above panel (used in All-Elements Grid & optional header)
+  if (opts.title) {
+    ctx.save();
+    ctx.fillStyle = "#0f172a";
+    ctx.font = `bold ${opts.compact ? 11.5 : 13}px Inter, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    drawSciText(ctx, opts.title, boxX + boxSize * 0.5, boxY - (opts.compact ? 6 : 10));
+    ctx.restore();
+  }
+
+  // 5) Optional vertical diverging colorbar on right for diverging palettes
+  if (opts.showColorbar && palette !== "journal_green") {
+    const cbX = boxX + boxSize + 14;
+    const cbW = 12;
+    const steps = 40;
+    for (let s = 0; s < steps; s++) {
+      const frac = 1 - (2 * s) / (steps - 1); // +1 top -> -1 bottom
+      const { bg } = getSpinMatrixCellColors(frac * maxAbs, maxAbs, palette, decimals);
+      ctx.fillStyle = bg;
+      const sy = boxY + (s / steps) * boxSize;
+      ctx.fillRect(cbX, sy, cbW, boxSize / steps + 0.8);
+    }
+    ctx.strokeStyle = "#334155";
+    ctx.lineWidth = 0.9;
+    ctx.strokeRect(cbX + 0.5, boxY + 0.5, cbW, boxSize);
+    ctx.fillStyle = "#334155";
+    ctx.font = "10px Inter, sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`+${maxAbs.toFixed(decimals)}`, cbX + cbW + 4, boxY + 5);
+    ctx.fillText("0", cbX + cbW + 4, boxY + boxSize * 0.5);
+    ctx.fillText(`\u2212${maxAbs.toFixed(decimals)}`, cbX + cbW + 4, boxY + boxSize - 5);
+  }
+}
+
+function getSpinMatrixElementsSummary(orbData) {
+  if (!orbData || !orbData.atoms?.length) return [];
+  const byEl = {};
+  const order = [];
+  orbData.atoms.forEach(a => {
+    if (!byEl[a.element]) {
+      byEl[a.element] = { element: a.element, atoms: [], absSpinSum: 0, netSpinSum: 0, shells: new Set() };
+      order.push(a.element);
+    }
+    const g = byEl[a.element];
+    g.atoms.push(a);
+    let aSpin = 0;
+    Object.entries(a.orbitals || {}).forEach(([ok, ov]) => {
+      const sp = orbData.mode === "noncollinear" ? (ov.smag || Math.abs(ov.sz || 0)) : (ov.spin || 0);
+      aSpin += sp;
+      const sh = CASTEP_ORBITAL_SPEC[ok]?.shell;
+      if (sh && sh !== "spdf") g.shells.add(sh);
+    });
+    g.netSpinSum += aSpin;
+    g.absSpinSum += Math.abs(aSpin);
+  });
+  return order.map(el => {
+    const g = byEl[el];
+    const shellList = ["s", "p", "d", "f"].filter(s => g.shells.has(s));
+    return {
+      element: el,
+      atoms: g.atoms,
+      count: g.atoms.length,
+      netSpin: g.netSpinSum,
+      absSpin: g.absSpinSum,
+      avgSpin: g.netSpinSum / g.atoms.length,
+      shells: shellList.length ? shellList : ["s", "p", "d", "f"]
+    };
+  }).sort((a, b) => b.absSpin - a.absSpin || b.shells.length - a.shells.length);
+}
+
+let _lastSpinMatrixJobId = null;
+
+function syncSpinMatrixControlsForData(orbData, jobId) {
+  const elSel = document.getElementById("castep-spinmat-element");
+  const atomSel = document.getElementById("castep-spinmat-atom");
+  const qtySel = document.getElementById("castep-spinmat-qty");
+  const elSummary = getSpinMatrixElementsSummary(orbData);
+  const jobChanged = (_lastSpinMatrixJobId !== jobId);
+  _lastSpinMatrixJobId = jobId;
+
+  // 1) Sync Quantity dropdown options for Collinear vs Non-Collinear SOC
+  if (qtySel) {
+    const prevQ = qtySel.value;
+    if (orbData.mode === "noncollinear") {
+      qtySel.innerHTML = `
+        <option value="sz">Spin Sz (μB)</option>
+        <option value="sx">Spin Sx (μB)</option>
+        <option value="sy">Spin Sy (μB)</option>
+        <option value="smag">Spin |S| (μB)</option>
+        <option value="charge">Total Charge (e)</option>
+      `;
+      qtySel.value = ["sz", "sx", "sy", "smag", "charge"].includes(prevQ) && !jobChanged ? prevQ : "sz";
+    } else {
+      qtySel.innerHTML = `
+        <option value="spin">Spin (n↑ − n↓)</option>
+        <option value="up">Spin Up (n↑)</option>
+        <option value="dn">Spin Down (n↓)</option>
+        <option value="charge">Charge (n↑ + n↓)</option>
+      `;
+      qtySel.value = ["spin", "up", "dn", "charge"].includes(prevQ) && !jobChanged ? prevQ : "spin";
+    }
+  }
+
+  // 2) Sync Element dropdown
+  if (elSel) {
+    const prevEl = elSel.value;
+    const opts = [
+      `<option value="all_grid">All Elements Overview Grid (${elSummary.length} elements)</option>`,
+      ...elSummary.map(s => `<option value="${escapeHtml(s.element)}">${escapeHtml(s.element)} (${s.count} atoms • ${s.shells.join("/")})</option>`)
+    ];
+    elSel.innerHTML = opts.join("");
+    if (!jobChanged && [...elSel.options].some(o => o.value === prevEl)) {
+      elSel.value = prevEl;
+    } else if (elSummary.length) {
+      elSel.value = elSummary[0].element;
+    } else {
+      elSel.value = "all_grid";
+    }
+  }
+
+  // 3) Sync Atom dropdown for active element
+  syncSpinMatrixAtomDropdown(orbData, elSummary, jobChanged);
+  return elSummary;
+}
+
+function syncSpinMatrixAtomDropdown(orbData, elSummary, resetDefault = false) {
+  const elSel = document.getElementById("castep-spinmat-element");
+  const atomSel = document.getElementById("castep-spinmat-atom");
+  if (!atomSel) return;
+  const activeEl = elSel?.value || "all_grid";
+  const prevAtom = atomSel.value;
+  if (activeEl === "all_grid") {
+    atomSel.innerHTML = `
+      <option value="avg">Element Average</option>
+      <option value="sum">Element Total (Sum)</option>
+    `;
+    atomSel.value = (prevAtom === "sum") ? "sum" : "avg";
+    return;
+  }
+  const sp = elSummary.find(s => s.element === activeEl);
+  if (!sp) return;
+
+  // Compute each atom's total spin for informative option labels & AFM detection
+  const atomSpins = sp.atoms.map(a => {
+    let spVal = 0;
+    Object.values(a.orbitals || {}).forEach(ov => {
+      spVal += (orbData.mode === "noncollinear" ? (ov.sz || 0) : (ov.spin || 0));
+    });
+    return { atom: a, spin: spVal };
+  });
+
+  const opts = [
+    `<option value="avg">Element Average (${sp.count} atoms)</option>`,
+    `<option value="sum">Element Total / Sum (${sp.count} atoms)</option>`,
+    ...atomSpins.map(x => `<option value="${escapeHtml(x.atom.label)}">${escapeHtml(x.atom.label)} (Spin ${x.spin >= 0 ? "+" : "\u2212"}${Math.abs(x.spin).toFixed(3)} μB)</option>`)
+  ];
+  atomSel.innerHTML = opts.join("");
+
+  if (!resetDefault && [...atomSel.options].some(o => o.value === prevAtom)) {
+    atomSel.value = prevAtom;
+  } else {
+    // Smart AFM detection: if opposite-spin sublattices cancel out in Element Average, default to strongest magnetic site!
+    const avgAbs = atomSpins.reduce((s, x) => s + Math.abs(x.spin), 0) / Math.max(1, atomSpins.length);
+    const netAvg = Math.abs(atomSpins.reduce((s, x) => s + x.spin, 0) / Math.max(1, atomSpins.length));
+    if (avgAbs > 0.02 && netAvg < 0.25 * avgAbs) {
+      const top = [...atomSpins].sort((a, b) => Math.abs(b.spin) - Math.abs(a.spin))[0];
+      atomSel.value = top ? top.atom.label : "avg";
+    } else {
+      atomSel.value = "avg";
+    }
+  }
+}
+
+function onCastepSpinMatrixElementChange() {
+  const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
+  const orbData = getActiveJobOrbitalSpinData(job);
+  if (orbData) {
+    const elSummary = getSpinMatrixElementsSummary(orbData);
+    syncSpinMatrixAtomDropdown(orbData, elSummary, true);
+  }
+  renderCastepSpinMatrix();
+}
+window.onCastepSpinMatrixElementChange = onCastepSpinMatrixElementChange;
+
+function selectCastepSpinMatrixElement(elVal) {
+  const elSel = document.getElementById("castep-spinmat-element");
+  if (elSel) elSel.value = elVal;
+  onCastepSpinMatrixElementChange();
+}
+window.selectCastepSpinMatrixElement = selectCastepSpinMatrixElement;
+
+function renderCastepSpinMatrix() {
+  const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
+  const orbData = getActiveJobOrbitalSpinData(job);
+  const badge = document.getElementById("castep-spinmat-source-badge");
+  const canvas = document.getElementById("castep-spinmat-canvas");
+  const pillsWrap = document.getElementById("castep-spinmat-el-pills");
+  const layoutEl = document.getElementById("castep-spinmat-layout");
+  const sideEl = document.getElementById("castep-spinmat-side");
+  const kpiEl = document.getElementById("castep-spinmat-kpi");
+  const theadEl = document.getElementById("castep-spinmat-thead");
+  const tbodyEl = document.getElementById("castep-spinmat-tbody");
+  const capEl = document.getElementById("castep-spinmat-caption");
+
+  if (!orbData || !orbData.atoms?.length) {
+    if (badge) { badge.textContent = "No orbital population data"; badge.className = "badge badge-amber"; }
+    if (pillsWrap) pillsWrap.innerHTML = "";
+    if (kpiEl) kpiEl.innerHTML = "<span>Upload a CASTEP <code>.castep</code> file (with <code>Orbital Populations</code>) or <code>.pdos_bin</code> + <code>.bands</code> to compute orbital-resolved Spin Matrices.</span>";
+    if (tbodyEl) tbodyEl.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:16px; color:#64748b;">No orbital-resolved spin data in active job.</td></tr>`;
+    if (capEl) capEl.textContent = "";
+    if (canvas) {
+      const w = 400, h = 240, dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+      canvas.style.width = `${w}px`; canvas.style.height = `${h}px`;
+      const ctx = canvas.getContext("2d"); ctx.save(); ctx.scale(dpr, dpr);
+      ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = "#64748b"; ctx.font = "12.5px Inter, sans-serif"; ctx.textAlign = "center";
+      ctx.fillText("No Orbital Populations or .pdos_bin data in active job", w / 2, h / 2);
+      ctx.restore();
+    }
+    return;
+  }
+
+  const elSummary = syncSpinMatrixControlsForData(orbData, job?.id || "none");
+  const activeEl = document.getElementById("castep-spinmat-element")?.value || (elSummary[0]?.element || "all_grid");
+  const atomMode = document.getElementById("castep-spinmat-atom")?.value || "avg";
+  const reqShell = document.getElementById("castep-spinmat-shell")?.value || "auto";
+  const qty = document.getElementById("castep-spinmat-qty")?.value || (orbData.mode === "noncollinear" ? "sz" : "spin");
+  const palette = document.getElementById("castep-spinmat-palette")?.value || "journal_green";
+  const decimals = parseInt(document.getElementById("castep-spinmat-decimals")?.value || "3", 10);
+
+  if (badge) {
+    badge.textContent = orbData.sourceLabel || orbData.source;
+    const isFallback = orbData.source === "mulliken_shell";
+    badge.style.background = isFallback ? "#fffbeb" : "#ecfdf5";
+    badge.style.color = isFallback ? "#b45309" : "#047857";
+    badge.style.border = isFallback ? "1px solid #fde68a" : "1px solid #a7f3d0";
+  }
+
+  // Render clickable Element Quick-Selector Pills
+  if (pillsWrap) {
+    const gridActive = activeEl === "all_grid";
+    const pillsHtml = [
+      `<button type="button" class="castep-preset-chip ${gridActive ? "active" : ""}" style="${gridActive ? "background:#0f172a; color:#ffffff; border-color:#0f172a;" : ""}" onclick="selectCastepSpinMatrixElement('all_grid')">▦ All Elements Grid (${elSummary.length})</button>`,
+      ...elSummary.map(s => {
+        const isAct = activeEl === s.element;
+        const col = getVestaElementColor(s.element);
+        const spTxt = `${s.avgSpin >= 0 ? "+" : "\u2212"}${Math.abs(s.avgSpin).toFixed(3)} μ<sub>B</sub>`;
+        return `<button type="button" class="castep-preset-chip ${isAct ? "active" : ""}" style="display:inline-flex; align-items:center; gap:5px; ${isAct ? "background:#1e3a8a; color:#ffffff; border-color:#1e3a8a;" : ""}" onclick="selectCastepSpinMatrixElement('${escapeHtml(s.element)}')">
+          <span style="width:8px; height:8px; border-radius:50%; background:${col}; border:1px solid ${isAct ? "#ffffff" : "#475569"}; display:inline-block;"></span>
+          <strong>${escapeHtml(s.element)}</strong>
+          <span style="opacity:0.85; font-size:10.5px;">(${s.shells.join("/")} • ${spTxt})</span>
+        </button>`;
+      })
+    ];
+    pillsWrap.innerHTML = pillsHtml.join("");
+  }
+
+  const qtyTitleMap = {
+    spin: "Spin Matrix (n↑ − n↓, μB)",
+    up: "Spin-Up Occupancy Matrix (n↑)",
+    dn: "Spin-Down Occupancy Matrix (n↓)",
+    charge: "Total Orbital Charge Matrix (e)",
+    sz: "Spin Matrix Sz (μB)",
+    sx: "Spin Matrix Sx (μB)",
+    sy: "Spin Matrix Sy (μB)",
+    smag: "Spin Magnitude Matrix |S| (μB)"
+  };
+
+  // Mode A: All Elements Overview Grid (renders every element's active-shell Spin Matrix side-by-side)
+  if (activeEl === "all_grid") {
+    if (layoutEl) layoutEl.style.gridTemplateColumns = "1fr";
+    if (sideEl) sideEl.style.display = "none";
+
+    if (canvas) {
+      const parentW = Math.max(460, Math.floor((canvas.parentElement?.clientWidth || 860) - 24));
+      const nEls = elSummary.length;
+      const cols = nEls <= 1 ? 1 : (nEls === 2 ? 2 : (parentW >= 780 ? 3 : 2));
+      const rows = Math.ceil(nEls / cols);
+      const cellW = Math.floor(parentW / cols);
+      const panelH = Math.max(270, Math.min(350, Math.floor(cellW * 0.92)));
+      const totalW = Math.max(parentW, cols * 270);
+      const totalH = rows * panelH + 34;
+      const dpr = Math.max(2, window.devicePixelRatio || 1);
+      canvas.width = Math.round(totalW * dpr);
+      canvas.height = Math.round(totalH * dpr);
+      canvas.style.width = `${totalW}px`;
+      canvas.style.height = `${totalH}px`;
+      const ctx = canvas.getContext("2d");
+      ctx.save(); ctx.scale(dpr, dpr);
+      ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, totalW, totalH);
+
+      const qtySciTitle = {
+        spin: "Spin Matrix (n^{↑} \u2212 n^{↓}, μ_{B})",
+        up: "Spin-Up Occupancy Matrix (n^{↑})",
+        dn: "Spin-Down Occupancy Matrix (n^{↓})",
+        charge: "Total Orbital Charge Matrix (e)",
+        sz: "Spin Matrix S_{z} (μ_{B})",
+        sx: "Spin Matrix S_{x} (μ_{B})",
+        sy: "Spin Matrix S_{y} (μ_{B})",
+        smag: "Spin Magnitude Matrix |S| (μ_{B})"
+      }[qty] || "Spin Matrix";
+      ctx.fillStyle = "#0f172a";
+      ctx.font = "bold 13.5px Inter, sans-serif";
+      ctx.textAlign = "center";
+      drawSciText(ctx, `All-Elements Orbital ${qtySciTitle} (${atomMode === "sum" ? "Element Sum" : "Element Average"})`, totalW / 2, 19);
+
+      elSummary.forEach((sp, idx) => {
+        const c = idx % cols;
+        const r = Math.floor(idx / cols);
+        const agg = aggregateElementOrbitals(sp.atoms, atomMode === "sum" ? "sum" : "avg", orbData.mode);
+        const res = resolveSpinMatrixEntries(agg.orbitals, reqShell, orbData.source, qty, orbData.mode);
+        const tileX = c * (totalW / cols);
+        const tileY = 30 + r * panelH;
+        const tileW = totalW / cols;
+
+        const maxLblW = Math.max(36, ...res.entries.map(e => measureOrbitalMathLabel(ctx, e.key, 12.5)));
+        const padL = Math.min(72, Math.max(46, maxLblW + 12));
+        const padR = palette !== "journal_green" ? 56 : 16;
+        const padT = 26, padB = 34;
+        const boxSize = Math.max(120, Math.min(tileW - padL - padR, panelH - padT - padB));
+        const bx = tileX + padL + Math.max(0, (tileW - padL - padR - boxSize) * 0.5);
+        const by = tileY + padT;
+        const shellTag = res.effectiveShell === "spdf" ? "s/p/d/f" : (res.effectiveShell === "all_m" ? "all orbitals" : `${res.effectiveShell}-orbitals`);
+        const trSum = res.entries.reduce((s, e) => s + e.val, 0);
+        drawSingleSpinMatrixPanel(ctx, bx, by, boxSize, res.entries, {
+          decimals,
+          palette,
+          compact: true,
+          showColorbar: palette !== "journal_green",
+          title: `${sp.element} (${shellTag}, Tr=${trSum >= 0 ? "+" : "\u2212"}${Math.abs(trSum).toFixed(decimals)})`
+        });
+      });
+      ctx.restore();
+    }
+    if (capEl) {
+      capEl.innerHTML = `Showing all <strong>${elSummary.length} elements</strong> (${elSummary.map(s => escapeHtml(s.element)).join(", ")}) • Click any element pill above to inspect its full-size Spin Matrix and sub-orbital occupancy table.`;
+    }
+    return;
+  }
+
+  // Mode B: Single Element Detailed Publication Spin Matrix + Sub-Orbital Breakdown Table
+  if (layoutEl) layoutEl.style.gridTemplateColumns = "minmax(320px, 470px) minmax(260px, 1fr)";
+  if (sideEl) sideEl.style.display = "flex";
+
+  const sp = elSummary.find(s => s.element === activeEl) || elSummary[0];
+  const agg = aggregateElementOrbitals(sp.atoms, atomMode, orbData.mode);
+  const res = resolveSpinMatrixEntries(agg.orbitals, reqShell, orbData.source, qty, orbData.mode);
+  const entries = res.entries;
+  const N = entries.length;
+  const traceVal = entries.reduce((s, e) => s + e.val, 0);
+  const absTraceVal = entries.reduce((s, e) => s + Math.abs(e.val), 0);
+
+  if (canvas) {
+    const wrapW = Math.max(320, Math.min(450, Math.floor((canvas.parentElement?.clientWidth || 430) - 20)));
+    const showCb = (palette !== "journal_green");
+    const estLabelPx = N <= 5 ? 16.5 : (N <= 7 ? 13.5 : 11.5);
+    const tmpCtx = canvas.getContext("2d");
+    const maxLblW = Math.max(40, ...entries.map(e => measureOrbitalMathLabel(tmpCtx, e.key, estLabelPx)));
+    const padL = Math.ceil(maxLblW + 18);
+    const padR = showCb ? 64 : 18;
+    const padT = 18;
+    const padB = N >= 7 ? 56 : 42;
+    const boxSize = Math.max(190, Math.min(wrapW - padL - padR, 355));
+    const totalW = padL + boxSize + padR;
+    const totalH = padT + boxSize + padB;
+    const dpr = Math.max(2, window.devicePixelRatio || 1);
+    canvas.width = Math.round(totalW * dpr);
+    canvas.height = Math.round(totalH * dpr);
+    canvas.style.width = `${totalW}px`;
+    canvas.style.height = `${totalH}px`;
+
+    const ctx = canvas.getContext("2d");
+    ctx.save(); ctx.scale(dpr, dpr);
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, totalW, totalH);
+    drawSingleSpinMatrixPanel(ctx, padL, padT, boxSize, entries, {
+      decimals,
+      palette,
+      compact: false,
+      labelPx: estLabelPx,
+      showColorbar: showCb
+    });
+    ctx.restore();
+  }
+
+  const shellLabelMap = { s: "s-orbital (1×1)", p: "p-orbitals (3×3)", d: "d-orbitals (5×5)", f: "f-orbitals (7×7)", all_m: `All Active Sub-Orbitals (${N}×${N})`, spdf: "Shell Summary s/p/d/f (4×4)" };
+  if (capEl) {
+    capEl.innerHTML = `<strong>${escapeHtml(agg.label)}</strong> • ${shellLabelMap[res.effectiveShell] || res.effectiveShell} • ${escapeHtml(qtyTitleMap[qty] || "Spin Matrix")}${res.missingNote ? `<div style="color:#b45309; margin-top:3px;">⚠️ ${escapeHtml(res.missingNote)}</div>` : ""}`;
+  }
+
+  // Update KPI header & Sub-Orbital Breakdown Table
+  if (kpiEl) {
+    const unitLbl = qty === "charge" || qty === "up" || qty === "dn" ? "e" : "μ<sub>B</sub>";
+    const dom = [...entries].sort((a, b) => Math.abs(b.val) - Math.abs(a.val))[0];
+    kpiEl.innerHTML = `
+      <span><strong>Target:</strong> ${escapeHtml(agg.label)}</span>
+      <span><strong>Matrix Trace:</strong> <strong style="color:${traceVal >= 0 ? "#15803d" : "#2563eb"};">${traceVal >= 0 ? "+" : "\u2212"}${Math.abs(traceVal).toFixed(decimals)}</strong> ${unitLbl}</span>
+      <span><strong>Σ|Diag|:</strong> ${absTraceVal.toFixed(decimals)} ${unitLbl}</span>
+      <span><strong>Dominant:</strong> ${dom ? `${dom.spec.html} (${dom.val >= 0 ? "+" : "\u2212"}${Math.abs(dom.val).toFixed(decimals)})` : "—"}</span>
+    `;
+  }
+
+  if (theadEl) {
+    if (orbData.mode === "noncollinear") {
+      theadEl.innerHTML = `<tr><th>Orbital</th><th>Charge (e)</th><th>S<sub>x</sub></th><th>S<sub>y</sub></th><th>S<sub>z</sub></th><th>|S| (μ<sub>B</sub>)</th></tr>`;
+    } else {
+      theadEl.innerHTML = `<tr><th>Orbital</th><th>n<sup>↑</sup></th><th>n<sup>↓</sup></th><th>Spin (μ<sub>B</sub>)</th><th>Charge (e)</th><th>Share</th></tr>`;
+    }
+  }
+
+  if (tbodyEl) {
+    tbodyEl.innerHTML = entries.map(e => {
+      const r = e.raw;
+      if (orbData.mode === "noncollinear") {
+        const sm = r.smag !== undefined ? r.smag : Math.hypot(r.sx || 0, r.sy || 0, r.sz || 0);
+        const szCol = Math.abs(r.sz || 0) >= 0.005 ? ((r.sz || 0) > 0 ? "color:#15803d; font-weight:800;" : "color:#2563eb; font-weight:800;") : "color:#64748b;";
+        return `<tr>
+          <td style="font-family:'Times New Roman',Georgia,serif; font-size:13px; font-weight:700;">${e.spec.html}</td>
+          <td>${(r.charge || 0).toFixed(decimals)}</td>
+          <td>${formatSpinMatrixNumber(r.sx || 0, decimals)}</td>
+          <td>${formatSpinMatrixNumber(r.sy || 0, decimals)}</td>
+          <td style="${szCol}">${formatSpinMatrixNumber(r.sz || 0, decimals)}</td>
+          <td><strong>${sm.toFixed(decimals)}</strong></td>
+        </tr>`;
+      }
+      const spVal = r.spin !== undefined ? r.spin : ((r.up || 0) - (r.dn || 0));
+      const sharePct = absTraceVal > 1e-6 ? (Math.abs(e.val) / absTraceVal) * 100 : 0;
+      const spStyle = Math.abs(spVal) >= 0.005 ? (spVal > 0 ? "color:#15803d; font-weight:800;" : "color:#2563eb; font-weight:800;") : "color:#64748b;";
+      return `<tr>
+        <td style="font-family:'Times New Roman',Georgia,serif; font-size:13px; font-weight:700;">${e.spec.html}</td>
+        <td>${(r.up || 0).toFixed(decimals)}</td>
+        <td>${(r.dn || 0).toFixed(decimals)}</td>
+        <td style="${spStyle}">${formatSpinMatrixNumber(spVal, decimals)}</td>
+        <td>${(r.charge !== undefined ? r.charge : ((r.up || 0) + (r.dn || 0))).toFixed(decimals)}</td>
+        <td style="min-width:72px;">
+          <div style="display:flex; align-items:center; gap:5px;">
+            <div style="flex:1; height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden;">
+              <div style="width:${Math.min(100, sharePct).toFixed(1)}%; height:100%; background:${e.val >= 0 ? "#16a34a" : "#2563eb"};"></div>
+            </div>
+            <span style="font-size:10px; color:#475569; min-width:30px; text-align:right;">${sharePct.toFixed(0)}%</span>
+          </div>
+        </td>
+      </tr>`;
+    }).join("");
+  }
+}
+window.renderCastepSpinMatrix = renderCastepSpinMatrix;
+
+function exportCastepSpinMatrixPNG() {
+  const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
+  const seed = sanitizeExportSeed(job?.seed || CASTEP_STUDIO_STATE.structure?.formula || "CASTEP");
+  const el = document.getElementById("castep-spinmat-element")?.value || "AllElements";
+  const sh = document.getElementById("castep-spinmat-shell")?.value || "auto";
+  const qty = document.getElementById("castep-spinmat-qty")?.value || "spin";
+  exportCastepCanvasPNG("castep-spinmat-canvas", `${seed}_${el}_${sh}_${qty}_SpinMatrix.png`);
+}
+window.exportCastepSpinMatrixPNG = exportCastepSpinMatrixPNG;
+
+function buildOrbitalSpinMatrixExportSheet(job) {
+  const orbData = getActiveJobOrbitalSpinData(job);
+  if (!orbData || !orbData.atoms?.length) return null;
+  const isNC = orbData.mode === "noncollinear";
+  const headers = isNC
+    ? ["Atom", "Element", "Ion", "Shell", "Orbital", "CASTEP_Orbital", "Charge_e", "Sx_muB", "Sy_muB", "Sz_muB", "S_mag_muB", "Source"]
+    : ["Atom", "Element", "Ion", "Shell", "Orbital", "CASTEP_Orbital", "Up_e", "Down_e", "Spin_muB", "Charge_e", "Source"];
+  const rows = [];
+  orbData.atoms.forEach(a => {
+    const orbKeys = Object.keys(a.orbitals || {}).sort((x, y) => {
+      const ix = CASTEP_ORBITAL_ALL_ORDER.indexOf(x);
+      const iy = CASTEP_ORBITAL_ALL_ORDER.indexOf(y);
+      return (ix === -1 ? 99 : ix) - (iy === -1 ? 99 : iy);
+    });
+    orbKeys.forEach(ok => {
+      const v = a.orbitals[ok];
+      const spec = CASTEP_ORBITAL_SPEC[ok] || { shell: "?", plain: ok };
+      if (isNC) {
+        const sm = v.smag !== undefined ? v.smag : Math.hypot(v.sx || 0, v.sy || 0, v.sz || 0);
+        rows.push([
+          a.label, a.element, a.ion, spec.shell, spec.plain, ok,
+          Number((v.charge || 0).toFixed(5)), Number((v.sx || 0).toFixed(5)), Number((v.sy || 0).toFixed(5)),
+          Number((v.sz || 0).toFixed(5)), Number(sm.toFixed(5)), orbData.source
+        ]);
+      } else {
+        rows.push([
+          a.label, a.element, a.ion, spec.shell, spec.plain, ok,
+          Number((v.up || 0).toFixed(5)), Number((v.dn || 0).toFixed(5)),
+          Number((v.spin || 0).toFixed(5)), Number((v.charge !== undefined ? v.charge : ((v.up || 0) + (v.dn || 0))).toFixed(5)),
+          orbData.source
+        ]);
+      }
+    });
+  });
+  return { name: "Orbital_Spin_Matrix", headers, rows };
+}
+
+function exportCastepSpinMatrixCSV() {
+  const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
+  const orbData = getActiveJobOrbitalSpinData(job);
+  if (!orbData || !orbData.atoms?.length) {
+    if (typeof showToast === "function") showToast("No orbital spin matrix data available to export.", "warning");
+    return;
+  }
+  const seed = sanitizeExportSeed(job?.seed || CASTEP_STUDIO_STATE.structure?.formula || "CASTEP");
+  const activeEl = document.getElementById("castep-spinmat-element")?.value || "all_grid";
+  const atomMode = document.getElementById("castep-spinmat-atom")?.value || "avg";
+  const reqShell = document.getElementById("castep-spinmat-shell")?.value || "auto";
+  const qty = document.getElementById("castep-spinmat-qty")?.value || (orbData.mode === "noncollinear" ? "sz" : "spin");
+  const decimals = parseInt(document.getElementById("castep-spinmat-decimals")?.value || "3", 10);
+
+  if (activeEl !== "all_grid") {
+    // Export BOTH the displayed N×N square matrix AND all orbital rows below it
+    const sp = getSpinMatrixElementsSummary(orbData).find(s => s.element === activeEl);
+    if (sp) {
+      const agg = aggregateElementOrbitals(sp.atoms, atomMode, orbData.mode);
+      const res = resolveSpinMatrixEntries(agg.orbitals, reqShell, orbData.source, qty, orbData.mode);
+      const labels = res.entries.map(e => e.spec.plain);
+      const headers = [`Matrix_${agg.label.replace(/\s+/g, "_")}_${qty}`, ...labels];
+      const rows = res.entries.map((rowE, rIdx) => [
+        rowE.spec.plain,
+        ...res.entries.map((colE, cIdx) => rIdx === cIdx ? Number(rowE.val.toFixed(Math.max(decimals, 5))) : 0)
+      ]);
+      const fullSheet = buildOrbitalSpinMatrixExportSheet(job);
+      if (fullSheet && fullSheet.rows.length) {
+        rows.push(new Array(headers.length).fill(""));
+        rows.push(["ALL_ELEMENTS_ORBITAL_POPULATIONS", ...new Array(Math.max(0, headers.length - 1)).fill("")]);
+        rows.push(fullSheet.headers);
+        fullSheet.rows.forEach(r => rows.push(r));
+      }
+      const csv = buildCsvString(headers, rows);
+      const fname = `${seed}_${activeEl}_${res.effectiveShell}_SpinMatrix.csv`;
+      triggerBlobDownload(new Blob([csv], { type: "text/csv;charset=utf-8" }), fname);
+      if (typeof showToast === "function") showToast(`Exported ${fname} (N×N matrix + all-element orbital data)!`, "success");
+      return;
+    }
+  }
+
+  const sheet = buildOrbitalSpinMatrixExportSheet(job);
+  const csv = buildCsvString(sheet.headers, sheet.rows);
+  const fname = `${seed}_AllElements_OrbitalSpinMatrix.csv`;
+  triggerBlobDownload(new Blob([csv], { type: "text/csv;charset=utf-8" }), fname);
+  if (typeof showToast === "function") showToast(`Exported ${fname} (${sheet.rows.length} orbital entries)!`, "success");
+}
+window.exportCastepSpinMatrixCSV = exportCastepSpinMatrixCSV;
+
+async function handleCastepSpinMatrixFileUpload(event) {
+  const files = Array.from(event?.target?.files || []);
+  if (!files.length) return;
+  let job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
+  if (!job) {
+    job = { id: "spinmat_local_" + Date.now(), seed: "Uploaded_CASTEP", folder: "Local Upload", files_list: [] };
+    CASTEP_STUDIO_STATE.jobs = CASTEP_STUDIO_STATE.jobs || [];
+    CASTEP_STUDIO_STATE.jobs.unshift(job);
+    CASTEP_STUDIO_STATE.activeJobId = job.id;
+  }
+
+  let pdosBuf = null, pdosName = "";
+  let bandsText = null;
+  let updated = false;
+
+  for (const f of files) {
+    const low = f.name.toLowerCase();
+    if (low.endsWith(".castep")) {
+      const txt = await f.text();
+      job.castep_text = txt;
+      job._mullikenCache = undefined;
+      job._orbPopCache = undefined;
+      if (!job.seed || job.seed === "Uploaded_CASTEP") job.seed = f.name.replace(/\.castep$/i, "");
+      updated = true;
+    } else if (low.endsWith(".bands")) {
+      bandsText = await f.text();
+      const parsedB = parseCastepBandsTextClient(bandsText);
+      if (parsedB) {
+        if (low.includes("_dos")) job.dos_bands = parsedB;
+        else job.bandstr_bands = parsedB;
+        updated = true;
+      }
+    } else if (low.endsWith(".pdos_bin")) {
+      pdosBuf = await f.arrayBuffer();
+      pdosName = f.name;
+    }
+  }
+
+  if (pdosBuf) {
+    const refBands = job.dos_bands || job.bandstr_bands;
+    if (refBands) {
+      const spOrder = extractSpeciesOrderFromJobText(job);
+      const parsedPdos = parseCastepPdosBinArrayBuffer(pdosBuf, refBands, spOrder, pdosName);
+      if (parsedPdos) {
+        job.pdos_bin_data = parsedPdos;
+        updated = true;
+      }
+    } else if (typeof showToast === "function") {
+      showToast("Please select both *.pdos_bin AND *_DOS.bands together so eigenvalues match exact orbital weights!", "warning");
+    }
+  }
+
+  if (event?.target) event.target.value = "";
+  if (updated) {
+    _lastSpinMatrixJobId = null; // refresh element/atom selectors
+    renderCastepMullikenPane();
+    if (typeof showToast === "function") showToast("Loaded orbital spin matrix data successfully!", "success");
+  }
+}
+window.handleCastepSpinMatrixFileUpload = handleCastepSpinMatrixFileUpload;
 
 function buildMullikenExportTables() {
   const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
@@ -12837,11 +14071,13 @@ function buildMullikenExportTables() {
     ]);
   });
 
+  const orbSpinSheet = buildOrbitalSpinMatrixExportSheet(job);
   return {
     seed,
     elFilter,
     bpFilter,
     summarySheet: { name: "Summary_Magnetism", headers: ["Property_or_Element", "Col2", "Col3", "Col4", "Col5", "Col6", "Col7", "Col8"], rows: summaryRows },
+    orbSpinSheet,
     atomSheet: { name: "Atomic_Populations", headers: atomHeaders, rows: atomRows },
     bondSheet: { name: "Bond_Populations", headers: bondHeaders, rows: bondRows }
   };
@@ -12868,7 +14104,9 @@ function exportCastepMullikenXLSX() {
     if (typeof showToast === "function") showToast("No Mulliken data available to export.", "warning");
     return;
   }
-  const sheets = [pkg.summarySheet, pkg.atomSheet];
+  const sheets = [pkg.summarySheet];
+  if (pkg.orbSpinSheet && pkg.orbSpinSheet.rows.length) sheets.push(pkg.orbSpinSheet);
+  sheets.push(pkg.atomSheet);
   if (pkg.bondSheet.rows.length) sheets.push(pkg.bondSheet);
   const blob = buildXlsxBlob(sheets);
   const fname = `${pkg.seed}_Mulliken_Analysis.xlsx`;
