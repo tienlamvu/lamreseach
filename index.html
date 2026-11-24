@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=130_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=130_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=131_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=131_v116_vesta_viewer'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -2085,9 +2085,9 @@
                     <option value="mirror">↕️ Spin Mirror (+α / −β)</option>
                     <option value="sum">➕ Total (α + β)</option>
                   </select>
-                  <select id="castep-elec-zero-ref" class="castep-input" style="width:auto; font-weight:700;" onchange="renderCastepElectronicPlots()" title="Synchronize Band Structure and PDOS zero energy reference (VBM = 0 for semiconductors, E_F = 0 for metals)">
-                    <option value="vbm_auto" selected>🎯 Zero: VBM / E_F (Synced)</option>
-                    <option value="raw_fermi">⚡ Zero: Raw CASTEP E_F</option>
+                  <select id="castep-elec-zero-ref" class="castep-input" style="width:auto; font-weight:700;" onchange="renderCastepElectronicPlots()" title="Synchronize Band Structure and PDOS zero energy reference (VBM = 0 for semiconductors, Fermi level = 0 for metals)">
+                    <option value="vbm_auto" selected>🎯 Zero: VBM / Fermi Level (Synced)</option>
+                    <option value="raw_fermi">⚡ Zero: Raw CASTEP Fermi Level</option>
                   </select>
                   <input type="file" id="castep-pdos-file-upload" multiple accept=".pdos_bin,.bands,.xcd" style="display:none;" onchange="handleCastepPdosFilesUpload(event)" />
                   <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px; font-weight:700;" onclick="document.getElementById('castep-pdos-file-upload').click()" title="Load CASTEP *.pdos_bin and *_DOS.bands files">📥 .pdos_bin/.bands</button>
@@ -2120,7 +2120,7 @@
               <div class="castep-plot-canvas-card">
                 <canvas id="castep-electronic-canvas" width="900" height="520"></canvas>
                 <div id="castep-electronic-readout" class="castep-plot-readout">
-                  Hover over Band Structure or DOS/PDOS plot to inspect exact k-point, band energy (E - E<sub>F</sub>), and density of states.
+                  Hover over Band Structure or DOS/PDOS plot to inspect exact k-point, band energy (E − E<sub>F</sub>), and density of states.
                 </div>
               </div>
             </div>
@@ -2134,9 +2134,9 @@
                 <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
                   <label class="castep-field-lbl" style="margin:0;">Δρ Source:</label>
                   <select id="castep-chdiff-mode" class="castep-input" style="width:auto; font-weight:700;" onchange="onCastepChdiffModeChange()">
-                    <option value="chdiff">⚡ CASTEP *.chdiff Output (Δρ = ρ_SCF − Σρ_atom)</option>
-                    <option value="charg_frm_auto">🧪 Generate Δρ from Single *.charg_frm (ρ_total − ρ_promolecule)</option>
-                    <option value="charg_frm_sub">➖ Differential *.charg_frm Subtraction (Δρ = ρ_AB − ρ_A − ρ_B)</option>
+                    <option value="chdiff">⚡ CASTEP *.chdiff Output (Δρ = ρ(SCF) − Σρ(atom))</option>
+                    <option value="charg_frm_auto">🧪 Generate Δρ from Single *.charg_frm (ρ(total) − ρ(promolecule))</option>
+                    <option value="charg_frm_sub">➖ Differential *.charg_frm Subtraction (Δρ = ρ(AB) − ρ(A) − ρ(B))</option>
                   </select>
 
                   <input type="file" id="castep-chdiff-file-input" accept=".chdiff,.charg_frm,.den_fmt,.cube,.txt" style="display:none;" onchange="handleCastepChdiffPrimaryUpload(event)" />
@@ -2145,8 +2145,8 @@
                   <button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px; font-weight:700;" onclick="document.getElementById('castep-chdiff-file-input').click()" title="Load CASTEP binary *.chdiff or ASCII *.charg_frm file">
                     📥 Load *.chdiff / *.charg_frm
                   </button>
-                  <button type="button" id="castep-chdiff-ref-btn" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px; display:none;" onclick="document.getElementById('castep-chdiff-ref-input').click()" title="Load reference fragment ρ_A and/or ρ_B (*.charg_frm) to subtract from ρ_AB">
-                    ➖ Load Ref ρ_A / ρ_B (*.charg_frm)
+                  <button type="button" id="castep-chdiff-ref-btn" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px; display:none;" onclick="document.getElementById('castep-chdiff-ref-input').click()" title="Load reference fragment ρ(A) and/or ρ(B) (*.charg_frm) to subtract from ρ(AB)">
+                    ➖ Load Ref ρ<sub>A</sub> / ρ<sub>B</sub> (*.charg_frm)
                   </button>
                   <button type="button" class="btn btn-teal btn-sm" style="padding:3px 9px; font-size:11.5px;" onclick="toggleChdiffInMain3DViewer()" title="Overlay 3D Charge Density Difference isosurfaces directly in the 3D Structure Builder tab">
                     🧱 View 3D Isosurface in Structure Tab
@@ -2234,7 +2234,7 @@
               <div class="castep-plot-canvas-card">
                 <canvas id="castep-chdiff-canvas" width="920" height="500"></canvas>
                 <div id="castep-chdiff-readout" class="castep-plot-readout">
-                  <strong>Panel (c) Legend:</strong> <strong>━━ Black (Left Y)</strong> = Planar-Averaged Δρ(z) • <strong style="color:#7c3aed;">┄┄ Purple (Right Y)</strong> = Integrated Charge Transfer ΔQ(z) = ∫₀ᶻ Δρ₁D(z′)dz′ (electrons) • Hover Panel (c) to read exact values.
+                  <strong>Panel (c) Legend:</strong> <strong>━━ Black (Left Y)</strong> = Planar-Averaged Δρ(z) • <strong style="color:#7c3aed;">┄┄ Purple (Right Y)</strong> = Integrated Charge Transfer ΔQ(z) = ∫<sub>0</sub><sup>z</sup> Δρ<sub>1D</sub>(z′)dz′ (electrons) • Hover Panel (c) to read exact values.
                 </div>
               </div>
             </div>
@@ -2247,8 +2247,8 @@
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                   <label class="castep-field-lbl" style="margin:0;">Chart View:</label>
                   <select id="castep-mulliken-chart-mode" class="castep-input" style="width:auto; font-weight:700;" onchange="renderCastepMullikenPane()">
-                    <option value="spin_atomic">🧲 Atomic Magnetic Moment Contribution (μ_B)</option>
-                    <option value="spin_orbital">⚛️ Orbital Magnetic Contribution (μ_s, μ_p, μ_d, μ_f)</option>
+                    <option value="spin_atomic">🧲 Atomic Magnetic Moment Contribution (μB)</option>
+                    <option value="spin_orbital">⚛️ Orbital Magnetic Contribution (s, p, d, f in μB)</option>
                     <option value="charge_cmp">⚡ Atomic Charge (Mulliken vs Hirshfeld)</option>
                     <option value="elec_orbital">🧬 Orbital Electron Population (s, p, d, f)</option>
                   </select>
@@ -2281,7 +2281,7 @@
               <!-- 2-Column High-DPI Mulliken Charts (Magnetism/Orbital + Bond Population vs Length) -->
               <div class="castep-conv-charts-grid" style="margin-top:8px;">
                 <div class="castep-plot-canvas-card">
-                  <div style="font-weight:700; font-size:12.5px; color:#0f172a; margin-bottom:5px;" id="castep-mulliken-mag-title">Atomic &amp; Orbital Magnetic Moment Contribution (μ_B)</div>
+                  <div style="font-weight:700; font-size:12.5px; color:#0f172a; margin-bottom:5px;" id="castep-mulliken-mag-title">Atomic &amp; Orbital Magnetic Moment Contribution (μ<sub>B</sub>)</div>
                   <canvas id="castep-mulliken-mag-canvas" width="440" height="310"></canvas>
                 </div>
                 <div class="castep-plot-canvas-card">
@@ -2297,7 +2297,7 @@
               <div class="castep-conv-tables-grid" style="margin-top:10px;">
                 <div class="castep-atoms-table-card">
                   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:6px; flex-wrap:wrap;">
-                    <span style="font-weight:800; font-size:12.5px; color:#0f172a;">⚛️ Atomic Mulliken Populations &amp; Orbital Spin (μ_B)</span>
+                    <span style="font-weight:800; font-size:12.5px; color:#0f172a;">⚛️ Atomic Mulliken Populations &amp; Orbital Spin (μ<sub>B</sub>)</span>
                     <span id="castep-mulliken-atoms-count" class="badge badge-blue" style="font-size:10.5px;">0 atoms</span>
                   </div>
                   <div class="castep-atoms-table-scroll" style="max-height:290px;">
@@ -5474,9 +5474,9 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=130_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=130_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=130_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=130_v116_vesta_viewer'"></script>
-  <script src="app.js?v=130_v116_vesta_viewer" onerror="this.src='/static/app.js?v=130_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=131_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=131_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=131_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=131_v116_vesta_viewer'"></script>
+  <script src="app.js?v=131_v116_vesta_viewer" onerror="this.src='/static/app.js?v=131_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
@@ -5922,7 +5922,7 @@
       <div style="margin-bottom:12px;">
         <div style="font-size:11px; font-weight:600; color:#6b5c4f; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">Live Preview:</div>
         <div id="news-formula-live-preview" class="news-formula-live-preview">
-          <div id="news-formula-preview-math" class="news-formula-preview-math">ΔG_H* = ΔE_DFT + ΔE_ZPE - TΔS_H</div>
+          <div id="news-formula-preview-math" class="news-formula-preview-math">ΔG<sub>H*</sub> = ΔE<sub>DFT</sub> + ΔE<sub>ZPE</sub> − TΔS<sub>H</sub></div>
           <div id="news-formula-preview-num" class="news-formula-preview-num">(1)</div>
         </div>
       </div>
