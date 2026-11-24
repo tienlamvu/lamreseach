@@ -1179,6 +1179,19 @@ function initCastepStudioTab() {
       });
     }
 
+    // Restore saved Ball radius & Stick width scales for consistent publication figures
+    try {
+      const savedAtom = parseFloat(localStorage.getItem("castep_3d_atom_scale"));
+      if (isFinite(savedAtom) && savedAtom >= 0.2 && savedAtom <= 2.0) {
+        CASTEP_STUDIO_STATE.view3D.atomScale = Math.round(savedAtom * 100) / 100;
+      }
+      const savedBond = parseFloat(localStorage.getItem("castep_3d_bond_scale"));
+      if (isFinite(savedBond) && savedBond >= 0.2 && savedBond <= 2.0) {
+        CASTEP_STUDIO_STATE.view3D.bondWidthScale = Math.round(savedBond * 100) / 100;
+      }
+    } catch (e) {}
+    syncVestaScaleControls();
+
     // Initialize Gateway URL from localStorage or default primary calculation server (115.145.191.231:18888)
     try {
       const savedGw = localStorage.getItem("ms_gateway_url");
@@ -2454,14 +2467,59 @@ function setVestaRenderStyle(styleName) {
 window.setVestaRenderStyle = setVestaRenderStyle;
 window.setVestaModelStyle = setVestaRenderStyle;
 
-function setVestaProperty(propKey, val) {
+function syncVestaScaleControls(skipAtomNum = false, skipBondNum = false) {
+  const v3 = CASTEP_STUDIO_STATE.view3D;
+  const aVal = Math.max(0.2, Math.min(2.0, Number(v3.atomScale) || 1.0));
+  const bVal = Math.max(0.2, Math.min(2.0, Number(v3.bondWidthScale) || 1.0));
+
+  const aSlider = document.getElementById("vesta-atom-scale-slider");
+  if (aSlider) aSlider.value = aVal.toFixed(2);
+  const aNum = document.getElementById("vesta-atom-scale-num");
+  if (aNum && !skipAtomNum) aNum.value = aVal.toFixed(2);
+  document.querySelectorAll("#vesta-atom-scale-ticks .vesta-tick-btn").forEach(btn => {
+    const tv = parseFloat(btn.dataset.val);
+    btn.classList.toggle("active", isFinite(tv) && Math.abs(tv - aVal) < 0.015);
+  });
+
+  const bSlider = document.getElementById("vesta-bond-scale-slider");
+  if (bSlider) bSlider.value = bVal.toFixed(2);
+  const bNum = document.getElementById("vesta-bond-scale-num");
+  if (bNum && !skipBondNum) bNum.value = bVal.toFixed(2);
+  document.querySelectorAll("#vesta-bond-scale-ticks .vesta-tick-btn").forEach(btn => {
+    const tv = parseFloat(btn.dataset.val);
+    btn.classList.toggle("active", isFinite(tv) && Math.abs(tv - bVal) < 0.015);
+  });
+}
+window.syncVestaScaleControls = syncVestaScaleControls;
+
+function setVestaProperty(propKey, val, commitFormat = true, source = "") {
   const numVal = parseFloat(val);
   const v3 = CASTEP_STUDIO_STATE.view3D;
-  if (propKey === "atomScale") v3.atomScale = isNaN(numVal) ? 1.0 : numVal;
-  else if (propKey === "bondScale" || propKey === "bondWidthScale") v3.bondWidthScale = isNaN(numVal) ? 1.0 : numVal;
-  else if (propKey === "bondFactor" || propKey === "bondCutoffFactor") v3.bondCutoffFactor = isNaN(numVal) ? 1.15 : numVal;
-  else if (propKey === "bondColorMode") v3.bondColorMode = (val === "uniform") ? "uniform" : "bicolor";
-  else v3[propKey] = val;
+  if (propKey === "atomScale") {
+    if (!isFinite(numVal)) {
+      if (commitFormat) syncVestaScaleControls();
+      return;
+    }
+    const clamped = Math.max(0.2, Math.min(2.0, Math.round(numVal * 100) / 100));
+    v3.atomScale = clamped;
+    try { localStorage.setItem("castep_3d_atom_scale", clamped.toFixed(2)); } catch (e) {}
+    syncVestaScaleControls(source === "num" && !commitFormat, false);
+  } else if (propKey === "bondScale" || propKey === "bondWidthScale") {
+    if (!isFinite(numVal)) {
+      if (commitFormat) syncVestaScaleControls();
+      return;
+    }
+    const clamped = Math.max(0.2, Math.min(2.0, Math.round(numVal * 100) / 100));
+    v3.bondWidthScale = clamped;
+    try { localStorage.setItem("castep_3d_bond_scale", clamped.toFixed(2)); } catch (e) {}
+    syncVestaScaleControls(false, source === "num" && !commitFormat);
+  } else if (propKey === "bondFactor" || propKey === "bondCutoffFactor") {
+    v3.bondCutoffFactor = isNaN(numVal) ? 1.15 : Math.max(0.8, Math.min(1.6, numVal));
+  } else if (propKey === "bondColorMode") {
+    v3.bondColorMode = (val === "uniform") ? "uniform" : "bicolor";
+  } else {
+    v3[propKey] = val;
+  }
   renderCastep3DScene();
   updateVestaOutputConsole();
 }
@@ -3279,8 +3337,8 @@ function renderCastep3DScene() {
 
   // Materials Studio / crystallographic Ball-and-stick proportional radii
   const stickHalfW = v3.style === "stick"
-    ? Math.max(3.2, Math.min(11.5, autoScale * 0.175 * bondWidthScale))
-    : Math.max(1.85, Math.min(7.8, autoScale * 0.115 * bondWidthScale));
+    ? Math.max(1.2, Math.min(12.0, autoScale * 0.175 * bondWidthScale))
+    : Math.max(0.75, Math.min(8.5, autoScale * 0.115 * bondWidthScale));
 
   const projectedAtoms = new Array(topo.expandedAtoms.length);
   for (let i = 0; i < topo.expandedAtoms.length; i++) {
@@ -3289,14 +3347,14 @@ function renderCastep3DScene() {
     const covR = getCrystalCovRadius(at.element);
     let radius;
     if (v3.style === "space-fill") {
-      radius = Math.max(9.0, Math.min(62.0, covR * autoScale * 0.84 * atomScale));
+      radius = Math.max(4.5, Math.min(64.0, covR * autoScale * 0.84 * atomScale));
     } else if (v3.style === "stick") {
       radius = stickHalfW * 1.04;
     } else if (v3.style === "wireframe") {
       radius = 2.4;
     } else {
-      // Ball-and-stick & Polyhedral: clean element size hierarchy, always clearly larger than stick!
-      radius = Math.max(stickHalfW * 1.55, Math.min(34.0, covR * autoScale * 0.34 * atomScale));
+      // Ball-and-stick & Polyhedral: clean element size hierarchy, responsive across 0.20x–2.00x
+      radius = Math.max(stickHalfW * 1.18, 2.2, Math.min(36.0, covR * autoScale * 0.34 * atomScale));
     }
     projectedAtoms[i] = {
       ...at,
