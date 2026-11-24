@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=131_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=131_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=132_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=132_v116_vesta_viewer'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -1966,53 +1966,104 @@
             <!-- ============================================================ -->
             <div id="castep-pane-optics" class="castep-stage-pane">
               <div class="castep-plot-toolbar">
-                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                  <label class="castep-field-lbl" style="margin:0;">Optical Spectrum:</label>
-                  <select id="castep-opt-property" class="castep-input" style="width:auto; font-weight:700;" onchange="renderCastepOpticalPlots()">
-                    <option value="multigrid">📊 4-Panel Optical Overview (Dielectric ε₁/ε₂, Absorption α, Refractive n/k, Reflectivity R &amp; Loss L)</option>
-                    <option value="absorption">🌈 Optical Absorption Coefficient α(ω) (cm⁻¹)</option>
-                    <option value="dielectric">⚡ Complex Dielectric Function ε₁(ω) [Real] &amp; ε₂(ω) [Imaginary]</option>
-                    <option value="refractive">💎 Refractive Index n(ω) &amp; Extinction Coefficient k(ω)</option>
-                    <option value="reflectivity">🪞 Optical Reflectivity R(ω)</option>
-                    <option value="conductivity">🔌 Optical Conductivity Re[σ(ω)] &amp; Im[σ(ω)] (1/fs)</option>
-                    <option value="loss">📉 Electron Energy Loss Function (EELS) L(ω) = Im[-1/ε(ω)]</option>
-                    <option value="tauc">📐 Tauc Plot Optical Band Gap (αhν)² [Direct] &amp; (αhν)¹/² [Indirect]</option>
-                  </select>
-
-                  <label class="castep-field-lbl" style="margin:0;">X-Axis:</label>
-                  <select id="castep-opt-xaxis" class="castep-input" style="width:auto;" onchange="renderCastepOpticalPlots()">
-                    <option value="ev">Photon Energy ħω (eV)</option>
-                    <option value="nm">Wavelength λ (nm) [200–1200 nm]</option>
-                  </select>
-
-                  <label class="castep-field-lbl" style="margin:0;">E<sub>max</sub> (eV):</label>
-                  <input type="number" id="castep-opt-emax" class="castep-input-sm" value="15.0" step="1.0" min="2" max="100" style="width:58px;" onchange="renderCastepOpticalPlots()" />
-                  <div style="display:flex; gap:3px;">
-                    <button type="button" class="castep-preset-chip" onclick="setCastepOpticalWindow(6)">0–6 eV (UV-Vis)</button>
-                    <button type="button" class="castep-preset-chip" onclick="setCastepOpticalWindow(15)">0–15 eV</button>
-                    <button type="button" class="castep-preset-chip" onclick="setCastepOpticalWindow(30)">0–30 eV</button>
-                    <button type="button" class="castep-preset-chip" onclick="setCastepOpticalWindow(60)">0–60 eV</button>
-                  </div>
-                </div>
-
-                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:6px;">
-                  <label class="castep-field-lbl" style="margin:0;">Spectrum File:</label>
-                  <select id="castep-opt-file-select" class="castep-input" style="width:auto; max-width:210px;" onchange="renderCastepOpticalPlots()">
+                <!-- Row 1: Materials Studio CASTEP Optical Properties Calculation Settings -->
+                <div style="display:flex; align-items:center; gap:7px; flex-wrap:wrap;">
+                  <label class="castep-field-lbl" style="margin:0;">Results:</label>
+                  <select id="castep-opt-file-select" class="castep-input" style="width:auto; max-width:230px; font-weight:700;" onchange="onCastepOptSourceChange()" title="Select live CASTEP *.ome_bin 3×3 optical tensor or exported Optical Properties *.xcd file">
                     <option value="auto">Auto (All Optical Files in Job)</option>
                   </select>
 
-                  <label class="castep-field-lbl" style="margin:0;">Scissors ΔE (eV):</label>
-                  <input type="number" id="castep-opt-scissors" class="castep-input-sm" value="0.00" step="0.1" min="-2.0" max="5.0" style="width:56px;" onchange="renderCastepOpticalPlots()" />
+                  <label class="castep-field-lbl" style="margin:0;">Calculation:</label>
+                  <select id="castep-opt-calc-mode" class="castep-input" style="width:auto; font-weight:700;" onchange="onCastepOptCalcModeChange()" title="Materials Studio CASTEP optical geometry: Polarized (along E vector), Unpolarized (averaged ⊥ to Incidence vector), or Polycrystalline (isotropic 1/3 trace)">
+                    <option value="polarized">Polarized</option>
+                    <option value="unpolarized" selected>Unpolarized</option>
+                    <option value="polycrystalline">Polycrystalline</option>
+                  </select>
 
-                  <label class="castep-field-lbl" style="margin:0;">Smearing Γ (eV):</label>
-                  <input type="number" id="castep-opt-smearing" class="castep-input-sm" value="0.25" step="0.05" min="0.05" max="1.5" style="width:56px;" onchange="renderCastepOpticalPlots()" />
+                  <div id="castep-opt-vec-wrap" style="display:inline-flex; align-items:center; gap:4px; flex-wrap:wrap;">
+                    <label id="castep-opt-vec-label" class="castep-field-lbl" style="margin:0; min-width:62px;">Incidence:</label>
+                    <input type="number" id="castep-opt-vx" class="castep-input-sm" value="0.0" step="0.1" style="width:46px; text-align:center;" title="X component of Polarization / Incidence vector" onchange="renderCastepOpticalPlots()" />
+                    <input type="number" id="castep-opt-vy" class="castep-input-sm" value="0.0" step="0.1" style="width:46px; text-align:center;" title="Y component of Polarization / Incidence vector" onchange="renderCastepOpticalPlots()" />
+                    <input type="number" id="castep-opt-vz" class="castep-input-sm" value="1.0" step="0.1" style="width:46px; text-align:center;" title="Z component of Polarization / Incidence vector" onchange="renderCastepOpticalPlots()" />
+                    <button type="button" class="castep-preset-chip" style="padding:2px 5px; font-size:10.5px;" onclick="setCastepOpticalVector(1,0,0)" title="Set direction [1 0 0]">[100]</button>
+                    <button type="button" class="castep-preset-chip" style="padding:2px 5px; font-size:10.5px;" onclick="setCastepOpticalVector(0,1,0)" title="Set direction [0 1 0]">[010]</button>
+                    <button type="button" class="castep-preset-chip" style="padding:2px 5px; font-size:10.5px;" onclick="setCastepOpticalVector(0,0,1)" title="Set direction [0 0 1]">[001]</button>
+                    <button type="button" class="castep-preset-chip" style="padding:2px 5px; font-size:10.5px;" onclick="setCastepOpticalVector(1,1,0)" title="Set direction [1 1 0]">[110]</button>
+                    <button type="button" class="castep-preset-chip" style="padding:2px 5px; font-size:10.5px;" onclick="setCastepOpticalVector(1,1,1)" title="Set direction [1 1 1]">[111]</button>
+                  </div>
 
-                  <label class="castep-chk-lbl" style="margin-left:4px;">
-                    <input type="checkbox" id="castep-opt-show-vis" checked onchange="renderCastepOpticalPlots()" />
-                    🌈 Visible Light Band (1.65–3.26 eV)
+                  <label class="castep-field-lbl" style="margin:0;">Smearing (eV):</label>
+                  <input type="number" id="castep-opt-smearing" class="castep-input-sm" value="0.50" step="0.05" min="0.02" max="2.00" style="width:56px;" title="Instrumental Gaussian smearing width (Materials Studio default: 0.50 eV)" onchange="renderCastepOpticalPlots()" />
+
+                  <label class="castep-field-lbl" style="margin:0;">Scissors (eV):</label>
+                  <input type="number" id="castep-opt-scissors" class="castep-input-sm" value="0.00" step="0.10" min="-2.0" max="6.0" style="width:56px;" title="Rigid conduction-band scissors shift Δ (eV)" onchange="renderCastepOpticalPlots()" />
+
+                  <button type="button" id="castep-opt-more-btn" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px; font-weight:700; margin-left:auto;" onclick="toggleCastepOptMorePanel()" title="Advanced Optical Parameters: Drude plasma frequency, Drude damping, Absorption formula &amp; Visible band">
+                    ⚙️ More...
+                  </button>
+                </div>
+
+                <!-- Row 1B: Collapsible Advanced Optical Options (Materials Studio More... dialog) -->
+                <div id="castep-opt-more-panel" style="display:none; align-items:center; gap:10px; flex-wrap:wrap; margin-top:6px; padding:7px 10px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; font-size:11.5px;">
+                  <label class="castep-chk-lbl" style="font-weight:700; color:#0f172a;">
+                    <input type="checkbox" id="castep-opt-use-drude" onchange="renderCastepOpticalPlots()" />
+                    Include Drude (Metals)
                   </label>
+                  <span style="display:inline-flex; align-items:center; gap:4px;">
+                    <label class="castep-field-lbl" style="margin:0;">Plasma ω<sub>p</sub> (eV):</label>
+                    <input type="number" id="castep-opt-plasma" class="castep-input-sm" value="0.00" step="0.10" min="0.0" max="25.0" style="width:58px;" onchange="renderCastepOpticalPlots()" />
+                    <button type="button" class="castep-preset-chip" style="padding:2px 6px; font-size:10.5px;" onclick="applyAutoCastepDrudePlasma()" title="Fill directional plasma frequency ωp computed from CASTEP .ome_bin intraband velocities">Auto</button>
+                  </span>
+                  <span style="display:inline-flex; align-items:center; gap:4px;">
+                    <label class="castep-field-lbl" style="margin:0;">Drude Damping γ<sub>D</sub> (eV):</label>
+                    <input type="number" id="castep-opt-drude-damp" class="castep-input-sm" value="0.05" step="0.01" min="0.005" max="2.0" style="width:56px;" title="Drude intraband damping (Materials Studio default: 0.05 eV)" onchange="renderCastepOpticalPlots()" />
+                  </span>
+                  <span style="display:inline-flex; align-items:center; gap:4px;">
+                    <label class="castep-field-lbl" style="margin:0;">α(ω) Formula:</label>
+                    <select id="castep-opt-alpha-conv" class="castep-input" style="width:auto; font-size:11px; padding:2px 6px;" onchange="renderCastepOpticalPlots()" title="Materials Studio CASTEP uses 2k/λ; Standard SI textbooks use 4πk/λ">
+                      <option value="ms_castep" selected>Materials Studio CASTEP (2k/λ)</option>
+                      <option value="standard_si">Standard Physics / SI (4πk/λ)</option>
+                    </select>
+                  </span>
+                  <label class="castep-chk-lbl" style="margin-left:auto;">
+                    <input type="checkbox" id="castep-opt-show-vis" checked onchange="renderCastepOpticalPlots()" />
+                    🌈 Visible Band (1.65–3.26 eV)
+                  </label>
+                </div>
 
-                  <div style="margin-left:auto; display:flex; gap:4px; align-items:center;">
+                <!-- Row 2: View Properties (Function, Units, Energy Window, Zoom & Export) -->
+                <div style="display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin-top:6px;">
+                  <label class="castep-field-lbl" style="margin:0;">Function:</label>
+                  <select id="castep-opt-property" class="castep-input" style="width:auto; font-weight:700;" onchange="renderCastepOpticalPlots()">
+                    <option value="multigrid">📊 4-Panel Overview (Dielectric ε₁/ε₂, Absorption α, Refractive n/k, Refl. R &amp; Loss L)</option>
+                    <option value="dielectric">⚡ Dielectric Function ε₁(ω) &amp; ε₂(ω)</option>
+                    <option value="absorption">🌈 Absorption Coefficient α(ω) (cm⁻¹)</option>
+                    <option value="refractive">💎 Refractive Index n(ω) &amp; Extinction k(ω)</option>
+                    <option value="reflectivity">🪞 Reflectivity R(ω)</option>
+                    <option value="conductivity">🔌 Optical Conductivity σ₁(ω) &amp; σ₂(ω) (1/fs)</option>
+                    <option value="loss">📉 Loss Function (EELS) L(ω) = Im[−1/ε(ω)]</option>
+                    <option value="tauc">📐 Tauc Plot Optical Band Gap (αħω)² &amp; (αħω)¹/²</option>
+                    <option value="anisotropy">🧭 Anisotropy Comparison (Pol. [100]/[010]/[001], Unpol., Poly.)</option>
+                  </select>
+
+                  <label class="castep-field-lbl" style="margin:0;">Units:</label>
+                  <select id="castep-opt-xaxis" class="castep-input" style="width:auto; font-weight:700;" onchange="resetAllOptPanelZooms(); renderCastepOpticalPlots()">
+                    <option value="ev" selected>eV</option>
+                    <option value="nm">nm</option>
+                    <option value="cm-1">cm⁻¹</option>
+                    <option value="thz">THz</option>
+                  </select>
+
+                  <label class="castep-field-lbl" style="margin:0;">E<sub>max</sub> (eV):</label>
+                  <input type="number" id="castep-opt-emax" class="castep-input-sm" value="15.0" step="1.0" min="2" max="100" style="width:54px;" onchange="renderCastepOpticalPlots()" />
+                  <div style="display:flex; gap:3px;">
+                    <button type="button" class="castep-preset-chip" onclick="setCastepOpticalWindow(6)">0–6</button>
+                    <button type="button" class="castep-preset-chip" onclick="setCastepOpticalWindow(15)">0–15</button>
+                    <button type="button" class="castep-preset-chip" onclick="setCastepOpticalWindow(30)">0–30</button>
+                    <button type="button" class="castep-preset-chip" onclick="setCastepOpticalWindow(60)">0–60</button>
+                  </div>
+
+                  <div style="margin-left:auto; display:flex; gap:4px; align-items:center; flex-wrap:wrap;">
                     <select id="castep-opt-zoom-target" class="castep-input" style="width:auto; padding:2px 6px; font-size:11px; font-weight:700;" title="Choose which panel of the 2×2 grid to zoom (or hover/scroll directly on any panel)" onchange="onCastepOptZoomTargetChange(this.value)">
                       <option value="active">Zoom: Active Panel (a)</option>
                       <option value="a">Panel (a) Dielectric</option>
@@ -2025,10 +2076,11 @@
                     <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('optics', 0.80)" title="Zoom Out Selected Panel">🔍－</button>
                     <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('optics')" title="Reset Active Panel Zoom">⊡ Reset</button>
                     <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('optics_all')" title="Reset All 4 Panels">↺ All</button>
-                    <input type="file" id="castep-opt-file-upload" multiple accept=".xcd,.csv,.txt,.dat,.bands" style="display:none;" onchange="handleCastepOpticalFilesUpload(event)" /><button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px; font-weight:700;" onclick="document.getElementById('castep-opt-file-upload').click()" title="Load CASTEP Optical Properties .xcd, _Optics.bands, or optical CSV/TXT spectrum">📥 Load Optical (.xcd/.csv)</button>
+                    <input type="file" id="castep-opt-file-upload" multiple accept=".ome_bin,.cst_ome,.bands,.cell,.castep,.xcd,.csv,.txt,.dat" style="display:none;" onchange="handleCastepOpticalFilesUpload(event)" />
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px; font-weight:700;" onclick="document.getElementById('castep-opt-file-upload').click()" title="Load CASTEP *.ome_bin + *_Optics.bands (full 3×3 tensor), Optical Properties *.xcd, or CSV spectrum">📥 .ome_bin/.xcd</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepCanvasPNG('castep-optics-canvas', 'CASTEP_Optical_Properties.png')">📷 PNG</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepOpticalCSV('all')" title="Export all Optical Spectra &amp; Tauc Fit columns to CSV">📊 CSV</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="exportCastepOpticalXLSX()" title="Export multi-tab Excel workbook (Summary, Dielectric, Absorption+Tauc, n/k, Reflectivity/EELS/Conductivity, Raw XCD)">📗 Excel</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="exportCastepOpticalXLSX()" title="Export multi-tab Excel workbook (Summary, Dielectric, Absorption+Tauc, n/k, Reflectivity/EELS/Conductivity, Anisotropy Tensor, Raw XCD)">📗 Excel</button>
                   </div>
                 </div>
               </div>
@@ -2040,7 +2092,7 @@
               <div class="castep-plot-canvas-card">
                 <canvas id="castep-optics-canvas" width="900" height="520"></canvas>
                 <div id="castep-optics-readout" class="castep-plot-readout">
-                  Hover over any optical spectrum to inspect exact Photon Energy ħω (eV), Wavelength λ (nm), Dielectric Function ε₁/ε₂, Absorption α (cm⁻¹), Refractive Index n/k, and Reflectivity R.
+                  Hover over any optical spectrum to inspect exact Photon Energy ħω (eV), Wavelength λ (nm), Wavenumber ν̃ (cm⁻¹), Dielectric Function ε<sub>1</sub>/ε<sub>2</sub>, Absorption α (cm⁻¹), Refractive Index n/k, and Reflectivity R.
                 </div>
               </div>
             </div>
@@ -5474,9 +5526,9 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=131_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=131_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=131_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=131_v116_vesta_viewer'"></script>
-  <script src="app.js?v=131_v116_vesta_viewer" onerror="this.src='/static/app.js?v=131_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=132_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=132_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=132_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=132_v116_vesta_viewer'"></script>
+  <script src="app.js?v=132_v116_vesta_viewer" onerror="this.src='/static/app.js?v=132_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
