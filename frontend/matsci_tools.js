@@ -1990,6 +1990,9 @@ async function loadCastepJobIntoStudio(jobId) {
   const seedInp = document.getElementById("castep-save-seed-input");
   if (folderInp) folderInp.value = job.folder || "";
   if (seedInp) seedInp.value = job.seed || "";
+  if (CASTEP_STUDIO_STATE.activeStagePane === "optics") {
+    await ensureJobOpticalTensorHydrated(job);
+  }
   populateCastepOpticalFileSelect(job);
   populateCastepPdosTargetSelect(job);
   attachMullikenSpinsToStructure(job);
@@ -2080,6 +2083,9 @@ async function switchCastepStagePane(paneId, btnEl) {
   const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
   if (paneId === "chdiff" && job) {
     await ensureJobChdiffHydrated(job);
+  } else if (paneId === "optics" && job) {
+    await ensureJobOpticalTensorHydrated(job);
+    populateCastepOpticalFileSelect(job);
   }
 
   requestAnimationFrame(() => {
@@ -6692,7 +6698,7 @@ async function mountCastepLocalDirectory() {
 }
 window.mountCastepLocalDirectory = mountCastepLocalDirectory;
 
-const CASTEP_RELEVANT_EXT_RE = /\.(cell|param|castep|geom|bands|xcd|xsd|cif|chdiff|charg_frm|den_fmt|cube|pdos_bin|xyz|csv|dat)$/i;
+const CASTEP_RELEVANT_EXT_RE = /\.(cell|param|castep|geom|bands|xcd|xsd|cif|chdiff|charg_frm|den_fmt|cube|pdos_bin|ome_bin|cst_ome|xyz|csv|dat)$/i;
 const CASTEP_SKIP_DIRS = new Set([".git", "node_modules", "__pycache__", "$recycle.bin", "system volume information"]);
 
 function parseSbjTextClient(sbjText, filename, isArchived = false) {
@@ -6852,7 +6858,7 @@ async function scanMountedDirectoryHandleRecursive(dirHandle, relPath, depth, di
 
       const hasCastep = fnames.some(n => n.toLowerCase() === `${seed.toLowerCase()}.castep`);
       const hasStatus = !!statusFh;
-      const hasOptics = fnames.some(n => (/optic|dielec|absorp/i.test(n) && n.toLowerCase().endsWith(".xcd")) || n.toLowerCase().endsWith("_optics.bands"));
+      const hasOptics = fnames.some(n => (/optic|dielec|absorp/i.test(n) && n.toLowerCase().endsWith(".xcd") && !/(convergence|energies)/i.test(n)) || /\.(ome_bin|cst_ome)$/i.test(n) || n.toLowerCase().endsWith("_optics.bands") || n.toLowerCase().endsWith("_optics.castep"));
       const hasBandDos = fnames.some(n => n.toLowerCase().endsWith("_bandstr.bands") || n.toLowerCase().endsWith("_dos.bands") || (/(band structure|density of states|dos|pdos)/i.test(n) && n.toLowerCase().endsWith(".xcd")));
       const hasChdiff = fnames.some(n => /\.(chdiff|charg_frm|den_fmt|cube)$/i.test(n));
 
@@ -8972,26 +8978,82 @@ window.applyAutoCastepDrudePlasma = applyAutoCastepDrudePlasma;
 async function onCastepOptSourceChange() {
   const sel = document.getElementById("castep-opt-file-select");
   const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
-  if (sel && sel.value === "tensor_lazy" && job && !job.optical_tensor) {
-    await fetchOpticalTensorForJobIfNeeded(job);
-    populateCastepOpticalFileSelect(job);
+  if (sel && job) {
+    const val = sel.value;
+    if (val === "tensor_lazy" && !job.optical_tensor) {
+      await ensureJobOpticalTensorHydrated(job);
+      populateCastepOpticalFileSelect(job);
+    } else if (val.startsWith("sib:")) {
+      const sIdx = parseInt(val.slice(4), 10);
+      const sb = Array.isArray(job.sibling_optics) ? job.sibling_optics[sIdx] : null;
+      if (sb) {
+        const apiBase = getCastepApiBase() || (["localhost", "127.0.0.1", "::1"].includes(window.location.hostname) ? "" : "http://127.0.0.1:8877");
+        try {
+          const resp = await fetch(`${apiBase}/api/castep/optics-tensor?folder=${encodeURIComponent(sb.folder)}&ome_file=${encodeURIComponent(sb.ome_file)}&bands_file=${encodeURIComponent(sb.bands_file)}`);
+          if (resp.ok) {
+            const data = await resp.json();
+            if (data?.optical_tensor) {
+              job.optical_tensor = { ...data.optical_tensor, results_file: sb.results_file, sibling_folder: sb.folder };
+              CASTEP_STUDIO_STATE._optSpectraCacheKey = "";
+              populateCastepOpticalFileSelect(job);
+            }
+          }
+        } catch (e) {}
+      }
+    }
   }
   renderCastepOpticalPlots();
 }
 window.onCastepOptSourceChange = onCastepOptSourceChange;
 
-async function fetchOpticalTensorForJobIfNeeded(job) {
+async function ensureJobOpticalTensorHydrated(job) {
   if (!job || job.optical_tensor || job._loadingOpticalTensor) return job?.optical_tensor || null;
-  if (!job.ome_bin_file || !job.optics_bands_file) return null;
   job._loadingOpticalTensor = true;
   try {
+    // 1) Browser mounted folder (_fileMap) containing *.ome_bin + *_Optics.bands
+    if (job._fileMap && Object.keys(job._fileMap).length > 0) {
+      const entries = Object.entries(job._fileMap);
+      const omeE = entries.find(([n]) => /\.(ome_bin|cst_ome)$/i.test(n));
+      const bndE = entries.find(([n]) => /_optics\.bands$/i.test(n));
+      const casE = entries.find(([n]) => /_optics\.castep$/i.test(n));
+      const celE = entries.find(([n]) => /_optics\.cell$/i.test(n));
+      if (omeE && (job.optics_bands || bndE)) {
+        if (!job.optics_bands && bndE) {
+          const bt = await readFromFileOrHandle(bndE[1], false);
+          if (bt) job.optics_bands = parseCastepBandsTextClient(bt);
+          job.optics_bands_file = bndE[0];
+        }
+        const optCasTxt = job.optics_castep_text || (casE ? await readFromFileOrHandle(casE[1], false) : "");
+        const optCelTxt = celE ? await readFromFileOrHandle(celE[1], false) : (job.cell_text || "");
+        const buf = await readFromFileOrHandle(omeE[1], true);
+        if (buf && job.optics_bands) {
+          job.ome_bin_file = omeE[0];
+          if (casE) job.optics_castep_file = casE[0];
+          const tensor = parseCastepOmeBinArrayBuffer(
+            buf, job.optics_bands, optCelTxt || "", optCasTxt || "",
+            omeE[0], job.optics_castep_file || job.optics_bands_file || omeE[0]
+          );
+          if (tensor) {
+            job.optical_tensor = tensor;
+            CASTEP_STUDIO_STATE._optSpectraCacheKey = "";
+            return tensor;
+          }
+        }
+      }
+    }
+
+    // 2) Remote Gateway or Local FastAPI backend on-demand tensor extraction
     const apiBase = getCastepApiBase() || (["localhost", "127.0.0.1", "::1"].includes(window.location.hostname) ? "" : "http://127.0.0.1:8877");
     let url = "";
-    if (job.remote_gateway && job.gateway_job_id) {
+    if (job.remote_gateway && job.gateway_job_id && job.ome_bin_file && job.optics_bands_file) {
       const gwUrl = normalizeMsGatewayUrlClient(CASTEP_STUDIO_STATE.gatewayUrl || DEFAULT_MS_GATEWAY_URL);
       url = `${apiBase}/api/castep/gateway/optics-tensor/${encodeURIComponent(job.gateway_job_id)}?ome_file=${encodeURIComponent(job.ome_bin_file)}&bands_file=${encodeURIComponent(job.optics_bands_file)}&cell_file=${encodeURIComponent(job.optics_cell_file || "")}&castep_file=${encodeURIComponent(job.optics_castep_file || "")}&gateway_url=${encodeURIComponent(gwUrl)}`;
-    } else if (job.folder && CASTEP_STUDIO_STATE.localBackendConnected) {
-      url = `${apiBase}/api/castep/optics-tensor?folder=${encodeURIComponent(job.folder)}&ome_file=${encodeURIComponent(job.ome_bin_file)}&bands_file=${encodeURIComponent(job.optics_bands_file)}`;
+    } else if (job.folder && CASTEP_STUDIO_STATE.localBackendConnected && (job.ome_bin_file || (job.files_list || []).some(f => /\.(ome_bin|cst_ome)$/i.test(f)))) {
+      const omeF = job.ome_bin_file || (job.files_list || []).find(f => /\.(ome_bin|cst_ome)$/i.test(f)) || "";
+      const bndF = job.optics_bands_file || (job.files_list || []).find(f => /_optics\.bands$/i.test(f)) || "";
+      if (omeF && bndF) {
+        url = `${apiBase}/api/castep/optics-tensor?folder=${encodeURIComponent(job.folder)}&ome_file=${encodeURIComponent(omeF)}&bands_file=${encodeURIComponent(bndF)}`;
+      }
     }
     if (url) {
       const resp = await fetch(url);
@@ -8999,6 +9061,7 @@ async function fetchOpticalTensorForJobIfNeeded(job) {
         const data = await resp.json();
         if (data?.optical_tensor) {
           job.optical_tensor = data.optical_tensor;
+          CASTEP_STUDIO_STATE._optSpectraCacheKey = "";
           return job.optical_tensor;
         }
       }
@@ -9008,6 +9071,46 @@ async function fetchOpticalTensorForJobIfNeeded(job) {
   }
   return null;
 }
+window.ensureJobOpticalTensorHydrated = ensureJobOpticalTensorHydrated;
+
+async function pickCastepOpticsFolder() {
+  if (typeof window.showDirectoryPicker === "function") {
+    try {
+      const dirHandle = await window.showDirectoryPicker({ mode: "read" });
+      const files = [];
+      for await (const entry of dirHandle.values()) {
+        if (entry.kind === "file") {
+          const low = entry.name.toLowerCase();
+          if (/\.(ome_bin|cst_ome|bands|cell|castep|xcd|csv|dat|txt)$/i.test(low)) {
+            files.push(await entry.getFile());
+          }
+        }
+      }
+      if (!files.length) {
+        if (typeof showToast === "function") showToast(`No CASTEP optical files (*_Optics.castep, *.ome_bin, *_Optics.bands, *.xcd) found in "${dirHandle.name}".`, "warning");
+        return;
+      }
+      await ingestOpticalFilesIntoActiveJob(files, dirHandle.name);
+      return;
+    } catch (e) {
+      if (e && e.name === "AbortError") return;
+    }
+  }
+  const inp = document.getElementById("castep-opt-folder-upload");
+  if (inp) inp.click();
+}
+window.pickCastepOpticsFolder = pickCastepOpticsFolder;
+
+async function handleCastepOpticalFolderFallback(event) {
+  const rawFiles = Array.from(event.target?.files || []);
+  const files = rawFiles.filter(f => /\.(ome_bin|cst_ome|bands|cell|castep|xcd|csv|dat|txt)$/i.test(f.name));
+  if (files.length) {
+    const dirName = (files[0].webkitRelativePath || "").split("/")[0] || "Optical Folder";
+    await ingestOpticalFilesIntoActiveJob(files, dirName);
+  }
+  event.target.value = "";
+}
+window.handleCastepOpticalFolderFallback = handleCastepOpticalFolderFallback;
 
 function setCastepOpticalWindow(emaxEv) {
   const el = document.getElementById("castep-opt-emax");
@@ -9021,24 +9124,33 @@ function populateCastepOpticalFileSelect(job) {
   const sel = document.getElementById("castep-opt-file-select");
   if (!sel) return;
   const list = Array.isArray(job?.optical_xcds) ? job.optical_xcds : (job?.optical_xcd ? [job.optical_xcd] : []);
+  const sibs = Array.isArray(job?.sibling_optics) ? job.sibling_optics : [];
   let html = "";
   if (job?.optical_tensor) {
     const resName = job.optical_tensor.results_file || job.optics_castep_file || job.optical_tensor.source_file || "Optics.ome_bin";
     html += `<option value="tensor">⚡ ${escapeHtml(resName)} (Live 3×3 Tensor)</option>`;
-  } else if (job?.ome_bin_file && job?.optics_bands_file) {
+  } else if (job?.ome_bin_file && (job?.optics_bands_file || job?.optics_bands)) {
     html += `<option value="tensor_lazy">⚡ ${escapeHtml(job.optics_castep_file || job.ome_bin_file)} (Load 3×3 Tensor)</option>`;
   }
-  if (list.length > 0 || !html) {
-    html += `<option value="auto">${html ? `Exported XCD (${list.length} file${list.length === 1 ? "" : "s"})` : `Auto (${list.length} optical file${list.length === 1 ? "" : "s"})`}</option>`;
-  }
-  list.forEach((xcd, idx) => {
-    const sNames = (xcd.series || []).map(s => s.name).filter(Boolean).join(", ");
-    const label = `${xcd.filename || "Optical_" + (idx + 1) + ".xcd"}${sNames ? " [" + sNames + "]" : ""}`;
-    html += `<option value="${idx}">${escapeHtml(label)}</option>`;
+  sibs.forEach((sb, idx) => {
+    if (job?.optical_tensor?.sibling_folder === sb.folder) return;
+    html += `<option value="sib:${idx}">📂 ${escapeHtml(sb.results_file)} (Sibling 3×3 Tensor)</option>`;
   });
+  if (list.length > 0) {
+    html += `<option value="auto">${html ? `Exported XCD (${list.length} file${list.length === 1 ? "" : "s"})` : `Auto (${list.length} optical file${list.length === 1 ? "" : "s"})`}</option>`;
+    list.forEach((xcd, idx) => {
+      const sNames = (xcd.series || []).map(s => s.name).filter(Boolean).join(", ");
+      const label = `${xcd.filename || "Optical_" + (idx + 1) + ".xcd"}${sNames ? " [" + sNames + "]" : ""}`;
+      html += `<option value="${idx}">${escapeHtml(label)}</option>`;
+    });
+  } else if (!html) {
+    const bandsHint = job?.optics_castep_file || job?.optics_bands_file || (job?.optics_bands ? `${job.seed || "CASTEP"}_Optics.bands` : "");
+    html += bandsHint
+      ? `<option value="auto">📄 ${escapeHtml(bandsHint)} (JDOS — load *.ome_bin for 3D Polarized)</option>`
+      : `<option value="auto">No Optical Results — click 📂 Optics Folder</option>`;
+  }
   sel.innerHTML = html;
 
-  // Sync Calculation vector label/enablement
   const mode = document.getElementById("castep-opt-calc-mode")?.value || "unpolarized";
   const wrap = document.getElementById("castep-opt-vec-wrap");
   const lbl = document.getElementById("castep-opt-vec-label");
@@ -9050,19 +9162,17 @@ function populateCastepOpticalFileSelect(job) {
   }
 }
 
-async function handleCastepOpticalFilesUpload(event) {
-  const files = Array.from(event.target?.files || []);
-  if (!files.length) return;
-
+async function ingestOpticalFilesIntoActiveJob(files, folderLabel = "Imported Optical Files") {
+  if (!files || !files.length) return;
   let job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
   if (!job) {
     const seed = normalizeCastepSeedClient(files[0].name);
     job = enrichCastepJobSummary({
       id: "opt_import_" + Date.now(),
-      title: `${seed} (Optical Import)`,
+      title: `${seed} (${folderLabel})`,
       project: "Optical Analysis",
       material: seed,
-      folder: "Imported Optical Files",
+      folder: folderLabel,
       seed,
       status: "Completed",
       files_list: files.map(f => f.name),
@@ -9078,19 +9188,20 @@ async function handleCastepOpticalFilesUpload(event) {
   let optCellText = job.cell_text || "";
   for (const f of files) {
     const low = f.name.toLowerCase();
+    if (/(convergence|energies|band structure|density of states|pdos)/i.test(low) && low.endsWith(".xcd")) continue;
     if (low.endsWith(".ome_bin") || low.endsWith(".cst_ome")) {
       job._pendingOmeBuf = await f.arrayBuffer();
       job.ome_bin_file = f.name;
       added++;
-    } else if (low.endsWith(".bands")) {
+    } else if (low.endsWith("_optics.bands") || (low.endsWith(".bands") && !low.endsWith("_bandstr.bands") && !low.endsWith("_dos.bands") && !job.optics_bands)) {
       const txt = await f.text();
       const b = parseCastepBandsTextClient(txt);
       if (b) { job.optics_bands = b; job.optics_bands_file = f.name; added++; }
-    } else if (low.endsWith(".cell")) {
+    } else if (low.endsWith("_optics.cell") || (low.endsWith(".cell") && !optCellText)) {
       optCellText = await f.text();
       job.optics_cell_file = f.name;
       added++;
-    } else if (low.endsWith(".castep")) {
+    } else if (low.endsWith("_optics.castep") || (low.endsWith(".castep") && !job.optics_castep_file)) {
       job.optics_castep_text = await f.text();
       job.optics_castep_file = f.name;
       added++;
@@ -9103,7 +9214,7 @@ async function handleCastepOpticalFilesUpload(event) {
         job.optical_xcd = job.optical_xcds[0];
         added++;
       }
-    } else {
+    } else if (/\.(csv|dat|txt)$/i.test(low)) {
       const txt = await f.text();
       const parsedCsv = parseOpticalCsvTableClient(txt, f.name);
       if (parsedCsv) {
@@ -9114,7 +9225,6 @@ async function handleCastepOpticalFilesUpload(event) {
     }
   }
 
-  // If both .ome_bin buffer and _Optics.bands are present, compute exact 3x3 optical tensor in browser!
   if (job._pendingOmeBuf && job.optics_bands) {
     const tensor = parseCastepOmeBinArrayBuffer(
       job._pendingOmeBuf, job.optics_bands, optCellText, job.optics_castep_text || "",
@@ -9123,6 +9233,28 @@ async function handleCastepOpticalFilesUpload(event) {
     if (tensor) {
       job.optical_tensor = tensor;
       delete job._pendingOmeBuf;
+    }
+  }
+
+  // If user only picked *_Optics.castep without .ome_bin while local backend is connected, resolve matching .ome_bin on disk!
+  if (!job.optical_tensor && !job._pendingOmeBuf && job.optics_castep_file && CASTEP_STUDIO_STATE.localBackendConnected) {
+    const matchJob = (CASTEP_STUDIO_STATE.jobs || []).find(j =>
+      j.folder && (j.files_list || []).some(fn => fn.toLowerCase() === job.optics_castep_file.toLowerCase()) &&
+      (j.files_list || []).some(fn => /\.(ome_bin|cst_ome)$/i.test(fn))
+    );
+    if (matchJob) {
+      const omeF = (matchJob.files_list || []).find(fn => /\.(ome_bin|cst_ome)$/i.test(fn));
+      const bndF = (matchJob.files_list || []).find(fn => /_optics\.bands$/i.test(fn));
+      if (omeF && bndF) {
+        const apiBase = getCastepApiBase() || (["localhost", "127.0.0.1", "::1"].includes(window.location.hostname) ? "" : "http://127.0.0.1:8877");
+        try {
+          const resp = await fetch(`${apiBase}/api/castep/optics-tensor?folder=${encodeURIComponent(matchJob.folder)}&ome_file=${encodeURIComponent(omeF)}&bands_file=${encodeURIComponent(bndF)}`);
+          if (resp.ok) {
+            const data = await resp.json();
+            if (data?.optical_tensor) job.optical_tensor = data.optical_tensor;
+          }
+        } catch (e) {}
+      }
     }
   }
 
@@ -9136,12 +9268,20 @@ async function handleCastepOpticalFilesUpload(event) {
   renderCastepOpticalPlots();
   if (typeof showToast === "function") {
     const msg = job.optical_tensor
-      ? `⚡ Loaded exact CASTEP 3×3 optical tensor (${job.optical_tensor.nk} k-pts, ${job.optical_tensor.nbands} bands) — Polarized, Unpolarized & Polycrystalline ready!`
+      ? `⚡ Loaded exact CASTEP 3×3 optical tensor from ${job.optical_tensor.results_file} (${job.optical_tensor.nk} k-pts, ${job.optical_tensor.nbands} bands) — Polarized, Unpolarized & Polycrystalline active!`
       : (job._pendingOmeBuf && !job.optics_bands
-        ? "Loaded *.ome_bin! Please also select the matching *_Optics.bands file to compute the 3×3 optical tensor."
-        : (added ? `🌈 Loaded ${added} optical data file(s) into analyzer!` : "No valid optical curves found in selected file(s)."));
-    showToast(msg, (added && !(job._pendingOmeBuf && !job.optics_bands)) ? "success" : "info");
+        ? "Loaded *.ome_bin! Please also select the matching *_Optics.bands file (or click 📂 Optics Folder)."
+        : (job.optics_castep_file && !job.optical_tensor
+          ? `Loaded ${job.optics_castep_file}. To enable live Polarized / Unpolarized / Polycrystalline switching, click 📂 Optics Folder (to load *_Optics.ome_bin + *_Optics.bands together).`
+          : (added ? `🌈 Loaded ${added} optical data file(s) into analyzer!` : "No valid optical curves found in selected file(s).")));
+    showToast(msg, job.optical_tensor ? "success" : "info");
   }
+}
+
+async function handleCastepOpticalFilesUpload(event) {
+  const files = Array.from(event.target?.files || []);
+  if (!files.length) return;
+  await ingestOpticalFilesIntoActiveJob(files, "Imported Optical Files");
   event.target.value = "";
 }
 window.handleCastepOpticalFilesUpload = handleCastepOpticalFilesUpload;
