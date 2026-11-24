@@ -7937,10 +7937,10 @@ function buildCastepPlotDataForClipboard(plotKey, subPart = "auto") {
     const pkg = buildOpticalExportTables();
     if (!pkg) return null;
     const prop = document.getElementById("castep-opt-property")?.value || "multigrid";
-    if (subPart === "dielectric") return { title: "Panel (a) Dielectric ε₁/ε₂", headers: pkg.dielSheet.headers, rows: pkg.dielSheet.rows };
-    if (subPart === "absorption") return { title: "Panel (b) Absorption α & Tauc", headers: pkg.absSheet.headers, rows: pkg.absSheet.rows };
-    if (subPart === "refractive") return { title: "Panel (c) Refractive n & k", headers: pkg.nkSheet.headers, rows: pkg.nkSheet.rows };
-    if (subPart === "rlc") return { title: "Panel (d) Reflectivity R & EELS L", headers: pkg.rlcSheet.headers, rows: pkg.rlcSheet.rows };
+    if (subPart === "dielectric") return { title: "Dielectric ε₁/ε₂", headers: pkg.dielSheet.headers, rows: pkg.dielSheet.rows };
+    if (subPart === "absorption") return { title: "Absorption α & Tauc", headers: pkg.absSheet.headers, rows: pkg.absSheet.rows };
+    if (subPart === "refractive") return { title: "Refractive n & k", headers: pkg.nkSheet.headers, rows: pkg.nkSheet.rows };
+    if (subPart === "rlc") return { title: "Reflectivity R & EELS L", headers: pkg.rlcSheet.headers, rows: pkg.rlcSheet.rows };
     if ((subPart === "anisotropy" || prop === "anisotropy") && pkg.anisoSheet) {
       return { title: "Optical Anisotropy Tensor", headers: pkg.anisoSheet.headers, rows: pkg.anisoSheet.rows };
     }
@@ -11163,7 +11163,7 @@ function renderCastepOpticalPlots() {
     const hw = Math.floor(width / 2);
     const hh = Math.floor(height / 2);
     drawOpticalSubPanel(0, 0, hw, hh, {
-      panelKey: "a", title: "(a) Dielectric ε(ω)", subLabel: "Panel (a) Dielectric ε(ω)",
+      panelKey: "a", title: "Dielectric ε(ω)", subLabel: "Dielectric ε(ω)",
       dataSubPart: "dielectric", pngName: "CASTEP_Optical_a_Dielectric.png",
       series: [
         { label: "ε_{1} Real", values: spec.eps1, color: "#2563eb", width: 2.0 },
@@ -11171,7 +11171,7 @@ function renderCastepOpticalPlots() {
       ]
     });
     drawOpticalSubPanel(hw, 0, width - hw, hh, {
-      panelKey: "b", title: "(b) Absorption α (×10^{4} cm^{-1})", subLabel: "Panel (b) Absorption α",
+      panelKey: "b", title: "Absorption α (×10^{4} cm^{-1})", subLabel: "Absorption α",
       dataSubPart: "absorption", pngName: "CASTEP_Optical_b_Absorption.png",
       yMinForced: 0,
       series: [
@@ -11179,7 +11179,7 @@ function renderCastepOpticalPlots() {
       ]
     });
     drawOpticalSubPanel(0, hh, hw, height - hh, {
-      panelKey: "c", title: "(c) Refractive n & k", subLabel: "Panel (c) Refractive n & k",
+      panelKey: "c", title: "Refractive n & k", subLabel: "Refractive n & k",
       dataSubPart: "refractive", pngName: "CASTEP_Optical_c_Refractive.png",
       yMinForced: 0,
       series: [
@@ -11188,7 +11188,7 @@ function renderCastepOpticalPlots() {
       ]
     });
     drawOpticalSubPanel(hw, hh, width - hw, height - hh, {
-      panelKey: "d", title: "(d) Reflectivity R & EELS L", subLabel: "Panel (d) Reflectivity R & EELS L",
+      panelKey: "d", title: "Reflectivity R & EELS L", subLabel: "Reflectivity R & EELS L",
       dataSubPart: "rlc", pngName: "CASTEP_Optical_d_Reflectivity_EELS.png",
       yMinForced: 0,
       series: [
@@ -11206,7 +11206,7 @@ function renderCastepOpticalPlots() {
       const A = spec.anisotropyData;
       const hw = Math.floor(width / 2);
       drawOpticalSubPanel(0, 0, hw, height, {
-        panelKey: "a", title: "(a) Dielectric ε_{2}(ω) Optical Anisotropy", subLabel: "Panel (a) Dielectric ε₂ Anisotropy",
+        panelKey: "a", title: "Dielectric ε_{2}(ω) Optical Anisotropy", subLabel: "Dielectric ε₂ Anisotropy",
         dataSubPart: "anisotropy", pngName: "CASTEP_Optical_Anisotropy_Eps2.png",
         yMinForced: 0,
         series: [
@@ -11218,7 +11218,7 @@ function renderCastepOpticalPlots() {
         ]
       });
       drawOpticalSubPanel(hw, 0, width - hw, height, {
-        panelKey: "b", title: "(b) Absorption α(ω) (×10^{4} cm^{-1}) Anisotropy", subLabel: "Panel (b) Absorption α Anisotropy",
+        panelKey: "b", title: "Absorption α(ω) (×10^{4} cm^{-1}) Anisotropy", subLabel: "Absorption α Anisotropy",
         dataSubPart: "anisotropy", pngName: "CASTEP_Optical_Anisotropy_Alpha.png",
         yMinForced: 0,
         series: [
@@ -12136,7 +12136,7 @@ function renderCastepChdiffPlots() {
     ctx.font = castepPlotFont("title", 0.88);
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
-    ctx.fillText(`(a) 3D Structure + Δρ (±${isoVal.toFixed(4)} ${chGrid.unit || "e/Å³"})`, bx + 10, by + 18);
+    ctx.fillText(`3D Structure + Δρ (±${isoVal.toFixed(4)} ${chGrid.unit || "e/Å³"})`, bx + 10, by + 18);
 
     ctx.beginPath();
     ctx.rect(bx + 9, by + 27, bw - 18, bh - 36);
@@ -12361,7 +12361,7 @@ function renderCastepChdiffPlots() {
     ctx.fillText(formatPubMinus(`-${satMax.toFixed(3)}`), cbX + cbW + 4, py0 + ph - 4);
 
     ctx.fillStyle = stP.inkColor; ctx.font = castepPlotFont("title", 0.88); ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-    ctx.fillText(`(b) 2D Slice ${planeTitle}`, px0, by + 18);
+    ctx.fillText(`2D Slice ${planeTitle}`, px0, by + 18);
     ctx.fillStyle = stP.inkColor; ctx.font = castepPlotFont("axis", 0.88); ctx.textAlign = "center"; ctx.textBaseline = "top";
     ctx.fillText(xLbl, px0 + pw / 2, py0 + ph + 10 + outTickExtra);
     ctx.font = castepPlotFont("tick", 0.86); ctx.textAlign = "right"; ctx.textBaseline = "middle";
@@ -12482,7 +12482,7 @@ function renderCastepChdiffPlots() {
 
     // Titles & Clear Two-Curve Legend
     ctx.fillStyle = stP.inkColor; ctx.font = castepPlotFont("title", 0.85); ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-    ctx.fillText(`(c) ━━ Δρ(z) [${unit1DLbl}]`, px0, by + 18);
+    ctx.fillText(`━━ Δρ(z) [${unit1DLbl}]`, px0, by + 18);
     ctx.fillStyle = "#7c3aed"; ctx.font = castepPlotFont("legend", 0.88, "bold"); ctx.textAlign = "right";
     ctx.fillText("┄┄ ΔQ(z) [e]", px0 + pw, by + 18);
 
@@ -12517,17 +12517,17 @@ function renderCastepChdiffPlots() {
     draw2DSlicePanel(w1, 0, w2, height);
     draw1DPlanarPanel(w1 + w2, 0, w3, height);
     canvas._subPanelRects = [
-      { key: "iso3d", label: "Panel (a) 3D Structure + Δρ", x: 0, y: 0, w: w1, h: height, plotKey: "chdiff", dataSubPart: "1d", pngName: "CASTEP_Chdiff_a_3D.png" },
-      { key: "slice2d", label: "Panel (b) 2D Slice", x: w1, y: 0, w: w2, h: height, plotKey: "chdiff", dataSubPart: "2d", pngName: "CASTEP_Chdiff_b_2DSlice.png" },
-      { key: "planar1d", label: "Panel (c) 1D Planar Δρ(z) & ΔQ(z)", x: w1 + w2, y: 0, w: w3, h: height, plotKey: "chdiff", dataSubPart: "1d", pngName: "CASTEP_Chdiff_c_1DPlanar.png" }
+      { key: "iso3d", label: "3D Structure + Δρ", x: 0, y: 0, w: w1, h: height, plotKey: "chdiff", dataSubPart: "1d", pngName: "CASTEP_Chdiff_3D.png" },
+      { key: "slice2d", label: "2D Slice", x: w1, y: 0, w: w2, h: height, plotKey: "chdiff", dataSubPart: "2d", pngName: "CASTEP_Chdiff_2DSlice.png" },
+      { key: "planar1d", label: "1D Planar Δρ(z) & ΔQ(z)", x: w1 + w2, y: 0, w: w3, h: height, plotKey: "chdiff", dataSubPart: "1d", pngName: "CASTEP_Chdiff_1DPlanar.png" }
     ];
   } else if (layout === "iso2d") {
     const w1 = Math.floor(width * 0.50);
     draw3DIsosurfacePanel(0, 0, w1, height);
     draw2DSlicePanel(w1, 0, width - w1, height);
     canvas._subPanelRects = [
-      { key: "iso3d", label: "Panel (a) 3D Structure + Δρ", x: 0, y: 0, w: w1, h: height, plotKey: "chdiff", dataSubPart: "1d", pngName: "CASTEP_Chdiff_a_3D.png" },
-      { key: "slice2d", label: "Panel (b) 2D Slice", x: w1, y: 0, w: width - w1, h: height, plotKey: "chdiff", dataSubPart: "2d", pngName: "CASTEP_Chdiff_b_2DSlice.png" }
+      { key: "iso3d", label: "3D Structure + Δρ", x: 0, y: 0, w: w1, h: height, plotKey: "chdiff", dataSubPart: "1d", pngName: "CASTEP_Chdiff_3D.png" },
+      { key: "slice2d", label: "2D Slice", x: w1, y: 0, w: width - w1, h: height, plotKey: "chdiff", dataSubPart: "2d", pngName: "CASTEP_Chdiff_2DSlice.png" }
     ];
   } else if (layout === "slice2d") {
     draw2DSlicePanel(0, 0, width, height);
@@ -12886,7 +12886,8 @@ function updateActiveOptPanelLabel(panelKey) {
   CASTEP_STUDIO_STATE.activeOptPanel = panelKey;
   const sel = document.getElementById("castep-opt-zoom-target");
   if (sel && sel.options && sel.options[0]) {
-    sel.options[0].textContent = `Zoom: Active Panel (${panelKey})`;
+    const pNameMap = { a: "Dielectric", b: "Absorption", c: "Refractive", d: "Refl & EELS" };
+    sel.options[0].textContent = `Zoom: Active (${pNameMap[panelKey] || "Plot"})`;
   }
 }
 
@@ -16770,8 +16771,8 @@ function drawTransportBandFitCanvas(res) {
   const splitX = Math.round(x0L + panelW + gapX * 0.5);
 
   canvas._subPanelRects = [
-    { key: "cbm_fit", label: "Panel (a) Electron CBM Fit", x: 0, y: 0, w: splitX, h: height, plotKey: "transport", dataSubPart: "branches", pngName: "CASTEP_Electron_Effective_Mass_Fit.png" },
-    { key: "vbm_fit", label: "Panel (b) Hole VBM Fit", x: splitX, y: 0, w: width - splitX, h: height, plotKey: "transport", dataSubPart: "branches", pngName: "CASTEP_Hole_Effective_Mass_Fit.png" }
+    { key: "cbm_fit", label: "Electron CBM Fit", x: 0, y: 0, w: splitX, h: height, plotKey: "transport", dataSubPart: "branches", pngName: "CASTEP_Electron_Effective_Mass_Fit.png" },
+    { key: "vbm_fit", label: "Hole VBM Fit", x: splitX, y: 0, w: width - splitX, h: height, plotKey: "transport", dataSubPart: "branches", pngName: "CASTEP_Hole_Effective_Mass_Fit.png" }
   ];
 
   const branchColors = ["#2563eb", "#dc2626", "#059669", "#9333ea", "#d97706", "#0891b2"];
@@ -16941,8 +16942,8 @@ function drawTransportBandFitCanvas(res) {
     ctx.restore();
   };
 
-  drawBranchPanel(x0L, padT, panelW, panelH, act.eBranches, `(a) Conduction Band Edge (e^{−}, m*_{c} = ${res.meCond ? res.meCond.toFixed(3) : "—"} m_{0})`, "e");
-  drawBranchPanel(x0R, padT, panelW, panelH, act.hBranches, `(b) Valence Band Edge (h^{+}, m*_{c} = ${res.mhCond ? res.mhCond.toFixed(3) : "—"} m_{0})`, "h");
+  drawBranchPanel(x0L, padT, panelW, panelH, act.eBranches, `Conduction Band Edge (e^{−}, m*_{c} = ${res.meCond ? res.meCond.toFixed(3) : "—"} m_{0})`, "e");
+  drawBranchPanel(x0R, padT, panelW, panelH, act.hBranches, `Valence Band Edge (h^{+}, m*_{c} = ${res.mhCond ? res.mhCond.toFixed(3) : "—"} m_{0})`, "h");
 }
 
 function drawTransportDrudeCanvas(res) {
@@ -16987,11 +16988,11 @@ function drawTransportDrudeCanvas(res) {
   const splitX = Math.round(x0L + panelW + gapX * 0.5);
 
   const subLabels = {
-    dos_temp: ["Panel (a) DOS Effective Mass Fit", "Panel (b) Drude Relaxation Time τ(T)"],
-    doping: ["Panel (a) Drude Mass m*(n,p) & ħωp", "Panel (b) Drude τ & σ vs Doping"],
-    drude_opt: ["Panel (a) Drude Dielectric ε(ω)", "Panel (b) Drude Optical Conductivity σ(ω)"],
-    mobility_t: ["Panel (a) Mobility μ(T) vs Temp", "Panel (b) Intrinsic Carrier Density ni(T)"]
-  }[mode] || ["Panel (a)", "Panel (b)"];
+    dos_temp: ["DOS Effective Mass Fit", "Drude Relaxation Time τ(T)"],
+    doping: ["Drude Mass m*(n,p) & ħωp", "Drude Plasma ħωp vs Doping"],
+    drude_opt: ["Drude Dielectric ε(ω)", "Drude Optical Conductivity σ(ω)"],
+    mobility_t: ["Mobility μ(T) vs Temp", "Intrinsic Carrier Density ni(T)"]
+  }[mode] || ["Left Plot", "Right Plot"];
 
   canvas._subPanelRects = [
     { key: "drude_a", label: subLabels[0], x: 0, y: 0, w: splitX, h: height, plotKey: "transport", dataSubPart: "temp_sweep", pngName: "CASTEP_Transport_PanelA.png" },
@@ -17181,14 +17182,14 @@ function drawTransportDrudeCanvas(res) {
       }
     }
     drawXYPanel(x0L, padT, panelW, panelH, {
-      title: `(a) Direct DFT DOS Effective Mass (${res.is2D ? "2D" : "3D"})`,
+      title: `Direct DFT DOS Effective Mass (${res.is2D ? "2D" : "3D"})`,
       xLabel: "Energy E − E_{F} (eV)",
       yLabel: "DOS g(E) (states / eV·cell)",
       zeroFloor: true, legLeft: true, legW: 196, vLines,
       series: dosSeries
     });
 
-    // Panel (b): Drude Relaxation Time τ_e(T) & τ_h(T) vs Temperature (100–600 K)
+    // Right Plot: Drude Relaxation Time τ_e(T) & τ_h(T) vs Temperature (100–600 K)
     const tauSeries = [];
     if (res.tempSweep.some(r => r.e)) {
       tauSeries.push({ label: "Electron τ_{tot} (e^{−})", color: "#2563eb", width: 2.2, pts: res.tempSweep.map(r => [r.T, r.e?.tauTot_fs]) });
@@ -17203,7 +17204,7 @@ function drawTransportDrudeCanvas(res) {
       }
     }
     drawXYPanel(x0R, padT, panelW, panelH, {
-      title: "(b) Drude Relaxation Time τ_{e}, τ_{h} vs. Temperature",
+      title: "Drude Relaxation Time τ_{e}, τ_{h} vs. Temperature",
       xLabel: "Temperature T (K)",
       yLabel: "Relaxation Time τ (fs)",
       logY: true, fmtX: v => v.toFixed(0), legW: 162,
@@ -17217,7 +17218,7 @@ function drawTransportDrudeCanvas(res) {
       return "10" + String(Math.round(v)).split("").map(c => sup[c] || c).join("");
     };
     drawXYPanel(x0L, padT, panelW, panelH, {
-      title: "(a) Drude Effective Mass m*_{Drude} vs. Doping",
+      title: "Drude Effective Mass m*_{Drude} vs. Doping",
       xLabel: uLbl,
       yLabel: "Drude Effective Mass (m_{0})",
       fmtX: fmtPow10, legW: 172,
@@ -17228,7 +17229,7 @@ function drawTransportDrudeCanvas(res) {
       ]
     });
     drawXYPanel(x0R, padT, panelW, panelH, {
-      title: "(b) Drude Plasma Frequency ħω_{p} vs. Doping",
+      title: "Drude Plasma Frequency ħω_{p} vs. Doping",
       xLabel: uLbl,
       yLabel: "Drude Plasma ħω_{p} (eV)",
       logY: true, fmtX: fmtPow10, legLeft: true, legW: 172,
@@ -17240,7 +17241,7 @@ function drawTransportDrudeCanvas(res) {
     });
   } else if (mode === "drude_opt") {
     drawXYPanel(x0L, padT, panelW, panelH, {
-      title: "(a) Drude Free-Carrier Dielectric ε_{1}(ω) & ε_{2}(ω)",
+      title: "Drude Free-Carrier Dielectric ε_{1}(ω) & ε_{2}(ω)",
       xLabel: "Photon Energy ħω (eV)",
       yLabel: "Dielectric Function ε(ω)",
       legW: 165,
@@ -17252,7 +17253,7 @@ function drawTransportDrudeCanvas(res) {
       ]
     });
     drawXYPanel(x0R, padT, panelW, panelH, {
-      title: "(b) Drude Optical Conductivity σ_{1}(ω) (S/cm)",
+      title: "Drude Optical Conductivity σ_{1}(ω) (S/cm)",
       xLabel: "Photon Energy ħω (eV)",
       yLabel: "Optical Conductivity σ_{1} (S/cm)",
       zeroFloor: true, legW: 165,
@@ -17263,7 +17264,7 @@ function drawTransportDrudeCanvas(res) {
     });
   } else {
     drawXYPanel(x0L, padT, panelW, panelH, {
-      title: `(a) Carrier Mobility μ_{e}(T), μ_{h}(T) (${res.is2D ? "2D" : "3D"})`,
+      title: `Carrier Mobility μ_{e}(T), μ_{h}(T) (${res.is2D ? "2D" : "3D"})`,
       xLabel: "Temperature T (K)",
       yLabel: "Mobility μ (cm^{2} / V·s)",
       logY: true, fmtX: v => v.toFixed(0), legW: 160,
@@ -17274,7 +17275,7 @@ function drawTransportDrudeCanvas(res) {
       ]
     });
     drawXYPanel(x0R, padT, panelW, panelH, {
-      title: `(b) Intrinsic Carrier Density n_{i}(T) (Arrhenius)`,
+      title: `Intrinsic Carrier Density n_{i}(T) (Arrhenius)`,
       xLabel: "Temperature T (K)",
       yLabel: res.is2D ? "n_{i} (cm^{−2})" : "n_{i} (cm^{−3})",
       logY: true, fmtX: v => v.toFixed(0), legLeft: true, legW: 175,
