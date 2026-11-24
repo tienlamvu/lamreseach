@@ -2087,6 +2087,7 @@ def _parse_castep_bands_backend(bands_path: str, e_window: float = 12.0):
         nk = 0; ns = 1; neig = 0; ef_ha = 0.0; nelec = 0.0
         ef_ha_spins = []
         nelec_spins = []
+        vecs_bohr = []
         i = 0
         while i < len(lines):
             l = lines[i].strip()
@@ -2117,6 +2118,16 @@ def _parse_castep_bands_backend(bands_path: str, e_window: float = 12.0):
                     ef_ha_spins = nums
                     ef_ha = sum(nums) / len(nums)
             elif l.startswith("Unit cell vectors"):
+                for k in range(1, 4):
+                    if i + k < len(lines):
+                        vp = []
+                        for tok in lines[i + k].strip().split():
+                            try:
+                                vp.append(float(tok))
+                            except Exception:
+                                pass
+                        if len(vp) >= 3:
+                            vecs_bohr.append([vp[0], vp[1], vp[2]])
                 i += 4
                 break
             i += 1
@@ -2158,6 +2169,20 @@ def _parse_castep_bands_backend(bands_path: str, e_window: float = 12.0):
         all_e_by_k = [kp["e"] for kp in kpts]
         for kp in kpts:
             kp["e"] = [[round(sp[b], 5) for b in keep_bands if b < len(sp)] for sp in kp["e"]]
+        BOHR_TO_ANG = 0.529177210903
+        vol_bohr3 = 0.0
+        area_ab_a2 = 0.0
+        if len(vecs_bohr) == 3:
+            a, b, c = vecs_bohr
+            vol_bohr3 = abs(
+                a[0] * (b[1] * c[2] - b[2] * c[1]) -
+                a[1] * (b[0] * c[2] - b[2] * c[0]) +
+                a[2] * (b[0] * c[1] - b[1] * c[0])
+            )
+            cx = a[1] * b[2] - a[2] * b[1]
+            cy = a[2] * b[0] - a[0] * b[2]
+            cz = a[0] * b[1] - a[1] * b[0]
+            area_ab_a2 = math.sqrt(cx * cx + cy * cy + cz * cz) * (BOHR_TO_ANG ** 2)
         return {
             "nk": len(kpts),
             "ns": ns,
@@ -2168,6 +2193,10 @@ def _parse_castep_bands_backend(bands_path: str, e_window: float = 12.0):
             "ef_ha": round(ef_ha, 6),
             "ef_ev": round(ef_ha * HA_EV, 5),
             "ef_ev_spins": [round(x * HA_EV, 5) for x in ef_ha_spins],
+            "vecs_bohr": [[round(x, 6) for x in v] for v in vecs_bohr] if len(vecs_bohr) == 3 else [],
+            "vol_bohr3": round(vol_bohr3, 5),
+            "vol_a3": round(vol_bohr3 * (BOHR_TO_ANG ** 3), 5),
+            "area_ab_a2": round(area_ab_a2, 5),
             "kpoints": kpts,
             "_all_e_by_k": all_e_by_k,
         }
