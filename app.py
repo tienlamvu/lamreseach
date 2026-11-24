@@ -2587,6 +2587,390 @@ def _parse_chdiff_binary_backend(filepath: str, cell_vol_a3: float = 1.0, c_len_
         return None
 
 
+_OPTICS_TENSOR_CACHE = {}
+
+
+def _parse_castep_symops_cartesian_backend(cell_text: str, vecs_bohr):
+    """Parse %BLOCK SYMMETRY_OPS from CASTEP .cell and convert fractional rotations S -> Cartesian R = A^T S (A^T)^-1."""
+    if not cell_text or not vecs_bohr or len(vecs_bohr) != 3:
+        return None
+    m = re.search(r"%BLOCK\s+SYMMETRY_OPS([\s\S]*?)%ENDBLOCK\s+SYMMETRY_OPS", cell_text, re.I)
+    if not m:
+        return None
+    nums = []
+    for line in m.group(1).splitlines():
+        s = line.split("#")[0].split("!")[0].strip()
+        if not s:
+            continue
+        parts = s.split()
+        if len(parts) >= 3:
+            try:
+                nums.append([float(parts[0]), float(parts[1]), float(parts[2])])
+            except ValueError:
+                pass
+    if len(nums) < 4 or len(nums) % 4 != 0:
+        return None
+    AT = [
+        [vecs_bohr[0][0], vecs_bohr[1][0], vecs_bohr[2][0]],
+        [vecs_bohr[0][1], vecs_bohr[1][1], vecs_bohr[2][1]],
+        [vecs_bohr[0][2], vecs_bohr[1][2], vecs_bohr[2][2]],
+    ]
+    det = (
+        AT[0][0] * (AT[1][1] * AT[2][2] - AT[1][2] * AT[2][1])
+        - AT[0][1] * (AT[1][0] * AT[2][2] - AT[1][2] * AT[2][0])
+        + AT[0][2] * (AT[1][0] * AT[2][1] - AT[1][1] * AT[2][0])
+    )
+    if abs(det) < 1e-12:
+        return None
+    invAT = [
+        [(AT[1][1] * AT[2][2] - AT[1][2] * AT[2][1]) / det, (AT[0][2] * AT[2][1] - AT[0][1] * AT[2][2]) / det, (AT[0][1] * AT[1][2] - AT[0][2] * AT[1][1]) / det],
+        [(AT[1][2] * AT[2][0] - AT[1][0] * AT[2][2]) / det, (AT[0][0] * AT[2][2] - AT[0][2] * AT[2][0]) / det, (AT[0][2] * AT[1][0] - AT[0][0] * AT[1][2]) / det],
+        [(AT[1][0] * AT[2][1] - AT[1][1] * AT[2][0]) / det, (AT[0][1] * AT[2][0] - AT[0][0] * AT[2][1]) / det, (AT[0][0] * AT[1][1] - AT[0][1] * AT[1][0]) / det],
+    ]
+
+    def _mm(X, Y):
+        return [[sum(X[i][k] * Y[k][j] for k in range(3)) for j in range(3)] for i in range(3)]
+
+    rot_mats = []
+    for g in range(0, len(nums), 4):
+        S = [nums[g], nums[g + 1], nums[g + 2]]
+        R1 = _mm(_mm(AT, S), invAT)
+        err1 = sum((sum(R1[k][i] * R1[k][j] for k in range(3)) - (1.0 if i == j else 0.0)) ** 2 for i in range(3) for j in range(3))
+        ST = [[S[j][i] for j in range(3)] for i in range(3)]
+        R2 = _mm(_mm(AT, ST), invAT)
+        err2 = sum((sum(R2[k][i] * R2[k][j] for k in range(3)) - (1.0 if i == j else 0.0)) ** 2 for i in range(3) for j in range(3))
+        if min(err1, err2) < 1e-3:
+            rot_mats.append(R1 if err1 <= err2 else R2)
+    return rot_mats if rot_mats else None
+
+
+def _symmetrize_optical_tensor_bins(t6, rot_mats):
+    if not rot_mats or len(rot_mats) <= 1:
+        return t6
+    nbins = len(t6[0])
+    inv_n = 1.0 / len(rot_mats)
+    pairs = [(0, 0), (1, 1), (2, 2), (0, 1), (0, 2), (1, 2)]
+    M = [[0.0] * 6 for _ in range(6)]
+    for R in rot_mats:
+        for p_out, (i, j) in enumerate(pairs):
+            for p_in, (a, b) in enumerate(pairs):
+                if a == b:
+                    M[p_out][p_in] += R[i][a] * R[j][a] * inv_n
+                else:
+                    M[p_out][p_in] += (R[i][a] * R[j][b] + R[i][b] * R[j][a]) * inv_n
+    out = [[0.0] * nbins for _ in range(6)]
+    for bi in range(nbins):
+        v0, v1, v2, v3, v4, v5 = t6[0][bi], t6[1][bi], t6[2][bi], t6[3][bi], t6[4][bi], t6[5][bi]
+        if v0 == 0.0 and v1 == 0.0 and v2 == 0.0 and v3 == 0.0 and v4 == 0.0 and v5 == 0.0:
+            continue
+        for p_out in range(6):
+            row = M[p_out]
+            out[p_out][bi] = row[0] * v0 + row[1] * v1 + row[2] * v2 + row[3] * v3 + row[4] * v4 + row[5] * v5
+    return out
+
+
+def _extract_castep_optical_tensor_bytes(
+    ome_bytes: bytes,
+    bands_text: str,
+    cell_text: str = "",
+    castep_text: str = "",
+    source_name: str = "Optics.ome_bin",
+    results_name: str = "",
+    dE: float = 0.05,
+    e_max: float = 85.0,
+):
+    """Parse CASTEP binary *.ome_bin + *_Optics.bands to produce the exact symmetrized
+    6-component 3x3 interband dielectric weight tensor [xx, yy, zz, xy, xz, yz] and
+    intraband Drude plasma tensor (eV^2). Matches Materials Studio CASTEP Optical Properties."""
+    import struct
+    from array import array
+
+    if not ome_bytes or len(ome_bytes) < 120 or not bands_text:
+        return None
+    HA_TO_EV = 27.211386245988
+    BOHR_TO_ANG = 0.529177210903
+
+    # 1) Parse full *_Optics.bands in Hartree & Bohr
+    lines = bands_text.splitlines()
+    nk = ns = 0
+    nelec, nbands, efermi, vecs, kpoints = [], [], [], [], []
+    i = 0
+    while i < len(lines):
+        s = lines[i].strip()
+        if s.startswith("Number of k-points"):
+            nk = int(s.split()[-1])
+        elif s.startswith("Number of spin components"):
+            ns = int(s.split()[-1])
+        elif s.startswith("Number of electrons"):
+            nelec = [float(x) for x in s.split()[3:]]
+        elif s.startswith("Number of eigenvalues"):
+            nbands = [int(x) for x in s.split()[3:]]
+        elif s.startswith("Fermi energ"):
+            efermi = [float(x) for x in s.split()[-max(1, ns):]]
+        elif s.startswith("Unit cell vectors"):
+            vecs = [[float(x) for x in lines[i + k].split()[:3]] for k in range(1, 4)]
+            i += 3
+        elif s.startswith("K-point"):
+            parts = s.split()
+            kidx = int(parts[1])
+            kw = float(parts[5])
+            spins = []
+            i += 1
+            for sp in range(max(1, ns)):
+                while i < len(lines) and not lines[i].strip().startswith("Spin component"):
+                    i += 1
+                i += 1
+                nb_s = nbands[sp] if sp < len(nbands) else (nbands[0] if nbands else 0)
+                evals = []
+                while len(evals) < nb_s and i < len(lines):
+                    try:
+                        evals.append(float(lines[i].strip()))
+                    except ValueError:
+                        pass
+                    i += 1
+                spins.append(evals)
+            kpoints.append({"idx": kidx, "w": kw, "e": spins})
+            continue
+        i += 1
+
+    if not kpoints or not nbands or len(vecs) != 3:
+        return None
+    kpoints.sort(key=lambda kp: kp["idx"])
+    ns = max(1, ns)
+    nb = nbands[0]
+    a, b, c = vecs
+    vol = abs(
+        a[0] * (b[1] * c[2] - b[2] * c[1])
+        - a[1] * (b[0] * c[2] - b[2] * c[0])
+        + a[2] * (b[0] * c[1] - b[1] * c[0])
+    )
+    if vol < 1e-6 or nb <= 1:
+        return None
+
+    # 2) Detect spin degeneracy g_spin (1 for collinear or SOC spinors; 2 for non-spin non-SOC)
+    if ns >= 2:
+        g_spin = 1.0
+    else:
+        ef0 = efermi[0] if efermi else 0.0
+        n_occ0 = sum(1 for e in kpoints[0]["e"][0] if e <= ef0 + 1e-4)
+        if castep_text and re.search(r"spin-orbit coupling\s*:\s*on", castep_text, re.I):
+            g_spin = 1.0
+        elif nelec:
+            g_spin = 1.0 if abs(n_occ0 - nelec[0]) < abs(n_occ0 - nelec[0] / 2.0) else 2.0
+        else:
+            g_spin = 2.0
+
+    # 3) Electronic smearing kT for Fermi-Dirac occupancy (metals & semiconductors)
+    kT_ev = 0.05
+    if castep_text:
+        m_sm = re.search(r"smearing width\s*:\s*([\d.]+)", castep_text, re.I)
+        if m_sm:
+            try:
+                kT_ev = max(0.01, min(0.5, float(m_sm.group(1))))
+            except ValueError:
+                pass
+    kT_ha = kT_ev / HA_TO_EV
+
+    # 4) Allocate 6-component symmetric raw tensor histogram
+    e_hi_ha = max(
+        (kp["e"][sp][-1] - kp["e"][sp][0])
+        for kp in kpoints
+        for sp in range(min(ns, len(kp["e"])))
+        if kp["e"][sp]
+    )
+    e_max_use = min(e_max, max(30.0, math.ceil(e_hi_ha * HA_TO_EV) + 2.0))
+    nbins = int(e_max_use / dE) + 1
+    inv_dE = 1.0 / dE
+    h_xx = [0.0] * nbins
+    h_yy = [0.0] * nbins
+    h_zz = [0.0] * nbins
+    h_xy = [0.0] * nbins
+    h_xz = [0.0] * nbins
+    h_yz = [0.0] * nbins
+    wp2 = [0.0] * 6
+
+    # 5) Read Fortran unformatted records from ome_bytes
+    sz = len(ome_bytes)
+    recl_be = struct.unpack(">i", ome_bytes[:4])[0]
+    recl_le = struct.unpack("<i", ome_bytes[:4])[0]
+    if 0 < recl_be <= sz:
+        endian = ">"
+    elif 0 < recl_le <= sz:
+        endian = "<"
+    else:
+        return None
+
+    pos = 0
+    def _next_rec():
+        nonlocal pos
+        if pos + 4 > sz:
+            return None
+        rl = struct.unpack(endian + "i", ome_bytes[pos:pos + 4])[0]
+        pos += 4
+        if rl < 0 or pos + rl + 4 > sz:
+            return None
+        chunk = ome_bytes[pos:pos + rl]
+        pos += rl + 4
+        return chunk
+
+    _next_rec()  # version float64
+    hdr_b = _next_rec()  # 80-char header string
+    hdr_str = hdr_b.decode("latin1", errors="ignore").strip() if hdr_b else ""
+
+    expected_rec_bytes = nb * nb * 3 * 16
+    need_swap = (endian == ">" and struct.pack("@H", 1) == b"\x01\x00") or (endian == "<" and struct.pack("@H", 1) == b"\x00\x01")
+    nb2 = nb * nb
+    off_y = nb2 * 2
+    off_z = nb2 * 4
+    c_pref = (4.0 * math.pi * math.pi / vol) * g_spin * HA_TO_EV
+    wp_pref = (4.0 * math.pi / vol) * g_spin * (HA_TO_EV * HA_TO_EV)
+
+    parsed_recs = 0
+    for ik in range(len(kpoints)):
+        kp = kpoints[ik]
+        wk = kp["w"]
+        for ispin in range(ns):
+            rec = _next_rec()
+            if rec is None or len(rec) != expected_rec_bytes:
+                break
+            parsed_recs += 1
+            arr = array("d")
+            arr.frombytes(rec)
+            if need_swap:
+                arr.byteswap()
+            evals = kp["e"][ispin]
+            ef = efermi[ispin if ispin < len(efermi) else 0] if efermi else 0.0
+            occs = []
+            for e in evals:
+                x = (e - ef) / kT_ha
+                occs.append(0.0 if x > 35.0 else (1.0 if x < -35.0 else 1.0 / (1.0 + math.exp(x))))
+
+            for ib in range(nb):
+                f = occs[ib]
+                df_de = f * (1.0 - f) / kT_ha
+                if df_de > 1e-4:
+                    p0 = (ib + nb * ib) * 2
+                    vx = arr[p0]
+                    vy = arr[p0 + off_y]
+                    vz = arr[p0 + off_z]
+                    wf = wp_pref * wk * df_de
+                    wp2[0] += wf * vx * vx
+                    wp2[1] += wf * vy * vy
+                    wp2[2] += wf * vz * vz
+                    wp2[3] += wf * vx * vy
+                    wp2[4] += wf * vx * vz
+                    wp2[5] += wf * vy * vz
+
+            occ_idx = [b for b in range(nb) if occs[b] > 1e-4]
+            unocc_idx = [b for b in range(nb) if occs[b] < 0.9999]
+            base_k = c_pref * wk
+
+            for iv in occ_idx:
+                fv = occs[iv]
+                ev_ha = evals[iv]
+                for ic in unocc_idx:
+                    if ic <= iv:
+                        continue
+                    df = fv - occs[ic]
+                    if df <= 1e-4:
+                        continue
+                    dE_ha = evals[ic] - ev_ha
+                    if dE_ha <= 1e-4:
+                        continue
+                    bi = int(dE_ha * HA_TO_EV * inv_dE)
+                    if bi >= nbins:
+                        continue
+                    fac = (base_k * df) / (dE_ha * dE_ha)
+                    p0 = (iv + nb * ic) * 2
+                    px_r = arr[p0]
+                    px_i = arr[p0 + 1]
+                    py_r = arr[p0 + off_y]
+                    py_i = arr[p0 + off_y + 1]
+                    pz_r = arr[p0 + off_z]
+                    pz_i = arr[p0 + off_z + 1]
+                    h_xx[bi] += fac * (px_r * px_r + px_i * px_i)
+                    h_yy[bi] += fac * (py_r * py_r + py_i * py_i)
+                    h_zz[bi] += fac * (pz_r * pz_r + pz_i * pz_i)
+                    h_xy[bi] += fac * (px_r * py_r + px_i * py_i)
+                    h_xz[bi] += fac * (px_r * pz_r + px_i * pz_i)
+                    h_yz[bi] += fac * (py_r * pz_r + py_i * pz_i)
+
+    if parsed_recs == 0:
+        return None
+
+    t6 = [h_xx, h_yy, h_zz, h_xy, h_xz, h_yz]
+    rot_mats = _parse_castep_symops_cartesian_backend(cell_text, vecs)
+    nsym = len(rot_mats) if rot_mats else 1
+    if nsym > 1:
+        t6 = _symmetrize_optical_tensor_bins(t6, rot_mats)
+        wp2_sym = _symmetrize_optical_tensor_bins([[v] for v in wp2], rot_mats)
+        wp2 = [wp2_sym[k][0] for k in range(6)]
+
+    # Trim trailing zero bins for lean JSON payload
+    last_nz = 10
+    for bi in range(nbins - 1, 10, -1):
+        if t6[0][bi] > 1e-7 or t6[1][bi] > 1e-7 or t6[2][bi] > 1e-7:
+            last_nz = min(nbins - 1, bi + 4)
+            break
+    t6_compact = [[round(v, 5) for v in comp[:last_nz + 1]] for comp in t6]
+
+    return {
+        "source_file": source_name,
+        "results_file": results_name or source_name,
+        "header": hdr_str,
+        "dE": dE,
+        "e_max": round((last_nz + 1) * dE, 3),
+        "nbins": last_nz + 1,
+        "nk": len(kpoints),
+        "ns": ns,
+        "nbands": nb,
+        "g_spin": g_spin,
+        "nsym": nsym,
+        "vol_a3": round(vol * (BOHR_TO_ANG ** 3), 3),
+        "plasma_ev_tensor": [round(v, 5) for v in wp2],
+        "plasma_ev": [round(math.sqrt(max(0.0, wp2[0])), 4), round(math.sqrt(max(0.0, wp2[1])), 4), round(math.sqrt(max(0.0, wp2[2])), 4)],
+        "t6": t6_compact,
+    }
+
+
+def _extract_castep_optical_tensor_file(ome_path: str, bands_path: str, cell_path: str = "", castep_path: str = ""):
+    if not ome_path or not bands_path or not os.path.exists(ome_path) or not os.path.exists(bands_path):
+        return None
+    try:
+        mt = (os.path.getmtime(ome_path), os.path.getmtime(bands_path))
+        cache_key = f"{os.path.abspath(ome_path)}|{mt[0]}|{mt[1]}"
+        if cache_key in _OPTICS_TENSOR_CACHE:
+            return _OPTICS_TENSOR_CACHE[cache_key]
+        with open(ome_path, "rb") as fp:
+            ome_bytes = fp.read()
+        with open(bands_path, "r", encoding="latin1", errors="ignore") as fp:
+            bands_text = fp.read()
+        cell_text = ""
+        if cell_path and os.path.exists(cell_path):
+            with open(cell_path, "r", encoding="latin1", errors="ignore") as fp:
+                cell_text = fp.read(400000)
+        castep_text = ""
+        if castep_path and os.path.exists(castep_path):
+            with open(castep_path, "r", encoding="latin1", errors="ignore") as fp:
+                castep_text = fp.read(250000)
+        res = _extract_castep_optical_tensor_bytes(
+            ome_bytes,
+            bands_text,
+            cell_text=cell_text,
+            castep_text=castep_text,
+            source_name=os.path.basename(ome_path),
+            results_name=os.path.basename(castep_path) if castep_path else os.path.basename(bands_path),
+        )
+        if res is not None:
+            if len(_OPTICS_TENSOR_CACHE) >= 32:
+                _OPTICS_TENSOR_CACHE.pop(next(iter(_OPTICS_TENSOR_CACHE)))
+            _OPTICS_TENSOR_CACHE[cache_key] = res
+        return res
+    except Exception as e:
+        print(f"[Optics Tensor] Failed to parse {ome_path}: {e}")
+        return None
+
+
 @app.get("/api/castep/scan")
 def api_castep_scan(root_path: Optional[str] = None, limit: int = 120):
     import time
@@ -2602,7 +2986,7 @@ def api_castep_scan(root_path: Optional[str] = None, limit: int = 120):
     discovered = []
     relevant_exts = (
         ".cell", ".param", ".castep", ".geom", ".bands", ".xcd", ".xsd", ".cif",
-        ".chdiff", ".charg_frm", ".den_fmt", ".cube", ".pdos_bin"
+        ".chdiff", ".charg_frm", ".den_fmt", ".cube", ".pdos_bin", ".ome_bin", ".cst_ome"
     )
     skip_dirs = {".git", "node_modules", "__pycache__", "$recycle.bin", "system volume information"}
 
@@ -2677,7 +3061,7 @@ def api_castep_scan(root_path: Optional[str] = None, limit: int = 120):
                     "files_list": sorted(sfiles),
                     "has_chdiff": any(f.lower().endswith(".chdiff") for f in sfiles),
                     "has_charg_frm": any(f.lower().endswith(".charg_frm") for f in sfiles),
-                    "has_optics": any(("optical" in f.lower() and f.lower().endswith(".xcd")) or f.lower().endswith("_optics.bands") for f in sfiles),
+                    "has_optics": any(("optical" in f.lower() and f.lower().endswith(".xcd")) or f.lower().endswith(("_optics.bands", ".ome_bin", ".cst_ome")) for f in sfiles),
                     "has_band_dos": any(f.lower().endswith(("_bandstr.bands", "_dos.bands")) or (("band structure" in f.lower() or "dos" in f.lower() or "density of states" in f.lower()) and f.lower().endswith(".xcd")) or f.lower().endswith(".pdos_bin") for f in sfiles),
                 })
 
@@ -2738,7 +3122,9 @@ def api_castep_job_detail(folder: str, seed: Optional[str] = None):
     # Parse ALL optical .xcd files in the folder (Absorption, Re/Im Epsilon, Refractive, Reflectivity, Loss, Conductivity)
     opt_files = [
         f for f in all_files
-        if f.lower().endswith(".xcd") and any(k in f.lower() for k in ("optical", "dielectric", "absorption", "reflectiv", "refractiv", "loss", "conductiv"))
+        if f.lower().endswith(".xcd")
+        and any(k in f.lower() for k in ("optical", "dielectric", "absorption", "reflectiv", "refractiv", "loss", "conductiv"))
+        and not any(ex in f.lower() for ex in ("convergence", "energies", "band structure", "density of states", "pdos"))
     ]
     optical_xcds = []
     for ofn in opt_files:
@@ -2758,10 +3144,21 @@ def api_castep_job_detail(folder: str, seed: Optional[str] = None):
     bandstr_f = _find_match(lambda l: l.endswith("_bandstr.bands"))
     dos_bands_f = _find_match(lambda l: l.endswith("_dos.bands")) or _find_match(lambda l: l.endswith(".bands") and not l.endswith(("_bandstr.bands", "_optics.bands")))
     optics_bands_f = _find_match(lambda l: l.endswith("_optics.bands"))
+    optics_castep_f = _find_match(lambda l: l.endswith("_optics.castep"))
+    optics_cell_f = _find_match(lambda l: l.endswith("_optics.cell"))
+    ome_bin_f = _find_match(lambda l: l.endswith(".ome_bin") or l.endswith(".cst_ome"))
 
     bandstr_bands = _parse_castep_bands_backend(os.path.join(folder, bandstr_f)) if bandstr_f else None
     dos_bands = _parse_castep_bands_backend(os.path.join(folder, dos_bands_f)) if dos_bands_f else None
     optics_bands = _parse_castep_bands_backend(os.path.join(folder, optics_bands_f)) if optics_bands_f else None
+    optical_tensor = None
+    if ome_bin_f and optics_bands_f:
+        optical_tensor = _extract_castep_optical_tensor_file(
+            os.path.join(folder, ome_bin_f),
+            os.path.join(folder, optics_bands_f),
+            os.path.join(folder, optics_cell_f) if optics_cell_f else "",
+            os.path.join(folder, optics_castep_f) if optics_castep_f else "",
+        )
 
     pdos_bin_f = _find_match(lambda l: l.endswith("_dos.pdos_bin")) or _find_match(lambda l: l.endswith(".pdos_bin"))
     pdos_bin_data = None
@@ -2788,7 +3185,10 @@ def api_castep_job_detail(folder: str, seed: Optional[str] = None):
         "cell_text": _read(_find_match(lambda l: l.endswith(".cell") and not l.endswith(("_bandstr.cell", "_dos.cell", "_optics.cell")))),
         "param_text": _read(_find_match(lambda l: l.endswith(".param") and not l.endswith(("_bandstr.param", "_dos.param", "_optics.param")))),
         "castep_text": _read(_find_match(lambda l: l.endswith(".castep") and not l.endswith(("_bandstr.castep", "_dos.castep", "_optics.castep"))), 2500000),
-        "optics_castep_text": _read(_find_match(lambda l: l.endswith("_optics.castep")), 200000),
+        "optics_castep_text": _read(optics_castep_f, 200000),
+        "optics_castep_file": optics_castep_f,
+        "optics_bands_file": optics_bands_f,
+        "ome_bin_file": ome_bin_f,
         "geom_text": _read(_find_match(lambda l: l.endswith(".geom")), 1000000),
         "status_text": _read("Status.txt"),
         "xsd_text": _read(_find_match(lambda l: l.endswith(".xsd")), 250000),
@@ -2801,12 +3201,36 @@ def api_castep_job_detail(folder: str, seed: Optional[str] = None):
         "pdos_bin_data": pdos_bin_data,
         "optical_xcd": optical_xcd,
         "optical_xcds": optical_xcds,
+        "optical_tensor": optical_tensor,
         "chdiff_data": chdiff_data,
         "charg_frm_files": charg_frm_files,
         "bandstr_bands": bandstr_bands,
         "dos_bands": dos_bands,
         "optics_bands": optics_bands,
     }
+
+
+@app.get("/api/castep/optics-tensor")
+def api_castep_optics_tensor(folder: str, ome_file: Optional[str] = None, bands_file: Optional[str] = None):
+    if not folder or not os.path.isdir(folder):
+        raise HTTPException(status_code=404, detail=f"Folder not found: {folder}")
+    all_files = sorted([f for f in os.listdir(folder) if os.path.isfile(os.path.join(folder, f))])
+    ome_f = ome_file if (ome_file and os.path.exists(os.path.join(folder, ome_file))) else next((f for f in all_files if f.lower().endswith((".ome_bin", ".cst_ome"))), None)
+    bands_f = bands_file if (bands_file and os.path.exists(os.path.join(folder, bands_file))) else next((f for f in all_files if f.lower().endswith("_optics.bands")), None)
+    if not ome_f or not bands_f:
+        raise HTTPException(status_code=404, detail="No *_Optics.ome_bin and *_Optics.bands pair found in folder.")
+    prefix = ome_f[:-8] if ome_f.lower().endswith(".ome_bin") else os.path.splitext(ome_f)[0]
+    cell_f = next((f for f in all_files if f.lower() == f"{prefix.lower()}.cell"), None) or next((f for f in all_files if f.lower().endswith("_optics.cell")), None)
+    castep_f = next((f for f in all_files if f.lower() == f"{prefix.lower()}.castep"), None) or next((f for f in all_files if f.lower().endswith("_optics.castep")), None)
+    tensor = _extract_castep_optical_tensor_file(
+        os.path.join(folder, ome_f),
+        os.path.join(folder, bands_f),
+        os.path.join(folder, cell_f) if cell_f else "",
+        os.path.join(folder, castep_f) if castep_f else "",
+    )
+    if not tensor:
+        raise HTTPException(status_code=500, detail="Failed to extract CASTEP optical matrix element tensor.")
+    return {"ok": True, "optical_tensor": tensor}
 
 
 def _extract_atoms_frac_from_cell(folder: str, seed: str):
@@ -3596,6 +4020,8 @@ def _fetch_remote_gateway_job_detail(target_url: str, job_id: str):
     bandstr_f = _find_match(lambda l: l.endswith("_bandstr.bands"))
     dos_bands_f = _find_match(lambda l: l.endswith("_dos.bands")) or _find_match(lambda l: l.endswith(".bands") and not l.endswith(("_bandstr.bands", "_optics.bands")))
     optics_bands_f = _find_match(lambda l: l.endswith("_optics.bands"))
+    optics_cell_f = _find_match(lambda l: l.endswith("_optics.cell"))
+    ome_bin_f = _find_match(lambda l: l.endswith(".ome_bin") or l.endswith(".cst_ome"))
 
     return {
         "folder": f"{target_url}/dsd/jobs/{job_id}/",
@@ -3608,6 +4034,10 @@ def _fetch_remote_gateway_job_detail(target_url: str, job_id: str):
         "param_text": _fetch_text(param_f, 200000),
         "castep_text": _fetch_text(castep_f, 1500000, append_tail=True),
         "optics_castep_text": _fetch_text(optics_castep_f, 200000),
+        "optics_castep_file": optics_castep_f,
+        "optics_bands_file": optics_bands_f,
+        "optics_cell_file": optics_cell_f,
+        "ome_bin_file": ome_bin_f,
         "geom_text": _fetch_text(geom_f, 900000),
         "status_text": _fetch_text(status_f, 200000),
         "xsd_text": _fetch_text(xsd_f, 250000),
@@ -3620,12 +4050,51 @@ def _fetch_remote_gateway_job_detail(target_url: str, job_id: str):
         "pdos_bin_data": None,
         "optical_xcd": None,
         "optical_xcds": [],
+        "optical_tensor": None,
         "chdiff_data": None,
         "charg_frm_files": [f for f in all_files if f.lower().endswith((".charg_frm", ".den_fmt", ".cube"))],
         "bandstr_bands": _fetch_bands(bandstr_f),
         "dos_bands": _fetch_bands(dos_bands_f),
         "optics_bands": _fetch_bands(optics_bands_f),
     }
+
+
+@app.get("/api/castep/gateway/optics-tensor/{job_id}")
+def api_castep_gateway_optics_tensor(job_id: str, ome_file: str, bands_file: str, cell_file: Optional[str] = None, castep_file: Optional[str] = None, gateway_url: Optional[str] = None):
+    if not re.match(r"^[A-Za-z0-9_-]{2,24}$", job_id or ""):
+        raise HTTPException(status_code=400, detail="Invalid Gateway Job Id.")
+    target_url = _normalize_gateway_url(gateway_url, DEFAULT_MS_GATEWAY_URL)
+    cache_key = f"gw|{target_url}|{job_id}|{ome_file}|{bands_file}"
+    if cache_key in _OPTICS_TENSOR_CACHE:
+        return {"ok": True, "optical_tensor": _OPTICS_TENSOR_CACHE[cache_key]}
+
+    def _fetch_raw(fname, max_bytes=160_000_000):
+        if not fname:
+            return b""
+        url = f"{target_url}/dsd/jobs/{urllib.parse.quote(job_id)}/{urllib.parse.quote(fname)}"
+        req = urllib.request.Request(url, headers={"User-Agent": "AntigravityCASTEP/1.0"})
+        with urllib.request.urlopen(req, timeout=25) as r:
+            return r.read(max_bytes)
+
+    try:
+        ome_bytes = _fetch_raw(ome_file)
+        bands_txt = _fetch_raw(bands_file, 15_000_000).decode("latin1", errors="ignore")
+        cell_txt = _fetch_raw(cell_file, 400_000).decode("latin1", errors="ignore") if cell_file else ""
+        castep_txt = _fetch_raw(castep_file, 250_000).decode("latin1", errors="ignore") if castep_file else ""
+        tensor = _extract_castep_optical_tensor_bytes(
+            ome_bytes, bands_txt, cell_text=cell_txt, castep_text=castep_txt,
+            source_name=ome_file, results_name=castep_file or bands_file
+        )
+        if not tensor:
+            raise HTTPException(status_code=500, detail="Could not parse remote .ome_bin optical tensor.")
+        if len(_OPTICS_TENSOR_CACHE) >= 32:
+            _OPTICS_TENSOR_CACHE.pop(next(iter(_OPTICS_TENSOR_CACHE)))
+        _OPTICS_TENSOR_CACHE[cache_key] = tensor
+        return {"ok": True, "optical_tensor": tensor}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Failed to fetch remote optical tensor: {e}")
 
 
 @app.get("/api/castep/gateway/job/{job_id}")
