@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=140_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=140_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=141_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=141_v116_vesta_viewer'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -210,9 +210,10 @@
           <div class="card-header" style="margin-bottom:10px; flex-wrap:wrap; gap:8px;">
             <div>
               <div class="card-title" style="color:#78350f;">🎓 Density Functional Theory (DFT): From Quantum Foundations to First-Principles Simulation</div>
-              <div style="font-size:12px; color:var(--text-muted);">10 structured English lectures covering Hohenberg–Kohn/Kohn–Sham, XC functionals, Bloch plane waves, forces, Band/PDOS, Effective Mass &amp; Drude, Optics, &Delta;&rho;, and Spin Matrix—each linked directly to live Data Analysis tools.</div>
+              <div id="dashboard-dft-card-sub" style="font-size:12px; color:var(--text-muted);">10 structured English lectures covering Hohenberg–Kohn/Kohn–Sham, XC functionals, Bloch plane waves, forces, Band/PDOS, Effective Mass &amp; Drude, Optics, &Delta;&rho;, and Spin Matrix—each with peer-reviewed DOI references and live Data Analysis links.</div>
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              <button type="button" class="btn btn-outline btn-sm strict-admin-only" onclick="openDftLectureEditorModal(null)" title="Add a new lecture to the DFT Theory curriculum (Admin Only)">➕ Add Lecture</button>
               <button type="button" class="btn btn-primary btn-sm" onclick="openDftTheoryLecture('lec1')">📖 Open Full DFT Course &rarr;</button>
               <button type="button" class="btn btn-outline btn-sm" onclick="switchTabByName('castep')">📊 Open Data Analysis</button>
             </div>
@@ -281,6 +282,8 @@
             </div>
             <div class="dft-hero-meta">
               <span id="dft-theory-search-status" class="dft-hero-badge">10 Lectures (Basic &rarr; Advanced)</span>
+              <button type="button" class="btn btn-primary btn-sm strict-admin-only" onclick="openDftLectureEditorModal(null)" title="Create and publish a new DFT Theory lecture (Admin Only)">&#10133; Add Lecture</button>
+              <button type="button" class="btn btn-outline btn-sm strict-admin-only" onclick="resetDftLecturesToDefault()" title="Restore the 10 built-in DFT lectures and references (Admin Only)">&#8634; Reset Defaults</button>
               <button type="button" class="btn btn-teal btn-sm" onclick="switchTabByName('castep')">&#128202; Launch Data Analysis &rarr;</button>
             </div>
           </div>
@@ -2221,13 +2224,13 @@
                   </span>
 
                   <span class="castep-ctrl-grp" style="margin-left:auto;">
-                    <select id="castep-opt-zoom-target" class="castep-input" style="font-weight:700;" title="Choose which panel of the 2×2 grid to zoom (or right-click any sub-panel to copy it individually)" onchange="onCastepOptZoomTargetChange(this.value)">
-                      <option value="active">Zoom: Panel (a)</option>
-                      <option value="a">Panel (a) Dielectric</option>
-                      <option value="b">Panel (b) Absorption</option>
-                      <option value="c">Panel (c) Refractive</option>
-                      <option value="d">Panel (d) Refl &amp; EELS</option>
-                      <option value="all">All 4 Panels</option>
+                    <select id="castep-opt-zoom-target" class="castep-input" style="font-weight:700;" title="Choose which optical sub-plot to zoom (or right-click any sub-plot to copy it individually)" onchange="onCastepOptZoomTargetChange(this.value)">
+                      <option value="active">Zoom: Active Plot</option>
+                      <option value="a">Dielectric ε₁/ε₂</option>
+                      <option value="b">Absorption α</option>
+                      <option value="c">Refractive n &amp; k</option>
+                      <option value="d">Refl &amp; EELS</option>
+                      <option value="all">All 4 Plots</option>
                     </select>
                     <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('optics', 1.25)" title="Zoom In">🔍＋</button>
                     <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('optics', 0.80)" title="Zoom Out">🔍－</button>
@@ -2242,7 +2245,7 @@
                   <input type="file" id="castep-opt-folder-upload" webkitdirectory directory multiple style="display:none;" onchange="handleCastepOpticalFolderFallback(event)" />
                   <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="pickCastepOpticsFolder()" title="Open an Optical CASTEP Energy folder directly">📂 Optics Folder</button>
                   <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="document.getElementById('castep-opt-file-upload').click()" title="Load CASTEP *.ome_bin + *_Optics.bands or *.xcd files">📥 .ome_bin/.xcd</button>
-                  <span style="font-size:10.5px; color:#64748b;">💡 Right-click panel (a–d) to copy one</span>
+                  <span style="font-size:10.5px; color:#64748b;">💡 Right-click any sub-plot to copy one</span>
                   <div class="castep-tb-actions">
                     <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="copyCastepCanvasHD('castep-optics-canvas', 'Optical Properties (Full)')" title="Copy FULL Optical Plot Image (400–600 DPI) to Clipboard">📋 Copy HD</button>
                     <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="copyCastepPlotData('optics', 'all')" title="Copy FULL Optical Spectra Data (all columns, TSV → Excel / OriginPro)">📋 Copy Data</button>
@@ -2536,7 +2539,7 @@
               <div class="castep-plot-toolbar" style="margin-top:8px; margin-bottom:6px;">
                 <div class="castep-tb-row">
                   <strong style="font-size:12.5px; color:#0f172a;">📈 Band-Edge Effective Mass Fits (CBM e<sup>−</sup> &amp; VBM h<sup>+</sup>)</strong>
-                  <span style="font-size:10.5px; color:#64748b;">💡 Right-click panel (a) or (b) to copy individually</span>
+                  <span style="font-size:10.5px; color:#64748b;">💡 Right-click either plot to copy individually</span>
                   <div class="castep-tb-actions">
                     <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="copyCastepCanvasHD('castep-transport-fit-canvas', 'Band-Edge Effective Mass Fits')" title="Copy FULL Band-Edge Effective Mass Fit Figure (400–600 DPI)">📋 Copy HD</button>
                     <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="copyCastepPlotData('transport', 'branches')" title="Copy Directional Effective Mass Table (TSV → Excel / OriginPro)">📋 Copy Data</button>
@@ -2563,7 +2566,7 @@
                       <option value="mobility_t">⚡ Mobility μ(T) &amp; nᵢ(T)</option>
                     </select>
                   </span>
-                  <span style="font-size:10.5px; color:#64748b;">💡 Right-click panel (a–b)</span>
+                  <span style="font-size:10.5px; color:#64748b;">💡 Right-click either plot</span>
                   <div class="castep-tb-actions">
                     <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="copyCastepCanvasHD('castep-transport-drude-canvas', 'DOS Mass & Drude Transport')" title="Copy FULL DOS Mass &amp; Drude Transport Figure (400–600 DPI)">📋 Copy HD</button>
                     <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="copyCastepPlotData('transport', 'full')" title="Copy FULL Effective Mass, Mobility &amp; Drude Report (TSV → Excel / OriginPro)">📋 Copy Data</button>
@@ -2744,7 +2747,7 @@
                     <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('chdiff', 0.80)" title="Zoom Out">🔍－</button>
                     <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('chdiff')" title="Reset Zoom &amp; Pan">⊡ Reset</button>
                   </span>
-                  <span style="font-size:10.5px; color:#64748b;" title="Right-click panel (a), (b), or (c) to copy that individual plot or its data">💡 Right-click panel (a–c)</span>
+                  <span style="font-size:10.5px; color:#64748b;" title="Right-click any sub-plot to copy that individual plot or its data">💡 Right-click any sub-plot</span>
                   <div class="castep-tb-actions">
                     <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="copyCastepCanvasHD('castep-chdiff-canvas', 'Charge Density Difference (Full)')" title="Copy FULL Charge Difference Plot Image (400–600 DPI) to Clipboard">📋 Copy HD</button>
                     <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="copyCastepPlotData('chdiff', 'full')" title="Copy FULL 1D Planar Δρ(z) &amp; ΔQ(z) + 2D slice data (TSV → Excel / OriginPro)">📋 Copy Data</button>
@@ -2764,7 +2767,7 @@
               <div class="castep-plot-canvas-card">
                 <canvas id="castep-chdiff-canvas" width="920" height="500"></canvas>
                 <div id="castep-chdiff-readout" class="castep-plot-readout">
-                  <strong>Panel (c) Legend:</strong> <strong>━━ Black (Left Y)</strong> = Planar-Averaged Δρ(z) • <strong style="color:#7c3aed;">┄┄ Purple (Right Y)</strong> = Integrated Charge Transfer ΔQ(z) = ∫<sub>0</sub><sup>z</sup> Δρ<sub>1D</sub>(z′)dz′ (electrons) • Hover Panel (c) to read exact values.
+                  <strong>1D Planar Profile Legend:</strong> <strong>━━ Black (Left Y)</strong> = Planar-Averaged Δρ(z) • <strong style="color:#7c3aed;">┄┄ Purple (Right Y)</strong> = Integrated Charge Transfer ΔQ(z) = ∫<sub>0</sub><sup>z</sup> Δρ<sub>1D</sub>(z′)dz′ (electrons) • Hover 1D profile to read exact values.
                 </div>
               </div>
             </div>
@@ -6139,10 +6142,10 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=140_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=140_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=140_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=140_v116_vesta_viewer'"></script>
-  <script src="dft_theory.js?v=140_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=140_v116_vesta_viewer'"></script>
-  <script src="app.js?v=140_v116_vesta_viewer" onerror="this.src='/static/app.js?v=140_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=141_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=141_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=141_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=141_v116_vesta_viewer'"></script>
+  <script src="dft_theory.js?v=141_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=141_v116_vesta_viewer'"></script>
+  <script src="app.js?v=141_v116_vesta_viewer" onerror="this.src='/static/app.js?v=141_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
@@ -6676,6 +6679,119 @@
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px; border-top:1px solid #ecdac8; padding-top:10px;">
         <button type="button" class="btn btn-secondary btn-sm" onclick="closeSubdialog('news-formula-dialog')">Cancel</button>
         <button type="button" class="btn btn-primary btn-sm" onclick="confirmInsertFormula()">Insert Formula</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- ADMIN MODAL: DFT THEORY LECTURE CMS (ADD / EDIT LECTURE & REFERENCES)  -->
+  <!-- ====================================================================== -->
+  <div id="dft-lecture-editor-modal" class="dft-ed-overlay" style="display:none;" onclick="if(event.target===this) closeDftLectureEditorModal()">
+    <div class="dft-ed-card" role="dialog" aria-modal="true" aria-labelledby="dft-ed-modal-title">
+      <div class="dft-ed-header">
+        <div>
+          <div class="dft-ed-eyebrow">ADMIN CURRICULUM STUDIO &bull; DFT THEORY CMS</div>
+          <h3 id="dft-ed-modal-title" class="dft-ed-title">&#9999;&#65039; Edit DFT Lecture</h3>
+        </div>
+        <button type="button" class="dft-ed-close" onclick="closeDftLectureEditorModal()" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="dft-ed-body">
+        <div class="dft-ed-grid-2">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="dft-ed-title">Lecture Title *</label>
+            <input type="text" id="dft-ed-title" class="form-input" placeholder="e.g. Lecture 11: Phonon Dispersion, Thermal Conductivity &amp; Anharmonicity" />
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="dft-ed-shorttab">Short Sub-Tab Name *</label>
+            <input type="text" id="dft-ed-shorttab" class="form-input" placeholder="e.g. Phonons &amp; Thermal" />
+          </div>
+        </div>
+
+        <div class="dft-ed-grid-4">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="dft-ed-level">Difficulty Level Label</label>
+            <input type="text" id="dft-ed-level" class="form-input" placeholder="e.g. Foundation, Intermediate, Advanced" />
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="dft-ed-levelclass">Badge Color</label>
+            <select id="dft-ed-levelclass" class="form-select">
+              <option value="basic">Green &mdash; Foundation / Basic</option>
+              <option value="interm">Blue &mdash; Intermediate</option>
+              <option value="adv">Purple &mdash; Advanced</option>
+              <option value="cap">Amber &mdash; Practical Capstone</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="dft-ed-readtime">Read Time</label>
+            <input type="text" id="dft-ed-readtime" class="form-input" placeholder="e.g. 16 min" />
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="dft-ed-toolpane">Linked Data Analysis Tool</label>
+            <select id="dft-ed-toolpane" class="form-select">
+              <option value="builder">3D View &amp; Slab</option>
+              <option value="files">Param Builder &amp; Files</option>
+              <option value="gateway">Gateway &amp; Export</option>
+              <option value="convergence">Conv. &amp; Forces</option>
+              <option value="electronic">Band &amp; PDOS</option>
+              <option value="transport">m* &amp; Drude</option>
+              <option value="optics">Optical Tab</option>
+              <option value="chdiff">Charge Diff (&Delta;&rho;)</option>
+              <option value="mulliken">Mulliken &amp; Spin</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="dft-ed-grid-2">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="dft-ed-subtitle">Lecture Subtitle / Abstract</label>
+            <input type="text" id="dft-ed-subtitle" class="form-input" placeholder="Concise 1-sentence scientific overview shown under the title" />
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="dft-ed-keywords">Search Keywords (space-separated)</label>
+            <input type="text" id="dft-ed-keywords" class="form-input" placeholder="e.g. phonon dfpt gruneisen thermal conductivity zpe" />
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label" for="dft-ed-objectives">Learning Objectives (one per line)</label>
+          <textarea id="dft-ed-objectives" class="form-input dft-ed-textarea-sm" rows="3" placeholder="Derive the harmonic dynamical matrix...&#10;Evaluate zero-point vibrational energy and Helmholtz free energy..."></textarea>
+        </div>
+
+        <div class="form-group" style="margin-bottom:0;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
+            <label class="form-label" for="dft-ed-body" style="margin:0;">Lecture Body (Publication HTML, Equations, Tables &amp; Diagrams)</label>
+            <button type="button" id="dft-ed-preview-toggle-btn" class="btn btn-outline btn-sm" onclick="toggleDftEditorPreview()">&#128065;&#65039; Live Preview</button>
+          </div>
+          <div class="dft-snippet-bar" role="toolbar" aria-label="Insert Scientific Formatting Blocks">
+            <span class="dft-snippet-lbl">Insert:</span>
+            <button type="button" class="dft-snippet-btn" onclick="insertDftEditorSnippet('heading')">H3 Section</button>
+            <button type="button" class="dft-snippet-btn" onclick="insertDftEditorSnippet('equation')">&sum; Equation Box</button>
+            <button type="button" class="dft-snippet-btn" onclick="insertDftEditorSnippet('fraction')">a/b Fraction</button>
+            <button type="button" class="dft-snippet-btn" onclick="insertDftEditorSnippet('definition')">&#128216; Definition</button>
+            <button type="button" class="dft-snippet-btn" onclick="insertDftEditorSnippet('insight')">&#128161; Insight</button>
+            <button type="button" class="dft-snippet-btn" onclick="insertDftEditorSnippet('table')">&#128203; Table</button>
+            <button type="button" class="dft-snippet-btn" onclick="insertDftEditorSnippet('lab')">&#129514; Practice Lab</button>
+          </div>
+          <textarea id="dft-ed-body" class="form-input dft-ed-textarea-code" rows="11" oninput="if(document.getElementById('dft-ed-preview-pane')?.style.display==='block') updateDftEditorPreview()" placeholder="Enter HTML content with <h3>, <p>, .dft-eq-box, .dft-table, SVG diagrams..."></textarea>
+          <div id="dft-ed-preview-pane" class="dft-ed-preview" style="display:none;"></div>
+        </div>
+
+        <div class="dft-ed-refs-section">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
+            <label class="form-label" style="margin:0;">&#128218; Peer-Reviewed References &amp; Official DOIs</label>
+            <button type="button" class="btn btn-outline btn-sm" onclick="addDftRefRow()">&#10133; Add Reference</button>
+          </div>
+          <div id="dft-ed-refs-list" class="dft-ed-refs-list"></div>
+        </div>
+      </div>
+
+      <div class="dft-ed-footer">
+        <span class="dft-ed-foot-note">Changes save to local storage and automatically sync to GitHub Cloud <code>data.json</code> for all visitors.</span>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn btn-outline btn-sm" onclick="closeDftLectureEditorModal()">Cancel</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="saveDftLectureFromModal()">&#128190; Save Lecture</button>
+        </div>
       </div>
     </div>
   </div>
