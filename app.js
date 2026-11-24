@@ -76,6 +76,10 @@ const TAB_TITLES = {
     "Computational Materials Research Command Center",
     "Ph.D. Workflow, Crystal Structures (*.cif), DFT Simulations, Literature & Academic CV"
   ],
+  "dft-theory": [
+    "Density Functional Theory (DFT) — Theory & Practice",
+    "10-Lecture Graduate Curriculum from Quantum Foundations to First-Principles Data Analysis"
+  ],
   "news": [
     "Research News & Scientific Publications",
     "Peer-reviewed announcements, computational DFT breakthroughs & academic publications"
@@ -261,10 +265,11 @@ function confirmAction(message, itemDesc = "") {
   });
 }
 
-const TABS_ORDER = ["dashboard", "news", "literature", "calendar", "structures", "castep", "weekly-report", "manuscript", "toolkit", "cv"];
+const TABS_ORDER = ["dashboard", "dft-theory", "news", "literature", "calendar", "structures", "castep", "weekly-report", "manuscript", "toolkit", "cv"];
 
 const TAB_META = {
   "dashboard": ["📊", "Dashboard"],
+  "dft-theory": ["🎓", "DFT Theory"],
   "news": ["📰", "News & Articles"],
   "literature": ["📚", "References"],
   "calendar": ["📅", "Calendar & GCal"],
@@ -347,6 +352,8 @@ function switchTab(tabId, btnEl) {
     if (typeof initCastepStudioTab === "function") initCastepStudioTab();
   } else if (tabId === "toolkit") {
     if (typeof renderPeriodicTable === "function") renderPeriodicTable();
+  } else if (tabId === "dft-theory") {
+    if (typeof renderDftTheoryTab === "function") renderDftTheoryTab();
   } else if (tabId === "news") {
     if (typeof renderNewsTab === "function") renderNewsTab();
   }
