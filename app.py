@@ -2887,11 +2887,32 @@ def _strip_html_tags(s: str) -> str:
     return re.sub(r"\s+", " ", txt).strip()
 
 
-def _fetch_live_ms_gateway_http(gateway_url: str, timeout: float = 2.5):
+DEFAULT_MS_GATEWAY_URL = "http://115.145.191.231:18888"
+
+
+def _normalize_gateway_url(raw_url: Optional[str], default_url: str = DEFAULT_MS_GATEWAY_URL) -> str:
+    s = (raw_url or "").strip().rstrip("/")
+    if not s:
+        return default_url
+    # Strip accidental trailing /dsd/... path if pasted from native browser bar
+    m_path = re.match(r"^(https?://[^/]+)/.*$", s, re.I)
+    if m_path:
+        s = m_path.group(1)
+    # Support Materials Studio Gateway shorthand: 115.145.191.231_18888 or http://115.145.191.231_18888
+    m_under = re.match(r"^(https?://)?([A-Za-z0-9.\-]+)_(\d{2,5})$", s, re.I)
+    if m_under:
+        proto = m_under.group(1) or "http://"
+        s = f"{proto}{m_under.group(2)}:{m_under.group(3)}"
+    elif not re.match(r"^https?://", s, re.I):
+        s = "http://" + s
+    return s.rstrip("/")
+
+
+def _fetch_live_ms_gateway_http(gateway_url: str, timeout: float = 3.5):
     import urllib.request
     import html as _html
 
-    base = (gateway_url or "").strip().rstrip("/")
+    base = _normalize_gateway_url(gateway_url)
     if not re.match(r"^https?://[A-Za-z0-9.\-_:\[\]]+$", base):
         return {"reachable": False, "error": "Invalid Gateway URL"}
 
@@ -2980,6 +3001,7 @@ def _fetch_live_ms_gateway_http(gateway_url: str, timeout: float = 2.5):
                 "job_url": base + job_href if job_href.startswith("/") else job_href,
                 "is_archived": False,
                 "has_local_files": False,
+                "has_remote_files": True,
                 "can_remove": has_remove,
                 "can_stop": has_stop,
             })
@@ -3011,10 +3033,13 @@ def _fetch_live_ms_gateway_http(gateway_url: str, timeout: float = 2.5):
                     scat = _strip_html_tags(tds[1])
                     m_shref = re.search(r'href="([^"]+)"', tds[0], re.I)
                     shref = _html.unescape(m_shref.group(1)) if m_shref else ""
+                    m_sfile = re.search(r"[?&]file=([^&]+)", shref, re.I)
+                    sbs_file = m_sfile.group(1) if m_sfile else f"{sname}.sbs"
                     if sname:
                         result["installed_servers"].append({
                             "name": sname,
                             "category": scat or "Other",
+                            "sbs_file": sbs_file,
                             "detail_url": base + shref if shref.startswith("/") else shref,
                         })
     except Exception:
@@ -3027,7 +3052,7 @@ def _fetch_live_ms_gateway_http(gateway_url: str, timeout: float = 2.5):
 def api_castep_gateway_jobs(
     gateway_url: Optional[str] = None,
     include_archived: bool = False,
-    limit: int = 200,
+    limit: int = 500,
 ):
     import glob
     import socket
@@ -3042,11 +3067,7 @@ def api_castep_gateway_jobs(
     local_port = local_gw_kv.get("port") or local_params_kv.get("gw_port") or "18888"
     local_host_label = local_gw_kv.get("gatewayname") or f"{hostname}_{local_port}"
 
-    target_url = (gateway_url or "").strip()
-    if not target_url:
-        target_url = f"http://localhost:{local_port}"
-    elif not re.match(r"^https?://", target_url, re.I):
-        target_url = "http://" + target_url
+    target_url = _normalize_gateway_url(gateway_url, DEFAULT_MS_GATEWAY_URL)
 
     parsed_u = urlparse(target_url)
     req_host = (parsed_u.hostname or "").lower()
@@ -3057,7 +3078,7 @@ def api_castep_gateway_jobs(
     )
 
     # Probe live Materials Studio Remote Gateway HTTP server
-    live = _fetch_live_ms_gateway_http(target_url, timeout=2.5)
+    live = _fetch_live_ms_gateway_http(target_url, timeout=3.5)
     live_ok = bool(live.get("reachable"))
 
     # Parse local disk .sbj / .sbs when targeting this workstation
@@ -3090,9 +3111,11 @@ def api_castep_gateway_jobs(
         return {
             "connected": False,
             "live_http_reachable": False,
+            "is_local_gateway": is_local_target,
             "source": "none",
             "gateway_url": target_url,
             "gateway_host": "",
+            "gateway_ip": req_host,
             "gateway_root": "",
             "page_generated": "",
             "error": live.get("error") or "Materials Studio Remote Gateway not found.",
@@ -3137,6 +3160,7 @@ def api_castep_gateway_jobs(
             if loc:
                 merged = dict(loc)
                 merged["category"] = ls.get("category") or loc.get("category")
+                merged["sbs_file"] = ls.get("sbs_file") or loc.get("sbs_file", f"{ls['name']}.sbs")
                 merged["detail_url"] = ls.get("detail_url", "")
                 installed_servers.append(merged)
             else:
@@ -3153,6 +3177,7 @@ def api_castep_gateway_jobs(
                     "polling_interval": "",
                     "max_cores": "0",
                     "clean_tmp": "",
+                    "sbs_file": ls.get("sbs_file") or f"{ls['name']}.sbs",
                     "detail_url": ls.get("detail_url", ""),
                     "details": [],
                 })
@@ -3168,7 +3193,10 @@ def api_castep_gateway_jobs(
             if not it["key"].startswith("_") and it["key"] not in ("versionmajor", "versionminor")
         ]
 
-    final_host = live.get("gateway_host") or local_host_label
+    gw_kv_live = {it["key"].lower(): it["value"] for it in gateway_data}
+    gw_ip = gw_kv_live.get("ipaddress") or req_host
+
+    final_host = live.get("gateway_host") or (local_host_label if is_local_target else f"{req_host}_{parsed_u.port or 18888}")
     running_cnt = sum(
         1 for j in jobs
         if any(k in (j.get("status") or "").lower() for k in ("running", "starting", "queued"))
@@ -3177,9 +3205,11 @@ def api_castep_gateway_jobs(
     return {
         "connected": True,
         "live_http_reachable": live_ok,
+        "is_local_gateway": is_local_target,
         "source": "live_http+disk" if (live_ok and is_local_target and gw_root) else ("live_http" if live_ok else "local_disk"),
         "gateway_url": target_url,
         "gateway_host": final_host,
+        "gateway_ip": gw_ip,
         "gateway_root": gw_root if is_local_target else "",
         "page_generated": live.get("page_generated", ""),
         "total_jobs": len(jobs),
@@ -3193,34 +3223,265 @@ def api_castep_gateway_jobs(
     }
 
 
-@app.get("/api/castep/gateway/job/{job_id}")
-def api_castep_gateway_job_detail(job_id: str):
-    if not re.match(r"^[A-Za-z0-9_-]{2,24}$", job_id or ""):
-        raise HTTPException(status_code=400, detail="Invalid Gateway Job Id.")
-    gw_root = _find_local_ms_gateway_root()
-    if not gw_root:
-        raise HTTPException(status_code=404, detail="Local Materials Studio Gateway directory not found.")
+@app.get("/api/castep/gateway/server-detail")
+def api_castep_gateway_server_detail(
+    server: str,
+    gateway_url: Optional[str] = None,
+    file: Optional[str] = None,
+):
+    import urllib.request
+    import urllib.parse
+    import html as _html
 
-    job_dir = ""
-    for sub in ("jobs-info", "jobs-info-archive"):
-        sbj_path = os.path.join(gw_root, sub, f"{job_id}.sbj")
-        if os.path.isfile(sbj_path):
-            rec = _parse_sbj_file(sbj_path, sub == "jobs-info-archive", gw_root)
-            if rec.get("job_directory") and os.path.isdir(rec["job_directory"]):
-                job_dir = rec["job_directory"]
-                break
-    if not job_dir:
-        cand = os.path.join(gw_root, "jobs", job_id)
-        if os.path.isdir(cand):
-            job_dir = cand
-    if not job_dir or not os.path.isdir(job_dir):
+    srv = (server or "").strip()
+    sbs_file = (file or f"{srv}.sbs").strip()
+    if not re.match(r"^[A-Za-z0-9._-]{1,64}$", srv):
+        raise HTTPException(status_code=400, detail="Invalid server name.")
+    if not re.match(r"^[A-Za-z0-9._-]{1,80}$", sbs_file):
+        raise HTTPException(status_code=400, detail="Invalid server .sbs filename.")
+
+    target_url = _normalize_gateway_url(gateway_url, DEFAULT_MS_GATEWAY_URL)
+    if not re.match(r"^https?://[A-Za-z0-9.\-_:\[\]]+$", target_url):
+        raise HTTPException(status_code=400, detail="Invalid Gateway URL.")
+    fetch_base = re.sub(r"^(https?://)localhost(?=:|$)", r"\g<1>127.0.0.1", target_url, flags=re.I)
+
+    url = (
+        f"{fetch_base}/dsd/commands/dsd_configuregw.pl"
+        f"?server={urllib.parse.quote(srv)}&file={urllib.parse.quote(sbs_file)}"
+    )
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "MatSciNexus-GatewayBridge/1.0"})
+        with urllib.request.urlopen(req, timeout=4.0) as resp:
+            page_html = resp.read().decode("utf-8", errors="ignore")
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Failed to fetch server detail from Gateway: {exc}")
+
+    details = []
+    kv = {}
+    m_tbl = re.search(r'<table[^>]*class="[^"]*contenttables[^"]*"[^>]*>(.*?)</table>', page_html, re.I | re.S)
+    if m_tbl:
+        for tr_m in re.finditer(r"<tr>(.*?)</tr>", m_tbl.group(1), re.I | re.S):
+            tds = re.findall(r"<td[^>]*>(.*?)</td>", tr_m.group(1), re.I | re.S)
+            if len(tds) >= 2:
+                k = _strip_html_tags(tds[0])
+                v = _strip_html_tags(tds[1])
+                if k:
+                    details.append({"key": k, "value": v})
+                    kv[k] = v
+
+    ver_maj = kv.get("VersionMajor", "")
+    ver_min = kv.get("VersionMinor", "")
+    rev = kv.get("Revision", "")
+    ver_str = f"{ver_maj}.{ver_min}" + (f".{rev}" if rev else "") if ver_maj else ""
+
+    return {
+        "ok": True,
+        "server": srv,
+        "gateway_url": target_url,
+        "category": kv.get("Category", ""),
+        "description": kv.get("Description", ""),
+        "version": ver_str or "Installed",
+        "build_date": kv.get("Builddate", "-"),
+        "executable": kv.get("server-executable", ""),
+        "shell": kv.get("shell", ""),
+        "max_cores": kv.get("MaxCoresPerProcessor", "0"),
+        "details": details,
+    }
+
+
+def _fetch_remote_gateway_job_detail(target_url: str, job_id: str):
+    import urllib.request
+    import urllib.parse
+    import html as _html
+    import tempfile
+    import time
+
+    fetch_base = re.sub(r"^(https?://)localhost(?=:|$)", r"\g<1>127.0.0.1", target_url, flags=re.I)
+    dir_url = f"{fetch_base}/dsd/jobs/{job_id}/"
+    try:
+        req = urllib.request.Request(dir_url, headers={"User-Agent": "MatSciNexus-GatewayBridge/1.0"})
+        with urllib.request.urlopen(req, timeout=5.0) as resp:
+            dir_html = resp.read().decode("utf-8", errors="ignore")
+    except Exception as exc:
         raise HTTPException(
             status_code=404,
-            detail=f"Working directory for Gateway job {job_id} no longer exists on disk (already cleaned or archived).",
+            detail=f"Remote Gateway job directory {target_url}/dsd/jobs/{job_id}/ is not accessible: {exc}",
         )
-    detail = api_castep_job_detail(folder=job_dir)
-    detail["gateway_job_id"] = job_id
-    return detail
+
+    # Extract file links from Apache directory index
+    file_map = {}  # display_name -> raw_href
+    all_files = []
+    for raw_href in re.findall(r'href="([^"]+)"', dir_html, re.I):
+        h = _html.unescape(raw_href).strip()
+        if not h or h.startswith(("?", "/", "http://", "https://", "#")) or h.endswith("/"):
+            continue
+        disp = urllib.parse.unquote(h)
+        if "/" in disp or disp in (".", ".."):
+            continue
+        if disp not in file_map:
+            file_map[disp] = h
+            all_files.append(disp)
+
+    if not all_files:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No accessible output files found in remote Gateway job {job_id} ({target_url}/dsd/jobs/{job_id}/).",
+        )
+
+    def _find_match(pred):
+        for fn in all_files:
+            if pred(fn.lower()):
+                return fn
+        return None
+
+    def _fetch_bytes(fn: Optional[str], max_bytes: int = 1200000, append_tail: bool = False) -> bytes:
+        if not fn or fn not in file_map:
+            return b""
+        f_url = dir_url + file_map[fn]
+        try:
+            req = urllib.request.Request(f_url, headers={"User-Agent": "MatSciNexus-GatewayBridge/1.0"})
+            with urllib.request.urlopen(req, timeout=6.0) as resp:
+                data = resp.read(max_bytes)
+                total_len = int(resp.headers.get("Content-Length") or 0)
+            if append_tail and total_len > max_bytes:
+                try:
+                    tail_sz = min(800000, total_len - max_bytes)
+                    t_req = urllib.request.Request(
+                        f_url,
+                        headers={
+                            "User-Agent": "MatSciNexus-GatewayBridge/1.0",
+                            "Range": f"bytes=-{tail_sz}",
+                        },
+                    )
+                    with urllib.request.urlopen(t_req, timeout=5.0) as tresp:
+                        if getattr(tresp, "status", 200) in (200, 206):
+                            data = data + b"\n... [truncated middle of remote log] ...\n" + tresp.read(tail_sz)
+                except Exception:
+                    pass
+            return data
+        except Exception:
+            return b""
+
+    def _fetch_text(fn: Optional[str], max_bytes: int = 1200000, append_tail: bool = False) -> str:
+        raw = _fetch_bytes(fn, max_bytes=max_bytes, append_tail=append_tail)
+        return raw.decode("utf-8", errors="ignore") if raw else ""
+
+    def _fetch_bands(fn: Optional[str]):
+        if not fn:
+            return None
+        raw = _fetch_bytes(fn, max_bytes=3000000)
+        if not raw:
+            return None
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(mode="wb", suffix=".bands", delete=False) as tf:
+                tf.write(raw)
+                tmp_path = tf.name
+            parsed = _parse_castep_bands_backend(tmp_path)
+            if parsed and "_all_e_by_k" in parsed:
+                del parsed["_all_e_by_k"]
+            return parsed
+        except Exception:
+            return None
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                try:
+                    os.unlink(tmp_path)
+                except Exception:
+                    pass
+
+    cell_f = _find_match(lambda l: l.endswith(".cell") and not l.endswith(("_bandstr.cell", "_dos.cell", "_optics.cell")))
+    param_f = _find_match(lambda l: l.endswith(".param") and not l.endswith(("_bandstr.param", "_dos.param", "_optics.param")))
+    castep_f = _find_match(lambda l: l.endswith(".castep") and not l.endswith(("_bandstr.castep", "_dos.castep", "_optics.castep")))
+    optics_castep_f = _find_match(lambda l: l.endswith("_optics.castep"))
+    geom_f = _find_match(lambda l: l.endswith(".geom"))
+    status_f = _find_match(lambda l: l == "status.txt") or _find_match(lambda l: l.endswith(".summary"))
+    xsd_f = _find_match(lambda l: l.endswith(".xsd"))
+    cif_f = _find_match(lambda l: l.endswith(".cif"))
+
+    seed_src = cell_f or castep_f or param_f or job_id
+    seed = _normalize_castep_seed(seed_src) if "." in seed_src else seed_src
+
+    band_xcd_f = _find_match(lambda l: l.endswith(".xcd") and "band" in l)
+    dos_xcd_f = _find_match(lambda l: l.endswith(".xcd") and "dos" in l and "pdos" not in l)
+    pdos_xcd_f = _find_match(lambda l: l.endswith(".xcd") and "pdos" in l)
+    conv_xcd_f = _find_match(lambda l: l.endswith(".xcd") and "conv" in l)
+    ener_xcd_f = _find_match(lambda l: l.endswith(".xcd") and ("ener" in l or "energies" in l))
+
+    bandstr_f = _find_match(lambda l: l.endswith("_bandstr.bands"))
+    dos_bands_f = _find_match(lambda l: l.endswith("_dos.bands")) or _find_match(lambda l: l.endswith(".bands") and not l.endswith(("_bandstr.bands", "_optics.bands")))
+    optics_bands_f = _find_match(lambda l: l.endswith("_optics.bands"))
+
+    return {
+        "folder": f"{target_url}/dsd/jobs/{job_id}/",
+        "seed": seed,
+        "gateway_job_id": job_id,
+        "remote_gateway": True,
+        "updated_at": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+        "files_list": all_files,
+        "cell_text": _fetch_text(cell_f, 400000),
+        "param_text": _fetch_text(param_f, 200000),
+        "castep_text": _fetch_text(castep_f, 1500000, append_tail=True),
+        "optics_castep_text": _fetch_text(optics_castep_f, 200000),
+        "geom_text": _fetch_text(geom_f, 900000),
+        "status_text": _fetch_text(status_f, 200000),
+        "xsd_text": _fetch_text(xsd_f, 250000),
+        "cif_text": _fetch_text(cif_f, 250000),
+        "conv_xcd": _parse_xcd_file_backend(_fetch_text(conv_xcd_f, 500000)) if conv_xcd_f else None,
+        "ener_xcd": _parse_xcd_file_backend(_fetch_text(ener_xcd_f, 500000)) if ener_xcd_f else None,
+        "band_xcd": _parse_xcd_file_backend(_fetch_text(band_xcd_f, 1500000), is_band=True) if band_xcd_f else None,
+        "dos_xcd": _parse_xcd_file_backend(_fetch_text(dos_xcd_f, 1500000)) if dos_xcd_f else None,
+        "pdos_xcd": _parse_xcd_file_backend(_fetch_text(pdos_xcd_f, 1500000)) if pdos_xcd_f else None,
+        "pdos_bin_data": None,
+        "optical_xcd": None,
+        "optical_xcds": [],
+        "chdiff_data": None,
+        "charg_frm_files": [f for f in all_files if f.lower().endswith((".charg_frm", ".den_fmt", ".cube"))],
+        "bandstr_bands": _fetch_bands(bandstr_f),
+        "dos_bands": _fetch_bands(dos_bands_f),
+        "optics_bands": _fetch_bands(optics_bands_f),
+    }
+
+
+@app.get("/api/castep/gateway/job/{job_id}")
+def api_castep_gateway_job_detail(job_id: str, gateway_url: Optional[str] = None):
+    import socket
+    from urllib.parse import urlparse
+
+    if not re.match(r"^[A-Za-z0-9_-]{2,24}$", job_id or ""):
+        raise HTTPException(status_code=400, detail="Invalid Gateway Job Id.")
+
+    target_url = _normalize_gateway_url(gateway_url, DEFAULT_MS_GATEWAY_URL)
+    gw_root = _find_local_ms_gateway_root()
+    hostname = socket.gethostname().lower()
+    _, local_gw_kv = _parse_gw_kv_file(os.path.join(gw_root, "conf", "gw-info.sbd")) if gw_root else ([], {})
+    req_host = (urlparse(target_url).hostname or "").lower()
+    is_local_target = req_host in (
+        "localhost", "127.0.0.1", "::1", hostname,
+        (local_gw_kv.get("hostname") or "").lower(),
+        (local_gw_kv.get("ipaddress") or "").lower(),
+    )
+
+    if is_local_target and gw_root:
+        job_dir = ""
+        for sub in ("jobs-info", "jobs-info-archive"):
+            sbj_path = os.path.join(gw_root, sub, f"{job_id}.sbj")
+            if os.path.isfile(sbj_path):
+                rec = _parse_sbj_file(sbj_path, sub == "jobs-info-archive", gw_root)
+                if rec.get("job_directory") and os.path.isdir(rec["job_directory"]):
+                    job_dir = rec["job_directory"]
+                    break
+        if not job_dir:
+            cand = os.path.join(gw_root, "jobs", job_id)
+            if os.path.isdir(cand):
+                job_dir = cand
+        if job_dir and os.path.isdir(job_dir):
+            detail = api_castep_job_detail(folder=job_dir)
+            detail["gateway_job_id"] = job_id
+            return detail
+
+    # Remote Gateway (e.g. http://115.145.191.231:18888) or fallback via HTTP /dsd/jobs/{job_id}/
+    return _fetch_remote_gateway_job_detail(target_url, job_id)
 
 
 @app.post("/api/castep/gateway/remove")
@@ -3230,7 +3491,7 @@ async def api_castep_gateway_remove_job(request: Request):
 
     body = await request.json()
     job_id = str(body.get("job_id") or "").strip()
-    gateway_url = str(body.get("gateway_url") or "http://localhost:18888").strip().rstrip("/")
+    gateway_url = _normalize_gateway_url(body.get("gateway_url"), DEFAULT_MS_GATEWAY_URL)
     if not re.match(r"^[A-Za-z0-9_-]{2,24}$", job_id):
         raise HTTPException(status_code=400, detail="Invalid Gateway Job Id.")
     if not re.match(r"^https?://[A-Za-z0-9.\-_:\[\]]+$", gateway_url):
