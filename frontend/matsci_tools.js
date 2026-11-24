@@ -528,6 +528,105 @@ function castepInferCrystalSystem(lat) {
 }
 
 // ============================================================================
+// 1B. Scientific Typography Helpers (True HTML <sub>/<sup> & Canvas Subscripts)
+// ============================================================================
+const CASTEP_SCI_AUTO_SUB_RE = /\b(E)_(F|g)\b|\b(M)_(net|abs)\b|\b(d)_(z)\b|(μ)_([A-Za-z0-9]+)|(ρ)_([A-Za-z0-9]+)|(ε)_([0-9]+)|(σ)_([0-9]+)/g;
+
+function normalizeSciSubTokens(text) {
+  return String(text ?? "").replace(CASTEP_SCI_AUTO_SUB_RE, (...args) => {
+    for (let i = 1; i < args.length - 2; i += 2) {
+      if (args[i] !== undefined) return `${args[i]}_{${args[i + 1]}}`;
+    }
+    return args[0];
+  });
+}
+
+function formatSciHtml(rawText) {
+  const esc = typeof escapeHtml === "function"
+    ? escapeHtml(String(rawText ?? ""))
+    : String(rawText ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return normalizeSciSubTokens(esc)
+    .replace(/_\{([^}]+)\}/g, "<sub>$1</sub>")
+    .replace(/\^\{([^}]+)\}/g, "<sup>$1</sup>");
+}
+window.formatSciHtml = formatSciHtml;
+
+function parseSciTextRuns(rawText) {
+  const norm = normalizeSciSubTokens(rawText);
+  const runs = [];
+  const re = /_\{([^}]+)\}|\^\{([^}]+)\}/g;
+  let last = 0, m;
+  while ((m = re.exec(norm)) !== null) {
+    if (m.index > last) runs.push({ text: norm.slice(last, m.index), kind: "norm" });
+    if (m[1] !== undefined) runs.push({ text: m[1], kind: "sub" });
+    else if (m[2] !== undefined) runs.push({ text: m[2], kind: "sup" });
+    last = re.lastIndex;
+  }
+  if (last < norm.length) runs.push({ text: norm.slice(last), kind: "norm" });
+  return runs;
+}
+
+function getSciCanvasFonts(baseFont) {
+  const f = baseFont || "11px Inter, sans-serif";
+  const m = f.match(/(\d+(?:\.\d+)?)px/i);
+  const basePx = m ? parseFloat(m[1]) : 11;
+  const subPx = Math.max(7.2, Number((basePx * 0.74).toFixed(2)));
+  const subFont = m ? f.replace(/(\d+(?:\.\d+)?)px/i, `${subPx}px`) : f;
+  return { basePx, baseFont: f, subFont };
+}
+
+function measureSciText(ctx, text) {
+  const runs = parseSciTextRuns(text);
+  if (!runs.length) return 0;
+  if (runs.length === 1 && runs[0].kind === "norm") return ctx.measureText(runs[0].text).width;
+  const prevFont = ctx.font;
+  const { baseFont, subFont } = getSciCanvasFonts(prevFont);
+  let total = 0;
+  for (const r of runs) {
+    ctx.font = r.kind === "norm" ? baseFont : subFont;
+    total += ctx.measureText(r.text).width;
+  }
+  ctx.font = prevFont;
+  return total;
+}
+window.measureSciText = measureSciText;
+
+function drawSciText(ctx, text, x, y) {
+  const runs = parseSciTextRuns(text);
+  if (!runs.length) return;
+  if (runs.length === 1 && runs[0].kind === "norm") {
+    ctx.fillText(runs[0].text, x, y);
+    return;
+  }
+  const { basePx, baseFont, subFont } = getSciCanvasFonts(ctx.font);
+  const totalW = measureSciText(ctx, text);
+  const align = ctx.textAlign || "left";
+  let curX = x;
+  if (align === "center") curX = x - totalW * 0.5;
+  else if (align === "right" || align === "end") curX = x - totalW;
+
+  ctx.save();
+  ctx.textAlign = "left";
+  for (const r of runs) {
+    if (r.kind === "sub") {
+      ctx.font = subFont;
+      ctx.fillText(r.text, curX, y + basePx * 0.27);
+      curX += ctx.measureText(r.text).width;
+    } else if (r.kind === "sup") {
+      ctx.font = subFont;
+      ctx.fillText(r.text, curX, y - basePx * 0.34);
+      curX += ctx.measureText(r.text).width;
+    } else {
+      ctx.font = baseFont;
+      ctx.fillText(r.text, curX, y);
+      curX += ctx.measureText(r.text).width;
+    }
+  }
+  ctx.restore();
+}
+window.drawSciText = drawSciText;
+
+// ============================================================================
 // 2. Multi-Format CASTEP Parsers (.cell, .param, .castep, .geom, .xsd, .xcd, .bands)
 // ============================================================================
 
@@ -2430,7 +2529,7 @@ function handleCastep3DCanvasClick(e, canvas) {
     const orient = document.getElementById("castep-ads-orient")?.value || "vertical";
     pushCastepUndoSnapshot();
     const added = insertAdsorbateAtCartesianBase(hitAtom.cartX, hitAtom.cartY, hitAtom.cartZ, side, heightA, species, orient);
-    afterCastepStructureModified(`Placed ${species} (${added.join(", ")}) directly on ${hitAtom.label} (d_z = ${heightA.toFixed(2)} Å).`);
+    afterCastepStructureModified(`Placed ${species} (${added.join(", ")}) directly on ${hitAtom.label} (Δz = ${heightA.toFixed(2)} Å).`);
     return;
   }
 
@@ -3840,7 +3939,7 @@ function renderCastep3DScene() {
         ctx.font = "bold 10px Inter, sans-serif";
         ctx.fillStyle = col;
         ctx.textAlign = "center";
-        ctx.fillText(`${sVal > 0 ? "+" : ""}${sVal.toFixed(2)}μB`, pTip.sx, pTip.sy - 7);
+        drawSciText(ctx, `${sVal > 0 ? "+" : ""}${sVal.toFixed(2)} μ_{B}`, pTip.sx, pTip.sy - 7);
         ctx.restore();
       }
 
@@ -4537,7 +4636,7 @@ function placeCastepAdsorbateAtSite() {
   pushCastepUndoSnapshot();
   const h = siteType === "custom" ? 0.0 : heightA;
   const added = insertAdsorbateAtCartesianBase(site.cx, site.cy, site.cz, side, h, species, orient);
-  afterCastepStructureModified(`Placed ${species} (${added.join(", ")}) at ${site.shortLabel} (d_z = ${h.toFixed(2)} Å).`);
+  afterCastepStructureModified(`Placed ${species} (${added.join(", ")}) at ${site.shortLabel} (Δz = ${h.toFixed(2)} Å).`);
 }
 window.placeCastepAdsorbateAtSite = placeCastepAdsorbateAtSite;
 
@@ -5604,10 +5703,10 @@ function renderCastepElectronicPlots() {
     const pathLabels = bandTicks.map(t => t.label === "G" ? "Γ" : t.label).join(" → ");
     strip.innerHTML = `
       <span><strong>Material:</strong> ${escapeHtml(job.material || CASTEP_STUDIO_STATE.structure?.formula || job.seed || "")}</span>
-      <span><strong>Electronic:</strong> ${escapeHtml(gapSummary || "Band Dispersion & PDOS")}</span>
+      <span><strong>Electronic:</strong> ${formatSciHtml(gapSummary || "Band Dispersion & PDOS")}</span>
       <span style="color:#0369a1;"><strong>PDOS Source:</strong> ${escapeHtml(pdosSourceLabel || "Band Structure Only")}</span>
       <span><strong>BZ Path:</strong> ${escapeHtml(pathLabels)}</span>
-      <span style="color:#047857;"><strong>Zero Ref:</strong> ${escapeHtml(align.label)}</span>
+      <span style="color:#047857;"><strong>Zero Ref:</strong> ${formatSciHtml(align.label)}</span>
     `;
   }
 
@@ -5684,7 +5783,7 @@ function renderCastepElectronicPlots() {
     ctx.save();
     ctx.translate(16, padT + plotH / 2); ctx.rotate(-Math.PI / 2);
     ctx.textAlign = "center"; ctx.font = "bold 11.5px Inter, sans-serif"; ctx.fillStyle = "#0f172a";
-    ctx.fillText("Energy E − E_F (eV)", 0, 0);
+    drawSciText(ctx, "Energy E − E_{F} (eV)", 0, 0);
     ctx.restore();
   }
 
@@ -5879,7 +5978,7 @@ function renderCastepElectronicPlots() {
         ctx.fillText(`${e}`, eToX(e), padT + plotH + 15);
       }
       ctx.font = "bold 11.5px Inter, sans-serif"; ctx.fillStyle = "#0f172a";
-      ctx.fillText("Energy E − E_F (eV)", dosX0 + dosW / 2, padT + plotH + 31);
+      drawSciText(ctx, "Energy E − E_{F} (eV)", dosX0 + dosW / 2, padT + plotH + 31);
 
       ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.font = "10px Inter, sans-serif";
       if (useMirror) {
@@ -5918,7 +6017,7 @@ function initCastepElectronicCanvasHover() {
     const plotH = (rect.height || 520) - padT - padB;
     const eCursor = emax - ((my - padT) / plotH) * (emax - emin);
     if (my >= padT && my <= padT + plotH) {
-      readout.innerHTML = `Cursor Energy: <strong>E - E<sub>F</sub> = ${eCursor.toFixed(3)} eV</strong> (${eCursor > 0 ? "Conduction Band" : "Valence Band"}) • X = ${Math.round(mx)} px`;
+      readout.innerHTML = `Cursor Energy: <strong>E − E<sub>F</sub> = ${eCursor.toFixed(3)} eV</strong> (${eCursor > 0 ? "Conduction Band" : "Valence Band"}) • X = ${Math.round(mx)} px`;
     }
   });
 }
@@ -9190,7 +9289,7 @@ function renderCastepOpticalPlots() {
     ctx.fillStyle = isActiveSub ? "#1d4ed8" : "#0f172a";
     ctx.font = "bold 11.5px Inter, sans-serif";
     ctx.textAlign = "left";
-    ctx.fillText(cfg.title, px0, boxY + 17);
+    drawSciText(ctx, cfg.title, px0, boxY + 17);
     if (isZoomedX || (Number(pz.yScale) || 1.0) > 1.05) {
       const zTxt = `🔍 ${zoomFactorDisp.toFixed(1)}×`;
       ctx.save();
@@ -9216,8 +9315,8 @@ function renderCastepOpticalPlots() {
       const s = cfg.series[i];
       ctx.fillStyle = s.color;
       const lbl = `● ${s.label}`;
-      ctx.fillText(lbl, lx, boxY + 17);
-      lx -= ctx.measureText(lbl).width + 10;
+      drawSciText(ctx, lbl, lx, boxY + 17);
+      lx -= measureSciText(ctx, lbl) + 10;
     }
 
     // Left Y-axis ticks
@@ -9335,7 +9434,7 @@ function renderCastepOpticalPlots() {
     });
   } else if (prop === "tauc") {
     drawOpticalSubPanel(0, 0, width, height, {
-      title: `Tauc Plot Optical Gap Fit (Direct E_g ≈ ${spec.taucFitDirect.gapEv.toFixed(2)} eV | Indirect ≈ ${spec.taucFitIndirect.gapEv.toFixed(2)} eV)`,
+      title: `Tauc Plot Optical Gap Fit (Direct E_{g} ≈ ${spec.taucFitDirect.gapEv.toFixed(2)} eV | Indirect ≈ ${spec.taucFitIndirect.gapEv.toFixed(2)} eV)`,
       yMinForced: 0,
       taucFit: spec.taucFitDirect,
       series: [
@@ -9848,7 +9947,7 @@ function computePromoleculeDeformationGrid(chargObj) {
   }
   return summarizeRawVolumetricGridJS(
     diffRaw, ngx, ngy, ngz,
-    `${chargObj.source_file} (ρ_total − ρ_promolecule)`,
+    `${chargObj.source_file} (ρ_{total} − ρ_{promolecule})`,
     "charg_frm_promol", vol, cLen, true
   );
 }
@@ -9856,7 +9955,7 @@ function computePromoleculeDeformationGrid(chargObj) {
 function computeDifferentialChargeDensity() {
   const slots = CASTEP_STUDIO_STATE.chdiffState.diffSlots || {};
   if (!slots.ab || !slots.a) {
-    if (typeof showToast === "function") showToast("Please load at least ρ_AB (Total) and ρ_A (Fragment A) *.charg_frm files first!", "warning");
+    if (typeof showToast === "function") showToast("Please load at least ρ(AB) (Total) and ρ(A) (Fragment A) *.charg_frm files first!", "warning");
     return;
   }
   const ab = slots.ab, fa = slots.a, fb = slots.b;
@@ -10115,7 +10214,7 @@ function renderCastepChdiffPlots() {
     ctx.fillText("No Charge Density Difference (*.chdiff / *.charg_frm) Loaded", width / 2, height / 2 - 18);
     ctx.fillStyle = "#64748b";
     ctx.font = "12.5px Inter, sans-serif";
-    ctx.fillText("Click '📥 Load *.chdiff / *.charg_frm' above, select a job with *.chdiff output, or use '➖ Differential Subtraction (ρ_AB − ρ_A − ρ_B)'.", width / 2, height / 2 + 10);
+    drawSciText(ctx, "Click '📥 Load *.chdiff / *.charg_frm' above, select a job with *.chdiff output, or use '➖ Differential Subtraction (ρ_{AB} − ρ_{A} − ρ_{B})'.", width / 2, height / 2 + 10);
     ctx.restore();
     return;
   }
@@ -10131,7 +10230,7 @@ function renderCastepChdiffPlots() {
     const unit = chGrid.unit || "e/Å³";
     const dqMax = chGrid.max_abs_dq_e !== undefined ? chGrid.max_abs_dq_e : 0;
     strip.innerHTML = `
-      <span><strong>Source:</strong> ${escapeHtml(chGrid.source_file || "CASTEP Δρ")}</span>
+      <span><strong>Source:</strong> ${formatSciHtml(chGrid.source_file || "CASTEP Δρ")}</span>
       <span><strong>FFT Grid:</strong> ${chGrid.ngx}×${chGrid.ngy}×${chGrid.ngz}</span>
       <span><strong>Range:</strong> [${Number(chGrid.min_val).toFixed(4)}, +${Number(chGrid.max_val).toFixed(4)}] ${unit}</span>
       <span><strong>Isovalue:</strong> ±${isoVal.toFixed(4)} ${unit}</span>
@@ -11559,7 +11658,7 @@ function renderCastepMullikenPane() {
       <span><strong>Total Net Moment M<sub>net</sub>:</strong> ${mull.integratedSpin >= 0 ? "+" : ""}${mull.integratedSpin.toFixed(3)} μ<sub>B</sub></span>
       <span><strong>Absolute Spin M<sub>abs</sub>:</strong> ${mull.integratedAbsSpin.toFixed(3)} μ<sub>B</sub></span>
       <span><strong>Orbital Spin (s/p/d/f):</strong> ${os.s.toFixed(2)} / ${os.p.toFixed(2)} / ${os.d.toFixed(2)} / ${os.f.toFixed(2)} μ<sub>B</sub></span>
-      <span><strong>Dominant:</strong> ${domOrb ? `${domOrb[0]}-orbital (${domOrb[1] >= 0 ? "+" : ""}${domOrb[1].toFixed(2)} μB)` : "—"}</span>
+      <span><strong>Dominant:</strong> ${domOrb ? `${domOrb[0]}-orbital (${domOrb[1] >= 0 ? "+" : ""}${domOrb[1].toFixed(2)} μ<sub>B</sub>)` : "—"}</span>
       <span><strong>Bonds:</strong> ${mull.bonds.length} (Avg ${avgLen.toFixed(3)} Å)</span>
     `;
   }
@@ -11602,7 +11701,7 @@ function renderCastepMullikenPane() {
     const titleEl = document.getElementById("castep-mulliken-mag-title");
 
     if (chartMode === "spin_atomic") {
-      if (titleEl) titleEl.textContent = "Atomic Magnetic Moment Contribution μ_i (μ_B)";
+      if (titleEl) titleEl.innerHTML = "Atomic Magnetic Moment Contribution μ<sub>i</sub> (μ<sub>B</sub>)";
       // Sort top 24 most magnetic atoms (or all if <= 24)
       const sorted = [...visAtoms].sort((a, b) => Math.abs(b.spin) - Math.abs(a.spin)).slice(0, 24);
       let maxAbs = Math.max(0.1, ...sorted.map(a => Math.abs(a.spin))) * 1.15;
@@ -11628,16 +11727,21 @@ function renderCastepMullikenPane() {
       ctx.fillText(`+${maxAbs.toFixed(2)}`, padL - 5, padT + 4);
       ctx.fillText("0.00", padL - 5, y0);
       ctx.fillText(`-${maxAbs.toFixed(2)}`, padL - 5, padT + ph - 4);
-      ctx.fillStyle = "#dc2626"; ctx.font = "bold 10px Inter, sans-serif"; ctx.textAlign = "right";
-      ctx.fillText("■ +μ_B (↑)   ", padL + pw - 58, padT - 10);
-      ctx.fillStyle = "#2563eb"; ctx.fillText("■ −μ_B (↓)", padL + pw, padT - 10);
+      ctx.font = "bold 10px Inter, sans-serif"; ctx.textAlign = "right";
+      const lblDn = "■ −μ_{B} (↓)";
+      const lblUp = "■ +μ_{B} (↑)";
+      const wDn = measureSciText(ctx, lblDn);
+      ctx.fillStyle = "#2563eb";
+      drawSciText(ctx, lblDn, padL + pw, padT - 10);
+      ctx.fillStyle = "#dc2626";
+      drawSciText(ctx, lblUp, padL + pw - wDn - 14, padT - 10);
     } else if (chartMode === "spin_orbital" || chartMode === "elec_orbital") {
       const isMag = chartMode === "spin_orbital";
-      if (titleEl) titleEl.textContent = isMag ? "Orbital Magnetic Contribution (μ_s, μ_p, μ_d, μ_f) by Element" : "Avg Orbital Electron Population (s, p, d, f) by Element";
+      if (titleEl) titleEl.innerHTML = isMag ? "Orbital Magnetic Contribution (μ<sub>s</sub>, μ<sub>p</sub>, μ<sub>d</sub>, μ<sub>f</sub>) by Element" : "Avg Orbital Electron Population (s, p, d, f) by Element";
       const spList = elFilter === "all" ? mull.speciesSummary : mull.speciesSummary.filter(s => s.element === elFilter);
       const orbKeys = isMag ? ["muS", "muP", "muD", "muF"] : ["s", "p", "d", "f"];
       const orbCols = ["#2563eb", "#16a34a", "#dc2626", "#9333ea"];
-      const orbLbls = isMag ? ["μ_s", "μ_p", "μ_d", "μ_f"] : ["s", "p", "d", "f"];
+      const orbLbls = isMag ? ["μ_{s}", "μ_{p}", "μ_{d}", "μ_{f}"] : ["s", "p", "d", "f"];
 
       let minV = 0, maxV = 0.1;
       spList.forEach(sp => {
@@ -11678,8 +11782,8 @@ function renderCastepMullikenPane() {
       for (let oi = 3; oi >= 0; oi--) {
         ctx.fillStyle = orbCols[oi];
         const t = `■ ${orbLbls[oi]}`;
-        ctx.fillText(t, lx, padT - 10);
-        lx -= ctx.measureText(t).width + 9;
+        drawSciText(ctx, t, lx, padT - 10);
+        lx -= measureSciText(ctx, t) + 11;
       }
     } else {
       if (titleEl) titleEl.textContent = "Atomic Charge Comparison: Mulliken vs. Hirshfeld (e)";
