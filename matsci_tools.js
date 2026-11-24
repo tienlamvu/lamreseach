@@ -1318,10 +1318,20 @@ async function autoConnectLocalCastepBackend(baseOverride = null, skipGateway = 
           if (inp && !inp.value) inp.value = data.roots[0];
         }
         if (Array.isArray(data.jobs) && data.jobs.length > 0) {
-          CASTEP_STUDIO_STATE.jobs = data.jobs.map(j => enrichCastepJobSummary(j));
-          renderCastepJobsList();
-          updateCastepKpiBar();
-          await loadCastepJobIntoStudio(CASTEP_STUDIO_STATE.jobs[0].id);
+          const scanned = data.jobs.map(j => enrichCastepJobSummary(j));
+          const existing = CASTEP_STUDIO_STATE.jobs || [];
+          if (existing.length > 0 && CASTEP_STUDIO_STATE.activeJobId) {
+            // Preserve already-uploaded/active user structure (e.g. imported .cif) while merging scanned jobs
+            const existKeys = new Set(existing.map(j => j.id));
+            CASTEP_STUDIO_STATE.jobs = [...existing, ...scanned.filter(j => !existKeys.has(j.id))];
+            renderCastepJobsList();
+            updateCastepKpiBar();
+          } else {
+            CASTEP_STUDIO_STATE.jobs = scanned;
+            renderCastepJobsList();
+            updateCastepKpiBar();
+            await loadCastepJobIntoStudio(CASTEP_STUDIO_STATE.jobs[0].id);
+          }
         }
         const procLabel = CASTEP_STUDIO_STATE.localProcesses.length
           ? `${CASTEP_STUDIO_STATE.localProcesses[0].name} Active (${CASTEP_STUDIO_STATE.localProcesses.length} proc)`
@@ -1685,6 +1695,57 @@ function resetAllOptPanelZooms() {
   CASTEP_STUDIO_STATE._optSpectraCacheKey = "";
 }
 
+function buildCastepStructureFromParsedCif(p, fallbackName = "Structure") {
+  if (!p || !Array.isArray(p.atoms) || !p.atoms.length) return null;
+  const lat = {
+    a: Number(p.a) || 4.0,
+    b: Number(p.b) || Number(p.a) || 4.0,
+    c: Number(p.c) || Number(p.a) || 4.0,
+    alpha: Number(p.alpha) || 90.0,
+    beta: Number(p.beta) || 90.0,
+    gamma: Number(p.gamma) || 90.0
+  };
+  const vecs = (Array.isArray(p.vectors) && p.vectors.length === 3)
+    ? p.vectors
+    : castepParamsToVectors(lat.a, lat.b, lat.c, lat.alpha, lat.beta, lat.gamma);
+  return {
+    name: p.name || p.formula || fallbackName,
+    formula: p.formula || castepComputeFormula(p.atoms),
+    fullUnitCellFormula: p.full_unit_cell_formula || castepComputeFormula(p.atoms),
+    formulaUnitsZ: Number(p.formula_units_Z) || 1,
+    spaceGroup: p.space_group || "P 1 (1)",
+    spaceGroupHM: p.space_group_hm || "P 1",
+    spaceGroupIT: Number(p.space_group_it) || 1,
+    hallSymbol: p.hall_symbol || "P 1",
+    crystalSystem: p.crystal_system || castepInferCrystalSystem(lat),
+    cellSetting: p.cell_setting || (p.crystal_system || "triclinic").toLowerCase(),
+    symopSource: p.symop_source || "p1",
+    symops: Array.isArray(p.symops) && p.symops.length ? p.symops.slice() : ["x, y, z"],
+    asymmetricAtoms: Array.isArray(p.asymmetric_atoms) && p.asymmetric_atoms.length
+      ? JSON.parse(JSON.stringify(p.asymmetric_atoms))
+      : null,
+    symmetryIntact: Boolean(p.symmetry_intact && Array.isArray(p.asymmetric_atoms) && p.asymmetric_atoms.length > 0),
+    lattice: lat,
+    vectors: vecs,
+    atoms: p.atoms.map((a, i) => ({
+      element: castepCleanElement(a.element),
+      type_symbol: a.type_symbol || castepCleanElement(a.element),
+      label: a.label || `${a.element}${i + 1}`,
+      site_label: a.site_label || a.label || `${a.element}${i + 1}`,
+      x: Number(a.x) || 0,
+      y: Number(a.y) || 0,
+      z: Number(a.z) || 0,
+      occupancy: (typeof a.occupancy === "number" && isFinite(a.occupancy)) ? a.occupancy : 1.0,
+      uiso: Number(a.uiso) || 0.0,
+      adp_type: a.adp_type || "Uiso",
+      fixed: false, fx: 0, fy: 0, fz: 0, charge: null
+    })),
+    kpointsBlock: "",
+    speciesPotBlock: ""
+  };
+}
+window.buildCastepStructureFromParsedCif = buildCastepStructureFromParsedCif;
+
 async function loadCastepJobIntoStudio(jobId) {
   const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === jobId);
   if (!job) return;
@@ -1749,27 +1810,12 @@ async function loadCastepJobIntoStudio(jobId) {
   if ((!struct || !struct.atoms.length) && job.xsd_text) {
     struct = parseMaterialsStudioXsd(job.xsd_text, job.material || job.seed || "MS_Structure");
   }
-  if ((!struct || !struct.atoms.length) && job.cif_text && typeof parseCifTextClient === "function") {
-    const p = parseCifTextClient(job.cif_text, job.seed || "Structure.cif");
-    if (p && p.atoms && p.atoms.length) {
-      const vecs = castepParamsToVectors(p.a, p.b, p.c, p.alpha, p.beta, p.gamma);
-      struct = {
-        name: p.name || p.formula || job.seed,
-        formula: p.formula || castepComputeFormula(p.atoms),
-        spaceGroup: p.space_group || "P 1",
-        crystalSystem: p.crystal_system || castepInferCrystalSystem({ a: p.a, b: p.b, c: p.c, alpha: p.alpha, beta: p.beta, gamma: p.gamma }),
-        lattice: { a: p.a, b: p.b, c: p.c, alpha: p.alpha, beta: p.beta, gamma: p.gamma },
-        vectors: vecs,
-        atoms: p.atoms.map((a, i) => ({
-          element: castepCleanElement(a.element),
-          label: a.label || `${a.element}${i+1}`,
-          x: Number(a.x) || 0, y: Number(a.y) || 0, z: Number(a.z) || 0,
-          fixed: false, fx: 0, fy: 0, fz: 0, charge: null
-        })),
-        kpointsBlock: "",
-        speciesPotBlock: ""
-      };
-    }
+  if ((!struct || !struct.atoms.length) && job.cif_text && (typeof parseCifFullCrystal === "function" || typeof parseCifTextClient === "function")) {
+    const p = typeof parseCifFullCrystal === "function"
+      ? parseCifFullCrystal(job.cif_text, job.seed || "Structure.cif")
+      : parseCifTextClient(job.cif_text, job.seed || "Structure.cif");
+    const built = buildCastepStructureFromParsedCif(p, job.seed || "Structure");
+    if (built) struct = built;
   }
   if ((!struct || !struct.atoms.length) && parsedLog.atoms && parsedLog.atoms.length > 0) {
     const vecs = parsedLog.vectors || castepParamsToVectors(5.0, 5.0, 15.0, 90, 90, 90);
@@ -2020,14 +2066,17 @@ function isVestaChemicalBond(el1, el2, dist, cutoffFactor, hasBothCationAndAnion
   const isTM1 = CRYSTAL_TRANSITION_METALS.has(el1), isTM2 = CRYSTAL_TRANSITION_METALS.has(el2);
   const isA1 = VESTA_ANION_SET.has(el1), isA2 = VESTA_ANION_SET.has(el2);
 
-  // 1) In transition-metal + covalent frameworks (e.g. KCoHCF), guest alkali ions (K, Rb, Cs)
-  //    sit in interstitial cages and should not draw fake spiderweb bonds to C/N/TM
-  if ((isAlk1 || isAlk2) && elSet) {
+  // 1) In transition-metal + covalent frameworks (e.g. KCoHCF, BaTiO3, SrTiO3), large A-site
+  //    alkali / alkaline-earth cations (K, Rb, Cs, Ba, Sr) sit in 12-coord interstitial cages
+  //    and should not draw fake spiderweb spokes over TM-O/TM-CN polyhedra (matching VESTA defaults)
+  const isLargeASite1 = (el1 === "K" || el1 === "Rb" || el1 === "Cs" || el1 === "Ba" || el1 === "Sr");
+  const isLargeASite2 = (el2 === "K" || el2 === "Rb" || el2 === "Cs" || el2 === "Ba" || el2 === "Sr");
+  if ((isAlk1 || isAlk2 || isLargeASite1 || isLargeASite2) && elSet) {
     const hasTM = [...elSet].some(e => CRYSTAL_TRANSITION_METALS.has(e));
-    if (hasTM && (el1 === "K" || el2 === "K" || el1 === "Rb" || el2 === "Rb" || el1 === "Cs" || el2 === "Cs")) {
+    if (hasTM && (isLargeASite1 || isLargeASite2) && tol <= 1.22) {
       return false;
     }
-    // Even for Li/Na, avoid Li-TM / Na-TM and Li-C/Na-C when O/N/S/F is present
+    // Even for Li/Na/Ca, avoid alkali-TM direct bonds
     if ((isAlk1 && isTM2) || (isAlk2 && isTM1)) return false;
   }
 
@@ -2885,12 +2934,22 @@ function updateVestaOutputConsole() {
   });
 
   lines.push("--------------------------------------------------------------------------------");
+  const volVal = st.vectors ? castepCellVolume(st.vectors) : 0;
+  const asymCount = Array.isArray(st.asymmetricAtoms) && st.symmetryIntact ? st.asymmetricAtoms.length : 0;
+  const symOpsCount = Array.isArray(st.symops) && st.symmetryIntact ? st.symops.length : 1;
   lines.push(
     `Lattice: a = ${Number(lat.a).toFixed(5)} Å, b = ${Number(lat.b).toFixed(5)} Å, c = ${Number(lat.c).toFixed(5)} Å, ` +
-    `α = ${Number(lat.alpha).toFixed(2)}°, β = ${Number(lat.beta).toFixed(2)}°, γ = ${Number(lat.gamma).toFixed(2)}° (Space group: ${st.spaceGroup || "P 1"})`
+    `α = ${Number(lat.alpha).toFixed(2)}°, β = ${Number(lat.beta).toFixed(2)}°, γ = ${Number(lat.gamma).toFixed(2)}° • V = ${volVal.toFixed(3)} Å³`
   );
   lines.push(
-    `${stats.atomsCount} atoms (${stats.unitCellAtoms} asymmetric/cell + ${Math.max(0, stats.atomsCount - stats.unitCellAtoms)} boundary-bonded), ` +
+    `Symmetry: ${st.spaceGroup || "P 1 (1)"} • ${st.crystalSystem || "Triclinic"}` +
+    (st.hallSymbol ? ` • Hall: ${st.hallSymbol}` : "") +
+    ` • SymOps: ${symOpsCount}` +
+    (asymCount ? ` • Asymmetric sites: ${asymCount}` : "") +
+    (st.formulaUnitsZ ? ` • Z = ${st.formulaUnitsZ}` : "")
+  );
+  lines.push(
+    `${stats.atomsCount} displayed atoms (${stats.unitCellAtoms} in unit cell + ${Math.max(0, stats.atomsCount - stats.unitCellAtoms)} boundary-bonded), ` +
     `${stats.bondsCount} bonds, ${stats.polyCount} polyhedra; CPU time = ${stats.cpuMs} ms`
   );
   logEl.textContent = lines.join("\n");
@@ -3957,13 +4016,25 @@ function resetCastepStructureToJobOriginal() {
 }
 window.resetCastepStructureToJobOriginal = resetCastepStructureToJobOriginal;
 
-function afterCastepStructureModified(toastMsg = "") {
+function afterCastepStructureModified(toastMsg = "", preserveSymmetry = false) {
   CASTEP_STUDIO_STATE.view3D._topoCacheKey = "";
   CASTEP_STUDIO_STATE.chdiffState.activeGrid = null;
   const st = CASTEP_STUDIO_STATE.structure;
+  if (!preserveSymmetry) {
+    // Any atomic/supercell/slab/defect modification breaks original Wyckoff symmetry -> convert cleanly to P 1 (VESTA standard)
+    st.symmetryIntact = false;
+    st.spaceGroup = "P 1 (1)";
+    st.spaceGroupHM = "P 1";
+    st.spaceGroupIT = 1;
+    st.hallSymbol = "P 1";
+    st.symops = ["x, y, z"];
+    st.asymmetricAtoms = null;
+  }
   st.formula = castepComputeFormula(st.atoms);
   st.lattice = castepVectorsToParams(st.vectors);
-  st.crystalSystem = castepInferCrystalSystem(st.lattice);
+  if (!preserveSymmetry || !st.crystalSystem) {
+    st.crystalSystem = castepInferCrystalSystem(st.lattice);
+  }
 
   syncCastepStructureToBuilderInputs();
   detectCastepAdsorptionSites();
@@ -4928,8 +4999,11 @@ function generateMaterialsStudioXsdContent() {
   return xml;
 }
 
-function generateCastepCifContent() {
+function generateCastepCifContent(options = {}) {
   const st = CASTEP_STUDIO_STATE.structure;
+  if (typeof window !== "undefined" && typeof window.exportVestaStandardCif === "function") {
+    return window.exportVestaStandardCif(st, options);
+  }
   const lat = st.lattice;
   const vol = castepCellVolume(st.vectors);
   let cif = `# CIF generated by MatSci Nexus CASTEP Studio\ndata_${(st.formula || "CASTEP").replace(/[^A-Za-z0-9_]/g, "_")}\n`;
@@ -4944,9 +5018,10 @@ function generateCastepCifContent() {
   cif += `_cell_angle_beta  ${Number(lat.beta).toFixed(4)}\n`;
   cif += `_cell_angle_gamma ${Number(lat.gamma).toFixed(4)}\n`;
   cif += `_cell_volume ${vol.toFixed(4)}\n\n`;
+  cif += `loop_\n_symmetry_equiv_pos_as_xyz\n  'x, y, z'\n`;
   cif += `loop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_occupancy\n`;
   (st.atoms || []).forEach((at, idx) => {
-    cif += `${(at.label || `${at.element}${idx+1}`).padEnd(8, " ")} ${at.element.padEnd(4, " ")} ${Number(at.x).toFixed(6)} ${Number(at.y).toFixed(6)} ${Number(at.z).toFixed(6)} 1.0000\n`;
+    cif += `${(at.label || `${at.element}${idx+1}`).padEnd(8, " ")} ${at.element.padEnd(4, " ")} ${Number(at.x).toFixed(6)} ${Number(at.y).toFixed(6)} ${Number(at.z).toFixed(6)} ${Number(at.occupancy ?? 1.0).toFixed(4)}\n`;
   });
   return cif;
 }
@@ -6126,30 +6201,24 @@ function applyCastepEditorTextToStructure() {
   if (!ta || !ta.value.trim()) return;
   const tab = CASTEP_STUDIO_STATE.activeFileEditorTab;
   pushCastepUndoSnapshot();
+  let preserveSym = false;
   if (tab === "cell") {
     const parsed = parseCastepCellText(ta.value, CASTEP_STUDIO_STATE.structure.name);
     if (parsed && parsed.atoms.length) CASTEP_STUDIO_STATE.structure = parsed;
   } else if (tab === "xsd") {
     const parsed = parseMaterialsStudioXsd(ta.value, CASTEP_STUDIO_STATE.structure.name);
     if (parsed && parsed.atoms.length) CASTEP_STUDIO_STATE.structure = parsed;
-  } else if (tab === "cif" && typeof parseCifTextClient === "function") {
-    const parsed = parseCifTextClient(ta.value);
-    if (parsed && parsed.atoms && parsed.atoms.length) {
-      const vecs = castepParamsToVectors(parsed.a, parsed.b, parsed.c, parsed.alpha, parsed.beta, parsed.gamma);
-      CASTEP_STUDIO_STATE.structure = {
-        name: parsed.name || parsed.formula,
-        formula: parsed.formula,
-        spaceGroup: parsed.space_group || "P 1",
-        crystalSystem: parsed.crystal_system || "Triclinic",
-        lattice: { a: parsed.a, b: parsed.b, c: parsed.c, alpha: parsed.alpha, beta: parsed.beta, gamma: parsed.gamma },
-        vectors: vecs,
-        atoms: parsed.atoms.map(a => ({ ...a, fixed: false, fx: 0, fy: 0, fz: 0, charge: null })),
-        kpointsBlock: "",
-        speciesPotBlock: ""
-      };
+  } else if (tab === "cif" && (typeof parseCifFullCrystal === "function" || typeof parseCifTextClient === "function")) {
+    const parsed = typeof parseCifFullCrystal === "function"
+      ? parseCifFullCrystal(ta.value, CASTEP_STUDIO_STATE.structure.name)
+      : parseCifTextClient(ta.value, CASTEP_STUDIO_STATE.structure.name);
+    const built = buildCastepStructureFromParsedCif(parsed, CASTEP_STUDIO_STATE.structure.name);
+    if (built) {
+      CASTEP_STUDIO_STATE.structure = built;
+      preserveSym = Boolean(built.symmetryIntact);
     }
   }
-  afterCastepStructureModified("Applied edited code directly to 3D Structure Builder!");
+  afterCastepStructureModified("Applied edited code directly to 3D Structure Builder!", preserveSym);
 }
 window.applyCastepEditorTextToStructure = applyCastepEditorTextToStructure;
 
@@ -6996,11 +7065,23 @@ function openStructureInCastepStudio(structId) {
   if (!s) return;
   if (typeof switchTab === "function") switchTab("castep");
 
-  let atoms = (s.atoms && s.atoms.length) ? JSON.parse(JSON.stringify(s.atoms)) : [];
-  if (!atoms.length && (s.cif_content || s.raw_cif) && typeof parseCifTextClient === "function") {
-    const parsed = parseCifTextClient(s.cif_content || s.raw_cif, s.name);
-    if (parsed && parsed.atoms) atoms = parsed.atoms;
+  const rawCif = s.cif_content || s.raw_cif || "";
+  let builtFromCif = null;
+  if (rawCif && (typeof parseCifFullCrystal === "function" || typeof parseCifTextClient === "function")) {
+    const parsed = typeof parseCifFullCrystal === "function"
+      ? parseCifFullCrystal(rawCif, s.name || "Structure.cif")
+      : parseCifTextClient(rawCif, s.name || "Structure.cif");
+    builtFromCif = buildCastepStructureFromParsedCif(parsed, s.name || s.chemical_formula);
   }
+
+  if (builtFromCif) {
+    CASTEP_STUDIO_STATE.structure = builtFromCif;
+    CASTEP_STUDIO_STATE.originalStructureBackup = JSON.parse(JSON.stringify(builtFromCif));
+    afterCastepStructureModified(`Loaded "${s.name}" (${builtFromCif.spaceGroup}, ${builtFromCif.atoms.length} unit-cell atoms) into 3D Structure Viewer!`, true);
+    return;
+  }
+
+  const atoms = (s.atoms && s.atoms.length) ? JSON.parse(JSON.stringify(s.atoms)) : [];
   const lat = {
     a: parseFloat(s.a) || 4.0, b: parseFloat(s.b) || 4.0, c: parseFloat(s.c) || 15.0,
     alpha: parseFloat(s.alpha) || 90.0, beta: parseFloat(s.beta) || 90.0, gamma: parseFloat(s.gamma) || 90.0
@@ -7009,14 +7090,21 @@ function openStructureInCastepStudio(structId) {
   CASTEP_STUDIO_STATE.structure = {
     name: s.name || s.chemical_formula,
     formula: s.chemical_formula || castepComputeFormula(atoms),
-    spaceGroup: s.space_group || "P 1",
+    spaceGroup: s.space_group || "P 1 (1)",
+    spaceGroupHM: s.space_group_hm || "P 1",
+    spaceGroupIT: Number(s.space_group_it) || 1,
+    hallSymbol: s.hall_symbol || "P 1",
     crystalSystem: s.crystal_system || castepInferCrystalSystem(lat),
+    symops: ["x, y, z"],
+    asymmetricAtoms: null,
+    symmetryIntact: false,
     lattice: lat,
     vectors: vecs,
     atoms: atoms.map((a, i) => ({
       element: castepCleanElement(a.element),
       label: a.label || `${a.element}${i+1}`,
       x: Number(a.x) || 0, y: Number(a.y) || 0, z: Number(a.z) || 0,
+      occupancy: Number(a.occupancy ?? 1.0),
       fixed: false, fx: 0, fy: 0, fz: 0, charge: null
     })),
     kpointsBlock: "",
