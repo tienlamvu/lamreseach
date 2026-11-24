@@ -254,9 +254,11 @@ const CASTEP_STUDIO_STATE = {
 
   gatewayConnected: false,
   gatewayLiveHttp: false,
+  gatewayIsLocal: false,
   gatewaySource: "none",
-  gatewayUrl: "http://localhost:18888",
+  gatewayUrl: "http://115.145.191.231:18888",
   gatewayHost: "",
+  gatewayIp: "",
   gatewayRoot: "",
   gatewayPageGenerated: "",
   gatewayArchivedTotal: 0,
@@ -267,6 +269,7 @@ const CASTEP_STUDIO_STATE = {
   gatewaySortKey: "default",
   gatewaySortAsc: true,
   gatewayExpandedServer: "",
+  gatewayServerDetailLoading: "",
   apiBase: "",
   localProcesses: [],
   localBackendConnected: false,
@@ -1176,6 +1179,17 @@ function initCastepStudioTab() {
       });
     }
 
+    // Initialize Gateway URL from localStorage or default primary calculation server (115.145.191.231:18888)
+    try {
+      const savedGw = localStorage.getItem("ms_gateway_url");
+      const initGw = normalizeMsGatewayUrlClient(savedGw || DEFAULT_MS_GATEWAY_URL);
+      CASTEP_STUDIO_STATE.gatewayUrl = initGw;
+      syncMsGatewayUrlControls(initGw);
+    } catch (e) {
+      CASTEP_STUDIO_STATE.gatewayUrl = DEFAULT_MS_GATEWAY_URL;
+      syncMsGatewayUrlControls(DEFAULT_MS_GATEWAY_URL);
+    }
+
     // Auto-connect to local FastAPI bridge (same-origin on localhost, or quiet local bridge probe on GitHub Pages)
     const isLocalHost = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
     if (isLocalHost) {
@@ -1220,11 +1234,11 @@ async function probeLocalBridgeOnRemoteOrigin() {
   // Quietly test if the user is running the local FastAPI workstation bridge on http://127.0.0.1:8877
   const bridgeBase = "http://127.0.0.1:8877";
   try {
-    const gwUrl = (document.getElementById("ms-gw-url-input")?.value || CASTEP_STUDIO_STATE.gatewayUrl || "http://localhost:18888").trim();
+    const gwUrl = normalizeMsGatewayUrlClient(document.getElementById("ms-gw-url-input")?.value || CASTEP_STUDIO_STATE.gatewayUrl || DEFAULT_MS_GATEWAY_URL);
     const gwResp = await fetchWithTimeout(
-      `${bridgeBase}/api/castep/gateway?gateway_url=${encodeURIComponent(gwUrl)}&include_archived=false&limit=200`,
+      `${bridgeBase}/api/castep/gateway?gateway_url=${encodeURIComponent(gwUrl)}&include_archived=false&limit=500`,
       {},
-      3500
+      5000
     );
     if (gwResp.ok) {
       CASTEP_STUDIO_STATE.apiBase = bridgeBase;
@@ -1261,9 +1275,9 @@ async function autoConnectLocalCastepBackend(baseOverride = null, skipGateway = 
   const gwPromise = (!skipGateway)
     ? (async () => {
         try {
-          const gwUrl = (document.getElementById("ms-gw-url-input")?.value || CASTEP_STUDIO_STATE.gatewayUrl || "http://localhost:18888").trim();
+          const gwUrl = normalizeMsGatewayUrlClient(document.getElementById("ms-gw-url-input")?.value || CASTEP_STUDIO_STATE.gatewayUrl || DEFAULT_MS_GATEWAY_URL);
           const gwResp = await fetchWithTimeout(
-            `${apiBase}/api/castep/gateway?gateway_url=${encodeURIComponent(gwUrl)}&include_archived=false&limit=250`,
+            `${apiBase}/api/castep/gateway?gateway_url=${encodeURIComponent(gwUrl)}&include_archived=false&limit=500`,
             {},
             8000
           );
@@ -7359,17 +7373,70 @@ window.exportCastepConvergenceXLSX = exportCastepConvergenceXLSX;
 // 9. Materials Studio Remote Gateway Manager (Live HTTP + Local dsd / Mounted)
 // ============================================================================
 
+const DEFAULT_MS_GATEWAY_URL = "http://115.145.191.231:18888";
+const MS_GW_PRESET_URLS = [
+  "http://115.145.191.231:18888",
+  "http://localhost:18888"
+];
+
+function normalizeMsGatewayUrlClient(raw) {
+  let s = String(raw || "").trim().replace(/\/+$/, "");
+  if (!s) return DEFAULT_MS_GATEWAY_URL;
+  // Strip accidental trailing /dsd/... path if pasted from browser
+  const mPath = s.match(/^(https?:\/\/[^\/]+)\/.*$/i);
+  if (mPath) s = mPath[1];
+  // Convert Materials Studio gateway name shorthand: 115.145.191.231_18888 -> http://115.145.191.231:18888
+  const mUnder = s.match(/^(https?:\/\/)?([A-Za-z0-9.\-]+)_(\d{2,5})$/i);
+  if (mUnder) {
+    s = `${mUnder[1] || "http://"}${mUnder[2]}:${mUnder[3]}`;
+  } else if (!/^https?:\/\//i.test(s)) {
+    s = "http://" + s;
+  }
+  return s.replace(/\/+$/, "");
+}
+
+function syncMsGatewayUrlControls(url) {
+  const norm = normalizeMsGatewayUrlClient(url || DEFAULT_MS_GATEWAY_URL);
+  const urlInp = document.getElementById("ms-gw-url-input");
+  if (urlInp) urlInp.value = norm;
+  const presetSel = document.getElementById("ms-gw-preset-select");
+  if (presetSel) {
+    const matched = MS_GW_PRESET_URLS.find(p => p.toLowerCase() === norm.toLowerCase());
+    presetSel.value = matched || "custom";
+  }
+}
+
+function onMsGatewayPresetChange(val) {
+  const urlInp = document.getElementById("ms-gw-url-input");
+  if (val === "custom") {
+    if (urlInp) {
+      urlInp.focus();
+      urlInp.select();
+    }
+    return;
+  }
+  const norm = normalizeMsGatewayUrlClient(val);
+  CASTEP_STUDIO_STATE.gatewayUrl = norm;
+  syncMsGatewayUrlControls(norm);
+  try { localStorage.setItem("ms_gateway_url", norm); } catch (e) {}
+  CASTEP_STUDIO_STATE.gatewayExpandedServer = "";
+  refreshMsGatewayJobsFromServer();
+}
+window.onMsGatewayPresetChange = onMsGatewayPresetChange;
+
 function applyGatewayApiPayload(data, mergeArchivedOnly = false) {
   if (!data || typeof data !== "object") return;
   CASTEP_STUDIO_STATE.gatewayConnected = !!data.connected;
   CASTEP_STUDIO_STATE.gatewayLiveHttp = !!data.live_http_reachable;
+  CASTEP_STUDIO_STATE.gatewayIsLocal = !!data.is_local_gateway;
   CASTEP_STUDIO_STATE.gatewaySource = data.source || (data.connected ? "local_disk" : "none");
   if (data.gateway_url) {
-    CASTEP_STUDIO_STATE.gatewayUrl = data.gateway_url;
-    const urlInp = document.getElementById("ms-gw-url-input");
-    if (urlInp && !urlInp.value) urlInp.value = data.gateway_url;
+    const norm = normalizeMsGatewayUrlClient(data.gateway_url);
+    CASTEP_STUDIO_STATE.gatewayUrl = norm;
+    syncMsGatewayUrlControls(norm);
   }
   CASTEP_STUDIO_STATE.gatewayHost = data.gateway_host || "";
+  CASTEP_STUDIO_STATE.gatewayIp = data.gateway_ip || "";
   CASTEP_STUDIO_STATE.gatewayRoot = data.gateway_root || "";
   CASTEP_STUDIO_STATE.gatewayPageGenerated = data.page_generated || "";
   CASTEP_STUDIO_STATE.gatewayArchivedTotal = Number(data.archived_total || 0);
@@ -7377,6 +7444,7 @@ function applyGatewayApiPayload(data, mergeArchivedOnly = false) {
     CASTEP_STUDIO_STATE.gatewayJobs = Array.isArray(data.jobs) ? data.jobs : [];
     CASTEP_STUDIO_STATE.gatewayServers = Array.isArray(data.installed_servers) ? data.installed_servers : [];
     CASTEP_STUDIO_STATE.gatewayData = Array.isArray(data.gateway_data) ? data.gateway_data : [];
+    CASTEP_STUDIO_STATE.gatewayExpandedServer = "";
     if (Array.isArray(data.local_processes)) {
       CASTEP_STUDIO_STATE.localProcesses = data.local_processes;
     }
@@ -7426,9 +7494,9 @@ async function filterMsGatewayJobs(filterKey, btnEl) {
     CASTEP_STUDIO_STATE.gatewaySource !== "mounted"
   ) {
     const apiBase = getCastepApiBase() || (["localhost", "127.0.0.1", "::1"].includes(window.location.hostname) ? "" : "http://127.0.0.1:8877");
-    const gwUrl = (document.getElementById("ms-gw-url-input")?.value || CASTEP_STUDIO_STATE.gatewayUrl || "http://localhost:18888").trim();
+    const gwUrl = normalizeMsGatewayUrlClient(document.getElementById("ms-gw-url-input")?.value || CASTEP_STUDIO_STATE.gatewayUrl || DEFAULT_MS_GATEWAY_URL);
     try {
-      const resp = await fetch(`${apiBase}/api/castep/gateway?gateway_url=${encodeURIComponent(gwUrl)}&include_archived=true&limit=250`);
+      const resp = await fetch(`${apiBase}/api/castep/gateway?gateway_url=${encodeURIComponent(gwUrl)}&include_archived=true&limit=500`);
       if (resp.ok) {
         const data = await resp.json();
         applyGatewayApiPayload(data, true);
@@ -7497,6 +7565,7 @@ function renderMsGatewayServers() {
   if (detailBox) {
     const sel = servers.find(s => s.name === CASTEP_STUDIO_STATE.gatewayExpandedServer);
     if (sel) {
+      const isLoading = CASTEP_STUDIO_STATE.gatewayServerDetailLoading === sel.name;
       const rows = (sel.details && sel.details.length)
         ? sel.details
         : [
@@ -7504,12 +7573,12 @@ function renderMsGatewayServers() {
             { key: "Description", value: sel.description || "-" },
             { key: "Version", value: sel.version || "-" },
             { key: "Builddate", value: sel.build_date || "-" },
-            { key: "server-executable", value: sel.executable || "-" }
+            { key: "server-executable", value: sel.executable || (isLoading ? "Loading live .sbs from Remote Gateway..." : "-") }
           ];
       detailBox.style.display = "block";
       detailBox.innerHTML = `
         <div class="ms-gw-server-detail-head">
-          <span>Server ${escapeHtml(sel.name)} — ${escapeHtml(sel.description || "")}</span>
+          <span>Server ${escapeHtml(sel.name)} — ${escapeHtml(sel.description || "")}${isLoading ? ' <em style="font-weight:400; color:#64748b;">(Loading live .sbs...)</em>' : ""}</span>
           <button type="button" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:11px;" onclick="toggleMsGatewayServerDetail('')">Close</button>
         </div>
         <table class="ms-gateway-table">
@@ -7526,10 +7595,45 @@ function renderMsGatewayServers() {
 }
 window.renderMsGatewayServers = renderMsGatewayServers;
 
-function toggleMsGatewayServerDetail(serverName) {
-  CASTEP_STUDIO_STATE.gatewayExpandedServer =
-    CASTEP_STUDIO_STATE.gatewayExpandedServer === serverName ? "" : (serverName || "");
+async function toggleMsGatewayServerDetail(serverName) {
+  const nextName = CASTEP_STUDIO_STATE.gatewayExpandedServer === serverName ? "" : (serverName || "");
+  CASTEP_STUDIO_STATE.gatewayExpandedServer = nextName;
   renderMsGatewayServers();
+  if (!nextName) return;
+
+  const sel = (CASTEP_STUDIO_STATE.gatewayServers || []).find(s => s.name === nextName);
+  if (
+    sel &&
+    (!sel.details || sel.details.length === 0) &&
+    CASTEP_STUDIO_STATE.gatewayConnected &&
+    CASTEP_STUDIO_STATE.gatewayLiveHttp &&
+    CASTEP_STUDIO_STATE.gatewaySource !== "mounted"
+  ) {
+    CASTEP_STUDIO_STATE.gatewayServerDetailLoading = nextName;
+    renderMsGatewayServers();
+    const apiBase = getCastepApiBase() || (["localhost", "127.0.0.1", "::1"].includes(window.location.hostname) ? "" : "http://127.0.0.1:8877");
+    const gwUrl = normalizeMsGatewayUrlClient(CASTEP_STUDIO_STATE.gatewayUrl || DEFAULT_MS_GATEWAY_URL);
+    const sbsFile = sel.sbs_file || `${sel.name}.sbs`;
+    try {
+      const resp = await fetchWithTimeout(
+        `${apiBase}/api/castep/gateway/server-detail?gateway_url=${encodeURIComponent(gwUrl)}&server=${encodeURIComponent(sel.name)}&file=${encodeURIComponent(sbsFile)}`,
+        {},
+        5000
+      );
+      if (resp.ok) {
+        const d = await resp.json();
+        if (Array.isArray(d.details) && d.details.length) sel.details = d.details;
+        if (d.description) sel.description = d.description;
+        if (d.build_date && d.build_date !== "-") sel.build_date = d.build_date;
+        if (d.version) sel.version = d.version;
+        if (d.executable) sel.executable = d.executable;
+      }
+    } catch (e) {}
+    if (CASTEP_STUDIO_STATE.gatewayServerDetailLoading === nextName) {
+      CASTEP_STUDIO_STATE.gatewayServerDetailLoading = "";
+    }
+    renderMsGatewayServers();
+  }
 }
 window.toggleMsGatewayServerDetail = toggleMsGatewayServerDetail;
 
@@ -7601,16 +7705,23 @@ function renderMsGatewayTable() {
 
   const elHost = document.getElementById("ms-gw-host-label");
   if (elHost) {
-    elHost.textContent = CASTEP_STUDIO_STATE.gatewayConnected && CASTEP_STUDIO_STATE.gatewayHost
-      ? `Remote Gateway ${CASTEP_STUDIO_STATE.gatewayHost}`
-      : "Remote Gateway (Not Connected)";
+    if (CASTEP_STUDIO_STATE.gatewayConnected && CASTEP_STUDIO_STATE.gatewayHost) {
+      const gwIp = CASTEP_STUDIO_STATE.gatewayIp || "";
+      const showIp = gwIp && !CASTEP_STUDIO_STATE.gatewayHost.includes(gwIp) && gwIp !== "127.0.0.1" && gwIp !== "localhost";
+      elHost.textContent = showIp
+        ? `Remote Gateway ${CASTEP_STUDIO_STATE.gatewayHost} (${gwIp})`
+        : `Remote Gateway ${CASTEP_STUDIO_STATE.gatewayHost}`;
+    } else {
+      elHost.textContent = "Remote Gateway (Not Connected)";
+    }
   }
 
   const badge = document.getElementById("ms-gw-source-badge");
   if (badge) {
     if (CASTEP_STUDIO_STATE.gatewayConnected && CASTEP_STUDIO_STATE.gatewayLiveHttp) {
+      const shortEndpoint = String(CASTEP_STUDIO_STATE.gatewayUrl || "").replace(/^https?:\/\//i, "");
       badge.className = "ms-gw-source-badge live";
-      badge.textContent = "🟢 Live HTTP Connected";
+      badge.textContent = shortEndpoint ? `🟢 Live (${shortEndpoint})` : "🟢 Live HTTP Connected";
     } else if (CASTEP_STUDIO_STATE.gatewayConnected && CASTEP_STUDIO_STATE.gatewaySource === "mounted") {
       badge.className = "ms-gw-source-badge disk";
       badge.textContent = "📂 Mounted Folder";
@@ -7695,7 +7806,16 @@ function renderMsGatewayTable() {
     const stStyle = isRunning
       ? "color:#15803d; font-weight:700;"
       : (isSuccess ? "color:#0369a1; font-weight:700;" : "color:#000000;");
-    const localBadge = j.has_local_files ? ' title="Click to open live Gateway job directory directly in Data Analysis Workbench"' : ' title="Locate matching job in Data Analysis Workbench"';
+    const localBadge = (j.has_local_files || j.has_remote_files)
+      ? ' title="Click to load live Gateway job files directly into Data Analysis Workbench"'
+      : ' title="Locate matching job in Data Analysis Workbench"';
+    const actionHtml = j.is_archived
+      ? '<span style="font-size:11px; color:#64748b;">Archived</span>'
+      : (isRunning
+        ? '<span style="font-size:11px; color:#15803d; font-weight:700;" title="Job is currently running on Remote Gateway">● Running</span>'
+        : (j.can_remove === false
+          ? '<span style="color:#64748b;">-</span>'
+          : `<button type="button" class="ms-gw-remove-btn" onclick="removeMsGatewayJob('${escapeHtml(j.job_id)}')">Remove</button>`));
 
     return `
       <tr>
@@ -7711,7 +7831,7 @@ function renderMsGatewayTable() {
         <td style="text-align:center;">${escapeHtml(j.queued_job_id || "-")}</td>
         <td style="text-align:left;">${escapeHtml(String(j.process_id || "-"))}</td>
         <td style="text-align:center; white-space:nowrap;">
-          ${j.is_archived ? '<span style="font-size:11px; color:#64748b;">Archived</span>' : `<button type="button" class="ms-gw-remove-btn" onclick="removeMsGatewayJob('${escapeHtml(j.job_id)}')">Remove</button>`}
+          ${actionHtml}
         </td>
       </tr>
     `;
@@ -7849,28 +7969,34 @@ async function openMsGatewayJobInStudio(gwJobId) {
   const gwJob = allGw.find(j => j.job_id === gwJobId);
   if (!gwJob) return;
 
-  // 1) Check if matching job already exists in workspace
+  // 1) Check if this exact Gateway job is already loaded in workspace
   const jobs = CASTEP_STUDIO_STATE.jobs || [];
   const desc = (gwJob.description || "").toLowerCase();
-  const baseToken = desc.split(/\s+castep\s+/i)[0].trim();
   const targetStudioJob = jobs.find(j =>
     j.gateway_job_id === gwJobId ||
-    (gwJob.job_directory && j.folder && j.folder.toLowerCase() === gwJob.job_directory.toLowerCase()) ||
-    (baseToken && ((j.seed || "").toLowerCase() === baseToken || (j.title || "").toLowerCase().includes(baseToken)))
+    (gwJob.job_directory && j.folder && j.folder.toLowerCase() === gwJob.job_directory.toLowerCase())
   );
   if (targetStudioJob) {
     await loadCastepJobIntoStudio(targetStudioJob.id);
     const nextPane = (/optical/i.test(desc)) ? "optics" : "builder";
     switchCastepStagePane(nextPane);
-    if (typeof showToast === "function") showToast(`🖥️ Opened workspace job "${targetStudioJob.title}"!`, "success");
+    if (typeof showToast === "function") showToast(`🖥️ Opened Gateway job "${targetStudioJob.title}"!`, "success");
     return;
   }
 
-  // 2) Load directly from local Gateway job working folder via FastAPI bridge!
+  // 2) Load directly from local or remote Gateway job working folder via FastAPI bridge!
   if (CASTEP_STUDIO_STATE.gatewayConnected && CASTEP_STUDIO_STATE.gatewaySource !== "mounted") {
     const apiBase = getCastepApiBase() || (["localhost", "127.0.0.1", "::1"].includes(window.location.hostname) ? "" : "http://127.0.0.1:8877");
+    const gwUrl = normalizeMsGatewayUrlClient(document.getElementById("ms-gw-url-input")?.value || CASTEP_STUDIO_STATE.gatewayUrl || DEFAULT_MS_GATEWAY_URL);
+    if (typeof showToast === "function") {
+      showToast(`⏳ Loading live Gateway job ${gwJobId} from ${gwUrl.replace(/^https?:\/\//i, "")}...`, "info");
+    }
     try {
-      const resp = await fetch(`${apiBase}/api/castep/gateway/job/${encodeURIComponent(gwJobId)}`);
+      const resp = await fetchWithTimeout(
+        `${apiBase}/api/castep/gateway/job/${encodeURIComponent(gwJobId)}?gateway_url=${encodeURIComponent(gwUrl)}`,
+        {},
+        15000
+      );
       if (resp.ok) {
         const detail = await resp.json();
         const newJobId = `gw_${gwJobId}`;
@@ -7898,7 +8024,7 @@ async function openMsGatewayJobInStudio(gwJobId) {
   }
 
   if (typeof showToast === "function") {
-    showToast(`Job ${gwJobId} (${gwJob.description}) working files are not available locally. Mount its project folder to inspect outputs.`, "info");
+    showToast(`Job ${gwJobId} (${gwJob.description}) working files are not accessible on Gateway (cleaned or archived). Mount its project folder to inspect outputs.`, "info");
   }
 }
 window.openMsGatewayJobInStudio = openMsGatewayJobInStudio;
@@ -7911,7 +8037,7 @@ async function removeMsGatewayJob(gwJobId) {
     const ok = window.confirm(`Remove job ${gwJobId} ("${gwJob.description}") from live Materials Studio Remote Gateway (${CASTEP_STUDIO_STATE.gatewayHost})?`);
     if (!ok) return;
     const apiBase = getCastepApiBase() || (["localhost", "127.0.0.1", "::1"].includes(window.location.hostname) ? "" : "http://127.0.0.1:8877");
-    const gwUrl = (document.getElementById("ms-gw-url-input")?.value || CASTEP_STUDIO_STATE.gatewayUrl || "http://localhost:18888").trim();
+    const gwUrl = normalizeMsGatewayUrlClient(document.getElementById("ms-gw-url-input")?.value || CASTEP_STUDIO_STATE.gatewayUrl || DEFAULT_MS_GATEWAY_URL);
     try {
       const resp = await fetch(`${apiBase}/api/castep/gateway/remove`, {
         method: "POST",
@@ -7934,8 +8060,12 @@ async function removeMsGatewayJob(gwJobId) {
 window.removeMsGatewayJob = removeMsGatewayJob;
 
 async function refreshMsGatewayJobsFromServer() {
-  const gwUrl = (document.getElementById("ms-gw-url-input")?.value || CASTEP_STUDIO_STATE.gatewayUrl || "http://localhost:18888").trim();
+  const rawInput = document.getElementById("ms-gw-url-input")?.value || CASTEP_STUDIO_STATE.gatewayUrl || DEFAULT_MS_GATEWAY_URL;
+  const gwUrl = normalizeMsGatewayUrlClient(rawInput);
   CASTEP_STUDIO_STATE.gatewayUrl = gwUrl;
+  syncMsGatewayUrlControls(gwUrl);
+  try { localStorage.setItem("ms_gateway_url", gwUrl); } catch (e) {}
+
   const includeArch = (CASTEP_STUDIO_STATE.gatewayFilter === "archived");
   const isLocal = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
   const candidates = isLocal ? [""] : (CASTEP_STUDIO_STATE.apiBase ? [CASTEP_STUDIO_STATE.apiBase] : ["http://127.0.0.1:8877"]);
@@ -7943,7 +8073,7 @@ async function refreshMsGatewayJobsFromServer() {
   for (const base of candidates) {
     try {
       const resp = await fetchWithTimeout(
-        `${base}/api/castep/gateway?gateway_url=${encodeURIComponent(gwUrl)}&include_archived=${includeArch ? "true" : "false"}&limit=250`,
+        `${base}/api/castep/gateway?gateway_url=${encodeURIComponent(gwUrl)}&include_archived=${includeArch ? "true" : "false"}&limit=500`,
         {},
         8000
       );
