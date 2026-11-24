@@ -4406,6 +4406,11 @@ def serve_tools_js():
     return FileResponse(str(FRONTEND_DIR / "matsci_tools.js"))
 
 
+@app.get("/dft_theory.js")
+def serve_dft_theory_js():
+    return FileResponse(str(FRONTEND_DIR / "dft_theory.js"))
+
+
 @app.get("/index.html")
 def serve_index_html():
     return FileResponse(str(FRONTEND_DIR / "index.html"))
