@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=137_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=137_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=138_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=138_v116_vesta_viewer'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -1201,24 +1201,24 @@
             </div>
 
             <!-- Unified Publication Plot Style Customizer Bar (Applies live to Band, DOS, Optical, Spin Matrix, Mulliken, Charge Diff & Convergence) -->
-            <div id="castep-plot-style-bar" style="display:none; padding:9px 12px; background:#f8fafc; border-bottom:1px solid #cbd5e1; font-size:11.5px;">
-              <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:7px;">
-                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                  <strong style="color:#0f172a; font-size:12px;">🎨 Unified Plot Style (All Graphs):</strong>
-                  <button type="button" class="castep-preset-chip" data-style-preset="journal_tnr" onclick="applyCastepPlotStylePreset('journal_tnr')">📄 Journal (Times New Roman)</button>
+            <div id="castep-plot-style-bar" style="display:none; padding:8px 12px; background:#f8fafc; border-bottom:1px solid #cbd5e1; font-size:11.5px;">
+              <div class="castep-tb-row">
+                <span class="castep-ctrl-grp" style="gap:5px;">
+                  <strong style="color:#0f172a; font-size:12px;">🎨 Plot Style:</strong>
+                  <button type="button" class="castep-preset-chip" data-style-preset="journal_tnr" onclick="applyCastepPlotStylePreset('journal_tnr')">📄 Journal (TNR)</button>
                   <button type="button" class="castep-preset-chip" data-style-preset="acs_arial" onclick="applyCastepPlotStylePreset('acs_arial')">🔬 Nature / ACS (Arial)</button>
-                  <button type="button" class="castep-preset-chip" data-style-preset="presentation" onclick="applyCastepPlotStylePreset('presentation')">📽️ Presentation (Large)</button>
-                  <button type="button" class="castep-preset-chip" data-style-preset="origin_grid" onclick="applyCastepPlotStylePreset('origin_grid')">▦ Origin (+ Subtle Grid)</button>
-                </div>
-                <div style="display:flex; align-items:center; gap:6px;">
-                  <button type="button" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:11px;" onclick="resetCastepPlotStyle()">↺ Reset Default</button>
-                  <button type="button" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:11px;" onclick="toggleCastepPlotStyleBar(false)">✕ Hide</button>
+                  <button type="button" class="castep-preset-chip" data-style-preset="presentation" onclick="applyCastepPlotStylePreset('presentation')">📽️ Presentation</button>
+                  <button type="button" class="castep-preset-chip" data-style-preset="origin_grid" onclick="applyCastepPlotStylePreset('origin_grid')">▦ Origin (+ Grid)</button>
+                </span>
+                <div class="castep-tb-actions">
+                  <button type="button" class="btn btn-outline btn-sm" onclick="resetCastepPlotStyle()">↺ Reset</button>
+                  <button type="button" class="btn btn-outline btn-sm" onclick="toggleCastepPlotStyleBar(false)">✕ Hide</button>
                 </div>
               </div>
-              <div style="display:flex; align-items:center; gap:9px; flex-wrap:wrap;">
-                <span style="display:inline-flex; align-items:center; gap:4px;">
-                  <label class="castep-field-lbl" style="margin:0;">Font:</label>
-                  <select id="castep-ps-font" class="castep-input" style="width:auto; padding:2px 6px;" onchange="updateCastepPlotStyleFromUI()">
+              <div class="castep-tb-row">
+                <span class="castep-ctrl-grp">
+                  <label class="castep-field-lbl">Font:</label>
+                  <select id="castep-ps-font" class="castep-input" onchange="updateCastepPlotStyleFromUI()">
                     <option value="&quot;Times New Roman&quot;, Times, Georgia, serif">Times New Roman</option>
                     <option value="Arial, Helvetica, sans-serif">Arial / Helvetica</option>
                     <option value="Georgia, &quot;Times New Roman&quot;, serif">Georgia Serif</option>
@@ -1227,62 +1227,62 @@
                     <option value="&quot;Courier New&quot;, monospace">Courier New</option>
                   </select>
                 </span>
-                <span style="display:inline-flex; align-items:center; gap:4px;">
-                  <label class="castep-field-lbl" style="margin:0;">Title:</label>
-                  <input id="castep-ps-title-size" type="number" min="10" max="22" step="1" value="14" class="castep-input" style="width:52px; padding:2px 5px;" oninput="updateCastepPlotStyleFromUI()" />
+                <span class="castep-ctrl-grp">
+                  <label class="castep-field-lbl">Title:</label>
+                  <input id="castep-ps-title-size" type="number" min="10" max="22" step="1" value="14" class="castep-input" style="width:52px;" oninput="updateCastepPlotStyleFromUI()" />
                 </span>
-                <span style="display:inline-flex; align-items:center; gap:4px;">
-                  <label class="castep-field-lbl" style="margin:0;">Axis:</label>
-                  <input id="castep-ps-axis-size" type="number" min="9" max="20" step="1" value="13" class="castep-input" style="width:52px; padding:2px 5px;" oninput="updateCastepPlotStyleFromUI()" />
+                <span class="castep-ctrl-grp">
+                  <label class="castep-field-lbl">Axis:</label>
+                  <input id="castep-ps-axis-size" type="number" min="9" max="20" step="1" value="13" class="castep-input" style="width:52px;" oninput="updateCastepPlotStyleFromUI()" />
                 </span>
-                <span style="display:inline-flex; align-items:center; gap:4px;">
-                  <label class="castep-field-lbl" style="margin:0;">Ticks:</label>
-                  <input id="castep-ps-tick-size" type="number" min="8" max="18" step="1" value="12" class="castep-input" style="width:52px; padding:2px 5px;" oninput="updateCastepPlotStyleFromUI()" />
+                <span class="castep-ctrl-grp">
+                  <label class="castep-field-lbl">Ticks:</label>
+                  <input id="castep-ps-tick-size" type="number" min="8" max="18" step="1" value="12" class="castep-input" style="width:52px;" oninput="updateCastepPlotStyleFromUI()" />
                 </span>
-                <span style="display:inline-flex; align-items:center; gap:4px;">
-                  <label class="castep-field-lbl" style="margin:0;">Legend:</label>
-                  <input id="castep-ps-legend-size" type="number" min="8" max="16" step="1" value="11" class="castep-input" style="width:52px; padding:2px 5px;" oninput="updateCastepPlotStyleFromUI()" />
+                <span class="castep-ctrl-grp">
+                  <label class="castep-field-lbl">Legend:</label>
+                  <input id="castep-ps-legend-size" type="number" min="8" max="16" step="1" value="11" class="castep-input" style="width:52px;" oninput="updateCastepPlotStyleFromUI()" />
                 </span>
-                <span style="display:inline-flex; align-items:center; gap:4px;">
-                  <label class="castep-field-lbl" style="margin:0;">Border (px):</label>
-                  <input id="castep-ps-border-w" type="number" min="0.8" max="3.5" step="0.2" value="1.8" class="castep-input" style="width:54px; padding:2px 5px;" oninput="updateCastepPlotStyleFromUI()" />
+                <span class="castep-ctrl-grp">
+                  <label class="castep-field-lbl">Border:</label>
+                  <input id="castep-ps-border-w" type="number" min="0.8" max="3.5" step="0.2" value="1.8" class="castep-input" style="width:54px;" oninput="updateCastepPlotStyleFromUI()" />
                 </span>
-                <span style="display:inline-flex; align-items:center; gap:4px;">
-                  <label class="castep-field-lbl" style="margin:0;">Line (px):</label>
-                  <input id="castep-ps-line-w" type="number" min="0.8" max="4.0" step="0.2" value="1.8" class="castep-input" style="width:54px; padding:2px 5px;" oninput="updateCastepPlotStyleFromUI()" />
+                <span class="castep-ctrl-grp">
+                  <label class="castep-field-lbl">Line:</label>
+                  <input id="castep-ps-line-w" type="number" min="0.8" max="4.0" step="0.2" value="1.8" class="castep-input" style="width:54px;" oninput="updateCastepPlotStyleFromUI()" />
                 </span>
-                <span style="display:inline-flex; align-items:center; gap:4px;">
-                  <label class="castep-field-lbl" style="margin:0;">Tick Marks:</label>
-                  <select id="castep-ps-tick-dir" class="castep-input" style="width:auto; padding:2px 6px;" onchange="updateCastepPlotStyleFromUI()">
+                <span class="castep-ctrl-grp">
+                  <label class="castep-field-lbl">Tick Dir:</label>
+                  <select id="castep-ps-tick-dir" class="castep-input" onchange="updateCastepPlotStyleFromUI()">
                     <option value="in">Inward (Journal)</option>
                     <option value="out">Outward</option>
                     <option value="none">None</option>
                   </select>
                 </span>
-                <span style="display:inline-flex; align-items:center; gap:4px;">
-                  <label class="castep-field-lbl" style="margin:0;">Grid:</label>
-                  <select id="castep-ps-grid" class="castep-input" style="width:auto; padding:2px 6px;" onchange="updateCastepPlotStyleFromUI()">
+                <span class="castep-ctrl-grp">
+                  <label class="castep-field-lbl">Grid:</label>
+                  <select id="castep-ps-grid" class="castep-input" onchange="updateCastepPlotStyleFromUI()">
                     <option value="off">Off (Clean)</option>
                     <option value="subtle">Subtle</option>
                     <option value="normal">Visible</option>
                   </select>
                 </span>
-                <span style="display:inline-flex; align-items:center; gap:4px;">
-                  <label class="castep-field-lbl" style="margin:0;">Ink:</label>
-                  <select id="castep-ps-ink" class="castep-input" style="width:auto; padding:2px 6px;" onchange="updateCastepPlotStyleFromUI()">
+                <span class="castep-ctrl-grp">
+                  <label class="castep-field-lbl">Ink:</label>
+                  <select id="castep-ps-ink" class="castep-input" onchange="updateCastepPlotStyleFromUI()">
                     <option value="#000000">Pure Black</option>
                     <option value="#1e293b">Slate Ink</option>
                   </select>
                 </span>
-                <span style="display:inline-flex; align-items:center; gap:4px;">
-                  <label class="castep-field-lbl" style="margin:0;">Quality:</label>
-                  <select id="castep-ps-dpi" class="castep-input" style="width:auto; padding:2px 6px; font-weight:700;" onchange="updateCastepPlotStyleFromUI()" title="Native resolution for Copy HD Image &amp; PNG Export (embeds true PNG DPI metadata for Word / PowerPoint)">
+                <span class="castep-ctrl-grp">
+                  <label class="castep-field-lbl">Quality:</label>
+                  <select id="castep-ps-dpi" class="castep-input" style="font-weight:700;" onchange="updateCastepPlotStyleFromUI()" title="Native resolution for Copy HD Image &amp; PNG Export (embeds true PNG DPI metadata for Word / PowerPoint)">
                     <option value="3">300 DPI (3×)</option>
                     <option value="4" selected>400 DPI (4× HD)</option>
                     <option value="6">600 DPI (6× Ultra)</option>
                   </select>
                 </span>
-                <label style="display:inline-flex; align-items:center; gap:4px; font-weight:600; color:#334155; cursor:pointer; margin:0;">
+                <label class="castep-chk-lbl" style="font-weight:600; color:#334155; cursor:pointer; margin:0;">
                   <input id="castep-ps-bold-axes" type="checkbox" checked onchange="updateCastepPlotStyleFromUI()" /> Bold Labels
                 </label>
               </div>
@@ -2189,7 +2189,7 @@
                   <input type="file" id="castep-opt-folder-upload" webkitdirectory directory multiple style="display:none;" onchange="handleCastepOpticalFolderFallback(event)" />
                   <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="pickCastepOpticsFolder()" title="Open an Optical CASTEP Energy folder directly">📂 Optics Folder</button>
                   <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="document.getElementById('castep-opt-file-upload').click()" title="Load CASTEP *.ome_bin + *_Optics.bands or *.xcd files">📥 .ome_bin/.xcd</button>
-                  <span style="font-size:10.5px; color:#64748b;">💡 Right-click any sub-panel (a–d) to copy that single plot or its data</span>
+                  <span style="font-size:10.5px; color:#64748b;">💡 Right-click panel (a–d) to copy one</span>
                   <div class="castep-tb-actions">
                     <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="copyCastepCanvasHD('castep-optics-canvas', 'Optical Properties (Full)')" title="Copy FULL Optical Plot Image (400–600 DPI) to Clipboard">📋 Copy HD</button>
                     <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="copyCastepPlotData('optics', 'all')" title="Copy FULL Optical Spectra Data (all columns, TSV → Excel / OriginPro)">📋 Copy Data</button>
@@ -2266,8 +2266,8 @@
                     <option value="sum">➕ Total (α + β)</option>
                   </select>
                   <select id="castep-elec-zero-ref" class="castep-input" style="font-weight:700;" onchange="renderCastepElectronicPlots()" title="Synchronize Band Structure and PDOS zero energy reference">
-                    <option value="vbm_auto" selected>🎯 Zero: VBM / Fermi (Synced)</option>
-                    <option value="raw_fermi">⚡ Zero: Raw Fermi Level</option>
+                    <option value="vbm_auto" selected>🎯 Zero: VBM / Fermi</option>
+                    <option value="raw_fermi">⚡ Zero: Raw Fermi</option>
                   </select>
                   <span class="castep-ctrl-grp" style="margin-left:auto;">
                     <input type="file" id="castep-pdos-file-upload" multiple accept=".pdos_bin,.bands,.xcd" style="display:none;" onchange="handleCastepPdosFilesUpload(event)" />
@@ -2318,41 +2318,45 @@
             <!-- ============================================================ -->
             <div id="castep-pane-chdiff" class="castep-stage-pane">
               <div class="castep-plot-toolbar">
-                <!-- Row 1: Data Source (.chdiff / .charg_frm), File Loaders & Generators -->
-                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                  <label class="castep-field-lbl" style="margin:0;">Δρ Source:</label>
-                  <select id="castep-chdiff-mode" class="castep-input" style="width:auto; font-weight:700;" onchange="onCastepChdiffModeChange()">
-                    <option value="chdiff">⚡ CASTEP *.chdiff Output (Δρ = ρ(SCF) − Σρ(atom))</option>
-                    <option value="charg_frm_auto">🧪 Generate Δρ from Single *.charg_frm (ρ(total) − ρ(promolecule))</option>
-                    <option value="charg_frm_sub">➖ Differential *.charg_frm Subtraction (Δρ = ρ(AB) − ρ(A) − ρ(B))</option>
-                  </select>
+                <!-- Row 1: Data Source (.chdiff / .charg_frm), File Loaders & 3D Overlay -->
+                <div class="castep-tb-row">
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Δρ Source:</label>
+                    <select id="castep-chdiff-mode" class="castep-input" style="font-weight:700;" onchange="onCastepChdiffModeChange()">
+                      <option value="chdiff">⚡ CASTEP *.chdiff (Δρ = ρSCF − Σρatom)</option>
+                      <option value="charg_frm_auto">🧪 Single *.charg_frm (Auto Δρ)</option>
+                      <option value="charg_frm_sub">➖ Differential *.charg_frm (AB − A − B)</option>
+                    </select>
+                  </span>
 
                   <input type="file" id="castep-chdiff-file-input" accept=".chdiff,.charg_frm,.den_fmt,.cube,.txt" style="display:none;" onchange="handleCastepChdiffPrimaryUpload(event)" />
                   <input type="file" id="castep-chdiff-ref-input" multiple accept=".charg_frm,.chdiff,.den_fmt,.txt" style="display:none;" onchange="handleCastepChdiffReferenceUpload(event)" />
 
-                  <button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px; font-weight:700;" onclick="document.getElementById('castep-chdiff-file-input').click()" title="Load CASTEP binary *.chdiff or ASCII *.charg_frm file">
-                    📥 Load *.chdiff / *.charg_frm
+                  <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="document.getElementById('castep-chdiff-file-input').click()" title="Load CASTEP binary *.chdiff or ASCII *.charg_frm file">
+                    📥 .chdiff / .charg_frm
                   </button>
-                  <button type="button" id="castep-chdiff-ref-btn" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:11.5px; display:none;" onclick="document.getElementById('castep-chdiff-ref-input').click()" title="Load reference fragment ρ(A) and/or ρ(B) (*.charg_frm) to subtract from ρ(AB)">
-                    ➖ Load Ref ρ<sub>A</sub> / ρ<sub>B</sub> (*.charg_frm)
-                  </button>
-                  <button type="button" class="btn btn-teal btn-sm" style="padding:3px 9px; font-size:11.5px;" onclick="toggleChdiffInMain3DViewer()" title="Overlay 3D Charge Density Difference isosurfaces directly in the 3D Structure Builder tab">
-                    🧱 View 3D Isosurface in Structure Tab
+                  <button type="button" id="castep-chdiff-ref-btn" class="btn btn-outline btn-sm" style="display:none;" onclick="document.getElementById('castep-chdiff-ref-input').click()" title="Load reference fragment ρ(A) and/or ρ(B) (*.charg_frm) to subtract from ρ(AB)">
+                    ➖ Ref ρ<sub>A</sub> / ρ<sub>B</sub>
                   </button>
 
-                  <div style="margin-left:auto; display:flex; gap:4px; flex-wrap:wrap;">
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepChdiffFile('charg_frm')" title="Export computed Δρ grid in CASTEP .charg_frm format">⬇️ .charg_frm</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepChdiffCSV('1d')" title="Export 1D Planar-Averaged Δρ(z) and ΔQ(z) profile to CSV">📊 1D CSV</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepChdiffCSV('2d')" title="Export currently displayed 2D cross-section slice matrix to CSV">🗺️ 2D CSV</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="exportCastepChdiffXLSX()" title="Export multi-tab Excel workbook (1D Planar Profile + 2D Slice Matrix + Metadata)">📗 Excel</button>
-                    <button type="button" class="btn btn-teal btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="copyCastepCanvasHD('castep-chdiff-canvas', 'Charge Density Difference')" title="Copy High-Resolution Charge Difference Plot Image (400–600 DPI) to Clipboard">📋 Copy HD</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="copyCastepPlotData('chdiff', '1d')" title="Copy 1D Planar Δρ(z) &amp; ΔQ(z) profile data directly to Clipboard (TSV — Ctrl+V into Excel / OriginPro)">📋 Copy Data</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepCanvasPNG('castep-chdiff-canvas', 'CASTEP_Charge_Density_Difference.png')">📷 PNG</button>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Palette:</label>
+                    <select id="castep-chdiff-palette" class="castep-input" onchange="renderCastepChdiffPlots(); renderCastep3DScene();">
+                      <option value="yellow-cyan">🟡/🔵 Yellow–Cyan</option>
+                      <option value="red-blue">🔴/🔵 Red–Blue</option>
+                      <option value="green-magenta">🟢/🟣 Green–Magenta</option>
+                    </select>
+                  </span>
+
+                  <div class="castep-tb-actions">
+                    <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="toggleChdiffInMain3DViewer()" title="Overlay 3D Charge Density Difference isosurfaces directly in the 3D Structure Builder tab">
+                      🧱 3D Isosurface
+                    </button>
                   </div>
                 </div>
 
                 <!-- Row 1B: Multi-file Differential Subtraction Builder (Δρ = ρ_AB - ρ_A - ρ_B) -->
-                <div id="castep-chdiff-diff-bar" style="display:none; align-items:center; gap:6px; flex-wrap:wrap; margin-top:7px; padding:7px 10px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; font-size:11.5px;">
+                <div id="castep-chdiff-diff-bar" style="display:none; align-items:center; gap:6px; flex-wrap:wrap; margin-top:6px; padding:6px 10px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; font-size:11.5px;">
                   <strong style="color:#1e3a8a;">Δρ = ρ<sub>AB</sub> − ρ<sub>A</sub> − ρ<sub>B</sub>:</strong>
                   <input type="file" id="castep-chdiff-ab-input" accept=".charg_frm,.chdiff,.den_fmt,.cube,.txt" style="display:none;" onchange="handleCastepChdiffSlotUpload('ab', event)" />
                   <input type="file" id="castep-chdiff-a-input" accept=".charg_frm,.chdiff,.den_fmt,.cube,.txt" style="display:none;" onchange="handleCastepChdiffSlotUpload('a', event)" />
@@ -2362,57 +2366,74 @@
                   <button type="button" class="castep-preset-chip" onclick="document.getElementById('castep-chdiff-a-input').click()">2) ρ<sub>A</sub>: <span id="castep-chdiff-slot-a-lbl">Not loaded</span></button>
                   <span style="font-weight:800;">−</span>
                   <button type="button" class="castep-preset-chip" onclick="document.getElementById('castep-chdiff-b-input').click()">3) ρ<sub>B</sub> (opt): <span id="castep-chdiff-slot-b-lbl">None</span></button>
-                  <button type="button" class="btn btn-primary btn-sm" style="padding:3px 9px; font-size:11px; margin-left:auto;" onclick="computeDifferentialChargeDensity()">⚡ Compute Δρ</button>
+                  <button type="button" class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="computeDifferentialChargeDensity()">⚡ Compute Δρ</button>
                 </div>
 
-                <!-- Row 2: Layout, Slice Plane, Slice Position, Isovalue, Color Palette & Zoom Controls -->
-                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:7px;">
-                  <label class="castep-field-lbl" style="margin:0;">Layout:</label>
-                  <select id="castep-chdiff-layout" class="castep-input" style="width:auto;" onchange="renderCastepChdiffPlots()">
-                    <option value="tri">📊 3-Panel Synchronized (3D Isosurface + 2D Contour Slice + 1D Planar Δρ(z))</option>
-                    <option value="iso2d">🧱 3D Isosurface + 2D Cross-Section Slice</option>
-                    <option value="slice2d">🗺️ 2D Cross-Section Heatmap &amp; Contours Only</option>
-                    <option value="profile1d">📈 1D Planar-Averaged Profile Δρ(z) &amp; Charge Transfer ΔQ(z) Only</option>
-                  </select>
+                <!-- Row 2: Layout, Slice Plane, Slice Position, Isovalue, 3D Mode & Unit -->
+                <div class="castep-tb-row">
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Layout:</label>
+                    <select id="castep-chdiff-layout" class="castep-input" style="font-weight:700;" onchange="renderCastepChdiffPlots()">
+                      <option value="tri">📊 3-Panel (3D + 2D + 1D)</option>
+                      <option value="iso2d">🧱 3D + 2D Slice</option>
+                      <option value="slice2d">🗺️ 2D Contour Slice</option>
+                      <option value="profile1d">📈 1D Planar Δρ(z) &amp; ΔQ(z)</option>
+                    </select>
+                  </span>
 
-                  <label class="castep-field-lbl" style="margin:0;">Slice Plane:</label>
-                  <select id="castep-chdiff-plane" class="castep-input" style="width:auto;" onchange="renderCastepChdiffPlots()">
-                    <option value="xz">(010) a–c Vertical Slice (Across Slab Z)</option>
-                    <option value="yz">(100) b–c Vertical Slice (Across Slab Z)</option>
-                    <option value="xy">(001) a–b In-Plane Horizontal Slice</option>
-                  </select>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Plane:</label>
+                    <select id="castep-chdiff-plane" class="castep-input" onchange="renderCastepChdiffPlots()">
+                      <option value="xz">(010) a–c (Slab Z)</option>
+                      <option value="yz">(100) b–c (Slab Z)</option>
+                      <option value="xy">(001) a–b In-Plane</option>
+                    </select>
+                  </span>
 
-                  <label class="castep-field-lbl" style="margin:0;">Pos:</label>
-                  <input type="range" id="castep-chdiff-slice-pos" min="0.0" max="1.0" step="0.02" value="0.50" style="width:76px;" oninput="document.getElementById('castep-chdiff-pos-lbl').textContent=Number(this.value).toFixed(2); renderCastepChdiffPlots();" />
-                  <span id="castep-chdiff-pos-lbl" style="font-size:11px; font-weight:700; font-family:monospace; color:#1e40af;">0.50</span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Pos:</label>
+                    <input type="range" id="castep-chdiff-slice-pos" min="0.0" max="1.0" step="0.02" value="0.50" style="width:66px;" oninput="document.getElementById('castep-chdiff-pos-lbl').textContent=Number(this.value).toFixed(2); renderCastepChdiffPlots();" />
+                    <span id="castep-chdiff-pos-lbl" style="font-size:11px; font-weight:700; font-family:monospace; color:#1e40af; min-width:28px;">0.50</span>
+                  </span>
 
-                  <label class="castep-field-lbl" style="margin:0;">Isovalue (e/Å³):</label>
-                  <input type="number" id="castep-chdiff-isoval" class="castep-input-sm" value="0.018" min="0.001" max="0.500" step="0.002" style="width:64px;" onchange="syncChdiffIsoval(this.value)" />
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" title="Isovalue (e/Å³)">Iso (e/Å³):</label>
+                    <input type="number" id="castep-chdiff-isoval" class="castep-input-sm" value="0.018" min="0.001" max="0.500" step="0.002" style="width:64px;" onchange="syncChdiffIsoval(this.value)" />
+                  </span>
 
-                  <label class="castep-field-lbl" style="margin:0;">3D Mode:</label>
-                  <select id="castep-chdiff-cloud-style" class="castep-input" style="width:auto;" onchange="syncChdiffCloudStyle(this.value)">
-                    <option value="clouds">☁️ Soft Electron Clouds</option>
-                    <option value="shaded">🫧 Shaded Isosurface</option>
-                  </select>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">3D:</label>
+                    <select id="castep-chdiff-cloud-style" class="castep-input" onchange="syncChdiffCloudStyle(this.value)">
+                      <option value="clouds">☁️ Soft Clouds</option>
+                      <option value="shaded">🫧 Shaded Iso</option>
+                    </select>
+                  </span>
 
-                  <label class="castep-field-lbl" style="margin:0;">1D Unit:</label>
-                  <select id="castep-chdiff-1d-unit" class="castep-input" style="width:auto;" onchange="renderCastepChdiffPlots()">
-                    <option value="ea3">e/Å³ (Vol. Avg)</option>
-                    <option value="ea">e/Å (Linear Δρ₁D)</option>
-                  </select>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Unit:</label>
+                    <select id="castep-chdiff-1d-unit" class="castep-input" onchange="renderCastepChdiffPlots()">
+                      <option value="ea3">e/Å³</option>
+                      <option value="ea">e/Å</option>
+                    </select>
+                  </span>
+                </div>
 
-                  <label class="castep-field-lbl" style="margin:0;">Palette:</label>
-                  <select id="castep-chdiff-palette" class="castep-input" style="width:auto;" onchange="renderCastepChdiffPlots(); renderCastep3DScene();">
-                    <option value="yellow-cyan">🟡 Yellow (+Δρ Acc.) / 🔵 Cyan (−Δρ Dep.)</option>
-                    <option value="red-blue">🔴 Red (+Δρ Acc.) / 🔵 Blue (−Δρ Dep.)</option>
-                    <option value="green-magenta">🟢 Green (+Δρ Acc.) / 🟣 Magenta (−Δρ Dep.)</option>
-                  </select>
-
-                  <div style="margin-left:auto; display:flex; gap:3px; align-items:center;">
-                    <span style="font-size:11px; font-weight:700; color:#475569;">Zoom:</span>
-                    <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('chdiff', 1.25)" title="Zoom In">＋</button>
-                    <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('chdiff', 0.80)" title="Zoom Out">－</button>
+                <!-- Row 3: Zoom Controls, Single-Panel Hint & Copy / Export Actions -->
+                <div class="castep-tb-row">
+                  <span class="castep-ctrl-grp">
+                    <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('chdiff', 1.25)" title="Zoom In">🔍＋</button>
+                    <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('chdiff', 0.80)" title="Zoom Out">🔍－</button>
                     <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('chdiff')" title="Reset Zoom &amp; Pan">⊡ Reset</button>
+                  </span>
+                  <span style="font-size:10.5px; color:#64748b;" title="Right-click panel (a), (b), or (c) to copy that individual plot or its data">💡 Right-click panel (a–c)</span>
+                  <div class="castep-tb-actions">
+                    <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="copyCastepCanvasHD('castep-chdiff-canvas', 'Charge Density Difference (Full)')" title="Copy FULL Charge Difference Plot Image (400–600 DPI) to Clipboard">📋 Copy HD</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="copyCastepPlotData('chdiff', 'full')" title="Copy FULL 1D Planar Δρ(z) &amp; ΔQ(z) + 2D slice data (TSV → Excel / OriginPro)">📋 Copy Data</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepCanvasPNG('castep-chdiff-canvas', 'CASTEP_Charge_Density_Difference.png')">📷 PNG</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepChdiffCSV('1d')" title="Export 1D Planar-Averaged Δρ(z) and ΔQ(z) profile to CSV">📊 1D CSV</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepChdiffCSV('2d')" title="Export currently displayed 2D cross-section slice matrix to CSV">🗺️ 2D CSV</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="exportCastepChdiffXLSX()" title="Export multi-tab Excel workbook (1D Planar Profile + 2D Slice Matrix + Metadata)">📗 Excel</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepChdiffFile('charg_frm')" title="Export computed Δρ grid in CASTEP .charg_frm format">⬇️ .charg_frm</button>
                   </div>
                 </div>
               </div>
@@ -2433,80 +2454,46 @@
             <!-- PANE 6: CASTEP MULLIKEN POPULATION, MAGNETISM & BOND ANALYZER-->
             <!-- ============================================================ -->
             <div id="castep-pane-mulliken" class="castep-stage-pane">
-              <div class="castep-plot-toolbar">
-                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                  <label class="castep-field-lbl" style="margin:0;">Chart View:</label>
-                  <select id="castep-mulliken-chart-mode" class="castep-input" style="width:auto; font-weight:700;" onchange="renderCastepMullikenPane()">
-                    <option value="spin_atomic">🧲 Atomic Magnetic Moment Contribution (μB)</option>
-                    <option value="spin_orbital">⚛️ Orbital Magnetic Contribution (s, p, d, f in μB)</option>
-                    <option value="charge_cmp">⚡ Atomic Charge (Mulliken vs Hirshfeld)</option>
-                    <option value="elec_orbital">🧬 Orbital Electron Population (s, p, d, f)</option>
-                  </select>
-
-                  <label class="castep-field-lbl" style="margin:0;">Element:</label>
-                  <select id="castep-mulliken-el-filter" class="castep-input" style="width:auto;" onchange="renderCastepMullikenPane()">
-                    <option value="all">All Elements</option>
-                  </select>
-
-                  <label class="castep-field-lbl" style="margin:0;">Bond Pair:</label>
-                  <select id="castep-mulliken-bond-filter" class="castep-input" style="width:auto;" onchange="renderCastepMullikenPane()">
-                    <option value="all">All Bond Pairs</option>
-                  </select>
-
-                  <div style="margin-left:auto; display:flex; gap:5px; align-items:center; flex-wrap:wrap;">
-                    <button type="button" class="btn btn-teal btn-sm" style="padding:3px 9px; font-size:11px;" onclick="toggleSpinsInMain3DViewer()" title="Overlay 3D magnetic spin arrows (↑ red / ↓ blue) on atoms in 3D Structure Viewer">
-                      🧲 3D Spin Arrows
-                    </button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepMullikenCSV('atoms')">📊 Atomic CSV</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepMullikenCSV('bonds')">🔗 Bonds CSV</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="exportCastepMullikenXLSX()" title="Export multi-tab Excel workbook (Magnetism Summary, Orbital Spin Matrix, Atomic Populations, Bond Populations)">📗 Excel</button>
-                    <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="copyCastepCanvasPairHD(['castep-mulliken-mag-canvas', 'castep-mulliken-bond-canvas'], 'Mulliken Magnetism & Bonds')" title="Copy BOTH Mulliken Magnetism &amp; Bond Charts side-by-side (400–600 DPI) — right-click either chart to copy individually">📋 Copy HD</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="copyCastepPlotData('mulliken', 'full')" title="Copy FULL Atomic + Bond Mulliken tables directly to Clipboard (TSV → Excel / OriginPro)">📋 Copy Data</button>
-                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepCanvasPNG('castep-mulliken-mag-canvas', 'CASTEP_Mulliken_Magnetism.png')">📷 PNG</button>
-                  </div>
-                </div>
-              </div>
-
               <!-- Global Magnetism & Population Summary Strip -->
               <div id="castep-mulliken-summary-strip" class="castep-elec-summary-strip"></div>
 
-              <!-- Orbital-Resolved Spin Matrix Card (All Elements & s/p/d/f Sub-Orbitals) -->
-              <div id="castep-spin-matrix-card" class="castep-plot-canvas-card" style="margin-top:8px; padding:12px 14px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
-                  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <!-- Section 1: Orbital-Resolved Spin Matrix Card (All Elements & s/p/d/f Sub-Orbitals) -->
+              <div id="castep-spin-matrix-card" class="castep-plot-canvas-card" style="padding:11px 13px;">
+                <div class="castep-tb-row" style="margin-bottom:7px;">
+                  <span class="castep-ctrl-grp" style="gap:7px;">
                     <span style="font-weight:800; font-size:13px; color:#0f172a;">🧲 Orbital-Resolved Spin Matrix</span>
                     <span id="castep-spinmat-source-badge" class="badge badge-blue" style="font-size:10.5px;">Awaiting orbital data</span>
-                  </div>
-                  <div style="display:flex; gap:5px; align-items:center; flex-wrap:wrap;">
+                  </span>
+                  <div class="castep-tb-actions">
                     <input id="castep-spinmat-file-input" type="file" accept=".castep,.pdos_bin,.bands" multiple style="display:none;" onchange="handleCastepSpinMatrixFileUpload(event)" />
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="document.getElementById('castep-spinmat-file-input')?.click()" title="Load CASTEP .castep (with Orbital Populations) or .pdos_bin + .bands">📂 .castep/.pdos_bin</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('castep-spinmat-file-input')?.click()" title="Load CASTEP .castep (with Orbital Populations) or .pdos_bin + .bands">📂 .castep/.pdos_bin</button>
                     <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="copyCastepCanvasHD('castep-spinmat-canvas', 'Orbital Spin Matrix (Full)')" title="Copy FULL Spin Matrix Image (400–600 DPI) to Clipboard — right-click any element in All-Elements Grid to copy individually">📋 Copy HD</button>
                     <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="copyCastepPlotData('spinmat', 'full')" title="Copy FULL Spin Matrix + all-element orbital spin table directly to Clipboard (TSV → Excel / OriginPro)">📋 Copy Data</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="exportCastepSpinMatrixCSV()" title="Export current Spin Matrix & all-element orbital spin table to CSV">📊 Matrix CSV</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px; font-weight:700;" onclick="exportCastepSpinMatrixPNG()" title="Export publication-ready Hi-DPI Spin Matrix PNG">📷 Matrix PNG</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepSpinMatrixCSV()" title="Export current Spin Matrix &amp; all-element orbital spin table to CSV">📊 Matrix CSV</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="exportCastepSpinMatrixPNG()" title="Export publication-ready Hi-DPI Spin Matrix PNG">📷 Matrix PNG</button>
                   </div>
                 </div>
 
                 <!-- Spin Matrix Controls Bar -->
-                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:7px 10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:7px; margin-bottom:8px;">
-                  <span style="display:inline-flex; align-items:center; gap:5px;">
-                    <label class="castep-field-lbl" style="margin:0;">Element:</label>
-                    <select id="castep-spinmat-element" class="castep-input" style="width:auto; font-weight:700;" onchange="onCastepSpinMatrixElementChange()">
+                <div class="castep-tb-row" style="padding:6px 9px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:7px; margin-bottom:8px;">
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Element:</label>
+                    <select id="castep-spinmat-element" class="castep-input" style="font-weight:700;" onchange="onCastepSpinMatrixElementChange()">
                       <option value="all_grid">All Elements Overview Grid</option>
                     </select>
                   </span>
 
-                  <span style="display:inline-flex; align-items:center; gap:5px;">
-                    <label class="castep-field-lbl" style="margin:0;">Atom:</label>
-                    <select id="castep-spinmat-atom" class="castep-input" style="width:auto;" onchange="renderCastepSpinMatrix()">
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Atom:</label>
+                    <select id="castep-spinmat-atom" class="castep-input" onchange="renderCastepSpinMatrix()">
                       <option value="avg">Element Average</option>
                       <option value="sum">Element Total (Sum)</option>
                     </select>
                   </span>
 
-                  <span style="display:inline-flex; align-items:center; gap:5px;">
-                    <label class="castep-field-lbl" style="margin:0;">Orbitals:</label>
-                    <select id="castep-spinmat-shell" class="castep-input" style="width:auto;" onchange="renderCastepSpinMatrix()">
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Orbitals:</label>
+                    <select id="castep-spinmat-shell" class="castep-input" onchange="renderCastepSpinMatrix()">
                       <option value="auto">Auto (Dominant Shell)</option>
                       <option value="d">d-orbitals (5×5)</option>
                       <option value="p">p-orbitals (3×3)</option>
@@ -2517,9 +2504,9 @@
                     </select>
                   </span>
 
-                  <span style="display:inline-flex; align-items:center; gap:5px;">
-                    <label class="castep-field-lbl" style="margin:0;">Quantity:</label>
-                    <select id="castep-spinmat-qty" class="castep-input" style="width:auto;" onchange="renderCastepSpinMatrix()">
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Quantity:</label>
+                    <select id="castep-spinmat-qty" class="castep-input" onchange="renderCastepSpinMatrix()">
                       <option value="spin">Spin (n↑ − n↓)</option>
                       <option value="up">Spin Up (n↑)</option>
                       <option value="dn">Spin Down (n↓)</option>
@@ -2527,18 +2514,18 @@
                     </select>
                   </span>
 
-                  <span style="display:inline-flex; align-items:center; gap:5px;">
-                    <label class="castep-field-lbl" style="margin:0;">Style:</label>
-                    <select id="castep-spinmat-palette" class="castep-input" style="width:auto;" onchange="renderCastepSpinMatrix()">
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Style:</label>
+                    <select id="castep-spinmat-palette" class="castep-input" onchange="renderCastepSpinMatrix()">
                       <option value="journal_green">Publication (Pale Green)</option>
                       <option value="diverging_rb">Diverging (Red / Blue)</option>
                       <option value="blue_orange">Diverging (Teal / Amber)</option>
                     </select>
                   </span>
 
-                  <span style="display:inline-flex; align-items:center; gap:5px;">
-                    <label class="castep-field-lbl" style="margin:0;">Digits:</label>
-                    <select id="castep-spinmat-decimals" class="castep-input" style="width:auto;" onchange="renderCastepSpinMatrix()">
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Digits:</label>
+                    <select id="castep-spinmat-decimals" class="castep-input" onchange="renderCastepSpinMatrix()">
                       <option value="3" selected>3</option>
                       <option value="4">4</option>
                       <option value="2">2</option>
@@ -2576,8 +2563,57 @@
                 </div>
               </div>
 
+              <!-- Section 2: Mulliken Magnetism & Bond Charts Toolbar (Positioned directly above the 2 Mulliken Plots) -->
+              <div class="castep-plot-toolbar" style="margin-top:12px; margin-bottom:8px;">
+                <!-- Row 1: Chart View, Element Filter, Bond Pair Filter & 3D Spin Overlay -->
+                <div class="castep-tb-row">
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Chart View:</label>
+                    <select id="castep-mulliken-chart-mode" class="castep-input" style="font-weight:700;" onchange="renderCastepMullikenPane()">
+                      <option value="spin_atomic">🧲 Atomic Magnetic Moment Contribution (μB)</option>
+                      <option value="spin_orbital">⚛️ Orbital Magnetic Contribution (s, p, d, f in μB)</option>
+                      <option value="charge_cmp">⚡ Atomic Charge (Mulliken vs Hirshfeld)</option>
+                      <option value="elec_orbital">🧬 Orbital Electron Population (s, p, d, f)</option>
+                    </select>
+                  </span>
+
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Element:</label>
+                    <select id="castep-mulliken-el-filter" class="castep-input" onchange="renderCastepMullikenPane()">
+                      <option value="all">All Elements</option>
+                    </select>
+                  </span>
+
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Bond Pair:</label>
+                    <select id="castep-mulliken-bond-filter" class="castep-input" onchange="renderCastepMullikenPane()">
+                      <option value="all">All Bond Pairs</option>
+                    </select>
+                  </span>
+
+                  <div class="castep-tb-actions">
+                    <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="toggleSpinsInMain3DViewer()" title="Overlay 3D magnetic spin arrows (↑ red / ↓ blue) on atoms in 3D Structure Viewer">
+                      🧲 3D Spin Arrows
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Row 2: Right-Click Single-Plot Hint & Copy / Export Actions -->
+                <div class="castep-tb-row">
+                  <span style="font-size:10.5px; color:#64748b;">💡 Right-click either chart below to copy that single plot or its data</span>
+                  <div class="castep-tb-actions">
+                    <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="copyCastepCanvasPairHD(['castep-mulliken-mag-canvas', 'castep-mulliken-bond-canvas'], 'Mulliken Magnetism & Bonds')" title="Copy BOTH Mulliken Magnetism &amp; Bond Charts side-by-side (400–600 DPI) — right-click either chart to copy individually">📋 Copy HD</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="copyCastepPlotData('mulliken', 'full')" title="Copy FULL Atomic + Bond Mulliken tables directly to Clipboard (TSV → Excel / OriginPro)">📋 Copy Data</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepCanvasPNG('castep-mulliken-mag-canvas', 'CASTEP_Mulliken_Magnetism.png')" title="Export Magnetism / Orbital chart as Hi-DPI PNG">📷 PNG</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepMullikenCSV('atoms')">📊 Atomic CSV</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepMullikenCSV('bonds')">🔗 Bonds CSV</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="exportCastepMullikenXLSX()" title="Export multi-tab Excel workbook (Magnetism Summary, Orbital Spin Matrix, Atomic Populations, Bond Populations)">📗 Excel</button>
+                  </div>
+                </div>
+              </div>
+
               <!-- 2-Column High-DPI Mulliken Charts (Magnetism/Orbital + Bond Population vs Length) -->
-              <div class="castep-conv-charts-grid" style="margin-top:8px;">
+              <div class="castep-conv-charts-grid">
                 <div class="castep-plot-canvas-card">
                   <div style="font-weight:700; font-size:12.5px; color:#0f172a; margin-bottom:5px;" id="castep-mulliken-mag-title">Atomic &amp; Orbital Magnetic Moment Contribution (μ<sub>B</sub>)</div>
                   <canvas id="castep-mulliken-mag-canvas" width="440" height="310"></canvas>
@@ -2650,21 +2686,31 @@
             <!-- PANE 3: SCF & GEOMETRY OPTIMIZATION CONVERGENCE PLOTS        -->
             <!-- ============================================================ -->
             <div id="castep-pane-convergence" class="castep-stage-pane">
-              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
-                <div>
-                  <h3 style="margin:0; font-size:15px; font-weight:800; color:#0f172a;">⚡ CASTEP Total Energy, Enthalpy &amp; Convergence Diagnostics</h3>
-                  <div style="font-size:12px; color:#64748b;">Real-time SCF loop energy convergence, LBFGS/TPSD geometry optimization enthalpy, maximum ionic forces, and Hirshfeld population analysis.</div>
+              <div class="castep-plot-toolbar">
+                <!-- Row 1: Title & Zoom Controls -->
+                <div class="castep-tb-row">
+                  <div>
+                    <h3 style="margin:0; font-size:14px; font-weight:800; color:#0f172a;">⚡ CASTEP Total Energy, Enthalpy &amp; Convergence Diagnostics</h3>
+                    <div style="font-size:11px; color:#64748b;">Real-time SCF loop energy convergence, LBFGS/TPSD geometry optimization enthalpy, maximum ionic forces, and Hirshfeld population analysis.</div>
+                  </div>
+                  <span class="castep-ctrl-grp" style="margin-left:auto;">
+                    <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('convergence', 1.25)" title="Zoom In Convergence">🔍＋</button>
+                    <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('convergence', 0.80)" title="Zoom Out Convergence">🔍－</button>
+                    <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('convergence')" title="Reset Convergence Zoom">⊡ Reset</button>
+                  </span>
                 </div>
-                <div style="display:flex; gap:6px;">
-                  <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('convergence', 1.25)" title="Zoom In Convergence">🔍＋</button>
-                  <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('convergence', 0.80)" title="Zoom Out Convergence">🔍－</button>
-                  <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('convergence')" title="Reset Convergence Zoom">⊡ Reset</button>
-                  <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="copyCastepCanvasPairHD(['castep-energy-chart-canvas', 'castep-conv-chart-canvas'], 'Energy & Convergence')" title="Copy BOTH Energy Profile &amp; Convergence Charts side-by-side (400–600 DPI) — right-click either chart to copy individually">📋 Copy HD</button>
-                  <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="copyCastepPlotData('convergence', 'full')" title="Copy FULL SCF &amp; GeomOpt Convergence data directly to Clipboard (TSV → Excel / OriginPro)">📋 Copy Data</button>
-                  <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepConvergenceCSV()" title="Export SCF / Energy convergence table to CSV">📊 CSV</button>
-                  <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px; font-weight:700;" onclick="exportCastepConvergenceXLSX()" title="Export multi-tab Excel workbook (SCF Convergence, GeomOpt Trajectory, Forces &amp; Charges)">📗 Excel</button>
-                  <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="exportCastepCanvasPNG('castep-energy-chart-canvas', 'CASTEP_Energy_Profile.png')">📷 Energy PNG</button>
-                  <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="exportCastepCanvasPNG('castep-conv-chart-canvas', 'CASTEP_Convergence.png')">📷 Conv PNG</button>
+
+                <!-- Row 2: Right-Click Single-Chart Hint & Copy / Export Actions -->
+                <div class="castep-tb-row">
+                  <span style="font-size:10.5px; color:#64748b;">💡 Right-click either chart below to copy that single plot or its data</span>
+                  <div class="castep-tb-actions">
+                    <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="copyCastepCanvasPairHD(['castep-energy-chart-canvas', 'castep-conv-chart-canvas'], 'Energy & Convergence')" title="Copy BOTH Energy Profile &amp; Convergence Charts side-by-side (400–600 DPI) — right-click either chart to copy individually">📋 Copy HD</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="copyCastepPlotData('convergence', 'full')" title="Copy FULL SCF &amp; GeomOpt Convergence data directly to Clipboard (TSV → Excel / OriginPro)">📋 Copy Data</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepCanvasPNG('castep-energy-chart-canvas', 'CASTEP_Energy_Profile.png')">📷 Energy PNG</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepCanvasPNG('castep-conv-chart-canvas', 'CASTEP_Convergence.png')">📷 Conv PNG</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepConvergenceCSV()" title="Export SCF / Energy convergence table to CSV">📊 CSV</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="exportCastepConvergenceXLSX()" title="Export multi-tab Excel workbook (SCF Convergence, GeomOpt Trajectory, Forces &amp; Charges)">📗 Excel</button>
+                  </div>
                 </div>
               </div>
 
@@ -5774,9 +5820,9 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=137_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=137_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=137_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=137_v116_vesta_viewer'"></script>
-  <script src="app.js?v=137_v116_vesta_viewer" onerror="this.src='/static/app.js?v=137_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=138_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=138_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=138_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=138_v116_vesta_viewer'"></script>
+  <script src="app.js?v=138_v116_vesta_viewer" onerror="this.src='/static/app.js?v=138_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
