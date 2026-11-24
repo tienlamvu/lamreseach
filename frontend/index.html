@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=138_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=138_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=139_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=139_v116_vesta_viewer'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -1180,6 +1180,9 @@
               <button type="button" class="castep-stage-tab" data-pane="electronic" onclick="switchCastepStagePane('electronic', this)">
                 📈 Band &amp; PDOS
               </button>
+              <button type="button" class="castep-stage-tab" data-pane="transport" onclick="switchCastepStagePane('transport', this)" title="Carrier Effective Mass (Band &amp; DOS), Semiconductor Mobility, Drude Effective Mass &amp; Relaxation Time (e⁻ / h⁺)">
+                🚀 m* &amp; Drude
+              </button>
               <button type="button" class="castep-stage-tab" data-pane="optics" onclick="switchCastepStagePane('optics', this)">
                 🌈 Optical
               </button>
@@ -2309,6 +2312,272 @@
                 <canvas id="castep-electronic-canvas" width="900" height="520"></canvas>
                 <div id="castep-electronic-readout" class="castep-plot-readout">
                   Hover over Band Structure or DOS/PDOS plot to inspect exact k-point, band energy (E − E<sub>F</sub>), and density of states.
+                </div>
+              </div>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- PANE 2B: CARRIER EFFECTIVE MASS, MOBILITY & DRUDE ANALYZER   -->
+            <!-- ============================================================ -->
+            <div id="castep-pane-transport" class="castep-stage-pane">
+              <!-- Global Effective Mass, Mobility & Drude KPI Summary Strip -->
+              <div id="castep-transport-summary-strip" class="castep-elec-summary-strip"></div>
+
+              <!-- Master Physics Parameters & Drude Controls Toolbar -->
+              <div class="castep-plot-toolbar">
+                <!-- Row 1: Band/DOS Effective Mass Fitting & Material Presets -->
+                <div class="castep-tb-row">
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Dim:</label>
+                    <select id="castep-tr-dim" class="castep-input" style="font-weight:700;" onchange="renderCastepTransportPane()">
+                      <option value="auto" selected>Auto</option>
+                      <option value="2d">2D Slab</option>
+                      <option value="3d">3D Bulk</option>
+                    </select>
+                  </span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Spin:</label>
+                    <select id="castep-tr-spin" class="castep-input" onchange="renderCastepTransportPane()">
+                      <option value="auto" selected>Auto</option>
+                      <option value="0">↑ (α)</option>
+                      <option value="1">↓ (β)</option>
+                    </select>
+                  </span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Fit:</label>
+                    <select id="castep-tr-fit-model" class="castep-input" style="font-weight:700;" onchange="renderCastepTransportPane()">
+                      <option value="auto" selected>Parabolic</option>
+                      <option value="parabolic_sym">Sym Parab.</option>
+                      <option value="quadratic">Quadratic</option>
+                      <option value="kane">Kane (NP)</option>
+                    </select>
+                  </span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" title="k-space fitting window Δk (Å⁻¹) around CBM/VBM">Δk:</label>
+                    <input type="number" id="castep-tr-fit-dk" class="castep-input-sm" value="0.16" step="0.02" min="0.04" max="0.50" style="width:52px;" onchange="renderCastepTransportPane()" />
+                  </span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" title="Minimum DFT k-points per branch fit">Pts:</label>
+                    <input type="number" id="castep-tr-fit-pts" class="castep-input-sm" value="4" step="1" min="3" max="10" style="width:42px;" onchange="renderCastepTransportPane()" />
+                  </span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" title="Energy window ΔE (eV) above CBM / below VBM for Direct DFT DOS Effective Mass integration">ΔE:</label>
+                    <input type="number" id="castep-tr-dos-win" class="castep-input-sm" value="0.40" step="0.05" min="0.12" max="1.20" style="width:50px;" onchange="renderCastepTransportPane()" />
+                  </span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">T (K):</label>
+                    <input type="number" id="castep-tr-temp" class="castep-input-sm" value="300" step="25" min="20" max="1200" style="width:52px;" onchange="renderCastepTransportPane()" />
+                  </span>
+                  <div class="castep-tb-actions">
+                    <select id="castep-tr-preset" class="castep-input" onchange="if(this.value){applyCastepTransportPreset(this.value); this.value='';}" title="Load textbook/DFT deformation-potential &amp; dielectric preset">
+                      <option value="">📚 Preset...</option>
+                      <option value="2d_tmdc">2D MoS₂ / MoSi₂N₄</option>
+                      <option value="2d_bp">2D Phosphorene</option>
+                      <option value="3d_si">3D Bulk Si / Covalent</option>
+                      <option value="3d_gaas">3D Polar GaAs / III-V</option>
+                      <option value="3d_oxide">3D Oxide / Perovskite</option>
+                    </select>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="toggleCastepStrainCalcPanel()" title="Fit exact Elastic Modulus C and Deformation Potential E₁ from strained CASTEP calculations">📐 Strain C/E<sub>1</sub></button>
+                  </div>
+                </div>
+
+                <!-- Row 1B: Collapsible Multi-Strain Elastic Modulus & Deformation Potential Calculator -->
+                <div id="castep-tr-strain-panel" style="display:none; margin-top:6px; padding:8px 10px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; font-size:11.5px;">
+                  <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
+                    <strong style="color:#1e3a8a;">📐 Fit Elastic Modulus C &amp; Deformation Potential E<sub>1,e</sub> / E<sub>1,h</sub> from Strained CASTEP Runs</strong>
+                    <div style="display:flex; gap:6px; align-items:center;">
+                      <span id="castep-tr-strain-result" style="font-size:11px; color:#475569;">Enter uniaxial strain ε (%), Total Energy (eV), VBM &amp; CBM (eV vs vacuum):</span>
+                      <button type="button" class="btn btn-primary btn-sm" onclick="computeDeformationPotentialFromStrainTable()">⚡ Fit &amp; Apply</button>
+                    </div>
+                  </div>
+                  <table class="castep-atoms-table" style="margin:0; background:#ffffff;">
+                    <thead>
+                      <tr>
+                        <th>Strain ε (%)</th>
+                        <th>Total Energy E<sub>tot</sub> (eV)</th>
+                        <th>VBM Energy (eV)</th>
+                        <th>CBM Energy (eV)</th>
+                      </tr>
+                    </thead>
+                    <tbody id="castep-tr-strain-tbody">
+                      <tr><td><input type="number" class="castep-input-sm" step="0.1" value="-1.0" style="width:74px;" /></td><td><input type="number" class="castep-input-sm" step="0.001" placeholder="-1000.0" style="width:120px;" /></td><td><input type="number" class="castep-input-sm" step="0.001" placeholder="-5.20" style="width:110px;" /></td><td><input type="number" class="castep-input-sm" step="0.001" placeholder="-3.80" style="width:110px;" /></td></tr>
+                      <tr><td><input type="number" class="castep-input-sm" step="0.1" value="-0.5" style="width:74px;" /></td><td><input type="number" class="castep-input-sm" step="0.001" placeholder="-1000.1" style="width:120px;" /></td><td><input type="number" class="castep-input-sm" step="0.001" placeholder="-5.18" style="width:110px;" /></td><td><input type="number" class="castep-input-sm" step="0.001" placeholder="-3.83" style="width:110px;" /></td></tr>
+                      <tr><td><input type="number" class="castep-input-sm" step="0.1" value="0.0" style="width:74px;" /></td><td><input type="number" class="castep-input-sm" step="0.001" placeholder="-1000.15" style="width:120px;" /></td><td><input type="number" class="castep-input-sm" step="0.001" placeholder="-5.16" style="width:110px;" /></td><td><input type="number" class="castep-input-sm" step="0.001" placeholder="-3.86" style="width:110px;" /></td></tr>
+                      <tr><td><input type="number" class="castep-input-sm" step="0.1" value="0.5" style="width:74px;" /></td><td><input type="number" class="castep-input-sm" step="0.001" placeholder="-1000.1" style="width:120px;" /></td><td><input type="number" class="castep-input-sm" step="0.001" placeholder="-5.14" style="width:110px;" /></td><td><input type="number" class="castep-input-sm" step="0.001" placeholder="-3.89" style="width:110px;" /></td></tr>
+                      <tr><td><input type="number" class="castep-input-sm" step="0.1" value="1.0" style="width:74px;" /></td><td><input type="number" class="castep-input-sm" step="0.001" placeholder="-1000.0" style="width:120px;" /></td><td><input type="number" class="castep-input-sm" step="0.001" placeholder="-5.12" style="width:110px;" /></td><td><input type="number" class="castep-input-sm" step="0.001" placeholder="-3.92" style="width:110px;" /></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Row 2: Deformation Potential, Elastic Modulus, Dielectric & Scattering Channels -->
+                <div class="castep-tb-row">
+                  <span id="castep-tr-c2d-wrap" class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" title="2D In-plane Elastic Modulus C2D (N/m = J/m²)">C<sub>2D</sub> (N/m):</label>
+                    <input type="number" id="castep-tr-c2d" class="castep-input-sm" value="240" step="10" min="5" max="2000" style="width:58px;" onchange="renderCastepTransportPane()" />
+                  </span>
+                  <span id="castep-tr-c3d-wrap" class="castep-ctrl-grp" style="display:none;">
+                    <label class="castep-field-lbl" title="3D Longitudinal Elastic Constant C3D (GPa)">C<sub>3D</sub> (GPa):</label>
+                    <input type="number" id="castep-tr-c3d" class="castep-input-sm" value="160" step="10" min="5" max="1500" style="width:58px;" onchange="renderCastepTransportPane()" />
+                  </span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" title="Electron Acoustic Deformation Potential E1,e (eV)">E<sub>1,e</sub>:</label>
+                    <input type="number" id="castep-tr-e1e" class="castep-input-sm" value="5.5" step="0.5" min="0.2" max="40" style="width:50px;" onchange="renderCastepTransportPane()" />
+                  </span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" title="Hole Acoustic Deformation Potential E1,h (eV)">E<sub>1,h</sub>:</label>
+                    <input type="number" id="castep-tr-e1h" class="castep-input-sm" value="4.5" step="0.5" min="0.2" max="40" style="width:50px;" onchange="renderCastepTransportPane()" />
+                  </span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" title="Static Dielectric Constant ε0">ε<sub>0</sub>:</label>
+                    <input type="number" id="castep-tr-eps0" class="castep-input-sm" value="12.0" step="0.5" min="1.1" max="300" style="width:52px;" onchange="window._castepTransportCustomState.userEditedEps=true; renderCastepTransportPane()" />
+                  </span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" title="High-Frequency Optical Dielectric ε∞ (auto-read from CASTEP Optical tensor when present)">ε<sub>∞</sub>:</label>
+                    <input type="number" id="castep-tr-eps-inf" class="castep-input-sm" value="10.5" step="0.5" min="1.0" max="200" style="width:52px;" onchange="window._castepTransportCustomState.userEditedEps=true; renderCastepTransportPane()" />
+                  </span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" title="LO Phonon Energy ħωLO (eV) for Polar Optical Fröhlich Scattering">ħω<sub>LO</sub>:</label>
+                    <input type="number" id="castep-tr-wlo" class="castep-input-sm" value="0.048" step="0.005" min="0.008" max="0.25" style="width:58px;" onchange="renderCastepTransportPane()" />
+                  </span>
+                  <label class="castep-chk-lbl" title="Include Polar Optical Phonon (Fröhlich) scattering channel in τ_tot and μ_tot">
+                    <input type="checkbox" id="castep-tr-use-pop" onchange="renderCastepTransportPane()" /> POP
+                  </label>
+                  <label class="castep-chk-lbl" title="Include Ionized Impurity (Brooks–Herring) scattering channel in τ_tot and μ_tot">
+                    <input type="checkbox" id="castep-tr-use-imp" onchange="renderCastepTransportPane()" /> IMP
+                  </label>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" title="log10 of Ionized Impurity density Ni">logN<sub>i</sub>:</label>
+                    <input type="number" id="castep-tr-ni-exp" class="castep-input-sm" value="11.0" step="0.5" min="8" max="21" style="width:50px;" onchange="renderCastepTransportPane()" />
+                  </span>
+                  <span class="castep-ctrl-grp" style="margin-left:auto;">
+                    <label class="castep-field-lbl" title="Valley degeneracy gv (0 = auto-detect from k-point symmetry)">g<sub>v</sub> e/h:</label>
+                    <input type="number" id="castep-tr-gve" class="castep-input-sm" value="0" step="1" min="0" max="12" style="width:38px;" title="Electron valley degeneracy (0 = Auto)" onchange="renderCastepTransportPane()" />
+                    <input type="number" id="castep-tr-gvh" class="castep-input-sm" value="0" step="1" min="0" max="12" style="width:38px;" title="Hole valley degeneracy (0 = Auto)" onchange="renderCastepTransportPane()" />
+                  </span>
+                </div>
+
+                <!-- Row 3: Drude Carrier Density (e- / h+), Optical/Exp Inversion & Bridge to Optical Tab -->
+                <div class="castep-tb-row">
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" title="log10 Electron Carrier Density n">log<sub>10</sub>(n):</label>
+                    <input type="number" id="castep-tr-n-exp" class="castep-input-sm" value="12.0" step="0.5" min="8" max="22" style="width:54px;" onchange="renderCastepTransportPane()" />
+                  </span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" title="log10 Hole Carrier Density p">log<sub>10</sub>(p):</label>
+                    <input type="number" id="castep-tr-p-exp" class="castep-input-sm" value="12.0" step="0.5" min="8" max="22" style="width:54px;" onchange="renderCastepTransportPane()" />
+                    <span id="castep-tr-dop-unit" style="font-size:10.5px; color:#475569; font-weight:700;">cm<sup>−2</sup></span>
+                  </span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" title="Optical Drude damping γD (eV) for inverse τ_opt = ħ/γD">Opt γ<sub>D</sub>:</label>
+                    <input type="number" id="castep-tr-opt-gamma" class="castep-input-sm" value="0.05" step="0.01" min="0.002" max="1.0" style="width:54px;" onchange="renderCastepTransportPane()" />
+                  </span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" title="Optional measured DC electrical conductivity σ0 (S/cm) to invert Drude τ = σ0·m*Drude/(n·e²)">Exp σ<sub>0</sub> (S/cm):</label>
+                    <input type="number" id="castep-tr-exp-sigma" class="castep-input-sm" value="0" step="10" min="0" max="1e7" style="width:66px;" onchange="renderCastepTransportPane()" />
+                  </span>
+                  <div class="castep-tb-actions">
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700; color:#1d4ed8;" onclick="applyDrudeToOpticalTab('e')" title="Push computed Electron Drude ωp &amp; γD directly into Optical Properties tab">⚡ e⁻ Drude → Optical</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700; color:#b91c1c;" onclick="applyDrudeToOpticalTab('h')" title="Push computed Hole Drude ωp &amp; γD directly into Optical Properties tab">⚡ h⁺ Drude → Optical</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Section 1: Band-Edge Effective Mass Parabolic / Kane Fit Canvas -->
+              <div class="castep-plot-toolbar" style="margin-top:8px; margin-bottom:6px;">
+                <div class="castep-tb-row">
+                  <strong style="font-size:12.5px; color:#0f172a;">📈 Band-Edge Effective Mass Fits (CBM e<sup>−</sup> &amp; VBM h<sup>+</sup>)</strong>
+                  <span style="font-size:10.5px; color:#64748b;">💡 Right-click panel (a) or (b) to copy individually</span>
+                  <div class="castep-tb-actions">
+                    <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="copyCastepCanvasHD('castep-transport-fit-canvas', 'Band-Edge Effective Mass Fits')" title="Copy FULL Band-Edge Effective Mass Fit Figure (400–600 DPI)">📋 Copy HD</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="copyCastepPlotData('transport', 'branches')" title="Copy Directional Effective Mass Table (TSV → Excel / OriginPro)">📋 Copy Data</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepCanvasPNG('castep-transport-fit-canvas', 'CASTEP_Effective_Mass_Fits.png')">📷 PNG</button>
+                  </div>
+                </div>
+              </div>
+              <div class="castep-plot-canvas-card">
+                <canvas id="castep-transport-fit-canvas" width="900" height="345"></canvas>
+              </div>
+
+              <!-- Section 2: 3-Column Electron / Hole / Semiconductor & Exciton Summary Cards -->
+              <div id="castep-transport-drude-cards" class="castep-transport-cards-grid"></div>
+
+              <!-- Section 3: DOS Effective Mass, Drude m*_Drude & Relaxation Time Plots -->
+              <div class="castep-plot-toolbar" style="margin-top:10px; margin-bottom:6px;">
+                <div class="castep-tb-row">
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Plot:</label>
+                    <select id="castep-tr-chart2-mode" class="castep-input" style="font-weight:700;" onchange="renderCastepTransportPane()">
+                      <option value="dos_temp" selected>📊 DOS Mass &amp; Drude τ(T)</option>
+                      <option value="doping">🔋 Drude m*(n,p) &amp; ħωp</option>
+                      <option value="drude_opt">🌈 Drude ε(ω) &amp; σ₁(ω)</option>
+                      <option value="mobility_t">⚡ Mobility μ(T) &amp; nᵢ(T)</option>
+                    </select>
+                  </span>
+                  <span style="font-size:10.5px; color:#64748b;">💡 Right-click panel (a–b)</span>
+                  <div class="castep-tb-actions">
+                    <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="copyCastepCanvasHD('castep-transport-drude-canvas', 'DOS Mass & Drude Transport')" title="Copy FULL DOS Mass &amp; Drude Transport Figure (400–600 DPI)">📋 Copy HD</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="copyCastepPlotData('transport', 'full')" title="Copy FULL Effective Mass, Mobility &amp; Drude Report (TSV → Excel / OriginPro)">📋 Copy Data</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepCanvasPNG('castep-transport-drude-canvas', 'CASTEP_Drude_Transport.png')">📷 PNG</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepTransportCSV('summary')">📊 CSV</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="exportCastepTransportXLSX()" title="Export multi-tab Excel workbook (Semiconductor &amp; Drude Summary, Directional m*, Temp Sweep, Doping Sweep)">📗 Excel</button>
+                  </div>
+                </div>
+              </div>
+              <div class="castep-plot-canvas-card">
+                <canvas id="castep-transport-drude-canvas" width="900" height="345"></canvas>
+              </div>
+
+              <!-- Section 4: 2-Column Publication Tables (Directional m* + Temperature Drude/Mobility Table) -->
+              <div class="castep-conv-tables-grid" style="margin-top:10px;">
+                <div class="castep-atoms-table-card">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:6px; flex-wrap:wrap;">
+                    <span style="font-weight:800; font-size:12.5px; color:#0f172a;">🧭 Directional Effective Mass &amp; Mobility along BZ Branches</span>
+                    <span id="castep-tr-branches-count" class="badge badge-blue" style="font-size:10.5px;">0 branches</span>
+                  </div>
+                  <div class="castep-atoms-table-scroll" style="max-height:270px;">
+                    <table class="castep-atoms-table">
+                      <thead>
+                        <tr>
+                          <th>Carrier</th>
+                          <th>Direction</th>
+                          <th>k<sub>0</sub> (frac)</th>
+                          <th>Model</th>
+                          <th>∂²E/∂k² (eV·Å²)</th>
+                          <th>m* (m<sub>0</sub>)</th>
+                          <th>α<sub>K</sub> (eV<sup>−1</sup>)</th>
+                          <th>R²</th>
+                          <th>μ (cm²/V·s)</th>
+                          <th>τ (fs)</th>
+                        </tr>
+                      </thead>
+                      <tbody id="castep-tr-branches-tbody"></tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div class="castep-atoms-table-card">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:6px; flex-wrap:wrap;">
+                    <span style="font-weight:800; font-size:12.5px; color:#0f172a;">🌡️ Drude Effective Mass, τ &amp; Mobility vs. Temperature (100–600 K)</span>
+                    <span class="badge badge-blue" style="font-size:10.5px;">e<sup>−</sup> vs h<sup>+</sup></span>
+                  </div>
+                  <div class="castep-atoms-table-scroll" style="max-height:270px;">
+                    <table class="castep-atoms-table">
+                      <thead>
+                        <tr>
+                          <th>T (K)</th>
+                          <th>e<sup>−</sup> m*<sub>Drude</sub></th>
+                          <th>e<sup>−</sup> τ (fs)</th>
+                          <th>e<sup>−</sup> μ</th>
+                          <th>e<sup>−</sup> γ<sub>D</sub> (meV)</th>
+                          <th>h<sup>+</sup> m*<sub>Drude</sub></th>
+                          <th>h<sup>+</sup> τ (fs)</th>
+                          <th>h<sup>+</sup> μ</th>
+                          <th>h<sup>+</sup> γ<sub>D</sub> (meV)</th>
+                        </tr>
+                      </thead>
+                      <tbody id="castep-tr-drude-tbody"></tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
@@ -5820,9 +6089,9 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=138_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=138_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=138_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=138_v116_vesta_viewer'"></script>
-  <script src="app.js?v=138_v116_vesta_viewer" onerror="this.src='/static/app.js?v=138_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=139_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=139_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=139_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=139_v116_vesta_viewer'"></script>
+  <script src="app.js?v=139_v116_vesta_viewer" onerror="this.src='/static/app.js?v=139_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
