@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=126_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=126_v116_vesta_viewer" />
+  <link rel="stylesheet" href="styles.css?v=127_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=127_v116_vesta_viewer'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -1805,7 +1805,12 @@
                   </div>
                   <div class="ms-gw-conn-wrap">
                     <span id="ms-gw-source-badge" class="ms-gw-source-badge offline">⚪ Not Connected</span>
-                    <input type="text" id="ms-gw-url-input" class="castep-input-sm ms-gw-url-input" value="http://localhost:18888" placeholder="http://localhost:18888" title="Materials Studio Remote Gateway URL (e.g. http://localhost:18888)" onkeydown="if(event.key==='Enter'){refreshMsGatewayJobsFromServer();}" />
+                    <select id="ms-gw-preset-select" class="castep-input-sm ms-gw-preset-select" onchange="onMsGatewayPresetChange(this.value)" title="Quick-switch Materials Studio Remote Gateway server">
+                      <option value="http://115.145.191.231:18888" selected>🖥️ Server (115.145.191.231)</option>
+                      <option value="http://localhost:18888">💻 Local PC (localhost)</option>
+                      <option value="custom">⚙️ Custom URL...</option>
+                    </select>
+                    <input type="text" id="ms-gw-url-input" class="castep-input-sm ms-gw-url-input" value="http://115.145.191.231:18888" placeholder="http://115.145.191.231:18888" title="Materials Studio Remote Gateway URL (supports IP:port or IP_port, e.g. 115.145.191.231_18888)" onkeydown="if(event.key==='Enter'){refreshMsGatewayJobsFromServer();}" />
                     <input type="file" id="ms-gw-sbj-upload-input" webkitdirectory directory multiple style="display:none;" onchange="handleMsGatewayFolderUpload(event)" />
                     <button type="button" class="btn btn-outline btn-sm" style="padding:4px 9px; font-size:11.5px; white-space:nowrap;" onclick="mountMsGatewayFolder()" title="Mount BIOVIA Gateway dsd / Gateway-x64 / jobs-info folder containing *.sbj, *.sbs, and gw-info.sbd">📂 Mount Gateway Folder</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:4px 9px; font-size:11.5px; white-space:nowrap;" onclick="refreshMsGatewayJobsFromServer()">🔄 Refresh Gateway</button>
@@ -1830,7 +1835,7 @@
                   <a href="javascript:void(0)" class="ms-gw-nav-link" data-gwview="servers" onclick="switchMsGatewaySubView('servers', this)">Installed<br/>Servers <span id="ms-gw-nav-srv-count" class="ms-gw-nav-badge"></span></a>
                   <a href="javascript:void(0)" class="ms-gw-nav-link" data-gwview="data" onclick="switchMsGatewaySubView('data', this)">Gateway Data</a>
                   <a href="javascript:void(0)" class="ms-gw-nav-link active" data-gwview="jobs" onclick="switchMsGatewaySubView('jobs', this)">Jobs <span id="ms-gw-nav-job-count" class="ms-gw-nav-badge"></span></a>
-                  <a id="ms-gw-external-link" href="http://localhost:18888/dsd/commands/dsd_configuregw.pl?jobs=yes" target="_blank" rel="noopener noreferrer" class="ms-gw-nav-ext" style="display:none;" title="Open native Materials Studio Gateway web page">↗ Open Native UI</a>
+                  <a id="ms-gw-external-link" href="http://115.145.191.231:18888/dsd/commands/dsd_configuregw.pl?jobs=yes" target="_blank" rel="noopener noreferrer" class="ms-gw-nav-ext" style="display:none;" title="Open native Materials Studio Gateway web page">↗ Open Native UI</a>
                 </div>
 
                 <!-- Right Content Area -->
@@ -5419,8 +5424,8 @@
 
 <script src="jszip.min.js"></script>
   <script>if (typeof JSZip === "undefined") { document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"><\\/script>'); }</script>
-  <script src="matsci_tools.js?v=126_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=126_v116_vesta_viewer"></script>
-  <script src="app.js?v=126_v116_vesta_viewer" onerror="this.src='/static/app.js?v=126_v116_vesta_viewer"></script>
+  <script src="matsci_tools.js?v=127_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=127_v116_vesta_viewer'"></script>
+  <script src="app.js?v=127_v116_vesta_viewer" onerror="this.src='/static/app.js?v=127_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
