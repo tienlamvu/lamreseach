@@ -1762,6 +1762,14 @@ async function pullCloudDatabaseInstant(silent = true) {
       if (Array.isArray(cloudDb.papers)) STATE.masterData.papers = cloudDb.papers.filter(p => !isPaperTombstoned(p.id, p.doi));
       if (Array.isArray(cloudDb.structures)) STATE.masterData.structures = cloudDb.structures.filter(s => !isStructureTombstoned(s.id, s.structural_id));
       if (Array.isArray(cloudDb.schedule)) STATE.masterData.schedule = cloudDb.schedule.filter(ev => !isScheduleTombstoned(ev.id));
+      if (Array.isArray(cloudDb.dft_lectures) && cloudDb.dft_lectures.length > 0) {
+        STATE.masterData.dft_lectures = cloudDb.dft_lectures;
+        window._SEED_DFT_LECTURES = cloudDb.dft_lectures;
+        STATE.dftLectures = cloudDb.dft_lectures;
+        try { localStorage.setItem("dft_theory_lectures_v1", JSON.stringify(cloudDb.dft_lectures)); } catch (e) {}
+        if (typeof initDashboardDftCard === "function") initDashboardDftCard();
+        if (typeof renderDftTheoryTab === "function") renderDftTheoryTab(null, true);
+      }
       applyActiveWorkspaceData();
       refreshAllWorkspaceViews();
       if (cloudDb.profile && typeof cloudDb.profile === "object") {
@@ -1984,6 +1992,24 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
           ? STATE.masterData.news_articles
           : (typeof DEFAULT_SEED_NEWS_ARTICLES !== "undefined" ? DEFAULT_SEED_NEWS_ARTICLES : []);
     const safeNewsArticles = existingNews.filter(a => a && a.id && !getDeletedNewsArticlesMap()[String(a.id)]);
+    // Safely collect dft_lectures without risk of wiping custom admin lectures
+    let localDftLectures = null;
+    try {
+      const rawDft = localStorage.getItem("dft_theory_lectures_v1");
+      if (rawDft) {
+        const parsedDft = JSON.parse(rawDft);
+        if (Array.isArray(parsedDft) && parsedDft.length > 0) localDftLectures = parsedDft;
+      }
+    } catch (_) {}
+    const safeDftLectures = (Array.isArray(STATE.dftLectures) && STATE.dftLectures.length > 0)
+      ? STATE.dftLectures
+      : (localDftLectures && localDftLectures.length > 0)
+        ? localDftLectures
+        : (remoteDb && Array.isArray(remoteDb.dft_lectures) && remoteDb.dft_lectures.length > 0)
+          ? remoteDb.dft_lectures
+          : (STATE.masterData && Array.isArray(STATE.masterData.dft_lectures) && STATE.masterData.dft_lectures.length > 0)
+            ? STATE.masterData.dft_lectures
+            : (Array.isArray(window.DFT_THEORY_LECTURES) ? window.DFT_THEORY_LECTURES : []);
     const exportObj = {
       version: "4.0",
       exported_at: new Date().toISOString(),
@@ -2009,7 +2035,8 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
       deleted_schedule_map: getDeletedScheduleMap(),
       news_articles: safeNewsArticles,
       deleted_news_articles: Object.keys(getDeletedNewsArticlesMap()),
-      deleted_news_articles_map: getDeletedNewsArticlesMap()
+      deleted_news_articles_map: getDeletedNewsArticlesMap(),
+      dft_lectures: safeDftLectures
     };
 
     const base64Content = encodeUtf8Base64(JSON.stringify(exportObj, null, 2));
@@ -16077,6 +16104,19 @@ async function loadStaticFallbackData() {
           } catch(e) {}
         }
       }
+      if (remoteData && Array.isArray(remoteData.dft_lectures) && remoteData.dft_lectures.length > 0) {
+        if (!STATE.masterData) STATE.masterData = {};
+        STATE.masterData.dft_lectures = remoteData.dft_lectures;
+        window._SEED_DFT_LECTURES = remoteData.dft_lectures;
+        if (!localStorage.getItem("dft_theory_lectures_v1")) {
+          STATE.dftLectures = remoteData.dft_lectures;
+          try {
+            localStorage.setItem("dft_theory_lectures_v1", JSON.stringify(remoteData.dft_lectures));
+          } catch(e) {}
+          if (typeof initDashboardDftCard === "function") initDashboardDftCard();
+          if (typeof renderDftTheoryTab === "function") renderDftTheoryTab(null, true);
+        }
+      }
 
       if (remoteData && (remoteData.papers || remoteData.profile || remoteData.structures)) {
         const saved = localStorage.getItem("matsci_static_db_v4");
@@ -16668,12 +16708,14 @@ async function loadStaticFallbackData() {
   // Store the loaded master database (Admin's papers, structures, schedule, and exclusive Academic CV profile)
   if (!STATE.masterData || !Array.isArray(STATE.masterData.papers) || STATE.masterData.papers.length === 0 || (!getActivePersonalWorkspaceEmail() && STATE.auth.isAdmin)) {
     const prevNewsArticles = (STATE.masterData && STATE.masterData.news_articles) || window._SEED_NEWS_ARTICLES || [];
+    const prevDftLectures = (STATE.masterData && STATE.masterData.dft_lectures) || STATE.dftLectures || window._SEED_DFT_LECTURES || [];
     STATE.masterData = {
       papers: JSON.parse(JSON.stringify(STATE.papers || [])),
       structures: JSON.parse(JSON.stringify(STATE.structures || [])),
       schedule: JSON.parse(JSON.stringify(STATE.schedule || [])),
       profile: STATE.profile || {},
-      news_articles: prevNewsArticles
+      news_articles: prevNewsArticles,
+      dft_lectures: prevDftLectures
     };
   } else {
     STATE.masterData.profile = STATE.profile || STATE.masterData.profile || {};
@@ -16765,12 +16807,14 @@ function saveStaticDb(options = {}) {
   } else if (STATE.auth && STATE.auth.isAdmin && !STATE.adminPreviewUserEmail) {
     // Separate Admin Master items from User-Uploaded Private items (never leak user uploads into masterData!)
     const prevNews2 = (STATE.masterData && STATE.masterData.news_articles) || STATE.newsArticles || window._SEED_NEWS_ARTICLES || [];
+    const prevDft2 = (STATE.masterData && STATE.masterData.dft_lectures) || STATE.dftLectures || window._SEED_DFT_LECTURES || [];
     STATE.masterData = {
       papers: (STATE.papers || []).filter(p => !p._fromUserEmail),
       structures: (STATE.structures || []).filter(s => !s._fromUserEmail),
       schedule: (STATE.schedule || []).filter(ev => !ev._fromUserEmail),
       profile: STATE.profile || {},
-      news_articles: prevNews2
+      news_articles: prevNews2,
+      dft_lectures: prevDft2
     };
 
     // Sync any Admin edits/deletions to user-owned structures/papers cleanly back to their user workspace
