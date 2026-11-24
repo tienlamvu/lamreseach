@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=127_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=127_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=128_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=128_v116_vesta_viewer'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -1374,13 +1374,61 @@
 
                     <fieldset class="vesta-fieldset">
                       <legend>Display Properties &amp; Bonds</legend>
-                      <div class="vesta-prop-row">
-                        <span>Ball radius:</span>
-                        <input type="range" id="vesta-atom-scale-slider" min="0.4" max="2.0" step="0.05" value="1.0" oninput="setVestaRenderProperty('atomScale', this.value)" />
+                      <div class="vesta-slider-block">
+                        <div class="vesta-slider-head">
+                          <span>Ball radius:</span>
+                          <div class="vesta-slider-num-wrap">
+                            <input type="number" id="vesta-atom-scale-num" class="vesta-slider-num" value="1.00" min="0.20" max="2.00" step="0.05" oninput="setVestaRenderProperty('atomScale', this.value, false, 'num')" onchange="setVestaRenderProperty('atomScale', this.value, true, 'num')" title="Exact Ball radius scale multiplier (0.20 – 2.00)" />
+                            <span class="vesta-slider-unit">×</span>
+                          </div>
+                        </div>
+                        <input type="range" id="vesta-atom-scale-slider" class="vesta-slider-range" list="vesta-ball-ticks" min="0.25" max="1.75" step="0.05" value="1.00" oninput="setVestaRenderProperty('atomScale', this.value, true, 'slider')" />
+                        <datalist id="vesta-ball-ticks">
+                          <option value="0.25"></option>
+                          <option value="0.50"></option>
+                          <option value="0.75"></option>
+                          <option value="1.00"></option>
+                          <option value="1.25"></option>
+                          <option value="1.50"></option>
+                          <option value="1.75"></option>
+                        </datalist>
+                        <div class="vesta-slider-ticks" id="vesta-atom-scale-ticks">
+                          <button type="button" class="vesta-tick-btn" data-val="0.25" onclick="setVestaRenderProperty('atomScale', 0.25, true, 'tick')">.25</button>
+                          <button type="button" class="vesta-tick-btn" data-val="0.50" onclick="setVestaRenderProperty('atomScale', 0.50, true, 'tick')">0.5</button>
+                          <button type="button" class="vesta-tick-btn" data-val="0.75" onclick="setVestaRenderProperty('atomScale', 0.75, true, 'tick')">.75</button>
+                          <button type="button" class="vesta-tick-btn active" data-val="1.00" onclick="setVestaRenderProperty('atomScale', 1.00, true, 'tick')">1.0</button>
+                          <button type="button" class="vesta-tick-btn" data-val="1.25" onclick="setVestaRenderProperty('atomScale', 1.25, true, 'tick')">1.25</button>
+                          <button type="button" class="vesta-tick-btn" data-val="1.50" onclick="setVestaRenderProperty('atomScale', 1.50, true, 'tick')">1.5</button>
+                          <button type="button" class="vesta-tick-btn" data-val="1.75" onclick="setVestaRenderProperty('atomScale', 1.75, true, 'tick')">1.75</button>
+                        </div>
                       </div>
-                      <div class="vesta-prop-row">
-                        <span>Stick width:</span>
-                        <input type="range" id="vesta-bond-scale-slider" min="0.4" max="2.2" step="0.05" value="1.0" oninput="setVestaRenderProperty('bondScale', this.value)" />
+                      <div class="vesta-slider-block">
+                        <div class="vesta-slider-head">
+                          <span>Stick width:</span>
+                          <div class="vesta-slider-num-wrap">
+                            <input type="number" id="vesta-bond-scale-num" class="vesta-slider-num" value="1.00" min="0.20" max="2.00" step="0.05" oninput="setVestaRenderProperty('bondScale', this.value, false, 'num')" onchange="setVestaRenderProperty('bondScale', this.value, true, 'num')" title="Exact Stick width scale multiplier (0.20 – 2.00)" />
+                            <span class="vesta-slider-unit">×</span>
+                          </div>
+                        </div>
+                        <input type="range" id="vesta-bond-scale-slider" class="vesta-slider-range" list="vesta-stick-ticks" min="0.25" max="1.75" step="0.05" value="1.00" oninput="setVestaRenderProperty('bondScale', this.value, true, 'slider')" />
+                        <datalist id="vesta-stick-ticks">
+                          <option value="0.25"></option>
+                          <option value="0.50"></option>
+                          <option value="0.75"></option>
+                          <option value="1.00"></option>
+                          <option value="1.25"></option>
+                          <option value="1.50"></option>
+                          <option value="1.75"></option>
+                        </datalist>
+                        <div class="vesta-slider-ticks" id="vesta-bond-scale-ticks">
+                          <button type="button" class="vesta-tick-btn" data-val="0.25" onclick="setVestaRenderProperty('bondScale', 0.25, true, 'tick')">.25</button>
+                          <button type="button" class="vesta-tick-btn" data-val="0.50" onclick="setVestaRenderProperty('bondScale', 0.50, true, 'tick')">0.5</button>
+                          <button type="button" class="vesta-tick-btn" data-val="0.75" onclick="setVestaRenderProperty('bondScale', 0.75, true, 'tick')">.75</button>
+                          <button type="button" class="vesta-tick-btn active" data-val="1.00" onclick="setVestaRenderProperty('bondScale', 1.00, true, 'tick')">1.0</button>
+                          <button type="button" class="vesta-tick-btn" data-val="1.25" onclick="setVestaRenderProperty('bondScale', 1.25, true, 'tick')">1.25</button>
+                          <button type="button" class="vesta-tick-btn" data-val="1.50" onclick="setVestaRenderProperty('bondScale', 1.50, true, 'tick')">1.5</button>
+                          <button type="button" class="vesta-tick-btn" data-val="1.75" onclick="setVestaRenderProperty('bondScale', 1.75, true, 'tick')">1.75</button>
+                        </div>
                       </div>
                       <div class="vesta-prop-row">
                         <span>Bond cutoff:</span>
@@ -5424,8 +5472,8 @@
 
 <script src="jszip.min.js"></script>
   <script>if (typeof JSZip === "undefined") { document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"><\\/script>'); }</script>
-  <script src="matsci_tools.js?v=127_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=127_v116_vesta_viewer'"></script>
-  <script src="app.js?v=127_v116_vesta_viewer" onerror="this.src='/static/app.js?v=127_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=128_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=128_v116_vesta_viewer'"></script>
+  <script src="app.js?v=128_v116_vesta_viewer" onerror="this.src='/static/app.js?v=128_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
