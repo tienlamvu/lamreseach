@@ -1274,6 +1274,14 @@
                     <option value="#1e293b">Slate Ink</option>
                   </select>
                 </span>
+                <span style="display:inline-flex; align-items:center; gap:4px;">
+                  <label class="castep-field-lbl" style="margin:0;">Quality:</label>
+                  <select id="castep-ps-dpi" class="castep-input" style="width:auto; padding:2px 6px; font-weight:700;" onchange="updateCastepPlotStyleFromUI()" title="Native resolution for Copy HD Image &amp; PNG Export (embeds true PNG DPI metadata for Word / PowerPoint)">
+                    <option value="3">300 DPI (3×)</option>
+                    <option value="4" selected>400 DPI (4× HD)</option>
+                    <option value="6">600 DPI (6× Ultra)</option>
+                  </select>
+                </span>
                 <label style="display:inline-flex; align-items:center; gap:4px; font-weight:600; color:#334155; cursor:pointer; margin:0;">
                   <input id="castep-ps-bold-axes" type="checkbox" checked onchange="updateCastepPlotStyleFromUI()" /> Bold Labels
                 </label>
@@ -1341,6 +1349,7 @@
                   <button type="button" class="vesta-icon-btn" onclick="undoCastepStructureEdit()" title="Undo structure modification">↩ Undo</button>
                   <button type="button" class="vesta-icon-btn" onclick="redoCastepStructureEdit()" title="Redo structure modification">↪ Redo</button>
                   <button type="button" class="vesta-icon-btn" onclick="resetCastepStructureToJobOriginal()" title="Reset to original structure">🔄 Reset</button>
+                  <button type="button" class="vesta-icon-btn" onclick="copyCastepCanvasHD('castep-3d-canvas', '3D Crystal Structure')" title="Copy High-Resolution 3D Structure Image to Clipboard (Ctrl+V into Word/PowerPoint)">📋 Copy HD</button>
                   <button type="button" class="vesta-icon-btn" onclick="exportCastepCanvasPNG('castep-3d-canvas', 'Crystal_Structure_3D.png')" title="Export High-Resolution 3D Structure PNG">📷 PNG</button>
                 </div>
               </div>
@@ -2163,6 +2172,8 @@
                     <input type="file" id="castep-opt-folder-upload" webkitdirectory directory multiple style="display:none;" onchange="handleCastepOpticalFolderFallback(event)" />
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px; font-weight:700;" onclick="pickCastepOpticsFolder()" title="Open an Optical CASTEP Energy folder directly (auto-loads *_Optics.castep + *.ome_bin + *_Optics.bands + *_Optics.cell)">📂 Optics Folder</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px; font-weight:700;" onclick="document.getElementById('castep-opt-file-upload').click()" title="Load CASTEP *.ome_bin + *_Optics.bands (full 3×3 tensor), Optical Properties *.xcd, or CSV spectrum">📥 .ome_bin/.xcd</button>
+                    <button type="button" class="btn btn-teal btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="copyCastepCanvasHD('castep-optics-canvas', 'Optical Properties')" title="Copy High-Resolution Optical Plot Image (400–600 DPI) to Clipboard — paste directly into Word / PowerPoint">📋 Copy HD</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="copyCastepPlotData('optics')" title="Copy all active Optical spectrum columns directly to Clipboard (TSV — Ctrl+V straight into Excel / OriginPro)">📋 Copy Data</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepCanvasPNG('castep-optics-canvas', 'CASTEP_Optical_Properties.png')">📷 PNG</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepOpticalCSV('all')" title="Export all Optical Spectra &amp; Tauc Fit columns to CSV">📊 CSV</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="exportCastepOpticalXLSX()" title="Export multi-tab Excel workbook (Summary, Dielectric, Absorption+Tauc, n/k, Reflectivity/EELS/Conductivity, Anisotropy Tensor, Raw XCD)">📗 Excel</button>
@@ -2242,6 +2253,8 @@
                     <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('electronic', 1.25)" title="Zoom In Energy Window">🔍＋</button>
                     <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('electronic', 0.80)" title="Zoom Out Energy Window">🔍－</button>
                     <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('electronic')" title="Reset Zoom">⊡ Reset</button>
+                    <button type="button" class="btn btn-teal btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="copyCastepCanvasHD('castep-electronic-canvas', 'Band & PDOS')" title="Copy High-Resolution Band &amp; PDOS Image (400–600 DPI) to Clipboard — Ctrl+V into Word / PowerPoint">📋 Copy HD</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="copyCastepPlotData('electronic', 'auto')" title="Copy displayed PDOS / Band numerical data directly to Clipboard (TSV — Ctrl+V straight into Excel / OriginPro; right-click plot to pick PDOS vs Band)">📋 Copy Data</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepCanvasPNG('castep-electronic-canvas', 'CASTEP_Band_PDOS.png')">📷 PNG</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepElectronicCSV('pdos')" title="Export all displayed PDOS Element / Orbital / Atom / Spin columns to CSV">📊 PDOS CSV</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepElectronicCSV('band')" title="Export Band Structure k-path and every band column to a separate CSV">📈 Band CSV</button>
@@ -2294,6 +2307,8 @@
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepChdiffCSV('1d')" title="Export 1D Planar-Averaged Δρ(z) and ΔQ(z) profile to CSV">📊 1D CSV</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepChdiffCSV('2d')" title="Export currently displayed 2D cross-section slice matrix to CSV">🗺️ 2D CSV</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="exportCastepChdiffXLSX()" title="Export multi-tab Excel workbook (1D Planar Profile + 2D Slice Matrix + Metadata)">📗 Excel</button>
+                    <button type="button" class="btn btn-teal btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="copyCastepCanvasHD('castep-chdiff-canvas', 'Charge Density Difference')" title="Copy High-Resolution Charge Difference Plot Image (400–600 DPI) to Clipboard">📋 Copy HD</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="copyCastepPlotData('chdiff', '1d')" title="Copy 1D Planar Δρ(z) &amp; ΔQ(z) profile data directly to Clipboard (TSV — Ctrl+V into Excel / OriginPro)">📋 Copy Data</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepCanvasPNG('castep-chdiff-canvas', 'CASTEP_Charge_Density_Difference.png')">📷 PNG</button>
                   </div>
                 </div>
@@ -2407,6 +2422,8 @@
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepMullikenCSV('atoms')">📊 Atomic CSV</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepMullikenCSV('bonds')">🔗 Bonds CSV</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="exportCastepMullikenXLSX()" title="Export multi-tab Excel workbook (Magnetism Summary, Orbital Spin Matrix, Atomic Populations, Bond Populations)">📗 Excel</button>
+                    <button type="button" class="btn btn-teal btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="copyCastepCanvasHD('castep-mulliken-mag-canvas', 'Mulliken Magnetism')" title="Copy High-Resolution Mulliken Magnetism Plot Image to Clipboard">📋 Copy HD</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="copyCastepPlotData('mulliken', 'atoms')" title="Copy Atomic Mulliken &amp; Spin table directly to Clipboard (TSV — Ctrl+V into Excel / OriginPro)">📋 Copy Data</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepCanvasPNG('castep-mulliken-mag-canvas', 'CASTEP_Mulliken_Magnetism.png')">📷 PNG</button>
                   </div>
                 </div>
@@ -2425,6 +2442,8 @@
                   <div style="display:flex; gap:5px; align-items:center; flex-wrap:wrap;">
                     <input id="castep-spinmat-file-input" type="file" accept=".castep,.pdos_bin,.bands" multiple style="display:none;" onchange="handleCastepSpinMatrixFileUpload(event)" />
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="document.getElementById('castep-spinmat-file-input')?.click()" title="Load CASTEP .castep (with Orbital Populations) or .pdos_bin + .bands">📂 .castep/.pdos_bin</button>
+                    <button type="button" class="btn btn-teal btn-sm" style="padding:3px 8px; font-size:11px; font-weight:700;" onclick="copyCastepCanvasHD('castep-spinmat-canvas', 'Orbital Spin Matrix')" title="Copy High-Resolution Spin Matrix Image (400–600 DPI) to Clipboard — paste directly into Word / PowerPoint">📋 Copy HD</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px; font-weight:700;" onclick="copyCastepPlotData('spinmat')" title="Copy Spin Matrix &amp; orbital spin values directly to Clipboard (TSV — Ctrl+V straight into Excel / OriginPro)">📋 Copy Data</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="exportCastepSpinMatrixCSV()" title="Export current Spin Matrix & all-element orbital spin table to CSV">📊 Matrix CSV</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px; font-weight:700;" onclick="exportCastepSpinMatrixPNG()" title="Export publication-ready Hi-DPI Spin Matrix PNG">📷 Matrix PNG</button>
                   </div>
@@ -2602,6 +2621,8 @@
                   <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('convergence', 1.25)" title="Zoom In Convergence">🔍＋</button>
                   <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('convergence', 0.80)" title="Zoom Out Convergence">🔍－</button>
                   <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('convergence')" title="Reset Convergence Zoom">⊡ Reset</button>
+                  <button type="button" class="btn btn-teal btn-sm" style="padding:3px 8px; font-size:11px; font-weight:700;" onclick="copyCastepCanvasHD('castep-energy-chart-canvas', 'Energy Profile')" title="Copy High-Resolution Energy Profile Plot to Clipboard (right-click either chart to copy individually)">📋 Copy HD</button>
+                  <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px; font-weight:700;" onclick="copyCastepPlotData('convergence')" title="Copy SCF / Energy Convergence table directly to Clipboard (TSV — Ctrl+V into Excel / OriginPro)">📋 Copy Data</button>
                   <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="exportCastepConvergenceCSV()" title="Export SCF / Energy convergence table to CSV">📊 CSV</button>
                   <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px; font-weight:700;" onclick="exportCastepConvergenceXLSX()" title="Export multi-tab Excel workbook (SCF Convergence, GeomOpt Trajectory, Forces &amp; Charges)">📗 Excel</button>
                   <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="exportCastepCanvasPNG('castep-energy-chart-canvas', 'CASTEP_Energy_Profile.png')">📷 Energy PNG</button>
@@ -5715,9 +5736,9 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=135_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=135_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=135_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=135_v116_vesta_viewer'"></script>
-  <script src="app.js?v=135_v116_vesta_viewer" onerror="this.src='/static/app.js?v=135_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=136_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=136_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=136_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=136_v116_vesta_viewer'"></script>
+  <script src="app.js?v=136_v116_vesta_viewer" onerror="this.src='/static/app.js?v=136_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
