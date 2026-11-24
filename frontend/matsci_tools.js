@@ -336,8 +336,11 @@ const CASTEP_STUDIO_STATE = {
     isDragging: false,
     dragButton: 0,
     dragMoved: false,
+    dragStartX: 0,
+    dragStartY: 0,
     lastX: 0,
     lastY: 0,
+    marquee: { active: false, x0: 0, y0: 0, x1: 0, y1: 0, additive: false },
     renderedAtomsScreen: [],
     selectedAtomIndices: new Set(),
     lastClickedAtomLog: null,
@@ -2152,9 +2155,31 @@ function initCastep3DCanvasEvents() {
     v3.isDragging = true;
     v3.dragButton = e.button;
     v3.dragMoved = false;
+    v3.dragStartX = e.clientX;
+    v3.dragStartY = e.clientY;
     v3.lastX = e.clientX;
     v3.lastY = e.clientY;
-    canvas.style.cursor = (v3.activeTool === "pan" || e.button === 2 || e.shiftKey) ? "move" : "grabbing";
+
+    if (v3.activeTool === "select" && e.button === 0) {
+      const rect = canvas.getBoundingClientRect();
+      const mx = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+      const my = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
+      v3.marquee = {
+        active: true,
+        x0: mx,
+        y0: my,
+        x1: mx,
+        y1: my,
+        additive: !!(e.shiftKey || e.ctrlKey || e.metaKey)
+      };
+      canvas.style.cursor = "crosshair";
+      return;
+    }
+
+    if (v3.marquee) v3.marquee.active = false;
+    canvas.style.cursor = (v3.activeTool === "pan" || e.button === 2 || e.button === 1)
+      ? "move"
+      : (v3.activeTool === "zoom" ? "ns-resize" : "grabbing");
   });
 
   window.addEventListener("mousemove", (e) => {
@@ -2162,9 +2187,27 @@ function initCastep3DCanvasEvents() {
     if (!v3.isDragging) return;
     const dx = e.clientX - v3.lastX;
     const dy = e.clientY - v3.lastY;
-    if (Math.hypot(dx, dy) > 2.5) v3.dragMoved = true;
+    const totalDist = Math.hypot(e.clientX - v3.dragStartX, e.clientY - v3.dragStartY);
+    if (totalDist > 4.0) v3.dragMoved = true;
 
-    if (v3.activeTool === "pan" || v3.dragButton === 2 || e.shiftKey) {
+    // Box Select (Marquee) drag in Select tool
+    if (v3.marquee && v3.marquee.active) {
+      const rect = canvas.getBoundingClientRect();
+      v3.marquee.x1 = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+      v3.marquee.y1 = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
+      v3.marquee.additive = v3.marquee.additive || !!(e.shiftKey || e.ctrlKey || e.metaKey);
+      v3.lastX = e.clientX;
+      v3.lastY = e.clientY;
+      if (v3.dragMoved) scheduleCastep3DRender();
+      return;
+    }
+
+    // Avoid accidental tiny pan jitter while user is Shift+Clicking an atom in Rotate mode
+    if (!v3.dragMoved && e.shiftKey) {
+      return;
+    }
+
+    if (v3.activeTool === "pan" || v3.dragButton === 2 || v3.dragButton === 1 || (e.shiftKey && v3.dragMoved)) {
       v3.panX += dx;
       v3.panY += dy;
     } else if (v3.activeTool === "zoom") {
@@ -2185,12 +2228,80 @@ function initCastep3DCanvasEvents() {
     const v3 = CASTEP_STUDIO_STATE.view3D;
     if (!v3.isDragging) return;
     const wasClick = !v3.dragMoved;
+    const wasMarquee = !!(v3.marquee && v3.marquee.active);
+    const mBox = wasMarquee ? { ...v3.marquee } : null;
     v3.isDragging = false;
+    if (v3.marquee) v3.marquee.active = false;
     canvas.style.cursor = v3.activeTool === "pan" ? "move" : (v3.activeTool === "rotate" ? "grab" : "crosshair");
+
+    if (wasMarquee && !wasClick && mBox) {
+      const minX = Math.min(mBox.x0, mBox.x1);
+      const maxX = Math.max(mBox.x0, mBox.x1);
+      const minY = Math.min(mBox.y0, mBox.y1);
+      const maxY = Math.max(mBox.y0, mBox.y1);
+      const additive = !!(mBox.additive || e.shiftKey || e.ctrlKey || e.metaKey);
+      const sel = v3.selectedAtomIndices;
+      if (!additive) sel.clear();
+
+      const rendered = v3.renderedAtomsScreen || [];
+      let lastHit = null;
+      for (let i = 0; i < rendered.length; i++) {
+        const a = rendered[i];
+        if (a.sx >= minX && a.sx <= maxX && a.sy >= minY && a.sy <= maxY) {
+          if (a.atomIndex !== undefined) {
+            sel.add(a.atomIndex);
+            lastHit = a;
+          }
+        }
+      }
+      if (lastHit) {
+        v3.lastClickedAtomLog = {
+          number: lastHit.atomIndex + 1,
+          element: lastHit.element,
+          label: lastHit.label,
+          u: lastHit.fracU,
+          v: lastHit.fracV,
+          w: lastHit.fracW,
+          cartX: lastHit.cartX,
+          cartY: lastHit.cartY,
+          cartZ: lastHit.cartZ,
+          isBoundaryImage: Boolean(lastHit.isBoundaryImage)
+        };
+      } else if (sel.size === 0) {
+        v3.lastClickedAtomLog = null;
+      }
+      renderCastep3DScene();
+      renderCastepAtomsTable();
+      updateVestaOutputConsole();
+      updateCastep3DSelectionHud();
+      return;
+    }
+
     if (wasClick && e.target === canvas) {
       handleCastep3DCanvasClick(e, canvas);
     }
   });
+
+  // Escape key clears selection cleanly when working in the 3D Builder
+  if (!window._castep3dEscBound) {
+    window._castep3dEscBound = true;
+    window.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      const tag = (e.target?.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select") return;
+      if (CASTEP_STUDIO_STATE.activeStagePane !== "builder") return;
+      const v3 = CASTEP_STUDIO_STATE.view3D;
+      if (v3.selectedAtomIndices.size > 0 || (v3.marquee && v3.marquee.active)) {
+        v3.selectedAtomIndices.clear();
+        if (v3.marquee) v3.marquee.active = false;
+        v3.lastClickedAtomLog = null;
+        renderCastep3DScene();
+        renderCastepAtomsTable();
+        updateVestaOutputConsole();
+        updateCastep3DSelectionHud();
+      }
+    });
+  }
 
   canvas.addEventListener("wheel", (e) => {
     e.preventDefault();
@@ -2218,7 +2329,22 @@ function handleCastep3DCanvasClick(e, canvas) {
     }
   }
 
-  if (!hitAtom) return;
+  const tool = v3.activeTool || "rotate";
+  const isMultiKey = !!(e.shiftKey || e.ctrlKey || e.metaKey);
+
+  // Clicking empty background clears selection (unless holding Shift/Ctrl)
+  if (!hitAtom) {
+    if ((tool === "rotate" || tool === "select") && !isMultiKey && v3.selectedAtomIndices.size > 0) {
+      v3.selectedAtomIndices.clear();
+      v3.lastClickedAtomLog = null;
+      renderCastep3DScene();
+      renderCastepAtomsTable();
+      updateVestaOutputConsole();
+      updateCastep3DSelectionHud();
+    }
+    return;
+  }
+
   const st = CASTEP_STUDIO_STATE.structure;
   const baseIdx = hitAtom.atomIndex;
   const baseAtom = st.atoms[baseIdx];
@@ -2236,8 +2362,6 @@ function handleCastep3DCanvasClick(e, canvas) {
     cartZ: hitAtom.cartZ,
     isBoundaryImage: Boolean(hitAtom.isBoundaryImage)
   };
-
-  const tool = v3.activeTool || "rotate";
 
   if (tool === "delete") {
     if (baseIdx !== undefined && st.atoms[baseIdx]) {
@@ -2314,11 +2438,21 @@ function handleCastep3DCanvasClick(e, canvas) {
     return;
   }
 
-  // Default: toggle atom selection
+  // Default (Rotate / Select): single-click selects 1 atom (replacing previous), Shift+Click toggles multi-select
   if (baseIdx !== undefined) {
     const sel = v3.selectedAtomIndices;
-    if (sel.has(baseIdx)) sel.delete(baseIdx);
-    else sel.add(baseIdx);
+    if (isMultiKey) {
+      if (sel.has(baseIdx)) sel.delete(baseIdx);
+      else sel.add(baseIdx);
+    } else {
+      if (sel.size === 1 && sel.has(baseIdx)) {
+        sel.clear();
+        v3.lastClickedAtomLog = null;
+      } else {
+        sel.clear();
+        sel.add(baseIdx);
+      }
+    }
     renderCastep3DScene();
     renderCastepAtomsTable();
     updateVestaOutputConsole();
@@ -2330,18 +2464,19 @@ function setVestaInteractionTool(toolName, btnEl) {
   const v3 = CASTEP_STUDIO_STATE.view3D;
   v3.activeTool = toolName || "rotate";
   v3.measureBuffer = [];
+  if (v3.marquee) v3.marquee.active = false;
   document.querySelectorAll(".vesta-vtool-btn, .vesta-toolstrip-btn").forEach(b => b.classList.remove("active"));
   const btn = btnEl || document.getElementById(`vesta-tool-${toolName}`);
   if (btn) btn.classList.add("active");
   const toolNames = {
-    rotate: "Rotate & Select",
-    select: "Select / Pick Atoms",
-    pan: "Translate / Pan View",
-    zoom: "Magnify / Zoom",
-    distance: "Measure Distance d(i–j)",
-    angle: "Measure Bond Angle θ(i–j–k)",
-    adsorb: "Click-to-Adsorb on Surface",
-    delete: "Click-to-Delete Atom (Vacancy)"
+    rotate: "Rotate",
+    select: "Box Select",
+    pan: "Pan View",
+    zoom: "Zoom",
+    distance: "Distance d(i–j)",
+    angle: "Angle θ(i–j–k)",
+    adsorb: "Click-to-Adsorb",
+    delete: "Delete Atom"
   };
   const badge = document.getElementById("vesta-active-tool-badge");
   if (badge) badge.textContent = `Tool: ${toolNames[v3.activeTool] || v3.activeTool}`;
@@ -2682,6 +2817,10 @@ function updateCastep3DSelectionHud() {
   }
 
   if (sel.length === 0) {
+    if (v3.activeTool === "select") {
+      hud.innerHTML = `⬚ <strong>Box Select:</strong> Drag box to multi-select • Click 1 atom • Shift+Click/Drag to add`;
+      return;
+    }
     hud.innerHTML = `View: <strong>${escapeHtml(v3.currentAxisPreset || "a")}</strong> • <strong>${v3.lastStats.atomsCount || atoms.length}</strong> atoms, <strong>${v3.lastStats.bondsCount || 0}</strong> bonds`;
     return;
   }
@@ -3585,14 +3724,28 @@ function renderCastep3DScene() {
       }
     } else if (item.type === "atom") {
       const a = item.data;
+      const mBox = (v3.marquee && v3.marquee.active && v3.dragMoved) ? v3.marquee : null;
+      const inMarquee = mBox
+        ? (a.sx >= Math.min(mBox.x0, mBox.x1) && a.sx <= Math.max(mBox.x0, mBox.x1) &&
+           a.sy >= Math.min(mBox.y0, mBox.y1) && a.sy <= Math.max(mBox.y0, mBox.y1))
+        : false;
       const isSel = v3.selectedAtomIndices.has(a.atomIndex);
-      if (isSel) {
+      const showGold = isSel && (!mBox || mBox.additive);
+      if (showGold) {
         ctx.beginPath();
         ctx.arc(a.sx, a.sy, a.radius + 4.5, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(250, 204, 21, 0.38)";
         ctx.fill();
         ctx.lineWidth = 2.2;
         ctx.strokeStyle = "#eab308";
+        ctx.stroke();
+      } else if (inMarquee) {
+        ctx.beginPath();
+        ctx.arc(a.sx, a.sy, a.radius + 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(37, 99, 235, 0.28)";
+        ctx.fill();
+        ctx.lineWidth = 2.0;
+        ctx.strokeStyle = "#2563eb";
         ctx.stroke();
       }
 
@@ -3711,6 +3864,41 @@ function renderCastep3DScene() {
   });
 
   drawVestaAxisTriad(ctx, width, height, vecs, R, isWhite);
+
+  // Live Box-Select Marquee Rectangle overlay (Select mode drag)
+  if (v3.marquee && v3.marquee.active && v3.dragMoved) {
+    const mx0 = Math.min(v3.marquee.x0, v3.marquee.x1);
+    const my0 = Math.min(v3.marquee.y0, v3.marquee.y1);
+    const mw = Math.abs(v3.marquee.x1 - v3.marquee.x0);
+    const mh = Math.abs(v3.marquee.y1 - v3.marquee.y0);
+    const previewIndices = new Set();
+    for (let i = 0; i < projectedAtoms.length; i++) {
+      const pa = projectedAtoms[i];
+      if (pa.sx >= mx0 && pa.sx <= mx0 + mw && pa.sy >= my0 && pa.sy <= my0 + mh && pa.atomIndex !== undefined) {
+        previewIndices.add(pa.atomIndex);
+      }
+    }
+    ctx.save();
+    ctx.fillStyle = "rgba(37, 99, 235, 0.12)";
+    ctx.fillRect(mx0, my0, mw, mh);
+    ctx.strokeStyle = "#2563eb";
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 3]);
+    ctx.strokeRect(mx0 + 0.5, my0 + 0.5, mw, mh);
+    ctx.setLineDash([]);
+    const lbl = `${v3.marquee.additive ? "+" : ""}${previewIndices.size} atom${previewIndices.size === 1 ? "" : "s"}`;
+    ctx.font = "bold 10.5px Inter, Segoe UI, sans-serif";
+    const lw = ctx.measureText(lbl).width + 10;
+    const lx = Math.min(width - lw - 4, Math.max(4, mx0 + mw - lw));
+    const ly = (my0 + mh + 22 < height) ? (my0 + mh + 4) : Math.max(4, my0 - 20);
+    ctx.fillStyle = "rgba(30, 64, 175, 0.92)";
+    ctx.fillRect(lx, ly, lw, 18);
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(lbl, lx + 5, ly + 9);
+    ctx.restore();
+  }
 
   const cpuMs = Math.max(0, Math.round(performance.now() - t0));
   v3.lastStats = {
