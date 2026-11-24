@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=142_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=142_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=143_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=143_v116_vesta_viewer'" />
   <!-- Publication Math Typography: STIX Two Text (MathType / Times) + KaTeX 0.16.11 (Word/LaTeX Equation Engine) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -288,14 +288,6 @@
             </div>
             <div class="dft-hero-meta">
               <span id="dft-theory-search-status" class="dft-hero-badge">10 Lectures (Basic &rarr; Advanced)</span>
-              <label class="dft-mathfont-wrap" title="Switch equation typography style (Microsoft Word Equation, MathType, or LaTeX)">
-                <span>&#8721; Font:</span>
-                <select id="dft-math-font-select" class="dft-mathfont-select" onchange="applyDftMathFont(this.value)">
-                  <option value="cambria">Word Equation (Cambria)</option>
-                  <option value="mathtype">MathType (Times / STIX)</option>
-                  <option value="latex">LaTeX (Computer Modern)</option>
-                </select>
-              </label>
               <button type="button" class="btn btn-primary btn-sm strict-admin-only" onclick="openDftLectureEditorModal(null)" title="Create and publish a new DFT Theory lecture (Admin Only)">&#10133; Add Lecture</button>
               <button type="button" class="btn btn-outline btn-sm strict-admin-only" onclick="resetDftLecturesToDefault()" title="Restore the 10 built-in DFT lectures and references (Admin Only)">&#8634; Reset Defaults</button>
               <button type="button" class="btn btn-teal btn-sm" onclick="switchTabByName('castep')">&#128202; Launch Data Analysis &rarr;</button>
@@ -6156,10 +6148,10 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=142_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=142_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=142_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=142_v116_vesta_viewer'"></script>
-  <script src="dft_theory.js?v=142_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=142_v116_vesta_viewer'"></script>
-  <script src="app.js?v=142_v116_vesta_viewer" onerror="this.src='/static/app.js?v=142_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=143_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=143_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=143_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=143_v116_vesta_viewer'"></script>
+  <script src="dft_theory.js?v=143_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=143_v116_vesta_viewer'"></script>
+  <script src="app.js?v=143_v116_vesta_viewer" onerror="this.src='/static/app.js?v=143_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
@@ -6758,6 +6750,17 @@
 
         <div class="dft-ed-grid-2">
           <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="dft-ed-author">Compiled by (Author)</label>
+            <input type="text" id="dft-ed-author" class="form-input" placeholder="e.g. Vu Tien Lam" />
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="dft-ed-affiliation">Institution / Affiliation</label>
+            <input type="text" id="dft-ed-affiliation" class="form-input" placeholder="e.g. Sungkyunkwan University" />
+          </div>
+        </div>
+
+        <div class="dft-ed-grid-2">
+          <div class="form-group" style="margin-bottom:0;">
             <label class="form-label" for="dft-ed-subtitle">Lecture Subtitle / Abstract</label>
             <input type="text" id="dft-ed-subtitle" class="form-input" placeholder="Concise 1-sentence scientific overview shown under the title" />
           </div>
@@ -6843,10 +6846,15 @@
         </div>
 
         <div class="dft-ed-refs-section">
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
             <label class="form-label" style="margin:0;">&#128218; Peer-Reviewed References &amp; Official DOIs</label>
-            <button type="button" class="btn btn-outline btn-sm" onclick="addDftRefRow()">&#10133; Add Reference</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="addDftRefRow({}, true)">&#10133; Add Manual</button>
           </div>
+          <div class="dft-doi-quickbar">
+            <input type="text" id="dft-ed-doi-quick-input" class="form-input dft-doi-quick-input" placeholder="Paste DOI or https://doi.org/... (e.g. 10.1103/PhysRevLett.77.3865 — supports multiple separated by commas)" onkeydown="if(event.key==='Enter'){ event.preventDefault(); fetchAndAddDftRefFromDoi(); }" />
+            <button type="button" id="dft-ed-doi-fetch-btn" class="btn btn-primary btn-sm" onclick="fetchAndAddDftRefFromDoi()">&#9889; Auto-Add from DOI</button>
+          </div>
+          <div id="dft-ed-doi-status" class="dft-doi-status"></div>
           <div id="dft-ed-refs-list" class="dft-ed-refs-list"></div>
         </div>
       </div>
