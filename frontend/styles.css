@@ -12885,7 +12885,7 @@ sup {
 .dft-frac {
   display: inline-flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   vertical-align: middle;
   margin: 0 3px;
   line-height: 1.18;
@@ -12893,12 +12893,16 @@ sup {
 }
 .dft-frac > .dft-num {
   border-bottom: 1.25px solid #0f172a;
-  padding: 0 4px 1px 4px;
+  padding: 0 5px 2px 5px;
   text-align: center;
+  width: 100%;
+  box-sizing: border-box;
 }
 .dft-frac > .dft-den {
-  padding: 2px 4px 0 4px;
+  padding: 2px 5px 0 5px;
   text-align: center;
+  width: 100%;
+  box-sizing: border-box;
 }
 .dft-bigop {
   display: inline-flex;
@@ -13440,4 +13444,400 @@ sup {
 .dft-ed-foot-note {
   font-size: 11.5px;
   color: #64748b;
+}
+
+/* ============================================================================
+   DFT Theory v142 — Word Equation / MathType / LaTeX KaTeX Styling & Dual CMS
+   ============================================================================ */
+.dft-mathfont-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 237, 213, 0.35);
+  color: #fef3c7;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.dft-mathfont-select {
+  background: #ffffff;
+  color: #2b1f17;
+  border: none;
+  border-radius: 5px;
+  padding: 2.5px 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Crisp KaTeX Display Equation Sizing & Math Font Presets */
+.dft-eq-math {
+  font-size: 1.14em;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 3px 6px;
+}
+.dft-eq-math .katex-display {
+  margin: 2px 0 !important;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 0;
+}
+.dft-eq-math .katex {
+  font-size: 1.16em !important;
+  color: #0f172a;
+}
+.dft-inline-math .katex {
+  font-size: 1.04em !important;
+  color: #0f172a;
+}
+
+/* Preset 1: Microsoft Word Equation Style (Cambria Math / STIX Two Text letters + KaTeX exact operators/accents) */
+[data-math-font="cambria"] .katex .mathnormal {
+  font-family: 'Cambria Math', 'STIX Two Text', 'KaTeX_Math', serif !important;
+  font-style: italic;
+}
+[data-math-font="cambria"] .katex .mord.mathrm,
+[data-math-font="cambria"] .katex .mord.text,
+[data-math-font="cambria"] .katex .mord.mathbf,
+[data-math-font="cambria"] .katex .mord.textbf {
+  font-family: 'Cambria Math', 'STIX Two Text', 'KaTeX_Main', serif;
+}
+[data-math-font="cambria"] .katex .accent,
+[data-math-font="cambria"] .katex .accent * {
+  font-family: 'KaTeX_Main', serif !important;
+}
+[data-math-font="cambria"] .katex .accent .mathnormal {
+  font-family: 'Cambria Math', 'STIX Two Text', 'KaTeX_Math', serif !important;
+}
+
+/* Preset 2: MathType Classic Style (Times New Roman / STIX Two Text italic variables + KaTeX exact operators/accents) */
+[data-math-font="mathtype"] .katex .mathnormal {
+  font-family: 'STIX Two Text', 'Times New Roman', 'KaTeX_Math', serif !important;
+  font-style: italic;
+}
+[data-math-font="mathtype"] .katex .mord.mathrm,
+[data-math-font="mathtype"] .katex .mord.text,
+[data-math-font="mathtype"] .katex .mord.mathbf,
+[data-math-font="mathtype"] .katex .mord.textbf {
+  font-family: 'STIX Two Text', 'Times New Roman', 'KaTeX_Main', serif;
+}
+[data-math-font="mathtype"] .katex .accent,
+[data-math-font="mathtype"] .katex .accent * {
+  font-family: 'KaTeX_Main', serif !important;
+}
+[data-math-font="mathtype"] .katex .accent .mathnormal {
+  font-family: 'STIX Two Text', 'Times New Roman', 'KaTeX_Math', serif !important;
+}
+
+/* Preset 3: Pure LaTeX (Native KaTeX Computer Modern — untouched!) */
+[data-math-font="latex"] .katex {
+  font-size: 1.15em !important;
+}
+
+/* Wide Dual-Mode Admin Editor Modal (Visual WYSIWYG + Simultaneous Split + Code) */
+.dft-ed-card-wide {
+  width: min(1260px, 97vw);
+  max-height: 94vh;
+}
+.dft-ed-bar-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.dft-ed-mode-switcher {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+}
+.dft-ed-mode-btn {
+  padding: 4.5px 11px;
+  border: none;
+  border-radius: 6.5px;
+  background: transparent;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.dft-ed-mode-btn:hover {
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.7);
+}
+.dft-ed-mode-btn.active {
+  background: #b45309;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(180, 83, 9, 0.25);
+}
+
+/* Rich Word-like Formatting + Scientific Block Toolbar */
+.dft-rich-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 8px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-bottom: none;
+  border-radius: 9px 9px 0 0;
+}
+.dft-rt-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding-right: 7px;
+  border-right: 1px solid #e2e8f0;
+}
+.dft-rt-group:last-child {
+  border-right: none;
+  padding-right: 0;
+}
+.dft-rt-select {
+  padding: 3.5px 7px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.dft-rt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 27px;
+  padding: 0 7px;
+  border: 1px solid #d5dee8;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.13s ease;
+}
+.dft-rt-btn:hover {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
+}
+.dft-rt-accent {
+  background: #fffbeb;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+.dft-rt-accent:hover {
+  background: #fef3c7;
+  border-color: #b45309;
+  color: #78350f;
+}
+
+/* Bidirectional Split / Visual / Code Panes */
+.dft-ed-workspace {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid #cbd5e1;
+  border-radius: 0 0 9px 9px;
+  overflow: hidden;
+  background: #ffffff;
+  min-height: 380px;
+}
+.dft-ed-workspace[data-mode="visual"] {
+  grid-template-columns: 1fr;
+}
+.dft-ed-workspace[data-mode="visual"] .dft-ed-pane-code {
+  display: none;
+}
+.dft-ed-workspace[data-mode="code"] {
+  grid-template-columns: 1fr;
+}
+.dft-ed-workspace[data-mode="code"] .dft-ed-pane-visual {
+  display: none;
+}
+@media (max-width: 920px) {
+  .dft-ed-workspace[data-mode="split"] {
+    grid-template-columns: 1fr;
+  }
+}
+.dft-ed-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.dft-ed-pane-visual {
+  border-right: 1px solid #cbd5e1;
+}
+.dft-ed-workspace[data-mode="visual"] .dft-ed-pane-visual {
+  border-right: none;
+}
+.dft-ed-pane-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 11px;
+  font-weight: 800;
+  color: #334155;
+}
+.dft-ed-pane-hint {
+  font-weight: 500;
+  color: #64748b;
+  font-size: 10.5px;
+}
+.dft-ed-visual-surface {
+  flex: 1;
+  min-height: 360px;
+  max-height: 460px;
+  overflow-y: auto;
+  padding: 14px 18px;
+  background: #ffffff;
+  outline: none;
+  font-size: 13.5px;
+  line-height: 1.65;
+}
+.dft-ed-visual-surface:focus {
+  box-shadow: inset 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+textarea.dft-ed-code-surface {
+  flex: 1;
+  width: 100%;
+  min-height: 360px;
+  max-height: 460px;
+  padding: 12px 14px;
+  border: none !important;
+  border-radius: 0 !important;
+  outline: none;
+  resize: none;
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace !important;
+  font-size: 12px !important;
+  line-height: 1.58 !important;
+  background: #111827 !important;
+  color: #f1f5f9 !important;
+  caret-color: #fbbf24;
+  box-sizing: border-box;
+}
+textarea.dft-ed-code-surface::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Editable Equation Card Overlay inside Visual Surface */
+.dft-vis-eq-card {
+  position: relative;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.dft-vis-eq-card:hover {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
+}
+.dft-vis-eq-actions {
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  display: inline-flex;
+  gap: 4px;
+  opacity: 0.42;
+  transition: opacity 0.15s ease;
+}
+.dft-vis-eq-card:hover .dft-vis-eq-actions {
+  opacity: 1;
+}
+.dft-vis-eq-btn {
+  padding: 2px 7px;
+  border-radius: 5px;
+  border: 1px solid #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.dft-vis-eq-btn:hover {
+  background: #2563eb;
+  color: #ffffff;
+}
+.dft-vis-eq-del {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #dc2626;
+}
+.dft-vis-eq-del:hover {
+  background: #dc2626;
+  color: #ffffff;
+}
+.dft-vis-inline-eq {
+  display: inline-block;
+  padding: 0 3px;
+  border-radius: 4px;
+  background: #eff6ff;
+  border: 1px dashed #93c5fd;
+  cursor: pointer;
+}
+.dft-fig-box {
+  margin: 12px 0;
+  text-align: center;
+}
+.dft-fig-box img {
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+.dft-fig-box figcaption {
+  margin-top: 5px;
+  font-size: 12px;
+  color: #475569;
+  font-style: italic;
+}
+
+/* Interactive MathType / LaTeX Equation Builder Sub-Dialog */
+.dft-eqb-overlay {
+  z-index: 9800;
+}
+.dft-eqb-card {
+  width: min(760px, 95vw);
+  max-height: 90vh;
+}
+.dft-eqb-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #dbe4f0;
+}
+.dft-eqb-key {
+  min-width: 34px;
+  height: 28px;
+  padding: 0 7px;
+  border-radius: 5px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  font-family: 'Cambria Math', 'STIX Two Text', Georgia, serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+.dft-eqb-key:hover {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
 }
