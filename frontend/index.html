@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=139_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=139_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=140_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=140_v116_vesta_viewer'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -70,6 +70,7 @@
         </div>
         <select id="mobile-tab-select" class="mobile-tab-native-select" onchange="switchTab(this.value)" aria-label="Select Navigation Tab">
           <option value="dashboard">📊 Dashboard</option>
+          <option value="dft-theory">🎓 DFT Theory (10 Lectures)</option>
           <option value="news">📰 News &amp; Articles</option>
           <option value="literature">📚 References (Literature)</option>
           <option value="calendar">📅 Calendar &amp; Google Calendar</option>
@@ -94,6 +95,9 @@
       <nav class="horizontal-tabs" id="main-horizontal-nav">
         <button class="nav-btn active" data-tab="dashboard" onclick="switchTab('dashboard', this)">
           <span class="nav-icon">📊</span> Dashboard
+        </button>
+        <button class="nav-btn" data-tab="dft-theory" onclick="switchTab('dft-theory', this)">
+          <span class="nav-icon">🎓</span> DFT Theory
         </button>
         <button class="nav-btn" data-tab="news" onclick="switchTab('news', this)">
           <span class="nav-icon">📰</span> News
@@ -201,6 +205,21 @@
           <div id="dashboard-admin-users-pagination-bar" class="mp-pagination-bar standalone" style="display:none;"></div>
         </div>
 
+        <!-- Featured Academic Curriculum Card: DFT Theory Overview (10 Lectures Linked to Live Data Analysis) -->
+        <div class="card dft-dash-card">
+          <div class="card-header" style="margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+            <div>
+              <div class="card-title" style="color:#78350f;">🎓 Density Functional Theory (DFT): From Quantum Foundations to First-Principles Simulation</div>
+              <div style="font-size:12px; color:var(--text-muted);">10 structured English lectures covering Hohenberg–Kohn/Kohn–Sham, XC functionals, Bloch plane waves, forces, Band/PDOS, Effective Mass &amp; Drude, Optics, &Delta;&rho;, and Spin Matrix—each linked directly to live Data Analysis tools.</div>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              <button type="button" class="btn btn-primary btn-sm" onclick="openDftTheoryLecture('lec1')">📖 Open Full DFT Course &rarr;</button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="switchTabByName('castep')">📊 Open Data Analysis</button>
+            </div>
+          </div>
+          <div id="dashboard-dft-lectures-pills" class="dft-dash-pills-grid"></div>
+        </div>
+
         <div class="grid-2">
           <!-- Upcoming Events & Google Calendar Slots -->
           <div class="card">
@@ -241,6 +260,37 @@
           </div>
           <div id="dashboard-papers-list"></div>
         </div>
+      </section>
+
+      <!-- ================================================================ -->
+      <!-- TAB 1B: DENSITY FUNCTIONAL THEORY (DFT) — 10-LECTURE CURRICULUM  -->
+      <!-- ================================================================ -->
+      <section id="tab-dft-theory" class="tab-pane">
+        <div class="dft-theory-hero">
+          <div class="dft-hero-left">
+            <div class="dft-hero-eyebrow">COMPUTATIONAL MATERIALS PHYSICS &bull; FIRST-PRINCIPLES CURRICULUM</div>
+            <h1 class="dft-hero-title">🎓 Density Functional Theory (DFT): Theory &amp; Practice</h1>
+            <p class="dft-hero-desc">
+              A complete graduate-level theoretical overview from the many-body Schr&ouml;dinger equation to electronic band structure, carrier effective mass, Drude transport, linear-response optics, charge density difference, and orbital-resolved spin matrices—paired with hands-on examples inside the live <strong>Data Analysis</strong> workbench.
+            </p>
+          </div>
+          <div class="dft-hero-right">
+            <div class="dft-search-box">
+              <span class="dft-search-ico">&#128269;</span>
+              <input type="text" id="dft-theory-search-input" class="dft-search-input" placeholder="Search topic, equation, or keyword (e.g. Kohn-Sham, HSE06, Drude, Kramers)..." oninput="filterDftLectures(this.value)" />
+            </div>
+            <div class="dft-hero-meta">
+              <span id="dft-theory-search-status" class="dft-hero-badge">10 Lectures (Basic &rarr; Advanced)</span>
+              <button type="button" class="btn btn-teal btn-sm" onclick="switchTabByName('castep')">&#128202; Launch Data Analysis &rarr;</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inner Lecture Sub-Tabs (Lecture 1 ... Lecture 10) -->
+        <div id="dft-theory-lecture-tabs" class="dft-lec-tabs-bar" role="tablist" aria-label="DFT Theory Lectures"></div>
+
+        <!-- Active Lecture Reading & Practice Stage -->
+        <div id="dft-theory-lecture-stage" class="dft-lec-stage"></div>
       </section>
 
       <!-- ================================================================ -->
@@ -6089,9 +6139,10 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=139_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=139_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=139_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=139_v116_vesta_viewer'"></script>
-  <script src="app.js?v=139_v116_vesta_viewer" onerror="this.src='/static/app.js?v=139_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=140_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=140_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=140_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=140_v116_vesta_viewer'"></script>
+  <script src="dft_theory.js?v=140_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=140_v116_vesta_viewer'"></script>
+  <script src="app.js?v=140_v116_vesta_viewer" onerror="this.src='/static/app.js?v=140_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
