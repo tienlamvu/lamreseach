@@ -13447,94 +13447,265 @@ sup {
 }
 
 /* ============================================================================
-   DFT Theory v142 — Word Equation / MathType / LaTeX KaTeX Styling & Dual CMS
+   DFT Theory v143 — Unified Word Equation (Cambria) + Responsive Auto-Wrap
    ============================================================================ */
-.dft-mathfont-wrap {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 8px;
-  border-radius: 7px;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 237, 213, 0.35);
-  color: #fef3c7;
-  font-size: 11.5px;
-  font-weight: 700;
-}
-.dft-mathfont-select {
-  background: #ffffff;
-  color: #2b1f17;
-  border: none;
-  border-radius: 5px;
-  padding: 2.5px 6px;
-  font-size: 11.5px;
-  font-weight: 700;
-  cursor: pointer;
-}
 
-/* Crisp KaTeX Display Equation Sizing & Math Font Presets */
+/* Unified Word Equation (Cambria Math) Typography & Zero-Scrollbar Wrapping */
+.dft-eq-box {
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.dft-eq-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  max-width: 100%;
+}
 .dft-eq-math {
-  font-size: 1.14em;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 3px 6px;
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
+  font-size: 1.12em;
+  overflow: visible !important;
+  padding: 3px 4px;
+  text-align: center;
+}
+.dft-eq-seg-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px 26px;
+  width: 100%;
+  max-width: 100%;
+}
+.dft-eq-seg {
+  display: inline-flex;
+  max-width: 100%;
+  justify-content: center;
 }
 .dft-eq-math .katex-display {
   margin: 2px 0 !important;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: visible !important;
+  max-width: 100%;
   padding: 2px 0;
+  text-align: center;
 }
-.dft-eq-math .katex {
-  font-size: 1.16em !important;
+.dft-eq-math .katex-display > .katex {
+  font-size: 1.14em !important;
   color: #0f172a;
+  white-space: normal !important;
+  max-width: 100%;
+  line-height: 1.82 !important;
+  text-align: center;
+}
+.dft-eq-math .katex-display > .katex > .katex-html {
+  display: inline-flex !important;
+  flex-wrap: wrap !important;
+  justify-content: center !important;
+  align-items: center !important;
+  row-gap: 8px;
+  max-width: 100%;
+}
+.dft-eq-math .katex-display > .katex > .katex-html > .base {
+  margin-top: 2px;
+  margin-bottom: 2px;
 }
 .dft-inline-math .katex {
   font-size: 1.04em !important;
   color: #0f172a;
 }
 
-/* Preset 1: Microsoft Word Equation Style (Cambria Math / STIX Two Text letters + KaTeX exact operators/accents) */
-[data-math-font="cambria"] .katex .mathnormal {
+/* Unified Microsoft Word Equation Style (Cambria Math variables/text + KaTeX exact operators/accents) */
+.dft-eq-math .katex .mathnormal,
+.dft-inline-math .katex .mathnormal {
   font-family: 'Cambria Math', 'STIX Two Text', 'KaTeX_Math', serif !important;
   font-style: italic;
 }
-[data-math-font="cambria"] .katex .mord.mathrm,
-[data-math-font="cambria"] .katex .mord.text,
-[data-math-font="cambria"] .katex .mord.mathbf,
-[data-math-font="cambria"] .katex .mord.textbf {
+.dft-eq-math .katex .mord.mathrm,
+.dft-eq-math .katex .mord.text,
+.dft-eq-math .katex .mord.mathbf,
+.dft-eq-math .katex .mord.textbf,
+.dft-inline-math .katex .mord.mathrm,
+.dft-inline-math .katex .mord.text,
+.dft-inline-math .katex .mord.mathbf,
+.dft-inline-math .katex .mord.textbf {
   font-family: 'Cambria Math', 'STIX Two Text', 'KaTeX_Main', serif;
 }
-[data-math-font="cambria"] .katex .accent,
-[data-math-font="cambria"] .katex .accent * {
+.dft-eq-math .katex .accent,
+.dft-eq-math .katex .accent *,
+.dft-inline-math .katex .accent,
+.dft-inline-math .katex .accent * {
   font-family: 'KaTeX_Main', serif !important;
 }
-[data-math-font="cambria"] .katex .accent .mathnormal {
+.dft-eq-math .katex .accent .mathnormal,
+.dft-inline-math .katex .accent .mathnormal {
   font-family: 'Cambria Math', 'STIX Two Text', 'KaTeX_Math', serif !important;
 }
 
-/* Preset 2: MathType Classic Style (Times New Roman / STIX Two Text italic variables + KaTeX exact operators/accents) */
-[data-math-font="mathtype"] .katex .mathnormal {
-  font-family: 'STIX Two Text', 'Times New Roman', 'KaTeX_Math', serif !important;
-  font-style: italic;
+/* Compact automatic scaling inside narrow Split Visual Pane & Mobile Devices (ZERO horizontal scroll!) */
+.dft-ed-visual-surface .dft-eq-math .katex-display > .katex {
+  font-size: 0.96em !important;
 }
-[data-math-font="mathtype"] .katex .mord.mathrm,
-[data-math-font="mathtype"] .katex .mord.text,
-[data-math-font="mathtype"] .katex .mord.mathbf,
-[data-math-font="mathtype"] .katex .mord.textbf {
-  font-family: 'STIX Two Text', 'Times New Roman', 'KaTeX_Main', serif;
+.dft-ed-visual-surface .dft-eq-seg-wrap {
+  gap: 6px 16px;
 }
-[data-math-font="mathtype"] .katex .accent,
-[data-math-font="mathtype"] .katex .accent * {
-  font-family: 'KaTeX_Main', serif !important;
+@media (max-width: 720px) {
+  .dft-eq-box {
+    padding: 10px 10px !important;
+  }
+  .dft-eq-inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+  .dft-eq-num {
+    align-self: flex-end;
+    font-size: 11.5px;
+    padding-left: 0;
+  }
+  .dft-eq-math {
+    font-size: 0.98em;
+    padding: 2px 0;
+  }
+  .dft-eq-math .katex-display > .katex {
+    font-size: 0.96em !important;
+    line-height: 1.72 !important;
+  }
+  .dft-eq-seg-wrap {
+    gap: 6px 14px;
+  }
 }
-[data-math-font="mathtype"] .katex .accent .mathnormal {
-  font-family: 'STIX Two Text', 'Times New Roman', 'KaTeX_Math', serif !important;
+@media (max-width: 440px) {
+  .dft-eq-math .katex-display > .katex {
+    font-size: 0.84em !important;
+  }
 }
 
-/* Preset 3: Pure LaTeX (Native KaTeX Computer Modern — untouched!) */
-[data-math-font="latex"] .katex {
-  font-size: 1.15em !important;
+/* Lecture Academic Byline Header (Compiled By, Affiliation, Last Updated, Reference Count) */
+.dft-byline-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 7px 12px;
+  margin: 4px 0 12px 0;
+  border-radius: 8px;
+  background: #faf6ef;
+  border: 1px solid #eadcc7;
+  font-size: 12px;
+  color: #4a3728;
+}
+.dft-byline-item strong {
+  color: #2b1f17;
+  font-weight: 700;
+}
+.dft-byline-sep {
+  margin: 0 3px;
+  color: #b45309;
+  font-weight: 800;
+}
+.dft-byline-divider {
+  color: #d6c3a8;
+  user-select: none;
+}
+
+/* Auto-Add from DOI Bar & Compact Expandable Citation Cards inside Admin CMS */
+.dft-doi-quickbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.dft-doi-quick-input {
+  flex: 1;
+  min-width: 240px;
+  font-size: 12.5px;
+  background: #ffffff;
+}
+.dft-doi-status {
+  font-size: 11.5px;
+  font-weight: 600;
+  min-height: 0;
+  margin-bottom: 6px;
+}
+.dft-doi-status.is-loading { color: #1d4ed8; }
+.dft-doi-status.is-ok { color: #047857; }
+.dft-doi-status.is-err { color: #b91c1c; }
+
+.dft-ref-edit-card {
+  background: #ffffff;
+  border: 1px solid #e2d5c3;
+  border-radius: 8px;
+  padding: 7px 10px;
+  transition: border-color 0.15s ease;
+}
+.dft-ref-edit-card:hover {
+  border-color: #c7a982;
+}
+.dft-ref-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.dft-ref-card-num {
+  flex-shrink: 0;
+  font-weight: 800;
+  font-size: 12px;
+  color: #92400e;
+  font-family: 'Cambria Math', Georgia, serif;
+  padding-top: 2px;
+}
+.dft-ref-card-summary {
+  flex: 1;
+  font-size: 12.2px;
+  line-height: 1.5;
+  color: #1e293b;
+}
+.dft-ref-card-actions {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.dft-ref-mini-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid #d5dee8;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.dft-ref-mini-btn:hover {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
+}
+.dft-ref-edit-fields {
+  display: none;
+  grid-template-columns: 1.1fr 1.6fr 1.1fr 0.45fr 1fr;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #e2d5c3;
+}
+.dft-ref-edit-card.is-open .dft-ref-edit-fields {
+  display: grid;
+}
+.dft-ref-edit-fields .form-input {
+  padding: 5.5px 8px;
+  font-size: 12px;
+}
+@media (max-width: 820px) {
+  .dft-ref-edit-card.is-open .dft-ref-edit-fields {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Wide Dual-Mode Admin Editor Modal (Visual WYSIWYG + Simultaneous Split + Code) */
