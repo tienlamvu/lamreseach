@@ -1195,6 +1195,89 @@
               <button type="button" class="castep-stage-tab" data-pane="files" onclick="switchCastepStagePane('files', this)">
                 📝 Files
               </button>
+              <button type="button" id="castep-plot-style-toggle-btn" class="castep-stage-tab" style="margin-left:auto; background:#f8fafc; border-color:#cbd5e1; color:#0f172a; font-weight:700;" onclick="toggleCastepPlotStyleBar()" title="Customize unified publication plot format (Font, Size, Border Width, Line Width, Ticks, Grid) across ALL CASTEP graphs">
+                🎨 Plot Format
+              </button>
+            </div>
+
+            <!-- Unified Publication Plot Style Customizer Bar (Applies live to Band, DOS, Optical, Spin Matrix, Mulliken, Charge Diff & Convergence) -->
+            <div id="castep-plot-style-bar" style="display:none; padding:9px 12px; background:#f8fafc; border-bottom:1px solid #cbd5e1; font-size:11.5px;">
+              <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:7px;">
+                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                  <strong style="color:#0f172a; font-size:12px;">🎨 Unified Plot Style (All Graphs):</strong>
+                  <button type="button" class="castep-preset-chip" data-style-preset="journal_tnr" onclick="applyCastepPlotStylePreset('journal_tnr')">📄 Journal (Times New Roman)</button>
+                  <button type="button" class="castep-preset-chip" data-style-preset="acs_arial" onclick="applyCastepPlotStylePreset('acs_arial')">🔬 Nature / ACS (Arial)</button>
+                  <button type="button" class="castep-preset-chip" data-style-preset="presentation" onclick="applyCastepPlotStylePreset('presentation')">📽️ Presentation (Large)</button>
+                  <button type="button" class="castep-preset-chip" data-style-preset="origin_grid" onclick="applyCastepPlotStylePreset('origin_grid')">▦ Origin (+ Subtle Grid)</button>
+                </div>
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <button type="button" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:11px;" onclick="resetCastepPlotStyle()">↺ Reset Default</button>
+                  <button type="button" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:11px;" onclick="toggleCastepPlotStyleBar(false)">✕ Hide</button>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:9px; flex-wrap:wrap;">
+                <span style="display:inline-flex; align-items:center; gap:4px;">
+                  <label class="castep-field-lbl" style="margin:0;">Font:</label>
+                  <select id="castep-ps-font" class="castep-input" style="width:auto; padding:2px 6px;" onchange="updateCastepPlotStyleFromUI()">
+                    <option value="&quot;Times New Roman&quot;, Times, Georgia, serif">Times New Roman</option>
+                    <option value="Arial, Helvetica, sans-serif">Arial / Helvetica</option>
+                    <option value="Georgia, &quot;Times New Roman&quot;, serif">Georgia Serif</option>
+                    <option value="Calibri, &quot;Segoe UI&quot;, sans-serif">Calibri / Segoe UI</option>
+                    <option value="Inter, sans-serif">Inter (Modern Sans)</option>
+                    <option value="&quot;Courier New&quot;, monospace">Courier New</option>
+                  </select>
+                </span>
+                <span style="display:inline-flex; align-items:center; gap:4px;">
+                  <label class="castep-field-lbl" style="margin:0;">Title:</label>
+                  <input id="castep-ps-title-size" type="number" min="10" max="22" step="1" value="14" class="castep-input" style="width:52px; padding:2px 5px;" oninput="updateCastepPlotStyleFromUI()" />
+                </span>
+                <span style="display:inline-flex; align-items:center; gap:4px;">
+                  <label class="castep-field-lbl" style="margin:0;">Axis:</label>
+                  <input id="castep-ps-axis-size" type="number" min="9" max="20" step="1" value="13" class="castep-input" style="width:52px; padding:2px 5px;" oninput="updateCastepPlotStyleFromUI()" />
+                </span>
+                <span style="display:inline-flex; align-items:center; gap:4px;">
+                  <label class="castep-field-lbl" style="margin:0;">Ticks:</label>
+                  <input id="castep-ps-tick-size" type="number" min="8" max="18" step="1" value="12" class="castep-input" style="width:52px; padding:2px 5px;" oninput="updateCastepPlotStyleFromUI()" />
+                </span>
+                <span style="display:inline-flex; align-items:center; gap:4px;">
+                  <label class="castep-field-lbl" style="margin:0;">Legend:</label>
+                  <input id="castep-ps-legend-size" type="number" min="8" max="16" step="1" value="11" class="castep-input" style="width:52px; padding:2px 5px;" oninput="updateCastepPlotStyleFromUI()" />
+                </span>
+                <span style="display:inline-flex; align-items:center; gap:4px;">
+                  <label class="castep-field-lbl" style="margin:0;">Border (px):</label>
+                  <input id="castep-ps-border-w" type="number" min="0.8" max="3.5" step="0.2" value="1.8" class="castep-input" style="width:54px; padding:2px 5px;" oninput="updateCastepPlotStyleFromUI()" />
+                </span>
+                <span style="display:inline-flex; align-items:center; gap:4px;">
+                  <label class="castep-field-lbl" style="margin:0;">Line (px):</label>
+                  <input id="castep-ps-line-w" type="number" min="0.8" max="4.0" step="0.2" value="1.8" class="castep-input" style="width:54px; padding:2px 5px;" oninput="updateCastepPlotStyleFromUI()" />
+                </span>
+                <span style="display:inline-flex; align-items:center; gap:4px;">
+                  <label class="castep-field-lbl" style="margin:0;">Tick Marks:</label>
+                  <select id="castep-ps-tick-dir" class="castep-input" style="width:auto; padding:2px 6px;" onchange="updateCastepPlotStyleFromUI()">
+                    <option value="in">Inward (Journal)</option>
+                    <option value="out">Outward</option>
+                    <option value="none">None</option>
+                  </select>
+                </span>
+                <span style="display:inline-flex; align-items:center; gap:4px;">
+                  <label class="castep-field-lbl" style="margin:0;">Grid:</label>
+                  <select id="castep-ps-grid" class="castep-input" style="width:auto; padding:2px 6px;" onchange="updateCastepPlotStyleFromUI()">
+                    <option value="off">Off (Clean)</option>
+                    <option value="subtle">Subtle</option>
+                    <option value="normal">Visible</option>
+                  </select>
+                </span>
+                <span style="display:inline-flex; align-items:center; gap:4px;">
+                  <label class="castep-field-lbl" style="margin:0;">Ink:</label>
+                  <select id="castep-ps-ink" class="castep-input" style="width:auto; padding:2px 6px;" onchange="updateCastepPlotStyleFromUI()">
+                    <option value="#000000">Pure Black</option>
+                    <option value="#1e293b">Slate Ink</option>
+                  </select>
+                </span>
+                <label style="display:inline-flex; align-items:center; gap:4px; font-weight:600; color:#334155; cursor:pointer; margin:0;">
+                  <input id="castep-ps-bold-axes" type="checkbox" checked onchange="updateCastepPlotStyleFromUI()" /> Bold Labels
+                </label>
+              </div>
             </div>
 
                         <!-- ============================================================ -->
@@ -5632,9 +5715,9 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=134_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=134_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=134_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=134_v116_vesta_viewer'"></script>
-  <script src="app.js?v=134_v116_vesta_viewer" onerror="this.src='/static/app.js?v=134_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=135_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=135_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=135_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=135_v116_vesta_viewer'"></script>
+  <script src="app.js?v=135_v116_vesta_viewer" onerror="this.src='/static/app.js?v=135_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
