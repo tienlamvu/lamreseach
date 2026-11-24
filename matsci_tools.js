@@ -5540,7 +5540,7 @@ function populateCastepPdosTargetSelect(job) {
   const prevVal = sel.value || "all";
   const mode = document.getElementById("castep-pdos-mode")?.value || "element_orbital";
   const pb = job?.pdos_bin_data;
-  let html = `<option value="all">All Atoms / Species</option>`;
+  let html = `<option value="all">All Species</option>`;
   if (pb && Array.isArray(pb.channels) && pb.channels.length) {
     const elements = [...new Set(pb.channels.map(c => c.element))];
     const atoms = [...new Set(pb.channels.map(c => c.atom))];
@@ -8005,6 +8005,16 @@ function buildCastepPlotDataForClipboard(plotKey, subPart = "auto") {
   if (plotKey === "chdiff") {
     const pkg = buildChdiffExportTables();
     if (!pkg) return null;
+    if (subPart === "full" && pkg.sheet1D?.rows?.length && pkg.sheet2D?.rows?.length) {
+      const rows = [
+        ...pkg.sheet1D.rows,
+        [],
+        ["=== 2D CROSS-SECTION SLICE MATRIX ==="],
+        pkg.sheet2D.headers,
+        ...pkg.sheet2D.rows
+      ];
+      return { title: "Full Charge Diff (1D Planar + 2D Slice)", headers: pkg.sheet1D.headers, rows };
+    }
     const sheet = (subPart === "2d") ? pkg.sheet2D : pkg.sheet1D;
     return { title: subPart === "2d" ? "2D Charge Diff Slice" : "1D Planar Δρ(z) & ΔQ(z)", headers: sheet.headers, rows: sheet.rows };
   }
