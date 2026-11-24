@@ -1186,6 +1186,7 @@ function parseCastepBandsTextClient(bandsText) {
   const lines = bandsText.replace(/\r\n/g, "\n").split("\n");
   let nk = 0, ns = 1, neig = 0, efHa = 0.0, nelec = 0.0;
   let efHaSpins = [], nelecSpins = [];
+  let vecsBohr = [];
   let i = 0;
   while (i < lines.length) {
     const l = lines[i].trim();
@@ -1204,7 +1205,16 @@ function parseCastepBandsTextClient(bandsText) {
         efHaSpins = nums;
         efHa = nums.reduce((a, b) => a + b, 0) / nums.length;
       }
-    } else if (l.startsWith("Unit cell vectors")) { i += 4; break; }
+    } else if (l.startsWith("Unit cell vectors")) {
+      for (let k = 1; k <= 3; k++) {
+        if (i + k < lines.length) {
+          const vp = lines[i + k].trim().split(/\s+/).map(Number).filter(v => !isNaN(v));
+          if (vp.length >= 3) vecsBohr.push([vp[0], vp[1], vp[2]]);
+        }
+      }
+      i += 4;
+      break;
+    }
     i++;
   }
   const kpts = new Array(Math.max(1, nk)).fill(null);
@@ -1237,17 +1247,28 @@ function parseCastepBandsTextClient(bandsText) {
   }
   const validKpts = kpts.filter(Boolean);
   if (!validKpts.length) return null;
-    return {
-      nk: validKpts.length,
-      ns,
-      neig,
-      nelec,
-      nelec_spins: nelecSpins,
-      ef_ha: efHa,
-      ef_ev: efHa * HA_EV,
-      ef_ev_spins: efHaSpins.map(x => x * HA_EV),
-      kpoints: validKpts
-    };
+  let volBohr3 = 0;
+  if (vecsBohr.length === 3) {
+    const [a, b, c] = vecsBohr;
+    volBohr3 = Math.abs(
+      a[0] * (b[1] * c[2] - b[2] * c[1]) -
+      a[1] * (b[0] * c[2] - b[2] * c[0]) +
+      a[2] * (b[0] * c[1] - b[1] * c[0])
+    );
+  }
+  return {
+    nk: validKpts.length,
+    ns,
+    neig,
+    nelec,
+    nelec_spins: nelecSpins,
+    ef_ha: efHa,
+    ef_ev: efHa * HA_EV,
+    ef_ev_spins: efHaSpins.map(x => x * HA_EV),
+    vecs_bohr: vecsBohr,
+    vol_bohr3: volBohr3,
+    kpoints: validKpts
+  };
 }
 
 // ============================================================================
@@ -1462,10 +1483,12 @@ function enrichCastepJobSummary(job) {
 
   const hasOptics = !!(
     job.has_optics ||
+    job.optical_tensor ||
+    job.ome_bin_file ||
     job.optical_xcd ||
     (Array.isArray(job.optical_xcds) && job.optical_xcds.length > 0) ||
     job.optics_bands ||
-    files.some(f => (/optic|dielec|absorp/i.test(f) && f.toLowerCase().endsWith(".xcd")) || f.toLowerCase().endsWith("_optics.bands"))
+    files.some(f => (/optic|dielec|absorp/i.test(f) && f.toLowerCase().endsWith(".xcd")) || /\.(ome_bin|cst_ome)$/i.test(f) || f.toLowerCase().endsWith("_optics.bands"))
   );
   const hasBandDos = !!(
     job.has_band_dos ||
@@ -1657,7 +1680,7 @@ function getFilteredCastepJobs() {
     if (f === "running" && !/running|active/i.test(j.status)) return false;
     if (f === "geom" && !/geom/i.test(j.taskType) && !j.geom_text) return false;
     if (f === "banddos" && !j.has_band_dos && !j.band_xcd && !j.bandstr_bands && !j.dos_xcd && !j.pdos_xcd) return false;
-    if (f === "optics" && !j.has_optics && !j.optical_xcd && !(j.optical_xcds && j.optical_xcds.length)) return false;
+    if (f === "optics" && !j.has_optics && !j.optical_tensor && !j.ome_bin_file && !j.optical_xcd && !(j.optical_xcds && j.optical_xcds.length)) return false;
     if (f === "chdiff" && !j.has_chdiff && !j.chdiff_data && !(j.charg_frm_files && j.charg_frm_files.length)) return false;
     if (q) {
       const hay = `${j.title} ${j.material} ${j.project} ${j.folder} ${j.seed} ${(j.files_list || []).join(" ")}`.toLowerCase();
@@ -1718,7 +1741,7 @@ function renderCastepJobsList() {
     if (files.some(f => f.toLowerCase().endsWith(".cif")) || j.cif_text) keyExts.push(".cif");
     if (files.some(f => f.toLowerCase().endsWith(".geom")) || j.geom_text) keyExts.push(".geom");
     if (j.has_band_dos || j.band_xcd || j.bandstr_bands || j.dos_xcd || j.pdos_xcd) keyExts.push("Band/DOS");
-    if (j.has_optics || j.optical_xcd || (j.optical_xcds && j.optical_xcds.length)) keyExts.push("Optics");
+    if (j.has_optics || j.optical_tensor || j.ome_bin_file || j.optical_xcd || (j.optical_xcds && j.optical_xcds.length)) keyExts.push("Optics");
     if (j.has_chdiff || j.chdiff_data || files.some(f => /\.(chdiff|charg_frm)$/i.test(f))) keyExts.push("Δρ");
 
     const eText = (j.totalEnergyEv !== null && j.totalEnergyEv !== undefined && !isNaN(j.totalEnergyEv))
@@ -6943,7 +6966,9 @@ async function hydrateCastepJobFromFileMap(job, opts = {}) {
   // 3) ALL Optical .xcd files (Absorption, Re/Im Epsilon, Refractive, Reflectivity, Conductivity, Loss)
   const optEntries = entries.filter(([n]) => {
     const l = n.toLowerCase();
-    return l.endsWith(".xcd") && /(optical|dielec|absorp|reflectiv|refractiv|loss|conductiv)/i.test(l);
+    return l.endsWith(".xcd")
+      && /(optical|dielec|absorp|reflectiv|refractiv|loss|conductiv)/i.test(l)
+      && !/(convergence|energies|band structure|density of states|pdos)/i.test(l);
   });
   if (optEntries.length > 0 && (!job.optical_xcds || !job.optical_xcds.length)) {
     job.optical_xcds = [];
@@ -6972,6 +6997,32 @@ async function hydrateCastepJobFromFileMap(job, opts = {}) {
   if (optBE && !job.optics_bands) {
     const t = await readFromFileOrHandle(optBE[1], false);
     if (t) job.optics_bands = parseCastepBandsTextClient(t);
+    job.optics_bands_file = optBE[0];
+  }
+  const optCastepE = findEntry(l => l.endsWith("_optics.castep"));
+  if (optCastepE && !job.optics_castep_text) {
+    const t = await readFromFileOrHandle(optCastepE[1], false);
+    if (t) job.optics_castep_text = t;
+    job.optics_castep_file = optCastepE[0];
+  }
+  const optCellE = findEntry(l => l.endsWith("_optics.cell"));
+  let optCellText = "";
+  if (optCellE) {
+    optCellText = (await readFromFileOrHandle(optCellE[1], false)) || "";
+    job.optics_cell_file = optCellE[0];
+  }
+  const omeBinE = findEntry(l => l.endsWith(".ome_bin") || l.endsWith(".cst_ome"));
+  if (omeBinE) {
+    job.ome_bin_file = omeBinE[0];
+    if (!job.optical_tensor && job.optics_bands) {
+      const buf = await readFromFileOrHandle(omeBinE[1], true);
+      if (buf && typeof parseCastepOmeBinArrayBuffer === "function") {
+        job.optical_tensor = parseCastepOmeBinArrayBuffer(
+          buf, job.optics_bands, optCellText || job.cell_text || "", job.optics_castep_text || "",
+          omeBinE[0], job.optics_castep_file || optBE?.[0] || omeBinE[0]
+        );
+      }
+    }
   }
   const pdosBinE = findEntry(l => l.endsWith("_dos.pdos_bin")) || findEntry(l => l.endsWith(".pdos_bin"));
   if (pdosBinE && !job.pdos_bin_data) {
@@ -8538,9 +8589,425 @@ async function refreshMsGatewayJobsFromServer() {
 window.refreshMsGatewayJobsFromServer = refreshMsGatewayJobsFromServer;
 
 // ============================================================================
-// 10. EXACT CASTEP Optical Properties Analyzer (Zero Fake Curves!)
-//     Exact Electrodynamics, Full-Range Kramers-Kronig, JDOS & Tauc Linear Fit
+// 10. EXACT CASTEP Optical Properties Analyzer (Materials Studio Parity!)
+//     Full 3x3 .ome_bin Tensor: Polarized, Unpolarized (Incidence), Polycrystalline,
+//     Smearing, Scissors (Levine-Allan), Drude Intraband, KK, Tauc & 4-Unit Axes
 // ============================================================================
+
+function parseCastepSymopsCartesianJS(cellText, vecsBohr) {
+  if (!cellText || !Array.isArray(vecsBohr) || vecsBohr.length !== 3) return null;
+  const m = cellText.match(/%BLOCK\s+SYMMETRY_OPS([\s\S]*?)%ENDBLOCK\s+SYMMETRY_OPS/i);
+  if (!m) return null;
+  const nums = [];
+  m[1].split(/\r?\n/).forEach(line => {
+    const s = line.split("#")[0].split("!")[0].trim();
+    if (!s) return;
+    const p = s.split(/\s+/).map(Number);
+    if (p.length >= 3 && p.slice(0, 3).every(Number.isFinite)) nums.push([p[0], p[1], p[2]]);
+  });
+  if (nums.length < 4 || nums.length % 4 !== 0) return null;
+  const AT = [
+    [vecsBohr[0][0], vecsBohr[1][0], vecsBohr[2][0]],
+    [vecsBohr[0][1], vecsBohr[1][1], vecsBohr[2][1]],
+    [vecsBohr[0][2], vecsBohr[1][2], vecsBohr[2][2]]
+  ];
+  const det =
+    AT[0][0] * (AT[1][1] * AT[2][2] - AT[1][2] * AT[2][1]) -
+    AT[0][1] * (AT[1][0] * AT[2][2] - AT[1][2] * AT[2][0]) +
+    AT[0][2] * (AT[1][0] * AT[2][1] - AT[1][1] * AT[2][0]);
+  if (Math.abs(det) < 1e-12) return null;
+  const invAT = [
+    [(AT[1][1] * AT[2][2] - AT[1][2] * AT[2][1]) / det, (AT[0][2] * AT[2][1] - AT[0][1] * AT[2][2]) / det, (AT[0][1] * AT[1][2] - AT[0][2] * AT[1][1]) / det],
+    [(AT[1][2] * AT[2][0] - AT[1][0] * AT[2][2]) / det, (AT[0][0] * AT[2][2] - AT[0][2] * AT[2][0]) / det, (AT[0][2] * AT[1][0] - AT[0][0] * AT[1][2]) / det],
+    [(AT[1][0] * AT[2][1] - AT[1][1] * AT[2][0]) / det, (AT[0][1] * AT[2][0] - AT[0][0] * AT[2][1]) / det, (AT[0][0] * AT[1][1] - AT[0][1] * AT[1][0]) / det]
+  ];
+  const mm = (X, Y) => [0, 1, 2].map(i => [0, 1, 2].map(j => X[i][0] * Y[0][j] + X[i][1] * Y[1][j] + X[i][2] * Y[2][j]));
+  const orthErr = (R) => {
+    let e = 0;
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+      const d = R[0][i] * R[0][j] + R[1][i] * R[1][j] + R[2][i] * R[2][j] - (i === j ? 1 : 0);
+      e += d * d;
+    }
+    return e;
+  };
+  const rots = [];
+  for (let g = 0; g < nums.length; g += 4) {
+    const S = [nums[g], nums[g + 1], nums[g + 2]];
+    const ST = [[S[0][0], S[1][0], S[2][0]], [S[0][1], S[1][1], S[2][1]], [S[0][2], S[1][2], S[2][2]]];
+    const R1 = mm(mm(AT, S), invAT);
+    const R2 = mm(mm(AT, ST), invAT);
+    const e1 = orthErr(R1), e2 = orthErr(R2);
+    if (Math.min(e1, e2) < 1e-3) rots.push(e1 <= e2 ? R1 : R2);
+  }
+  return rots.length ? rots : null;
+}
+
+function symmetrizeOpticalTensorBinsJS(t6, rotMats) {
+  if (!rotMats || rotMats.length <= 1) return t6;
+  const nbins = t6[0].length;
+  const invN = 1.0 / rotMats.length;
+  const pairs = [[0, 0], [1, 1], [2, 2], [0, 1], [0, 2], [1, 2]];
+  const M = Array.from({ length: 6 }, () => new Float64Array(6));
+  rotMats.forEach(R => {
+    for (let pOut = 0; pOut < 6; pOut++) {
+      const [i, j] = pairs[pOut];
+      for (let pIn = 0; pIn < 6; pIn++) {
+        const [a, b] = pairs[pIn];
+        M[pOut][pIn] += (a === b ? R[i][a] * R[j][a] : (R[i][a] * R[j][b] + R[i][b] * R[j][a])) * invN;
+      }
+    }
+  });
+  const out = Array.from({ length: 6 }, () => new Array(nbins).fill(0));
+  for (let bi = 0; bi < nbins; bi++) {
+    const v0 = t6[0][bi], v1 = t6[1][bi], v2 = t6[2][bi], v3 = t6[3][bi], v4 = t6[4][bi], v5 = t6[5][bi];
+    if (v0 === 0 && v1 === 0 && v2 === 0 && v3 === 0 && v4 === 0 && v5 === 0) continue;
+    for (let pOut = 0; pOut < 6; pOut++) {
+      const row = M[pOut];
+      out[pOut][bi] = row[0] * v0 + row[1] * v1 + row[2] * v2 + row[3] * v3 + row[4] * v4 + row[5] * v5;
+    }
+  }
+  return out;
+}
+
+function parseCastepOmeBinArrayBuffer(arrayBuffer, bandsObj, cellText = "", castepText = "", sourceName = "Optics.ome_bin", resultsName = "") {
+  if (!arrayBuffer || arrayBuffer.byteLength < 120 || !bandsObj || !bandsObj.kpoints || !bandsObj.kpoints.length) return null;
+  const HA_TO_EV = 27.211386245988;
+  const BOHR_TO_ANG = 0.529177210903;
+  const dv = new DataView(arrayBuffer);
+  const sz = arrayBuffer.byteLength;
+  const reclBE = dv.getInt32(0, false);
+  const reclLE = dv.getInt32(0, true);
+  let littleEndian = false;
+  if (reclBE > 0 && reclBE <= sz) littleEndian = false;
+  else if (reclLE > 0 && reclLE <= sz) littleEndian = true;
+  else return null;
+
+  let pos = 0;
+  const nextRec = () => {
+    if (pos + 4 > sz) return null;
+    const rl = dv.getInt32(pos, littleEndian);
+    pos += 4;
+    if (rl < 0 || pos + rl + 4 > sz) return null;
+    const start = pos;
+    pos += rl + 4;
+    return { start, len: rl };
+  };
+  nextRec(); // version float64
+  const hdrRec = nextRec(); // 80-char header
+  let hdrStr = "";
+  if (hdrRec) {
+    for (let c = 0; c < hdrRec.len; c++) hdrStr += String.fromCharCode(dv.getUint8(hdrRec.start + c));
+    hdrStr = hdrStr.trim();
+  }
+
+  const nk = bandsObj.kpoints.length;
+  const ns = Math.max(1, bandsObj.ns || 1);
+  const nb = bandsObj.neig || (bandsObj.kpoints[0]?.e?.[0]?.length || 0);
+  if (nb <= 1) return null;
+  const expectedBytes = nb * nb * 3 * 16;
+
+  // Cell volume in bohr^3
+  let vol = bandsObj.vol_bohr3 || 0;
+  if (vol < 1e-6) {
+    const volA3 = getActiveStructureCellVolAndC().vol || 150.0;
+    vol = volA3 / (BOHR_TO_ANG * BOHR_TO_ANG * BOHR_TO_ANG);
+  }
+
+  // Spin degeneracy g_spin (1 for collinear or SOC spinors; 2 for non-spin non-SOC)
+  let gSpin = 2.0;
+  if (ns >= 2) {
+    gSpin = 1.0;
+  } else {
+    const e0 = bandsObj.kpoints[0].e[0] || [];
+    const nOcc0 = e0.filter(v => v <= 0.003).length;
+    if (castepText && /spin-orbit coupling\s*:\s*on/i.test(castepText)) gSpin = 1.0;
+    else if (bandsObj.nelec > 0) gSpin = (Math.abs(nOcc0 - bandsObj.nelec) < Math.abs(nOcc0 - bandsObj.nelec * 0.5)) ? 1.0 : 2.0;
+  }
+
+  let kTEv = 0.05;
+  if (castepText) {
+    const mSm = castepText.match(/smearing width\s*:\s*([\d.]+)/i);
+    if (mSm) kTEv = Math.max(0.01, Math.min(0.5, parseFloat(mSm[1]) || 0.05));
+  }
+
+  let maxSpanEv = 30.0;
+  bandsObj.kpoints.forEach(kp => {
+    (kp.e || []).forEach(sp => {
+      if (sp.length > 1) {
+        const span = sp[sp.length - 1] - sp[0];
+        if (span > maxSpanEv) maxSpanEv = span;
+      }
+    });
+  });
+  const dE = 0.05;
+  const eMaxUse = Math.min(85.0, Math.max(30.0, Math.ceil(maxSpanEv) + 2.0));
+  const nbins = Math.floor(eMaxUse / dE) + 1;
+  const invDE = 1.0 / dE;
+
+  const hXX = new Array(nbins).fill(0), hYY = new Array(nbins).fill(0), hZZ = new Array(nbins).fill(0);
+  const hXY = new Array(nbins).fill(0), hXZ = new Array(nbins).fill(0), hYZ = new Array(nbins).fill(0);
+  let wp2 = [0, 0, 0, 0, 0, 0];
+
+  const nb2 = nb * nb;
+  const offY = nb2 * 16;
+  const offZ = nb2 * 32;
+  const cPref = (4.0 * Math.PI * Math.PI / vol) * gSpin * HA_TO_EV;
+  const wpPref = (4.0 * Math.PI / vol) * gSpin * (HA_TO_EV * HA_TO_EV);
+  const kTHa = kTEv / HA_TO_EV;
+
+  let parsedRecs = 0;
+  for (let ik = 0; ik < nk; ik++) {
+    const kp = bandsObj.kpoints[ik];
+    const wk = kp.w || (1.0 / nk);
+    for (let ispin = 0; ispin < ns; ispin++) {
+      const rec = nextRec();
+      if (!rec || rec.len !== expectedBytes) break;
+      parsedRecs++;
+      const evalsEv = kp.e[ispin] || [];
+      const efShiftEv = (bandsObj.ef_ev_spins && bandsObj.ef_ev_spins[ispin] !== undefined)
+        ? (bandsObj.ef_ev_spins[ispin] - (bandsObj.ef_ev || 0))
+        : 0.0;
+      const occs = new Float64Array(nb);
+      const occIdx = [], unoccIdx = [];
+      for (let b = 0; b < nb; b++) {
+        const x = ((evalsEv[b] || 0) - efShiftEv) / kTEv;
+        const f = x > 35 ? 0.0 : (x < -35 ? 1.0 : 1.0 / (1.0 + Math.exp(x)));
+        occs[b] = f;
+        if (f > 1e-4) occIdx.push(b);
+        if (f < 0.9999) unoccIdx.push(b);
+        const dfDe = f * (1.0 - f) / kTHa;
+        if (dfDe > 1e-4) {
+          const p0 = rec.start + (b + nb * b) * 16;
+          const vx = dv.getFloat64(p0, littleEndian);
+          const vy = dv.getFloat64(p0 + offY, littleEndian);
+          const vz = dv.getFloat64(p0 + offZ, littleEndian);
+          const wf = wpPref * wk * dfDe;
+          wp2[0] += wf * vx * vx; wp2[1] += wf * vy * vy; wp2[2] += wf * vz * vz;
+          wp2[3] += wf * vx * vy; wp2[4] += wf * vx * vz; wp2[5] += wf * vy * vz;
+        }
+      }
+      const baseK = cPref * wk;
+      for (let oi = 0; oi < occIdx.length; oi++) {
+        const iv = occIdx[oi];
+        const fv = occs[iv], ev = evalsEv[iv];
+        for (let ui = 0; ui < unoccIdx.length; ui++) {
+          const ic = unoccIdx[ui];
+          if (ic <= iv) continue;
+          const df = fv - occs[ic];
+          if (df <= 1e-4) continue;
+          const dEEv = evalsEv[ic] - ev;
+          if (dEEv <= 0.003) continue;
+          const bi = Math.floor(dEEv * invDE);
+          if (bi >= nbins) continue;
+          const dEHa = dEEv / HA_TO_EV;
+          const fac = (baseK * df) / (dEHa * dEHa);
+          const p0 = rec.start + (iv + nb * ic) * 16;
+          const pxR = dv.getFloat64(p0, littleEndian), pxI = dv.getFloat64(p0 + 8, littleEndian);
+          const pyR = dv.getFloat64(p0 + offY, littleEndian), pyI = dv.getFloat64(p0 + offY + 8, littleEndian);
+          const pzR = dv.getFloat64(p0 + offZ, littleEndian), pzI = dv.getFloat64(p0 + offZ + 8, littleEndian);
+          hXX[bi] += fac * (pxR * pxR + pxI * pxI);
+          hYY[bi] += fac * (pyR * pyR + pyI * pyI);
+          hZZ[bi] += fac * (pzR * pzR + pzI * pzI);
+          hXY[bi] += fac * (pxR * pyR + pxI * pyI);
+          hXZ[bi] += fac * (pxR * pzR + pxI * pzI);
+          hYZ[bi] += fac * (pyR * pzR + pyI * pzI);
+        }
+      }
+    }
+  }
+  if (!parsedRecs) return null;
+
+  let t6 = [hXX, hYY, hZZ, hXY, hXZ, hYZ];
+  const rotMats = parseCastepSymopsCartesianJS(cellText, bandsObj.vecs_bohr);
+  const nsym = rotMats ? rotMats.length : 1;
+  if (nsym > 1) {
+    t6 = symmetrizeOpticalTensorBinsJS(t6, rotMats);
+    const wpSym = symmetrizeOpticalTensorBinsJS(wp2.map(v => [v]), rotMats);
+    wp2 = wpSym.map(c => c[0]);
+  }
+  return {
+    source_file: sourceName,
+    results_file: resultsName || sourceName,
+    header: hdrStr,
+    dE, e_max: Number((nbins * dE).toFixed(3)), nbins,
+    nk, ns, nbands: nb, g_spin: gSpin, nsym,
+    vol_a3: Number((vol * BOHR_TO_ANG * BOHR_TO_ANG * BOHR_TO_ANG).toFixed(3)),
+    plasma_ev_tensor: wp2,
+    plasma_ev: [Math.sqrt(Math.max(0, wp2[0])), Math.sqrt(Math.max(0, wp2[1])), Math.sqrt(Math.max(0, wp2[2]))],
+    t6
+  };
+}
+window.parseCastepOmeBinArrayBuffer = parseCastepOmeBinArrayBuffer;
+
+function projectOpticalTensor6(t6, calcMode, vx, vy, vz) {
+  if (!t6 || t6.length < 6) return null;
+  const n = t6[0].length;
+  const out = new Float64Array(n);
+  if (calcMode === "polycrystalline") {
+    const f = 1.0 / 3.0;
+    for (let i = 0; i < n; i++) out[i] = (t6[0][i] + t6[1][i] + t6[2][i]) * f;
+    return out;
+  }
+  let x = Number(vx) || 0, y = Number(vy) || 0, z = Number(vz) || 0;
+  let norm = Math.hypot(x, y, z);
+  if (norm < 1e-9) { x = 0; y = 0; z = 1; norm = 1; }
+  const nx = x / norm, ny = y / norm, nz = z / norm;
+  const xx = nx * nx, yy = ny * ny, zz = nz * nz;
+  const xy2 = 2 * nx * ny, xz2 = 2 * nx * nz, yz2 = 2 * ny * nz;
+  if (calcMode === "unpolarized") {
+    // Unpolarized light with Incidence wavevector q = (nx, ny, nz):
+    // Average uniformly over the plane perpendicular to q: 0.5 * [Tr(T) - q^T T q]
+    for (let i = 0; i < n; i++) {
+      const tr = t6[0][i] + t6[1][i] + t6[2][i];
+      const qTq = xx * t6[0][i] + yy * t6[1][i] + zz * t6[2][i] + xy2 * t6[3][i] + xz2 * t6[4][i] + yz2 * t6[5][i];
+      out[i] = Math.max(0, 0.5 * (tr - qTq));
+    }
+    return out;
+  }
+  // Polarized light with E-field direction e = (nx, ny, nz): e^T T e
+  for (let i = 0; i < n; i++) {
+    out[i] = Math.max(0, xx * t6[0][i] + yy * t6[1][i] + zz * t6[2][i] + xy2 * t6[3][i] + xz2 * t6[4][i] + yz2 * t6[5][i]);
+  }
+  return out;
+}
+
+function projectScalarTensor6(v6, calcMode, vx, vy, vz) {
+  if (!v6 || v6.length < 6) return 0;
+  if (calcMode === "polycrystalline") return Math.max(0, (v6[0] + v6[1] + v6[2]) / 3.0);
+  let x = Number(vx) || 0, y = Number(vy) || 0, z = Number(vz) || 0;
+  let norm = Math.hypot(x, y, z);
+  if (norm < 1e-9) { x = 0; y = 0; z = 1; norm = 1; }
+  const nx = x / norm, ny = y / norm, nz = z / norm;
+  const qTq = nx * nx * v6[0] + ny * ny * v6[1] + nz * nz * v6[2] + 2 * nx * ny * v6[3] + 2 * nx * nz * v6[4] + 2 * ny * nz * v6[5];
+  if (calcMode === "unpolarized") return Math.max(0, 0.5 * ((v6[0] + v6[1] + v6[2]) - qTq));
+  return Math.max(0, qTq);
+}
+
+function getOpticalUiParams() {
+  const calcMode = document.getElementById("castep-opt-calc-mode")?.value || "unpolarized";
+  let vx = parseFloat(document.getElementById("castep-opt-vx")?.value);
+  let vy = parseFloat(document.getElementById("castep-opt-vy")?.value);
+  let vz = parseFloat(document.getElementById("castep-opt-vz")?.value);
+  if (!Number.isFinite(vx)) vx = 0;
+  if (!Number.isFinite(vy)) vy = 0;
+  if (!Number.isFinite(vz)) vz = 1;
+  if (Math.hypot(vx, vy, vz) < 1e-9) { vx = 0; vy = 0; vz = 1; }
+  const emax = Math.max(2.0, Math.min(120.0, parseFloat(document.getElementById("castep-opt-emax")?.value) || 15.0));
+  const smearingEv = Math.max(0.02, Math.min(2.5, parseFloat(document.getElementById("castep-opt-smearing")?.value) || 0.50));
+  const scissorsEv = Math.max(-3.0, Math.min(8.0, parseFloat(document.getElementById("castep-opt-scissors")?.value) || 0.0));
+  const useDrude = document.getElementById("castep-opt-use-drude")?.checked === true;
+  const plasmaEv = Math.max(0.0, parseFloat(document.getElementById("castep-opt-plasma")?.value) || 0.0);
+  const drudeDampEv = Math.max(0.005, parseFloat(document.getElementById("castep-opt-drude-damp")?.value) || 0.05);
+  const alphaConv = document.getElementById("castep-opt-alpha-conv")?.value || "ms_castep";
+  const fileSelVal = document.getElementById("castep-opt-file-select")?.value || "auto";
+  const xAxisMode = document.getElementById("castep-opt-xaxis")?.value || "ev";
+  return { calcMode, vx, vy, vz, emax, smearingEv, scissorsEv, useDrude, plasmaEv, drudeDampEv, alphaConv, fileSelVal, xAxisMode };
+}
+
+function formatOpticalGeomLabel(calcMode, vx, vy, vz) {
+  const vecStr = `(${Number(vx).toFixed(1)}, ${Number(vy).toFixed(1)}, ${Number(vz).toFixed(1)})`;
+  if (calcMode === "polycrystalline") return "Polycrystalline (Isotropic Avg)";
+  if (calcMode === "unpolarized") return `Unpolarized • Incidence ${vecStr}`;
+  return `Polarized • Polarization ${vecStr}`;
+}
+
+function onCastepOptCalcModeChange() {
+  const mode = document.getElementById("castep-opt-calc-mode")?.value || "unpolarized";
+  const wrap = document.getElementById("castep-opt-vec-wrap");
+  const lbl = document.getElementById("castep-opt-vec-label");
+  if (lbl) lbl.textContent = mode === "polarized" ? "Polarization:" : "Incidence:";
+  if (wrap) {
+    wrap.style.opacity = mode === "polycrystalline" ? "0.42" : "1.0";
+    wrap.style.pointerEvents = mode === "polycrystalline" ? "none" : "auto";
+    wrap.querySelectorAll("input, button").forEach(el => { el.disabled = (mode === "polycrystalline"); });
+  }
+  renderCastepOpticalPlots();
+}
+window.onCastepOptCalcModeChange = onCastepOptCalcModeChange;
+
+function setCastepOpticalVector(vx, vy, vz) {
+  const ex = document.getElementById("castep-opt-vx");
+  const ey = document.getElementById("castep-opt-vy");
+  const ez = document.getElementById("castep-opt-vz");
+  if (ex) ex.value = Number(vx).toFixed(1);
+  if (ey) ey.value = Number(vy).toFixed(1);
+  if (ez) ez.value = Number(vz).toFixed(1);
+  renderCastepOpticalPlots();
+}
+window.setCastepOpticalVector = setCastepOpticalVector;
+
+function toggleCastepOptMorePanel() {
+  const p = document.getElementById("castep-opt-more-panel");
+  const b = document.getElementById("castep-opt-more-btn");
+  if (!p) return;
+  const open = p.style.display === "none" || !p.style.display;
+  p.style.display = open ? "flex" : "none";
+  if (b) b.textContent = open ? "⚙️ Less" : "⚙️ More...";
+}
+window.toggleCastepOptMorePanel = toggleCastepOptMorePanel;
+
+function applyAutoCastepDrudePlasma() {
+  const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
+  const p = getOpticalUiParams();
+  let wp = 0.0;
+  if (job?.optical_tensor?.plasma_ev_tensor) {
+    wp = Math.sqrt(projectScalarTensor6(job.optical_tensor.plasma_ev_tensor, p.calcMode, p.vx, p.vy, p.vz));
+  }
+  const wpEl = document.getElementById("castep-opt-plasma");
+  const chkEl = document.getElementById("castep-opt-use-drude");
+  if (wpEl) wpEl.value = wp.toFixed(3);
+  if (chkEl) chkEl.checked = wp > 0.001;
+  renderCastepOpticalPlots();
+  if (typeof showToast === "function") {
+    showToast(
+      wp > 0.001
+        ? `⚡ Auto-calculated directional Drude plasma frequency ωp = ${wp.toFixed(3)} eV from CASTEP .ome_bin.`
+        : "System is a semiconductor/insulator (intraband Drude ωp ≈ 0.000 eV).",
+      wp > 0.001 ? "success" : "info"
+    );
+  }
+}
+window.applyAutoCastepDrudePlasma = applyAutoCastepDrudePlasma;
+
+async function onCastepOptSourceChange() {
+  const sel = document.getElementById("castep-opt-file-select");
+  const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
+  if (sel && sel.value === "tensor_lazy" && job && !job.optical_tensor) {
+    await fetchOpticalTensorForJobIfNeeded(job);
+    populateCastepOpticalFileSelect(job);
+  }
+  renderCastepOpticalPlots();
+}
+window.onCastepOptSourceChange = onCastepOptSourceChange;
+
+async function fetchOpticalTensorForJobIfNeeded(job) {
+  if (!job || job.optical_tensor || job._loadingOpticalTensor) return job?.optical_tensor || null;
+  if (!job.ome_bin_file || !job.optics_bands_file) return null;
+  job._loadingOpticalTensor = true;
+  try {
+    const apiBase = getCastepApiBase() || (["localhost", "127.0.0.1", "::1"].includes(window.location.hostname) ? "" : "http://127.0.0.1:8877");
+    let url = "";
+    if (job.remote_gateway && job.gateway_job_id) {
+      const gwUrl = normalizeMsGatewayUrlClient(CASTEP_STUDIO_STATE.gatewayUrl || DEFAULT_MS_GATEWAY_URL);
+      url = `${apiBase}/api/castep/gateway/optics-tensor/${encodeURIComponent(job.gateway_job_id)}?ome_file=${encodeURIComponent(job.ome_bin_file)}&bands_file=${encodeURIComponent(job.optics_bands_file)}&cell_file=${encodeURIComponent(job.optics_cell_file || "")}&castep_file=${encodeURIComponent(job.optics_castep_file || "")}&gateway_url=${encodeURIComponent(gwUrl)}`;
+    } else if (job.folder && CASTEP_STUDIO_STATE.localBackendConnected) {
+      url = `${apiBase}/api/castep/optics-tensor?folder=${encodeURIComponent(job.folder)}&ome_file=${encodeURIComponent(job.ome_bin_file)}&bands_file=${encodeURIComponent(job.optics_bands_file)}`;
+    }
+    if (url) {
+      const resp = await fetch(url);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data?.optical_tensor) {
+          job.optical_tensor = data.optical_tensor;
+          return job.optical_tensor;
+        }
+      }
+    }
+  } catch (e) {} finally {
+    job._loadingOpticalTensor = false;
+  }
+  return null;
+}
 
 function setCastepOpticalWindow(emaxEv) {
   const el = document.getElementById("castep-opt-emax");
@@ -8554,13 +9021,33 @@ function populateCastepOpticalFileSelect(job) {
   const sel = document.getElementById("castep-opt-file-select");
   if (!sel) return;
   const list = Array.isArray(job?.optical_xcds) ? job.optical_xcds : (job?.optical_xcd ? [job.optical_xcd] : []);
-  let html = `<option value="auto">Auto (${list.length} optical file${list.length === 1 ? "" : "s"})</option>`;
+  let html = "";
+  if (job?.optical_tensor) {
+    const resName = job.optical_tensor.results_file || job.optics_castep_file || job.optical_tensor.source_file || "Optics.ome_bin";
+    html += `<option value="tensor">⚡ ${escapeHtml(resName)} (Live 3×3 Tensor)</option>`;
+  } else if (job?.ome_bin_file && job?.optics_bands_file) {
+    html += `<option value="tensor_lazy">⚡ ${escapeHtml(job.optics_castep_file || job.ome_bin_file)} (Load 3×3 Tensor)</option>`;
+  }
+  if (list.length > 0 || !html) {
+    html += `<option value="auto">${html ? `Exported XCD (${list.length} file${list.length === 1 ? "" : "s"})` : `Auto (${list.length} optical file${list.length === 1 ? "" : "s"})`}</option>`;
+  }
   list.forEach((xcd, idx) => {
     const sNames = (xcd.series || []).map(s => s.name).filter(Boolean).join(", ");
     const label = `${xcd.filename || "Optical_" + (idx + 1) + ".xcd"}${sNames ? " [" + sNames + "]" : ""}`;
     html += `<option value="${idx}">${escapeHtml(label)}</option>`;
   });
   sel.innerHTML = html;
+
+  // Sync Calculation vector label/enablement
+  const mode = document.getElementById("castep-opt-calc-mode")?.value || "unpolarized";
+  const wrap = document.getElementById("castep-opt-vec-wrap");
+  const lbl = document.getElementById("castep-opt-vec-label");
+  if (lbl) lbl.textContent = mode === "polarized" ? "Polarization:" : "Incidence:";
+  if (wrap) {
+    wrap.style.opacity = mode === "polycrystalline" ? "0.42" : "1.0";
+    wrap.style.pointerEvents = mode === "polycrystalline" ? "none" : "auto";
+    wrap.querySelectorAll("input, button").forEach(el => { el.disabled = (mode === "polycrystalline"); });
+  }
 }
 
 async function handleCastepOpticalFilesUpload(event) {
@@ -8588,10 +9075,27 @@ async function handleCastepOpticalFilesUpload(event) {
   if (!Array.isArray(job.optical_xcds)) job.optical_xcds = job.optical_xcd ? [job.optical_xcd] : [];
 
   let added = 0;
+  let optCellText = job.cell_text || "";
   for (const f of files) {
     const low = f.name.toLowerCase();
-    const txt = await f.text();
-    if (low.endsWith(".xcd")) {
+    if (low.endsWith(".ome_bin") || low.endsWith(".cst_ome")) {
+      job._pendingOmeBuf = await f.arrayBuffer();
+      job.ome_bin_file = f.name;
+      added++;
+    } else if (low.endsWith(".bands")) {
+      const txt = await f.text();
+      const b = parseCastepBandsTextClient(txt);
+      if (b) { job.optics_bands = b; job.optics_bands_file = f.name; added++; }
+    } else if (low.endsWith(".cell")) {
+      optCellText = await f.text();
+      job.optics_cell_file = f.name;
+      added++;
+    } else if (low.endsWith(".castep")) {
+      job.optics_castep_text = await f.text();
+      job.optics_castep_file = f.name;
+      added++;
+    } else if (low.endsWith(".xcd")) {
+      const txt = await f.text();
       const parsed = parseCastepXcdXmlClient(txt, false);
       if (parsed && parsed.series && parsed.series.length) {
         parsed.filename = f.name;
@@ -8599,11 +9103,8 @@ async function handleCastepOpticalFilesUpload(event) {
         job.optical_xcd = job.optical_xcds[0];
         added++;
       }
-    } else if (low.endsWith(".bands")) {
-      const b = parseCastepBandsTextClient(txt);
-      if (b) { job.optics_bands = b; added++; }
     } else {
-      // Parse CSV / TXT / DAT table (col0 = Energy eV, col1 = Absorption or Re(eps), col2 = Im(eps))
+      const txt = await f.text();
       const parsedCsv = parseOpticalCsvTableClient(txt, f.name);
       if (parsedCsv) {
         job.optical_xcds.push(parsedCsv);
@@ -8612,7 +9113,21 @@ async function handleCastepOpticalFilesUpload(event) {
       }
     }
   }
+
+  // If both .ome_bin buffer and _Optics.bands are present, compute exact 3x3 optical tensor in browser!
+  if (job._pendingOmeBuf && job.optics_bands) {
+    const tensor = parseCastepOmeBinArrayBuffer(
+      job._pendingOmeBuf, job.optics_bands, optCellText, job.optics_castep_text || "",
+      job.ome_bin_file || "Optics.ome_bin", job.optics_castep_file || job.optics_bands_file || job.ome_bin_file
+    );
+    if (tensor) {
+      job.optical_tensor = tensor;
+      delete job._pendingOmeBuf;
+    }
+  }
+
   job.has_optics = true;
+  CASTEP_STUDIO_STATE._optSpectraCacheKey = "";
   populateCastepOpticalFileSelect(job);
   populateCastepPdosTargetSelect(job);
   attachMullikenSpinsToStructure(job);
@@ -8620,7 +9135,12 @@ async function handleCastepOpticalFilesUpload(event) {
   updateCastepKpiBar();
   renderCastepOpticalPlots();
   if (typeof showToast === "function") {
-    showToast(added ? `🌈 Loaded ${added} optical data file(s) into analyzer!` : "No valid optical curves found in selected file(s).", added ? "success" : "warning");
+    const msg = job.optical_tensor
+      ? `⚡ Loaded exact CASTEP 3×3 optical tensor (${job.optical_tensor.nk} k-pts, ${job.optical_tensor.nbands} bands) — Polarized, Unpolarized & Polycrystalline ready!`
+      : (job._pendingOmeBuf && !job.optics_bands
+        ? "Loaded *.ome_bin! Please also select the matching *_Optics.bands file to compute the 3×3 optical tensor."
+        : (added ? `🌈 Loaded ${added} optical data file(s) into analyzer!` : "No valid optical curves found in selected file(s)."));
+    showToast(msg, (added && !(job._pendingOmeBuf && !job.optics_bands)) ? "success" : "info");
   }
   event.target.value = "";
 }
@@ -8700,44 +9220,101 @@ function kramersKronigTransform(wGrid, fIm, offset = 1.0) {
   return out;
 }
 
+// Solve full optical constants from a projected raw interband histogram using
+// exact Levine-Allan Scissors shift, Instrumental Gaussian Smearing, full-range KK, and optional Drude term!
+function solveOpticsFromRawHist(rawHist, dE, eMaxHist, hwGrid, smearingEv, scissorsEv, useDrude, plasmaEv, drudeDampEv, alphaConst) {
+  const N = hwGrid.length;
+  const emaxDisp = hwGrid[N - 1];
+  const fullMax = Math.max(emaxDisp + 4.0, (eMaxHist || 60.0) + Math.max(0, scissorsEv) + 3.0 * smearingEv);
+  const M = 560;
+  const wFull = new Array(M);
+  const e2Full = new Float64Array(M);
+  const dwFull = (fullMax - 0.01) / (M - 1);
+  for (let i = 0; i < M; i++) wFull[i] = 0.01 + dwFull * i;
+
+  const sig = Math.max(0.02, smearingEv);
+  const invNorm = 1.0 / (sig * Math.sqrt(2.0 * Math.PI));
+  const inv2s2 = 1.0 / (2.0 * sig * sig);
+  const cut = 5.0 * sig;
+
+  for (let bi = 0; bi < rawHist.length; bi++) {
+    const val = rawHist[bi];
+    if (val <= 1e-12) continue;
+    const eb = (bi + 0.5) * dE + scissorsEv;
+    if (eb <= 0.01) continue;
+    const i0 = Math.max(0, Math.floor((eb - cut - 0.01) / dwFull));
+    const i1 = Math.min(M - 1, Math.ceil((eb + cut - 0.01) / dwFull));
+    for (let i = i0; i <= i1; i++) {
+      const diff = wFull[i] - eb;
+      e2Full[i] += val * Math.exp(-diff * diff * inv2s2) * invNorm;
+    }
+  }
+
+  const e1Full = kramersKronigTransform(wFull, e2Full, 1.0);
+  const p1 = new Array(M), p2 = new Array(M);
+  for (let i = 0; i < M; i++) {
+    p1[i] = [wFull[i], e1Full[i]];
+    p2[i] = [wFull[i], e2Full[i]];
+  }
+
+  const eps1 = new Array(N);
+  const eps2 = new Array(N);
+  const nArr = new Array(N);
+  const kArr = new Array(N);
+  const alphaCm = new Array(N);
+  const wp2 = (useDrude && plasmaEv > 1e-6) ? (plasmaEv * plasmaEv) : 0.0;
+  const gD = Math.max(0.005, drudeDampEv);
+
+  for (let i = 0; i < N; i++) {
+    const w = hwGrid[i];
+    let e1 = interpSortedXY(p1, w);
+    let e2 = Math.max(0, interpSortedXY(p2, w));
+    if (wp2 > 0) {
+      const denom = w * w + gD * gD;
+      e1 -= wp2 / denom;
+      e2 += (wp2 * gD) / (Math.max(0.01, w) * denom);
+    }
+    eps1[i] = e1;
+    eps2[i] = e2;
+    const modE = Math.hypot(e1, e2);
+    nArr[i] = Math.sqrt(Math.max(0, (modE + e1) * 0.5));
+    kArr[i] = Math.sqrt(Math.max(0, (modE - e1) * 0.5));
+    alphaCm[i] = alphaConst * w * kArr[i];
+  }
+  return { eps1, eps2, nArr, kArr, alphaCm };
+}
+
 // Least-squares Tauc linear absorption edge fit on the FIRST fundamental absorption onset
 function fitTaucLinearEdge(hwGrid, taucArr, fallbackEv) {
   const N = hwGrid.length;
   const globalMax = Math.max(...taucArr, 0);
   if (globalMax <= 1e-12) return { gapEv: fallbackEv || 0, slope: 0, intercept: 0, xStart: 0, xEnd: 0 };
 
-  // 1) Detect the first fundamental absorption onset peak (between 0.3 eV and 7.0 eV)
-  //    where taucArr rises cleanly above noise (> 0.5% of globalMax) and reaches its first local maximum
   let firstPeakIdx = -1;
-  let runningMax = 0;
   const noiseFloor = globalMax * 0.008;
   for (let i = 2; i < N - 2; i++) {
     const e = hwGrid[i];
     if (e < 0.35) continue;
     if (e > 7.5 && firstPeakIdx !== -1) break;
     const v = taucArr[i];
-    if (v > runningMax) runningMax = v;
     if (v >= noiseFloor && v >= taucArr[i - 1] && v >= taucArr[i + 1] && v >= taucArr[i - 2] && v >= taucArr[i + 2]) {
       firstPeakIdx = i;
       break;
     }
   }
   if (firstPeakIdx === -1) {
-    // Fallback: maximum within 0.3 .. 6.0 eV
     firstPeakIdx = 1;
     for (let i = 1; i < N; i++) {
       if (hwGrid[i] <= 6.5 && taucArr[i] > taucArr[firstPeakIdx]) firstPeakIdx = i;
     }
   }
 
-  // 2) Walk backwards from firstPeakIdx to find the steepest rising linear segment of that fundamental onset
   const pkVal = taucArr[firstPeakIdx] || globalMax;
   let startIdx = firstPeakIdx;
   while (startIdx > 1 && taucArr[startIdx - 1] <= taucArr[startIdx] && taucArr[startIdx] > pkVal * 0.03) {
     startIdx--;
   }
 
-  // Evaluate candidate windows along [startIdx .. firstPeakIdx] and choose the steepest well-correlated linear edge
   const loV = pkVal * 0.12;
   const hiV = pkVal * 0.72;
   const fitPts = [];
@@ -8762,89 +9339,24 @@ function fitTaucLinearEdge(hwGrid, taucArr, fallbackEv) {
   const intercept = (sy - slope * sx) / n;
   const rawGap = slope > 1e-6 ? (-intercept / slope) : (fallbackEv || 0);
   const gapEv = Math.max(0.0, Math.min(hwGrid[firstPeakIdx], rawGap));
-  return {
-    gapEv,
-    slope,
-    intercept,
-    xStart: gapEv,
-    xEnd: fitPts[n - 1][0]
-  };
+  return { gapEv, slope, intercept, xStart: gapEv, xEnd: fitPts[n - 1][0] };
 }
 
-function computeCastepOpticalSpectra(job) {
+function computeCastepOpticalSpectra(job, includeAnisotropy = false) {
   if (!job) return null;
-  const emax = Math.max(2.0, Math.min(120.0, parseFloat(document.getElementById("castep-opt-emax")?.value) || 15.0));
-  const scissorsEv = parseFloat(document.getElementById("castep-opt-scissors")?.value) || 0.0;
-  const smearingEv = Math.max(0.05, parseFloat(document.getElementById("castep-opt-smearing")?.value) || 0.25);
-  const fileSelVal = document.getElementById("castep-opt-file-select")?.value || "auto";
+  const p = getOpticalUiParams();
+  const { calcMode, vx, vy, vz, emax, smearingEv, scissorsEv, useDrude, plasmaEv, drudeDampEv, alphaConv, fileSelVal } = p;
+
+  // Absorption conversion constant:
+  //   Materials Studio CASTEP convention: alpha = 2*E*k / (h*c) = 16131.087 * E(eV) * k  [2k/lambda]
+  //   Standard Physics / SI convention  : alpha = 4*pi*E*k / (h*c) = 101354.614 * E(eV) * k [4*pi*k/lambda]
+  const ALPHA_CONST = alphaConv === "standard_si" ? 101354.614 : 16131.087;
 
   const allXcds = Array.isArray(job.optical_xcds) && job.optical_xcds.length
     ? job.optical_xcds
     : (job.optical_xcd ? [job.optical_xcd] : []);
-  const selectedXcds = (fileSelVal !== "auto" && allXcds[Number(fileSelVal)])
-    ? [allXcds[Number(fileSelVal)]]
-    : allXcds;
+  const wantTensor = !!(job.optical_tensor && (fileSelVal === "tensor" || (fileSelVal === "auto" && allXcds.length === 0)));
 
-  // Classify exact CASTEP series across selected optical .xcd files
-  let exactEps1Pts = null;
-  let exactEps2Pts = null;
-  let exactAbsPts = null;
-  let exactNPts = null;
-  let exactKPts = null;
-  let exactReflPts = null;
-  let exactLossPts = null;
-  let metaTitle = "";
-  let sourceBadge = "";
-
-  const normalizeXcdPts = (pts, xLabel) => {
-    const isNm = /nm|wavelength/i.test(xLabel || "");
-    const clean = pts
-      .map(p => [isNm ? (1239.84193 / Math.max(1.0, p[0])) : p[0], p[1]])
-      .filter(p => isFinite(p[0]) && isFinite(p[1]) && p[0] > 0);
-    clean.sort((a, b) => a[0] - b[0]);
-    return clean;
-  };
-
-  for (const xcd of selectedXcds) {
-    if (!metaTitle && xcd.title) metaTitle = xcd.title;
-    const yLbl = (xcd.yLabel || "").toLowerCase();
-    for (const ser of (xcd.series || [])) {
-      const pts = ser.segments?.[0];
-      if (!pts || pts.length < 4) continue;
-      const sName = (ser.name || "").toLowerCase();
-      const normPts = normalizeXcdPts(pts, xcd.xLabel);
-      if (sName.includes("re(eps") || sName.includes("eps1") || (yLbl.includes("dielectric") && sName.includes("real"))) {
-        exactEps1Pts = normPts;
-      } else if (sName.includes("im(eps") || sName.includes("eps2") || (yLbl.includes("dielectric") && sName.includes("imag"))) {
-        exactEps2Pts = normPts;
-      } else if (sName.includes("absorp") || yLbl.includes("absorption")) {
-        exactAbsPts = normPts;
-      } else if (sName === "n" || sName.includes("refractive") || (yLbl.includes("refractive") && sName.includes("real"))) {
-        exactNPts = normPts;
-      } else if (sName === "k" || sName.includes("extinction") || (yLbl.includes("refractive") && sName.includes("imag"))) {
-        exactKPts = normPts;
-      } else if (sName.includes("reflectiv") || yLbl.includes("reflectiv")) {
-        exactReflPts = normPts;
-      } else if (sName.includes("loss") || yLbl.includes("loss")) {
-        exactLossPts = normPts;
-      }
-    }
-  }
-
-  // Exact physical constant: 4*pi / (h*c) = 1.01354614e5 eV^-1 cm^-1
-  // Therefore: alpha(cm^-1) = ALPHA_CONST * E(eV) * k
-  const ALPHA_CONST = 101354.614;
-
-  const hasExactDielectric = !!(exactEps1Pts && exactEps2Pts);
-  const hasExactAbsorption = !!exactAbsPts;
-  const hasExactNK = !!(exactNPts && exactKPts);
-  const bandsForJdos = job.optics_bands || job.bandstr_bands || job.dos_bands || null;
-
-  if (!hasExactDielectric && !hasExactAbsorption && !hasExactNK && !bandsForJdos) {
-    return null; // ZERO fabricated Lorentzian curves!
-  }
-
-  // Build uniform display energy grid hwGrid in [0.02, emax]
   const N = 360;
   const hwGrid = new Array(N);
   for (let i = 0; i < N; i++) hwGrid[i] = 0.02 + (emax - 0.02) * (i / (N - 1));
@@ -8854,131 +9366,211 @@ function computeCastepOpticalSpectra(job) {
   let nArr = new Array(N).fill(1.0);
   let kArr = new Array(N).fill(0.0);
   let alphaCm = new Array(N).fill(0.0);
+  let exactReflPts = null;
+  let exactLossPts = null;
+  let metaTitle = "";
+  let sourceBadge = "";
+  let geomLabel = formatOpticalGeomLabel(calcMode, vx, vy, vz);
+  let isLiveTensor = false;
+  let anisotropyData = null;
 
-  if (hasExactDielectric) {
-    sourceBadge = "Exact CASTEP Dielectric Function ε₁/ε₂ (.xcd)";
-    if (Math.abs(scissorsEv) < 1e-6) {
-      for (let i = 0; i < N; i++) {
-        eps1[i] = interpSortedXY(exactEps1Pts, hwGrid[i]);
-        eps2[i] = Math.max(0, interpSortedXY(exactEps2Pts, hwGrid[i]));
-      }
-    } else {
-      // Shift eps2 by scissors operator on full range, then recompute KK-consistent eps1
-      const fullMax = Math.max(emax, exactEps2Pts[exactEps2Pts.length - 1][0] + Math.abs(scissorsEv));
-      const M = 600;
-      const wFull = new Array(M);
-      const e2Full = new Array(M);
-      for (let i = 0; i < M; i++) {
-        wFull[i] = 0.02 + (fullMax - 0.02) * (i / (M - 1));
-        const shifted = wFull[i] - scissorsEv;
-        e2Full[i] = shifted > 0.01 ? Math.max(0, interpSortedXY(exactEps2Pts, shifted)) : 0;
-      }
-      const e1Full = kramersKronigTransform(wFull, e2Full, 1.0);
-      const pts1 = wFull.map((w, i) => [w, e1Full[i]]);
-      const pts2 = wFull.map((w, i) => [w, e2Full[i]]);
-      for (let i = 0; i < N; i++) {
-        eps1[i] = interpSortedXY(pts1, hwGrid[i]);
-        eps2[i] = interpSortedXY(pts2, hwGrid[i]);
-      }
-    }
-    for (let i = 0; i < N; i++) {
-      const modE = Math.hypot(eps1[i], eps2[i]);
-      nArr[i] = Math.sqrt(Math.max(0, (modE + eps1[i]) / 2.0));
-      kArr[i] = Math.sqrt(Math.max(0, (modE - eps1[i]) / 2.0));
-      alphaCm[i] = exactAbsPts && Math.abs(scissorsEv) < 1e-6
-        ? Math.max(0, interpSortedXY(exactAbsPts, hwGrid[i]))
-        : ALPHA_CONST * hwGrid[i] * kArr[i];
-    }
-  } else if (hasExactNK) {
-    sourceBadge = "Exact CASTEP Refractive Index n(ω), k(ω) (.xcd)";
-    for (let i = 0; i < N; i++) {
-      const w = Math.max(0.01, hwGrid[i] - scissorsEv);
-      nArr[i] = Math.max(0, interpSortedXY(exactNPts, w));
-      kArr[i] = Math.max(0, interpSortedXY(exactKPts, w));
-      eps1[i] = nArr[i] * nArr[i] - kArr[i] * kArr[i];
-      eps2[i] = 2.0 * nArr[i] * kArr[i];
-      alphaCm[i] = ALPHA_CONST * hwGrid[i] * kArr[i];
-    }
-  } else if (hasExactAbsorption) {
-    sourceBadge = "Exact CASTEP Absorption α(ω) (.xcd) + Full-Range Kramers–Kronig";
-    // Use FULL frequency range of the CASTEP .xcd file (e.g., 0.01 .. 107.5 eV) for exact KK transform of k(w) -> n(w)
-    const fullMax = Math.max(emax, exactAbsPts[exactAbsPts.length - 1][0]);
-    const M = 640;
-    const wFull = new Array(M);
-    const kFull = new Array(M);
-    for (let i = 0; i < M; i++) {
-      const w = 0.02 + (fullMax - 0.02) * (i / (M - 1));
-      wFull[i] = w;
-      const wShift = w - scissorsEv;
-      const aVal = wShift > 0.01 ? Math.max(0, interpSortedXY(exactAbsPts, wShift)) : 0;
-      kFull[i] = aVal / (ALPHA_CONST * Math.max(0.05, w));
-    }
-    const nFull = kramersKronigTransform(wFull, kFull, 1.0);
-    const nPtsKK = wFull.map((w, i) => [w, Math.max(0.01, nFull[i])]);
+  if (wantTensor) {
+    isLiveTensor = true;
+    const T = job.optical_tensor;
+    const projHist = projectOpticalTensor6(T.t6, calcMode, vx, vy, vz);
+    const solved = solveOpticsFromRawHist(projHist, T.dE || 0.05, T.e_max || 80.0, hwGrid, smearingEv, scissorsEv, useDrude, plasmaEv, drudeDampEv, ALPHA_CONST);
+    eps1 = solved.eps1; eps2 = solved.eps2; nArr = solved.nArr; kArr = solved.kArr; alphaCm = solved.alphaCm;
+    sourceBadge = `Exact CASTEP 3×3 Tensor (${T.results_file || T.source_file})`;
+    metaTitle = `${geomLabel} • Smearing ${smearingEv.toFixed(2)} eV • Scissors ${scissorsEv >= 0 ? "+" : ""}${scissorsEv.toFixed(2)} eV`;
 
-    for (let i = 0; i < N; i++) {
-      const w = hwGrid[i];
-      const wShift = w - scissorsEv;
-      alphaCm[i] = wShift > 0.01 ? Math.max(0, interpSortedXY(exactAbsPts, wShift)) : 0;
-      kArr[i] = alphaCm[i] / (ALPHA_CONST * Math.max(0.05, w));
-      nArr[i] = Math.max(0.01, interpSortedXY(nPtsKK, w));
-      eps1[i] = nArr[i] * nArr[i] - kArr[i] * kArr[i];
-      eps2[i] = 2.0 * nArr[i] * kArr[i];
+    if (includeAnisotropy) {
+      const solveDir = (m, x, y, z) => {
+        const h = projectOpticalTensor6(T.t6, m, x, y, z);
+        const wpDir = useDrude ? (plasmaEv > 0 ? plasmaEv : Math.sqrt(projectScalarTensor6(T.plasma_ev_tensor, m, x, y, z))) : 0;
+        return solveOpticsFromRawHist(h, T.dE || 0.05, T.e_max || 80.0, hwGrid, smearingEv, scissorsEv, useDrude, wpDir, drudeDampEv, ALPHA_CONST);
+      };
+      anisotropyData = {
+        polX: solveDir("polarized", 1, 0, 0),
+        polY: solveDir("polarized", 0, 1, 0),
+        polZ: solveDir("polarized", 0, 0, 1),
+        unpolZ: solveDir("unpolarized", 0, 0, 1),
+        poly: solveDir("polycrystalline", 0, 0, 1)
+      };
     }
   } else {
-    // Path C: Genuine Direct Interband Joint Density of States (JDOS) from real CASTEP .bands eigenvalues!
-    sourceBadge = "Direct Interband JDOS from Real CASTEP .bands Eigenvalues";
-    const kpts = bandsForJdos.kpoints || [];
-    const M = 420;
-    const fullMax = Math.max(emax, 24.0);
-    const wFull = new Array(M);
-    const e2Full = new Array(M).fill(0);
-    for (let i = 0; i < M; i++) wFull[i] = 0.02 + (fullMax - 0.02) * (i / (M - 1));
+    const selectedXcds = (fileSelVal !== "auto" && fileSelVal !== "tensor" && fileSelVal !== "tensor_lazy" && allXcds[Number(fileSelVal)])
+      ? [allXcds[Number(fileSelVal)]]
+      : allXcds;
 
-    const inv2Sig2 = 1.0 / (2.0 * smearingEv * smearingEv);
-    const normG = 1.0 / (smearingEv * Math.sqrt(2.0 * Math.PI));
-    const cellVol = getActiveStructureCellVolAndC().vol || 250.0;
-    // Standard constant-matrix-element JDOS prefactor normalized by cell volume
-    const prefactor = (400.0 / Math.max(50.0, cellVol)) * (bandsForJdos.ns === 2 ? 1.0 : 2.0);
+    let exactEps1Pts = null, exactEps2Pts = null, exactAbsPts = null, exactNPts = null, exactKPts = null;
+    const normalizeXcdPts = (pts, xLabel) => {
+      const isNm = /nm|wavelength/i.test(xLabel || "");
+      const clean = pts
+        .map(pt => [isNm ? (1239.84193 / Math.max(1.0, pt[0])) : pt[0], pt[1]])
+        .filter(pt => isFinite(pt[0]) && isFinite(pt[1]) && pt[0] > 0);
+      clean.sort((a, b) => a[0] - b[0]);
+      return clean;
+    };
 
-    let wtSum = 0;
-    kpts.forEach(kp => { wtSum += (kp.w || 1.0); });
-    if (wtSum <= 0) wtSum = 1.0;
+    for (const xcd of selectedXcds) {
+      if (!metaTitle && xcd.title) metaTitle = xcd.title;
+      const yLbl = (xcd.yLabel || "").toLowerCase();
+      for (const ser of (xcd.series || [])) {
+        const pts = ser.segments?.[0];
+        if (!pts || pts.length < 4) continue;
+        const sName = (ser.name || "").toLowerCase();
+        const normPts = normalizeXcdPts(pts, xcd.xLabel);
+        if (sName.includes("re(eps") || sName.includes("eps1") || (yLbl.includes("dielectric") && sName.includes("real"))) exactEps1Pts = normPts;
+        else if (sName.includes("im(eps") || sName.includes("eps2") || (yLbl.includes("dielectric") && sName.includes("imag"))) exactEps2Pts = normPts;
+        else if (sName.includes("absorp") || yLbl.includes("absorption")) exactAbsPts = normPts;
+        else if (sName === "n" || sName.includes("refractive") || (yLbl.includes("refractive") && sName.includes("real"))) exactNPts = normPts;
+        else if (sName === "k" || sName.includes("extinction") || (yLbl.includes("refractive") && sName.includes("imag"))) exactKPts = normPts;
+        else if (sName.includes("reflectiv") || yLbl.includes("reflectiv")) exactReflPts = normPts;
+        else if (sName.includes("loss") || yLbl.includes("loss")) exactLossPts = normPts;
+      }
+    }
 
-    for (const kp of kpts) {
-      const wk = (kp.w || 1.0) / wtSum;
-      for (const sp of (kp.e || [])) {
-        const occ = [];
-        const unocc = [];
-        for (let b = 0; b < sp.length; b++) {
-          if (sp[b] <= 0.005) occ.push(sp[b]);
-          else unocc.push(sp[b] + scissorsEv);
+    const hasExactDielectric = !!(exactEps1Pts && exactEps2Pts);
+    const hasExactAbsorption = !!exactAbsPts;
+    const hasExactNK = !!(exactNPts && exactKPts);
+    const bandsForJdos = job.optics_bands || job.bandstr_bands || job.dos_bands || null;
+    if (!hasExactDielectric && !hasExactAbsorption && !hasExactNK && !bandsForJdos) return null;
+
+    // Extract baked-in Materials Studio geometry from XCD metadata if available
+    const mGeom = (metaTitle || "").match(/Calculation geometry:\s*([^\n\\]+)/i);
+    geomLabel = mGeom ? mGeom[1].trim() : "From Exported Spectrum (.xcd)";
+
+    const wp2 = (useDrude && plasmaEv > 1e-6) ? (plasmaEv * plasmaEv) : 0.0;
+    const gD = Math.max(0.005, drudeDampEv);
+
+    if (hasExactDielectric) {
+      sourceBadge = "Exact CASTEP Dielectric Function ε₁/ε₂ (.xcd)";
+      if (Math.abs(scissorsEv) < 1e-6) {
+        for (let i = 0; i < N; i++) {
+          eps1[i] = interpSortedXY(exactEps1Pts, hwGrid[i]);
+          eps2[i] = Math.max(0, interpSortedXY(exactEps2Pts, hwGrid[i]));
         }
-        for (let iv = 0; iv < occ.length; iv++) {
-          for (let ic = 0; ic < unocc.length; ic++) {
-            const dE = unocc[ic] - occ[iv];
-            if (dE <= 0.05 || dE > fullMax + 3.0 * smearingEv) continue;
-            const weight = (wk * prefactor) / (dE * dE);
-            for (let g = 0; g < M; g++) {
-              const diff = wFull[g] - dE;
-              if (Math.abs(diff) < 3.5 * smearingEv) {
-                e2Full[g] += weight * Math.exp(-diff * diff * inv2Sig2) * normG;
+      } else {
+        const fullMax = Math.max(emax, exactEps2Pts[exactEps2Pts.length - 1][0] + Math.abs(scissorsEv));
+        const M = 600;
+        const wFull = new Array(M), e2Full = new Array(M);
+        for (let i = 0; i < M; i++) {
+          wFull[i] = 0.02 + (fullMax - 0.02) * (i / (M - 1));
+          const shifted = wFull[i] - scissorsEv;
+          e2Full[i] = shifted > 0.01 ? Math.max(0, interpSortedXY(exactEps2Pts, shifted)) : 0;
+        }
+        const e1Full = kramersKronigTransform(wFull, e2Full, 1.0);
+        const pts1 = wFull.map((w, i) => [w, e1Full[i]]);
+        const pts2 = wFull.map((w, i) => [w, e2Full[i]]);
+        for (let i = 0; i < N; i++) {
+          eps1[i] = interpSortedXY(pts1, hwGrid[i]);
+          eps2[i] = interpSortedXY(pts2, hwGrid[i]);
+        }
+      }
+      for (let i = 0; i < N; i++) {
+        const w = hwGrid[i];
+        if (wp2 > 0) {
+          const den = w * w + gD * gD;
+          eps1[i] -= wp2 / den;
+          eps2[i] += (wp2 * gD) / (Math.max(0.01, w) * den);
+        }
+        const modE = Math.hypot(eps1[i], eps2[i]);
+        nArr[i] = Math.sqrt(Math.max(0, (modE + eps1[i]) * 0.5));
+        kArr[i] = Math.sqrt(Math.max(0, (modE - eps1[i]) * 0.5));
+        alphaCm[i] = (exactAbsPts && Math.abs(scissorsEv) < 1e-6 && wp2 === 0 && alphaConv === "ms_castep")
+          ? Math.max(0, interpSortedXY(exactAbsPts, w))
+          : ALPHA_CONST * w * kArr[i];
+      }
+    } else if (hasExactNK) {
+      sourceBadge = "Exact CASTEP Refractive Index n(ω), k(ω) (.xcd)";
+      for (let i = 0; i < N; i++) {
+        const w = Math.max(0.01, hwGrid[i] - scissorsEv);
+        nArr[i] = Math.max(0, interpSortedXY(exactNPts, w));
+        kArr[i] = Math.max(0, interpSortedXY(exactKPts, w));
+        eps1[i] = nArr[i] * nArr[i] - kArr[i] * kArr[i];
+        eps2[i] = 2.0 * nArr[i] * kArr[i];
+        alphaCm[i] = ALPHA_CONST * hwGrid[i] * kArr[i];
+      }
+    } else if (hasExactAbsorption) {
+      sourceBadge = "Exact CASTEP Absorption α(ω) (.xcd) + Full-Range Kramers–Kronig";
+      const fullMax = Math.max(emax, exactAbsPts[exactAbsPts.length - 1][0]);
+      const M = 600;
+      const wFull = new Array(M), kFull = new Array(M);
+      // Materials Studio Absorption .xcd is always in 2k/lambda units (16131.087 * E * k)!
+      const msAlphaConst = 16131.087;
+      for (let i = 0; i < M; i++) {
+        const w = 0.02 + (fullMax - 0.02) * (i / (M - 1));
+        wFull[i] = w;
+        const wShift = w - scissorsEv;
+        const aVal = wShift > 0.01 ? Math.max(0, interpSortedXY(exactAbsPts, wShift)) : 0;
+        kFull[i] = aVal / (msAlphaConst * Math.max(0.05, w));
+      }
+      const nFull = kramersKronigTransform(wFull, kFull, 1.0);
+      const nPtsKK = wFull.map((w, i) => [w, Math.max(0.01, nFull[i])]);
+      for (let i = 0; i < N; i++) {
+        const w = hwGrid[i];
+        const wShift = w - scissorsEv;
+        const rawA = wShift > 0.01 ? Math.max(0, interpSortedXY(exactAbsPts, wShift)) : 0;
+        kArr[i] = rawA / (msAlphaConst * Math.max(0.05, w));
+        nArr[i] = Math.max(0.01, interpSortedXY(nPtsKK, w));
+        eps1[i] = nArr[i] * nArr[i] - kArr[i] * kArr[i];
+        eps2[i] = 2.0 * nArr[i] * kArr[i];
+        alphaCm[i] = ALPHA_CONST * w * kArr[i];
+      }
+    } else {
+      sourceBadge = "Direct Interband JDOS from CASTEP .bands (Isotropic)";
+      geomLabel = "Polycrystalline / Isotropic JDOS (Upload *.ome_bin for 3D Polarized/Unpolarized)";
+      const kpts = bandsForJdos.kpoints || [];
+      const M = 420;
+      const fullMax = Math.max(emax, 24.0);
+      const wFull = new Array(M), e2Full = new Array(M).fill(0);
+      for (let i = 0; i < M; i++) wFull[i] = 0.02 + (fullMax - 0.02) * (i / (M - 1));
+      const inv2Sig2 = 1.0 / (2.0 * smearingEv * smearingEv);
+      const normG = 1.0 / (smearingEv * Math.sqrt(2.0 * Math.PI));
+      const cellVol = getActiveStructureCellVolAndC().vol || 250.0;
+      const prefactor = (400.0 / Math.max(50.0, cellVol)) * (bandsForJdos.ns === 2 ? 1.0 : 2.0);
+      let wtSum = 0;
+      kpts.forEach(kp => { wtSum += (kp.w || 1.0); });
+      if (wtSum <= 0) wtSum = 1.0;
+      for (const kp of kpts) {
+        const wk = (kp.w || 1.0) / wtSum;
+        for (const sp of (kp.e || [])) {
+          const occ = [], unocc = [];
+          for (let b = 0; b < sp.length; b++) {
+            if (sp[b] <= 0.005) occ.push(sp[b]);
+            else unocc.push(sp[b]);
+          }
+          for (let iv = 0; iv < occ.length; iv++) {
+            for (let ic = 0; ic < unocc.length; ic++) {
+              const dERaw = unocc[ic] - occ[iv];
+              const dEShift = dERaw + scissorsEv;
+              if (dERaw <= 0.05 || dEShift <= 0.05 || dEShift > fullMax + 3.0 * smearingEv) continue;
+              const weight = (wk * prefactor) / (dERaw * dERaw);
+              for (let g = 0; g < M; g++) {
+                const diff = wFull[g] - dEShift;
+                if (Math.abs(diff) < 3.5 * smearingEv) e2Full[g] += weight * Math.exp(-diff * diff * inv2Sig2) * normG;
               }
             }
           }
         }
       }
-    }
-    const e1Full = kramersKronigTransform(wFull, e2Full, 1.0);
-    const p1 = wFull.map((w, i) => [w, e1Full[i]]);
-    const p2 = wFull.map((w, i) => [w, e2Full[i]]);
-    for (let i = 0; i < N; i++) {
-      eps1[i] = interpSortedXY(p1, hwGrid[i]);
-      eps2[i] = Math.max(0, interpSortedXY(p2, hwGrid[i]));
-      const modE = Math.hypot(eps1[i], eps2[i]);
-      nArr[i] = Math.sqrt(Math.max(0, (modE + eps1[i]) / 2.0));
-      kArr[i] = Math.sqrt(Math.max(0, (modE - eps1[i]) / 2.0));
-      alphaCm[i] = ALPHA_CONST * hwGrid[i] * kArr[i];
+      const e1Full = kramersKronigTransform(wFull, e2Full, 1.0);
+      const p1 = wFull.map((w, i) => [w, e1Full[i]]);
+      const p2 = wFull.map((w, i) => [w, e2Full[i]]);
+      for (let i = 0; i < N; i++) {
+        const w = hwGrid[i];
+        eps1[i] = interpSortedXY(p1, w);
+        eps2[i] = Math.max(0, interpSortedXY(p2, w));
+        if (wp2 > 0) {
+          const den = w * w + gD * gD;
+          eps1[i] -= wp2 / den;
+          eps2[i] += (wp2 * gD) / (Math.max(0.01, w) * den);
+        }
+        const modE = Math.hypot(eps1[i], eps2[i]);
+        nArr[i] = Math.sqrt(Math.max(0, (modE + eps1[i]) * 0.5));
+        kArr[i] = Math.sqrt(Math.max(0, (modE - eps1[i]) * 0.5));
+        alphaCm[i] = ALPHA_CONST * w * kArr[i];
+      }
     }
   }
 
@@ -8997,18 +9589,16 @@ function computeCastepOpticalSpectra(job) {
   for (let i = 0; i < N; i++) {
     const hw = hwGrid[i];
     const e1 = eps1[i], e2 = eps2[i], n = nArr[i], k = kArr[i];
-    const R = exactReflPts && Math.abs(scissorsEv) < 1e-6
+    const R = (!isLiveTensor && exactReflPts && Math.abs(scissorsEv) < 1e-6 && !(useDrude && plasmaEv > 0))
       ? interpSortedXY(exactReflPts, hw)
       : ((n - 1) * (n - 1) + k * k) / (((n + 1) * (n + 1) + k * k) || 1e-12);
     reflArr[i] = Math.max(0, Math.min(1, R));
 
-    // Optical conductivity in 1/fs: omega(1/fs) = hw(eV) / hbar(eV*fs) = hw * 1.51926745
     const wFs = hw * 1.51926745;
     cond1Arr[i] = (wFs * e2) / (4.0 * Math.PI);
     cond2Arr[i] = -(wFs * (e1 - 1.0)) / (4.0 * Math.PI);
 
-    // Exact EELS Loss Function L(w) = Im[-1/eps(w)] = eps2 / (eps1^2 + eps2^2)
-    const L = exactLossPts && Math.abs(scissorsEv) < 1e-6
+    const L = (!isLiveTensor && exactLossPts && Math.abs(scissorsEv) < 1e-6 && !(useDrude && plasmaEv > 0))
       ? interpSortedXY(exactLossPts, hw)
       : e2 / (e1 * e1 + e2 * e2 + 1e-9);
     lossArr[i] = L;
@@ -9028,6 +9618,10 @@ function computeCastepOpticalSpectra(job) {
   return {
     sourceBadge,
     metaTitle,
+    geomLabel,
+    isLiveTensor,
+    params: p,
+    anisotropyData,
     hwGrid, eps1, eps2, alphaCm, nArr, kArr, reflArr, cond1Arr, cond2Arr, lossArr, taucDirArr, taucIndArr,
     taucFitDirect, taucFitIndirect,
     metrics: {
@@ -9041,13 +9635,54 @@ function computeCastepOpticalSpectra(job) {
   };
 }
 
+function getOpticalAxisConfig(xAxisMode, hwGrid) {
+  const fullEmax = hwGrid[hwGrid.length - 1];
+  if (xAxisMode === "nm") {
+    return {
+      xVals: hwGrid.map(hw => 1239.84193 / Math.max(0.1, hw)),
+      xTitle: "Wavelength λ (nm)",
+      visStart: 380, visEnd: 750, reverseRainbow: true,
+      evToX: (e) => 1239.84193 / Math.max(0.1, e),
+      fmtTick: (v) => `${Math.round(v)}`
+    };
+  }
+  if (xAxisMode === "cm-1") {
+    const k = 8065.54429;
+    return {
+      xVals: hwGrid.map(hw => hw * k),
+      xTitle: "Wavenumber ν̃ (cm⁻¹)",
+      visStart: 1.65 * k, visEnd: 3.26 * k, reverseRainbow: false,
+      evToX: (e) => e * k,
+      fmtTick: (v) => v >= 10000 ? `${(v / 1000).toFixed(0)}k` : `${Math.round(v)}`
+    };
+  }
+  if (xAxisMode === "thz") {
+    const k = 241.798924;
+    return {
+      xVals: hwGrid.map(hw => hw * k),
+      xTitle: "Frequency ν (THz)",
+      visStart: 1.65 * k, visEnd: 3.26 * k, reverseRainbow: false,
+      evToX: (e) => e * k,
+      fmtTick: (v) => `${Math.round(v)}`
+    };
+  }
+  return {
+    xVals: hwGrid,
+    xTitle: "Photon Energy ħω (eV)",
+    visStart: 1.65, visEnd: 3.26, reverseRainbow: false,
+    evToX: (e) => e,
+    fmtTick: (v) => v.toFixed(1)
+  };
+}
+
 function renderCastepOpticalPlots() {
   const canvas = document.getElementById("castep-optics-canvas");
   if (!canvas) return;
   const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId) || null;
   const prop = document.getElementById("castep-opt-property")?.value || "multigrid";
-  const xAxisMode = document.getElementById("castep-opt-xaxis")?.value || "ev";
   const showVis = document.getElementById("castep-opt-show-vis")?.checked !== false;
+  const p = getOpticalUiParams();
+  const xAxisMode = p.xAxisMode;
 
   const parentW = canvas.parentElement ? (canvas.parentElement.clientWidth - 24) : 880;
   const width = Math.max(320, Math.floor(parentW));
@@ -9063,14 +9698,16 @@ function renderCastepOpticalPlots() {
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
-  const emaxVal = parseFloat(document.getElementById("castep-opt-emax")?.value) || 15.0;
-  const scisVal = parseFloat(document.getElementById("castep-opt-scissors")?.value) || 0.0;
-  const smrVal = parseFloat(document.getElementById("castep-opt-smearing")?.value) || 0.25;
-  const fSelVal = document.getElementById("castep-opt-file-select")?.value || "auto";
-  const optCacheKey = `${job?.id || "none"}_${emaxVal}_${scisVal}_${smrVal}_${fSelVal}_${(job?.optical_xcds || []).length}`;
+  const needAniso = (prop === "anisotropy");
+  const optCacheKey = [
+    job?.id || "none", p.calcMode, p.vx, p.vy, p.vz,
+    p.emax, p.smearingEv, p.scissorsEv, p.useDrude ? 1 : 0, p.plasmaEv, p.drudeDampEv, p.alphaConv,
+    p.fileSelVal, (job?.optical_xcds || []).length, job?.optical_tensor ? "T" : "N", needAniso ? "A" : "S"
+  ].join("|");
+
   let spec = CASTEP_STUDIO_STATE.lastOpticalSpectra;
   if (!spec || CASTEP_STUDIO_STATE._optSpectraCacheKey !== optCacheKey) {
-    spec = computeCastepOpticalSpectra(job);
+    spec = computeCastepOpticalSpectra(job, needAniso);
     CASTEP_STUDIO_STATE.lastOpticalSpectra = spec;
     CASTEP_STUDIO_STATE._optSpectraCacheKey = optCacheKey;
   }
@@ -9078,7 +9715,7 @@ function renderCastepOpticalPlots() {
   const strip = document.getElementById("castep-optics-summary-strip");
   if (!spec) {
     if (strip) {
-      strip.innerHTML = `<span><strong>Status:</strong> No optical spectra (<code>*Optical Properties*.xcd</code>, <code>*_Optics.bands</code>, or CSV) found in the active calculation.</span>`;
+      strip.innerHTML = `<span><strong>Status:</strong> No optical spectra (<code>*.ome_bin</code>, <code>*Optical Properties*.xcd</code>, or <code>*_Optics.bands</code>) found in the active calculation.</span>`;
     }
     ctx.fillStyle = "#334155";
     ctx.font = "700 15px Inter, sans-serif";
@@ -9086,63 +9723,60 @@ function renderCastepOpticalPlots() {
     ctx.fillText("No CASTEP Optical Properties Data Loaded", width / 2, height / 2 - 14);
     ctx.fillStyle = "#64748b";
     ctx.font = "12.5px Inter, sans-serif";
-    ctx.fillText("Click '📥 Load Optical (.xcd/.csv)' above or select a calculation containing Optical Properties .xcd or .bands files.", width / 2, height / 2 + 12);
+    ctx.fillText("Click '📥 .ome_bin/.xcd' above to load CASTEP *.ome_bin + *_Optics.bands (full Polarized/Unpolarized/Polycrystalline analysis) or Optical .xcd files.", width / 2, height / 2 + 12);
     ctx.restore();
     return;
   }
 
   if (strip) {
     const m = spec.metrics;
-    const polMatch = (spec.metaTitle || "").match(/polarization direction:\s*\([^)]+\)/i);
-    const polInfo = polMatch ? polMatch[0] : "";
+    const drudeTag = (p.useDrude && p.plasmaEv > 0) ? ` • Drude ω<sub>p</sub>=${p.plasmaEv.toFixed(2)} eV` : "";
     strip.innerHTML = `
-      <span style="color:#0369a1;"><strong>Source:</strong> ${escapeHtml(spec.sourceBadge)}${polInfo ? " • " + escapeHtml(polInfo) : ""}</span>
-      <span><strong>ε₁(0):</strong> ${m.eps1Zero.toFixed(2)}</span>
+      <span style="color:#0369a1;"><strong>Source:</strong> ${escapeHtml(spec.sourceBadge)}</span>
+      <span style="color:#047857;"><strong>Geometry:</strong> ${escapeHtml(spec.geomLabel)} • σ=${p.smearingEv.toFixed(2)} eV${Math.abs(p.scissorsEv) > 1e-4 ? ` • Δ=${p.scissorsEv >= 0 ? "+" : ""}${p.scissorsEv.toFixed(2)} eV` : ""}${drudeTag}</span>
+      <span><strong>ε<sub>1</sub>(0):</strong> ${m.eps1Zero.toFixed(2)}</span>
       <span><strong>n(0):</strong> ${m.nZero.toFixed(2)}</span>
-      <span><strong>α<sub>max</sub>:</strong> ${(m.maxAlpha / 1e4).toFixed(2)}×10⁴ cm⁻¹ @ ${m.maxAlphaEv.toFixed(2)} eV</span>
+      <span><strong>α<sub>max</sub>:</strong> ${(m.maxAlpha / 1e4).toFixed(2)}×10<sup>4</sup> cm<sup>−1</sup> @ ${m.maxAlphaEv.toFixed(2)} eV</span>
       <span><strong>Plasmon ħω<sub>p</sub>:</strong> ${m.maxLossEv.toFixed(2)} eV (L=${m.maxLoss.toFixed(2)})</span>
       <span><strong>Tauc E<sub>g</sub><sup>opt</sup>:</strong> ${m.optGapEv.toFixed(2)} eV</span>
     `;
   }
 
-  let xVals = spec.hwGrid;
   const fullEmax = spec.hwGrid[spec.hwGrid.length - 1];
-  let xTitle = "Photon Energy ħω (eV)";
-  if (xAxisMode === "nm") {
-    xTitle = "Wavelength λ (nm)";
-    xVals = spec.hwGrid.map(hw => 1239.84193 / Math.max(0.1, hw));
-  }
+  const axCfg = getOpticalAxisConfig(xAxisMode, spec.hwGrid);
+  const xVals = axCfg.xVals;
+  const xTitle = axCfg.xTitle;
 
   function drawOpticalSubPanel(boxX, boxY, boxW, boxH, cfg) {
     const pKey = cfg.panelKey || "single";
     const pz = (CASTEP_STUDIO_STATE.optPanelZooms && CASTEP_STUDIO_STATE.optPanelZooms[pKey]) || { emin: 0, emax: null, nmMin: 180, nmMax: 1100, yScale: 1.0 };
-    let xMin = 0, xMax = fullEmax;
+    let xMin = 0, xMax = axCfg.evToX(fullEmax);
     if (xAxisMode === "nm") {
       xMin = pz.nmMin !== undefined ? pz.nmMin : 180;
       xMax = pz.nmMax !== undefined ? pz.nmMax : 1100;
       if (xMax <= xMin + 20) { xMin = 180; xMax = 1100; }
     } else {
-      xMin = pz.emin !== undefined && pz.emin !== null ? pz.emin : 0;
-      xMax = pz.emax !== undefined && pz.emax !== null ? pz.emax : fullEmax;
-      if (xMax <= xMin + 0.12) { xMin = 0; xMax = fullEmax; }
+      const e0 = (pz.emin !== undefined && pz.emin !== null) ? pz.emin : 0;
+      const e1 = (pz.emax !== undefined && pz.emax !== null) ? pz.emax : fullEmax;
+      const useE0 = (e1 <= e0 + 0.12) ? 0 : e0;
+      const useE1 = (e1 <= e0 + 0.12) ? fullEmax : e1;
+      xMin = axCfg.evToX(useE0);
+      xMax = axCfg.evToX(useE1);
     }
 
-    const isZoomedX = xAxisMode === "nm"
-      ? (xMax - xMin < 910)
-      : (xMax - xMin < fullEmax - 0.15);
-    const zoomFactorDisp = xAxisMode === "nm"
-      ? (920 / Math.max(1, xMax - xMin))
-      : (fullEmax / Math.max(0.1, xMax - xMin));
+    const fullSpanX = xAxisMode === "nm" ? 920 : Math.max(0.1, axCfg.evToX(fullEmax));
+    const isZoomedX = (xMax - xMin) < fullSpanX * 0.985;
+    const zoomFactorDisp = fullSpanX / Math.max(1e-6, xMax - xMin);
     const isActiveSub = prop === "multigrid" && CASTEP_STUDIO_STATE.activeOptPanel === pKey;
 
     const hasRightAxis = cfg.series.some(s => s.axis === "right");
-    const padL = 54, padR = hasRightAxis ? 48 : 16, padT = 28, padB = 34;
+    const multiRowLegend = cfg.series.length >= 3;
+    const padL = 54, padR = hasRightAxis ? 48 : 16, padT = multiRowLegend ? 44 : 28, padB = 34;
     const pw = Math.max(60, boxW - padL - padR);
     const ph = Math.max(50, boxH - padT - padB);
     const px0 = boxX + padL;
     const py0 = boxY + padT;
 
-    // Subtle crisp focus highlight on active 2x2 sub-panel
     if (isActiveSub) {
       ctx.save();
       ctx.fillStyle = "rgba(239, 246, 255, 0.32)";
@@ -9190,19 +9824,15 @@ function renderCastepOpticalPlots() {
     ctx.strokeStyle = "#cbd5e1";
     ctx.lineWidth = 1.2;
     ctx.strokeRect(px0, py0, pw, ph);
-
     ctx.beginPath();
     ctx.rect(px0, py0, pw, ph);
     ctx.clip();
 
-    // Visible light spectrum band (1.65 - 3.26 eV or 380 - 750 nm)
     if (showVis) {
-      const visStart = xAxisMode === "nm" ? 380 : 1.65;
-      const visEnd   = xAxisMode === "nm" ? 750 : 3.26;
-      const vx1 = toX(visStart), vx2 = toX(visEnd);
+      const vx1 = toX(axCfg.visStart), vx2 = toX(axCfg.visEnd);
       if (vx2 > px0 && vx1 < px0 + pw) {
         const grad = ctx.createLinearGradient(vx1, py0, vx2, py0);
-        if (xAxisMode === "nm") {
+        if (axCfg.reverseRainbow) {
           grad.addColorStop(0.0, "rgba(147, 51, 234, 0.14)");
           grad.addColorStop(0.25, "rgba(37, 99, 235, 0.14)");
           grad.addColorStop(0.5, "rgba(22, 163, 74, 0.14)");
@@ -9220,7 +9850,6 @@ function renderCastepOpticalPlots() {
       }
     }
 
-    // Grid lines
     for (let g = 1; g <= 3; g++) {
       const gy = py0 + (ph * g) / 4;
       ctx.beginPath();
@@ -9233,7 +9862,6 @@ function renderCastepOpticalPlots() {
       ctx.setLineDash([4, 3]); ctx.strokeStyle = "#64748b"; ctx.lineWidth = 1.1; ctx.stroke(); ctx.setLineDash([]);
     }
 
-    // Plot curves
     cfg.series.forEach(s => {
       const toY = s.axis === "right" ? toYRight : toYLeft;
       const pts = [];
@@ -9243,19 +9871,18 @@ function renderCastepOpticalPlots() {
       }
       pts.sort((a, b) => a[0] - b[0]);
       if (!pts.length) return;
-
       if (s.fillAlpha) {
         ctx.beginPath();
         ctx.moveTo(toX(pts[0][0]), toY(0));
-        pts.forEach(p => ctx.lineTo(toX(p[0]), toY(p[1])));
+        pts.forEach(pt => ctx.lineTo(toX(pt[0]), toY(pt[1])));
         ctx.lineTo(toX(pts[pts.length - 1][0]), toY(0));
         ctx.closePath();
         ctx.fillStyle = s.fillAlpha;
         ctx.fill();
       }
       ctx.beginPath();
-      pts.forEach((p, idx) => {
-        const sx = toX(p[0]), sy = toY(p[1]);
+      pts.forEach((pt, idx) => {
+        const sx = toX(pt[0]), sy = toY(pt[1]);
         if (idx === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
       });
       ctx.strokeStyle = s.color;
@@ -9265,7 +9892,6 @@ function renderCastepOpticalPlots() {
       ctx.setLineDash([]);
     });
 
-    // Optional Tauc Linear Tangent Extrapolation Line
     if (cfg.taucFit && cfg.taucFit.slope > 0 && xAxisMode === "ev") {
       const tf = cfg.taucFit;
       const x1 = tf.xStart, y1 = 0;
@@ -9285,11 +9911,11 @@ function renderCastepOpticalPlots() {
     }
     ctx.restore();
 
-    // Panel Title & independent per-panel zoom badge
     ctx.fillStyle = isActiveSub ? "#1d4ed8" : "#0f172a";
     ctx.font = "bold 11.5px Inter, sans-serif";
     ctx.textAlign = "left";
-    drawSciText(ctx, cfg.title, px0, boxY + 17);
+    ctx.textBaseline = "alphabetic";
+    drawSciText(ctx, cfg.title, px0, boxY + 16);
     if (isZoomedX || (Number(pz.yScale) || 1.0) > 1.05) {
       const zTxt = `🔍 ${zoomFactorDisp.toFixed(1)}×`;
       ctx.save();
@@ -9307,19 +9933,31 @@ function renderCastepOpticalPlots() {
       ctx.restore();
     }
 
-    // Inline legend (right-aligned inside boxW with zero clipping!)
-    let lx = px0 + pw;
-    ctx.font = "bold 10.5px Inter, sans-serif";
-    ctx.textAlign = "right";
-    for (let i = cfg.series.length - 1; i >= 0; i--) {
-      const s = cfg.series[i];
-      ctx.fillStyle = s.color;
-      const lbl = `● ${s.label}`;
-      drawSciText(ctx, lbl, lx, boxY + 17);
-      lx -= measureSciText(ctx, lbl) + 10;
+    const legY = multiRowLegend ? (boxY + 34) : (boxY + 16);
+    ctx.font = multiRowLegend ? "bold 10px Inter, sans-serif" : "bold 10.5px Inter, sans-serif";
+    ctx.textBaseline = "alphabetic";
+    if (multiRowLegend) {
+      let lx = px0;
+      ctx.textAlign = "left";
+      for (let i = 0; i < cfg.series.length; i++) {
+        const s = cfg.series[i];
+        ctx.fillStyle = s.color;
+        const lbl = `● ${s.label}`;
+        drawSciText(ctx, lbl, lx, legY);
+        lx += measureSciText(ctx, lbl) + 10;
+      }
+    } else {
+      let lx = px0 + pw;
+      ctx.textAlign = "right";
+      for (let i = cfg.series.length - 1; i >= 0; i--) {
+        const s = cfg.series[i];
+        ctx.fillStyle = s.color;
+        const lbl = `● ${s.label}`;
+        drawSciText(ctx, lbl, lx, legY);
+        lx -= measureSciText(ctx, lbl) + 10;
+      }
     }
 
-    // Left Y-axis ticks
     ctx.fillStyle = hasRightAxis ? (leftSeries[0]?.color || "#475569") : "#475569";
     ctx.font = "10px Inter, sans-serif";
     ctx.textAlign = "right";
@@ -9330,7 +9968,6 @@ function renderCastepOpticalPlots() {
       ctx.fillText(fmt, px0 - 5, toYLeft(yVal));
     }
 
-    // Right Y-axis ticks (for Dual-Axis Panel d)
     if (rightR) {
       ctx.fillStyle = rightSeries[0]?.color || "#be123c";
       ctx.textAlign = "left";
@@ -9341,17 +9978,16 @@ function renderCastepOpticalPlots() {
       }
     }
 
-    // X-axis ticks
     ctx.fillStyle = "#475569";
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
     for (let g = 0; g <= 5; g++) {
       const xVal = xMin + (xMax - xMin) * (g / 5);
-      ctx.fillText(xAxisMode === "nm" ? `${Math.round(xVal)}` : xVal.toFixed(1), toX(xVal), py0 + ph + 4);
+      ctx.fillText(axCfg.fmtTick(xVal), toX(xVal), py0 + ph + 4);
     }
     ctx.font = "bold 10.5px Inter, sans-serif";
     ctx.fillStyle = "#334155";
-    ctx.fillText(xTitle, px0 + pw / 2, py0 + ph + 18);
+    drawSciText(ctx, xTitle, px0 + pw / 2, py0 + ph + 18);
   }
 
   const alpha10k = spec.alphaCm.map(v => v / 1e4);
@@ -9362,12 +9998,12 @@ function renderCastepOpticalPlots() {
     drawOpticalSubPanel(0, 0, hw, hh, {
       panelKey: "a", title: "(a) Dielectric ε(ω)",
       series: [
-        { label: "ε₁ Real", values: spec.eps1, color: "#2563eb", width: 2.0 },
-        { label: "ε₂ Imag", values: spec.eps2, color: "#dc2626", width: 2.0, fillAlpha: "rgba(220,38,38,0.08)" }
+        { label: "ε_{1} Real", values: spec.eps1, color: "#2563eb", width: 2.0 },
+        { label: "ε_{2} Imag", values: spec.eps2, color: "#dc2626", width: 2.0, fillAlpha: "rgba(220,38,38,0.08)" }
       ]
     });
     drawOpticalSubPanel(hw, 0, width - hw, hh, {
-      panelKey: "b", title: "(b) Absorption α (×10⁴ cm⁻¹)",
+      panelKey: "b", title: "(b) Absorption α (×10^{4} cm^{-1})",
       yMinForced: 0,
       series: [
         { label: "α(ω)", values: alpha10k, color: "#0284c7", width: 2.2, fillAlpha: "rgba(2,132,199,0.12)" }
@@ -9389,23 +10025,55 @@ function renderCastepOpticalPlots() {
         { label: "L (Right)", values: spec.lossArr, color: "#be123c", width: 2.0, axis: "right", fillAlpha: "rgba(190,18,60,0.08)" }
       ]
     });
+  } else if (prop === "anisotropy") {
+    if (!spec.anisotropyData) {
+      ctx.fillStyle = "#334155"; ctx.font = "700 14.5px Inter, sans-serif"; ctx.textAlign = "center";
+      ctx.fillText("Anisotropy Comparison Requires CASTEP *.ome_bin 3×3 Optical Tensor", width / 2, height / 2 - 12);
+      ctx.fillStyle = "#64748b"; ctx.font = "12px Inter, sans-serif";
+      ctx.fillText("Select a calculation with *_Optics.ome_bin (or upload *.ome_bin + *_Optics.bands) to compare Polarized [100]/[010]/[001], Unpolarized, and Polycrystalline.", width / 2, height / 2 + 12);
+    } else {
+      const A = spec.anisotropyData;
+      const hw = Math.floor(width / 2);
+      drawOpticalSubPanel(0, 0, hw, height, {
+        panelKey: "a", title: "(a) Dielectric ε_{2}(ω) Optical Anisotropy",
+        yMinForced: 0,
+        series: [
+          { label: "Pol [100]", values: A.polX.eps2, color: "#2563eb", width: 2.0 },
+          { label: "Pol [010]", values: A.polY.eps2, color: "#16a34a", width: 1.8, dashed: true },
+          { label: "Pol [001]", values: A.polZ.eps2, color: "#dc2626", width: 2.1 },
+          { label: "Unpol (001)", values: A.unpolZ.eps2, color: "#9333ea", width: 1.8, dashed: true },
+          { label: "Polycryst.", values: A.poly.eps2, color: "#0f172a", width: 2.1 }
+        ]
+      });
+      drawOpticalSubPanel(hw, 0, width - hw, height, {
+        panelKey: "b", title: "(b) Absorption α(ω) (×10^{4} cm^{-1}) Anisotropy",
+        yMinForced: 0,
+        series: [
+          { label: "Pol [100]", values: A.polX.alphaCm.map(v => v / 1e4), color: "#2563eb", width: 2.0 },
+          { label: "Pol [010]", values: A.polY.alphaCm.map(v => v / 1e4), color: "#16a34a", width: 1.8, dashed: true },
+          { label: "Pol [001]", values: A.polZ.alphaCm.map(v => v / 1e4), color: "#dc2626", width: 2.1 },
+          { label: "Unpol (001)", values: A.unpolZ.alphaCm.map(v => v / 1e4), color: "#9333ea", width: 1.8, dashed: true },
+          { label: "Polycryst.", values: A.poly.alphaCm.map(v => v / 1e4), color: "#0f172a", width: 2.1 }
+        ]
+      });
+    }
   } else if (prop === "absorption") {
     drawOpticalSubPanel(0, 0, width, height, {
-      title: `CASTEP Optical Absorption α(ω) (×10⁴ cm⁻¹) — ${job?.seed || ""}`,
+      title: `CASTEP Absorption α(ω) (×10^{4} cm^{-1}) — ${spec.geomLabel}`,
       yMinForced: 0,
-      series: [{ label: "α(ω) (×10⁴ cm⁻¹)", values: alpha10k, color: "#0284c7", width: 2.4, fillAlpha: "rgba(2,132,199,0.14)" }]
+      series: [{ label: "α(ω) (×10^{4} cm^{-1})", values: alpha10k, color: "#0284c7", width: 2.4, fillAlpha: "rgba(2,132,199,0.14)" }]
     });
   } else if (prop === "dielectric") {
     drawOpticalSubPanel(0, 0, width, height, {
-      title: `CASTEP Complex Dielectric Function ε₁(ω) & ε₂(ω) — ${job?.seed || ""}`,
+      title: `CASTEP Dielectric Function ε_{1}(ω) & ε_{2}(ω) — ${spec.geomLabel}`,
       series: [
-        { label: "ε₁(ω) Real", values: spec.eps1, color: "#2563eb", width: 2.3 },
-        { label: "ε₂(ω) Imag", values: spec.eps2, color: "#dc2626", width: 2.3, fillAlpha: "rgba(220,38,38,0.10)" }
+        { label: "ε_{1}(ω) Real", values: spec.eps1, color: "#2563eb", width: 2.3 },
+        { label: "ε_{2}(ω) Imag", values: spec.eps2, color: "#dc2626", width: 2.3, fillAlpha: "rgba(220,38,38,0.10)" }
       ]
     });
   } else if (prop === "refractive") {
     drawOpticalSubPanel(0, 0, width, height, {
-      title: `CASTEP Complex Refractive Index n(ω) & Extinction k(ω) — ${job?.seed || ""}`,
+      title: `CASTEP Refractive Index n(ω) & Extinction k(ω) — ${spec.geomLabel}`,
       yMinForced: 0,
       series: [
         { label: "n(ω)", values: spec.nArr, color: "#16a34a", width: 2.3 },
@@ -9414,13 +10082,13 @@ function renderCastepOpticalPlots() {
     });
   } else if (prop === "reflectivity") {
     drawOpticalSubPanel(0, 0, width, height, {
-      title: `CASTEP Optical Reflectivity R(ω) — ${job?.seed || ""}`,
+      title: `CASTEP Optical Reflectivity R(ω) — ${spec.geomLabel}`,
       yMinForced: 0,
       series: [{ label: "Reflectivity R(ω)", values: spec.reflArr, color: "#7c3aed", width: 2.4, fillAlpha: "rgba(124,58,237,0.12)" }]
     });
   } else if (prop === "conductivity") {
     drawOpticalSubPanel(0, 0, width, height, {
-      title: `CASTEP Optical Conductivity σ₁(ω) & σ₂(ω) (1/fs) — ${job?.seed || ""}`,
+      title: `CASTEP Optical Conductivity σ_{1}(ω) & σ_{2}(ω) (1/fs) — ${spec.geomLabel}`,
       series: [
         { label: "Re[σ(ω)] (1/fs)", values: spec.cond1Arr, color: "#0f766e", width: 2.3, fillAlpha: "rgba(15,118,110,0.12)" },
         { label: "Im[σ(ω)] (1/fs)", values: spec.cond2Arr, color: "#b45309", width: 2.0, dashed: true }
@@ -9428,7 +10096,7 @@ function renderCastepOpticalPlots() {
     });
   } else if (prop === "loss") {
     drawOpticalSubPanel(0, 0, width, height, {
-      title: `CASTEP Electron Energy Loss Function L(ω) = Im[-1/ε(ω)] — ${job?.seed || ""}`,
+      title: `CASTEP Loss Function (EELS) L(ω) = Im[−1/ε(ω)] — ${spec.geomLabel}`,
       yMinForced: 0,
       series: [{ label: "EELS Loss L(ω)", values: spec.lossArr, color: "#be123c", width: 2.4, fillAlpha: "rgba(190,18,60,0.14)" }]
     });
@@ -9438,8 +10106,8 @@ function renderCastepOpticalPlots() {
       yMinForced: 0,
       taucFit: spec.taucFitDirect,
       series: [
-        { label: "Direct (αħω)²", values: spec.taucDirArr, color: "#2563eb", width: 2.3, axis: "left" },
-        { label: "Indirect (αħω)¹/² (Right)", values: spec.taucIndArr, color: "#16a34a", width: 2.0, dashed: true, axis: "right" }
+        { label: "Direct (αħω)^{2}", values: spec.taucDirArr, color: "#2563eb", width: 2.3, axis: "left" },
+        { label: "Indirect (αħω)^{1/2} (Right)", values: spec.taucIndArr, color: "#16a34a", width: 2.0, dashed: true, axis: "right" }
       ]
     });
   }
@@ -9459,16 +10127,26 @@ function initCastepOpticsCanvasHover() {
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const prop = document.getElementById("castep-opt-property")?.value || "multigrid";
+    const xAxisMode = document.getElementById("castep-opt-xaxis")?.value || "ev";
+    const isSplit = (prop === "multigrid" || prop === "anisotropy");
     const pKey = getOptPanelKeyAtClientPos(canvas, e.clientX, e.clientY);
-    const hwPanelW = prop === "multigrid" ? (rect.width / 2) : rect.width;
-    const localX = prop === "multigrid" ? (mx % hwPanelW) : mx;
-    const padL = 54, padR = pKey === "d" ? 48 : 16;
+    const hwPanelW = isSplit ? (rect.width / 2) : rect.width;
+    const localX = isSplit ? (mx % hwPanelW) : mx;
+    const padL = 54, padR = (prop === "multigrid" && pKey === "d") ? 48 : 16;
     const pw = hwPanelW - padL - padR;
     const frac = Math.max(0, Math.min(1, (localX - padL) / (pw || 1)));
     const pz = (CASTEP_STUDIO_STATE.optPanelZooms && CASTEP_STUDIO_STATE.optPanelZooms[pKey]) || {};
-    const eMin = pz.emin || 0;
-    const eMax = pz.emax || spec.hwGrid[spec.hwGrid.length - 1];
-    const targetE = eMin + frac * (eMax - eMin);
+    let targetE = 0;
+    if (xAxisMode === "nm") {
+      const nmMin = pz.nmMin !== undefined ? pz.nmMin : 180;
+      const nmMax = pz.nmMax !== undefined ? pz.nmMax : 1100;
+      const lamCur = nmMin + frac * (nmMax - nmMin);
+      targetE = 1239.84193 / Math.max(10, lamCur);
+    } else {
+      const eMin = pz.emin || 0;
+      const eMax = pz.emax || spec.hwGrid[spec.hwGrid.length - 1];
+      targetE = eMin + frac * (eMax - eMin);
+    }
     let idx = 0, bestD = 1e9;
     for (let i = 0; i < spec.hwGrid.length; i++) {
       const d = Math.abs(spec.hwGrid[i] - targetE);
@@ -9476,10 +10154,12 @@ function initCastepOpticsCanvasHover() {
     }
     const hw = spec.hwGrid[idx];
     const lam = 1239.84193 / Math.max(0.05, hw);
+    const wn = Math.round(hw * 8065.54429);
+    const thz = (hw * 241.798924).toFixed(0);
     readout.innerHTML =
-      `Cursor: <strong>ħω = ${hw.toFixed(2)} eV</strong> (λ = <strong>${Math.round(lam)} nm</strong>) • ` +
-      `ε₁ = <strong>${spec.eps1[idx].toFixed(2)}</strong>, ε₂ = <strong>${spec.eps2[idx].toFixed(2)}</strong> • ` +
-      `α = <strong>${Math.round(spec.alphaCm[idx]).toLocaleString()} cm⁻¹</strong> • ` +
+      `Cursor: <strong>ħω = ${hw.toFixed(2)} eV</strong> (λ = <strong>${Math.round(lam)} nm</strong>, ν̃ = <strong>${wn.toLocaleString()} cm<sup>−1</sup></strong>, ${thz} THz) • ` +
+      `ε<sub>1</sub> = <strong>${spec.eps1[idx].toFixed(2)}</strong>, ε<sub>2</sub> = <strong>${spec.eps2[idx].toFixed(2)}</strong> • ` +
+      `α = <strong>${Math.round(spec.alphaCm[idx]).toLocaleString()} cm<sup>−1</sup></strong> • ` +
       `n = <strong>${spec.nArr[idx].toFixed(2)}</strong>, k = <strong>${spec.kArr[idx].toFixed(2)}</strong> • ` +
       `R = <strong>${(spec.reflArr[idx] * 100).toFixed(1)}%</strong>, L = <strong>${spec.lossArr[idx].toFixed(3)}</strong>`;
   });
@@ -9487,16 +10167,17 @@ function initCastepOpticsCanvasHover() {
 
 function buildOpticalExportTables() {
   const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId) || {};
-  const spec = CASTEP_STUDIO_STATE.lastOpticalSpectra || computeCastepOpticalSpectra(job);
+  const spec = computeCastepOpticalSpectra(job, !!job.optical_tensor);
   if (!spec) return null;
 
   const seed = sanitizeExportSeed(job.seed || CASTEP_STUDIO_STATE.structure?.formula || "CASTEP");
   const tfDir = spec.taucFitDirect || {};
   const tfInd = spec.taucFitIndirect || {};
   const m = spec.metrics || {};
+  const p = spec.params || getOpticalUiParams();
 
   const fullHeaders = [
-    "Photon_Energy_eV", "Wavelength_nm",
+    "Photon_Energy_eV", "Wavelength_nm", "Wavenumber_cm-1", "Frequency_THz",
     "Eps1_Real", "Eps2_Imag",
     "Absorption_cm-1", "Absorption_x1e4_cm-1",
     "Refractive_Index_n", "Extinction_Coeff_k",
@@ -9506,15 +10187,13 @@ function buildOpticalExportTables() {
     "Tauc_Direct_ahv2", "Tauc_Direct_Fit",
     "Tauc_Indirect_ahv0.5", "Tauc_Indirect_Fit"
   ];
-  const fullRows = [];
-  const dielRows = [];
-  const absRows = [];
-  const nkRows = [];
-  const rlcRows = [];
+  const fullRows = [], dielRows = [], absRows = [], nkRows = [], rlcRows = [];
 
   for (let i = 0; i < spec.hwGrid.length; i++) {
     const hw = Number(spec.hwGrid[i].toFixed(5));
     const nm = Number((1239.84193 / Math.max(0.01, hw)).toFixed(3));
+    const wn = Number((hw * 8065.54429).toFixed(2));
+    const thz = Number((hw * 241.798924).toFixed(3));
     const e1 = Number((spec.eps1[i] || 0).toFixed(6));
     const e2 = Number((spec.eps2[i] || 0).toFixed(6));
     const al = Number((spec.alphaCm[i] || 0).toFixed(3));
@@ -9528,16 +10207,14 @@ function buildOpticalExportTables() {
     const lv = Number((spec.lossArr[i] || 0).toFixed(6));
     const td = Number((spec.taucDirArr?.[i] || 0).toFixed(6));
     const ti = Number((spec.taucIndArr?.[i] || 0).toFixed(6));
-    const tdFit = (tfDir.slope > 0 && hw >= tfDir.xStart && hw <= tfDir.xEnd)
-      ? Number(Math.max(0, tfDir.slope * hw + tfDir.intercept).toFixed(6)) : "";
-    const tiFit = (tfInd.slope > 0 && hw >= tfInd.xStart && hw <= tfInd.xEnd)
-      ? Number(Math.max(0, tfInd.slope * hw + tfInd.intercept).toFixed(6)) : "";
+    const tdFit = (tfDir.slope > 0 && hw >= tfDir.xStart && hw <= tfDir.xEnd) ? Number(Math.max(0, tfDir.slope * hw + tfDir.intercept).toFixed(6)) : "";
+    const tiFit = (tfInd.slope > 0 && hw >= tfInd.xStart && hw <= tfInd.xEnd) ? Number(Math.max(0, tfInd.slope * hw + tfInd.intercept).toFixed(6)) : "";
 
-    fullRows.push([hw, nm, e1, e2, al, al4, nv, kv, rv, rpct, c1, c2, lv, td, tdFit, ti, tiFit]);
-    dielRows.push([hw, nm, e1, e2]);
-    absRows.push([hw, nm, al, al4, td, tdFit, ti, tiFit]);
-    nkRows.push([hw, nm, nv, kv]);
-    rlcRows.push([hw, nm, rv, rpct, lv, c1, c2]);
+    fullRows.push([hw, nm, wn, thz, e1, e2, al, al4, nv, kv, rv, rpct, c1, c2, lv, td, tdFit, ti, tiFit]);
+    dielRows.push([hw, nm, wn, e1, e2]);
+    absRows.push([hw, nm, wn, al, al4, td, tdFit, ti, tiFit]);
+    nkRows.push([hw, nm, wn, nv, kv]);
+    rlcRows.push([hw, nm, wn, rv, rpct, lv, c1, c2]);
   }
 
   const summarySheet = {
@@ -9546,6 +10223,15 @@ function buildOpticalExportTables() {
     rows: [
       ["Material", job.material || CASTEP_STUDIO_STATE.structure?.formula || seed, ""],
       ["Data_Source", spec.sourceBadge || "", ""],
+      ["Calculation_Geometry", spec.geomLabel || "", ""],
+      ["Calculation_Mode", p.calcMode, ""],
+      ["Direction_Vector", `(${p.vx.toFixed(2)}, ${p.vy.toFixed(2)}, ${p.vz.toFixed(2)})`, ""],
+      ["Smearing_Sigma", Number(p.smearingEv.toFixed(4)), "eV"],
+      ["Scissors_Operator", Number(p.scissorsEv.toFixed(4)), "eV"],
+      ["Drude_Enabled", p.useDrude ? "Yes" : "No", ""],
+      ["Drude_Plasma_Freq", Number(p.plasmaEv.toFixed(4)), "eV"],
+      ["Drude_Damping", Number(p.drudeDampEv.toFixed(4)), "eV"],
+      ["Absorption_Convention", p.alphaConv === "standard_si" ? "Standard SI (4pi*k/lambda)" : "Materials Studio CASTEP (2k/lambda)", ""],
       ["Static_Dielectric_eps1_0", Number((m.eps1Zero || 0).toFixed(5)), "dimensionless"],
       ["Static_Refractive_Index_n0", Number((m.nZero || 0).toFixed(5)), "dimensionless"],
       ["Peak_Absorption_alpha_max", Number((m.maxAlpha || 0).toFixed(2)), "cm^-1"],
@@ -9556,13 +10242,37 @@ function buildOpticalExportTables() {
       ["Plasmon_Peak_Energy_hwp", Number((m.maxLossEv || 0).toFixed(4)), "eV"],
       ["Peak_EELS_Loss_L", Number((m.maxLoss || 0).toFixed(5)), "dimensionless"],
       ["Tauc_Direct_Optical_Gap", Number((tfDir.gapEv || 0).toFixed(4)), "eV"],
-      ["Tauc_Indirect_Optical_Gap", Number((tfInd.gapEv || 0).toFixed(4)), "eV"],
-      ["Scissors_Shift", Number(parseFloat(document.getElementById("castep-opt-scissors")?.value) || 0), "eV"],
-      ["Smearing_Gamma", Number(parseFloat(document.getElementById("castep-opt-smearing")?.value) || 0.25), "eV"]
+      ["Tauc_Indirect_Optical_Gap", Number((tfInd.gapEv || 0).toFixed(4)), "eV"]
     ]
   };
 
-  // Optional raw .xcd series sheet (captures all individual loaded polarization/tensor optical curves)
+  let anisoSheet = null;
+  if (spec.anisotropyData) {
+    const A = spec.anisotropyData;
+    const aHeaders = [
+      "Photon_Energy_eV", "Wavelength_nm",
+      "Eps1_Pol100", "Eps2_Pol100", "Alpha_Pol100_cm-1",
+      "Eps1_Pol010", "Eps2_Pol010", "Alpha_Pol010_cm-1",
+      "Eps1_Pol001", "Eps2_Pol001", "Alpha_Pol001_cm-1",
+      "Eps1_Unpol001", "Eps2_Unpol001", "Alpha_Unpol001_cm-1",
+      "Eps1_Polycryst", "Eps2_Polycryst", "Alpha_Polycryst_cm-1"
+    ];
+    const aRows = [];
+    for (let i = 0; i < spec.hwGrid.length; i++) {
+      const hw = Number(spec.hwGrid[i].toFixed(5));
+      const nm = Number((1239.84193 / Math.max(0.01, hw)).toFixed(3));
+      aRows.push([
+        hw, nm,
+        Number(A.polX.eps1[i].toFixed(6)), Number(A.polX.eps2[i].toFixed(6)), Number(A.polX.alphaCm[i].toFixed(3)),
+        Number(A.polY.eps1[i].toFixed(6)), Number(A.polY.eps2[i].toFixed(6)), Number(A.polY.alphaCm[i].toFixed(3)),
+        Number(A.polZ.eps1[i].toFixed(6)), Number(A.polZ.eps2[i].toFixed(6)), Number(A.polZ.alphaCm[i].toFixed(3)),
+        Number(A.unpolZ.eps1[i].toFixed(6)), Number(A.unpolZ.eps2[i].toFixed(6)), Number(A.unpolZ.alphaCm[i].toFixed(3)),
+        Number(A.poly.eps1[i].toFixed(6)), Number(A.poly.eps2[i].toFixed(6)), Number(A.poly.alphaCm[i].toFixed(3))
+      ]);
+    }
+    anisoSheet = { name: "Anisotropy_Tensor", headers: aHeaders, rows: aRows };
+  }
+
   const rawXcdCols = [];
   const xcds = (job.optical_xcds && job.optical_xcds.length) ? job.optical_xcds : (job.optical_xcd ? [job.optical_xcd] : []);
   xcds.forEach((xc, xi) => {
@@ -9595,10 +10305,11 @@ function buildOpticalExportTables() {
     seed,
     fullSheet: { name: "All_Optical_Spectra", headers: fullHeaders, rows: fullRows },
     summarySheet,
-    dielSheet: { name: "Dielectric_Eps", headers: ["Photon_Energy_eV", "Wavelength_nm", "Eps1_Real", "Eps2_Imag"], rows: dielRows },
-    absSheet: { name: "Absorption_Tauc", headers: ["Photon_Energy_eV", "Wavelength_nm", "Absorption_cm-1", "Absorption_x1e4_cm-1", "Tauc_Direct_ahv2", "Tauc_Direct_Fit", "Tauc_Indirect_ahv0.5", "Tauc_Indirect_Fit"], rows: absRows },
-    nkSheet: { name: "Refractive_n_k", headers: ["Photon_Energy_eV", "Wavelength_nm", "Refractive_Index_n", "Extinction_Coeff_k"], rows: nkRows },
-    rlcSheet: { name: "Refl_Loss_Cond", headers: ["Photon_Energy_eV", "Wavelength_nm", "Reflectivity_R", "Reflectivity_Pct", "EELS_Loss_L", "Conductivity_Re_1_fs", "Conductivity_Im_1_fs"], rows: rlcRows },
+    dielSheet: { name: "Dielectric_Eps", headers: ["Photon_Energy_eV", "Wavelength_nm", "Wavenumber_cm-1", "Eps1_Real", "Eps2_Imag"], rows: dielRows },
+    absSheet: { name: "Absorption_Tauc", headers: ["Photon_Energy_eV", "Wavelength_nm", "Wavenumber_cm-1", "Absorption_cm-1", "Absorption_x1e4_cm-1", "Tauc_Direct_ahv2", "Tauc_Direct_Fit", "Tauc_Indirect_ahv0.5", "Tauc_Indirect_Fit"], rows: absRows },
+    nkSheet: { name: "Refractive_n_k", headers: ["Photon_Energy_eV", "Wavelength_nm", "Wavenumber_cm-1", "Refractive_Index_n", "Extinction_Coeff_k"], rows: nkRows },
+    rlcSheet: { name: "Refl_Loss_Cond", headers: ["Photon_Energy_eV", "Wavelength_nm", "Wavenumber_cm-1", "Reflectivity_R", "Reflectivity_Pct", "EELS_Loss_L", "Conductivity_Re_1_fs", "Conductivity_Im_1_fs"], rows: rlcRows },
+    anisoSheet,
     rawSheet
   };
 }
@@ -9610,8 +10321,9 @@ function exportCastepOpticalCSV(mode = "all") {
     if (typeof showToast === "function") showToast("No optical spectra available to export.", "warning");
     return;
   }
+  const prop = document.getElementById("castep-opt-property")?.value || "multigrid";
   const sheetMap = {
-    all: pkg.fullSheet,
+    all: (prop === "anisotropy" && pkg.anisoSheet) ? pkg.anisoSheet : pkg.fullSheet,
     dielectric: pkg.dielSheet,
     absorption: pkg.absSheet,
     refractive: pkg.nkSheet,
@@ -9634,6 +10346,7 @@ function exportCastepOpticalXLSX() {
     return;
   }
   const sheets = [pkg.summarySheet, pkg.dielSheet, pkg.absSheet, pkg.nkSheet, pkg.rlcSheet];
+  if (pkg.anisoSheet) sheets.push(pkg.anisoSheet);
   if (pkg.rawSheet) sheets.push(pkg.rawSheet);
   const blob = buildXlsxBlob(sheets);
   const fname = `${pkg.seed}_Optical_Properties_AllTabs.xlsx`;
