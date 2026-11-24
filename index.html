@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=128_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=128_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=129_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=129_v116_vesta_viewer'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -1266,11 +1266,14 @@
               <div class="vesta-workspace-body">
                 <!-- Zone A: Vertical VESTA Left Icon Tool Strip -->
                 <div class="vesta-vertical-tools">
-                  <button type="button" class="vesta-vtool-btn active" id="vesta-tool-rotate" onclick="setVestaInteractionTool('rotate', this)" title="Rotate / Orbit Structure (Drag mouse to rotate, Click atom to select)">
+                  <button type="button" class="vesta-vtool-btn active" id="vesta-tool-rotate" onclick="setVestaInteractionTool('rotate', this)" title="Rotate Mode — Drag to orbit, Click 1 atom to select, Shift+Click to multi-select, Right-drag to pan">
                     ✥
                   </button>
-                  <button type="button" class="vesta-vtool-btn" id="vesta-tool-select" onclick="setVestaInteractionTool('select', this)" title="Select / Pick Atoms">
-                    ↖
+                  <button type="button" class="vesta-vtool-btn" id="vesta-tool-select" onclick="setVestaInteractionTool('select', this)" title="Box Select Mode — Drag rectangle to select multiple atoms, Click 1 atom, Shift+Click/Drag to add">
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true" style="display:block;">
+                      <path d="M3.5 2.5L3.5 14.2L6.9 11.1L9.3 15.8L11.2 14.8L8.8 10.2L13.1 10.2L3.5 2.5Z" fill="#ffffff" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="round"/>
+                      <rect x="10.5" y="12.5" width="7.5" height="5.5" rx="0.8" fill="rgba(37,99,235,0.14)" stroke="#1d4ed8" stroke-width="1.3" stroke-dasharray="2 1.5"/>
+                    </svg>
                   </button>
                   <button type="button" class="vesta-vtool-btn" id="vesta-tool-pan" onclick="setVestaInteractionTool('pan', this)" title="Translate / Pan View (Drag mouse to move)">
                     ✋
@@ -1721,8 +1724,8 @@
                     <div class="vesta-doc-tab active">
                       <span id="vesta-active-doc-label">📄 No Structure Loaded</span>
                     </div>
-                    <div id="vesta-active-tool-badge" style="font-size:11px; font-weight:700; color:#1e40af; padding:0 10px;">
-                      Tool: Rotate &amp; Select
+                    <div id="vesta-active-tool-badge" style="font-size:11px; font-weight:700; color:#1e40af; padding:0 10px; white-space:nowrap;">
+                      Tool: Rotate
                     </div>
                     <div style="margin-left:auto; display:flex; gap:6px; align-items:center; padding-right:6px;">
                       <button type="button" class="castep-preset-chip" onclick="saveCastepStructureToWorkingFolder()" title="Save structure directly to calculation directory">💾 Save to Folder</button>
@@ -5472,8 +5475,8 @@
 
 <script src="jszip.min.js"></script>
   <script>if (typeof JSZip === "undefined") { document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"><\\/script>'); }</script>
-  <script src="matsci_tools.js?v=128_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=128_v116_vesta_viewer'"></script>
-  <script src="app.js?v=128_v116_vesta_viewer" onerror="this.src='/static/app.js?v=128_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=129_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=129_v116_vesta_viewer'"></script>
+  <script src="app.js?v=129_v116_vesta_viewer" onerror="this.src='/static/app.js?v=129_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
