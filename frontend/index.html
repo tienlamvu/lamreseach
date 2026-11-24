@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=132_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=132_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=133_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=133_v116_vesta_viewer'" />
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -1080,7 +1080,7 @@
             </p>
           </div>
           <div class="castep-header-actions">
-            <input type="file" id="castep-file-upload-input" multiple accept=".cell,.param,.castep,.xsd,.geom,.bands,.xcd,.cif,.xyz,.msi,.outmol,.chdiff,.charg_frm,.den_fmt,.cube,.pdos_bin,.csv,.dat,.sbj,.txt,POSCAR,CONTCAR" style="display:none;" onchange="handleCastepFilesUpload(event)" />
+            <input type="file" id="castep-file-upload-input" multiple accept=".cell,.param,.castep,.xsd,.geom,.bands,.xcd,.cif,.xyz,.msi,.outmol,.chdiff,.charg_frm,.den_fmt,.cube,.pdos_bin,.ome_bin,.cst_ome,.csv,.dat,.sbj,.txt,POSCAR,CONTCAR" style="display:none;" onchange="handleCastepFilesUpload(event)" />
             <input type="file" id="castep-folder-upload-input" webkitdirectory directory multiple style="display:none;" onchange="handleCastepFolderFallbackUpload(event)" />
             <button type="button" class="btn btn-outline btn-sm castep-action-btn" onclick="mountCastepLocalDirectory()" title="Mount a local Materials Studio / CASTEP calculation folder with direct browser read &amp; write access">
               📂 Mount Local Folder (Read/Write)
@@ -2077,6 +2077,8 @@
                     <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('optics')" title="Reset Active Panel Zoom">⊡ Reset</button>
                     <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('optics_all')" title="Reset All 4 Panels">↺ All</button>
                     <input type="file" id="castep-opt-file-upload" multiple accept=".ome_bin,.cst_ome,.bands,.cell,.castep,.xcd,.csv,.txt,.dat" style="display:none;" onchange="handleCastepOpticalFilesUpload(event)" />
+                    <input type="file" id="castep-opt-folder-upload" webkitdirectory directory multiple style="display:none;" onchange="handleCastepOpticalFolderFallback(event)" />
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px; font-weight:700;" onclick="pickCastepOpticsFolder()" title="Open an Optical CASTEP Energy folder directly (auto-loads *_Optics.castep + *.ome_bin + *_Optics.bands + *_Optics.cell)">📂 Optics Folder</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11.5px; font-weight:700;" onclick="document.getElementById('castep-opt-file-upload').click()" title="Load CASTEP *.ome_bin + *_Optics.bands (full 3×3 tensor), Optical Properties *.xcd, or CSV spectrum">📥 .ome_bin/.xcd</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepCanvasPNG('castep-optics-canvas', 'CASTEP_Optical_Properties.png')">📷 PNG</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepOpticalCSV('all')" title="Export all Optical Spectra &amp; Tauc Fit columns to CSV">📊 CSV</button>
@@ -5526,9 +5528,9 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=132_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=132_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=132_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=132_v116_vesta_viewer'"></script>
-  <script src="app.js?v=132_v116_vesta_viewer" onerror="this.src='/static/app.js?v=132_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=133_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=133_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=133_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=133_v116_vesta_viewer'"></script>
+  <script src="app.js?v=133_v116_vesta_viewer" onerror="this.src='/static/app.js?v=133_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
