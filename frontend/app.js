@@ -1766,7 +1766,7 @@ async function pullCloudDatabaseInstant(silent = true) {
         STATE.masterData.dft_lectures = cloudDb.dft_lectures;
         window._SEED_DFT_LECTURES = cloudDb.dft_lectures;
         STATE.dftLectures = cloudDb.dft_lectures;
-        try { localStorage.setItem("dft_theory_lectures_v1", JSON.stringify(cloudDb.dft_lectures)); } catch (e) {}
+        try { localStorage.setItem("dft_theory_lectures_v2", JSON.stringify(cloudDb.dft_lectures)); } catch (e) {}
         if (typeof initDashboardDftCard === "function") initDashboardDftCard();
         if (typeof renderDftTheoryTab === "function") renderDftTheoryTab(null, true);
       }
@@ -1995,7 +1995,7 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
     // Safely collect dft_lectures without risk of wiping custom admin lectures
     let localDftLectures = null;
     try {
-      const rawDft = localStorage.getItem("dft_theory_lectures_v1");
+      const rawDft = localStorage.getItem("dft_theory_lectures_v2") || localStorage.getItem("dft_theory_lectures_v1");
       if (rawDft) {
         const parsedDft = JSON.parse(rawDft);
         if (Array.isArray(parsedDft) && parsedDft.length > 0) localDftLectures = parsedDft;
@@ -16108,10 +16108,10 @@ async function loadStaticFallbackData() {
         if (!STATE.masterData) STATE.masterData = {};
         STATE.masterData.dft_lectures = remoteData.dft_lectures;
         window._SEED_DFT_LECTURES = remoteData.dft_lectures;
-        if (!localStorage.getItem("dft_theory_lectures_v1")) {
+        if (!localStorage.getItem("dft_theory_lectures_v2")) {
           STATE.dftLectures = remoteData.dft_lectures;
           try {
-            localStorage.setItem("dft_theory_lectures_v1", JSON.stringify(remoteData.dft_lectures));
+            localStorage.setItem("dft_theory_lectures_v2", JSON.stringify(remoteData.dft_lectures));
           } catch(e) {}
           if (typeof initDashboardDftCard === "function") initDashboardDftCard();
           if (typeof renderDftTheoryTab === "function") renderDftTheoryTab(null, true);
