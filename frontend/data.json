@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-24T13:13:07.061Z",
+  "exported_at": "2026-11-24T13:13:14.227Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -7132,6 +7132,9 @@
       "toolName": "Conv. & Forces",
       "title": "Lecture 1: Quantum Many-Body Problem, Hohenberg–Kohn Theorems & Kohn–Sham DFT",
       "subtitle": "From the exact 3N-dimensional Schrödinger equation and Levy–Lieb constrained search to the self-consistent Kohn–Sham orbital formalism and Pulay/Kerker SCF mixing.",
+      "author": "Vu Tien Lam",
+      "affiliation": "Sungkyunkwan University",
+      "updatedAt": "November 24, 2026",
       "keywords": "schrodinger born oppenheimer many-body hohenberg kohn levy lieb variational kohn-sham janak scf self-consistent field pulay kerker hartree density functional convergence",
       "objectives": [
         "Explain why solving the interacting many-electron Schrödinger equation directly is exponentially intractable and derive the Born–Oppenheimer separation.",
@@ -7196,6 +7199,9 @@
       "toolName": "Param Builder & Files",
       "title": "Lecture 2: Exchange–Correlation Functionals (Jacob's Ladder), Dispersion (DFT-D) &amp; DFT+U",
       "subtitle": "How approximations to <i>E</i><sub>xc</sub>[<i>n</i>] govern fundamental band gaps, derivative discontinuity &Delta;<sub>xc</sub>, lattice constants, van der Waals binding, and strongly correlated 3d/4f magnetism.",
+      "author": "Vu Tien Lam",
+      "affiliation": "Sungkyunkwan University",
+      "updatedAt": "November 24, 2026",
       "keywords": "exchange correlation lda gga pbe pbesol meta-gga scan r2scan hybrid hse06 b3lyp jacob ladder self-interaction derivative discontinuity bandgap dispersion vdw grimme dft-d2 dft-d3 ts hubbard dft+u dudarev",
       "objectives": [
         "Explain the physical decomposition of <i>E</i><sub>xc</sub>[<i>n</i>] into Fermi exchange, dynamical Coulomb correlation, and self-interaction cancellation.",
@@ -7267,6 +7273,9 @@
       "toolName": "3D View & Slab",
       "title": "Lecture 3: Periodic Crystals, Bloch's Theorem, Plane Waves, Pseudopotentials &amp; k-Sampling",
       "subtitle": "How periodic boundary conditions reduce an infinite Avogadro-scale crystal to one unit cell, a plane-wave cutoff <i>E</i><sub>cut</sub>, PAW/USPP pseudopotentials, and an irreducible k-point grid.",
+      "author": "Vu Tien Lam",
+      "affiliation": "Sungkyunkwan University",
+      "updatedAt": "November 24, 2026",
       "keywords": "crystal lattice bravais reciprocal brillouin zone bloch theorem plane wave cutoff ecut pseudopotential ncpp uspp paw otfg monkhorst pack kpoint smearing methfessel paxton slab vacuum miller index",
       "objectives": [
         "Relate real-space Bravais lattice vectors A to reciprocal-space vectors B and the First Brillouin Zone.",
@@ -7331,6 +7340,9 @@
       "toolName": "Conv. & Forces",
       "title": "Lecture 4: Hellmann–Feynman Forces, Stress Tensor, Geometry Optimization, Phonons &amp; Catalysis",
       "subtitle": "How DFT relaxes atomic positions and lattice parameters to mechanical equilibrium, verifies dynamical phonon stability, and predicts electrocatalytic Gibbs free energy pathways.",
+      "author": "Vu Tien Lam",
+      "affiliation": "Sungkyunkwan University",
+      "updatedAt": "November 24, 2026",
       "keywords": "hellmann feynman force stress tensor pulay geometry optimization bfgs lbfgs tpsd formation energy cohesive surface energy adsorption gibbs free energy zpe phonon dynamical matrix neb activation barrier che",
       "objectives": [
         "Derive atomic forces from the Hellmann–Feynman theorem and understand why plane waves eliminate Pulay force artifacts.",
@@ -7395,6 +7407,9 @@
       "toolName": "Band & PDOS",
       "title": "Lecture 5: Electronic Band Structure, Density of States (DOS / PDOS) &amp; Orbital Hybridization",
       "subtitle": "Reading <i>E<sub>n</sub></i>(<b>k</b>) dispersion relations along standard Brillouin-zone paths, spin polarization <i>P</i>(<i>E</i><sub>F</sub>), and decoding orbital bonding via projected DOS.",
+      "author": "Vu Tien Lam",
+      "affiliation": "Sungkyunkwan University",
+      "updatedAt": "November 24, 2026",
       "keywords": "band structure dispersion vbm cbm direct indirect bandgap semiconductor metal half-metal spin polarization dos density of states pdos projected orbital hybridization d-band center brillouin path",
       "objectives": [
         "Interpret <i>E<sub>n</sub></i>(<b>k</b>) dispersion curves along standard high-symmetry BZ paths (&Gamma;&ndash;M&ndash;K&ndash;&Gamma;, &Gamma;&ndash;X&ndash;M&ndash;&Gamma;&ndash;R).",
@@ -7452,6 +7467,9 @@
       "toolName": "m* & Drude",
       "title": "Lecture 6: Carrier Effective Mass (Band &amp; DOS), Semiconductor Mobility &amp; Drude Transport",
       "subtitle": "Connecting band curvature, direct DFT DOS, acoustic/polar/impurity scattering, and Boltzmann–Drude effective mass &amp; relaxation time for electrons and holes.",
+      "author": "Vu Tien Lam",
+      "affiliation": "Sungkyunkwan University",
+      "updatedAt": "November 24, 2026",
       "keywords": "effective mass parabolic kane non-parabolic dos effective mass conductivity mass mobility bardeen shockley takagi deformation potential frohlich polar optical brooks herring impurity matthiessen drude effective mass relaxation time plasma frequency exciton einstein diffusion",
       "objectives": [
         "Extract directional electron and hole effective masses <i>m</i>*<sub>e</sub>, <i>m</i>*<sub>h</sub> using Parabolic and Kane Non-Parabolic band-edge fits.",
@@ -7516,6 +7534,9 @@
       "toolName": "Optical Tab",
       "title": "Lecture 7: Linear-Response Optical Properties, Dielectric Tensor &amp; Kramers–Kronig Relations",
       "subtitle": "From dipole momentum matrix elements in CASTEP <code>*.ome_bin</code> to complex dielectric tensor &varepsilon;(&omega;), f-sum rule, polarization anisotropy, absorption &alpha;(&omega;), EELS, and Tauc gaps.",
+      "author": "Vu Tien Lam",
+      "affiliation": "Sungkyunkwan University",
+      "updatedAt": "November 24, 2026",
       "keywords": "optical properties dielectric function epsilon1 epsilon2 kramers kronig f-sum rule ome_bin momentum matrix dipole polarized unpolarized polycrystalline scissors levine allan absorption refractive index reflectivity eels loss function tauc plot gw bse exciton",
       "objectives": [
         "Derive the interband imaginary dielectric tensor &varepsilon;<sub>2</sub>(&omega;) from Fermi's Golden Rule and CASTEP <code>*.ome_bin</code> momentum matrix elements.",
@@ -7580,6 +7601,9 @@
       "toolName": "Charge Diff (Δρ)",
       "title": "Lecture 8: Charge Density Difference (&Delta;&rho;), Planar Charge Transfer, Work Function &amp; ELF",
       "subtitle": "Visualizing real-space bond formation, interfacial electron accumulation/depletion, integrated charge transfer &Delta;Q(z), dipole-corrected work functions, Bader QTAIM, and ELF bonding topology.",
+      "author": "Vu Tien Lam",
+      "affiliation": "Sungkyunkwan University",
+      "updatedAt": "November 24, 2026",
       "keywords": "charge density difference chdiff charg_frm deformation density planar average integrated charge transfer deltaQ work function dipole correction elf electron localization function bader qtaim isosurface",
       "objectives": [
         "Distinguish deformation density (*.chdiff) from interfacial/adsorption differential density (&rho;<sub>AB</sub> &minus; &rho;<sub>A</sub> &minus; &rho;<sub>B</sub>).",
@@ -7637,6 +7661,9 @@
       "toolName": "Mulliken & Spin",
       "title": "Lecture 9: Spin-Polarized DFT, Magnetism, Exchange Coupling, Mulliken/Hirshfeld &amp; Spin Matrix",
       "subtitle": "From collinear LSDA, Stoner ferromagnetism, and Heisenberg exchange <i>J<sub>ij</sub></i> to non-collinear SOC, overlap bond populations, and orbital-resolved 5&times;5 <i>d</i>-orbital spin matrices.",
+      "author": "Vu Tien Lam",
+      "affiliation": "Sungkyunkwan University",
+      "updatedAt": "November 24, 2026",
       "keywords": "spin polarized magnetism lsda stoner heisenberg exchange curie temperature non-collinear soc spin orbit coupling mae ferromagnetic fm antiferromagnetic afm ferrimagnetic fim mulliken hirshfeld bond population spin matrix crystal field t2g eg d-orbital",
       "objectives": [
         "Formulate collinear spin-polarized DFT (<i>n</i><sub>&uarr;</sub>, <i>n</i><sub>&darr;</sub>), Stoner ferromagnetism, and non-collinear vector magnetization with Spin–Orbit Coupling (SOC).",
@@ -7701,6 +7728,9 @@
       "toolName": "Gateway & Export",
       "title": "Lecture 10: Practical End-to-End DFT Workflow, Code Translation &amp; Publication Best Practices",
       "subtitle": "A reproducible 6-stage protocol from raw .cif import to converged CASTEP/VASP production runs, troubleshooting SCF failures, cross-code reproducibility, and 600 DPI journal figures.",
+      "author": "Vu Tien Lam",
+      "affiliation": "Sungkyunkwan University",
+      "updatedAt": "November 24, 2026",
       "keywords": "workflow convergence test ecut kpoint vacuum troubleshooting scf mixing dipole correction publication figure dpi tnr gateway castep vasp rosetta stone reproducibility checklist",
       "objectives": [
         "Execute a reproducible 6-stage DFT research workflow from .cif import to publication-ready figures.",
