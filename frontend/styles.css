@@ -13111,3 +13111,333 @@ sup {
   padding-top: 14px;
   border-top: 1.5px solid #f1e7d9;
 }
+
+/* ============================================================================
+   DFT Theory v141 — Peer-Reviewed References & Strict-Admin Lecture CMS
+   ============================================================================ */
+.dft-lec-meta-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.dft-lec-meta-bar .dft-lec-meta-row {
+  margin-bottom: 0;
+}
+.dft-admin-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 6px;
+  background: #fff8eb;
+  border: 1px solid #e6cfa8;
+  border-radius: 8px;
+}
+.dft-admin-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid #d9c3a2;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #4a3728;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.dft-admin-btn:hover:not(:disabled) {
+  background: #fef3c7;
+  border-color: #b45309;
+  color: #78350f;
+}
+.dft-admin-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+.dft-admin-edit {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1e40af;
+}
+.dft-admin-edit:hover:not(:disabled) {
+  background: #dbeafe;
+  border-color: #2563eb;
+  color: #1e3a8a;
+}
+.dft-admin-del {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+.dft-admin-del:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #dc2626;
+  color: #991b1b;
+}
+
+/* Peer-Reviewed References Section at Bottom of Every Lecture */
+.dft-refs-box {
+  margin: 22px 0 6px 0;
+  padding: 14px 16px;
+  border: 1px solid #dfd3c3;
+  border-left: 4px solid #78350f;
+  border-radius: 10px;
+  background: #fcfaf6;
+}
+.dft-refs-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #451a03;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #eadcc9;
+}
+.dft-refs-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #f5d08a;
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+.dft-refs-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.dft-ref-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #1e293b;
+}
+.dft-ref-idx {
+  flex-shrink: 0;
+  min-width: 24px;
+  font-weight: 800;
+  color: #92400e;
+  font-family: 'Cambria Math', Georgia, serif;
+}
+.dft-ref-text {
+  flex: 1;
+}
+.dft-doi-pill {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all 0.14s ease;
+}
+.dft-doi-pill:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #ffffff;
+}
+
+/* Admin Lecture CMS Editor Modal */
+.dft-ed-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  background: rgba(15, 23, 42, 0.56);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+.dft-ed-card {
+  width: min(980px, 96vw);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #d9c5aa;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+  overflow: hidden;
+}
+.dft-ed-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #fffaf0 0%, #f8efe0 100%);
+  border-bottom: 1px solid #e6d5bc;
+}
+.dft-ed-eyebrow {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #b45309;
+}
+.dft-ed-title {
+  margin: 2px 0 0 0;
+  font-size: 16.5px;
+  font-weight: 800;
+  color: #2b1f17;
+}
+.dft-ed-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #e2cdb2;
+  background: #ffffff;
+  color: #78350f;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.dft-ed-close:hover {
+  background: #fef3c7;
+}
+.dft-ed-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dft-ed-grid-2 {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 10px;
+}
+.dft-ed-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+@media (max-width: 780px) {
+  .dft-ed-grid-2,
+  .dft-ed-grid-4 {
+    grid-template-columns: 1fr;
+  }
+}
+.dft-ed-textarea-sm {
+  font-size: 12.5px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.dft-ed-textarea-code {
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  resize: vertical;
+  background: #fcfdff;
+}
+.dft-snippet-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #dbe4f0;
+}
+.dft-snippet-lbl {
+  font-size: 11px;
+  font-weight: 800;
+  color: #475569;
+  margin-right: 2px;
+}
+.dft-snippet-btn {
+  padding: 3.5px 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #1e293b;
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+.dft-snippet-btn:hover {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
+}
+.dft-ed-preview {
+  margin-top: 10px;
+  padding: 16px 18px;
+  border-radius: 10px;
+  border: 1.5px dashed #93c5fd;
+  background: #ffffff;
+  max-height: 360px;
+  overflow-y: auto;
+}
+.dft-ed-refs-section {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #fcfaf6;
+  border: 1px solid #e6d8c5;
+}
+.dft-ed-refs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.dft-ref-edit-row {
+  display: grid;
+  grid-template-columns: 1.1fr 1.6fr 1.1fr 0.45fr 1fr auto;
+  gap: 6px;
+  align-items: center;
+}
+.dft-ref-edit-row .form-input {
+  padding: 6px 8px;
+  font-size: 12px;
+}
+.dft-ref-rm-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.dft-ref-rm-btn:hover {
+  background: #dc2626;
+  color: #ffffff;
+}
+.dft-ed-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 20px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+.dft-ed-foot-note {
+  font-size: 11.5px;
+  color: #64748b;
+}
