@@ -1187,7 +1187,7 @@
                 🔋 Charge Diff
               </button>
               <button type="button" class="castep-stage-tab" data-pane="mulliken" onclick="switchCastepStagePane('mulliken', this)">
-                🧲 Mulliken
+                🧲 Mulliken &amp; Spin
               </button>
               <button type="button" class="castep-stage-tab" data-pane="convergence" onclick="switchCastepStagePane('convergence', this)">
                 ⚡ Conv.
@@ -2323,7 +2323,7 @@
                     </button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepMullikenCSV('atoms')">📊 Atomic CSV</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepMullikenCSV('bonds')">🔗 Bonds CSV</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="exportCastepMullikenXLSX()" title="Export multi-tab Excel workbook (Magnetism Summary, Atomic Populations, Bond Populations)">📗 Excel</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700;" onclick="exportCastepMullikenXLSX()" title="Export multi-tab Excel workbook (Magnetism Summary, Orbital Spin Matrix, Atomic Populations, Bond Populations)">📗 Excel</button>
                     <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px; font-size:11px;" onclick="exportCastepCanvasPNG('castep-mulliken-mag-canvas', 'CASTEP_Mulliken_Magnetism.png')">📷 PNG</button>
                   </div>
                 </div>
@@ -2331,6 +2331,110 @@
 
               <!-- Global Magnetism & Population Summary Strip -->
               <div id="castep-mulliken-summary-strip" class="castep-elec-summary-strip"></div>
+
+              <!-- Orbital-Resolved Spin Matrix Card (All Elements & s/p/d/f Sub-Orbitals) -->
+              <div id="castep-spin-matrix-card" class="castep-plot-canvas-card" style="margin-top:8px; padding:12px 14px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+                  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <span style="font-weight:800; font-size:13px; color:#0f172a;">🧲 Orbital-Resolved Spin Matrix</span>
+                    <span id="castep-spinmat-source-badge" class="badge badge-blue" style="font-size:10.5px;">Awaiting orbital data</span>
+                  </div>
+                  <div style="display:flex; gap:5px; align-items:center; flex-wrap:wrap;">
+                    <input id="castep-spinmat-file-input" type="file" accept=".castep,.pdos_bin,.bands" multiple style="display:none;" onchange="handleCastepSpinMatrixFileUpload(event)" />
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="document.getElementById('castep-spinmat-file-input')?.click()" title="Load CASTEP .castep (with Orbital Populations) or .pdos_bin + .bands">📂 .castep/.pdos_bin</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="exportCastepSpinMatrixCSV()" title="Export current Spin Matrix & all-element orbital spin table to CSV">📊 Matrix CSV</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px; font-weight:700;" onclick="exportCastepSpinMatrixPNG()" title="Export publication-ready Hi-DPI Spin Matrix PNG">📷 Matrix PNG</button>
+                  </div>
+                </div>
+
+                <!-- Spin Matrix Controls Bar -->
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:7px 10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:7px; margin-bottom:8px;">
+                  <span style="display:inline-flex; align-items:center; gap:5px;">
+                    <label class="castep-field-lbl" style="margin:0;">Element:</label>
+                    <select id="castep-spinmat-element" class="castep-input" style="width:auto; font-weight:700;" onchange="onCastepSpinMatrixElementChange()">
+                      <option value="all_grid">All Elements Overview Grid</option>
+                    </select>
+                  </span>
+
+                  <span style="display:inline-flex; align-items:center; gap:5px;">
+                    <label class="castep-field-lbl" style="margin:0;">Atom:</label>
+                    <select id="castep-spinmat-atom" class="castep-input" style="width:auto;" onchange="renderCastepSpinMatrix()">
+                      <option value="avg">Element Average</option>
+                      <option value="sum">Element Total (Sum)</option>
+                    </select>
+                  </span>
+
+                  <span style="display:inline-flex; align-items:center; gap:5px;">
+                    <label class="castep-field-lbl" style="margin:0;">Orbitals:</label>
+                    <select id="castep-spinmat-shell" class="castep-input" style="width:auto;" onchange="renderCastepSpinMatrix()">
+                      <option value="auto">Auto (Dominant Shell)</option>
+                      <option value="d">d-orbitals (5×5)</option>
+                      <option value="p">p-orbitals (3×3)</option>
+                      <option value="s">s-orbital (1×1)</option>
+                      <option value="f">f-orbitals (7×7)</option>
+                      <option value="all_m">All Active Sub-Orbitals</option>
+                      <option value="spdf">Shell Summary (s, p, d, f)</option>
+                    </select>
+                  </span>
+
+                  <span style="display:inline-flex; align-items:center; gap:5px;">
+                    <label class="castep-field-lbl" style="margin:0;">Quantity:</label>
+                    <select id="castep-spinmat-qty" class="castep-input" style="width:auto;" onchange="renderCastepSpinMatrix()">
+                      <option value="spin">Spin (n↑ − n↓)</option>
+                      <option value="up">Spin Up (n↑)</option>
+                      <option value="dn">Spin Down (n↓)</option>
+                      <option value="charge">Charge (n↑ + n↓)</option>
+                    </select>
+                  </span>
+
+                  <span style="display:inline-flex; align-items:center; gap:5px;">
+                    <label class="castep-field-lbl" style="margin:0;">Style:</label>
+                    <select id="castep-spinmat-palette" class="castep-input" style="width:auto;" onchange="renderCastepSpinMatrix()">
+                      <option value="journal_green">Publication (Pale Green)</option>
+                      <option value="diverging_rb">Diverging (Red / Blue)</option>
+                      <option value="blue_orange">Diverging (Teal / Amber)</option>
+                    </select>
+                  </span>
+
+                  <span style="display:inline-flex; align-items:center; gap:5px;">
+                    <label class="castep-field-lbl" style="margin:0;">Digits:</label>
+                    <select id="castep-spinmat-decimals" class="castep-input" style="width:auto;" onchange="renderCastepSpinMatrix()">
+                      <option value="3" selected>3</option>
+                      <option value="4">4</option>
+                      <option value="2">2</option>
+                    </select>
+                  </span>
+                </div>
+
+                <!-- Clickable Element Quick-Selector Pills -->
+                <div id="castep-spinmat-el-pills" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:9px;"></div>
+
+                <!-- 2-Column Body: Publication Heatmap Canvas + Sub-Orbital Breakdown Table -->
+                <div id="castep-spinmat-layout" style="display:grid; grid-template-columns:minmax(320px, 470px) minmax(260px, 1fr); gap:14px; align-items:start;">
+                  <div id="castep-spinmat-canvas-wrap" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:10px; display:flex; flex-direction:column; align-items:center;">
+                    <canvas id="castep-spinmat-canvas" width="440" height="420" style="display:block; max-width:100%;"></canvas>
+                    <div id="castep-spinmat-caption" style="font-size:11px; color:#475569; margin-top:4px; text-align:center;"></div>
+                  </div>
+                  <div id="castep-spinmat-side" style="display:flex; flex-direction:column; gap:8px;">
+                    <div id="castep-spinmat-kpi" style="padding:8px 10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:7px; font-size:11.5px; color:#334155; display:flex; flex-wrap:wrap; gap:10px;"></div>
+                    <div class="castep-atoms-table-scroll" style="max-height:345px; border:1px solid #e2e8f0; border-radius:7px;">
+                      <table class="castep-atoms-table" style="margin:0;">
+                        <thead id="castep-spinmat-thead">
+                          <tr>
+                            <th>Orbital</th>
+                            <th>n<sup>↑</sup></th>
+                            <th>n<sup>↓</sup></th>
+                            <th>Spin (μ<sub>B</sub>)</th>
+                            <th>Charge (e)</th>
+                            <th>Share</th>
+                          </tr>
+                        </thead>
+                        <tbody id="castep-spinmat-tbody"></tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               <!-- 2-Column High-DPI Mulliken Charts (Magnetism/Orbital + Bond Population vs Length) -->
               <div class="castep-conv-charts-grid" style="margin-top:8px;">
@@ -5528,9 +5632,9 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=133_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=133_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=133_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=133_v116_vesta_viewer'"></script>
-  <script src="app.js?v=133_v116_vesta_viewer" onerror="this.src='/static/app.js?v=133_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=134_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=134_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=134_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=134_v116_vesta_viewer'"></script>
+  <script src="app.js?v=134_v116_vesta_viewer" onerror="this.src='/static/app.js?v=134_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
