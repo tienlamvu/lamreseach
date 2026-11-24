@@ -868,6 +868,7 @@ function rerenderAllActiveCastepPlots() {
   if (typeof renderCastepOpticalPlots === "function") renderCastepOpticalPlots();
   if (typeof renderCastepChdiffPlots === "function") renderCastepChdiffPlots();
   if (typeof renderCastepMullikenPane === "function") renderCastepMullikenPane();
+  if (typeof renderCastepTransportPane === "function") renderCastepTransportPane();
   if (typeof renderCastepConvergencePlots === "function") renderCastepConvergencePlots();
 }
 window.rerenderAllActiveCastepPlots = rerenderAllActiveCastepPlots;
@@ -1582,6 +1583,7 @@ function initCastepStudioTab() {
           else if (pane === "optics") renderCastepOpticalPlots();
           else if (pane === "chdiff") renderCastepChdiffPlots();
           else if (pane === "mulliken") renderCastepMullikenPane();
+          else if (pane === "transport") renderCastepTransportPane();
           else if (pane === "convergence") renderCastepConvergencePlots();
         });
       });
@@ -1631,6 +1633,7 @@ function initCastepStudioTab() {
     if (CASTEP_STUDIO_STATE.activeStagePane === "optics") renderCastepOpticalPlots();
     if (CASTEP_STUDIO_STATE.activeStagePane === "chdiff") renderCastepChdiffPlots();
     if (CASTEP_STUDIO_STATE.activeStagePane === "mulliken") renderCastepMullikenPane();
+    if (CASTEP_STUDIO_STATE.activeStagePane === "transport") renderCastepTransportPane();
     if (CASTEP_STUDIO_STATE.activeStagePane === "convergence") renderCastepConvergencePlots();
   }, 60);
 }
@@ -2331,6 +2334,9 @@ async function loadCastepJobIntoStudio(jobId) {
   } else if (activePane === "mulliken") {
     CASTEP_STUDIO_STATE._dirtyPanes.delete("mulliken");
     renderCastepMullikenPane();
+  } else if (activePane === "transport") {
+    CASTEP_STUDIO_STATE._dirtyPanes.delete("transport");
+    renderCastepTransportPane();
   } else if (activePane === "convergence") {
     CASTEP_STUDIO_STATE._dirtyPanes.delete("convergence");
     renderCastepConvergencePlots();
@@ -2392,6 +2398,7 @@ async function switchCastepStagePane(paneId, btnEl) {
     else if (paneId === "optics") renderCastepOpticalPlots();
     else if (paneId === "chdiff") renderCastepChdiffPlots();
     else if (paneId === "mulliken") renderCastepMullikenPane();
+    else if (paneId === "transport") renderCastepTransportPane();
     else if (paneId === "convergence") renderCastepConvergencePlots();
     else if (paneId === "files") {
       if (job) populateCastepParamFormFromText(job.param_text || "");
@@ -6025,6 +6032,7 @@ function renderCastepElectronicPlots() {
       <span style="color:#0369a1;"><strong>PDOS Source:</strong> ${escapeHtml(pdosSourceLabel || "Band Structure Only")}</span>
       <span><strong>BZ Path:</strong> ${escapeHtml(pathLabels)}</span>
       <span style="color:#047857;"><strong>Zero Ref:</strong> ${formatSciHtml(align.label)}</span>
+      <button type="button" class="castep-preset-chip" style="margin-left:auto; font-weight:700; color:#1d4ed8; border-color:#93c5fd; background:#ffffff;" onclick="switchCastepStagePane('transport')" title="Analyze Carrier Effective Mass (m*e, m*h), Mobility &amp; Drude Relaxation Time from Band Structure &amp; DOS">⚡ Analyze m*, Mobility &amp; Drude →</button>
     `;
   }
 
@@ -7674,6 +7682,8 @@ function getPlotRendererForCanvas(canvasId) {
     case "castep-spinmat-canvas": return typeof renderCastepSpinMatrix === "function" ? renderCastepSpinMatrix : null;
     case "castep-mulliken-mag-canvas":
     case "castep-mulliken-bond-canvas": return typeof renderCastepMullikenPane === "function" ? renderCastepMullikenPane : null;
+    case "castep-transport-fit-canvas":
+    case "castep-transport-drude-canvas": return typeof renderCastepTransportPane === "function" ? renderCastepTransportPane : null;
     case "castep-energy-chart-canvas":
     case "castep-conv-chart-canvas": return typeof renderCastepConvergencePlots === "function" ? renderCastepConvergencePlots : null;
     case "castep-3d-canvas": return typeof renderCastep3DScene === "function" ? renderCastep3DScene : null;
@@ -8031,6 +8041,35 @@ function buildCastepPlotDataForClipboard(plotKey, subPart = "auto") {
     return { title: "SCF & Energy Convergence", headers: base.headers, rows: base.rows };
   }
 
+  if (plotKey === "transport") {
+    const pkg = typeof buildTransportExportTables === "function" ? buildTransportExportTables() : null;
+    if (!pkg) return null;
+    if (subPart === "branches" && pkg.branchSheet?.rows?.length) {
+      return { title: "Directional Effective Mass Branches", headers: pkg.branchSheet.headers, rows: pkg.branchSheet.rows };
+    }
+    if (subPart === "temp_sweep" && pkg.tempSheet?.rows?.length) {
+      return { title: "Drude & Mobility Temperature Sweep (100–600 K)", headers: pkg.tempSheet.headers, rows: pkg.tempSheet.rows };
+    }
+    if (subPart === "doping_sweep" && pkg.dopingSheet?.rows?.length) {
+      return { title: "Drude Doping Sweep (e⁻ & h⁺)", headers: pkg.dopingSheet.headers, rows: pkg.dopingSheet.rows };
+    }
+    if (subPart === "full") {
+      const rows = [
+        ...pkg.summarySheet.rows,
+        [],
+        ["=== DIRECTIONAL EFFECTIVE MASS BRANCHES ==="],
+        pkg.branchSheet.headers,
+        ...pkg.branchSheet.rows,
+        [],
+        ["=== TEMPERATURE SWEEP (100-600 K) ==="],
+        pkg.tempSheet.headers,
+        ...pkg.tempSheet.rows
+      ];
+      return { title: "Full Effective Mass, Mobility & Drude Report", headers: pkg.summarySheet.headers, rows };
+    }
+    return { title: "Semiconductor & Drude Summary", headers: pkg.summarySheet.headers, rows: pkg.summarySheet.rows };
+  }
+
   return null;
 }
 window.buildCastepPlotDataForClipboard = buildCastepPlotDataForClipboard;
@@ -8114,6 +8153,23 @@ const CASTEP_PLOT_CTX_SPECS = {
     pngName: "CASTEP_Convergence.png",
     fullDataItem: { label: "📊 Copy SCF & Energy Convergence Data (TSV)", plotKey: "convergence", subPart: "scf" },
     dataItems: []
+  },
+  "castep-transport-fit-canvas": {
+    label: "Band-Edge Effective Mass Fits",
+    pngName: "CASTEP_Effective_Mass_Fits.png",
+    fullDataItem: { label: "⚡ Copy Full Effective Mass & Drude Report (TSV)", plotKey: "transport", subPart: "full" },
+    dataItems: [
+      { label: "📈 Copy Directional Effective Mass Table (TSV)", plotKey: "transport", subPart: "branches" }
+    ]
+  },
+  "castep-transport-drude-canvas": {
+    label: "DOS Mass & Drude Transport",
+    pngName: "CASTEP_Drude_Transport.png",
+    fullDataItem: { label: "⚡ Copy Full Effective Mass & Drude Report (TSV)", plotKey: "transport", subPart: "full" },
+    dataItems: [
+      { label: "🌡️ Copy Temperature Sweep 100–600 K (TSV)", plotKey: "transport", subPart: "temp_sweep" },
+      { label: "🔋 Copy Doping Sweep Table (TSV)", plotKey: "transport", subPart: "doping_sweep" }
+    ]
   }
 };
 
@@ -15173,4 +15229,2366 @@ function exportCastepMullikenXLSX() {
   }
 }
 window.exportCastepMullikenXLSX = exportCastepMullikenXLSX;
+
+
+// ============================================================================
+// 11. Carrier Effective Mass (Band + DOS), Semiconductor Transport,
+//     Drude Effective Mass & Drude Relaxation Time Engine (v139)
+// ============================================================================
+
+const TR_CONST = {
+  HBAR_J: 1.054571817e-34,         // J·s
+  HBAR_EV_FS: 0.6582119569,        // eV·fs
+  M0_KG: 9.1093837015e-31,         // kg
+  E_CHG: 1.602176634e-19,          // C
+  KB_J: 1.380649e-23,              // J/K
+  KB_EV: 8.617333262e-5,           // eV/K
+  EPS0_SI: 8.8541878128e-12,       // F/m
+  BOHR_ANG: 0.529177210903,        // Å
+  HBAR2_OVER_M0: 7.619964231,      // eV·Å²  (ħ² / m0)
+  RY_EV: 13.605693122994           // eV
+};
+
+const TR_MATERIAL_PRESETS = {
+  "2d_tmdc": {
+    label: "2D Semiconductor (MoS₂ / MoSi₂N₄ / Janus)",
+    dim: "2d", C2d: 260, C3d: 165, E1e: 5.5, E1h: 4.5, eps0: 12.0, epsInf: 10.5, wLO: 0.048, Ni: 0, gvE: 2, gvH: 1
+  },
+  "2d_bp": {
+    label: "2D Anisotropic (Phosphorene / GeSe)",
+    dim: "2d", C2d: 102, C3d: 85, E1e: 2.7, E1h: 2.5, eps0: 10.0, epsInf: 8.5, wLO: 0.042, Ni: 0, gvE: 1, gvH: 1
+  },
+  "3d_si": {
+    label: "3D Covalent Bulk (Si / Ge / SiC)",
+    dim: "3d", C2d: 180, C3d: 166, E1e: 9.0, E1h: 5.0, eps0: 11.7, epsInf: 11.7, wLO: 0.063, Ni: 0, gvE: 6, gvH: 1
+  },
+  "3d_gaas": {
+    label: "3D Polar III-V (GaAs / GaN / InP)",
+    dim: "3d", C2d: 150, C3d: 118, E1e: 7.0, E1h: 3.5, eps0: 12.9, epsInf: 10.9, wLO: 0.036, Ni: 0, gvE: 1, gvH: 1
+  },
+  "3d_oxide": {
+    label: "3D Oxide / Perovskite (BaTiO₃ / TiO₂ / Halide)",
+    dim: "3d", C2d: 140, C3d: 135, E1e: 8.5, E1h: 6.0, eps0: 25.0, epsInf: 5.5, wLO: 0.065, Ni: 0, gvE: 1, gvH: 1
+  }
+};
+
+window._lastCastepTransportResult = null;
+window._castepTransportCustomState = {
+  lastJobId: null,
+  userEditedEps: false
+};
+
+// ---------------- Linear Algebra & Reciprocal Space Helpers ----------------
+
+function trCross(a, b) {
+  return [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0]
+  ];
+}
+function trDot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+function trNorm(a) { return Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]); }
+function trSub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+
+function latticeParamsToVectorsA(lat) {
+  if (!lat) return null;
+  const a = Number(lat.a) || 0, b = Number(lat.b) || 0, c = Number(lat.c) || 0;
+  if (a <= 0 || b <= 0 || c <= 0) return null;
+  const al = (Number(lat.alpha) || 90) * Math.PI / 180;
+  const be = (Number(lat.beta) || 90) * Math.PI / 180;
+  const ga = (Number(lat.gamma) || 90) * Math.PI / 180;
+  const ca = Math.cos(al), cb = Math.cos(be), cg = Math.cos(ga), sg = Math.sin(ga) || 1e-9;
+  const v1 = [a, 0, 0];
+  const v2 = [b * cg, b * sg, 0];
+  const cx = c * cb;
+  const cy = c * (ca - cb * cg) / sg;
+  const cz = Math.sqrt(Math.max(1e-12, c * c - cx * cx - cy * cy));
+  return [v1, v2, [cx, cy, cz]];
+}
+
+function extractTransportLattice(job, bandsObj) {
+  let vecsA = null;
+  const vb = bandsObj?.vecs_bohr || job?.bandstr_bands?.vecs_bohr || job?.dos_bands?.vecs_bohr;
+  if (Array.isArray(vb) && vb.length === 3 && vb.every(v => Array.isArray(v) && v.length >= 3)) {
+    vecsA = vb.map(v => [v[0] * TR_CONST.BOHR_ANG, v[1] * TR_CONST.BOHR_ANG, v[2] * TR_CONST.BOHR_ANG]);
+  }
+  if (!vecsA && job?.structure?.lattice) {
+    if (Array.isArray(job.structure.lattice.vectors) && job.structure.lattice.vectors.length === 3) {
+      vecsA = job.structure.lattice.vectors.map(v => [Number(v[0]) || 0, Number(v[1]) || 0, Number(v[2]) || 0]);
+    } else {
+      vecsA = latticeParamsToVectorsA(job.structure.lattice);
+    }
+  }
+  if (!vecsA) {
+    vecsA = [[5.0, 0, 0], [0, 5.0, 0], [0, 0, 5.0]];
+  }
+  const [a1, a2, a3] = vecsA;
+  const aLen = trNorm(a1), bLen = trNorm(a2), cLen = trNorm(a3);
+  const c23 = trCross(a2, a3), c31 = trCross(a3, a1), c12 = trCross(a1, a2);
+  const volA3 = Math.abs(trDot(a1, c23)) || 1e-6;
+  const signVol = trDot(a1, c23) >= 0 ? 1 : -1;
+  const fac = (2 * Math.PI) / (signVol * volA3);
+  const recip = [
+    [c23[0] * fac, c23[1] * fac, c23[2] * fac],
+    [c31[0] * fac, c31[1] * fac, c31[2] * fac],
+    [c12[0] * fac, c12[1] * fac, c12[2] * fac]
+  ];
+  const areaAB = trNorm(c12);
+  const areaBC = trNorm(c23);
+  const areaCA = trNorm(c31);
+  const gammaDeg = Math.acos(Math.max(-1, Math.min(1, trDot(a1, a2) / ((aLen * bLen) || 1)))) * 180 / Math.PI;
+  const isHex = Math.abs(aLen - bLen) / Math.max(aLen, bLen, 1) < 0.03 &&
+                (Math.abs(gammaDeg - 120) < 3.0 || Math.abs(gammaDeg - 60) < 3.0);
+
+  // Detect 2D vacuum layer from atomic fractional coordinates (default check along c, b, a)
+  let autoIs2D = false;
+  let vacAxis = 2; // 0=a, 1=b, 2=c
+  let maxVacGapA = 0;
+  let slabThicknessA = cLen;
+  const atoms = job?.structure?.atoms || [];
+  const axisLens = [aLen, bLen, cLen];
+  if (atoms.length >= 2) {
+    for (let ax = 0; ax < 3; ax++) {
+      const coords = atoms.map(at => {
+        const f = ax === 0 ? (at.fx ?? at.x ?? 0) : (ax === 1 ? (at.fy ?? at.y ?? 0) : (at.fz ?? at.z ?? 0));
+        let u = Number(f) % 1;
+        if (u < 0) u += 1;
+        return u;
+      }).sort((x, y) => x - y);
+      let maxGapFrac = 0;
+      for (let i = 0; i < coords.length; i++) {
+        const next = i + 1 < coords.length ? coords[i + 1] : (coords[0] + 1.0);
+        const gap = next - coords[i];
+        if (gap > maxGapFrac) maxGapFrac = gap;
+      }
+      const gapA = maxGapFrac * axisLens[ax];
+      if (gapA > maxVacGapA) {
+        maxVacGapA = gapA;
+        vacAxis = ax;
+      }
+    }
+    if (maxVacGapA >= 7.0) {
+      autoIs2D = true;
+      slabThicknessA = Math.max(3.35, (axisLens[vacAxis] - maxVacGapA) + 3.35);
+    }
+  } else if (cLen > 14.0 && cLen / Math.max(aLen, bLen, 1) > 2.2) {
+    autoIs2D = true;
+    vacAxis = 2;
+    maxVacGapA = cLen - 6.0;
+    slabThicknessA = 6.5;
+  }
+
+  const area2D = vacAxis === 2 ? areaAB : (vacAxis === 0 ? areaBC : areaCA);
+  return {
+    vecsA, recip, aLen, bLen, cLen, gammaDeg, isHex,
+    volA3, areaAB, area2D, autoIs2D, vacAxis, maxVacGapA, slabThicknessA
+  };
+}
+
+function fracToCartK(f, recip) {
+  return [
+    f[0] * recip[0][0] + f[1] * recip[1][0] + f[2] * recip[2][0],
+    f[0] * recip[0][1] + f[1] * recip[1][1] + f[2] * recip[2][1],
+    f[0] * recip[0][2] + f[1] * recip[1][2] + f[2] * recip[2][2]
+  ];
+}
+
+function labelFractionalKPoint(f, latInfo) {
+  const wrap = (v) => {
+    let x = ((v % 1) + 1) % 1;
+    if (x > 0.985) x = 0;
+    return x;
+  };
+  const x = wrap(f[0]), y = wrap(f[1]), z = wrap(f[2]);
+  const near = (a, b, tol = 0.025) => Math.abs(a - b) < tol;
+  if (near(x, 0) && near(y, 0) && near(z, 0)) return "Γ";
+  if (latInfo?.isHex) {
+    if ((near(x, 0.5) && near(y, 0) && near(z, 0)) || (near(x, 0) && near(y, 0.5) && near(z, 0)) || (near(x, 0.5) && near(y, 0.5) && near(z, 0))) return "M";
+    if ((near(x, 1 / 3) && near(y, 1 / 3) && near(z, 0)) || (near(x, 2 / 3) && near(y, 1 / 3) && near(z, 0)) || (near(x, 1 / 3) && near(y, 2 / 3) && near(z, 0)) || (near(x, 2 / 3) && near(y, 2 / 3) && near(z, 0))) return "K";
+    if (near(x, 0) && near(y, 0) && near(z, 0.5)) return "A";
+    if ((near(x, 0.5) && near(y, 0) && near(z, 0.5)) || (near(x, 0) && near(y, 0.5) && near(z, 0.5))) return "L";
+    if ((near(x, 1 / 3) && near(y, 1 / 3) && near(z, 0.5)) || (near(x, 2 / 3) && near(y, 1 / 3) && near(z, 0.5))) return "H";
+  } else {
+    if (near(x, 0.5) && near(y, 0) && near(z, 0)) return "X";
+    if (near(x, 0) && near(y, 0.5) && near(z, 0)) return "Y";
+    if (near(x, 0) && near(y, 0) && near(z, 0.5)) return "Z";
+    if (near(x, 0.5) && near(y, 0.5) && near(z, 0)) return "M";
+    if (near(x, 0.5) && near(y, 0.5) && near(z, 0.5)) return "R";
+    if (near(x, 0.5) && near(y, 0) && near(z, 0.5)) return "U";
+    if (near(x, 0) && near(y, 0.5) && near(z, 0.5)) return "T";
+    if (near(x, 0.25) && near(y, 0.5) && near(z, 0.75)) return "W";
+    if (near(x, 0.5) && near(y, 0.25) && near(z, 0.75)) return "W";
+  }
+  return `(${f[0].toFixed(2)},${f[1].toFixed(2)},${f[2].toFixed(2)})`;
+}
+
+function defaultValleyDegeneracyForLabel(label, isHex, is2D) {
+  if (!label || label === "Γ" || label === "A" || label === "Z") return 1;
+  if (isHex) {
+    if (label === "K" || label === "H") return 2;
+    if (label === "M" || label === "L") return 3;
+    return is2D ? 6 : 6;
+  }
+  if (label === "X" || label === "Y") return is2D ? 2 : 3;
+  if (label === "M" || label === "R") return 1;
+  return 2;
+}
+
+// ---------------- Least-Squares Curve Fitting (Parabolic / Quadratic / Kane) ----------------
+
+function solveLinear3x3(A, b) {
+  const M = A.map((r, i) => [...r, b[i]]);
+  for (let col = 0; col < 3; col++) {
+    let piv = col;
+    for (let r = col + 1; r < 3; r++) {
+      if (Math.abs(M[r][col]) > Math.abs(M[piv][col])) piv = r;
+    }
+    if (Math.abs(M[piv][col]) < 1e-18) return null;
+    if (piv !== col) [M[col], M[piv]] = [M[piv], M[col]];
+    const diag = M[col][col];
+    for (let j = col; j < 4; j++) M[col][j] /= diag;
+    for (let r = 0; r < 3; r++) {
+      if (r === col) continue;
+      const f = M[r][col];
+      for (let j = col; j < 4; j++) M[r][j] -= f * M[col][j];
+    }
+  }
+  return [M[0][3], M[1][3], M[2][3]];
+}
+
+function fitPureParabolic(qs, es, e0) {
+  // E(q) = e0 + c2 * q^2  (exact zero slope at symmetry extremum)
+  let num = 0, den = 0;
+  for (let i = 0; i < qs.length; i++) {
+    const q2 = qs[i] * qs[i];
+    num += q2 * (es[i] - e0);
+    den += q2 * q2;
+  }
+  if (den < 1e-18) return null;
+  const c2 = num / den;
+  const pred = qs.map(q => e0 + c2 * q * q);
+  const meanE = es.reduce((a, b) => a + b, 0) / es.length;
+  let ssRes = 0, ssTot = 0;
+  for (let i = 0; i < es.length; i++) {
+    ssRes += (es[i] - pred[i]) ** 2;
+    ssTot += (es[i] - meanE) ** 2;
+  }
+  const r2 = ssTot > 1e-16 ? Math.max(0, 1 - ssRes / ssTot) : 1.0;
+  return { c0: e0, c1: 0, c2, d2Edk2: 2 * c2, qVertex: 0, r2, rmse: Math.sqrt(ssRes / es.length), pred };
+}
+
+function fitGeneralQuadratic(qs, es) {
+  // E(q) = c0 + c1*q + c2*q^2
+  if (qs.length < 3) return null;
+  let s0 = 0, s1 = 0, s2 = 0, s3 = 0, s4 = 0, t0 = 0, t1 = 0, t2 = 0;
+  for (let i = 0; i < qs.length; i++) {
+    const q = qs[i], q2 = q * q, e = es[i];
+    s0 += 1; s1 += q; s2 += q2; s3 += q2 * q; s4 += q2 * q2;
+    t0 += e; t1 += q * e; t2 += q2 * e;
+  }
+  const sol = solveLinear3x3([[s0, s1, s2], [s1, s2, s3], [s2, s3, s4]], [t0, t1, t2]);
+  if (!sol) return null;
+  const [c0, c1, c2] = sol;
+  const pred = qs.map(q => c0 + c1 * q + c2 * q * q);
+  const meanE = es.reduce((a, b) => a + b, 0) / es.length;
+  let ssRes = 0, ssTot = 0;
+  for (let i = 0; i < es.length; i++) {
+    ssRes += (es[i] - pred[i]) ** 2;
+    ssTot += (es[i] - meanE) ** 2;
+  }
+  const r2 = ssTot > 1e-16 ? Math.max(0, 1 - ssRes / ssTot) : 1.0;
+  const qVertex = Math.abs(c2) > 1e-12 ? -c1 / (2 * c2) : 0;
+  return { c0, c1, c2, d2Edk2: 2 * c2, qVertex, r2, rmse: Math.sqrt(ssRes / es.length), pred };
+}
+
+function fitKaneNonParabolic(qs, es, e0, carrierSign) {
+  // carrierSign = +1 for electrons (E >= e0), -1 for holes (E <= e0)
+  // dE * (1 + alpha * dE) = (ħ² / 2 m0*) * q^2  =>  q^2 / dE = A + B * dE
+  const xs = [], ys = [];
+  for (let i = 0; i < qs.length; i++) {
+    const dE = carrierSign * (es[i] - e0);
+    const q2 = qs[i] * qs[i];
+    if (dE > 1e-5 && q2 > 1e-8) {
+      xs.push(dE);
+      ys.push(q2 / dE);
+    }
+  }
+  if (xs.length < 3) return null;
+  const n = xs.length;
+  const mx = xs.reduce((a, b) => a + b, 0) / n;
+  const my = ys.reduce((a, b) => a + b, 0) / n;
+  let num = 0, den = 0;
+  for (let i = 0; i < n; i++) {
+    num += (xs[i] - mx) * (ys[i] - my);
+    den += (xs[i] - mx) ** 2;
+  }
+  let B = den > 1e-16 ? num / den : 0;
+  let A = my - B * mx;
+  if (B < 0) {
+    // Non-parabolicity should soften dispersion (alpha >= 0); fallback to pure parabolic if negative
+    B = 0;
+    A = my;
+  }
+  if (A <= 1e-9) return null;
+  const mStar0 = 0.5 * TR_CONST.HBAR2_OVER_M0 * A;
+  const alphaKane = Math.max(0, Math.min(25.0, B / A));
+  // Predict E(q) from dE(1 + alpha*dE) = q^2 / A
+  const pred = qs.map(q => {
+    const rhs = (q * q) / A;
+    let dE = rhs;
+    if (alphaKane > 1e-6) {
+      dE = (-1 + Math.sqrt(1 + 4 * alphaKane * rhs)) / (2 * alphaKane);
+    }
+    return e0 + carrierSign * dE;
+  });
+  const meanE = es.reduce((a, b) => a + b, 0) / es.length;
+  let ssRes = 0, ssTot = 0;
+  for (let i = 0; i < es.length; i++) {
+    ssRes += (es[i] - pred[i]) ** 2;
+    ssTot += (es[i] - meanE) ** 2;
+  }
+  const r2 = ssTot > 1e-16 ? Math.max(0, 1 - ssRes / ssTot) : 1.0;
+  const d2Edk2 = carrierSign * (TR_CONST.HBAR2_OVER_M0 / mStar0);
+  return { mStar0, alphaKane, d2Edk2, r2, rmse: Math.sqrt(ssRes / es.length), pred };
+}
+
+// ---------------- Band-Structure Effective Mass Extractor ----------------
+
+function buildCollinearBZSegments(kCarts) {
+  const n = kCarts.length;
+  if (n < 2) return [{ start: 0, end: Math.max(0, n - 1), dir: [1, 0, 0] }];
+  const stepDists = [];
+  for (let i = 1; i < n; i++) {
+    const d = trNorm(trSub(kCarts[i], kCarts[i - 1]));
+    if (d > 1e-6) stepDists.push(d);
+  }
+  stepDists.sort((a, b) => a - b);
+  const medStep = stepDists.length ? stepDists[Math.floor(stepDists.length / 2)] : 0.05;
+  const jumpThresh = Math.max(medStep * 3.0, 0.25);
+
+  const segs = [];
+  let segStart = 0;
+  let curDir = null;
+  for (let i = 1; i < n; i++) {
+    const dv = trSub(kCarts[i], kCarts[i - 1]);
+    const dl = trNorm(dv);
+    if (dl < 1e-7) continue;
+    const u = [dv[0] / dl, dv[1] / dl, dv[2] / dl];
+    if (dl > jumpThresh) {
+      if (i - 1 > segStart) segs.push({ start: segStart, end: i - 1, dir: curDir || u });
+      segStart = i;
+      curDir = null;
+      continue;
+    }
+    // Split straight path passing through Gamma (0,0,0) so K' -> Gamma -> K yields K' -> Gamma and Gamma -> K
+    if (i > segStart && i < n - 1 && trNorm(kCarts[i]) < 1e-4 && trNorm(kCarts[segStart]) > 1e-3) {
+      segs.push({ start: segStart, end: i, dir: curDir || u });
+      segStart = i;
+      curDir = null;
+      continue;
+    }
+    if (!curDir) {
+      curDir = u;
+    } else if (trDot(curDir, u) < 0.996) {
+      segs.push({ start: segStart, end: i - 1, dir: curDir });
+      segStart = i - 1;
+      curDir = u;
+    }
+  }
+  if (n - 1 > segStart) segs.push({ start: segStart, end: n - 1, dir: curDir || [1, 0, 0] });
+  return segs;
+}
+
+function fitBandExtremumBranches(kpoints, kCarts, segs, latInfo, spinIdx, bandIdx, k0, carrierType, opts) {
+  // carrierType: "e" (CBM minimum, curvature > 0) or "h" (VBM maximum, curvature < 0)
+  const carrierSign = carrierType === "e" ? 1 : -1;
+  const fitDkMax = Math.max(0.03, Number(opts.fitDkMax) || 0.16);
+  const minPts = Math.max(3, Math.min(8, Number(opts.minFitPts) || 4));
+  const fitModel = opts.fitModel || "auto";
+  const e0 = kpoints[k0].e[spinIdx][bandIdx];
+  const k0Cart = kCarts[k0];
+  const k0Label = labelFractionalKPoint(kpoints[k0].k, latInfo);
+
+  // Find every collinear segment containing k0 (either interior or endpoint)
+  const branches = [];
+  const touchingSegs = segs.filter(sg => k0 >= sg.start && k0 <= sg.end);
+
+  const collectDirection = (sg, stepDir) => {
+    const idxs = [k0];
+    for (let k = k0 + stepDir; k >= sg.start && k <= sg.end; k += stepDir) {
+      const dist = trNorm(trSub(kCarts[k], k0Cart));
+      if (dist <= fitDkMax || idxs.length < minPts) {
+        idxs.push(k);
+        if (idxs.length >= 14) break;
+      } else {
+        break;
+      }
+    }
+    return idxs;
+  };
+
+  touchingSegs.forEach(sg => {
+    const isInterior = k0 > sg.start && k0 < sg.end;
+    if (isInterior) {
+      // Single continuous two-sided branch along the same collinear line!
+      const leftIdxs = collectDirection(sg, -1).slice(1).reverse();
+      const rightIdxs = collectDirection(sg, +1);
+      const idxs = [...leftIdxs, ...rightIdxs];
+      if (idxs.length < 3) return;
+      const u = sg.dir;
+      const qs = idxs.map(k => trDot(trSub(kCarts[k], k0Cart), u));
+      const es = idxs.map(k => kpoints[k].e[spinIdx][bandIdx]);
+      const endLblA = labelFractionalKPoint(kpoints[sg.start].k, latInfo);
+      const endLblB = labelFractionalKPoint(kpoints[sg.end].k, latInfo);
+      const dirLabel = `${endLblA}–${endLblB} (at ${k0Label})`;
+      const quad = fitGeneralQuadratic(qs, es);
+      const pure = fitPureParabolic(qs, es, e0);
+      const kane = fitKaneNonParabolic(qs, es, e0, carrierSign);
+      let chosen = quad;
+      let modelUsed = "Quadratic (2-sided)";
+      if (fitModel === "parabolic_sym" && pure) { chosen = pure; modelUsed = "Parabolic (Sym)"; }
+      else if (fitModel === "kane" && kane) { chosen = kane; modelUsed = "Kane Non-Parabolic"; }
+      else if (quad && quad.d2Edk2 * carrierSign <= 0 && pure && pure.d2Edk2 * carrierSign > 0) {
+        chosen = pure; modelUsed = "Parabolic (Sym)";
+      }
+      if (!chosen || chosen.d2Edk2 * carrierSign <= 1e-5) return;
+      const mStar = Math.abs(TR_CONST.HBAR2_OVER_M0 / chosen.d2Edk2);
+      if (!isFinite(mStar) || mStar > 200 || mStar < 0.002) return;
+      branches.push({
+        carrierType, spinIdx, bandIdx, k0, k0Label,
+        k0Frac: kpoints[k0].k,
+        dirLabel, dirVec: u, isInterior: true,
+        modelUsed, mStar,
+        mStarKane: kane ? kane.mStar0 : mStar,
+        alphaKane: kane ? kane.alphaKane : 0,
+        d2Edk2: chosen.d2Edk2,
+        r2: chosen.r2,
+        rmse: chosen.rmse,
+        dkSpan: Math.max(...qs.map(Math.abs)),
+        nPts: qs.length,
+        qs, es, pred: chosen.pred,
+        e0: chosen.c0 ?? e0,
+        c1: chosen.c1 ?? 0,
+        c2: chosen.c2 ?? (chosen.d2Edk2 / 2)
+      });
+    } else {
+      // Vertex endpoint: one-sided branch departing k0 along sg
+      const stepDir = (k0 === sg.start) ? +1 : -1;
+      const idxs = collectDirection(sg, stepDir);
+      if (idxs.length < 3) return;
+      const targetEndIdx = stepDir > 0 ? sg.end : sg.start;
+      const endLabel = labelFractionalKPoint(kpoints[targetEndIdx].k, latInfo);
+      const qs = idxs.map(k => trNorm(trSub(kCarts[k], k0Cart)));
+      const es = idxs.map(k => kpoints[k].e[spinIdx][bandIdx]);
+      const pure = fitPureParabolic(qs, es, e0);
+      const quad = fitGeneralQuadratic(qs, es);
+      const kane = fitKaneNonParabolic(qs, es, e0, carrierSign);
+
+      let chosen = pure;
+      let modelUsed = "Parabolic (Sym)";
+      if (fitModel === "quadratic" && quad && quad.d2Edk2 * carrierSign > 1e-5) {
+        chosen = quad; modelUsed = "Quadratic (Free)";
+      } else if (fitModel === "kane" && kane && kane.d2Edk2 * carrierSign > 1e-5) {
+        chosen = kane; modelUsed = "Kane Non-Parabolic";
+      } else if (fitModel === "auto") {
+        // At high-symmetry vertices (Γ, M, K, X, R), pure parabolic avoids noise from linear term
+        // unless unconstrained quadratic vastly improves RMSE and vertex stays physically nearby
+        if (quad && pure && quad.d2Edk2 * carrierSign > 1e-5 &&
+            quad.rmse < pure.rmse * 0.45 && Math.abs(quad.qVertex) < Math.max(...qs) * 0.45 &&
+            k0Label.startsWith("(")) {
+          chosen = quad; modelUsed = "Quadratic (Off-Sym)";
+        }
+      }
+      if (!chosen || chosen.d2Edk2 * carrierSign <= 1e-5) {
+        if (quad && quad.d2Edk2 * carrierSign > 1e-5) {
+          chosen = quad; modelUsed = "Quadratic (Fallback)";
+        } else {
+          return;
+        }
+      }
+      const mStar = Math.abs(TR_CONST.HBAR2_OVER_M0 / chosen.d2Edk2);
+      if (!isFinite(mStar) || mStar > 200 || mStar < 0.002) return;
+      const dv = trSub(kCarts[idxs[idxs.length - 1]], k0Cart);
+      const dl = trNorm(dv) || 1;
+      branches.push({
+        carrierType, spinIdx, bandIdx, k0, k0Label,
+        k0Frac: kpoints[k0].k,
+        dirLabel: `${k0Label} → ${endLabel}`,
+        dirVec: [dv[0] / dl, dv[1] / dl, dv[2] / dl],
+        isInterior: false,
+        modelUsed, mStar,
+        mStarKane: kane ? kane.mStar0 : mStar,
+        alphaKane: kane ? kane.alphaKane : 0,
+        d2Edk2: chosen.d2Edk2,
+        r2: chosen.r2,
+        rmse: chosen.rmse,
+        dkSpan: Math.max(...qs),
+        nPts: qs.length,
+        qs, es, pred: chosen.pred,
+        e0: chosen.c0 ?? e0,
+        c1: chosen.c1 ?? 0,
+        c2: chosen.c2 ?? (chosen.d2Edk2 / 2)
+      });
+    }
+  });
+  return branches;
+}
+
+function analyzeCarrierFromBands(bandsObj, latInfo, opts) {
+  if (!bandsObj || !bandsObj.kpoints || bandsObj.kpoints.length < 3) return null;
+  const kpoints = bandsObj.kpoints;
+  const ns = bandsObj.ns || 1;
+  const kCarts = kpoints.map(kp => fracToCartK(kp.k, latInfo.recip));
+  const segs = buildCollinearBZSegments(kCarts);
+
+  const analyzeSpin = (sIdx) => {
+    const nb = kpoints[0]?.e?.[sIdx]?.length || 0;
+    if (!nb) return null;
+    // Find VBM & CBM cleanly
+    let vbmE = -1e9, cbmE = 1e9, vbmK = 0, cbmK = 0, vbmB = -1, cbmB = -1;
+    let crossesFermi = false;
+    for (let b = 0; b < nb; b++) {
+      let bMin = 1e9, bMax = -1e9, minK = 0, maxK = 0;
+      for (let k = 0; k < kpoints.length; k++) {
+        const ev = kpoints[k].e?.[sIdx]?.[b];
+        if (ev === undefined) continue;
+        if (ev < bMin) { bMin = ev; minK = k; }
+        if (ev > bMax) { bMax = ev; maxK = k; }
+      }
+      if (bMin < -0.025 && bMax > 0.025) crossesFermi = true;
+      if (bMax <= 0.025 && bMax > vbmE) { vbmE = bMax; vbmK = maxK; vbmB = b; }
+      if (bMin > 0.025 && bMin < cbmE) { cbmE = bMin; cbmK = minK; cbmB = b; }
+    }
+    // Fallback if Fermi sits right on top of VBM/CBM without crossing
+    if (vbmB < 0 || cbmB < 0) {
+      for (let k = 0; k < kpoints.length; k++) {
+        const arr = kpoints[k].e?.[sIdx] || [];
+        for (let b = 0; b < arr.length; b++) {
+          const ev = arr[b];
+          if (ev <= 0.005 && ev > vbmE) { vbmE = ev; vbmK = k; vbmB = b; }
+          if (ev > 0.005 && ev < cbmE) { cbmE = ev; cbmK = k; cbmB = b; }
+        }
+      }
+    }
+    const gapEv = (vbmB >= 0 && cbmB >= 0 && !crossesFermi) ? Math.max(0, cbmE - vbmE) : 0.0;
+    const isMetallic = crossesFermi || gapEv < 0.02;
+
+    // Collect primary + degenerate bands within 15 meV at VBM (hh / lh) & CBM
+    const eBranches = [];
+    const hBranches = [];
+    const eDegBands = [];
+    const hDegBands = [];
+    const fermiCrossings = [];
+
+    if (!isMetallic && cbmB >= 0 && vbmB >= 0) {
+      for (let b = 0; b < nb; b++) {
+        const eAtCbm = kpoints[cbmK].e?.[sIdx]?.[b];
+        if (eAtCbm !== undefined && Math.abs(eAtCbm - cbmE) <= 0.018) eDegBands.push(b);
+        const eAtVbm = kpoints[vbmK].e?.[sIdx]?.[b];
+        if (eAtVbm !== undefined && Math.abs(eAtVbm - vbmE) <= 0.018) hDegBands.push(b);
+      }
+      if (!eDegBands.includes(cbmB)) eDegBands.unshift(cbmB);
+      if (!hDegBands.includes(vbmB)) hDegBands.unshift(vbmB);
+
+      // Fit CBM branches (and check secondary equivalent extrema within 10 meV at different k-points)
+      const cbmKs = [cbmK];
+      for (let k = 0; k < kpoints.length; k++) {
+        if (Math.abs(k - cbmK) > 3 && Math.abs((kpoints[k].e?.[sIdx]?.[cbmB] ?? 1e9) - cbmE) < 0.012) {
+          // Only add distinct high-symmetry/local min
+          const prev = k > 0 ? kpoints[k - 1].e[sIdx][cbmB] : 1e9;
+          const next = k + 1 < kpoints.length ? kpoints[k + 1].e[sIdx][cbmB] : 1e9;
+          if (kpoints[k].e[sIdx][cbmB] <= prev + 1e-5 && kpoints[k].e[sIdx][cbmB] <= next + 1e-5) {
+            if (!cbmKs.some(kk => trNorm(trSub(kCarts[kk], kCarts[k])) < 0.05)) cbmKs.push(k);
+          }
+        }
+      }
+      const pushUniqueBranch = (arr, br) => {
+        const dup = arr.some(x =>
+          x.bandIdx === br.bandIdx &&
+          x.dirLabel === br.dirLabel &&
+          Math.abs(x.mStar - br.mStar) / Math.max(1e-4, br.mStar) < 0.005
+        );
+        if (!dup) arr.push(br);
+      };
+      eDegBands.slice(0, 3).forEach((b, bi) => {
+        cbmKs.slice(0, 2).forEach(kk => {
+          const brs = fitBandExtremumBranches(kpoints, kCarts, segs, latInfo, sIdx, b, kk, "e", opts);
+          brs.forEach(br => {
+            br.subBandRole = eDegBands.length > 1 ? `CB${bi + 1}` : "CBM";
+            pushUniqueBranch(eBranches, br);
+          });
+        });
+      });
+
+      const vbmKs = [vbmK];
+      for (let k = 0; k < kpoints.length; k++) {
+        if (Math.abs(k - vbmK) > 3 && Math.abs((kpoints[k].e?.[sIdx]?.[vbmB] ?? -1e9) - vbmE) < 0.012) {
+          const prev = k > 0 ? kpoints[k - 1].e[sIdx][vbmB] : -1e9;
+          const next = k + 1 < kpoints.length ? kpoints[k + 1].e[sIdx][vbmB] : -1e9;
+          if (kpoints[k].e[sIdx][vbmB] >= prev - 1e-5 && kpoints[k].e[sIdx][vbmB] >= next - 1e-5) {
+            if (!vbmKs.some(kk => trNorm(trSub(kCarts[kk], kCarts[k])) < 0.05)) vbmKs.push(k);
+          }
+        }
+      }
+      // Fit degenerate VBM bands and label heavy-hole (hh) vs light-hole (lh)
+      const bandAvgMass = [];
+      hDegBands.slice(0, 3).forEach(b => {
+        const tmp = [];
+        vbmKs.slice(0, 2).forEach(kk => {
+          fitBandExtremumBranches(kpoints, kCarts, segs, latInfo, sIdx, b, kk, "h", opts).forEach(br => pushUniqueBranch(tmp, br));
+        });
+        if (tmp.length) {
+          const avgM = tmp.reduce((acc, r) => acc + r.mStar, 0) / tmp.length;
+          bandAvgMass.push({ b, avgM, brs: tmp });
+        }
+      });
+      bandAvgMass.sort((a, b) => b.avgM - a.avgM);
+      bandAvgMass.forEach((item, idx) => {
+        const role = bandAvgMass.length >= 2 ? (idx === 0 ? "VBM (hh)" : (idx === 1 ? "VBM (lh)" : `VB${idx + 1}`)) : "VBM";
+        item.brs.forEach(br => {
+          br.subBandRole = role;
+          hBranches.push(br);
+        });
+      });
+    } else {
+      // Metallic / Half-Metallic channel: extract Fermi crossings v_F and cyclotron/Fermi effective mass m*_F
+      segs.forEach(sg => {
+        for (let b = 0; b < nb; b++) {
+          for (let k = sg.start; k < sg.end; k++) {
+            const e1 = kpoints[k].e?.[sIdx]?.[b];
+            const e2 = kpoints[k + 1].e?.[sIdx]?.[b];
+            if (e1 === undefined || e2 === undefined) continue;
+            if ((e1 <= 0 && e2 > 0) || (e1 >= 0 && e2 < 0)) {
+              const frac = Math.abs(e2 - e1) > 1e-9 ? (-e1) / (e2 - e1) : 0.5;
+              const dk = trNorm(trSub(kCarts[k + 1], kCarts[k]));
+              if (dk < 1e-6) continue;
+              const dEdk = Math.abs(e2 - e1) / dk; // eV·Å
+              const vF_ms = (dEdk * TR_CONST.E_CHG * 1e-10) / TR_CONST.HBAR_J; // m/s
+              const kCross = [
+                kCarts[k][0] + frac * (kCarts[k + 1][0] - kCarts[k][0]),
+                kCarts[k][1] + frac * (kCarts[k + 1][1] - kCarts[k][1]),
+                kCarts[k][2] + frac * (kCarts[k + 1][2] - kCarts[k][2])
+              ];
+              const kF = Math.max(0.05, trNorm(kCross));
+              // Also estimate local curvature around crossing
+              let mStarF = (TR_CONST.HBAR2_OVER_M0 * kF) / Math.max(1e-4, dEdk);
+              mStarF = Math.max(0.02, Math.min(50, mStarF));
+              const endA = labelFractionalKPoint(kpoints[sg.start].k, latInfo);
+              const endB = labelFractionalKPoint(kpoints[sg.end].k, latInfo);
+              fermiCrossings.push({
+                spinIdx: sIdx, bandIdx: b, kIdx: k,
+                dirLabel: `${endA} → ${endB}`,
+                dEdk, vF_ms, kF, mStarF,
+                carrierSign: (e2 > e1 ? 1 : -1)
+              });
+            }
+          }
+        }
+      });
+    }
+
+    const summarizeMass = (branches, is2D, gvOverride) => {
+      if (!branches.length) return null;
+      // Group by subBandRole (e.g. hh vs lh) to compute accurate multi-band conductivity & DOS effective mass
+      const byBand = new Map();
+      branches.forEach(br => {
+        const key = br.bandIdx;
+        if (!byBand.has(key)) byBand.set(key, []);
+        byBand.get(key).push(br);
+      });
+      const dim = is2D ? 2 : 3;
+      const bandSummaries = [];
+      byBand.forEach((brs, bIdx) => {
+        const invSum = brs.reduce((acc, r) => acc + 1 / r.mStar, 0);
+        const mCond = brs.length / invSum;
+        const mGeo = Math.pow(brs.reduce((acc, r) => acc * r.mStar, 1), 1 / brs.length);
+        const alphaKane = brs.reduce((acc, r) => acc + (r.alphaKane || 0), 0) / brs.length;
+        const avgR2 = brs.reduce((acc, r) => acc + r.r2, 0) / brs.length;
+        bandSummaries.push({
+          bandIdx: bIdx,
+          role: brs[0].subBandRole || "",
+          mCond, mGeo, alphaKane, avgR2,
+          mMin: Math.min(...brs.map(r => r.mStar)),
+          mMax: Math.max(...brs.map(r => r.mStar)),
+          k0Label: brs[0].k0Label
+        });
+      });
+      // Multi-band weighted conductivity & DOS mass (exact for hh + lh degeneracy!)
+      const dHalf = dim / 2;
+      const dosPowSum = bandSummaries.reduce((acc, s) => acc + Math.pow(s.mGeo, dHalf), 0);
+      const singleValleyMdos = Math.pow(dosPowSum, 1 / dHalf);
+      const condNum = bandSummaries.reduce((acc, s) => acc + Math.pow(s.mGeo, dHalf), 0);
+      const condDen = bandSummaries.reduce((acc, s) => acc + Math.pow(s.mGeo, dHalf) / s.mCond, 0);
+      const mCond = condDen > 1e-12 ? condNum / condDen : bandSummaries[0].mCond;
+      const autoGv = defaultValleyDegeneracyForLabel(bandSummaries[0].k0Label, latInfo.isHex, is2D);
+      const gv = (gvOverride && gvOverride > 0) ? gvOverride : autoGv;
+      const mDosBand = is2D ? (gv * singleValleyMdos) : (Math.pow(gv, 2 / 3) * singleValleyMdos);
+      const alphaKane = bandSummaries[0].alphaKane;
+      const avgR2 = branches.reduce((acc, r) => acc + r.r2, 0) / branches.length;
+      return {
+        mCond, mGeo: singleValleyMdos, mDosBand, gv, autoGv,
+        mMin: Math.min(...branches.map(r => r.mStar)),
+        mMax: Math.max(...branches.map(r => r.mStar)),
+        anisotropy: Math.max(...branches.map(r => r.mStar)) / Math.max(1e-6, Math.min(...branches.map(r => r.mStar))),
+        alphaKane, avgR2,
+        k0Label: bandSummaries[0].k0Label,
+        bandSummaries,
+        hasDegeneracy: bandSummaries.length > 1
+      };
+    };
+
+    const is2D = opts.dimMode === "2d" ? true : (opts.dimMode === "3d" ? false : latInfo.autoIs2D);
+    return {
+      spinIdx: sIdx,
+      isMetallic,
+      gapEv,
+      vbmE, cbmE, vbmK, cbmK, vbmB, cbmB,
+      vbmLabel: vbmB >= 0 ? labelFractionalKPoint(kpoints[vbmK].k, latInfo) : "—",
+      cbmLabel: cbmB >= 0 ? labelFractionalKPoint(kpoints[cbmK].k, latInfo) : "—",
+      isDirect: !isMetallic && vbmB >= 0 && cbmB >= 0 && trNorm(trSub(kCarts[vbmK], kCarts[cbmK])) < 0.04,
+      eBranches, hBranches, fermiCrossings,
+      eSummary: summarizeMass(eBranches, is2D, opts.gvE),
+      hSummary: summarizeMass(hBranches, is2D, opts.gvH)
+    };
+  };
+
+  const sp0 = analyzeSpin(0);
+  const sp1 = ns >= 2 ? analyzeSpin(1) : null;
+  let activeSpin = sp0;
+  if (opts.spinSel === "1" && sp1) activeSpin = sp1;
+  else if (opts.spinSel === "0") activeSpin = sp0;
+  else if (sp1) {
+    // Auto: prefer a semiconducting channel if half-metal, or smaller-gap channel
+    if (sp0.isMetallic && !sp1.isMetallic) activeSpin = sp1;
+    else if (!sp0.isMetallic && !sp1.isMetallic && sp1.gapEv < sp0.gapEv) activeSpin = sp1;
+  }
+
+  let phase = activeSpin.isMetallic ? "Metallic" : (activeSpin.isDirect ? "Direct Semiconductor" : "Indirect Semiconductor");
+  if (sp1) {
+    if ((sp0.isMetallic && !sp1.isMetallic) || (!sp0.isMetallic && sp1.isMetallic)) phase = "Half-Metal (Spin-Selective)";
+    else if (!sp0.isMetallic && !sp1.isMetallic) phase = Math.abs(sp0.gapEv - sp1.gapEv) > 0.03 ? "Spin-Split Semiconductor" : "Collinear Semiconductor";
+    else phase = "Spin-Polarized Metal";
+  }
+
+  return {
+    ns,
+    sp0, sp1,
+    active: activeSpin,
+    phase,
+    nk: kpoints.length,
+    nSegments: segs.length
+  };
+}
+
+// ---------------- Direct DFT DOS Effective Mass Extractor ----------------
+
+function computeDosEffectiveMasses(dosBands, bandRes, latInfo, opts) {
+  const src = dosBands || null;
+  if (!src || !src.kpoints || !src.kpoints.length) return null;
+  const is2D = opts.dimMode === "2d" ? true : (opts.dimMode === "3d" ? false : latInfo.autoIs2D);
+  const ns = src.ns || 1;
+  const spinIdx = Math.min(ns - 1, bandRes?.active?.spinIdx ?? 0);
+  const gSpin = ns >= 2 ? 1.0 : 2.0; // Spin degeneracy per spin-channel eigenvalue
+  const kpts = src.kpoints;
+
+  // Normalize k-point weights to sum to 1.0
+  let wSum = 0;
+  for (let i = 0; i < kpts.length; i++) wSum += (kpts[i].w > 0 ? kpts[i].w : 1);
+  if (wSum <= 0) wSum = kpts.length;
+
+  // Collect all eigenvalues with normalized weights for active spin (and total if ns==1)
+  const eigVals = [];
+  const eigWts = [];
+  for (let i = 0; i < kpts.length; i++) {
+    const wt = ((kpts[i].w > 0 ? kpts[i].w : 1) / wSum) * gSpin;
+    const arr = kpts[i].e?.[spinIdx] || [];
+    for (let b = 0; b < arr.length; b++) {
+      eigVals.push(arr[b]);
+      eigWts.push(wt);
+    }
+  }
+  if (!eigVals.length) return null;
+
+  // Align band edges directly from the DOS k-mesh (exact self-consistent edges!)
+  let dosVbm = -1e9, dosCbm = 1e9;
+  for (let i = 0; i < eigVals.length; i++) {
+    const ev = eigVals[i];
+    if (ev <= 0.015 && ev > dosVbm) dosVbm = ev;
+    if (ev > 0.015 && ev < dosCbm) dosCbm = ev;
+  }
+  const hasGap = (dosCbm - dosVbm) > 0.03 && !(bandRes?.active?.isMetallic);
+  const vbmEdge = hasGap ? dosVbm : 0.0;
+  const cbmEdge = hasGap ? dosCbm : 0.0;
+  const fitWinEv = Math.max(0.12, Math.min(1.5, Number(opts.dosFitWinEv) || 0.40));
+  const sigmaEv = Math.max(0.02, Math.min(0.25, Number(opts.dosSigmaEv) || 0.06));
+
+  // Build exact cumulative state staircase N_cell(dE) and fit to dE^(d/2)
+  const fitSideFromCumulative = (edgeE, sign) => {
+    // sign = +1 (CB: E >= edgeE), -1 (VB: E <= edgeE)
+    const nSamples = 24;
+    const dEs = [];
+    const nCells = [];
+    const eStart = 0.03;
+    for (let s = 0; s < nSamples; s++) {
+      const dE = eStart + (fitWinEv - eStart) * (s / (nSamples - 1));
+      let cnt = 0;
+      for (let i = 0; i < eigVals.length; i++) {
+        const rel = sign * (eigVals[i] - edgeE);
+        if (rel >= -0.005 && rel <= dE) cnt += eigWts[i];
+      }
+      if (cnt > 1e-6) {
+        dEs.push(dE);
+        nCells.push(cnt);
+      }
+    }
+    if (dEs.length < 4) return null;
+    // Regression: N_cell(dE) = K * dE^(dim/2)  (through origin)
+    const pow = is2D ? 1.0 : 1.5;
+    let num = 0, den = 0;
+    for (let i = 0; i < dEs.length; i++) {
+      const x = Math.pow(dEs[i], pow);
+      num += x * nCells[i];
+      den += x * x;
+    }
+    if (den <= 1e-18 || num <= 1e-12) return null;
+    const K = num / den; // states / eV^(d/2) per unit cell
+    let mDos = 0;
+    if (is2D) {
+      // N_cell / S_cell = (g_s * m_DOS) / (2*pi*ħ²) * dE
+      mDos = (2 * Math.PI * TR_CONST.HBAR2_OVER_M0 * K) / (gSpin * latInfo.area2D);
+    } else {
+      // N_cell / Vol = (g_s / (6*pi²)) * (2*m_DOS / ħ²)^(3/2) * dE^(3/2)
+      mDos = 0.5 * TR_CONST.HBAR2_OVER_M0 * Math.pow((6 * Math.PI * Math.PI * K) / (gSpin * latInfo.volA3), 2 / 3);
+    }
+    const meanY = nCells.reduce((a, b) => a + b, 0) / nCells.length;
+    let ssRes = 0, ssTot = 0;
+    for (let i = 0; i < dEs.length; i++) {
+      const p = K * Math.pow(dEs[i], pow);
+      ssRes += (nCells[i] - p) ** 2;
+      ssTot += (nCells[i] - meanY) ** 2;
+    }
+    const r2 = ssTot > 1e-16 ? Math.max(0, 1 - ssRes / ssTot) : 1.0;
+    return {
+      mDos: Math.max(0.01, Math.min(200, mDos)),
+      K, r2, edgeE, dEs, nCells,
+      maxStates: nCells[nCells.length - 1]
+    };
+  };
+
+  const eDosFit = hasGap ? fitSideFromCumulative(cbmEdge, +1) : null;
+  const hDosFit = hasGap ? fitSideFromCumulative(vbmEdge, -1) : null;
+
+  // Compute smooth Gaussian-smeared DFT DOS curve around edges for plotting + metallic g(E_F)
+  const plotPad = Math.max(0.6, fitWinEv * 1.6);
+  const eMinPlot = vbmEdge - plotPad;
+  const eMaxPlot = cbmEdge + plotPad;
+  const nGrid = 180;
+  const gridE = new Array(nGrid + 1);
+  const gridG = new Float64Array(nGrid + 1); // states / (eV·cell)
+  const inv2s2 = 1 / (2 * sigmaEv * sigmaEv);
+  const normG = 1 / (sigmaEv * Math.sqrt(2 * Math.PI));
+  for (let g = 0; g <= nGrid; g++) {
+    const E = eMinPlot + (eMaxPlot - eMinPlot) * (g / nGrid);
+    gridE[g] = E;
+    let val = 0;
+    for (let i = 0; i < eigVals.length; i++) {
+      const d = E - eigVals[i];
+      if (Math.abs(d) <= 4.0 * sigmaEv) {
+        val += eigWts[i] * Math.exp(-d * d * inv2s2);
+      }
+    }
+    gridG[g] = val * normG;
+  }
+
+  // Exact DOS at Fermi level g(E_F) (states / eV / cell)
+  let dosAtEf = 0;
+  for (let i = 0; i < eigVals.length; i++) {
+    const d = eigVals[i];
+    if (Math.abs(d) <= 4.0 * sigmaEv) dosAtEf += eigWts[i] * Math.exp(-d * d * inv2s2) * normG;
+  }
+
+  return {
+    is2D, gSpin, hasGap, vbmEdge, cbmEdge, fitWinEv, sigmaEv,
+    nkDos: kpts.length,
+    eDosFit, hDosFit,
+    dosAtEf,
+    gridE, gridG,
+    eigVals, eigWts
+  };
+}
+
+// ---------------- Multi-Mechanism Mobility & Relaxation Time Solver ----------------
+
+function computeCarrierScatteringAt(mCond, mGeo, alphaKane, dim, T, nConcSI, params, carrierType) {
+  // dim = 2 or 3
+  // nConcSI: m^-2 (2D) or m^-3 (3D)
+  const is2D = dim === 2;
+  const kBT_J = TR_CONST.KB_J * T;
+  const kBT_eV = TR_CONST.KB_EV * T;
+  const mC_kg = mCond * TR_CONST.M0_KG;
+  const mD_kg = mGeo * TR_CONST.M0_KG;
+  const E1_eV = carrierType === "e" ? params.E1e : params.E1h;
+  const E1_J = Math.max(0.1, E1_eV) * TR_CONST.E_CHG;
+
+  // 1) Acoustic Deformation Potential (Takagi 2D / Bardeen-Shockley 3D)
+  let muADP_SI = 0;
+  let tauADP_s = 0;
+  if (is2D) {
+    const C2d_Nm = Math.max(1.0, params.C2d); // N/m = J/m^2
+    // mu_2D = e * ħ^3 * C2D / (kB*T * m_c * m_d * E1^2)
+    tauADP_s = (Math.pow(TR_CONST.HBAR_J, 3) * C2d_Nm) / (kBT_J * mD_kg * E1_J * E1_J);
+    muADP_SI = (TR_CONST.E_CHG * tauADP_s) / mC_kg;
+  } else {
+    const C3d_Pa = Math.max(1.0, params.C3d) * 1e9; // GPa -> Pa
+    // mu_3D = 2*sqrt(2*pi) * e * ħ^4 * C3D / (3 * (kB*T)^(3/2) * m_c * m_d^(3/2) * E1^2)
+    tauADP_s = (2 * Math.sqrt(2 * Math.PI) * Math.pow(TR_CONST.HBAR_J, 4) * C3d_Pa) /
+               (3 * Math.pow(kBT_J, 1.5) * Math.pow(mD_kg, 1.5) * E1_J * E1_J);
+    muADP_SI = (TR_CONST.E_CHG * tauADP_s) / mC_kg;
+  }
+
+  // 2) Polar Optical Phonon (Fröhlich Low-Pines / Ridley)
+  let tauPOP_s = Infinity;
+  let muPOP_SI = Infinity;
+  let alphaF = 0;
+  if (params.usePOP && params.eps0 > params.epsInf + 0.05 && params.wLO > 0.005) {
+    const hwLO_J = params.wLO * TR_CONST.E_CHG;
+    const wLO_rad = hwLO_J / TR_CONST.HBAR_J;
+    const invEps = (1 / params.epsInf) - (1 / params.eps0);
+    alphaF = (TR_CONST.E_CHG * TR_CONST.E_CHG / (4 * Math.PI * TR_CONST.EPS0_SI * TR_CONST.HBAR_J)) *
+             Math.sqrt(mC_kg / (2 * hwLO_J)) * invEps;
+    const xLO = hwLO_J / kBT_J;
+    if (alphaF > 1e-6 && xLO < 60) {
+      const expM1 = Math.expm1(xLO);
+      const polMassRatio = 1 / (1 + alphaF / 6);
+      // Low-Pines finite-T polar mobility relaxation time
+      tauPOP_s = (expM1 / (2 * alphaF * wLO_rad)) * (polMassRatio * polMassRatio) * (3 * Math.sqrt(Math.PI) / (4 * Math.sqrt(Math.max(0.15, xLO))));
+      muPOP_SI = (TR_CONST.E_CHG * tauPOP_s) / mC_kg;
+    }
+  }
+
+  // 3) Ionized Impurity (Brooks-Herring)
+  let tauIMP_s = Infinity;
+  let muIMP_SI = Infinity;
+  if (params.useIMP && params.Ni_cm > 0) {
+    const tEff_m = Math.max(3.35e-10, (params.slabThicknessA || 6.0) * 1e-10);
+    // Convert Ni to 3D volume density (m^-3)
+    const Ni_m3 = is2D ? (params.Ni_cm * 1e4 / tEff_m) : (params.Ni_cm * 1e6);
+    const nScr_m3 = Math.max(1e20, is2D ? (nConcSI / tEff_m) : nConcSI, Ni_m3);
+    const epsR = Math.max(1.0, params.eps0);
+    const bBH = (24 * mC_kg * TR_CONST.EPS0_SI * epsR * kBT_J * kBT_J) /
+                (TR_CONST.HBAR_J * TR_CONST.HBAR_J * TR_CONST.E_CHG * TR_CONST.E_CHG * nScr_m3);
+    const fBH = Math.max(0.05, Math.log(1 + bBH) - bBH / (1 + bBH));
+    tauIMP_s = (128 * Math.sqrt(2 * Math.PI) * Math.pow(TR_CONST.EPS0_SI * epsR, 2) * Math.pow(kBT_J, 1.5) * Math.sqrt(mC_kg)) /
+               (Math.PI * Math.pow(TR_CONST.E_CHG, 4) * Ni_m3 * fBH);
+    muIMP_SI = (TR_CONST.E_CHG * tauIMP_s) / mC_kg;
+  }
+
+  // Matthiessen's Rule Total Relaxation Time & Mobility
+  const invTauTot = (tauADP_s > 0 ? 1 / tauADP_s : 0) +
+                    (isFinite(tauPOP_s) && tauPOP_s > 0 ? 1 / tauPOP_s : 0) +
+                    (isFinite(tauIMP_s) && tauIMP_s > 0 ? 1 / tauIMP_s : 0);
+  const tauTot_s = invTauTot > 0 ? 1 / invTauTot : tauADP_s;
+
+  // Non-parabolic Drude effective mass enhancement at given carrier density nConcSI & T
+  // Solve chemical potential eta = (mu - E_edge) / kBT using Fermi-Dirac integral (exact for 2D, Joyce-Dixon/bisection for 3D)
+  const gSpin = params.gSpin || 2;
+  const mDosEff_kg = (params.mDosForDoping || mGeo) * TR_CONST.M0_KG;
+  const Nc_SI = is2D
+    ? (gSpin * mDosEff_kg * kBT_J) / (2 * Math.PI * TR_CONST.HBAR_J * TR_CONST.HBAR_J)
+    : gSpin * Math.pow((mDosEff_kg * kBT_J) / (2 * Math.PI * TR_CONST.HBAR_J * TR_CONST.HBAR_J), 1.5);
+
+  const ratioN = Math.max(1e-12, nConcSI / Math.max(1e-30, Nc_SI));
+  let eta = 0; // (E_F - E_edge) / kBT
+  if (is2D) {
+    // Exact analytical 2D Fermi-Dirac inverse: ln(1 + e^eta) = n / Nc_2D  =>  eta = ln(e^(n/Nc) - 1)
+    eta = ratioN > 40 ? ratioN : Math.log(Math.max(1e-30, Math.expm1(ratioN)));
+  } else {
+    // 3D Joyce-Dixon / numerical bisection of F_{1/2}(eta) = (2/sqrt(pi)) * int_0^inf sqrt(x)/(1+e^(x-eta)) dx
+    if (ratioN < 0.05) {
+      eta = Math.log(ratioN);
+    } else {
+      // High-accuracy Aymerich-Humet / Bednarczyk inverse of F_{1/2}
+      let lo = -30, hi = Math.max(10, Math.pow(0.75 * Math.sqrt(Math.PI) * ratioN, 2 / 3) + 6);
+      const evalF12 = (et) => {
+        // 32-point Gauss-Laguerre-like stretched quadrature on [0, max(35, et+25)]
+        const xmax = Math.max(28, et + 22);
+        const Nq = 80;
+        const dx = xmax / Nq;
+        let sum = 0;
+        for (let i = 1; i <= Nq; i++) {
+          const x = (i - 0.5) * dx;
+          const z = x - et;
+          const f = z > 50 ? 0 : (z < -50 ? 1 : 1 / (1 + Math.exp(z)));
+          sum += Math.sqrt(x) * f;
+        }
+        return (2 / Math.sqrt(Math.PI)) * sum * dx;
+      };
+      for (let it = 0; it < 28; it++) {
+        const mid = 0.5 * (lo + hi);
+        if (evalF12(mid) < ratioN) lo = mid; else hi = mid;
+      }
+      eta = 0.5 * (lo + hi);
+    }
+  }
+
+  // Compute exact Kane-Boltzmann Drude Effective Mass m*_Drude(n, T)
+  // From Boltzmann-Drude: 1 / m*_Drude = < v_g^2 (-df0/dE) > / < f0 >
+  // For Kane dispersion E(1 + alpha*E) = ħ²k²/(2*m0*):
+  //   v_g^2(E) = (2/m0*) * E*(1 + alpha*E) / (1 + 2*alpha*E)^2
+  //   g(E) ∝ (E*(1+alpha*E))^(d/2 - 1) * (1 + 2*alpha*E)
+  // Notice how clean the exact ratio is! At alpha = 0, m*_Drude === mCond identically!
+  let mDrude = mCond;
+  const alphaK = Math.max(0, alphaKane || 0);
+  if (alphaK > 1e-4) {
+    const eMaxInt = Math.max(16 * kBT_eV, (Math.max(0, eta) + 14) * kBT_eV);
+    const Ni_q = 120;
+    const dE = eMaxInt / Ni_q;
+    let numW = 0, denN = 0;
+    const isBoltz = eta < -10;
+    for (let i = 1; i <= Ni_q; i++) {
+      const E = (i - 0.5) * dE;
+      let f0, df0dE;
+      if (isBoltz) {
+        // Factor out e^eta identically so very low doping never underflows!
+        f0 = Math.exp(-E / kBT_eV);
+        df0dE = f0 / kBT_eV;
+      } else {
+        const z = (E / kBT_eV) - eta;
+        f0 = z > 50 ? 0 : (z < -50 ? 1 : 1 / (1 + Math.exp(z)));
+        df0dE = (f0 * (1 - f0)) / kBT_eV;
+      }
+      const u = E * (1 + alphaK * E);
+      const qFac = 1 + 2 * alphaK * E;
+      const gRel = is2D ? qFac : (Math.sqrt(Math.max(0, u)) * qFac);
+      numW += (2 / dim) * (u / (qFac * qFac)) * gRel * df0dE;
+      denN += gRel * f0;
+    }
+    if (numW > 1e-24 && denN > 1e-24) {
+      const invMassRatio = numW / denN;
+      if (invMassRatio > 0.05 && invMassRatio < 5.0) {
+        mDrude = mCond / invMassRatio;
+      }
+    }
+  }
+
+  // Exact Drude mobility with mDrude (in cm^2 / V·s)
+  const mDrude_kg = mDrude * TR_CONST.M0_KG;
+  const muTot_SI = (TR_CONST.E_CHG * tauTot_s) / mDrude_kg;
+  const muTot_cm2Vs = muTot_SI * 1e4;
+  const muADP_cm2Vs = muADP_SI * 1e4;
+  const muPOP_cm2Vs = isFinite(muPOP_SI) ? muPOP_SI * 1e4 : null;
+  const muIMP_cm2Vs = isFinite(muIMP_SI) ? muIMP_SI * 1e4 : null;
+
+  // Drude Plasma Frequency ħω_p (eV), Damping γ_D (eV), Conductivity σ_0, Mean Free Path
+  const tEff_m = Math.max(3.35e-10, (params.slabThicknessA || 6.0) * 1e-10);
+  const n3D_m3 = is2D ? (nConcSI / tEff_m) : nConcSI;
+  const wp_rad = Math.sqrt(Math.max(0, (n3D_m3 * TR_CONST.E_CHG * TR_CONST.E_CHG) / (TR_CONST.EPS0_SI * mDrude_kg)));
+  const wp_eV = (TR_CONST.HBAR_J * wp_rad) / TR_CONST.E_CHG;
+  const tauTot_fs = tauTot_s * 1e15;
+  const gammaD_eV = tauTot_fs > 1e-9 ? TR_CONST.HBAR_EV_FS / tauTot_fs : 0;
+  const sigma3D_Sm = (n3D_m3 * TR_CONST.E_CHG * TR_CONST.E_CHG * tauTot_s) / mDrude_kg;
+  const sigma3D_Scm = sigma3D_Sm * 1e-2;
+  const sigma2D_S = is2D ? (nConcSI * TR_CONST.E_CHG * TR_CONST.E_CHG * tauTot_s) / mDrude_kg : sigma3D_Sm * tEff_m;
+  const sheetR_ohm = sigma2D_S > 1e-30 ? 1 / sigma2D_S : Infinity;
+
+  const vTh_ms = Math.sqrt((dim * kBT_J) / mDrude_kg);
+  const eF_shift_eV = eta * kBT_eV;
+  const vF_ms = eta > 0 ? Math.sqrt((2 * Math.max(0, eF_shift_eV) * TR_CONST.E_CHG) / mDrude_kg) : vTh_ms;
+  const vRms_ms = Math.max(vTh_ms, vF_ms);
+  const mfp_nm = vRms_ms * tauTot_s * 1e9;
+  const diff_cm2s = (kBT_eV) * muTot_cm2Vs; // Einstein D = (kBT/e)*mu
+
+  return {
+    T, dim, is2D, mCond, mGeo, mDrude,
+    massEnhancement: mDrude / Math.max(1e-9, mCond),
+    eta, eF_shift_eV,
+    Nc_SI,
+    Nc_cm: is2D ? Nc_SI * 1e-4 : Nc_SI * 1e-6,
+    tauADP_fs: tauADP_s * 1e15,
+    tauPOP_fs: isFinite(tauPOP_s) ? tauPOP_s * 1e15 : null,
+    tauIMP_fs: isFinite(tauIMP_s) ? tauIMP_s * 1e15 : null,
+    tauTot_fs,
+    muADP_cm2Vs, muPOP_cm2Vs, muIMP_cm2Vs, muTot_cm2Vs,
+    alphaF,
+    wp_eV, wp_THz: wp_rad / (2 * Math.PI * 1e12),
+    gammaD_eV, gammaD_meV: gammaD_eV * 1000,
+    sigma3D_Scm, sigma2D_mS: sigma2D_S * 1e3, sheetR_ohm,
+    vTh_cms: vTh_ms * 100, vRms_cms: vRms_ms * 100,
+    mfp_nm, diff_cm2s
+  };
+}
+
+// ---------------- Complete Transport & Drude Orchestrator ----------------
+
+function getCastepTransportInputs(job) {
+  const num = (id, def) => {
+    const el = document.getElementById(id);
+    if (!el) return def;
+    const v = parseFloat(el.value);
+    return isNaN(v) ? def : v;
+  };
+  const str = (id, def) => document.getElementById(id)?.value || def;
+  const chk = (id, def) => {
+    const el = document.getElementById(id);
+    return el ? !!el.checked : def;
+  };
+
+  // Auto-populate epsInf / eps0 from optical tensor when switching to a new job (unless user edited)
+  if (job && window._castepTransportCustomState.lastJobId !== job.id) {
+    window._castepTransportCustomState.lastJobId = job.id;
+    window._castepTransportCustomState.userEditedEps = false;
+    if (job.optical_tensor && job.optical_tensor.t6) {
+      // Quick static dielectric estimate eps1(0) from KK integral of isotropic Im[eps]
+      try {
+        const t6 = job.optical_tensor.t6;
+        const dE = job.optical_tensor.dE || 0.05;
+        let eps1_0 = 1.0;
+        const nB = t6[0].length;
+        for (let i = 1; i < nB; i++) {
+          const w = i * dE;
+          const e2 = (t6[0][i] + t6[1][i] + t6[2][i]) / 3;
+          eps1_0 += (2 / Math.PI) * (e2 / w) * dE;
+        }
+        if (eps1_0 > 1.2 && eps1_0 < 150) {
+          const elInf = document.getElementById("castep-tr-eps-inf");
+          const el0 = document.getElementById("castep-tr-eps0");
+          if (elInf) elInf.value = eps1_0.toFixed(2);
+          if (el0 && parseFloat(el0.value) < eps1_0) el0.value = (eps1_0 * 1.18).toFixed(2);
+        }
+      } catch (_) {}
+    }
+  }
+
+  return {
+    dimMode: str("castep-tr-dim", "auto"),
+    spinSel: str("castep-tr-spin", "auto"),
+    fitModel: str("castep-tr-fit-model", "auto"),
+    fitDkMax: num("castep-tr-fit-dk", 0.16),
+    minFitPts: Math.round(num("castep-tr-fit-pts", 4)),
+    dosFitWinEv: num("castep-tr-dos-win", 0.40),
+    dosSigmaEv: num("castep-tr-dos-sigma", 0.06),
+    T: Math.max(20, Math.min(1500, num("castep-tr-temp", 300))),
+    C2d: num("castep-tr-c2d", 240),
+    C3d: num("castep-tr-c3d", 160),
+    E1e: num("castep-tr-e1e", 5.5),
+    E1h: num("castep-tr-e1h", 4.5),
+    gvE: Math.round(num("castep-tr-gve", 0)), // 0 = auto
+    gvH: Math.round(num("castep-tr-gvh", 0)),
+    eps0: num("castep-tr-eps0", 12.0),
+    epsInf: num("castep-tr-eps-inf", 10.5),
+    wLO: num("castep-tr-wlo", 0.048),
+    usePOP: chk("castep-tr-use-pop", false),
+    useIMP: chk("castep-tr-use-imp", false),
+    Ni_cm: Math.pow(10, num("castep-tr-ni-exp", 11)), // 10^exp (cm^-2 in 2D or cm^-3 in 3D)
+    nExp: num("castep-tr-n-exp", 12.0),               // Electron doping 10^x
+    pExp: num("castep-tr-p-exp", 12.0),               // Hole doping 10^x
+    optGammaEv: num("castep-tr-opt-gamma", 0.05),     // For optical Drude inversion
+    expSigmaScm: num("castep-tr-exp-sigma", 0),       // Optional experimental sigma0 (S/cm)
+    drudeChartMode: str("castep-tr-chart2-mode", "dos_temp")
+  };
+}
+
+function computeFullCastepTransport(job) {
+  if (!job) return null;
+  const bandsObj = job.bandstr_bands || job.dos_bands || null;
+  const dosObj = job.dos_bands || job.bandstr_bands || null;
+  if (!bandsObj && !dosObj) return null;
+
+  const opts = getCastepTransportInputs(job);
+  const latInfo = extractTransportLattice(job, bandsObj || dosObj);
+  const is2D = opts.dimMode === "2d" ? true : (opts.dimMode === "3d" ? false : latInfo.autoIs2D);
+  const dim = is2D ? 2 : 3;
+
+  // Smart default doping exponent when switching between 2D (cm^-2) and 3D (cm^-3)
+  const nConc_cm = Math.pow(10, opts.nExp);
+  const pConc_cm = Math.pow(10, opts.pExp);
+  const nConc_SI = is2D ? nConc_cm * 1e4 : nConc_cm * 1e6;
+  const pConc_SI = is2D ? pConc_cm * 1e4 : pConc_cm * 1e6;
+
+  const bandRes = bandsObj ? analyzeCarrierFromBands(bandsObj, latInfo, opts) : null;
+  const dosRes = dosObj ? computeDosEffectiveMasses(dosObj, bandRes, latInfo, opts) : null;
+
+  const act = bandRes?.active;
+  const isMetallic = act ? act.isMetallic : !(dosRes?.hasGap);
+  const gapEv = act ? act.gapEv : (dosRes?.hasGap ? (dosRes.cbmEdge - dosRes.vbmEdge) : 0);
+  const gSpin = (bandsObj?.ns || 1) >= 2 ? 1.0 : 2.0;
+
+  // Determine representative effective masses for electrons and holes
+  let meCond = act?.eSummary?.mCond || dosRes?.eDosFit?.mDos || null;
+  let meGeo = act?.eSummary?.mGeo || meCond;
+  let meDosBand = act?.eSummary?.mDosBand || meGeo;
+  let meDosDirect = dosRes?.eDosFit?.mDos || null;
+  let meAlphaK = act?.eSummary?.alphaKane || 0;
+
+  let mhCond = act?.hSummary?.mCond || dosRes?.hDosFit?.mDos || null;
+  let mhGeo = act?.hSummary?.mGeo || mhCond;
+  let mhDosBand = act?.hSummary?.mDosBand || mhGeo;
+  let mhDosDirect = dosRes?.hDosFit?.mDos || null;
+  let mhAlphaK = act?.hSummary?.alphaKane || 0;
+
+  // For metallic systems: derive effective mass from Fermi crossings + .ome_bin plasma frequency!
+  let metalDrude = null;
+  if (isMetallic) {
+    const fc = act?.fermiCrossings || [];
+    const avgMF = fc.length ? (fc.length / fc.reduce((a, r) => a + 1 / r.mStarF, 0)) : 1.0;
+    const avgVF = fc.length ? Math.sqrt(fc.reduce((a, r) => a + r.vF_ms * r.vF_ms, 0) / fc.length) : 5e5;
+    let wp_ome = 0;
+    if (job.optical_tensor?.plasma_ev_tensor) {
+      const t = job.optical_tensor.plasma_ev_tensor;
+      wp_ome = Math.sqrt(Math.max(0, (t[0] + t[1] + t[2]) / 3));
+    }
+    if (!meCond) { meCond = avgMF; meGeo = avgMF; meDosBand = avgMF; }
+    if (!mhCond) { mhCond = avgMF; mhGeo = avgMF; mhDosBand = avgMF; }
+    const gEf_SI = (dosRes?.dosAtEf || 1.0) / (TR_CONST.E_CHG * latInfo.volA3 * 1e-30);
+    // Estimate free-carrier Drude density n_eff from .ome_bin wp if available
+    const nEff_m3 = wp_ome > 0.05
+      ? (TR_CONST.EPS0_SI * avgMF * TR_CONST.M0_KG * Math.pow((wp_ome * TR_CONST.E_CHG) / TR_CONST.HBAR_J, 2)) / (TR_CONST.E_CHG * TR_CONST.E_CHG)
+      : (gEf_SI * TR_CONST.KB_J * opts.T * 10);
+    metalDrude = {
+      avgMF, avgVF_cms: avgVF * 100, nCrossings: fc.length,
+      wp_ome_eV: wp_ome,
+      dosAtEf_cell: dosRes?.dosAtEf || 0,
+      nEff_cm3: nEff_m3 * 1e-6,
+      tauOpt_fs: TR_CONST.HBAR_EV_FS / Math.max(0.005, opts.optGammaEv)
+    };
+  }
+
+  const baseParams = {
+    ...opts, gSpin,
+    slabThicknessA: latInfo.slabThicknessA
+  };
+
+  // Compute primary Electron & Hole Transport + Drude at temperature T and doping n, p
+  const eTrans = meCond ? computeCarrierScatteringAt(
+    meCond, meGeo, meAlphaK, dim, opts.T, nConc_SI,
+    { ...baseParams, mDosForDoping: meDosDirect || meDosBand }, "e"
+  ) : null;
+
+  const hTrans = mhCond ? computeCarrierScatteringAt(
+    mhCond, mhGeo, mhAlphaK, dim, opts.T, pConc_SI,
+    { ...baseParams, mDosForDoping: mhDosDirect || mhDosBand }, "h"
+  ) : null;
+
+  // Directional ADP Mobilities along EVERY fitted band branch!
+  const attachBranchMobilities = (branches, mGeoRef, carrierType) => {
+    if (!branches || !branches.length || !mGeoRef) return;
+    branches.forEach(br => {
+      const sc = computeCarrierScatteringAt(
+        br.mStar, mGeoRef, br.alphaKane, dim, opts.T,
+        carrierType === "e" ? nConc_SI : pConc_SI,
+        { ...baseParams, mDosForDoping: mGeoRef }, carrierType
+      );
+      br.muADP_cm2Vs = sc.muADP_cm2Vs;
+      br.muTot_cm2Vs = sc.muTot_cm2Vs;
+      br.tauTot_fs = sc.tauTot_fs;
+      br.vTh_cms = sc.vTh_cms;
+    });
+  };
+  if (act) {
+    attachBranchMobilities(act.eBranches, meGeo, "e");
+    attachBranchMobilities(act.hBranches, mhGeo, "h");
+  }
+
+  // Intrinsic Semiconductor Metrics (ni, E_Fi, Wannier-Mott Exciton)
+  let intrinsic = null;
+  if (eTrans && hTrans && !isMetallic) {
+    const kBT_eV = TR_CONST.KB_EV * opts.T;
+    const Nc_cm = eTrans.Nc_cm;
+    const Nv_cm = hTrans.Nc_cm;
+    const ni_cm = Math.sqrt(Nc_cm * Nv_cm) * Math.exp(-gapEv / (2 * kBT_eV));
+    const eFiShift_meV = (dim / 4) * kBT_eV * 1000 * Math.log((mhDosDirect || mhDosBand || 1) / (meDosDirect || meDosBand || 1));
+    const muEx = (meCond * mhCond) / (meCond + mhCond);
+    const epsR = Math.max(1.0, opts.epsInf);
+    const eb_3d_meV = TR_CONST.RY_EV * 1000 * (muEx / (epsR * epsR));
+    const eb_meV = is2D ? (4 * eb_3d_meV) : eb_3d_meV;
+    const aB_ang = TR_CONST.BOHR_ANG * (epsR / muEx);
+    const muRatio = hTrans.muTot_cm2Vs > 1e-9 ? eTrans.muTot_cm2Vs / hTrans.muTot_cm2Vs : 1;
+    intrinsic = { Nc_cm, Nv_cm, ni_cm, eFiShift_meV, muEx, eb_meV, eb_3d_meV, aB_ang, muRatio };
+  }
+
+  // Optical & Experimental Inverse Drude Calculator (tau from gamma_D or sigma_0)
+  const tauFromOptGamma_fs = TR_CONST.HBAR_EV_FS / Math.max(0.002, opts.optGammaEv);
+  const invExp = {};
+  if (opts.expSigmaScm > 0) {
+    const tEff_m = Math.max(3.35e-10, latInfo.slabThicknessA * 1e-10);
+    const sigma_Sm = opts.expSigmaScm * 100;
+    if (eTrans) {
+      const n3D = is2D ? (nConc_SI / tEff_m) : nConc_SI;
+      const tauE_s = (sigma_Sm * eTrans.mDrude * TR_CONST.M0_KG) / (n3D * TR_CONST.E_CHG * TR_CONST.E_CHG);
+      invExp.tauE_fs = tauE_s * 1e15;
+      invExp.gammaE_meV = (TR_CONST.HBAR_EV_FS / Math.max(1e-6, invExp.tauE_fs)) * 1000;
+      invExp.muE_cm2Vs = (sigma_Sm / (n3D * TR_CONST.E_CHG)) * 1e4;
+    }
+    if (hTrans) {
+      const p3D = is2D ? (pConc_SI / tEff_m) : pConc_SI;
+      const tauH_s = (sigma_Sm * hTrans.mDrude * TR_CONST.M0_KG) / (p3D * TR_CONST.E_CHG * TR_CONST.E_CHG);
+      invExp.tauH_fs = tauH_s * 1e15;
+      invExp.gammaH_meV = (TR_CONST.HBAR_EV_FS / Math.max(1e-6, invExp.tauH_fs)) * 1000;
+      invExp.muH_cm2Vs = (sigma_Sm / (p3D * TR_CONST.E_CHG)) * 1e4;
+    }
+  }
+
+  // Sweep 1: Temperature Sweep (100 K -> 600 K)
+  const tempSweep = [];
+  for (let T = 100; T <= 600; T += 25) {
+    const eT = meCond ? computeCarrierScatteringAt(meCond, meGeo, meAlphaK, dim, T, nConc_SI, { ...baseParams, mDosForDoping: meDosDirect || meDosBand }, "e") : null;
+    const hT = mhCond ? computeCarrierScatteringAt(mhCond, mhGeo, mhAlphaK, dim, T, pConc_SI, { ...baseParams, mDosForDoping: mhDosDirect || mhDosBand }, "h") : null;
+    const niT = (eT && hT && !isMetallic) ? Math.sqrt(eT.Nc_cm * hT.Nc_cm) * Math.exp(-gapEv / (2 * TR_CONST.KB_EV * T)) : 0;
+    tempSweep.push({ T, e: eT, h: hT, ni_cm: niT });
+  }
+
+  // Sweep 2: Doping Sweep (10^10 -> 10^14 cm^-2 for 2D, 10^15 -> 10^21 cm^-3 for 3D)
+  const dopingSweep = [];
+  const expMin = is2D ? 10 : 15;
+  const expMax = is2D ? 14 : 21;
+  const nSteps = 24;
+  for (let i = 0; i <= nSteps; i++) {
+    const ex = expMin + (expMax - expMin) * (i / nSteps);
+    const c_cm = Math.pow(10, ex);
+    const c_SI = is2D ? c_cm * 1e4 : c_cm * 1e6;
+    const eD = meCond ? computeCarrierScatteringAt(meCond, meGeo, meAlphaK, dim, opts.T, c_SI, { ...baseParams, mDosForDoping: meDosDirect || meDosBand }, "e") : null;
+    const hD = mhCond ? computeCarrierScatteringAt(mhCond, mhGeo, mhAlphaK, dim, opts.T, c_SI, { ...baseParams, mDosForDoping: mhDosDirect || mhDosBand }, "h") : null;
+    dopingSweep.push({ exp: ex, conc_cm: c_cm, e: eD, h: hD });
+  }
+
+  // Sweep 3: Drude Optical Dielectric & Optical Conductivity Spectra (auto-ranged to Drude plasma scale)
+  const drudeOptSpectra = [];
+  const epsInf = Math.max(1.0, opts.epsInf);
+  const wpMaxEv = Math.max(eTrans?.wp_eV || 0, hTrans?.wp_eV || 0, 0.08);
+  const wMaxDrude = Math.max(0.4, Math.min(2.5, Math.ceil(wpMaxEv * 4.5 * 5) / 5));
+  for (let i = 1; i <= 120; i++) {
+    const w = 0.005 + (wMaxDrude - 0.005) * (i / 120); // eV
+    const calcDrudeEps = (tr) => {
+      if (!tr || tr.wp_eV <= 1e-6) return { e1: epsInf, e2: 0, s1: 0, s2: 0 };
+      const wp2 = tr.wp_eV * tr.wp_eV;
+      const g = Math.max(1e-4, tr.gammaD_eV);
+      const den = w * w + g * g;
+      const e1 = epsInf - wp2 / den;
+      const e2 = (wp2 * g) / (w * den);
+      // Optical conductivity sigma(w) in S/cm: sigma1 = eps0 * w_rad * e2 * 1e-2
+      const w_rad = (w * TR_CONST.E_CHG) / TR_CONST.HBAR_J;
+      const s1 = TR_CONST.EPS0_SI * w_rad * e2 * 1e-2;
+      const s2 = TR_CONST.EPS0_SI * w_rad * (epsInf - e1) * 1e-2;
+      return { e1, e2, s1, s2 };
+    };
+    drudeOptSpectra.push({ w, e: calcDrudeEps(eTrans), h: calcDrudeEps(hTrans) });
+  }
+
+  return {
+    seed: job.seed || job.name || "CASTEP",
+    material: job.material || CASTEP_STUDIO_STATE.structure?.formula || job.seed || "",
+    opts, latInfo, is2D, dim,
+    bandRes, dosRes,
+    isMetallic, gapEv, gSpin,
+    meCond, meGeo, meDosBand, meDosDirect, meAlphaK,
+    mhCond, mhGeo, mhDosBand, mhDosDirect, mhAlphaK,
+    eTrans, hTrans, intrinsic, metalDrude,
+    tauFromOptGamma_fs, invExp,
+    tempSweep, dopingSweep, drudeOptSpectra,
+    nConc_cm, pConc_cm
+  };
+}
+window.computeFullCastepTransport = computeFullCastepTransport;
+
+// ---------------- Interactive UI Handlers & Preset / Bridge Helpers ----------------
+
+function applyCastepTransportPreset(presetKey) {
+  const p = TR_MATERIAL_PRESETS[presetKey];
+  if (!p) return;
+  const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  setV("castep-tr-c2d", p.C2d);
+  setV("castep-tr-c3d", p.C3d);
+  setV("castep-tr-e1e", p.E1e);
+  setV("castep-tr-e1h", p.E1h);
+  setV("castep-tr-eps0", p.eps0);
+  setV("castep-tr-eps-inf", p.epsInf);
+  setV("castep-tr-wlo", p.wLO);
+  setV("castep-tr-gve", p.gvE);
+  setV("castep-tr-gvh", p.gvH);
+  window._castepTransportCustomState.userEditedEps = true;
+  renderCastepTransportPane();
+  if (typeof showToast === "function") showToast(`Applied ${p.label} transport parameters!`, "info");
+}
+window.applyCastepTransportPreset = applyCastepTransportPreset;
+
+function toggleCastepStrainCalcPanel() {
+  const p = document.getElementById("castep-tr-strain-panel");
+  if (!p) return;
+  p.style.display = (p.style.display === "none" || !p.style.display) ? "block" : "none";
+}
+window.toggleCastepStrainCalcPanel = toggleCastepStrainCalcPanel;
+
+function computeDeformationPotentialFromStrainTable() {
+  const tbody = document.getElementById("castep-tr-strain-tbody");
+  const outEl = document.getElementById("castep-tr-strain-result");
+  const res = window._lastCastepTransportResult;
+  if (!tbody || !outEl) return;
+  const rows = [];
+  tbody.querySelectorAll("tr").forEach(tr => {
+    const ins = tr.querySelectorAll("input");
+    if (ins.length < 4) return;
+    const epsPct = parseFloat(ins[0].value);
+    const eTot = parseFloat(ins[1].value);
+    const eVbm = parseFloat(ins[2].value);
+    const eCbm = parseFloat(ins[3].value);
+    if (!isNaN(epsPct) && !isNaN(eTot)) {
+      rows.push({ eps: epsPct / 100.0, eTot, eVbm, eCbm });
+    }
+  });
+  if (rows.length < 3) {
+    outEl.innerHTML = `<span style="color:#dc2626;">Enter at least 3 strain points (e.g. −1%, −0.5%, 0%, +0.5%, +1%) to fit C and E₁.</span>`;
+    return;
+  }
+  const epsArr = rows.map(r => r.eps);
+  const etArr = rows.map(r => r.eTot);
+  const qFit = fitGeneralQuadratic(epsArr, etArr);
+  const linSlope = (xs, ys) => {
+    const valid = xs.map((x, i) => [x, ys[i]]).filter(p => !isNaN(p[1]));
+    if (valid.length < 2) return null;
+    const mx = valid.reduce((a, p) => a + p[0], 0) / valid.length;
+    const my = valid.reduce((a, p) => a + p[1], 0) / valid.length;
+    let num = 0, den = 0;
+    valid.forEach(([x, y]) => { num += (x - mx) * (y - my); den += (x - mx) ** 2; });
+    return den > 1e-18 ? num / den : null;
+  };
+  const E1h = linSlope(epsArr, rows.map(r => r.eVbm));
+  const E1e = linSlope(epsArr, rows.map(r => r.eCbm));
+  const lat = res?.latInfo;
+  const is2D = res ? res.is2D : true;
+  let Cval = null;
+  if (qFit && lat) {
+    const d2E_deps2_J = Math.abs(qFit.d2Edk2) * TR_CONST.E_CHG;
+    if (is2D) {
+      Cval = d2E_deps2_J / (lat.area2D * 1e-20); // N/m
+      const el = document.getElementById("castep-tr-c2d");
+      if (el && Cval > 1) el.value = Cval.toFixed(1);
+    } else {
+      Cval = (d2E_deps2_J / (lat.volA3 * 1e-30)) * 1e-9; // GPa
+      const el = document.getElementById("castep-tr-c3d");
+      if (el && Cval > 1) el.value = Cval.toFixed(1);
+    }
+  }
+  if (E1e !== null && Math.abs(E1e) > 0.05) {
+    const el = document.getElementById("castep-tr-e1e");
+    if (el) el.value = Math.abs(E1e).toFixed(2);
+  }
+  if (E1h !== null && Math.abs(E1h) > 0.05) {
+    const el = document.getElementById("castep-tr-e1h");
+    if (el) el.value = Math.abs(E1h).toFixed(2);
+  }
+  outEl.innerHTML = `<span style="color:#047857; font-weight:700;">✅ Fitted &amp; Applied:</span> ` +
+    `${is2D ? "C<sub>2D</sub>" : "C<sub>3D</sub>"} = <strong>${Cval ? Cval.toFixed(2) : "—"} ${is2D ? "N/m" : "GPa"}</strong> ` +
+    `• E<sub>1,e</sub> = <strong>${E1e !== null ? Math.abs(E1e).toFixed(2) : "—"} eV</strong> ` +
+    `• E<sub>1,h</sub> = <strong>${E1h !== null ? Math.abs(E1h).toFixed(2) : "—"} eV</strong>`;
+  renderCastepTransportPane();
+}
+window.computeDeformationPotentialFromStrainTable = computeDeformationPotentialFromStrainTable;
+
+function applyDrudeToOpticalTab(carrierType = "e") {
+  const res = window._lastCastepTransportResult;
+  const tr = carrierType === "h" ? res?.hTrans : res?.eTrans;
+  if (!tr) {
+    if (typeof showToast === "function") showToast("No Drude parameters computed yet.", "warning");
+    return;
+  }
+  const wpEl = document.getElementById("castep-opt-plasma");
+  const dampEl = document.getElementById("castep-opt-drude-damp");
+  const chkEl = document.getElementById("castep-opt-use-drude");
+  if (wpEl) wpEl.value = tr.wp_eV.toFixed(3);
+  if (dampEl) dampEl.value = Math.max(0.005, tr.gammaD_eV).toFixed(4);
+  if (chkEl) chkEl.checked = true;
+  if (typeof showToast === "function") {
+    showToast(`⚡ Applied ${carrierType === "h" ? "Hole" : "Electron"} Drude (ħωp = ${tr.wp_eV.toFixed(3)} eV, γD = ${tr.gammaD_meV.toFixed(1)} meV, τ = ${tr.tauTot_fs.toFixed(1)} fs) to Optical Tab!`, "success");
+  }
+  switchCastepStagePane("optics");
+}
+window.applyDrudeToOpticalTab = applyDrudeToOpticalTab;
+
+// ---------------- Publication Canvas Plotters (Unified Times New Roman Style) ----------------
+
+function fmtSciNum(v, digits = 2) {
+  if (v === null || v === undefined || !isFinite(v)) return "—";
+  if (v === 0) return "0";
+  const av = Math.abs(v);
+  if (av >= 1e-2 && av < 1e4) return av >= 100 ? v.toFixed(1) : (av >= 10 ? v.toFixed(2) : v.toFixed(digits + 1));
+  const exp = Math.floor(Math.log10(av));
+  const mant = v / Math.pow(10, exp);
+  const supMap = { "-": "⁻", "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" };
+  const expStr = String(exp).split("").map(c => supMap[c] || c).join("");
+  return `${mant.toFixed(digits)}×10${expStr}`;
+}
+
+function fmtSciHtml(v, digits = 2) {
+  if (v === null || v === undefined || !isFinite(v)) return "—";
+  if (v === 0) return "0";
+  const av = Math.abs(v);
+  if (av >= 1e-2 && av < 1e4) return av >= 100 ? v.toFixed(1) : (av >= 10 ? v.toFixed(2) : v.toFixed(digits + 1));
+  const exp = Math.floor(Math.log10(av));
+  const mant = v / Math.pow(10, exp);
+  return `<span style="white-space:nowrap;">${mant.toFixed(digits)}×10<sup>${exp}</sup></span>`;
+}
+
+function drawTransportBandFitCanvas(res) {
+  const canvas = document.getElementById("castep-transport-fit-canvas");
+  if (!canvas) return;
+  const st = getCastepPlotStyle();
+  const rect = canvas.parentElement?.getBoundingClientRect();
+  const width = Math.max(540, Math.min(1180, Math.floor((rect?.width || 900) - 24)));
+  const height = 345;
+  const dpr = getCastepCanvasDpr();
+  canvas.width = Math.round(width * dpr);
+  canvas.height = Math.round(height * dpr);
+  canvas.style.width = width + "px";
+  canvas.style.height = height + "px";
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+
+  if (!res || !res.bandRes) {
+    ctx.fillStyle = "#64748b";
+    ctx.font = `600 13px ${st.fontFamily}`;
+    ctx.textAlign = "center";
+    ctx.fillText("Load a CASTEP job with *_BandStr.bands or *_DOS.bands to compute Band-Edge Effective Mass fits.", width / 2, height / 2);
+    canvas._subPanelRects = [];
+    return;
+  }
+
+  const extraT = Math.max(0, st.titleSize - 14);
+  const extraB = Math.max(0, (st.tickSize - 12) * 1.4 + (st.axisLabelSize - 13) * 1.2);
+  const extraL = Math.max(0, (st.tickSize - 12) * 2.0 + (st.axisLabelSize - 13) * 1.1);
+  const padT = Math.round(34 + extraT);
+  const padB = Math.round(46 + extraB);
+  const padL = Math.round(62 + extraL);
+  const padR = 18;
+  const gapX = Math.round(58 + extraL);
+  const panelW = Math.floor((width - padL - padR - gapX) / 2);
+  const panelH = height - padT - padB;
+  const x0L = padL;
+  const x0R = padL + panelW + gapX;
+  const splitX = Math.round(x0L + panelW + gapX * 0.5);
+
+  canvas._subPanelRects = [
+    { key: "cbm_fit", label: "Panel (a) Electron CBM Fit", x: 0, y: 0, w: splitX, h: height, plotKey: "transport", dataSubPart: "branches", pngName: "CASTEP_Electron_Effective_Mass_Fit.png" },
+    { key: "vbm_fit", label: "Panel (b) Hole VBM Fit", x: splitX, y: 0, w: width - splitX, h: height, plotKey: "transport", dataSubPart: "branches", pngName: "CASTEP_Hole_Effective_Mass_Fit.png" }
+  ];
+
+  const branchColors = ["#2563eb", "#dc2626", "#059669", "#9333ea", "#d97706", "#0891b2"];
+  const act = res.bandRes.active;
+
+  const drawBranchPanel = (px, py, pw, ph, branches, titleText, carrierType) => {
+    // Title
+    ctx.fillStyle = st.inkColor;
+    ctx.font = `700 ${st.titleSize}px ${st.fontFamily}`;
+    ctx.textAlign = "center";
+    drawSciText(ctx, titleText, px + pw / 2, py - 10);
+
+    if (!branches || !branches.length) {
+      drawPubAxisBox(ctx, px, py, pw, ph, st, { mirrorTop: true, mirrorRight: true });
+      ctx.fillStyle = "#64748b";
+      ctx.font = `600 12px ${st.fontFamily}`;
+      ctx.textAlign = "center";
+      const msg = res.isMetallic
+        ? `Metallic phase (v_{F} ≈ ${(res.metalDrude?.avgVF_cms / 1e7 || 0).toFixed(2)}×10^{7} cm/s, m*_{F} ≈ ${(res.metalDrude?.avgMF || 1).toFixed(2)} m_{0})`
+        : "Insufficient k-points around band edge for parabolic fit.";
+      drawSciText(ctx, msg, px + pw / 2, py + ph / 2);
+      return;
+    }
+
+    // Build shifted energy ΔE = E(k) - E_edge (meV for crisp reading!)
+    const isE = carrierType === "e";
+    const refE = isE ? act.cbmE : act.vbmE;
+    let qMin = 0, qMax = 0, yMin = 0, yMax = 0;
+    const plotted = branches.slice(0, 4).map((br, idx) => {
+      // Mirror second one-sided branch to negative q when 2 one-sided branches share same vertex!
+      const signQ = (!br.isInterior && idx === 1) ? -1 : 1;
+      const pts = br.qs.map((q, i) => ({
+        q: q * signQ,
+        deMeV: (br.es[i] - refE) * 1000,
+        fitMeV: (br.pred[i] - refE) * 1000
+      })).sort((a, b) => a.q - b.q);
+      pts.forEach(p => {
+        if (p.q < qMin) qMin = p.q;
+        if (p.q > qMax) qMax = p.q;
+        if (p.deMeV < yMin) yMin = p.deMeV;
+        if (p.deMeV > yMax) yMax = p.deMeV;
+        if (p.fitMeV < yMin) yMin = p.fitMeV;
+        if (p.fitMeV > yMax) yMax = p.fitMeV;
+      });
+      return { br, signQ, pts, color: branchColors[idx % branchColors.length] };
+    });
+
+    if (qMax - qMin < 1e-4) { qMin = -0.1; qMax = 0.1; }
+    const qPad = (qMax - qMin) * 0.08;
+    qMin -= qPad; qMax += qPad;
+    const ySpan = Math.max(10, yMax - yMin);
+    if (isE) { yMin = Math.min(-ySpan * 0.08, yMin); yMax = yMax + ySpan * 0.28; }
+    else { yMax = Math.max(ySpan * 0.12, yMax); yMin = yMin - ySpan * 0.28; }
+
+    const toX = q => px + ((q - qMin) / (qMax - qMin)) * pw;
+    const toY = y => py + ph - ((y - yMin) / (yMax - yMin)) * ph;
+
+    const nXT = 4, nYT = 4;
+    const xTicks = [], yTicks = [], xTickVals = [], yTickVals = [];
+    for (let i = 0; i <= nXT; i++) {
+      const qv = qMin + (qMax - qMin) * (i / nXT);
+      xTickVals.push(qv); xTicks.push(toX(qv));
+    }
+    for (let i = 0; i <= nYT; i++) {
+      const yv = yMin + (yMax - yMin) * (i / nYT);
+      yTickVals.push(yv); yTicks.push(toY(yv));
+    }
+
+    // Optional subtle grid
+    drawPubGridLines(ctx, px, py, pw, ph, st, xTicks, yTicks);
+
+    // Zero axes (k = k0 vertical dashed, ΔE = 0 horizontal dashed)
+    ctx.save();
+    ctx.strokeStyle = "#94a3b8";
+    ctx.lineWidth = 1.0;
+    ctx.setLineDash([4, 3]);
+    if (qMin < 0 && qMax > 0) {
+      const xz = toX(0);
+      ctx.beginPath(); ctx.moveTo(xz, py); ctx.lineTo(xz, py + ph); ctx.stroke();
+    }
+    const yz = toY(0);
+    if (yz > py && yz < py + ph) {
+      ctx.beginPath(); ctx.moveTo(px, yz); ctx.lineTo(px + pw, yz); ctx.stroke();
+    }
+    ctx.restore();
+
+    // Draw smooth fitted curves + DFT scatter markers
+    ctx.save();
+    ctx.beginPath(); ctx.rect(px, py, pw, ph); ctx.clip();
+    plotted.forEach(item => {
+      const { br, signQ, pts, color } = item;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = st.lineWidth;
+      ctx.beginPath();
+      const qLo = Math.min(...pts.map(p => p.q));
+      const qHi = Math.max(...pts.map(p => p.q));
+      const nDense = 48;
+      for (let s = 0; s <= nDense; s++) {
+        const qVal = qLo + (qHi - qLo) * (s / nDense);
+        const qRaw = qVal * signQ;
+        let eFit = br.e0 + br.c1 * qRaw + br.c2 * qRaw * qRaw;
+        if (br.modelUsed.includes("Kane") && br.alphaKane > 1e-6) {
+          const rhs = (TR_CONST.HBAR2_OVER_M0 * qRaw * qRaw) / (2 * br.mStarKane);
+          const dE = (-1 + Math.sqrt(1 + 4 * br.alphaKane * rhs)) / (2 * br.alphaKane);
+          eFit = br.e0 + (isE ? dE : -dE);
+        }
+        const cx = toX(qVal), cy = toY((eFit - refE) * 1000);
+        if (s === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy);
+      }
+      ctx.stroke();
+
+      pts.forEach(p => {
+        const cx = toX(p.q), cy = toY(p.deMeV);
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath(); ctx.arc(cx, cy, 3.6, 0, 2 * Math.PI); ctx.fill();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.arc(cx, cy, 3.6, 0, 2 * Math.PI); ctx.stroke();
+      });
+    });
+    ctx.restore();
+
+    // Frame & Ticks
+    drawPubAxisBox(ctx, px, py, pw, ph, st, { xTicks, yTicks, mirrorTop: true, mirrorRight: true });
+    ctx.fillStyle = st.inkColor;
+    ctx.font = `${st.tickSize}px ${st.fontFamily}`;
+    xTickVals.forEach((qv, i) => {
+      ctx.textAlign = "center";
+      ctx.fillText(formatPubMinus(qv.toFixed(2)), xTicks[i], py + ph + st.tickSize + 4);
+    });
+    yTickVals.forEach((yv, i) => {
+      ctx.textAlign = "right";
+      ctx.fillText(formatPubMinus(Math.abs(yv) < 0.5 ? "0" : yv.toFixed(0)), px - 6, yTicks[i] + st.tickSize * 0.34);
+    });
+
+    // Axis Labels
+    ctx.font = `${st.boldAxisLabels ? "700" : "400"} ${st.axisLabelSize}px ${st.fontFamily}`;
+    ctx.textAlign = "center";
+    drawSciText(ctx, "Δk along BZ path (Å⁻¹)", px + pw / 2, py + ph + st.tickSize + st.axisLabelSize + 8);
+    ctx.save();
+    ctx.translate(px - Math.max(44, st.tickSize * 3.2), py + ph / 2);
+    ctx.rotate(-Math.PI / 2);
+    drawSciText(ctx, isE ? "E − E_{CBM} (meV)" : "E − E_{VBM} (meV)", 0, 0);
+    ctx.restore();
+
+    // Compact legend box inside panel (top-left for e-, bottom-left for h+)
+    const legH = 15 * plotted.length + 8;
+    const legY = isE ? (py + 6) : (py + ph - legH - 6);
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,0.93)";
+    ctx.strokeStyle = "#cbd5e1";
+    ctx.lineWidth = 0.9;
+    const legW = Math.min(pw - 16, 236);
+    ctx.fillRect(px + 8, legY, legW, legH);
+    ctx.strokeRect(px + 8, legY, legW, legH);
+    ctx.font = `600 ${Math.max(10, st.legendSize - 0.5)}px ${st.fontFamily}`;
+    ctx.textAlign = "left";
+    plotted.forEach((item, idx) => {
+      const ly = legY + 13 + idx * 15;
+      ctx.strokeStyle = item.color;
+      ctx.lineWidth = 2.0;
+      ctx.beginPath(); ctx.moveTo(px + 13, ly - 3); ctx.lineTo(px + 26, ly - 3); ctx.stroke();
+      ctx.fillStyle = st.inkColor;
+      const roleTag = item.br.subBandRole && item.br.subBandRole !== "CBM" && item.br.subBandRole !== "VBM" ? ` [${item.br.subBandRole.replace("VBM ", "")}]` : "";
+      drawSciText(ctx, `${item.br.dirLabel}${roleTag}: m*=${item.br.mStar.toFixed(3)} m_{0} (R^{2}=${item.br.r2.toFixed(3)})`, px + 30, ly);
+    });
+    ctx.restore();
+  };
+
+  drawBranchPanel(x0L, padT, panelW, panelH, act.eBranches, `(a) Conduction Band Edge (e^{−}, m*_{c} = ${res.meCond ? res.meCond.toFixed(3) : "—"} m_{0})`, "e");
+  drawBranchPanel(x0R, padT, panelW, panelH, act.hBranches, `(b) Valence Band Edge (h^{+}, m*_{c} = ${res.mhCond ? res.mhCond.toFixed(3) : "—"} m_{0})`, "h");
+}
+
+function drawTransportDrudeCanvas(res) {
+  const canvas = document.getElementById("castep-transport-drude-canvas");
+  if (!canvas) return;
+  const st = getCastepPlotStyle();
+  const rect = canvas.parentElement?.getBoundingClientRect();
+  const width = Math.max(540, Math.min(1180, Math.floor((rect?.width || 900) - 24)));
+  const height = 345;
+  const dpr = getCastepCanvasDpr();
+  canvas.width = Math.round(width * dpr);
+  canvas.height = Math.round(height * dpr);
+  canvas.style.width = width + "px";
+  canvas.style.height = height + "px";
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+
+  if (!res) {
+    ctx.fillStyle = "#64748b";
+    ctx.font = `600 13px ${st.fontFamily}`;
+    ctx.textAlign = "center";
+    ctx.fillText("Load a CASTEP job to compute DOS Effective Mass, Drude Effective Mass & Relaxation Time.", width / 2, height / 2);
+    canvas._subPanelRects = [];
+    return;
+  }
+
+  const mode = res.opts.drudeChartMode || "dos_temp";
+  const extraT = Math.max(0, st.titleSize - 14);
+  const extraB = Math.max(0, (st.tickSize - 12) * 1.4 + (st.axisLabelSize - 13) * 1.2);
+  const extraL = Math.max(0, (st.tickSize - 12) * 2.2 + (st.axisLabelSize - 13) * 1.1);
+  const padT = Math.round(34 + extraT);
+  const padB = Math.round(46 + extraB);
+  const padL = Math.round(64 + extraL);
+  const padR = 18;
+  const gapX = Math.round(64 + extraL);
+  const panelW = Math.floor((width - padL - padR - gapX) / 2);
+  const panelH = height - padT - padB;
+  const x0L = padL;
+  const x0R = padL + panelW + gapX;
+  const splitX = Math.round(x0L + panelW + gapX * 0.5);
+
+  const subLabels = {
+    dos_temp: ["Panel (a) DOS Effective Mass Fit", "Panel (b) Drude Relaxation Time τ(T)"],
+    doping: ["Panel (a) Drude Mass m*(n,p) & ħωp", "Panel (b) Drude τ & σ vs Doping"],
+    drude_opt: ["Panel (a) Drude Dielectric ε(ω)", "Panel (b) Drude Optical Conductivity σ(ω)"],
+    mobility_t: ["Panel (a) Mobility μ(T) vs Temp", "Panel (b) Intrinsic Carrier Density ni(T)"]
+  }[mode] || ["Panel (a)", "Panel (b)"];
+
+  canvas._subPanelRects = [
+    { key: "drude_a", label: subLabels[0], x: 0, y: 0, w: splitX, h: height, plotKey: "transport", dataSubPart: "temp_sweep", pngName: "CASTEP_Transport_PanelA.png" },
+    { key: "drude_b", label: subLabels[1], x: splitX, y: 0, w: width - splitX, h: height, plotKey: "transport", dataSubPart: "doping_sweep", pngName: "CASTEP_Transport_PanelB.png" }
+  ];
+
+  // Reusable clean XY scientific panel drawer (linear or log10 Y)
+  const drawXYPanel = (px, py, pw, ph, cfg) => {
+    ctx.fillStyle = st.inkColor;
+    ctx.font = `700 ${st.titleSize}px ${st.fontFamily}`;
+    ctx.textAlign = "center";
+    drawSciText(ctx, cfg.title, px + pw / 2, py - 10);
+
+    const series = (cfg.series || []).filter(s => s.pts && s.pts.length >= 2);
+    if (!series.length) {
+      drawPubAxisBox(ctx, px, py, pw, ph, st, { mirrorTop: true, mirrorRight: true });
+      ctx.fillStyle = "#64748b";
+      ctx.font = `600 12px ${st.fontFamily}`;
+      ctx.textAlign = "center";
+      drawSciText(ctx, cfg.emptyMsg || "No data in this mode.", px + pw / 2, py + ph / 2);
+      return;
+    }
+
+    let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+    const trY = v => cfg.logY ? Math.log10(Math.max(1e-30, v)) : v;
+    series.forEach(s => s.pts.forEach(([x, y]) => {
+      if (!isFinite(x) || !isFinite(y) || (cfg.logY && y <= 0)) return;
+      const yt = trY(y);
+      if (x < xMin) xMin = x;
+      if (x > xMax) xMax = x;
+      if (yt < yMin) yMin = yt;
+      if (yt > yMax) yMax = yt;
+    }));
+    if (cfg.xMin !== undefined) xMin = cfg.xMin;
+    if (cfg.xMax !== undefined) xMax = cfg.xMax;
+    if (!isFinite(yMin) || !isFinite(yMax) || yMax <= yMin) { yMin = 0; yMax = 1; }
+    const ySpan = yMax - yMin;
+    yMin -= cfg.logY ? Math.max(0.2, ySpan * 0.08) : (cfg.zeroFloor ? 0 : ySpan * 0.08);
+    yMax += cfg.logY ? Math.max(0.35, ySpan * 0.24) : ySpan * 0.24;
+
+    const toX = x => px + ((x - xMin) / ((xMax - xMin) || 1)) * pw;
+    const toY = yt => py + ph - ((yt - yMin) / ((yMax - yMin) || 1)) * ph;
+
+    const xTicks = [], yTicks = [], xTickVals = [], yTickVals = [];
+    for (let i = 0; i <= 4; i++) {
+      const xv = xMin + (xMax - xMin) * (i / 4);
+      xTickVals.push(xv); xTicks.push(toX(xv));
+      const ytv = yMin + (yMax - yMin) * (i / 4);
+      yTickVals.push(ytv); yTicks.push(toY(ytv));
+    }
+
+    drawPubGridLines(ctx, px, py, pw, ph, st, xTicks, yTicks);
+
+    // Optional vertical reference lines
+    (cfg.vLines || []).forEach(vl => {
+      if (vl.x >= xMin && vl.x <= xMax) {
+        ctx.save();
+        ctx.strokeStyle = vl.color || "#94a3b8";
+        ctx.lineWidth = 1.1;
+        ctx.setLineDash([4, 3]);
+        const vx = toX(vl.x);
+        ctx.beginPath(); ctx.moveTo(vx, py); ctx.lineTo(vx, py + ph); ctx.stroke();
+        ctx.restore();
+      }
+    });
+
+    ctx.save();
+    ctx.beginPath(); ctx.rect(px, py, pw, ph); ctx.clip();
+    series.forEach(s => {
+      ctx.strokeStyle = s.color;
+      ctx.lineWidth = s.width || st.lineWidth;
+      ctx.setLineDash(s.dash || []);
+      ctx.beginPath();
+      let started = false;
+      s.pts.forEach(([x, y]) => {
+        if (!isFinite(x) || !isFinite(y) || (cfg.logY && y <= 0)) { started = false; return; }
+        const cx = toX(x), cy = toY(trY(y));
+        if (!started) { ctx.moveTo(cx, cy); started = true; } else ctx.lineTo(cx, cy);
+      });
+      ctx.stroke();
+      ctx.setLineDash([]);
+      if (s.fill) {
+        const yBase = toY(cfg.logY ? yMin : Math.max(yMin, 0));
+        ctx.fillStyle = s.fill;
+        ctx.beginPath();
+        let fx0 = null, lx = null;
+        s.pts.forEach(([x, y]) => {
+          if (!isFinite(x) || !isFinite(y)) return;
+          const cx = toX(x), cy = toY(trY(y));
+          if (fx0 === null) { fx0 = cx; ctx.moveTo(cx, yBase); ctx.lineTo(cx, cy); }
+          else ctx.lineTo(cx, cy);
+          lx = cx;
+        });
+        if (lx !== null) { ctx.lineTo(lx, yBase); ctx.closePath(); ctx.fill(); }
+      }
+    });
+    ctx.restore();
+
+    drawPubAxisBox(ctx, px, py, pw, ph, st, { xTicks, yTicks, mirrorTop: true, mirrorRight: true });
+    ctx.fillStyle = st.inkColor;
+    ctx.font = `${st.tickSize}px ${st.fontFamily}`;
+    xTickVals.forEach((xv, i) => {
+      ctx.textAlign = "center";
+      ctx.fillText(formatPubMinus(cfg.fmtX ? cfg.fmtX(xv) : xv.toFixed(1)), xTicks[i], py + ph + st.tickSize + 4);
+    });
+    yTickVals.forEach((ytv, i) => {
+      ctx.textAlign = "right";
+      let lbl;
+      if (cfg.logY) {
+        const val = Math.pow(10, ytv);
+        lbl = (val >= 0.05 && val < 10) ? val.toFixed(2) : fmtSciNum(val, 1);
+      } else {
+        lbl = cfg.fmtY ? cfg.fmtY(ytv) : (Math.abs(ytv) >= 100 ? ytv.toFixed(0) : ytv.toFixed(2));
+      }
+      ctx.fillText(formatPubMinus(lbl), px - 6, yTicks[i] + st.tickSize * 0.34);
+    });
+
+    ctx.font = `${st.boldAxisLabels ? "700" : "400"} ${st.axisLabelSize}px ${st.fontFamily}`;
+    ctx.textAlign = "center";
+    drawSciText(ctx, cfg.xLabel, px + pw / 2, py + ph + st.tickSize + st.axisLabelSize + 8);
+    ctx.save();
+    ctx.translate(px - Math.max(48, st.tickSize * 3.6), py + ph / 2);
+    ctx.rotate(-Math.PI / 2);
+    drawSciText(ctx, cfg.yLabel, 0, 0);
+    ctx.restore();
+
+    // Legend
+    const legSeries = series.filter(s => s.label);
+    if (legSeries.length) {
+      const legH = 14.5 * legSeries.length + 7;
+      const legW = Math.min(pw - 14, cfg.legW || 195);
+      const legX = cfg.legLeft ? (px + 8) : (px + pw - legW - 8);
+      const legY = py + 6;
+      ctx.save();
+      ctx.fillStyle = "rgba(255,255,255,0.93)";
+      ctx.strokeStyle = "#cbd5e1";
+      ctx.lineWidth = 0.9;
+      ctx.fillRect(legX, legY, legW, legH);
+      ctx.strokeRect(legX, legY, legW, legH);
+      ctx.font = `600 ${Math.max(9.5, st.legendSize - 0.5)}px ${st.fontFamily}`;
+      ctx.textAlign = "left";
+      legSeries.forEach((s, idx) => {
+        const ly = legY + 12.5 + idx * 14.5;
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = s.width || 2;
+        ctx.setLineDash(s.dash || []);
+        ctx.beginPath(); ctx.moveTo(legX + 6, ly - 3); ctx.lineTo(legX + 20, ly - 3); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = st.inkColor;
+        drawSciText(ctx, s.label, legX + 24, ly);
+      });
+      ctx.restore();
+    }
+  };
+
+  if (mode === "dos_temp") {
+    // Panel (a): DFT DOS near band edges + analytical m*_DOS model fit!
+    const d = res.dosRes;
+    const dosSeries = [];
+    const vLines = [];
+    if (d && d.gridE.length) {
+      const dftPts = d.gridE.map((E, i) => [E, d.gridG[i]]);
+      dosSeries.push({ label: "DFT Total DOS g(E)", color: "#0f172a", width: 1.8, fill: "rgba(15,23,42,0.08)", pts: dftPts });
+      if (d.eDosFit) {
+        const f = d.eDosFit;
+        const modelPts = [];
+        const pow = d.is2D ? 0 : 0.5;
+        const coeff = d.is2D ? f.K : (1.5 * f.K);
+        for (let s = 0; s <= 40; s++) {
+          const de = (d.fitWinEv * 1.15) * (s / 40);
+          modelPts.push([f.edgeE + de, coeff * Math.pow(Math.max(1e-6, de), pow)]);
+        }
+        dosSeries.push({ label: `CB Fit: m*_{DOS,e} = ${f.mDos.toFixed(2)} m_{0}`, color: "#2563eb", dash: [5, 3], width: 2.0, pts: modelPts });
+        vLines.push({ x: f.edgeE, color: "#2563eb" });
+      }
+      if (d.hDosFit) {
+        const f = d.hDosFit;
+        const modelPts = [];
+        const pow = d.is2D ? 0 : 0.5;
+        const coeff = d.is2D ? f.K : (1.5 * f.K);
+        for (let s = 0; s <= 40; s++) {
+          const de = (d.fitWinEv * 1.15) * (s / 40);
+          modelPts.push([f.edgeE - de, coeff * Math.pow(Math.max(1e-6, de), pow)]);
+        }
+        dosSeries.push({ label: `VB Fit: m*_{DOS,h} = ${f.mDos.toFixed(2)} m_{0}`, color: "#dc2626", dash: [5, 3], width: 2.0, pts: modelPts });
+        vLines.push({ x: f.edgeE, color: "#dc2626" });
+      }
+    }
+    drawXYPanel(x0L, padT, panelW, panelH, {
+      title: `(a) Direct DFT DOS Effective Mass (${res.is2D ? "2D" : "3D"})`,
+      xLabel: "Energy E − E_{F} (eV)",
+      yLabel: "DOS g(E) (states / eV·cell)",
+      zeroFloor: true, legLeft: true, legW: 196, vLines,
+      series: dosSeries
+    });
+
+    // Panel (b): Drude Relaxation Time τ_e(T) & τ_h(T) vs Temperature (100–600 K)
+    const tauSeries = [];
+    if (res.tempSweep.some(r => r.e)) {
+      tauSeries.push({ label: "Electron τ_{tot} (e^{−})", color: "#2563eb", width: 2.2, pts: res.tempSweep.map(r => [r.T, r.e?.tauTot_fs]) });
+      if (res.opts.usePOP || res.opts.useIMP) {
+        tauSeries.push({ label: "Electron τ_{ADP}", color: "#93c5fd", dash: [4, 3], width: 1.4, pts: res.tempSweep.map(r => [r.T, r.e?.tauADP_fs]) });
+      }
+    }
+    if (res.tempSweep.some(r => r.h)) {
+      tauSeries.push({ label: "Hole τ_{tot} (h^{+})", color: "#dc2626", width: 2.2, pts: res.tempSweep.map(r => [r.T, r.h?.tauTot_fs]) });
+      if (res.opts.usePOP || res.opts.useIMP) {
+        tauSeries.push({ label: "Hole τ_{ADP}", color: "#fca5a5", dash: [4, 3], width: 1.4, pts: res.tempSweep.map(r => [r.T, r.h?.tauADP_fs]) });
+      }
+    }
+    drawXYPanel(x0R, padT, panelW, panelH, {
+      title: "(b) Drude Relaxation Time τ_{e}, τ_{h} vs. Temperature",
+      xLabel: "Temperature T (K)",
+      yLabel: "Relaxation Time τ (fs)",
+      logY: true, fmtX: v => v.toFixed(0), legW: 162,
+      vLines: [{ x: res.opts.T, color: "#059669" }],
+      series: tauSeries
+    });
+  } else if (mode === "doping") {
+    const uLbl = res.is2D ? "Carrier Density n, p (cm^{−2})" : "Carrier Density n, p (cm^{−3})";
+    const fmtPow10 = v => {
+      const sup = { "-": "⁻", "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" };
+      return "10" + String(Math.round(v)).split("").map(c => sup[c] || c).join("");
+    };
+    drawXYPanel(x0L, padT, panelW, panelH, {
+      title: "(a) Drude Effective Mass m*_{Drude} vs. Doping",
+      xLabel: uLbl,
+      yLabel: "Drude Effective Mass (m_{0})",
+      fmtX: fmtPow10, legW: 172,
+      vLines: [{ x: res.opts.nExp, color: "#2563eb" }],
+      series: [
+        { label: "Electron m*_{Drude} (e^{−})", color: "#2563eb", width: 2.2, pts: res.dopingSweep.map(r => [r.exp, r.e?.mDrude]) },
+        { label: "Hole m*_{Drude} (h^{+})", color: "#dc2626", width: 2.2, pts: res.dopingSweep.map(r => [r.exp, r.h?.mDrude]) }
+      ]
+    });
+    drawXYPanel(x0R, padT, panelW, panelH, {
+      title: "(b) Drude Plasma Frequency ħω_{p} vs. Doping",
+      xLabel: uLbl,
+      yLabel: "Drude Plasma ħω_{p} (eV)",
+      logY: true, fmtX: fmtPow10, legLeft: true, legW: 172,
+      vLines: [{ x: res.opts.nExp, color: "#2563eb" }],
+      series: [
+        { label: "Electron ħω_{p} (e^{−})", color: "#2563eb", width: 2.2, pts: res.dopingSweep.map(r => [r.exp, r.e?.wp_eV]) },
+        { label: "Hole ħω_{p} (h^{+})", color: "#dc2626", width: 2.2, pts: res.dopingSweep.map(r => [r.exp, r.h?.wp_eV]) }
+      ]
+    });
+  } else if (mode === "drude_opt") {
+    drawXYPanel(x0L, padT, panelW, panelH, {
+      title: "(a) Drude Free-Carrier Dielectric ε_{1}(ω) & ε_{2}(ω)",
+      xLabel: "Photon Energy ħω (eV)",
+      yLabel: "Dielectric Function ε(ω)",
+      legW: 165,
+      series: [
+        { label: "e^{−}: ε_{1}(ω) Real", color: "#2563eb", width: 2.0, pts: res.drudeOptSpectra.map(r => [r.w, Math.max(-40, r.e.e1)]) },
+        { label: "e^{−}: ε_{2}(ω) Imag", color: "#60a5fa", dash: [4, 3], width: 1.8, pts: res.drudeOptSpectra.map(r => [r.w, Math.min(40, r.e.e2)]) },
+        { label: "h^{+}: ε_{1}(ω) Real", color: "#dc2626", width: 2.0, pts: res.drudeOptSpectra.map(r => [r.w, Math.max(-40, r.h.e1)]) },
+        { label: "h^{+}: ε_{2}(ω) Imag", color: "#f87171", dash: [4, 3], width: 1.8, pts: res.drudeOptSpectra.map(r => [r.w, Math.min(40, r.h.e2)]) }
+      ]
+    });
+    drawXYPanel(x0R, padT, panelW, panelH, {
+      title: "(b) Drude Optical Conductivity σ_{1}(ω) (S/cm)",
+      xLabel: "Photon Energy ħω (eV)",
+      yLabel: "Optical Conductivity σ_{1} (S/cm)",
+      zeroFloor: true, legW: 165,
+      series: [
+        { label: "Electron σ_{1}(ω)", color: "#2563eb", width: 2.2, fill: "rgba(37,99,235,0.10)", pts: res.drudeOptSpectra.map(r => [r.w, r.e.s1]) },
+        { label: "Hole σ_{1}(ω)", color: "#dc2626", width: 2.2, fill: "rgba(220,38,38,0.08)", pts: res.drudeOptSpectra.map(r => [r.w, r.h.s1]) }
+      ]
+    });
+  } else {
+    drawXYPanel(x0L, padT, panelW, panelH, {
+      title: `(a) Carrier Mobility μ_{e}(T), μ_{h}(T) (${res.is2D ? "2D" : "3D"})`,
+      xLabel: "Temperature T (K)",
+      yLabel: "Mobility μ (cm^{2} / V·s)",
+      logY: true, fmtX: v => v.toFixed(0), legW: 160,
+      vLines: [{ x: res.opts.T, color: "#059669" }],
+      series: [
+        { label: "Electron μ_{e}(T)", color: "#2563eb", width: 2.2, pts: res.tempSweep.map(r => [r.T, r.e?.muTot_cm2Vs]) },
+        { label: "Hole μ_{h}(T)", color: "#dc2626", width: 2.2, pts: res.tempSweep.map(r => [r.T, r.h?.muTot_cm2Vs]) }
+      ]
+    });
+    drawXYPanel(x0R, padT, panelW, panelH, {
+      title: `(b) Intrinsic Carrier Density n_{i}(T) (Arrhenius)`,
+      xLabel: "Temperature T (K)",
+      yLabel: res.is2D ? "n_{i} (cm^{−2})" : "n_{i} (cm^{−3})",
+      logY: true, fmtX: v => v.toFixed(0), legLeft: true, legW: 175,
+      vLines: [{ x: res.opts.T, color: "#059669" }],
+      emptyMsg: "Intrinsic n_{i}(T) applies to gapped semiconductors (E_{g} > 0.02 eV).",
+      series: res.isMetallic ? [] : [
+        { label: `n_{i}(T) [E_{g} = ${res.gapEv.toFixed(2)} eV]`, color: "#7c3aed", width: 2.2, pts: res.tempSweep.filter(r => r.ni_cm > 1e-28).map(r => [r.T, r.ni_cm]) }
+      ]
+    });
+  }
+}
+
+// ---------------- Render Complete Transport & Drude Pane ----------------
+
+function renderCastepTransportPane() {
+  const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
+  const res = computeFullCastepTransport(job);
+  window._lastCastepTransportResult = res;
+
+  // Toggle 2D C2D vs 3D C3D input visibility cleanly based on active dimensionality
+  const is2D = res ? res.is2D : true;
+  const c2dWrap = document.getElementById("castep-tr-c2d-wrap");
+  const c3dWrap = document.getElementById("castep-tr-c3d-wrap");
+  if (c2dWrap) c2dWrap.style.display = is2D ? "inline-flex" : "none";
+  if (c3dWrap) c3dWrap.style.display = is2D ? "none" : "inline-flex";
+  const dopUnitEl = document.getElementById("castep-tr-dop-unit");
+  if (dopUnitEl) dopUnitEl.innerHTML = is2D ? "cm<sup>−2</sup>" : "cm<sup>−3</sup>";
+
+  // 1) Update Top KPI Summary Strip
+  const strip = document.getElementById("castep-transport-summary-strip");
+  if (strip) {
+    if (!res) {
+      strip.innerHTML = `<span>Load a CASTEP calculation with <code>*_BandStr.bands</code> or <code>*_DOS.bands</code> to analyze Carrier Effective Mass (m*<sub>e</sub>, m*<sub>h</sub>), Semiconductor Mobility (μ<sub>e</sub>, μ<sub>h</sub>), Drude Effective Mass, and Drude Relaxation Time (τ<sub>e</sub>, τ<sub>h</sub>).</span>`;
+    } else {
+      const dimBadge = res.is2D
+        ? `2D Slab (Area = ${res.latInfo.area2D.toFixed(2)} Å², Vac = ${res.latInfo.maxVacGapA.toFixed(1)} Å)`
+        : `3D Bulk (Vol = ${res.latInfo.volA3.toFixed(1)} Å³)`;
+      const gapStr = res.isMetallic
+        ? `<strong style="color:#b45309;">${escapeHtml(res.bandRes?.phase || "Metallic")}</strong>`
+        : `<strong style="color:#0369a1;">E<sub>g</sub> = ${res.gapEv.toFixed(3)} eV</strong> (${res.bandRes?.active?.isDirect ? "Direct" : "Indirect"}: ${res.bandRes?.active?.vbmLabel} → ${res.bandRes?.active?.cbmLabel})`;
+      strip.innerHTML = `
+        <span><strong>System:</strong> ${escapeHtml(res.material)} • ${dimBadge}</span>
+        <span><strong>Phase:</strong> ${gapStr}</span>
+        <span style="color:#1d4ed8;"><strong>m*<sub>e</sub>:</strong> ${res.meCond ? res.meCond.toFixed(3) : "—"} m<sub>0</sub> (Drude: ${res.eTrans ? res.eTrans.mDrude.toFixed(3) : "—"})</span>
+        <span style="color:#b91c1c;"><strong>m*<sub>h</sub>:</strong> ${res.mhCond ? res.mhCond.toFixed(3) : "—"} m<sub>0</sub> (Drude: ${res.hTrans ? res.hTrans.mDrude.toFixed(3) : "—"})</span>
+        <span style="color:#047857;"><strong>μ<sub>e</sub> / μ<sub>h</sub> (${res.opts.T} K):</strong> ${res.eTrans ? fmtSciHtml(res.eTrans.muTot_cm2Vs, 1) : "—"} / ${res.hTrans ? fmtSciHtml(res.hTrans.muTot_cm2Vs, 1) : "—"} cm²/V·s</span>
+        <span style="color:#6d28d9;"><strong>τ<sub>e</sub> / τ<sub>h</sub>:</strong> ${res.eTrans ? res.eTrans.tauTot_fs.toFixed(1) : "—"} / ${res.hTrans ? res.hTrans.tauTot_fs.toFixed(1) : "—"} fs</span>
+      `;
+    }
+  }
+
+  // 2) Render both High-DPI Publication Canvases
+  drawTransportBandFitCanvas(res);
+  drawTransportDrudeCanvas(res);
+
+  // 3) Render Semiconductor & Drude Comparison Cards + Tables
+  const cardsEl = document.getElementById("castep-transport-drude-cards");
+  if (cardsEl) {
+    if (!res) {
+      cardsEl.innerHTML = "";
+    } else {
+      const uConc = res.is2D ? "cm<sup>−2</sup>" : "cm<sup>−3</sup>";
+      const makeCarrierCard = (title, accent, tr, mBandCond, mBandDos, mDosDirect, alphaK, dopCm, invTau, invMu) => {
+        if (!tr) {
+          return `<div class="castep-mulliken-sp-card" style="border-top:3px solid ${accent};"><div style="font-weight:800; color:${accent};">${title}</div><div style="font-size:11.5px; color:#64748b; margin-top:6px;">No carrier band edge detected.</div></div>`;
+        }
+        return `
+          <div class="castep-mulliken-sp-card" style="border-top:3px solid ${accent};">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <strong style="font-size:12.5px; color:${accent};">${title}</strong>
+              <span class="badge badge-blue" style="font-size:10px;">T = ${res.opts.T} K • ${fmtSciHtml(dopCm, 1)} ${uConc}</span>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 10px; font-size:11.5px; color:#1e293b;">
+              <div>Cond. Mass m*<sub>c</sub>: <strong>${mBandCond ? mBandCond.toFixed(4) : "—"} m<sub>0</sub></strong></div>
+              <div>Drude Mass m*<sub>Drude</sub>: <strong style="color:${accent};">${tr.mDrude.toFixed(4)} m<sub>0</sub></strong></div>
+              <div>DOS Mass (Band): <strong>${mBandDos ? mBandDos.toFixed(3) : "—"} m<sub>0</sub></strong></div>
+              <div>DOS Mass (DFT DOS): <strong>${mDosDirect ? mDosDirect.toFixed(3) : "—"} m<sub>0</sub></strong></div>
+              <div>Mobility μ<sub>tot</sub>: <strong style="color:#047857;">${fmtSciHtml(tr.muTot_cm2Vs, 2)} cm²/V·s</strong></div>
+              <div>Drude τ<sub>tot</sub>: <strong style="color:#6d28d9;">${tr.tauTot_fs.toFixed(2)} fs</strong></div>
+              <div>τ<sub>ADP</sub> / τ<sub>POP</sub> / τ<sub>IMP</sub>: <strong>${tr.tauADP_fs.toFixed(1)} / ${tr.tauPOP_fs ? tr.tauPOP_fs.toFixed(1) : "Off"} / ${tr.tauIMP_fs ? tr.tauIMP_fs.toFixed(1) : "Off"} fs</strong></div>
+              <div>Drude Damping γ<sub>D</sub>: <strong>${tr.gammaD_meV.toFixed(2)} meV</strong></div>
+              <div>Drude Plasma ħω<sub>p</sub>: <strong>${tr.wp_eV.toFixed(4)} eV</strong> (${tr.wp_THz.toFixed(1)} THz)</div>
+              <div>DC Conductivity σ<sub>0</sub>: <strong>${fmtSciHtml(tr.sigma3D_Scm, 2)} S/cm</strong></div>
+              <div>Mean Free Path ℓ: <strong>${tr.mfp_nm.toFixed(2)} nm</strong></div>
+              <div>Diffusion D: <strong>${fmtSciHtml(tr.diff_cm2s, 2)} cm²/s</strong></div>
+              <div>Thermal v<sub>th</sub>: <strong>${fmtSciHtml(tr.vTh_cms, 2)} cm/s</strong></div>
+              <div>Non-Parabolic α<sub>K</sub>: <strong>${(alphaK || 0).toFixed(3)} eV<sup>−1</sup></strong></div>
+              ${invTau ? `<div style="grid-column:1/-1; padding-top:4px; border-top:1px dashed #cbd5e1; color:#0369a1;"><strong>From σ<sub>exp</sub>:</strong> τ<sub>Drude</sub> = <strong>${invTau.toFixed(2)} fs</strong> • μ<sub>exp</sub> = <strong>${fmtSciHtml(invMu, 2)} cm²/V·s</strong></div>` : ""}
+            </div>
+          </div>`;
+      };
+
+      const exCard = res.intrinsic ? `
+        <div class="castep-mulliken-sp-card" style="border-top:3px solid #0f766e;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <strong style="font-size:12.5px; color:#0f766e;">💎 Semiconductor &amp; Exciton Metrics</strong>
+            <span class="badge badge-blue" style="font-size:10px;">ε<sub>∞</sub> = ${res.opts.epsInf.toFixed(2)}</span>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 10px; font-size:11.5px; color:#1e293b;">
+            <div>Band Gap E<sub>g</sub>: <strong>${res.gapEv.toFixed(3)} eV</strong></div>
+            <div>Gap Type: <strong>${res.bandRes?.active?.isDirect ? "Direct" : "Indirect"}</strong></div>
+            <div>Eff. DOS N<sub>c</sub>(${res.opts.T}K): <strong>${fmtSciHtml(res.intrinsic.Nc_cm, 2)} ${uConc}</strong></div>
+            <div>Eff. DOS N<sub>v</sub>(${res.opts.T}K): <strong>${fmtSciHtml(res.intrinsic.Nv_cm, 2)} ${uConc}</strong></div>
+            <div>Intrinsic n<sub>i</sub>(${res.opts.T}K): <strong>${fmtSciHtml(res.intrinsic.ni_cm, 2)} ${uConc}</strong></div>
+            <div>E<sub>Fi</sub> − E<sub>mid</sub>: <strong>${res.intrinsic.eFiShift_meV >= 0 ? "+" : ""}${res.intrinsic.eFiShift_meV.toFixed(2)} meV</strong></div>
+            <div>Exciton Red. Mass μ*<sub>ex</sub>: <strong>${res.intrinsic.muEx.toFixed(4)} m<sub>0</sub></strong></div>
+            <div>Wannier–Mott E<sub>b</sub>: <strong>${res.intrinsic.eb_meV.toFixed(1)} meV</strong></div>
+            <div>Exciton Bohr a<sub>B</sub>*: <strong>${res.intrinsic.aB_ang.toFixed(2)} Å</strong></div>
+            <div>Ratio μ<sub>e</sub> / μ<sub>h</sub>: <strong>${res.intrinsic.muRatio.toFixed(2)}×</strong></div>
+            <div>Optical γ<sub>D</sub> → τ<sub>opt</sub>: <strong>${res.tauFromOptGamma_fs.toFixed(2)} fs</strong></div>
+            <div>Sheet R<sub>s</sub> (e⁻/h⁺): <strong>${res.eTrans ? fmtSciHtml(res.eTrans.sheetR_ohm, 1) : "—"} / ${res.hTrans ? fmtSciHtml(res.hTrans.sheetR_ohm, 1) : "—"} Ω/□</strong></div>
+          </div>
+        </div>` : `
+        <div class="castep-mulliken-sp-card" style="border-top:3px solid #b45309;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <strong style="font-size:12.5px; color:#b45309;">⚡ Metallic / Half-Metallic Drude Diagnostics</strong>
+            <span class="badge badge-blue" style="font-size:10px;">${res.metalDrude?.nCrossings || 0} Fermi crossings</span>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 10px; font-size:11.5px; color:#1e293b;">
+            <div>Fermi Mass m*<sub>F</sub>: <strong>${(res.metalDrude?.avgMF || 1).toFixed(3)} m<sub>0</sub></strong></div>
+            <div>Fermi Velocity v<sub>F</sub>: <strong>${fmtSciHtml(res.metalDrude?.avgVF_cms || 0, 2)} cm/s</strong></div>
+            <div>DOS g(E<sub>F</sub>): <strong>${(res.metalDrude?.dosAtEf_cell || 0).toFixed(2)} st/eV·cell</strong></div>
+            <div>.ome_bin ħω<sub>p</sub>: <strong>${(res.metalDrude?.wp_ome_eV || 0).toFixed(3)} eV</strong></div>
+            <div>Optical γ<sub>D</sub> → τ<sub>opt</sub>: <strong>${res.tauFromOptGamma_fs.toFixed(2)} fs</strong></div>
+            <div>Est. Free n<sub>eff</sub>: <strong>${fmtSciHtml(res.metalDrude?.nEff_cm3 || 0, 2)} cm<sup>−3</sup></strong></div>
+          </div>
+        </div>`;
+
+      cardsEl.innerHTML =
+        makeCarrierCard("🔵 Electron (e⁻) — CBM & Drude", "#1d4ed8", res.eTrans, res.meCond, res.meDosBand, res.meDosDirect, res.meAlphaK, res.nConc_cm, res.invExp?.tauE_fs, res.invExp?.muE_cm2Vs) +
+        makeCarrierCard("🔴 Hole (h⁺) — VBM & Drude", "#b91c1c", res.hTrans, res.mhCond, res.mhDosBand, res.mhDosDirect, res.mhAlphaK, res.pConc_cm, res.invExp?.tauH_fs, res.invExp?.muH_cm2Vs) +
+        exCard;
+    }
+  }
+
+  // 4) Render Table 1: Directional Band-Edge Effective Mass Table
+  const brTbody = document.getElementById("castep-tr-branches-tbody");
+  const brCnt = document.getElementById("castep-tr-branches-count");
+  if (brTbody) {
+    const allBr = [...(res?.bandRes?.active?.eBranches || []), ...(res?.bandRes?.active?.hBranches || [])];
+    if (brCnt) brCnt.textContent = `${allBr.length} branches`;
+    if (!allBr.length) {
+      brTbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:14px; color:#64748b;">${res?.isMetallic ? "Metallic band crossing detected — see Drude Metallic Diagnostics above." : "No band-edge branches available."}</td></tr>`;
+    } else {
+      brTbody.innerHTML = allBr.map(br => {
+        const isE = br.carrierType === "e";
+        const tag = isE
+          ? `<span style="color:#1d4ed8; font-weight:800;">e⁻ (${escapeHtml(br.subBandRole || "CBM")})</span>`
+          : `<span style="color:#b91c1c; font-weight:800;">h⁺ (${escapeHtml(br.subBandRole || "VBM")})</span>`;
+        const r2Color = br.r2 >= 0.995 ? "#047857" : (br.r2 >= 0.98 ? "#b45309" : "#dc2626");
+        return `<tr>
+          <td>${tag}</td>
+          <td style="font-weight:700;">${escapeHtml(br.dirLabel)}</td>
+          <td style="font-family:monospace; font-size:10.5px;">(${br.k0Frac.map(v => v.toFixed(2)).join(", ")})</td>
+          <td>${escapeHtml(br.modelUsed)}</td>
+          <td style="font-family:monospace;">${br.d2Edk2 >= 0 ? "+" : ""}${br.d2Edk2.toFixed(3)}</td>
+          <td style="font-weight:800; color:${isE ? "#1d4ed8" : "#b91c1c"};">${br.mStar.toFixed(4)}</td>
+          <td style="font-family:monospace;">${br.alphaKane.toFixed(3)}</td>
+          <td style="font-weight:700; color:${r2Color};">${br.r2.toFixed(4)}</td>
+          <td style="font-weight:700; color:#047857;">${br.muTot_cm2Vs ? fmtSciHtml(br.muTot_cm2Vs, 1) : "—"}</td>
+          <td style="font-family:monospace; color:#6d28d9;">${br.tauTot_fs ? br.tauTot_fs.toFixed(1) : "—"}</td>
+        </tr>`;
+      }).join("");
+    }
+  }
+
+  // 5) Render Table 2: Drude Electron vs Hole Temperature & Doping Table
+  const drTbody = document.getElementById("castep-tr-drude-tbody");
+  if (drTbody) {
+    if (!res || !res.tempSweep.length) {
+      drTbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:14px; color:#64748b;">No temperature transport series available.</td></tr>`;
+    } else {
+      const selTemps = res.tempSweep.filter(r => [100, 150, 200, 250, 300, 350, 400, 500, 600].includes(r.T));
+      drTbody.innerHTML = selTemps.map(r => {
+        const hi = Math.abs(r.T - res.opts.T) < 13 ? ` style="background:#eff6ff; font-weight:700;"` : "";
+        return `<tr${hi}>
+          <td style="font-weight:700;">${r.T} K</td>
+          <td style="color:#1d4ed8;">${r.e ? r.e.mDrude.toFixed(3) : "—"}</td>
+          <td style="color:#1d4ed8;">${r.e ? r.e.tauTot_fs.toFixed(1) : "—"}</td>
+          <td style="color:#1d4ed8;">${r.e ? fmtSciHtml(r.e.muTot_cm2Vs, 1) : "—"}</td>
+          <td style="color:#1d4ed8;">${r.e ? r.e.gammaD_meV.toFixed(2) : "—"}</td>
+          <td style="color:#b91c1c;">${r.h ? r.h.mDrude.toFixed(3) : "—"}</td>
+          <td style="color:#b91c1c;">${r.h ? r.h.tauTot_fs.toFixed(1) : "—"}</td>
+          <td style="color:#b91c1c;">${r.h ? fmtSciHtml(r.h.muTot_cm2Vs, 1) : "—"}</td>
+          <td style="color:#b91c1c;">${r.h ? r.h.gammaD_meV.toFixed(2) : "—"}</td>
+        </tr>`;
+      }).join("");
+    }
+  }
+}
+window.renderCastepTransportPane = renderCastepTransportPane;
+
+// ---------------- Export Tables (TSV Clipboard, CSV & Multi-Tab Excel) ----------------
+
+function buildTransportExportTables() {
+  const res = window._lastCastepTransportResult;
+  if (!res) return null;
+  const uConc = res.is2D ? "cm-2" : "cm-3";
+
+  const summaryRows = [
+    ["Material", res.material, "", ""],
+    ["Dimensionality", res.is2D ? "2D Slab" : "3D Bulk", res.is2D ? "Area_A2" : "Volume_A3", Number((res.is2D ? res.latInfo.area2D : res.latInfo.volA3).toFixed(4))],
+    ["Electronic_Phase", res.bandRes?.phase || (res.isMetallic ? "Metallic" : "Semiconductor"), "Band_Gap_eV", Number(res.gapEv.toFixed(4))],
+    ["Temperature_K", res.opts.T, "Dielectric_eps0_epsInf", `${res.opts.eps0} / ${res.opts.epsInf}`],
+    ["", "", "", ""],
+    ["Metric", "Electron (e-)", "Hole (h+)", "Unit"],
+    ["Conductivity_Effective_Mass_mc", res.meCond ? Number(res.meCond.toFixed(4)) : "", res.mhCond ? Number(res.mhCond.toFixed(4)) : "", "m0"],
+    ["DOS_Effective_Mass_Band", res.meDosBand ? Number(res.meDosBand.toFixed(4)) : "", res.mhDosBand ? Number(res.mhDosBand.toFixed(4)) : "", "m0"],
+    ["DOS_Effective_Mass_Direct_DOS", res.meDosDirect ? Number(res.meDosDirect.toFixed(4)) : "", res.mhDosDirect ? Number(res.mhDosDirect.toFixed(4)) : "", "m0"],
+    ["Drude_Effective_Mass_mDrude", res.eTrans ? Number(res.eTrans.mDrude.toFixed(4)) : "", res.hTrans ? Number(res.hTrans.mDrude.toFixed(4)) : "", "m0"],
+    ["NonParabolic_Kane_alpha", Number((res.meAlphaK || 0).toFixed(4)), Number((res.mhAlphaK || 0).toFixed(4)), "eV-1"],
+    ["Mobility_Total_Matthiessen", res.eTrans ? Number(res.eTrans.muTot_cm2Vs.toFixed(2)) : "", res.hTrans ? Number(res.hTrans.muTot_cm2Vs.toFixed(2)) : "", "cm2/(V*s)"],
+    ["Mobility_ADP", res.eTrans ? Number(res.eTrans.muADP_cm2Vs.toFixed(2)) : "", res.hTrans ? Number(res.hTrans.muADP_cm2Vs.toFixed(2)) : "", "cm2/(V*s)"],
+    ["Drude_Relaxation_Time_tau_Total", res.eTrans ? Number(res.eTrans.tauTot_fs.toFixed(3)) : "", res.hTrans ? Number(res.hTrans.tauTot_fs.toFixed(3)) : "", "fs"],
+    ["Drude_Relaxation_Time_tau_ADP", res.eTrans ? Number(res.eTrans.tauADP_fs.toFixed(3)) : "", res.hTrans ? Number(res.hTrans.tauADP_fs.toFixed(3)) : "", "fs"],
+    ["Drude_Damping_gammaD", res.eTrans ? Number(res.eTrans.gammaD_meV.toFixed(3)) : "", res.hTrans ? Number(res.hTrans.gammaD_meV.toFixed(3)) : "", "meV"],
+    ["Drude_Plasma_Frequency_hwp", res.eTrans ? Number(res.eTrans.wp_eV.toFixed(5)) : "", res.hTrans ? Number(res.hTrans.wp_eV.toFixed(5)) : "", "eV"],
+    ["Drude_DC_Conductivity_sigma0", res.eTrans ? Number(res.eTrans.sigma3D_Scm.toExponential(4)) : "", res.hTrans ? Number(res.hTrans.sigma3D_Scm.toExponential(4)) : "", "S/cm"],
+    ["Mean_Free_Path_mfp", res.eTrans ? Number(res.eTrans.mfp_nm.toFixed(3)) : "", res.hTrans ? Number(res.hTrans.mfp_nm.toFixed(3)) : "", "nm"],
+    ["Einstein_Diffusion_D", res.eTrans ? Number(res.eTrans.diff_cm2s.toFixed(3)) : "", res.hTrans ? Number(res.hTrans.diff_cm2s.toFixed(3)) : "", "cm2/s"],
+    ["Effective_DOS_Nc_Nv", res.eTrans ? Number(res.eTrans.Nc_cm.toExponential(4)) : "", res.hTrans ? Number(res.hTrans.Nc_cm.toExponential(4)) : "", uConc]
+  ];
+  if (res.intrinsic) {
+    summaryRows.push(
+      ["Intrinsic_Carrier_Density_ni", Number(res.intrinsic.ni_cm.toExponential(4)), "", uConc],
+      ["Exciton_Reduced_Mass_muEx", Number(res.intrinsic.muEx.toFixed(4)), "", "m0"],
+      ["Exciton_Binding_Energy_Eb", Number(res.intrinsic.eb_meV.toFixed(2)), "", "meV"],
+      ["Exciton_Bohr_Radius_aB", Number(res.intrinsic.aB_ang.toFixed(3)), "", "Angstrom"]
+    );
+  }
+
+  const allBr = [...(res.bandRes?.active?.eBranches || []), ...(res.bandRes?.active?.hBranches || [])];
+  const branchHeaders = ["Carrier", "Band_Role", "Direction", "k0_frac", "Fit_Model", "d2E_dk2_eVA2", "mStar_m0", "mStar_Kane_m0", "alpha_Kane_eV-1", "R2", "Mobility_cm2Vs", "Tau_fs"];
+  const branchRows = allBr.map(br => [
+    br.carrierType === "e" ? "Electron" : "Hole",
+    br.subBandRole || "",
+    br.dirLabel,
+    `(${br.k0Frac.map(v => v.toFixed(3)).join(",")})`,
+    br.modelUsed,
+    Number(br.d2Edk2.toFixed(4)),
+    Number(br.mStar.toFixed(4)),
+    Number(br.mStarKane.toFixed(4)),
+    Number(br.alphaKane.toFixed(4)),
+    Number(br.r2.toFixed(5)),
+    br.muTot_cm2Vs ? Number(br.muTot_cm2Vs.toFixed(2)) : "",
+    br.tauTot_fs ? Number(br.tauTot_fs.toFixed(3)) : ""
+  ]);
+
+  const tempHeaders = ["Temp_K", "e_mDrude_m0", "e_tau_fs", "e_mu_cm2Vs", "e_gammaD_meV", "e_sigma_Scm", "h_mDrude_m0", "h_tau_fs", "h_mu_cm2Vs", "h_gammaD_meV", "h_sigma_Scm", `ni_${uConc}`];
+  const tempRows = res.tempSweep.map(r => [
+    r.T,
+    r.e ? Number(r.e.mDrude.toFixed(4)) : "",
+    r.e ? Number(r.e.tauTot_fs.toFixed(3)) : "",
+    r.e ? Number(r.e.muTot_cm2Vs.toFixed(2)) : "",
+    r.e ? Number(r.e.gammaD_meV.toFixed(3)) : "",
+    r.e ? Number(r.e.sigma3D_Scm.toExponential(4)) : "",
+    r.h ? Number(r.h.mDrude.toFixed(4)) : "",
+    r.h ? Number(r.h.tauTot_fs.toFixed(3)) : "",
+    r.h ? Number(r.h.muTot_cm2Vs.toFixed(2)) : "",
+    r.h ? Number(r.h.gammaD_meV.toFixed(3)) : "",
+    r.h ? Number(r.h.sigma3D_Scm.toExponential(4)) : "",
+    r.ni_cm > 0 ? Number(r.ni_cm.toExponential(4)) : 0
+  ]);
+
+  const dopHeaders = [`Conc_${uConc}`, "e_mDrude_m0", "e_hwp_eV", "e_tau_fs", "e_sigma_Scm", "h_mDrude_m0", "h_hwp_eV", "h_tau_fs", "h_sigma_Scm"];
+  const dopRows = res.dopingSweep.map(r => [
+    Number(r.conc_cm.toExponential(3)),
+    r.e ? Number(r.e.mDrude.toFixed(4)) : "",
+    r.e ? Number(r.e.wp_eV.toFixed(5)) : "",
+    r.e ? Number(r.e.tauTot_fs.toFixed(3)) : "",
+    r.e ? Number(r.e.sigma3D_Scm.toExponential(4)) : "",
+    r.h ? Number(r.h.mDrude.toFixed(4)) : "",
+    r.h ? Number(r.h.wp_eV.toFixed(5)) : "",
+    r.h ? Number(r.h.tauTot_fs.toFixed(3)) : "",
+    r.h ? Number(r.h.sigma3D_Scm.toExponential(4)) : ""
+  ]);
+
+  return {
+    seed: res.seed,
+    summarySheet: { name: "Semiconductor_Drude", headers: ["Property", "Electron_or_Val", "Hole_or_Sub", "Unit"], rows: summaryRows },
+    branchSheet: { name: "Effective_Mass_Branches", headers: branchHeaders, rows: branchRows },
+    tempSheet: { name: "Temp_Sweep_100_600K", headers: tempHeaders, rows: tempRows },
+    dopingSheet: { name: "Drude_Doping_Sweep", headers: dopHeaders, rows: dopRows }
+  };
+}
+window.buildTransportExportTables = buildTransportExportTables;
+
+function exportCastepTransportCSV(mode = "summary") {
+  const pkg = buildTransportExportTables();
+  if (!pkg) {
+    if (typeof showToast === "function") showToast("No Transport / Drude data available to export.", "warning");
+    return;
+  }
+  const sheet = mode === "branches" ? pkg.branchSheet : (mode === "temp" ? pkg.tempSheet : pkg.summarySheet);
+  const csv = buildCsvString(sheet.headers, sheet.rows);
+  const fname = `${pkg.seed}_Transport_${mode}.csv`;
+  triggerBlobDownload(new Blob([csv], { type: "text/csv;charset=utf-8" }), fname);
+  if (typeof showToast === "function") showToast(`Exported ${fname} (${sheet.rows.length} rows)!`, "success");
+}
+window.exportCastepTransportCSV = exportCastepTransportCSV;
+
+function exportCastepTransportXLSX() {
+  const pkg = buildTransportExportTables();
+  if (!pkg) {
+    if (typeof showToast === "function") showToast("No Transport / Drude data available to export.", "warning");
+    return;
+  }
+  const sheets = [pkg.summarySheet, pkg.branchSheet, pkg.tempSheet, pkg.dopingSheet].filter(s => s && s.rows.length);
+  const blob = buildXlsxBlob(sheets);
+  const fname = `${pkg.seed}_EffectiveMass_Drude_Transport.xlsx`;
+  triggerBlobDownload(blob, fname);
+  if (typeof showToast === "function") {
+    showToast(`Exported multi-tab Excel workbook ${fname} (${sheets.map(s => s.name).join(" | ")})!`, "success");
+  }
+}
+window.exportCastepTransportXLSX = exportCastepTransportXLSX;
 
