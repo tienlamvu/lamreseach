@@ -3160,6 +3160,50 @@ def api_castep_job_detail(folder: str, seed: Optional[str] = None):
             os.path.join(folder, optics_castep_f) if optics_castep_f else "",
         )
 
+    # Discover sibling Optical CASTEP folders under the same parent GeomOpt directory
+    # (e.g., ELF+Orbitals CASTEP Energy -> sibling Optical CASTEP Energy containing Optical_Optics.ome_bin)
+    sibling_optics = []
+    parent_dir = os.path.dirname(os.path.abspath(folder))
+    if parent_dir and os.path.isdir(parent_dir):
+        try:
+            for dname in sorted(os.listdir(parent_dir)):
+                sdir = os.path.join(parent_dir, dname)
+                if not os.path.isdir(sdir) or os.path.abspath(sdir) == os.path.abspath(folder):
+                    continue
+                try:
+                    sfiles = sorted([f for f in os.listdir(sdir) if os.path.isfile(os.path.join(sdir, f))])
+                except Exception:
+                    continue
+                s_ome = next((f for f in sfiles if f.lower().endswith((".ome_bin", ".cst_ome"))), None)
+                s_bnd = next((f for f in sfiles if f.lower().endswith("_optics.bands")), None)
+                if s_ome and s_bnd:
+                    s_cas = next((f for f in sfiles if f.lower().endswith("_optics.castep")), None) or s_bnd
+                    s_cel = next((f for f in sfiles if f.lower().endswith("_optics.cell")), None) or ""
+                    sibling_optics.append({
+                        "folder": sdir,
+                        "folder_name": dname,
+                        "ome_file": s_ome,
+                        "bands_file": s_bnd,
+                        "castep_file": s_cas,
+                        "cell_file": s_cel,
+                        "results_file": f"{s_cas} [{dname}]",
+                    })
+        except Exception:
+            pass
+
+    if optical_tensor is None and not optical_xcds and sibling_optics:
+        sb0 = sibling_optics[0]
+        sib_t = _extract_castep_optical_tensor_file(
+            os.path.join(sb0["folder"], sb0["ome_file"]),
+            os.path.join(sb0["folder"], sb0["bands_file"]),
+            os.path.join(sb0["folder"], sb0["cell_file"]) if sb0["cell_file"] else "",
+            os.path.join(sb0["folder"], sb0["castep_file"]) if sb0["castep_file"] else "",
+        )
+        if sib_t:
+            optical_tensor = dict(sib_t)
+            optical_tensor["results_file"] = sb0["results_file"]
+            optical_tensor["sibling_folder"] = sb0["folder"]
+
     pdos_bin_f = _find_match(lambda l: l.endswith("_dos.pdos_bin")) or _find_match(lambda l: l.endswith(".pdos_bin"))
     pdos_bin_data = None
     if pdos_bin_f:
@@ -3202,6 +3246,7 @@ def api_castep_job_detail(folder: str, seed: Optional[str] = None):
         "optical_xcd": optical_xcd,
         "optical_xcds": optical_xcds,
         "optical_tensor": optical_tensor,
+        "sibling_optics": sibling_optics,
         "chdiff_data": chdiff_data,
         "charg_frm_files": charg_frm_files,
         "bandstr_bands": bandstr_bands,
