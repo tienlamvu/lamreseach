@@ -6042,11 +6042,17 @@ function renderCastepElectronicPlots() {
 
   let bandX0 = padL, bandW = width - padL - padR;
   let dosX0 = padL, dosW = width - padL - padR;
+  canvas._subPanelRects = [];
   if (layout === "joint") {
     const gapBetween = Math.round(24 + Math.max(0, (st.tickSize - 12) * 1.5));
     bandW = Math.round((width - padL - padR - gapBetween) * 0.56);
     dosX0 = bandX0 + bandW + gapBetween;
     dosW = width - dosX0 - padR;
+    const splitX = Math.round((bandX0 + bandW + dosX0) * 0.5);
+    canvas._subPanelRects = [
+      { key: "band", label: "Band Structure", x: 0, y: 0, w: splitX, h: height, plotKey: "electronic", dataSubPart: "band", pngName: "CASTEP_Band_Structure.png" },
+      { key: "pdos", label: "PDOS / DOS", x: splitX, y: 0, w: width - splitX, h: height, plotKey: "electronic", dataSubPart: "pdos", pngName: "CASTEP_PDOS.png" }
+    ];
   }
 
   const stepE = (emax - emin) <= 8 ? 1 : 2;
@@ -7675,7 +7681,7 @@ function getPlotRendererForCanvas(canvasId) {
   }
 }
 
-async function renderCanvasToHighResPngBlob(canvasId, scaleOverride = null) {
+async function renderCanvasToHighResPngBlob(canvasId, scaleOverride = null, subPanelKey = null) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return null;
   const st = getCastepPlotStyle();
@@ -7687,17 +7693,42 @@ async function renderCanvasToHighResPngBlob(canvasId, scaleOverride = null) {
   let widthPx = canvas.width;
   let heightPx = canvas.height;
   try {
+    window._castepExportHideSelection = true;
     if (rerender) {
       window._castepRenderDprOverride = targetScale;
       rerender();
     }
-    widthPx = canvas.width;
-    heightPx = canvas.height;
+    const cssW = parseFloat(canvas.style.width) || canvas.clientWidth || (canvas.width / targetScale);
+    const actualDpr = canvas.width / Math.max(1, cssW);
+
+    let outCanvas = canvas;
+    if (subPanelKey && Array.isArray(canvas._subPanelRects)) {
+      const rect = canvas._subPanelRects.find(r => r.key === subPanelKey);
+      if (rect && rect.w > 10 && rect.h > 10) {
+        const sx = Math.max(0, Math.round(rect.x * actualDpr));
+        const sy = Math.max(0, Math.round(rect.y * actualDpr));
+        const sw = Math.min(canvas.width - sx, Math.round(rect.w * actualDpr));
+        const sh = Math.min(canvas.height - sy, Math.round(rect.h * actualDpr));
+        const padPx = Math.round(6 * actualDpr);
+        const off = document.createElement("canvas");
+        off.width = sw + padPx * 2;
+        off.height = sh + padPx * 2;
+        const octx = off.getContext("2d");
+        octx.fillStyle = "#ffffff";
+        octx.fillRect(0, 0, off.width, off.height);
+        octx.drawImage(canvas, sx, sy, sw, sh, padPx, padPx, sw, sh);
+        outCanvas = off;
+      }
+    }
+
+    widthPx = outCanvas.width;
+    heightPx = outCanvas.height;
     rawBlob = await new Promise((resolve) => {
-      if (canvas.toBlob) canvas.toBlob(b => resolve(b), "image/png");
+      if (outCanvas.toBlob) outCanvas.toBlob(b => resolve(b), "image/png");
       else resolve(null);
     });
   } finally {
+    window._castepExportHideSelection = false;
     if (rerender) {
       window._castepRenderDprOverride = null;
       rerender();
@@ -7711,8 +7742,8 @@ async function renderCanvasToHighResPngBlob(canvasId, scaleOverride = null) {
 }
 window.renderCanvasToHighResPngBlob = renderCanvasToHighResPngBlob;
 
-async function exportCastepCanvasPNG(canvasId, filename) {
-  const res = await renderCanvasToHighResPngBlob(canvasId);
+async function exportCastepCanvasPNG(canvasId, filename, subPanelKey = null) {
+  const res = await renderCanvasToHighResPngBlob(canvasId, null, subPanelKey);
   if (!res || !res.blob) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
@@ -7731,16 +7762,15 @@ async function exportCastepCanvasPNG(canvasId, filename) {
 }
 window.exportCastepCanvasPNG = exportCastepCanvasPNG;
 
-async function copyCastepCanvasHD(canvasId, label = "Plot") {
-  const res = await renderCanvasToHighResPngBlob(canvasId);
-  if (!res || !res.blob) {
-    if (typeof showToast === "function") showToast("No rendered plot available to copy.", "warning");
-    return false;
-  }
-  window._lastCopiedPlotImageInfo = {
-    canvasId, label, widthPx: res.widthPx, heightPx: res.heightPx, dpi: res.dpi, byteSize: res.blob.size
-  };
+async function exportCastepSubPanelPNG(canvasId, subPanelKey, filename) {
+  return exportCastepCanvasPNG(canvasId, filename || `CASTEP_${subPanelKey}.png`, subPanelKey);
+}
+window.exportCastepSubPanelPNG = exportCastepSubPanelPNG;
 
+async function writePngBlobToClipboardOrDownload(res, label, canvasId, subPanelKey = null) {
+  window._lastCopiedPlotImageInfo = {
+    canvasId, subPanelKey, label, widthPx: res.widthPx, heightPx: res.heightPx, dpi: res.dpi, byteSize: res.blob.size
+  };
   try {
     if (navigator.clipboard && typeof navigator.clipboard.write === "function" && typeof ClipboardItem !== "undefined") {
       await navigator.clipboard.write([new ClipboardItem({ "image/png": res.blob })]);
@@ -7752,8 +7782,6 @@ async function copyCastepCanvasHD(canvasId, label = "Plot") {
   } catch (err) {
     console.warn("Clipboard image write fallback:", err);
   }
-
-  // Graceful fallback when browser blocks clipboard image write (e.g. non-HTTPS LAN IP)
   const fallbackName = `CASTEP_${sanitizeExportSeed(label)}_${res.dpi}DPI.png`;
   triggerBlobDownload(res.blob, fallbackName);
   if (typeof showToast === "function") {
@@ -7761,7 +7789,70 @@ async function copyCastepCanvasHD(canvasId, label = "Plot") {
   }
   return false;
 }
+
+async function copyCastepCanvasHD(canvasId, label = "Plot", subPanelKey = null) {
+  const res = await renderCanvasToHighResPngBlob(canvasId, null, subPanelKey);
+  if (!res || !res.blob) {
+    if (typeof showToast === "function") showToast("No rendered plot available to copy.", "warning");
+    return false;
+  }
+  return writePngBlobToClipboardOrDownload(res, label, canvasId, subPanelKey);
+}
 window.copyCastepCanvasHD = copyCastepCanvasHD;
+
+async function copyCastepSubPanelHD(canvasId, subPanelKey, label = "Sub-Panel") {
+  return copyCastepCanvasHD(canvasId, label, subPanelKey);
+}
+window.copyCastepSubPanelHD = copyCastepSubPanelHD;
+
+async function copyCastepCanvasPairHD(canvasIds, label = "Full Charts") {
+  if (!Array.isArray(canvasIds) || !canvasIds.length) return false;
+  const st = getCastepPlotStyle();
+  const targetScale = Number(st.exportScale || 4);
+  const dpi = Math.round(targetScale * 100);
+  const rerender = getPlotRendererForCanvas(canvasIds[0]);
+  let rawBlob = null, widthPx = 0, heightPx = 0;
+
+  try {
+    window._castepExportHideSelection = true;
+    if (rerender) {
+      window._castepRenderDprOverride = targetScale;
+      rerender();
+    }
+    const canvases = canvasIds.map(id => document.getElementById(id)).filter(c => c && c.width > 0 && c.height > 0);
+    if (!canvases.length) return false;
+    const gap = Math.round(18 * targetScale);
+    const pad = Math.round(12 * targetScale);
+    const totalW = canvases.reduce((s, c) => s + c.width, 0) + gap * (canvases.length - 1) + pad * 2;
+    const totalH = Math.max(...canvases.map(c => c.height)) + pad * 2;
+    const off = document.createElement("canvas");
+    off.width = totalW;
+    off.height = totalH;
+    const octx = off.getContext("2d");
+    octx.fillStyle = "#ffffff";
+    octx.fillRect(0, 0, totalW, totalH);
+    let curX = pad;
+    canvases.forEach(c => {
+      octx.drawImage(c, curX, pad);
+      curX += c.width + gap;
+    });
+    widthPx = totalW;
+    heightPx = totalH;
+    rawBlob = await new Promise(resolve => off.toBlob ? off.toBlob(b => resolve(b), "image/png") : resolve(null));
+  } finally {
+    window._castepExportHideSelection = false;
+    if (rerender) {
+      window._castepRenderDprOverride = null;
+      rerender();
+    }
+  }
+  if (!rawBlob) return false;
+  const rawBuf = await rawBlob.arrayBuffer();
+  const withDpi = injectPngDpiMetadata(new Uint8Array(rawBuf), dpi);
+  const res = { blob: new Blob([withDpi], { type: "image/png" }), widthPx, heightPx, dpi };
+  return writePngBlobToClipboardOrDownload(res, label, canvasIds.join("+"), "pair");
+}
+window.copyCastepCanvasPairHD = copyCastepCanvasPairHD;
 
 function buildTsvString(headers, rows) {
   const cleanCell = (v) => String(v === null || v === undefined ? "" : v).replace(/\t/g, " ").replace(/\r?\n/g, " ");
@@ -7778,7 +7869,6 @@ async function copyTextToClipboardSafe(text) {
       return true;
     }
   } catch (_) {}
-  // Universal fallback for non-HTTPS LAN contexts
   try {
     const ta = document.createElement("textarea");
     ta.value = text;
@@ -7796,6 +7886,16 @@ async function copyTextToClipboardSafe(text) {
   }
 }
 
+function combineBandSheetsFlat(bandSheets) {
+  if (!bandSheets || !bandSheets.length) return null;
+  if (bandSheets.length === 1) return { headers: bandSheets[0].headers, rows: bandSheets[0].rows };
+  const s0 = bandSheets[0], s1 = bandSheets[1];
+  return {
+    headers: [...s0.headers, ...s1.headers.slice(3)],
+    rows: s0.rows.map((r, i) => [...r, ...(s1.rows[i] ? s1.rows[i].slice(3) : [])])
+  };
+}
+
 function buildCastepPlotDataForClipboard(plotKey, subPart = "auto") {
   const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
 
@@ -7803,16 +7903,22 @@ function buildCastepPlotDataForClipboard(plotKey, subPart = "auto") {
     const pkg = buildElectronicExportTables();
     if (!pkg) return null;
     const layout = document.getElementById("castep-elec-layout")?.value || "joint";
-    const mode = subPart === "auto" ? (layout === "band" ? "band" : "pdos") : subPart;
+    const bandFlat = combineBandSheetsFlat(pkg.bandSheets);
+
+    if (subPart === "full" && layout === "joint" && pkg.pdosSheet?.rows?.length && bandFlat?.rows?.length) {
+      const rows = [
+        ...pkg.pdosSheet.rows,
+        [],
+        ["=== BAND STRUCTURE ==="],
+        bandFlat.headers,
+        ...bandFlat.rows
+      ];
+      return { title: "Full Band & PDOS Data", headers: pkg.pdosSheet.headers, rows };
+    }
+    const mode = (subPart === "auto" || subPart === "full") ? (layout === "band" ? "band" : "pdos") : subPart;
     if (mode === "band") {
-      if (!pkg.bandSheets.length) return null;
-      if (pkg.bandSheets.length === 1) {
-        return { title: "Band Structure", headers: pkg.bandSheets[0].headers, rows: pkg.bandSheets[0].rows };
-      }
-      const s0 = pkg.bandSheets[0], s1 = pkg.bandSheets[1];
-      const headers = [...s0.headers, ...s1.headers.slice(3)];
-      const rows = s0.rows.map((r, i) => [...r, ...(s1.rows[i] ? s1.rows[i].slice(3) : [])]);
-      return { title: "Band Structure (Spin Up & Down)", headers, rows };
+      if (!bandFlat) return null;
+      return { title: pkg.bandSheets.length >= 2 ? "Band Structure (Spin Up & Down)" : "Band Structure", headers: bandFlat.headers, rows: bandFlat.rows };
     }
     return { title: `PDOS (${pkg.pdosSheet.name})`, headers: pkg.pdosSheet.headers, rows: pkg.pdosSheet.rows };
   }
@@ -7821,12 +7927,14 @@ function buildCastepPlotDataForClipboard(plotKey, subPart = "auto") {
     const pkg = buildOpticalExportTables();
     if (!pkg) return null;
     const prop = document.getElementById("castep-opt-property")?.value || "multigrid";
-    if (prop === "anisotropy" && pkg.anisoSheet) {
+    if (subPart === "dielectric") return { title: "Panel (a) Dielectric ε₁/ε₂", headers: pkg.dielSheet.headers, rows: pkg.dielSheet.rows };
+    if (subPart === "absorption") return { title: "Panel (b) Absorption α & Tauc", headers: pkg.absSheet.headers, rows: pkg.absSheet.rows };
+    if (subPart === "refractive") return { title: "Panel (c) Refractive n & k", headers: pkg.nkSheet.headers, rows: pkg.nkSheet.rows };
+    if (subPart === "rlc") return { title: "Panel (d) Reflectivity R & EELS L", headers: pkg.rlcSheet.headers, rows: pkg.rlcSheet.rows };
+    if ((subPart === "anisotropy" || prop === "anisotropy") && pkg.anisoSheet) {
       return { title: "Optical Anisotropy Tensor", headers: pkg.anisoSheet.headers, rows: pkg.anisoSheet.rows };
     }
-    if (subPart === "dielectric") return { title: "Dielectric Function", headers: pkg.dielSheet.headers, rows: pkg.dielSheet.rows };
-    if (subPart === "absorption") return { title: "Absorption & Tauc", headers: pkg.absSheet.headers, rows: pkg.absSheet.rows };
-    return { title: "Optical Spectra (All Channels)", headers: pkg.fullSheet.headers, rows: pkg.fullSheet.rows };
+    return { title: "Full Optical Spectra (All Channels)", headers: pkg.fullSheet.headers, rows: pkg.fullSheet.rows };
   }
 
   if (plotKey === "spinmat") {
@@ -7838,10 +7946,13 @@ function buildCastepPlotDataForClipboard(plotKey, subPart = "auto") {
     const qty = document.getElementById("castep-spinmat-qty")?.value || (orbData.mode === "noncollinear" ? "sz" : "spin");
     const decimals = parseInt(document.getElementById("castep-spinmat-decimals")?.value || "3", 10);
 
-    if (activeEl !== "all_grid" && subPart !== "all_elements") {
-      const sp = getSpinMatrixElementsSummary(orbData).find(s => s.element === activeEl);
+    const targetEl = (typeof subPart === "string" && subPart.startsWith("el:")) ? subPart.slice(3) : activeEl;
+
+    if (targetEl !== "all_grid" && subPart !== "all_elements") {
+      const sp = getSpinMatrixElementsSummary(orbData).find(s => s.element === targetEl);
       if (sp) {
-        const agg = aggregateElementOrbitals(sp.atoms, atomMode, orbData.mode);
+        const useAtomMode = (typeof subPart === "string" && subPart.startsWith("el:")) ? (atomMode === "sum" ? "sum" : "avg") : atomMode;
+        const agg = aggregateElementOrbitals(sp.atoms, useAtomMode, orbData.mode);
         const res = resolveSpinMatrixEntries(agg.orbitals, reqShell, orbData.source, qty, orbData.mode);
         const labels = res.entries.map(e => e.spec.plain);
         const headers = [`${agg.label.replace(/\s+/g, "_")}_${qty}`, ...labels];
@@ -7849,7 +7960,6 @@ function buildCastepPlotDataForClipboard(plotKey, subPart = "auto") {
           rowE.spec.plain,
           ...res.entries.map((_, cIdx) => rIdx === cIdx ? Number(rowE.val.toFixed(Math.max(decimals, 5))) : 0)
         ]);
-        // Append detailed sub-orbital table below the N×N matrix
         rows.push([]);
         if (orbData.mode === "noncollinear") {
           rows.push(["Orbital", "Charge_e", "Sx_muB", "Sy_muB", "Sz_muB", "S_mag_muB"]);
@@ -7865,7 +7975,13 @@ function buildCastepPlotDataForClipboard(plotKey, subPart = "auto") {
             rows.push([e.spec.plain, Number((r.up || 0).toFixed(5)), Number((r.dn || 0).toFixed(5)), Number((r.spin || 0).toFixed(5)), Number((r.charge !== undefined ? r.charge : ((r.up || 0) + (r.dn || 0))).toFixed(5))]);
           });
         }
-        return { title: `Spin Matrix (${agg.label} ${res.effectiveShell})`, headers, rows };
+        if (subPart === "full") {
+          const allSheet = buildOrbitalSpinMatrixExportSheet(job);
+          if (allSheet && allSheet.rows.length) {
+            rows.push([], ["=== ALL ELEMENTS ORBITAL SPIN TABLE ==="], allSheet.headers, ...allSheet.rows);
+          }
+        }
+        return { title: subPart === "full" ? `Full Spin Matrix (${agg.label} + All Elements)` : `Spin Matrix (${agg.label} ${res.effectiveShell})`, headers, rows };
       }
     }
     const fullSheet = buildOrbitalSpinMatrixExportSheet(job);
@@ -7875,6 +7991,13 @@ function buildCastepPlotDataForClipboard(plotKey, subPart = "auto") {
   if (plotKey === "mulliken") {
     const pkg = buildMullikenExportTables();
     if (!pkg) return null;
+    if (subPart === "full") {
+      const rows = [...pkg.atomSheet.rows];
+      if (pkg.bondSheet?.rows?.length) {
+        rows.push([], ["=== MULLIKEN BOND POPULATIONS ==="], pkg.bondSheet.headers, ...pkg.bondSheet.rows);
+      }
+      return { title: "Full Mulliken (Atomic + Bonds)", headers: pkg.atomSheet.headers, rows };
+    }
     const sheet = (subPart === "bonds") ? pkg.bondSheet : pkg.atomSheet;
     return { title: subPart === "bonds" ? "Mulliken Bond Populations" : "Atomic Mulliken & Spin", headers: sheet.headers, rows: sheet.rows };
   }
@@ -7889,9 +8012,13 @@ function buildCastepPlotDataForClipboard(plotKey, subPart = "auto") {
   if (plotKey === "convergence") {
     const pkg = buildConvergenceExportTables();
     if (!pkg) return null;
-    const sheet = (pkg.scfSheet && pkg.scfSheet.rows.length) ? pkg.scfSheet : pkg.geomSheet;
-    if (!sheet || !sheet.rows.length) return null;
-    return { title: "SCF & Energy Convergence", headers: sheet.headers, rows: sheet.rows };
+    const base = (pkg.scfSheet && pkg.scfSheet.rows.length) ? pkg.scfSheet : pkg.geomSheet;
+    if (!base || !base.rows.length) return null;
+    if (subPart === "full" && pkg.scfSheet?.rows?.length && pkg.geomSheet?.rows?.length) {
+      const rows = [...pkg.scfSheet.rows, [], ["=== GEOMETRY OPTIMIZATION TRAJECTORY ==="], pkg.geomSheet.headers, ...pkg.geomSheet.rows];
+      return { title: "Full SCF & GeomOpt Convergence", headers: pkg.scfSheet.headers, rows };
+    }
+    return { title: "SCF & Energy Convergence", headers: base.headers, rows: base.rows };
   }
 
   return null;
@@ -7921,66 +8048,62 @@ async function copyCastepPlotData(plotKey, subPart = "auto") {
 }
 window.copyCastepPlotData = copyCastepPlotData;
 
-// Universal Right-Click Context Menu on EVERY CASTEP Plot Canvas
+// Universal Right-Click Context Menu on EVERY CASTEP 2D Plot Canvas (with Individual Sub-Panel Hit-Testing!)
 const CASTEP_PLOT_CTX_SPECS = {
   "castep-electronic-canvas": {
     label: "Band & PDOS",
     pngName: "CASTEP_Band_PDOS.png",
+    fullDataItem: { label: "📊 Copy Full Band + PDOS Data (TSV)", plotKey: "electronic", subPart: "full" },
     dataItems: [
-      { label: "📊 Copy PDOS Data (TSV → Excel / Origin)", plotKey: "electronic", subPart: "pdos" },
-      { label: "📈 Copy Band Structure Data (TSV → Excel / Origin)", plotKey: "electronic", subPart: "band" }
+      { label: "📊 Copy PDOS Data Only (TSV)", plotKey: "electronic", subPart: "pdos" },
+      { label: "📈 Copy Band Structure Data Only (TSV)", plotKey: "electronic", subPart: "band" }
     ]
   },
   "castep-optics-canvas": {
     label: "Optical Properties",
     pngName: "CASTEP_Optical_Properties.png",
-    dataItems: [
-      { label: "📊 Copy Optical Spectra Data (TSV → Excel / Origin)", plotKey: "optics", subPart: "all" }
-    ]
+    fullDataItem: { label: "📊 Copy Full Optical Spectra Data (All Channels, TSV)", plotKey: "optics", subPart: "all" },
+    dataItems: []
   },
   "castep-spinmat-canvas": {
     label: "Orbital Spin Matrix",
     pngName: "CASTEP_Orbital_Spin_Matrix.png",
+    fullDataItem: { label: "🧲 Copy Full Spin Matrix + All Elements Data (TSV)", plotKey: "spinmat", subPart: "full" },
     dataItems: [
-      { label: "📊 Copy Current Spin Matrix (TSV → Excel / Origin)", plotKey: "spinmat", subPart: "auto" },
-      { label: "🧲 Copy All-Elements Orbital Spin Table (TSV)", plotKey: "spinmat", subPart: "all_elements" }
+      { label: "📊 Copy Current Matrix Only (TSV)", plotKey: "spinmat", subPart: "auto" }
     ]
   },
   "castep-mulliken-mag-canvas": {
     label: "Mulliken Magnetism",
     pngName: "CASTEP_Mulliken_Magnetism.png",
-    dataItems: [
-      { label: "📊 Copy Atomic Mulliken & Spin Data (TSV)", plotKey: "mulliken", subPart: "atoms" }
-    ]
+    fullDataItem: { label: "📊 Copy Atomic Mulliken & Spin Data (TSV)", plotKey: "mulliken", subPart: "atoms" },
+    dataItems: []
   },
   "castep-mulliken-bond-canvas": {
     label: "Mulliken Bonds",
     pngName: "CASTEP_Mulliken_Bonds.png",
-    dataItems: [
-      { label: "🔗 Copy Mulliken Bond Populations Data (TSV)", plotKey: "mulliken", subPart: "bonds" }
-    ]
+    fullDataItem: { label: "🔗 Copy Mulliken Bond Populations Data (TSV)", plotKey: "mulliken", subPart: "bonds" },
+    dataItems: []
   },
   "castep-chdiff-canvas": {
     label: "Charge Density Difference",
     pngName: "CASTEP_Charge_Density_Difference.png",
+    fullDataItem: { label: "📊 Copy 1D Planar Δρ(z) & ΔQ(z) Data (TSV)", plotKey: "chdiff", subPart: "1d" },
     dataItems: [
-      { label: "📊 Copy 1D Planar Δρ(z) & ΔQ(z) Data (TSV)", plotKey: "chdiff", subPart: "1d" },
       { label: "🗺️ Copy 2D Slice Matrix Data (TSV)", plotKey: "chdiff", subPart: "2d" }
     ]
   },
   "castep-energy-chart-canvas": {
     label: "Energy Profile",
     pngName: "CASTEP_Energy_Profile.png",
-    dataItems: [
-      { label: "📊 Copy SCF & Energy Convergence Data (TSV)", plotKey: "convergence", subPart: "scf" }
-    ]
+    fullDataItem: { label: "📊 Copy SCF & Energy Convergence Data (TSV)", plotKey: "convergence", subPart: "scf" },
+    dataItems: []
   },
   "castep-conv-chart-canvas": {
     label: "Convergence Diagnostics",
     pngName: "CASTEP_Convergence.png",
-    dataItems: [
-      { label: "📊 Copy SCF & Energy Convergence Data (TSV)", plotKey: "convergence", subPart: "scf" }
-    ]
+    fullDataItem: { label: "📊 Copy SCF & Energy Convergence Data (TSV)", plotKey: "convergence", subPart: "scf" },
+    dataItems: []
   }
 };
 
@@ -7989,14 +8112,28 @@ function hideCastepPlotContextMenu() {
   if (m) m.style.display = "none";
 }
 
+function findHitSubPanelOnCanvas(canvas, clientX, clientY) {
+  if (!canvas || !Array.isArray(canvas._subPanelRects) || !canvas._subPanelRects.length) return null;
+  const br = canvas.getBoundingClientRect();
+  if (!br.width || !br.height) return null;
+  const cssW = parseFloat(canvas.style.width) || br.width;
+  const cssH = parseFloat(canvas.style.height) || br.height;
+  const lx = ((clientX - br.left) / br.width) * cssW;
+  const ly = ((clientY - br.top) / br.height) * cssH;
+  return canvas._subPanelRects.find(r => lx >= r.x && lx <= r.x + r.w && ly >= r.y && ly <= r.y + r.h) || null;
+}
+
 function showCastepPlotContextMenu(canvasId, clientX, clientY) {
   const spec = CASTEP_PLOT_CTX_SPECS[canvasId];
-  if (!spec) return;
+  const canvas = document.getElementById(canvasId);
+  if (!spec || !canvas) return;
+  const hitSub = findHitSubPanelOnCanvas(canvas, clientX, clientY);
+
   let menu = document.getElementById("castep-plot-ctx-menu");
   if (!menu) {
     menu = document.createElement("div");
     menu.id = "castep-plot-ctx-menu";
-    menu.style.cssText = "position:fixed; z-index:99999; background:#ffffff; border:1px solid #cbd5e1; border-radius:9px; box-shadow:0 10px 28px rgba(15,23,42,0.18); padding:5px; min-width:248px; font-family:Inter,sans-serif; font-size:12px; color:#0f172a;";
+    menu.style.cssText = "position:fixed; z-index:99999; background:#ffffff; border:1px solid #cbd5e1; border-radius:9px; box-shadow:0 10px 28px rgba(15,23,42,0.18); padding:5px; min-width:268px; font-family:Inter,sans-serif; font-size:12px; color:#0f172a;";
     document.body.appendChild(menu);
     document.addEventListener("click", hideCastepPlotContextMenu);
     document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") hideCastepPlotContextMenu(); });
@@ -8004,22 +8141,50 @@ function showCastepPlotContextMenu(canvasId, clientX, clientY) {
   }
   const st = getCastepPlotStyle();
   const dpi = Math.round((st.exportScale || 4) * 100);
-  const btnCss = "display:flex; width:100%; text-align:left; align-items:center; gap:7px; padding:7px 10px; border:none; background:transparent; border-radius:6px; cursor:pointer; font-size:12px; color:#0f172a; font-weight:600;";
+  const btnCss = "display:flex; width:100%; text-align:left; align-items:center; gap:7px; padding:6px 10px; border:none; background:transparent; border-radius:6px; cursor:pointer; font-size:12px; color:#0f172a; font-weight:600;";
+  const hdrCss = "padding:4px 10px 4px; font-size:10.5px; font-weight:800; color:#64748b; letter-spacing:0.2px;";
+  const safeAttr = (s) => escapeHtml(String(s || "")).replace(/'/g, "\\'");
 
-  const itemsHtml = [
-    `<div style="padding:4px 10px 5px; font-size:10.5px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:0.4px; border-bottom:1px solid #f1f5f9; margin-bottom:3px;">${escapeHtml(spec.label)} • ${dpi} DPI</div>`,
-    `<button type="button" style="${btnCss} color:#0f766e;" onmouseenter="this.style.background='#f0fdfa'" onmouseleave="this.style.background='transparent'" onclick="hideCastepPlotContextMenu(); copyCastepCanvasHD('${canvasId}', '${escapeHtml(spec.label)}')">📋 Copy High-Res Image (${dpi} DPI PNG)</button>`,
-    ...spec.dataItems.map(it =>
-      `<button type="button" style="${btnCss}" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background='transparent'" onclick="hideCastepPlotContextMenu(); copyCastepPlotData('${it.plotKey}', '${it.subPart}')">${escapeHtml(it.label)}</button>`
-    ),
+  const itemsHtml = [];
+
+  // Section 1: Individual Sub-Figure actions when right-clicking a multi-panel plot!
+  if (hitSub) {
+    itemsHtml.push(
+      `<div style="${hdrCss} color:#0f766e; border-bottom:1px solid #e2e8f0; margin-bottom:2px;">This Sub-Figure: ${escapeHtml(hitSub.label)} • ${dpi} DPI</div>`,
+      `<button type="button" style="${btnCss} color:#0f766e;" onmouseenter="this.style.background='#f0fdfa'" onmouseleave="this.style.background='transparent'" onclick="hideCastepPlotContextMenu(); copyCastepSubPanelHD('${canvasId}', '${safeAttr(hitSub.key)}', '${safeAttr(hitSub.label)}')">📋 Copy This Sub-Plot Image (${dpi} DPI)</button>`,
+      `<button type="button" style="${btnCss}" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background='transparent'" onclick="hideCastepPlotContextMenu(); copyCastepPlotData('${hitSub.plotKey}', '${safeAttr(hitSub.dataSubPart)}')">📊 Copy This Sub-Plot Data (TSV)</button>`,
+      `<button type="button" style="${btnCss}" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background='transparent'" onclick="hideCastepPlotContextMenu(); exportCastepSubPanelPNG('${canvasId}', '${safeAttr(hitSub.key)}', '${safeAttr(hitSub.pngName)}')">💾 Save This Sub-Plot PNG (${dpi} DPI)</button>`,
+      `<div style="height:1px; background:#e2e8f0; margin:4px 6px;"></div>`
+    );
+  }
+
+  // Section 2: Full Figure & Full Data actions
+  itemsHtml.push(
+    `<div style="${hdrCss} border-bottom:1px solid #f1f5f9; margin-bottom:2px;">Full Figure: ${escapeHtml(spec.label)} • ${dpi} DPI</div>`,
+    `<button type="button" style="${btnCss} ${hitSub ? "" : "color:#0f766e;"}" onmouseenter="this.style.background='#f0fdfa'" onmouseleave="this.style.background='transparent'" onclick="hideCastepPlotContextMenu(); copyCastepCanvasHD('${canvasId}', '${safeAttr(spec.label)} (Full)')">📋 Copy Full Image (${dpi} DPI PNG)</button>`
+  );
+  if (spec.fullDataItem) {
+    itemsHtml.push(
+      `<button type="button" style="${btnCss}" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background='transparent'" onclick="hideCastepPlotContextMenu(); copyCastepPlotData('${spec.fullDataItem.plotKey}', '${spec.fullDataItem.subPart}')">${escapeHtml(spec.fullDataItem.label)}</button>`
+    );
+  }
+  if (!hitSub && spec.dataItems?.length) {
+    spec.dataItems.forEach(it => {
+      itemsHtml.push(
+        `<button type="button" style="${btnCss}" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background='transparent'" onclick="hideCastepPlotContextMenu(); copyCastepPlotData('${it.plotKey}', '${it.subPart}')">${escapeHtml(it.label)}</button>`
+      );
+    });
+  }
+  itemsHtml.push(
+    `<button type="button" style="${btnCss}" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background='transparent'" onclick="hideCastepPlotContextMenu(); exportCastepCanvasPNG('${canvasId}', '${safeAttr(spec.pngName)}')">💾 Save Full PNG (${dpi} DPI)</button>`,
     `<div style="height:1px; background:#e2e8f0; margin:4px 6px;"></div>`,
-    `<button type="button" style="${btnCss}" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background='transparent'" onclick="hideCastepPlotContextMenu(); exportCastepCanvasPNG('${canvasId}', '${escapeHtml(spec.pngName)}')">💾 Save High-Res PNG (${dpi} DPI)</button>`,
     `<button type="button" style="${btnCss}" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background='transparent'" onclick="hideCastepPlotContextMenu(); toggleCastepPlotStyleBar(true)">🎨 Plot Format &amp; DPI Quality...</button>`
-  ];
+  );
+
   menu.innerHTML = itemsHtml.join("");
   menu.style.display = "block";
-  const mw = menu.offsetWidth || 260;
-  const mh = menu.offsetHeight || 190;
+  const mw = menu.offsetWidth || 280;
+  const mh = menu.offsetHeight || 240;
   const left = Math.min(window.innerWidth - mw - 10, Math.max(8, clientX));
   const top = Math.min(window.innerHeight - mh - 10, Math.max(8, clientY));
   menu.style.left = `${left}px`;
@@ -8033,7 +8198,7 @@ function initCastepPlotContextMenus() {
     const el = document.getElementById(cid);
     if (!el || el._plotCtxBound) return;
     el._plotCtxBound = true;
-    if (!el.title) el.title = "Right-click plot to Copy HD Image (400–600 DPI) or Copy Numerical Data (TSV)";
+    if (!el.title) el.title = "Right-click any plot or sub-panel to Copy HD Image (400–600 DPI) or Copy Numerical Data (TSV)";
     el.addEventListener("contextmenu", (ev) => {
       ev.preventDefault();
       showCastepPlotContextMenu(cid, ev.clientX, ev.clientY);
@@ -10652,6 +10817,8 @@ function renderCastepOpticalPlots() {
   const xVals = axCfg.xVals;
   const xTitle = axCfg.xTitle;
 
+  canvas._subPanelRects = [];
+
   function drawOpticalSubPanel(boxX, boxY, boxW, boxH, cfg) {
     const st = getCastepPlotStyle();
     const isCompactPanel = (prop === "multigrid");
@@ -10659,6 +10826,16 @@ function renderCastepOpticalPlots() {
     const outTickExtra = st.tickDir === "out" ? (st.tickLength || 5) + 1 : 0;
 
     const pKey = cfg.panelKey || "single";
+    if (prop === "multigrid" || prop === "anisotropy") {
+      canvas._subPanelRects.push({
+        key: pKey,
+        label: cfg.subLabel || cfg.title,
+        x: boxX, y: boxY, w: boxW, h: boxH,
+        plotKey: "optics",
+        dataSubPart: cfg.dataSubPart || "all",
+        pngName: cfg.pngName || `CASTEP_Optical_${pKey}.png`
+      });
+    }
     const pz = (CASTEP_STUDIO_STATE.optPanelZooms && CASTEP_STUDIO_STATE.optPanelZooms[pKey]) || { emin: 0, emax: null, nmMin: 180, nmMax: 1100, yScale: 1.0 };
     let xMin = 0, xMax = axCfg.evToX(fullEmax);
     if (xAxisMode === "nm") {
@@ -10677,7 +10854,7 @@ function renderCastepOpticalPlots() {
     const fullSpanX = xAxisMode === "nm" ? 920 : Math.max(0.1, axCfg.evToX(fullEmax));
     const isZoomedX = (xMax - xMin) < fullSpanX * 0.985;
     const zoomFactorDisp = fullSpanX / Math.max(1e-6, xMax - xMin);
-    const isActiveSub = prop === "multigrid" && CASTEP_STUDIO_STATE.activeOptPanel === pKey;
+    const isActiveSub = prop === "multigrid" && CASTEP_STUDIO_STATE.activeOptPanel === pKey && !window._castepExportHideSelection;
 
     const hasRightAxis = cfg.series.some(s => s.axis === "right");
     const multiRowLegend = cfg.series.length >= 3;
@@ -10920,21 +11097,24 @@ function renderCastepOpticalPlots() {
     const hw = Math.floor(width / 2);
     const hh = Math.floor(height / 2);
     drawOpticalSubPanel(0, 0, hw, hh, {
-      panelKey: "a", title: "(a) Dielectric ε(ω)",
+      panelKey: "a", title: "(a) Dielectric ε(ω)", subLabel: "Panel (a) Dielectric ε(ω)",
+      dataSubPart: "dielectric", pngName: "CASTEP_Optical_a_Dielectric.png",
       series: [
         { label: "ε_{1} Real", values: spec.eps1, color: "#2563eb", width: 2.0 },
         { label: "ε_{2} Imag", values: spec.eps2, color: "#dc2626", width: 2.0, fillAlpha: "rgba(220,38,38,0.08)" }
       ]
     });
     drawOpticalSubPanel(hw, 0, width - hw, hh, {
-      panelKey: "b", title: "(b) Absorption α (×10^{4} cm^{-1})",
+      panelKey: "b", title: "(b) Absorption α (×10^{4} cm^{-1})", subLabel: "Panel (b) Absorption α",
+      dataSubPart: "absorption", pngName: "CASTEP_Optical_b_Absorption.png",
       yMinForced: 0,
       series: [
         { label: "α(ω)", values: alpha10k, color: "#0284c7", width: 2.2, fillAlpha: "rgba(2,132,199,0.12)" }
       ]
     });
     drawOpticalSubPanel(0, hh, hw, height - hh, {
-      panelKey: "c", title: "(c) Refractive n & k",
+      panelKey: "c", title: "(c) Refractive n & k", subLabel: "Panel (c) Refractive n & k",
+      dataSubPart: "refractive", pngName: "CASTEP_Optical_c_Refractive.png",
       yMinForced: 0,
       series: [
         { label: "n(ω)", values: spec.nArr, color: "#16a34a", width: 2.0 },
@@ -10942,7 +11122,8 @@ function renderCastepOpticalPlots() {
       ]
     });
     drawOpticalSubPanel(hw, hh, width - hw, height - hh, {
-      panelKey: "d", title: "(d) Reflectivity R & EELS L",
+      panelKey: "d", title: "(d) Reflectivity R & EELS L", subLabel: "Panel (d) Reflectivity R & EELS L",
+      dataSubPart: "rlc", pngName: "CASTEP_Optical_d_Reflectivity_EELS.png",
       yMinForced: 0,
       series: [
         { label: "R (Left)", values: spec.reflArr, color: "#7c3aed", width: 2.0, axis: "left" },
@@ -10959,7 +11140,8 @@ function renderCastepOpticalPlots() {
       const A = spec.anisotropyData;
       const hw = Math.floor(width / 2);
       drawOpticalSubPanel(0, 0, hw, height, {
-        panelKey: "a", title: "(a) Dielectric ε_{2}(ω) Optical Anisotropy",
+        panelKey: "a", title: "(a) Dielectric ε_{2}(ω) Optical Anisotropy", subLabel: "Panel (a) Dielectric ε₂ Anisotropy",
+        dataSubPart: "anisotropy", pngName: "CASTEP_Optical_Anisotropy_Eps2.png",
         yMinForced: 0,
         series: [
           { label: "Pol [100]", values: A.polX.eps2, color: "#2563eb", width: 2.0 },
@@ -10970,7 +11152,8 @@ function renderCastepOpticalPlots() {
         ]
       });
       drawOpticalSubPanel(hw, 0, width - hw, height, {
-        panelKey: "b", title: "(b) Absorption α(ω) (×10^{4} cm^{-1}) Anisotropy",
+        panelKey: "b", title: "(b) Absorption α(ω) (×10^{4} cm^{-1}) Anisotropy", subLabel: "Panel (b) Absorption α Anisotropy",
+        dataSubPart: "anisotropy", pngName: "CASTEP_Optical_Anisotropy_Alpha.png",
         yMinForced: 0,
         series: [
           { label: "Pol [100]", values: A.polX.alphaCm.map(v => v / 1e4), color: "#2563eb", width: 2.0 },
@@ -12259,6 +12442,7 @@ function renderCastepChdiffPlots() {
     ctx.fillText("z coordinate (Å)", px0 + pw / 2, txY + Math.round(stP.tickSize * 0.86) + 4);
   }
 
+  canvas._subPanelRects = [];
   if (layout === "tri") {
     const w1 = Math.floor(width * 0.34);
     const w2 = Math.floor(width * 0.33);
@@ -12266,10 +12450,19 @@ function renderCastepChdiffPlots() {
     draw3DIsosurfacePanel(0, 0, w1, height);
     draw2DSlicePanel(w1, 0, w2, height);
     draw1DPlanarPanel(w1 + w2, 0, w3, height);
+    canvas._subPanelRects = [
+      { key: "iso3d", label: "Panel (a) 3D Structure + Δρ", x: 0, y: 0, w: w1, h: height, plotKey: "chdiff", dataSubPart: "1d", pngName: "CASTEP_Chdiff_a_3D.png" },
+      { key: "slice2d", label: "Panel (b) 2D Slice", x: w1, y: 0, w: w2, h: height, plotKey: "chdiff", dataSubPart: "2d", pngName: "CASTEP_Chdiff_b_2DSlice.png" },
+      { key: "planar1d", label: "Panel (c) 1D Planar Δρ(z) & ΔQ(z)", x: w1 + w2, y: 0, w: w3, h: height, plotKey: "chdiff", dataSubPart: "1d", pngName: "CASTEP_Chdiff_c_1DPlanar.png" }
+    ];
   } else if (layout === "iso2d") {
     const w1 = Math.floor(width * 0.50);
     draw3DIsosurfacePanel(0, 0, w1, height);
     draw2DSlicePanel(w1, 0, width - w1, height);
+    canvas._subPanelRects = [
+      { key: "iso3d", label: "Panel (a) 3D Structure + Δρ", x: 0, y: 0, w: w1, h: height, plotKey: "chdiff", dataSubPart: "1d", pngName: "CASTEP_Chdiff_a_3D.png" },
+      { key: "slice2d", label: "Panel (b) 2D Slice", x: w1, y: 0, w: width - w1, h: height, plotKey: "chdiff", dataSubPart: "2d", pngName: "CASTEP_Chdiff_b_2DSlice.png" }
+    ];
   } else if (layout === "slice2d") {
     draw2DSlicePanel(0, 0, width, height);
   } else {
@@ -14571,6 +14764,7 @@ function renderCastepSpinMatrix() {
       ctx.textAlign = "center";
       drawSciText(ctx, `All-Elements Orbital ${qtySciTitle} (${atomMode === "sum" ? "Element Sum" : "Element Average"})`, totalW / 2, 20);
 
+      canvas._subPanelRects = [];
       elSummary.forEach((sp, idx) => {
         const c = idx % cols;
         const r = Math.floor(idx / cols);
@@ -14579,6 +14773,14 @@ function renderCastepSpinMatrix() {
         const tileX = c * (totalW / cols);
         const tileY = 30 + r * panelH;
         const tileW = totalW / cols;
+        canvas._subPanelRects.push({
+          key: `el_${sp.element}`,
+          label: `${sp.element} Spin Matrix`,
+          x: tileX, y: tileY, w: tileW, h: panelH,
+          plotKey: "spinmat",
+          dataSubPart: `el:${sp.element}`,
+          pngName: `CASTEP_${sp.element}_SpinMatrix.png`
+        });
 
         const maxLblW = Math.max(36, ...res.entries.map(e => measureOrbitalMathLabel(ctx, e.key, 12.5)));
         const padL = Math.min(72, Math.max(46, maxLblW + 12));
@@ -14618,6 +14820,7 @@ function renderCastepSpinMatrix() {
   const absTraceVal = entries.reduce((s, e) => s + Math.abs(e.val), 0);
 
   if (canvas) {
+    canvas._subPanelRects = [];
     const stS = getCastepPlotStyle();
     const wrapW = Math.max(320, Math.min(460, Math.floor((canvas.parentElement?.clientWidth || 430) - 20)));
     const showCb = (palette !== "journal_green");
