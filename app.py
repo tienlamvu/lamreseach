@@ -210,53 +210,209 @@ class CIFParseRequest(BaseModel):
     filename: Optional[str] = "structure.cif"
 
 
-def parse_cif_string(cif_text: str) -> dict:
-    """Parse raw Crystallographic Information File (CIF) and generate POSCAR format."""
-    text = cif_text.replace("\r\n", "\n").replace("\r", "\n")
+def _tokenize_cif_block_py(cif_text: str) -> dict:
+    text = (cif_text or "").replace("\r\n", "\n").replace("\r", "\n")
+    n = len(text)
+    tokens = []
+    i = 0
+    while i < n:
+        ch = text[i]
+        if ch in (" ", "\t", "\n"):
+            i += 1
+            continue
+        if ch == "#":
+            while i < n and text[i] != "\n":
+                i += 1
+            continue
+        if ch == ";" and (i == 0 or text[i - 1] == "\n"):
+            i += 1
+            start = i
+            while i < n and not (text[i] == ";" and text[i - 1] == "\n"):
+                i += 1
+            tokens.append(("text", text[start:i].strip()))
+            if i < n and text[i] == ";":
+                i += 1
+            continue
+        if ch in ("'", '"'):
+            q = ch
+            i += 1
+            start = i
+            while i < n:
+                if text[i] == q and (i + 1 == n or text[i + 1] in (" ", "\t", "\n")):
+                    break
+                if text[i] == "\n":
+                    break
+                i += 1
+            tokens.append(("quoted", text[start:i]))
+            if i < n and text[i] == q:
+                i += 1
+            continue
+        start = i
+        while i < n and text[i] not in (" ", "\t", "\n"):
+            i += 1
+        tokens.append(("word", text[start:i]))
 
-    def get_tag_val(tag_pattern, default=""):
-        m = re.search(rf"^\s*{tag_pattern}\s+([^\n\r]+)", text, re.MULTILINE | re.IGNORECASE)
-        if m:
-            val = m.group(1).strip()
-            val = re.sub(r"^['\"]|['\"]$", "", val).strip()
-            val_clean = re.sub(r"\(\d+\)", "", val).strip()
-            return val_clean
-        return default
+    blocks = []
+    cur = {"data_name": "", "tags": {}, "loops": []}
+    idx = 0
+    while idx < len(tokens):
+        ttype, tval = tokens[idx]
+        if ttype == "word" and tval.lower().startswith("data_"):
+            if cur["data_name"] or cur["tags"] or cur["loops"]:
+                blocks.append(cur)
+            cur = {"data_name": tval[5:], "tags": {}, "loops": []}
+            idx += 1
+            continue
+        if ttype == "word" and tval.lower() == "loop_":
+            idx += 1
+            headers = []
+            while idx < len(tokens) and tokens[idx][0] == "word" and tokens[idx][1].startswith("_"):
+                headers.append(tokens[idx][1].lower())
+                idx += 1
+            rows = []
+            if headers:
+                ncol = len(headers)
+                buf = []
+                while idx < len(tokens):
+                    t2, v2 = tokens[idx]
+                    v2l = v2.lower()
+                    if t2 == "word" and (v2.startswith("_") or v2l in ("loop_", "stop_", "global_") or v2l.startswith(("data_", "save_"))):
+                        break
+                    buf.append(v2)
+                    idx += 1
+                    if len(buf) == ncol:
+                        rows.append(buf[:])
+                        buf.clear()
+            cur["loops"].append({"headers": headers, "rows": rows})
+            continue
+        if ttype == "word" and tval.startswith("_"):
+            tag = tval.lower()
+            idx += 1
+            if idx < len(tokens):
+                t2, v2 = tokens[idx]
+                if not (t2 == "word" and (v2.startswith("_") or v2.lower() == "loop_" or v2.lower().startswith("data_"))):
+                    cur["tags"][tag] = v2
+                    idx += 1
+            continue
+        idx += 1
+    if cur["data_name"] or cur["tags"] or cur["loops"]:
+        blocks.append(cur)
 
-    formula = get_tag_val(r"_chemical_formula_sum") or get_tag_val(r"_chemical_name_common") or "Unknown Formula"
-    formula = formula.replace(" ", "")
-    space_group = get_tag_val(r"_symmetry_space_group_name_H-M") or get_tag_val(r"_space_group_name_H-M_alt") or "P 1"
+    for b in blocks:
+        if any(any("atom_site_fract_x" in h or "atom_site_cartn_x" in h for h in lp["headers"]) for lp in b["loops"]):
+            return b
+    for b in blocks:
+        if "_cell_length_a" in b["tags"]:
+            return b
+    return blocks[0] if blocks else {"data_name": "", "tags": {}, "loops": []}
 
-    def parse_float(tag, default=0.0):
-        val = get_tag_val(tag, "")
+
+def _parse_cif_num_py(raw):
+    if raw is None:
+        return None
+    s = str(raw).strip().strip("'\"").strip()
+    if not s or s in (".", "?"):
+        return None
+    s = re.sub(r"\(\d+\)", "", s).strip()
+    if "/" in s:
         try:
-            return float(val)
+            n_s, d_s = s.split("/", 1)
+            dv = float(d_s)
+            return float(n_s) / dv if dv != 0 else None
         except Exception:
-            return default
+            return None
+    try:
+        v = float(s)
+        return v if math.isfinite(v) else None
+    except Exception:
+        return None
 
-    a = parse_float(r"_cell_length_a", 4.0)
-    b = parse_float(r"_cell_length_b", a)
-    c = parse_float(r"_cell_length_c", a)
-    alpha = parse_float(r"_cell_angle_alpha", 90.0)
-    beta = parse_float(r"_cell_angle_beta", 90.0)
-    gamma = parse_float(r"_cell_angle_gamma", 90.0)
 
-    vol = parse_float(r"_cell_volume", 0.0)
-    if vol <= 0.0 and a > 0 and b > 0 and c > 0:
-        ar = math.radians(alpha)
-        br = math.radians(beta)
-        gr = math.radians(gamma)
-        val_in_sqrt = 1 - math.cos(ar)**2 - math.cos(br)**2 - math.cos(gr)**2 + 2*math.cos(ar)*math.cos(br)*math.cos(gr)
-        if val_in_sqrt > 0:
-            vol = round(a * b * c * math.sqrt(val_in_sqrt), 2)
-        else:
-            vol = round(a * b * c, 2)
+def _parse_symop_xyz_py(expr: str):
+    cleaned = re.sub(r"\s+", "", str(expr or "").strip().strip("'\"")).lower()
+    parts = cleaned.split(",")
+    if len(parts) != 3:
+        return None
+    R = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
+    t = [0.0, 0.0, 0.0]
+    ax_map = {"x": 0, "y": 1, "z": 2}
+    for row in range(3):
+        p = parts[row]
+        if not p:
+            return None
+        terms = re.findall(r"[+-]?[^+-]+", p)
+        for term in terms:
+            m_ax = re.match(r"^([+-]?)([0-9./]*)\*?([xyz])$", term)
+            if m_ax:
+                sgn = -1.0 if m_ax.group(1) == "-" else 1.0
+                c_str = m_ax.group(2)
+                coeff = _parse_cif_num_py(c_str) if c_str else 1.0
+                if coeff is None:
+                    return None
+                R[row][ax_map[m_ax.group(3)]] += sgn * coeff
+            else:
+                num = _parse_cif_num_py(term)
+                if num is None:
+                    return None
+                t[row] += num
+        t[row] = t[row] % 1.0
+        if t[row] < 1e-6 or t[row] > 1.0 - 1e-6:
+            t[row] = 0.0
+    det = (
+        R[0][0] * (R[1][1] * R[2][2] - R[1][2] * R[2][1])
+        - R[0][1] * (R[1][0] * R[2][2] - R[1][2] * R[2][0])
+        + R[0][2] * (R[1][0] * R[2][1] - R[1][1] * R[2][0])
+    )
+    if abs(det) < 0.5:
+        return None
+    return (R, t, str(expr).strip().strip("'\""))
 
-    if abs(a - b) < 0.01 and abs(b - c) < 0.01 and abs(alpha - 90) < 0.5 and abs(beta - 90) < 0.5 and abs(gamma - 90) < 0.5:
+
+def parse_cif_string(cif_text: str) -> dict:
+    """Spec-compliant CIF 1.1 parser with exact symmetry expansion and POSCAR generation."""
+    block = _tokenize_cif_block_py(cif_text)
+    tags = block.get("tags", {})
+
+    def get_float(tag, default=0.0):
+        v = _parse_cif_num_py(tags.get(tag))
+        return v if v is not None else default
+
+    a = get_float("_cell_length_a", 4.0)
+    b = get_float("_cell_length_b", a)
+    c = get_float("_cell_length_c", a)
+    alpha = get_float("_cell_angle_alpha", 90.0)
+    beta = get_float("_cell_angle_beta", 90.0)
+    gamma = get_float("_cell_angle_gamma", 90.0)
+
+    ar = math.radians(alpha)
+    br = math.radians(beta)
+    gr = math.radians(gamma)
+    sin_g = math.sin(gr) if abs(math.sin(gr)) > 1e-12 else 1.0
+    ax, ay, az = a, 0.0, 0.0
+    bx, by, bz = b * math.cos(gr), b * sin_g, 0.0
+    cx = c * math.cos(br)
+    cy = c * (math.cos(ar) - math.cos(br) * math.cos(gr)) / sin_g
+    cz = math.sqrt(max(0.0, c * c - cx * cx - cy * cy))
+    vecs = ((ax, ay, az), (bx, by, bz), (cx, cy, cz))
+
+    val_in_sqrt = 1.0 - math.cos(ar)**2 - math.cos(br)**2 - math.cos(gr)**2 + 2.0 * math.cos(ar) * math.cos(br) * math.cos(gr)
+    calc_vol = a * b * c * math.sqrt(val_in_sqrt) if val_in_sqrt > 0 else a * b * c
+    raw_vol = get_float("_cell_volume", 0.0)
+    vol = round(raw_vol if raw_vol > 0 else calc_vol, 4)
+
+    sg_hm = (tags.get("_symmetry_space_group_name_h-m") or tags.get("_space_group_name_h-m_alt") or "P 1").strip()
+    sg_it_v = _parse_cif_num_py(tags.get("_space_group_it_number") or tags.get("_symmetry_int_tables_number"))
+    sg_it = int(round(sg_it_v)) if sg_it_v is not None else 1
+    space_group = f"{sg_hm} ({sg_it})" if (sg_hm and sg_it and f"({sg_it})" not in sg_hm) else (sg_hm or "P 1")
+
+    raw_setting = (tags.get("_space_group_crystal_system") or tags.get("_symmetry_cell_setting") or "").strip()
+    if raw_setting:
+        crystal_system = raw_setting.capitalize()
+    elif abs(a - b) < 0.02 and abs(b - c) < 0.02 and abs(alpha - 90) < 0.5 and abs(beta - 90) < 0.5 and abs(gamma - 90) < 0.5:
         crystal_system = "Cubic"
-    elif abs(a - b) < 0.01 and abs(alpha - 90) < 0.5 and abs(beta - 90) < 0.5 and (abs(gamma - 120) < 0.5 or abs(gamma - 60) < 0.5):
+    elif abs(a - b) < 0.02 and abs(alpha - 90) < 0.5 and abs(beta - 90) < 0.5 and (abs(gamma - 120) < 0.5 or abs(gamma - 60) < 0.5):
         crystal_system = "Hexagonal"
-    elif abs(a - b) < 0.01 and abs(alpha - 90) < 0.5 and abs(beta - 90) < 0.5 and abs(gamma - 90) < 0.5:
+    elif abs(a - b) < 0.02 and abs(alpha - 90) < 0.5 and abs(beta - 90) < 0.5 and abs(gamma - 90) < 0.5:
         crystal_system = "Tetragonal"
     elif abs(alpha - 90) < 0.5 and abs(beta - 90) < 0.5 and abs(gamma - 90) < 0.5:
         crystal_system = "Orthorhombic"
@@ -265,79 +421,104 @@ def parse_cif_string(cif_text: str) -> dict:
     else:
         crystal_system = "Triclinic"
 
-    atoms = []
-    for loop_match in re.finditer(r"loop_\s+((?:_[^\s]+\s+)+)([\s\S]+?)(?=\n\s*(?:loop_|data_|#|\Z))", text + "\n", re.IGNORECASE):
-        headers = [h.strip().lower() for h in loop_match.group(1).split() if h.startswith("_")]
-        if not any("atom_site_fract_x" in h for h in headers):
+    # Extract explicit symmetry operations from CIF loop
+    symops = []
+    for lp in block.get("loops", []):
+        hdrs = lp["headers"]
+        s_idx = -1
+        for i_h, h in enumerate(hdrs):
+            if h in ("_space_group_symop_operation_xyz", "_symmetry_equiv_pos_as_xyz"):
+                s_idx = i_h
+                break
+        if s_idx != -1:
+            for row in lp["rows"]:
+                op = _parse_symop_xyz_py(row[s_idx])
+                if op:
+                    symops.append(op)
+    if not symops:
+        symops = [([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]], [0.0, 0.0, 0.0], "x, y, z")]
+
+    # Parse asymmetric sites
+    asymm = []
+    for lp in block.get("loops", []):
+        hdrs = lp["headers"]
+        if "_atom_site_fract_x" not in hdrs or "_atom_site_fract_y" not in hdrs or "_atom_site_fract_z" not in hdrs:
             continue
-
-        data_lines = [l.strip() for l in loop_match.group(2).split("\n") if l.strip() and not l.strip().startswith("#") and not l.strip().startswith("_")]
-        type_idx = -1
-        label_idx = -1
-        x_idx = -1
-        y_idx = -1
-        z_idx = -1
-        for i, h in enumerate(headers):
-            if "atom_site_type_symbol" in h:
-                type_idx = i
-            elif "atom_site_label" in h:
-                label_idx = i
-            elif "atom_site_fract_x" in h:
-                x_idx = i
-            elif "atom_site_fract_y" in h:
-                y_idx = i
-            elif "atom_site_fract_z" in h:
-                z_idx = i
-
-        if x_idx != -1 and y_idx != -1 and z_idx != -1:
-            for line in data_lines:
-                parts = line.split()
-                if len(parts) > max(type_idx, label_idx, x_idx, y_idx, z_idx):
-                    sym = ""
-                    if type_idx != -1:
-                        sym = re.sub(r"[^A-Za-z]", "", parts[type_idx])
-                    if not sym and label_idx != -1:
-                        sym = re.sub(r"[^A-Za-z]", "", parts[label_idx])
-                    if not sym:
-                        sym = "X"
-                    sym = sym.capitalize().strip()
-
-                    def clean_fract(val_str):
-                        s = re.sub(r"\(\d+\)", "", val_str).strip()
-                        if "/" in s:
-                            n, d = s.split("/")
-                            return float(n) / float(d)
-                        return float(s)
-
-                    try:
-                        fx = clean_fract(parts[x_idx])
-                        fy = clean_fract(parts[y_idx])
-                        fz = clean_fract(parts[z_idx])
-                        lbl = parts[label_idx] if label_idx != -1 else sym
-                        atoms.append({"element": sym, "label": lbl, "x": round(fx, 5), "y": round(fy, 5), "z": round(fz, 5)})
-                    except Exception:
-                        pass
+        x_idx = hdrs.index("_atom_site_fract_x")
+        y_idx = hdrs.index("_atom_site_fract_y")
+        z_idx = hdrs.index("_atom_site_fract_z")
+        type_idx = hdrs.index("_atom_site_type_symbol") if "_atom_site_type_symbol" in hdrs else -1
+        label_idx = hdrs.index("_atom_site_label") if "_atom_site_label" in hdrs else -1
+        occ_idx = hdrs.index("_atom_site_occupancy") if "_atom_site_occupancy" in hdrs else -1
+        for row in lp["rows"]:
+            fx = _parse_cif_num_py(row[x_idx])
+            fy = _parse_cif_num_py(row[y_idx])
+            fz = _parse_cif_num_py(row[z_idx])
+            if fx is None or fy is None or fz is None:
+                continue
+            raw_type = row[type_idx] if type_idx != -1 else ""
+            raw_lbl = row[label_idx] if label_idx != -1 else ""
+            m_el = re.match(r"([A-Za-z]{1,2})", raw_type or "") or re.match(r"([A-Za-z]{1,2})", raw_lbl or "")
+            sym = m_el.group(1).capitalize() if m_el else "X"
+            lbl = raw_lbl if (raw_lbl and raw_lbl not in (".", "?")) else f"{sym}{len(asymm)+1}"
+            occ_v = _parse_cif_num_py(row[occ_idx]) if occ_idx != -1 else 1.0
+            occ = round(occ_v, 4) if (occ_v is not None and 0 < occ_v <= 1.05) else 1.0
+            asymm.append({"element": sym, "label": lbl, "x": round(fx, 6), "y": round(fy, 6), "z": round(fz, 6), "occupancy": occ})
+        if asymm:
             break
 
-    natoms = len(atoms) if atoms else 5
-    if atoms and (not formula or formula == "UnknownFormula"):
-        from collections import Counter
-        elem_counts = Counter(at["element"] for at in atoms)
-        formula = "".join(f"{el}{cnt if cnt > 1 else ''}" for el, cnt in elem_counts.items())
+    # Expand asymmetric unit into full unit cell with periodic Cartesian deduplication
+    def _wrap1(v):
+        r = v % 1.0
+        return 0.0 if (r < 1e-6 or r > 1.0 - 1e-6) else r
 
-    # Build POSCAR
+    def _min_dist(u1, v1, w1, u2, v2, w2):
+        du = (u1 - u2) - round(u1 - u2)
+        dv = (v1 - v2) - round(v1 - v2)
+        dw = (w1 - w2) - round(w1 - w2)
+        dx = du * vecs[0][0] + dv * vecs[1][0] + dw * vecs[2][0]
+        dy = du * vecs[0][1] + dv * vecs[1][1] + dw * vecs[2][1]
+        dz = du * vecs[0][2] + dv * vecs[1][2] + dw * vecs[2][2]
+        return math.sqrt(dx * dx + dy * dy + dz * dz)
+
+    atoms = []
+    el_counts_run = {}
+    for site in asymm:
+        site_imgs = []
+        for R, t, _ in symops:
+            nu = _wrap1(R[0][0] * site["x"] + R[0][1] * site["y"] + R[0][2] * site["z"] + t[0])
+            nv = _wrap1(R[1][0] * site["x"] + R[1][1] * site["y"] + R[1][2] * site["z"] + t[1])
+            nw = _wrap1(R[2][0] * site["x"] + R[2][1] * site["y"] + R[2][2] * site["z"] + t[2])
+            if any(_min_dist(nu, nv, nw, p["x"], p["y"], p["z"]) < 0.05 for p in site_imgs):
+                continue
+            if any(p["element"] == site["element"] and _min_dist(nu, nv, nw, p["x"], p["y"], p["z"]) < 0.05 for p in atoms):
+                continue
+            el_counts_run[site["element"]] = el_counts_run.get(site["element"], 0) + 1
+            img = {
+                "element": site["element"],
+                "label": site["label"] if not site_imgs else f"{site['element']}{el_counts_run[site['element']]}",
+                "x": round(nu, 6),
+                "y": round(nv, 6),
+                "z": round(nw, 6),
+                "occupancy": site["occupancy"],
+            }
+            site_imgs.append(img)
+            atoms.append(img)
+
+    natoms = len(atoms)
+    from collections import Counter
+    if atoms:
+        ec = Counter(at["element"] for at in atoms)
+        g = 0
+        for cnt in ec.values():
+            g = math.gcd(g, cnt)
+        g = g or 1
+        formula = "".join(f"{el}{(cnt // g) if (cnt // g) > 1 else ''}" for el, cnt in ec.items())
+    else:
+        formula = (tags.get("_chemical_formula_sum") or tags.get("_chemical_name_common") or "UnknownFormula").replace(" ", "")
+
+    # Build VASP POSCAR from full symmetry-expanded unit cell
     poscar_lines = [f"{formula} {crystal_system} {space_group}", "1.0"]
-    ar = math.radians(alpha)
-    br = math.radians(beta)
-    gr = math.radians(gamma)
-    ax, ay, az = a, 0.0, 0.0
-    bx = b * math.cos(gr)
-    by = b * math.sin(gr)
-    bz = 0.0
-    cx = c * math.cos(br)
-    cy = c * (math.cos(ar) - math.cos(br) * math.cos(gr)) / (math.sin(gr) if math.sin(gr) != 0 else 1.0)
-    cz_sq = c**2 - cx**2 - cy**2
-    cz = math.sqrt(max(0.0, cz_sq))
     poscar_lines.append(f"  {ax:14.8f} {ay:14.8f} {az:14.8f}")
     poscar_lines.append(f"  {bx:14.8f} {by:14.8f} {bz:14.8f}")
     poscar_lines.append(f"  {cx:14.8f} {cy:14.8f} {cz:14.8f}")
@@ -367,17 +548,21 @@ def parse_cif_string(cif_text: str) -> dict:
         "name": f"{formula} ({crystal_system} {space_group.strip()})",
         "crystal_system": crystal_system,
         "space_group": space_group,
-        "a": round(a, 4),
-        "b": round(b, 4),
-        "c": round(c, 4),
-        "alpha": round(alpha, 2),
-        "beta": round(beta, 2),
-        "gamma": round(gamma, 2),
-        "volume": round(vol, 2),
+        "space_group_hm": sg_hm,
+        "space_group_it": sg_it,
+        "symops": [op[2] for op in symops],
+        "asymmetric_atoms": asymm,
+        "a": round(a, 6),
+        "b": round(b, 6),
+        "c": round(c, 6),
+        "alpha": round(alpha, 4),
+        "beta": round(beta, 4),
+        "gamma": round(gamma, 4),
+        "volume": round(vol, 4),
         "natoms": natoms,
         "cif_content": cif_text,
         "poscar_content": poscar_content,
-        "atoms": atoms[:50],
+        "atoms": atoms,
     }
 
 
@@ -3568,6 +3753,11 @@ def serve_css():
 @app.get("/app.js")
 def serve_js():
     return FileResponse(str(FRONTEND_DIR / "app.js"))
+
+
+@app.get("/cif_engine.js")
+def serve_cif_engine_js():
+    return FileResponse(str(FRONTEND_DIR / "cif_engine.js"))
 
 
 @app.get("/matsci_tools.js")
