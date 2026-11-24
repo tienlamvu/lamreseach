@@ -12415,3 +12415,98 @@ sup {
   font-size: 10.5px;
   margin-top: 2px;
 }
+
+/* ============================================================================
+   v137 Compact, Zero-Clipping Publication Plot Toolbars & Control Rhythm
+   ============================================================================ */
+.castep-plot-toolbar {
+  padding: 7px 10px;
+  margin-bottom: 8px;
+}
+.castep-tb-row {
+  display: flex;
+  align-items: center;
+  gap: 5px 8px;
+  flex-wrap: wrap;
+}
+.castep-tb-row + .castep-tb-row {
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid #e7edf5;
+}
+.castep-ctrl-grp {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.castep-tb-actions {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.castep-plot-toolbar .castep-field-lbl,
+#castep-plot-style-bar .castep-field-lbl,
+#castep-spin-matrix-card .castep-field-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  color: #334155;
+  margin: 0;
+  white-space: nowrap;
+}
+.castep-plot-toolbar select.castep-input,
+#castep-plot-style-bar select.castep-input,
+#castep-spin-matrix-card select.castep-input {
+  height: 26px;
+  padding: 2px 7px;
+  font-size: 11.5px;
+  line-height: 1.2;
+  box-sizing: border-box;
+  width: auto;
+}
+.castep-plot-toolbar input.castep-input-sm,
+.castep-plot-toolbar input.castep-input,
+#castep-plot-style-bar input.castep-input {
+  height: 26px;
+  padding: 2px 5px;
+  font-size: 11.5px;
+  line-height: 1.2;
+  box-sizing: border-box;
+  font-variant-numeric: tabular-nums;
+}
+.castep-plot-toolbar .btn-sm,
+#castep-plot-style-bar .btn-sm,
+#castep-spin-matrix-card .btn-sm {
+  height: 26px;
+  padding: 2px 7px !important;
+  font-size: 11px !important;
+  line-height: 1.1;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  box-sizing: border-box;
+}
+.castep-plot-toolbar .castep-preset-chip,
+#castep-plot-style-bar .castep-preset-chip,
+#castep-spin-matrix-card .castep-preset-chip {
+  height: 24px;
+  padding: 1px 6px;
+  font-size: 10.5px;
+  line-height: 1.1;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+.castep-plot-toolbar .castep-chk-lbl {
+  font-size: 11px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin: 0;
+}
