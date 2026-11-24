@@ -4,7 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=141_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=141_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=142_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=142_v116_vesta_viewer'" />
+  <!-- Publication Math Typography: STIX Two Text (MathType / Times) + KaTeX 0.16.11 (Word/LaTeX Equation Engine) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" onerror="this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css';" />
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" onerror="var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js';document.head.appendChild(s);"></script>
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Client-side PptxGenJS fallback when hosted on GitHub Pages -->
@@ -282,6 +288,14 @@
             </div>
             <div class="dft-hero-meta">
               <span id="dft-theory-search-status" class="dft-hero-badge">10 Lectures (Basic &rarr; Advanced)</span>
+              <label class="dft-mathfont-wrap" title="Switch equation typography style (Microsoft Word Equation, MathType, or LaTeX)">
+                <span>&#8721; Font:</span>
+                <select id="dft-math-font-select" class="dft-mathfont-select" onchange="applyDftMathFont(this.value)">
+                  <option value="cambria">Word Equation (Cambria)</option>
+                  <option value="mathtype">MathType (Times / STIX)</option>
+                  <option value="latex">LaTeX (Computer Modern)</option>
+                </select>
+              </label>
               <button type="button" class="btn btn-primary btn-sm strict-admin-only" onclick="openDftLectureEditorModal(null)" title="Create and publish a new DFT Theory lecture (Admin Only)">&#10133; Add Lecture</button>
               <button type="button" class="btn btn-outline btn-sm strict-admin-only" onclick="resetDftLecturesToDefault()" title="Restore the 10 built-in DFT lectures and references (Admin Only)">&#8634; Reset Defaults</button>
               <button type="button" class="btn btn-teal btn-sm" onclick="switchTabByName('castep')">&#128202; Launch Data Analysis &rarr;</button>
@@ -6142,10 +6156,10 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=141_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=141_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=141_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=141_v116_vesta_viewer'"></script>
-  <script src="dft_theory.js?v=141_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=141_v116_vesta_viewer'"></script>
-  <script src="app.js?v=141_v116_vesta_viewer" onerror="this.src='/static/app.js?v=141_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=142_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=142_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=142_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=142_v116_vesta_viewer'"></script>
+  <script src="dft_theory.js?v=142_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=142_v116_vesta_viewer'"></script>
+  <script src="app.js?v=142_v116_vesta_viewer" onerror="this.src='/static/app.js?v=142_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
@@ -6684,13 +6698,13 @@
   </div>
 
   <!-- ====================================================================== -->
-  <!-- ADMIN MODAL: DFT THEORY LECTURE CMS (ADD / EDIT LECTURE & REFERENCES)  -->
+  <!-- ADMIN MODAL: DFT THEORY LECTURE CMS (DUAL VISUAL + SPLIT + CODE STUDIO)-->
   <!-- ====================================================================== -->
   <div id="dft-lecture-editor-modal" class="dft-ed-overlay" style="display:none;" onclick="if(event.target===this) closeDftLectureEditorModal()">
-    <div class="dft-ed-card" role="dialog" aria-modal="true" aria-labelledby="dft-ed-modal-title">
+    <div class="dft-ed-card dft-ed-card-wide" role="dialog" aria-modal="true" aria-labelledby="dft-ed-modal-title">
       <div class="dft-ed-header">
         <div>
-          <div class="dft-ed-eyebrow">ADMIN CURRICULUM STUDIO &bull; DFT THEORY CMS</div>
+          <div class="dft-ed-eyebrow">ADMIN CURRICULUM STUDIO &bull; DUAL VISUAL (WYSIWYG) + CODE CMS</div>
           <h3 id="dft-ed-modal-title" class="dft-ed-title">&#9999;&#65039; Edit DFT Lecture</h3>
         </div>
         <button type="button" class="dft-ed-close" onclick="closeDftLectureEditorModal()" aria-label="Close modal">&times;</button>
@@ -6755,26 +6769,77 @@
 
         <div class="form-group" style="margin-bottom:0;">
           <label class="form-label" for="dft-ed-objectives">Learning Objectives (one per line)</label>
-          <textarea id="dft-ed-objectives" class="form-input dft-ed-textarea-sm" rows="3" placeholder="Derive the harmonic dynamical matrix...&#10;Evaluate zero-point vibrational energy and Helmholtz free energy..."></textarea>
+          <textarea id="dft-ed-objectives" class="form-input dft-ed-textarea-sm" rows="2" placeholder="Derive the harmonic dynamical matrix...&#10;Evaluate zero-point vibrational energy and Helmholtz free energy..."></textarea>
         </div>
 
+        <!-- Dual-Mode Visual + Simultaneous Split + Code Content Studio -->
         <div class="form-group" style="margin-bottom:0;">
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
-            <label class="form-label" for="dft-ed-body" style="margin:0;">Lecture Body (Publication HTML, Equations, Tables &amp; Diagrams)</label>
-            <button type="button" id="dft-ed-preview-toggle-btn" class="btn btn-outline btn-sm" onclick="toggleDftEditorPreview()">&#128065;&#65039; Live Preview</button>
+          <div class="dft-ed-bar-top">
+            <label class="form-label" style="margin:0;">Lecture Body &mdash; Live Bidirectional Visual &amp; Code Editor</label>
+            <div class="dft-ed-mode-switcher" role="tablist" aria-label="Editor View Mode">
+              <button type="button" class="dft-ed-mode-btn" data-mode="visual" onclick="setDftEditorMode('visual')" title="Full-width Word-like visual editing">&#9999;&#65039; Visual</button>
+              <button type="button" class="dft-ed-mode-btn active" data-mode="split" onclick="setDftEditorMode('split')" title="Edit visually on the left and HTML/LaTeX code on the right simultaneously">&#9889; Split (Visual + Code)</button>
+              <button type="button" class="dft-ed-mode-btn" data-mode="code" onclick="setDftEditorMode('code')" title="Full-width HTML/LaTeX code editor">&#128187; Code</button>
+            </div>
           </div>
-          <div class="dft-snippet-bar" role="toolbar" aria-label="Insert Scientific Formatting Blocks">
-            <span class="dft-snippet-lbl">Insert:</span>
-            <button type="button" class="dft-snippet-btn" onclick="insertDftEditorSnippet('heading')">H3 Section</button>
-            <button type="button" class="dft-snippet-btn" onclick="insertDftEditorSnippet('equation')">&sum; Equation Box</button>
-            <button type="button" class="dft-snippet-btn" onclick="insertDftEditorSnippet('fraction')">a/b Fraction</button>
-            <button type="button" class="dft-snippet-btn" onclick="insertDftEditorSnippet('definition')">&#128216; Definition</button>
-            <button type="button" class="dft-snippet-btn" onclick="insertDftEditorSnippet('insight')">&#128161; Insight</button>
-            <button type="button" class="dft-snippet-btn" onclick="insertDftEditorSnippet('table')">&#128203; Table</button>
-            <button type="button" class="dft-snippet-btn" onclick="insertDftEditorSnippet('lab')">&#129514; Practice Lab</button>
+
+          <!-- Unified Rich Visual Formatting + Scientific Block Toolbar -->
+          <div class="dft-rich-toolbar" role="toolbar" aria-label="Lecture Formatting and Scientific Inserters">
+            <div class="dft-rt-group">
+              <select class="dft-rt-select" onchange="execDftVisualBlock(this.value); this.selectedIndex=0;" title="Paragraph / Heading style">
+                <option value="" disabled selected>Style</option>
+                <option value="P">Paragraph</option>
+                <option value="H3">Section (H3)</option>
+                <option value="H4">Sub-section (H4)</option>
+              </select>
+              <button type="button" class="dft-rt-btn" onmousedown="event.preventDefault()" onclick="execDftVisualCmd('bold')" title="Bold (Ctrl+B)"><b>B</b></button>
+              <button type="button" class="dft-rt-btn" onmousedown="event.preventDefault()" onclick="execDftVisualCmd('italic')" title="Italic (Ctrl+I)"><i>I</i></button>
+              <button type="button" class="dft-rt-btn" onmousedown="event.preventDefault()" onclick="execDftVisualCmd('underline')" title="Underline (Ctrl+U)"><u>U</u></button>
+              <button type="button" class="dft-rt-btn" onmousedown="event.preventDefault()" onclick="execDftVisualCmd('subscript')" title="Subscript (e.g. E_g, MoS_2)">X<sub>2</sub></button>
+              <button type="button" class="dft-rt-btn" onmousedown="event.preventDefault()" onclick="execDftVisualCmd('superscript')" title="Superscript (e.g. e^-, Å^3)">X<sup>2</sup></button>
+              <button type="button" class="dft-rt-btn" onmousedown="event.preventDefault()" onclick="insertDftInlineCode()" title="Inline Code / CASTEP keyword">&lt;/&gt;</button>
+              <label class="dft-rt-btn dft-rt-color" title="Text Color">
+                <span style="font-weight:800; border-bottom:2.5px solid #b45309;">A</span>
+                <input type="color" value="#1e293b" onchange="execDftVisualCmd('foreColor', this.value)" style="opacity:0; width:0; height:0; position:absolute;" />
+              </label>
+            </div>
+
+            <div class="dft-rt-group">
+              <button type="button" class="dft-rt-btn" onmousedown="event.preventDefault()" onclick="execDftVisualCmd('insertUnorderedList')" title="Bullet List">&bull; List</button>
+              <button type="button" class="dft-rt-btn" onmousedown="event.preventDefault()" onclick="execDftVisualCmd('insertOrderedList')" title="Numbered List">1. List</button>
+              <button type="button" class="dft-rt-btn" onmousedown="event.preventDefault()" onclick="execDftVisualCmd('undo')" title="Undo">&#8617;</button>
+              <button type="button" class="dft-rt-btn" onmousedown="event.preventDefault()" onclick="execDftVisualCmd('redo')" title="Redo">&#8618;</button>
+            </div>
+
+            <div class="dft-rt-group">
+              <button type="button" class="dft-rt-btn dft-rt-accent" onmousedown="event.preventDefault()" onclick="openDftEquationBuilder(null)" title="Insert publication-grade Word/MathType/LaTeX Equation">&#8721; Equation</button>
+              <button type="button" class="dft-rt-btn" onmousedown="event.preventDefault()" onclick="insertDftEditorSnippet('definition')" title="Insert Definition callout box">&#128216; Def</button>
+              <button type="button" class="dft-rt-btn" onmousedown="event.preventDefault()" onclick="insertDftEditorSnippet('insight')" title="Insert Physical Insight callout box">&#128161; Insight</button>
+              <button type="button" class="dft-rt-btn" onmousedown="event.preventDefault()" onclick="insertDftEditorSnippet('table')" title="Insert academic table">&#128203; Table</button>
+              <button type="button" class="dft-rt-btn" onmousedown="event.preventDefault()" onclick="insertDftEditorSnippet('lab')" title="Insert Data Analysis Practice Box">&#129514; Lab</button>
+              <button type="button" class="dft-rt-btn" onmousedown="event.preventDefault()" onclick="triggerDftFigureImageUpload()" title="Insert Figure Image from computer">&#128444;&#65039; Image</button>
+              <input type="file" id="dft-ed-image-file" accept="image/*" style="display:none;" onchange="handleDftFigureImageFile(event)" />
+            </div>
           </div>
-          <textarea id="dft-ed-body" class="form-input dft-ed-textarea-code" rows="11" oninput="if(document.getElementById('dft-ed-preview-pane')?.style.display==='block') updateDftEditorPreview()" placeholder="Enter HTML content with <h3>, <p>, .dft-eq-box, .dft-table, SVG diagrams..."></textarea>
-          <div id="dft-ed-preview-pane" class="dft-ed-preview" style="display:none;"></div>
+
+          <!-- Bidirectional Split / Visual / Code Workspace -->
+          <div id="dft-ed-workspace" class="dft-ed-workspace" data-mode="split">
+            <div class="dft-ed-pane dft-ed-pane-visual">
+              <div class="dft-ed-pane-head">
+                <span>&#9999;&#65039; Visual Editor (WYSIWYG)</span>
+                <span class="dft-ed-pane-hint">Double-click any equation to edit its MathType / LaTeX formula</span>
+              </div>
+              <div id="dft-ed-visual" class="dft-ed-visual-surface dft-lec-content" contenteditable="true" spellcheck="true" oninput="handleDftVisualInput()" onmouseup="saveDftVisualSelection()" onkeyup="saveDftVisualSelection()"></div>
+            </div>
+
+            <div class="dft-ed-pane dft-ed-pane-code">
+              <div class="dft-ed-pane-head">
+                <span>&#128187; HTML &amp; LaTeX Source Code</span>
+                <span class="dft-ed-pane-hint">Live synced &bull; Supports <code>data-tex="..."</code> &amp; <code>$...$</code> / <code>$$...$$</code></span>
+              </div>
+              <textarea id="dft-ed-body" class="dft-ed-code-surface" oninput="handleDftCodeInput()" placeholder="Enter HTML content with <h3>, <p>, .dft-eq-box (data-tex), .dft-table, SVG diagrams..."></textarea>
+            </div>
+          </div>
         </div>
 
         <div class="dft-ed-refs-section">
@@ -6787,10 +6852,114 @@
       </div>
 
       <div class="dft-ed-footer">
-        <span class="dft-ed-foot-note">Changes save to local storage and automatically sync to GitHub Cloud <code>data.json</code> for all visitors.</span>
+        <span class="dft-ed-foot-note">Changes save locally and automatically sync to GitHub Cloud <code>data.json</code> for all visitors.</span>
         <div style="display:flex; gap:8px;">
           <button type="button" class="btn btn-outline btn-sm" onclick="closeDftLectureEditorModal()">Cancel</button>
           <button type="button" class="btn btn-primary btn-sm" onclick="saveDftLectureFromModal()">&#128190; Save Lecture</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- SUB-DIALOG: MATHTYPE / WORD / LATEX VISUAL EQUATION BUILDER            -->
+  <!-- ====================================================================== -->
+  <div id="dft-eq-builder-modal" class="dft-ed-overlay dft-eqb-overlay" style="display:none;" onclick="if(event.target===this) closeDftEquationBuilder()">
+    <div class="dft-ed-card dft-eqb-card" role="dialog" aria-modal="true" aria-labelledby="dft-eqb-title">
+      <div class="dft-ed-header">
+        <div>
+          <div class="dft-ed-eyebrow">PUBLICATION EQUATION COMPOSER &bull; KATEX ENGINE</div>
+          <h3 id="dft-eqb-title" class="dft-ed-title">&#8721; Insert Publication Equation</h3>
+        </div>
+        <button type="button" class="dft-ed-close" onclick="closeDftEquationBuilder()" aria-label="Close equation builder">&times;</button>
+      </div>
+
+      <div class="dft-ed-body" style="gap:10px;">
+        <div class="dft-ed-grid-2">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="dft-eqb-type">Equation Mode</label>
+            <select id="dft-eqb-type" class="form-select" onchange="updateDftEqBuilderPreview()">
+              <option value="display">Display Block (Centered with Equation Number)</option>
+              <option value="inline">Inline Math (Inside Sentence)</option>
+            </select>
+          </div>
+          <div class="form-group" id="dft-eqb-num-group" style="margin-bottom:0;">
+            <label class="form-label" for="dft-eqb-num">Equation Number (e.g. 1.2, 11.1)</label>
+            <input type="text" id="dft-eqb-num" class="form-input" placeholder="e.g. 11.1" oninput="updateDftEqBuilderPreview()" />
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size:11px; font-weight:800; color:#475569; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.05em;">Live MathType / Word Equation Preview:</div>
+          <div class="dft-eq-box" style="margin:0;">
+            <div class="dft-eq-inner">
+              <div id="dft-eqb-preview-math" class="dft-eq-math"></div>
+              <div id="dft-eqb-preview-num" class="dft-eq-num">(11.1)</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size:11px; font-weight:700; color:#475569; margin-bottom:4px;">Structures &amp; Operators (Click to Insert):</div>
+          <div class="dft-eqb-palette">
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\frac{}{}', 3)">a/b</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('^{2}', 0)">x&sup2;</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('_{i}', 0)">x&#7522;</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\nabla_i^2', 0)">&nabla;&#7522;&sup2;</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\sqrt{}', 1)">&radic;x</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\sum_{i=1}^{N} ', 0)">&sum;</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\int_{0}^{\\infty} ', 0)">&int;</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\frac{\\partial }{\\partial }', 11)">&part;/&part;</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\hat{H}', 0)">H&#770;</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\mathbf{r}', 0)"><b>r</b></button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\mathbf{k}', 0)"><b>k</b></button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\langle \\psi | \\hat{H} | \\psi \\rangle', 0)">&lang;&psi;|H|&psi;&rang;</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\left(  \\right)', 8)">( )</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\left[  \\right]', 8)">[ ]</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\left|  \\right|', 8)">|x|</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\hbar', 0)">&#8463;</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\varepsilon', 0)">&varepsilon;</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\omega', 0)">&omega;</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\alpha', 0)">&alpha;</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\mu', 0)">&mu;</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\tau', 0)">&tau;</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\rho', 0)">&rho;</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\sigma', 0)">&sigma;</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\Delta', 0)">&Delta;</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\Omega', 0)">&Omega;</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\Psi', 0)">&Psi;</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\phi', 0)">&phi;</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\pm ', 0)">&plusmn;</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\neq ', 0)">&ne;</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\approx ', 0)">&approx;</button>
+            <button type="button" class="dft-eqb-key" onclick="insertTexTokenIntoEqBuilder('\\implies ', 0)">&rArr;</button>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-wrap:wrap; gap:5px; align-items:center;">
+          <span style="font-size:11px; font-weight:700; color:#475569;">Templates:</span>
+          <button type="button" class="dft-snippet-btn" onclick="applyDftEqTemplate('\\left[-\\frac{\\hbar^2}{2m_0}\\nabla^2 + v_{\\mathrm{eff}}(\\mathbf{r})\\right]\\phi_i(\\mathbf{r}) = \\varepsilon_i\\,\\phi_i(\\mathbf{r})')">Kohn–Sham Eq.</button>
+          <button type="button" class="dft-snippet-btn" onclick="applyDftEqTemplate('\\frac{1}{m^*_{\\alpha\\beta}} = \\frac{1}{\\hbar^2}\\frac{\\partial^2 E_n(\\mathbf{k})}{\\partial k_\\alpha \\partial k_\\beta}')">Effective Mass</button>
+          <button type="button" class="dft-snippet-btn" onclick="applyDftEqTemplate('\\varepsilon_{1}(\\omega) = 1 + \\frac{2}{\\pi}\\,\\mathcal{P}\\!\\int_0^\\infty \\frac{\\omega\'\\varepsilon_2(\\omega\')}{\\omega\'^2 - \\omega^2}\\,\\mathrm{d}\\omega\'')">Kramers–Kronig</button>
+          <button type="button" class="dft-snippet-btn" onclick="applyDftEqTemplate('F_{\\mathrm{vib}}(T) = \\frac{1}{2}\\sum_{\\mathbf{q},\\nu}\\hbar\\omega_{\\mathbf{q}\\nu} + k_{\\mathrm{B}}T\\sum_{\\mathbf{q},\\nu}\\ln\\!\\left(1 - e^{-\\hbar\\omega_{\\mathbf{q}\\nu}/k_{\\mathrm{B}}T}\\right)')">Phonon Free Energy</button>
+        </div>
+
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label" for="dft-eqb-tex">LaTeX Formula Source</label>
+          <textarea id="dft-eqb-tex" class="form-input dft-ed-textarea-code" rows="3" oninput="updateDftEqBuilderPreview()" placeholder="e.g. \hat{H}\Psi = E\Psi"></textarea>
+        </div>
+
+        <div class="form-group" id="dft-eqb-note-group" style="margin-bottom:0;">
+          <label class="form-label" for="dft-eqb-note">Caption / Physical Legend Note (Optional)</label>
+          <input type="text" id="dft-eqb-note" class="form-input" placeholder="Optional explanation of variables and units shown below the equation" />
+        </div>
+      </div>
+
+      <div class="dft-ed-footer">
+        <span class="dft-ed-foot-note">Renders identically to Word Equation / MathType / LaTeX via KaTeX.</span>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn btn-outline btn-sm" onclick="closeDftEquationBuilder()">Cancel</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="confirmDftEquationBuilder()">&#10004; Apply Equation</button>
         </div>
       </div>
     </div>
