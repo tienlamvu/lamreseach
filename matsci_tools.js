@@ -648,7 +648,8 @@ const CASTEP_PLOT_STYLE_PRESETS = {
     tickLength: 5,
     gridMode: "off",
     inkColor: "#000000",
-    boldAxes: true
+    boldAxes: true,
+    exportScale: 4
   },
   acs_arial: {
     preset: "acs_arial",
@@ -663,7 +664,8 @@ const CASTEP_PLOT_STYLE_PRESETS = {
     tickLength: 5,
     gridMode: "off",
     inkColor: "#000000",
-    boldAxes: true
+    boldAxes: true,
+    exportScale: 4
   },
   presentation: {
     preset: "presentation",
@@ -678,7 +680,8 @@ const CASTEP_PLOT_STYLE_PRESETS = {
     tickLength: 6,
     gridMode: "subtle",
     inkColor: "#000000",
-    boldAxes: true
+    boldAxes: true,
+    exportScale: 4
   },
   origin_grid: {
     preset: "origin_grid",
@@ -693,9 +696,31 @@ const CASTEP_PLOT_STYLE_PRESETS = {
     tickLength: 5,
     gridMode: "subtle",
     inkColor: "#000000",
-    boldAxes: true
+    boldAxes: true,
+    exportScale: 4
   }
 };
+
+function getCastepCanvasDpr(cssW = 900, cssH = 540, is3D = false) {
+  const maxDim = Math.max(1, cssW || 900, cssH || 540);
+  const safeCap = Math.max(2, Math.floor(8192 / maxDim));
+  if (window._castepRenderDprOverride && Number(window._castepRenderDprOverride) > 0) {
+    return Math.min(safeCap, Number(window._castepRenderDprOverride));
+  }
+  const sysDpr = window.devicePixelRatio || 1;
+  if (is3D) return Math.min(safeCap, Math.max(2, sysDpr));
+  // Super-sampled 3x backing store on-screen for ultra-sharp publication rendering
+  return Math.min(safeCap, Math.max(3, Math.ceil(sysDpr * 1.5)));
+}
+window.getCastepCanvasDpr = getCastepCanvasDpr;
+
+function applyCrispCanvasQuality(ctx) {
+  if (!ctx) return;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+}
 
 function getCastepPlotStyle() {
   if (!window._castepPlotStyle) {
@@ -811,6 +836,7 @@ function syncCastepPlotStyleUI() {
   setV("castep-ps-tick-dir", st.tickDir);
   setV("castep-ps-grid", st.gridMode);
   setV("castep-ps-ink", st.inkColor);
+  setV("castep-ps-dpi", st.exportScale || 4);
   const chk = document.getElementById("castep-ps-bold-axes");
   if (chk) chk.checked = !!st.boldAxes;
 
@@ -871,7 +897,8 @@ function updateCastepPlotStyleFromUI() {
     tickLength: cur.tickLength || 5,
     gridMode: document.getElementById("castep-ps-grid")?.value || cur.gridMode,
     inkColor: document.getElementById("castep-ps-ink")?.value || cur.inkColor,
-    boldAxes: !!document.getElementById("castep-ps-bold-axes")?.checked
+    boldAxes: !!document.getElementById("castep-ps-bold-axes")?.checked,
+    exportScale: clamp(document.getElementById("castep-ps-dpi")?.value, 2, 6, cur.exportScale || 4)
   };
   saveCastepPlotStyle(next);
   syncCastepPlotStyleUI();
@@ -3795,7 +3822,7 @@ function renderCastep3DScene() {
   if (!canvas || !canvas.parentElement) return;
   const width = canvas.parentElement.clientWidth || 720;
   const height = canvas.parentElement.clientHeight || 445;
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = getCastepCanvasDpr(width, height, true);
   if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
     canvas.width = Math.round(width * dpr);
     canvas.height = Math.round(height * dpr);
@@ -3803,6 +3830,7 @@ function renderCastep3DScene() {
   const ctx = canvas.getContext("2d");
   ctx.save();
   ctx.scale(dpr, dpr);
+  applyCrispCanvasQuality(ctx);
 
   const v3 = CASTEP_STUDIO_STATE.view3D;
   const isWhite = v3.theme !== "dark";
@@ -5838,7 +5866,7 @@ function renderCastepElectronicPlots() {
   const parentW = canvas.parentElement ? (canvas.parentElement.clientWidth - 24) : 880;
   const width = Math.max(320, Math.floor(parentW));
   const height = 530;
-  const dpr = Math.max(2, window.devicePixelRatio || 1);
+  const dpr = getCastepCanvasDpr(width, height);
   if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
     canvas.width = Math.round(width * dpr);
     canvas.height = Math.round(height * dpr);
@@ -5848,6 +5876,7 @@ function renderCastepElectronicPlots() {
   const ctx = canvas.getContext("2d");
   ctx.save();
   ctx.scale(dpr, dpr);
+  applyCrispCanvasQuality(ctx);
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
@@ -6440,7 +6469,7 @@ function drawSimpleLineChart2D(canvas, points, opts = {}) {
   const parentW = canvas.parentElement ? (canvas.parentElement.clientWidth - 24) : 420;
   const width = Math.max(260, Math.floor(parentW));
   const height = 310;
-  const dpr = Math.max(2, window.devicePixelRatio || 1);
+  const dpr = getCastepCanvasDpr(width, height);
   canvas.width = Math.round(width * dpr);
   canvas.height = Math.round(height * dpr);
   canvas.style.width = `${width}px`;
@@ -6448,6 +6477,7 @@ function drawSimpleLineChart2D(canvas, points, opts = {}) {
   const ctx = canvas.getContext("2d");
   ctx.save();
   ctx.scale(dpr, dpr);
+  applyCrispCanvasQuality(ctx);
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
@@ -7595,19 +7625,427 @@ function openStructureInCastepStudio(structId) {
 }
 window.openStructureInCastepStudio = openStructureInCastepStudio;
 
-function exportCastepCanvasPNG(canvasId, filename) {
+// ============================================================================
+// 8A. Ultra-Sharp Hi-DPI PNG Export (300-600 DPI + pHYs), HD Clipboard Image
+//     Copy/Paste, Direct TSV Plot Data Copy, & Right-Click Plot Menu (v136)
+// ============================================================================
+
+function injectPngDpiMetadata(pngBytes, dpi) {
+  // Inserts a PNG pHYs chunk right after IHDR (byte offset 33) so Word / PowerPoint / Origin
+  // paste and place Hi-DPI plots at exact physical print dimensions (300 / 400 / 600 DPI).
+  if (!pngBytes || pngBytes.length < 34) return pngBytes;
+  // Check PNG signature (89 50 4E 47 0D 0A 1A 0A)
+  if (pngBytes[0] !== 0x89 || pngBytes[1] !== 0x50 || pngBytes[2] !== 0x4E || pngBytes[3] !== 0x47) return pngBytes;
+  // Skip if a pHYs chunk is already present in header area
+  for (let i = 8; i < Math.min(pngBytes.length - 8, 200); i++) {
+    if (pngBytes[i] === 0x70 && pngBytes[i + 1] === 0x48 && pngBytes[i + 2] === 0x59 && pngBytes[i + 3] === 0x73) {
+      return pngBytes;
+    }
+  }
+  const ppm = Math.round((dpi || 384) / 0.0254); // pixels per meter
+  const chunk = new Uint8Array(21);
+  const dv = new DataView(chunk.buffer);
+  dv.setUint32(0, 9, false); // chunk data length = 9
+  chunk[4] = 0x70; chunk[5] = 0x48; chunk[6] = 0x59; chunk[7] = 0x73; // "pHYs"
+  dv.setUint32(8, ppm, false);  // pixels per unit X
+  dv.setUint32(12, ppm, false); // pixels per unit Y
+  chunk[16] = 1;                // unit = meter
+  const crc = _crc32Bytes(chunk.subarray(4, 17));
+  dv.setUint32(17, crc, false);
+
+  const out = new Uint8Array(pngBytes.length + 21);
+  out.set(pngBytes.subarray(0, 33), 0);
+  out.set(chunk, 33);
+  out.set(pngBytes.subarray(33), 54);
+  return out;
+}
+
+function getPlotRendererForCanvas(canvasId) {
+  switch (canvasId) {
+    case "castep-electronic-canvas": return typeof renderCastepElectronicPlots === "function" ? renderCastepElectronicPlots : null;
+    case "castep-optics-canvas": return typeof renderCastepOpticalPlots === "function" ? renderCastepOpticalPlots : null;
+    case "castep-chdiff-canvas": return typeof renderCastepChdiffPlots === "function" ? renderCastepChdiffPlots : null;
+    case "castep-spinmat-canvas": return typeof renderCastepSpinMatrix === "function" ? renderCastepSpinMatrix : null;
+    case "castep-mulliken-mag-canvas":
+    case "castep-mulliken-bond-canvas": return typeof renderCastepMullikenPane === "function" ? renderCastepMullikenPane : null;
+    case "castep-energy-chart-canvas":
+    case "castep-conv-chart-canvas": return typeof renderCastepConvergencePlots === "function" ? renderCastepConvergencePlots : null;
+    case "castep-3d-canvas": return typeof renderCastep3DScene === "function" ? renderCastep3DScene : null;
+    default: return null;
+  }
+}
+
+async function renderCanvasToHighResPngBlob(canvasId, scaleOverride = null) {
   const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
-  const url = canvas.toDataURL("image/png");
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename || "CASTEP_Plot.png";
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => a.remove(), 200);
-  if (typeof showToast === "function") showToast(`Exported ${filename}!`, "success");
+  if (!canvas) return null;
+  const st = getCastepPlotStyle();
+  const targetScale = Number(scaleOverride || st.exportScale || 4);
+  const dpi = Math.round(targetScale * 100); // 3x -> 300 DPI, 4x -> 400 DPI, 6x -> 600 DPI
+  const rerender = getPlotRendererForCanvas(canvasId);
+
+  let rawBlob = null;
+  let widthPx = canvas.width;
+  let heightPx = canvas.height;
+  try {
+    if (rerender) {
+      window._castepRenderDprOverride = targetScale;
+      rerender();
+    }
+    widthPx = canvas.width;
+    heightPx = canvas.height;
+    rawBlob = await new Promise((resolve) => {
+      if (canvas.toBlob) canvas.toBlob(b => resolve(b), "image/png");
+      else resolve(null);
+    });
+  } finally {
+    if (rerender) {
+      window._castepRenderDprOverride = null;
+      rerender();
+    }
+  }
+  if (!rawBlob) return null;
+  const rawBuf = await rawBlob.arrayBuffer();
+  const withDpi = injectPngDpiMetadata(new Uint8Array(rawBuf), dpi);
+  const finalBlob = new Blob([withDpi], { type: "image/png" });
+  return { blob: finalBlob, widthPx, heightPx, dpi, scale: targetScale };
+}
+window.renderCanvasToHighResPngBlob = renderCanvasToHighResPngBlob;
+
+async function exportCastepCanvasPNG(canvasId, filename) {
+  const res = await renderCanvasToHighResPngBlob(canvasId);
+  if (!res || !res.blob) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const a = document.createElement("a");
+    a.href = canvas.toDataURL("image/png");
+    a.download = filename || "CASTEP_Plot.png";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => a.remove(), 200);
+    return;
+  }
+  triggerBlobDownload(res.blob, filename || "CASTEP_Plot.png");
+  if (typeof showToast === "function") {
+    showToast(`Exported HD PNG: ${filename || "CASTEP_Plot.png"} (${res.widthPx}×${res.heightPx} px, ${res.dpi} DPI)!`, "success");
+  }
 }
 window.exportCastepCanvasPNG = exportCastepCanvasPNG;
+
+async function copyCastepCanvasHD(canvasId, label = "Plot") {
+  const res = await renderCanvasToHighResPngBlob(canvasId);
+  if (!res || !res.blob) {
+    if (typeof showToast === "function") showToast("No rendered plot available to copy.", "warning");
+    return false;
+  }
+  window._lastCopiedPlotImageInfo = {
+    canvasId, label, widthPx: res.widthPx, heightPx: res.heightPx, dpi: res.dpi, byteSize: res.blob.size
+  };
+
+  try {
+    if (navigator.clipboard && typeof navigator.clipboard.write === "function" && typeof ClipboardItem !== "undefined") {
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": res.blob })]);
+      if (typeof showToast === "function") {
+        showToast(`📋 Copied ${label} (${res.widthPx}×${res.heightPx} px, ${res.dpi} DPI) — Ctrl+V directly into Word / PowerPoint!`, "success");
+      }
+      return true;
+    }
+  } catch (err) {
+    console.warn("Clipboard image write fallback:", err);
+  }
+
+  // Graceful fallback when browser blocks clipboard image write (e.g. non-HTTPS LAN IP)
+  const fallbackName = `CASTEP_${sanitizeExportSeed(label)}_${res.dpi}DPI.png`;
+  triggerBlobDownload(res.blob, fallbackName);
+  if (typeof showToast === "function") {
+    showToast(`Clipboard image requires HTTPS/localhost — downloaded ${fallbackName} (${res.widthPx}×${res.heightPx} px, ${res.dpi} DPI) instead.`, "warning");
+  }
+  return false;
+}
+window.copyCastepCanvasHD = copyCastepCanvasHD;
+
+function buildTsvString(headers, rows) {
+  const cleanCell = (v) => String(v === null || v === undefined ? "" : v).replace(/\t/g, " ").replace(/\r?\n/g, " ");
+  const lines = [headers.map(cleanCell).join("\t")];
+  (rows || []).forEach(r => lines.push((r || []).map(cleanCell).join("\t")));
+  return lines.join("\n");
+}
+window.buildTsvString = buildTsvString;
+
+async function copyTextToClipboardSafe(text) {
+  try {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (_) {}
+  // Universal fallback for non-HTTPS LAN contexts
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.top = "-9999px";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    ta.remove();
+    return !!ok;
+  } catch (_) {
+    return false;
+  }
+}
+
+function buildCastepPlotDataForClipboard(plotKey, subPart = "auto") {
+  const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
+
+  if (plotKey === "electronic") {
+    const pkg = buildElectronicExportTables();
+    if (!pkg) return null;
+    const layout = document.getElementById("castep-elec-layout")?.value || "joint";
+    const mode = subPart === "auto" ? (layout === "band" ? "band" : "pdos") : subPart;
+    if (mode === "band") {
+      if (!pkg.bandSheets.length) return null;
+      if (pkg.bandSheets.length === 1) {
+        return { title: "Band Structure", headers: pkg.bandSheets[0].headers, rows: pkg.bandSheets[0].rows };
+      }
+      const s0 = pkg.bandSheets[0], s1 = pkg.bandSheets[1];
+      const headers = [...s0.headers, ...s1.headers.slice(3)];
+      const rows = s0.rows.map((r, i) => [...r, ...(s1.rows[i] ? s1.rows[i].slice(3) : [])]);
+      return { title: "Band Structure (Spin Up & Down)", headers, rows };
+    }
+    return { title: `PDOS (${pkg.pdosSheet.name})`, headers: pkg.pdosSheet.headers, rows: pkg.pdosSheet.rows };
+  }
+
+  if (plotKey === "optics") {
+    const pkg = buildOpticalExportTables();
+    if (!pkg) return null;
+    const prop = document.getElementById("castep-opt-property")?.value || "multigrid";
+    if (prop === "anisotropy" && pkg.anisoSheet) {
+      return { title: "Optical Anisotropy Tensor", headers: pkg.anisoSheet.headers, rows: pkg.anisoSheet.rows };
+    }
+    if (subPart === "dielectric") return { title: "Dielectric Function", headers: pkg.dielSheet.headers, rows: pkg.dielSheet.rows };
+    if (subPart === "absorption") return { title: "Absorption & Tauc", headers: pkg.absSheet.headers, rows: pkg.absSheet.rows };
+    return { title: "Optical Spectra (All Channels)", headers: pkg.fullSheet.headers, rows: pkg.fullSheet.rows };
+  }
+
+  if (plotKey === "spinmat") {
+    const orbData = getActiveJobOrbitalSpinData(job);
+    if (!orbData || !orbData.atoms?.length) return null;
+    const activeEl = document.getElementById("castep-spinmat-element")?.value || "all_grid";
+    const atomMode = document.getElementById("castep-spinmat-atom")?.value || "avg";
+    const reqShell = document.getElementById("castep-spinmat-shell")?.value || "auto";
+    const qty = document.getElementById("castep-spinmat-qty")?.value || (orbData.mode === "noncollinear" ? "sz" : "spin");
+    const decimals = parseInt(document.getElementById("castep-spinmat-decimals")?.value || "3", 10);
+
+    if (activeEl !== "all_grid" && subPart !== "all_elements") {
+      const sp = getSpinMatrixElementsSummary(orbData).find(s => s.element === activeEl);
+      if (sp) {
+        const agg = aggregateElementOrbitals(sp.atoms, atomMode, orbData.mode);
+        const res = resolveSpinMatrixEntries(agg.orbitals, reqShell, orbData.source, qty, orbData.mode);
+        const labels = res.entries.map(e => e.spec.plain);
+        const headers = [`${agg.label.replace(/\s+/g, "_")}_${qty}`, ...labels];
+        const rows = res.entries.map((rowE, rIdx) => [
+          rowE.spec.plain,
+          ...res.entries.map((_, cIdx) => rIdx === cIdx ? Number(rowE.val.toFixed(Math.max(decimals, 5))) : 0)
+        ]);
+        // Append detailed sub-orbital table below the N×N matrix
+        rows.push([]);
+        if (orbData.mode === "noncollinear") {
+          rows.push(["Orbital", "Charge_e", "Sx_muB", "Sy_muB", "Sz_muB", "S_mag_muB"]);
+          res.entries.forEach(e => {
+            const r = e.raw;
+            const sm = r.smag !== undefined ? r.smag : Math.hypot(r.sx || 0, r.sy || 0, r.sz || 0);
+            rows.push([e.spec.plain, Number((r.charge || 0).toFixed(5)), Number((r.sx || 0).toFixed(5)), Number((r.sy || 0).toFixed(5)), Number((r.sz || 0).toFixed(5)), Number(sm.toFixed(5))]);
+          });
+        } else {
+          rows.push(["Orbital", "Up_e", "Down_e", "Spin_muB", "Charge_e"]);
+          res.entries.forEach(e => {
+            const r = e.raw;
+            rows.push([e.spec.plain, Number((r.up || 0).toFixed(5)), Number((r.dn || 0).toFixed(5)), Number((r.spin || 0).toFixed(5)), Number((r.charge !== undefined ? r.charge : ((r.up || 0) + (r.dn || 0))).toFixed(5))]);
+          });
+        }
+        return { title: `Spin Matrix (${agg.label} ${res.effectiveShell})`, headers, rows };
+      }
+    }
+    const fullSheet = buildOrbitalSpinMatrixExportSheet(job);
+    return fullSheet ? { title: "All-Elements Orbital Spin Matrix", headers: fullSheet.headers, rows: fullSheet.rows } : null;
+  }
+
+  if (plotKey === "mulliken") {
+    const pkg = buildMullikenExportTables();
+    if (!pkg) return null;
+    const sheet = (subPart === "bonds") ? pkg.bondSheet : pkg.atomSheet;
+    return { title: subPart === "bonds" ? "Mulliken Bond Populations" : "Atomic Mulliken & Spin", headers: sheet.headers, rows: sheet.rows };
+  }
+
+  if (plotKey === "chdiff") {
+    const pkg = buildChdiffExportTables();
+    if (!pkg) return null;
+    const sheet = (subPart === "2d") ? pkg.sheet2D : pkg.sheet1D;
+    return { title: subPart === "2d" ? "2D Charge Diff Slice" : "1D Planar Δρ(z) & ΔQ(z)", headers: sheet.headers, rows: sheet.rows };
+  }
+
+  if (plotKey === "convergence") {
+    const pkg = buildConvergenceExportTables();
+    if (!pkg) return null;
+    const sheet = (pkg.scfSheet && pkg.scfSheet.rows.length) ? pkg.scfSheet : pkg.geomSheet;
+    if (!sheet || !sheet.rows.length) return null;
+    return { title: "SCF & Energy Convergence", headers: sheet.headers, rows: sheet.rows };
+  }
+
+  return null;
+}
+window.buildCastepPlotDataForClipboard = buildCastepPlotDataForClipboard;
+
+async function copyCastepPlotData(plotKey, subPart = "auto") {
+  const tbl = buildCastepPlotDataForClipboard(plotKey, subPart);
+  if (!tbl || !tbl.rows || !tbl.rows.length) {
+    if (typeof showToast === "function") showToast("No numerical data available on this plot to copy.", "warning");
+    return false;
+  }
+  const tsv = buildTsvString(tbl.headers, tbl.rows);
+  window._lastCopiedPlotDataInfo = {
+    plotKey, subPart, title: tbl.title, rows: tbl.rows.length, cols: tbl.headers.length,
+    chars: tsv.length, headers: tbl.headers, preview: tsv.slice(0, 320)
+  };
+  const ok = await copyTextToClipboardSafe(tsv);
+  if (typeof showToast === "function") {
+    if (ok) {
+      showToast(`📋 Copied ${tbl.title}: ${tbl.rows.length} rows × ${tbl.headers.length} cols (TSV) — Ctrl+V straight into Excel / OriginPro!`, "success");
+    } else {
+      showToast("Browser blocked clipboard text write.", "warning");
+    }
+  }
+  return ok;
+}
+window.copyCastepPlotData = copyCastepPlotData;
+
+// Universal Right-Click Context Menu on EVERY CASTEP Plot Canvas
+const CASTEP_PLOT_CTX_SPECS = {
+  "castep-electronic-canvas": {
+    label: "Band & PDOS",
+    pngName: "CASTEP_Band_PDOS.png",
+    dataItems: [
+      { label: "📊 Copy PDOS Data (TSV → Excel / Origin)", plotKey: "electronic", subPart: "pdos" },
+      { label: "📈 Copy Band Structure Data (TSV → Excel / Origin)", plotKey: "electronic", subPart: "band" }
+    ]
+  },
+  "castep-optics-canvas": {
+    label: "Optical Properties",
+    pngName: "CASTEP_Optical_Properties.png",
+    dataItems: [
+      { label: "📊 Copy Optical Spectra Data (TSV → Excel / Origin)", plotKey: "optics", subPart: "all" }
+    ]
+  },
+  "castep-spinmat-canvas": {
+    label: "Orbital Spin Matrix",
+    pngName: "CASTEP_Orbital_Spin_Matrix.png",
+    dataItems: [
+      { label: "📊 Copy Current Spin Matrix (TSV → Excel / Origin)", plotKey: "spinmat", subPart: "auto" },
+      { label: "🧲 Copy All-Elements Orbital Spin Table (TSV)", plotKey: "spinmat", subPart: "all_elements" }
+    ]
+  },
+  "castep-mulliken-mag-canvas": {
+    label: "Mulliken Magnetism",
+    pngName: "CASTEP_Mulliken_Magnetism.png",
+    dataItems: [
+      { label: "📊 Copy Atomic Mulliken & Spin Data (TSV)", plotKey: "mulliken", subPart: "atoms" }
+    ]
+  },
+  "castep-mulliken-bond-canvas": {
+    label: "Mulliken Bonds",
+    pngName: "CASTEP_Mulliken_Bonds.png",
+    dataItems: [
+      { label: "🔗 Copy Mulliken Bond Populations Data (TSV)", plotKey: "mulliken", subPart: "bonds" }
+    ]
+  },
+  "castep-chdiff-canvas": {
+    label: "Charge Density Difference",
+    pngName: "CASTEP_Charge_Density_Difference.png",
+    dataItems: [
+      { label: "📊 Copy 1D Planar Δρ(z) & ΔQ(z) Data (TSV)", plotKey: "chdiff", subPart: "1d" },
+      { label: "🗺️ Copy 2D Slice Matrix Data (TSV)", plotKey: "chdiff", subPart: "2d" }
+    ]
+  },
+  "castep-energy-chart-canvas": {
+    label: "Energy Profile",
+    pngName: "CASTEP_Energy_Profile.png",
+    dataItems: [
+      { label: "📊 Copy SCF & Energy Convergence Data (TSV)", plotKey: "convergence", subPart: "scf" }
+    ]
+  },
+  "castep-conv-chart-canvas": {
+    label: "Convergence Diagnostics",
+    pngName: "CASTEP_Convergence.png",
+    dataItems: [
+      { label: "📊 Copy SCF & Energy Convergence Data (TSV)", plotKey: "convergence", subPart: "scf" }
+    ]
+  }
+};
+
+function hideCastepPlotContextMenu() {
+  const m = document.getElementById("castep-plot-ctx-menu");
+  if (m) m.style.display = "none";
+}
+
+function showCastepPlotContextMenu(canvasId, clientX, clientY) {
+  const spec = CASTEP_PLOT_CTX_SPECS[canvasId];
+  if (!spec) return;
+  let menu = document.getElementById("castep-plot-ctx-menu");
+  if (!menu) {
+    menu = document.createElement("div");
+    menu.id = "castep-plot-ctx-menu";
+    menu.style.cssText = "position:fixed; z-index:99999; background:#ffffff; border:1px solid #cbd5e1; border-radius:9px; box-shadow:0 10px 28px rgba(15,23,42,0.18); padding:5px; min-width:248px; font-family:Inter,sans-serif; font-size:12px; color:#0f172a;";
+    document.body.appendChild(menu);
+    document.addEventListener("click", hideCastepPlotContextMenu);
+    document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") hideCastepPlotContextMenu(); });
+    window.addEventListener("scroll", hideCastepPlotContextMenu, true);
+  }
+  const st = getCastepPlotStyle();
+  const dpi = Math.round((st.exportScale || 4) * 100);
+  const btnCss = "display:flex; width:100%; text-align:left; align-items:center; gap:7px; padding:7px 10px; border:none; background:transparent; border-radius:6px; cursor:pointer; font-size:12px; color:#0f172a; font-weight:600;";
+
+  const itemsHtml = [
+    `<div style="padding:4px 10px 5px; font-size:10.5px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:0.4px; border-bottom:1px solid #f1f5f9; margin-bottom:3px;">${escapeHtml(spec.label)} • ${dpi} DPI</div>`,
+    `<button type="button" style="${btnCss} color:#0f766e;" onmouseenter="this.style.background='#f0fdfa'" onmouseleave="this.style.background='transparent'" onclick="hideCastepPlotContextMenu(); copyCastepCanvasHD('${canvasId}', '${escapeHtml(spec.label)}')">📋 Copy High-Res Image (${dpi} DPI PNG)</button>`,
+    ...spec.dataItems.map(it =>
+      `<button type="button" style="${btnCss}" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background='transparent'" onclick="hideCastepPlotContextMenu(); copyCastepPlotData('${it.plotKey}', '${it.subPart}')">${escapeHtml(it.label)}</button>`
+    ),
+    `<div style="height:1px; background:#e2e8f0; margin:4px 6px;"></div>`,
+    `<button type="button" style="${btnCss}" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background='transparent'" onclick="hideCastepPlotContextMenu(); exportCastepCanvasPNG('${canvasId}', '${escapeHtml(spec.pngName)}')">💾 Save High-Res PNG (${dpi} DPI)</button>`,
+    `<button type="button" style="${btnCss}" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background='transparent'" onclick="hideCastepPlotContextMenu(); toggleCastepPlotStyleBar(true)">🎨 Plot Format &amp; DPI Quality...</button>`
+  ];
+  menu.innerHTML = itemsHtml.join("");
+  menu.style.display = "block";
+  const mw = menu.offsetWidth || 260;
+  const mh = menu.offsetHeight || 190;
+  const left = Math.min(window.innerWidth - mw - 10, Math.max(8, clientX));
+  const top = Math.min(window.innerHeight - mh - 10, Math.max(8, clientY));
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
+}
+window.showCastepPlotContextMenu = showCastepPlotContextMenu;
+window.hideCastepPlotContextMenu = hideCastepPlotContextMenu;
+
+function initCastepPlotContextMenus() {
+  Object.keys(CASTEP_PLOT_CTX_SPECS).forEach(cid => {
+    const el = document.getElementById(cid);
+    if (!el || el._plotCtxBound) return;
+    el._plotCtxBound = true;
+    if (!el.title) el.title = "Right-click plot to Copy HD Image (400–600 DPI) or Copy Numerical Data (TSV)";
+    el.addEventListener("contextmenu", (ev) => {
+      ev.preventDefault();
+      showCastepPlotContextMenu(cid, ev.clientX, ev.clientY);
+    });
+  });
+}
+window.initCastepPlotContextMenus = initCastepPlotContextMenus;
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => setTimeout(initCastepPlotContextMenus, 400));
+} else {
+  setTimeout(initCastepPlotContextMenus, 400);
+}
 
 // ============================================================================
 // 8B. Universal Publication Data Exporter (Wide-Format CSV + Native Multi-Tab .xlsx)
@@ -10151,7 +10589,7 @@ function renderCastepOpticalPlots() {
   const parentW = canvas.parentElement ? (canvas.parentElement.clientWidth - 24) : 880;
   const width = Math.max(320, Math.floor(parentW));
   const height = 530;
-  const dpr = Math.max(2, window.devicePixelRatio || 1);
+  const dpr = getCastepCanvasDpr(width, height);
   if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
     canvas.width = Math.round(width * dpr);
     canvas.height = Math.round(height * dpr);
@@ -10161,6 +10599,7 @@ function renderCastepOpticalPlots() {
   const ctx = canvas.getContext("2d");
   ctx.save();
   ctx.scale(dpr, dpr);
+  applyCrispCanvasQuality(ctx);
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
@@ -11384,7 +11823,7 @@ function renderCastepChdiffPlots() {
   const parentW = canvas.parentElement ? (canvas.parentElement.clientWidth - 24) : 880;
   const width = Math.max(320, Math.floor(parentW));
   const height = 510;
-  const dpr = Math.max(2, window.devicePixelRatio || 1);
+  const dpr = getCastepCanvasDpr(width, height);
   if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
     canvas.width = Math.round(width * dpr);
     canvas.height = Math.round(height * dpr);
@@ -11394,6 +11833,7 @@ function renderCastepChdiffPlots() {
   const ctx = canvas.getContext("2d");
   ctx.save();
   ctx.scale(dpr, dpr);
+  applyCrispCanvasQuality(ctx);
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
@@ -11712,6 +12152,7 @@ function renderCastepChdiffPlots() {
     const toX = (z) => px0 + ((z - zMin) / ((zMax - zMin) || 1)) * pw;
     const toYP = (v) => py0 + ph * (0.5 - v / (2 * maxAbsP));
     const toYQ = (q) => py0 + ph * (0.5 - q / (2 * maxAbsQ));
+    const yZero = toYP(0);
 
     const xTickVals = [0, 1, 2, 3, 4].map(g => zMin + (zMax - zMin) * (g / 4));
     const xTickPx = xTickVals.map(zv => toX(zv));
@@ -12982,11 +13423,12 @@ function renderCastepMullikenPane() {
 
   if (magCanvas) {
     const w = Math.max(260, Math.floor((magCanvas.parentElement?.clientWidth || 440) - 24));
-    const h = 310, dpr = Math.max(2, window.devicePixelRatio || 1);
+    const h = 310, dpr = getCastepCanvasDpr(w, h);
     magCanvas.width = Math.round(w * dpr); magCanvas.height = Math.round(h * dpr);
     magCanvas.style.width = `${w}px`; magCanvas.style.height = `${h}px`;
     const ctx = magCanvas.getContext("2d");
     ctx.save(); ctx.scale(dpr, dpr);
+    applyCrispCanvasQuality(ctx);
     ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, w, h);
 
     const padL = Math.round(58 + Math.max(0, (stM.tickSize - 12) * 2) + outTickM);
@@ -13129,11 +13571,12 @@ function renderCastepMullikenPane() {
   // 4) Render Right Chart: Mulliken Bond Population vs Bond Length (Å)
   if (bondCanvas) {
     const w = Math.max(260, Math.floor((bondCanvas.parentElement?.clientWidth || 440) - 24));
-    const h = 310, dpr = Math.max(2, window.devicePixelRatio || 1);
+    const h = 310, dpr = getCastepCanvasDpr(w, h);
     bondCanvas.width = Math.round(w * dpr); bondCanvas.height = Math.round(h * dpr);
     bondCanvas.style.width = `${w}px`; bondCanvas.style.height = `${h}px`;
     const ctx = bondCanvas.getContext("2d");
     ctx.save(); ctx.scale(dpr, dpr);
+    applyCrispCanvasQuality(ctx);
     ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, w, h);
 
     const padL = Math.round(58 + Math.max(0, (stM.tickSize - 12) * 2) + outTickM);
@@ -14103,13 +14546,14 @@ function renderCastepSpinMatrix() {
       const panelH = Math.max(270, Math.min(350, Math.floor(cellW * 0.92)));
       const totalW = Math.max(parentW, cols * 270);
       const totalH = rows * panelH + 34;
-      const dpr = Math.max(2, window.devicePixelRatio || 1);
+      const dpr = getCastepCanvasDpr(totalW, totalH);
       canvas.width = Math.round(totalW * dpr);
       canvas.height = Math.round(totalH * dpr);
       canvas.style.width = `${totalW}px`;
       canvas.style.height = `${totalH}px`;
       const ctx = canvas.getContext("2d");
       ctx.save(); ctx.scale(dpr, dpr);
+      applyCrispCanvasQuality(ctx);
       ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, totalW, totalH);
 
       const qtySciTitle = {
@@ -14189,7 +14633,7 @@ function renderCastepSpinMatrix() {
     const boxSize = Math.max(180, Math.min(wrapW - padL - padR, 355));
     const totalW = padL + boxSize + padR;
     const totalH = padT + boxSize + padB;
-    const dpr = Math.max(2, window.devicePixelRatio || 1);
+    const dpr = getCastepCanvasDpr(totalW, totalH);
     canvas.width = Math.round(totalW * dpr);
     canvas.height = Math.round(totalH * dpr);
     canvas.style.width = `${totalW}px`;
@@ -14197,6 +14641,7 @@ function renderCastepSpinMatrix() {
 
     const ctx = canvas.getContext("2d");
     ctx.save(); ctx.scale(dpr, dpr);
+    applyCrispCanvasQuality(ctx);
     ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, totalW, totalH);
     drawSingleSpinMatrixPanel(ctx, padL, padT, boxSize, entries, {
       decimals,
