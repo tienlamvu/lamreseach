@@ -12516,3 +12516,598 @@ sup {
   gap: 10px;
   margin-top: 10px;
 }
+
+
+/* =========================================================================
+   DFT Theory Curriculum Tab & Publication Math Typography (v140)
+   ========================================================================= */
+.dft-dash-card {
+  border-left: 4px solid #b45309;
+  background: linear-gradient(135deg, #fffdf9 0%, #fdf7ec 100%);
+  margin-bottom: 18px;
+}
+.dft-dash-pills-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 7px;
+}
+@media (max-width: 1080px) {
+  .dft-dash-pills-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.dft-dash-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid #e4d8c8;
+  background: #ffffff;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+.dft-dash-pill:hover {
+  border-color: #b45309;
+  background: #fdf3dc;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(180, 83, 9, 0.12);
+}
+.dft-dash-num {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #b45309;
+}
+.dft-dash-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.25;
+}
+
+.dft-theory-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 18px 22px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #241913 0%, #3b2618 55%, #6b3a16 100%);
+  color: #fffdf9;
+  margin-bottom: 14px;
+  box-shadow: 0 6px 20px rgba(36, 25, 19, 0.18);
+}
+.dft-hero-left {
+  flex: 1 1 520px;
+}
+.dft-hero-eyebrow {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #fcd34d;
+  margin-bottom: 5px;
+}
+.dft-hero-title {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0 0 6px 0;
+  color: #ffffff;
+  letter-spacing: -0.015em;
+}
+.dft-hero-desc {
+  font-size: 13px;
+  line-height: 1.55;
+  color: #f3e8d8;
+  margin: 0;
+  max-width: 780px;
+}
+.dft-hero-right {
+  flex: 0 1 350px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 260px;
+}
+.dft-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.dft-search-ico {
+  position: absolute;
+  left: 10px;
+  font-size: 13px;
+  pointer-events: none;
+}
+.dft-search-input {
+  width: 100%;
+  height: 34px;
+  padding: 6px 12px 6px 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(253, 230, 138, 0.35);
+  background: rgba(255, 255, 255, 0.96);
+  color: #1e293b;
+  font-size: 12.5px;
+  outline: none;
+}
+.dft-search-input:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25);
+}
+.dft-hero-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.dft-hero-badge {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #fde68a;
+}
+
+/* Inner Lecture Sub-Tabs Bar (Lecture 1 .. Lecture 10) */
+.dft-lec-tabs-bar {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 14px;
+}
+@media (max-width: 1080px) {
+  .dft-lec-tabs-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.dft-lec-tab {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  border: 1px solid #dfd2c0;
+  background: #fffdf9;
+  color: #334155;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+  font-size: 12px;
+  font-weight: 700;
+}
+.dft-lec-tab:hover {
+  border-color: #b45309;
+  background: #fdf6e7;
+  color: #78350f;
+}
+.dft-lec-tab.active {
+  background: #b45309;
+  border-color: #92400e;
+  color: #ffffff;
+  box-shadow: 0 3px 10px rgba(180, 83, 9, 0.28);
+}
+.dft-lec-tab-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  background: #fdf3dc;
+  color: #92400e;
+  flex-shrink: 0;
+}
+.dft-lec-tab.active .dft-lec-tab-num {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+.dft-lec-tab-lbl {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dft-lec-tab.dft-lec-dim {
+  opacity: 0.36;
+}
+.dft-lec-tab.dft-lec-hit {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.18);
+}
+
+/* Active Lecture Article Card */
+.dft-lec-stage {
+  background: #ffffff;
+  border: 1px solid #e4d8c8;
+  border-radius: 14px;
+  padding: 24px 28px;
+  box-shadow: 0 2px 10px rgba(42, 31, 24, 0.05);
+}
+@media (max-width: 720px) {
+  .dft-lec-stage { padding: 16px 14px; }
+}
+.dft-lec-header {
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f1e7d9;
+  margin-bottom: 20px;
+}
+.dft-lec-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.dft-level-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.dft-level-basic { background: #dcfce7; color: #166534; }
+.dft-level-interm { background: #dbeafe; color: #1e40af; }
+.dft-level-adv { background: #f3e8ff; color: #6b21a8; }
+.dft-level-cap { background: #fef3c7; color: #92400e; }
+.dft-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+}
+.dft-meta-link {
+  cursor: pointer;
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+  margin-left: auto;
+}
+.dft-meta-link:hover {
+  background: #dbeafe;
+  border-color: #2563eb;
+}
+.dft-lec-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 6px 0;
+  line-height: 1.3;
+}
+.dft-lec-subtitle {
+  font-size: 13.5px;
+  color: #475569;
+  margin: 0 0 14px 0;
+  line-height: 1.55;
+}
+.dft-obj-box {
+  background: #faf6ef;
+  border: 1px solid #e7dac8;
+  border-radius: 10px;
+  padding: 11px 15px;
+}
+.dft-obj-title {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #78350f;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+.dft-obj-box ul {
+  margin: 0 0 0 18px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 4px 18px;
+  font-size: 12.5px;
+  color: #334155;
+  line-height: 1.5;
+}
+
+/* Lecture Body Prose */
+.dft-lec-content h3 {
+  font-size: 16px;
+  font-weight: 800;
+  color: #1e293b;
+  margin: 22px 0 8px 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e2e8f0;
+}
+.dft-lec-content h3:first-child {
+  margin-top: 0;
+}
+.dft-lec-content p {
+  font-size: 13.8px;
+  line-height: 1.72;
+  color: #1e293b;
+  margin: 0 0 11px 0;
+}
+.dft-lec-content code {
+  background: #f1f5f9;
+  color: #0f172a;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 12.2px;
+  border: 1px solid #e2e8f0;
+}
+
+/* Publication-Grade Display Equations */
+.dft-eq-box {
+  margin: 12px 0 14px 0;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border: 1px solid #dbe4f0;
+  border-left: 3.5px solid #1d4ed8;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+.dft-eq-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.dft-eq-math {
+  flex: 1;
+  text-align: center;
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", Georgia, serif;
+  font-size: 16.5px;
+  line-height: 1.9;
+  color: #0f172a;
+  padding: 2px 4px;
+}
+.dft-eq-num {
+  font-family: "Times New Roman", Georgia, serif;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #475569;
+  white-space: nowrap;
+}
+.dft-eq-note {
+  margin-top: 7px;
+  padding-top: 6px;
+  border-top: 1px dashed #cbd5e1;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #475569;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.dft-frac {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  vertical-align: middle;
+  margin: 0 3px;
+  line-height: 1.18;
+  font-size: 0.92em;
+}
+.dft-frac > .dft-num {
+  border-bottom: 1.25px solid #0f172a;
+  padding: 0 4px 1px 4px;
+  text-align: center;
+}
+.dft-frac > .dft-den {
+  padding: 2px 4px 0 4px;
+  text-align: center;
+}
+.dft-bigop {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  vertical-align: middle;
+  margin: 0 3px;
+  line-height: 1.0;
+}
+.dft-op-sym {
+  font-size: 1.48em;
+  line-height: 0.95;
+}
+.dft-op-sub, .dft-op-sup {
+  font-size: 0.65em;
+  line-height: 1.1;
+  min-height: 0.7em;
+}
+.dft-vec {
+  font-weight: 800;
+  font-style: normal;
+}
+.dft-hat {
+  position: relative;
+  display: inline-block;
+  font-style: italic;
+  font-weight: 700;
+}
+.dft-hat::after {
+  content: "\02C6";
+  position: absolute;
+  top: -0.42em;
+  left: 50%;
+  transform: translateX(-50%);
+  font-style: normal;
+  font-size: 0.92em;
+}
+.dft-bigdel {
+  font-size: 1.38em;
+  vertical-align: middle;
+  font-weight: 400;
+  margin: 0 1px;
+}
+
+/* Callouts, Two-Column Theorems, SVG Diagrams & Tables */
+.dft-two-col {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 12px;
+  margin: 10px 0 14px 0;
+}
+.dft-callout {
+  border-radius: 9px;
+  padding: 11px 14px;
+  margin: 10px 0 14px 0;
+  font-size: 13px;
+  line-height: 1.62;
+}
+.dft-two-col .dft-callout {
+  margin: 0;
+}
+.dft-callout-def {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-left: 4px solid #2563eb;
+}
+.dft-callout-tip {
+  background: #fefce8;
+  border: 1px solid #fde68a;
+  border-left: 4px solid #d97706;
+}
+.dft-callout-title {
+  font-weight: 800;
+  font-size: 12.5px;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+.dft-callout-body {
+  color: #1e293b;
+}
+
+.dft-diagram-wrap {
+  margin: 14px 0 16px 0;
+  padding: 12px 14px;
+  background: #ffffff;
+  border: 1px solid #dbe4f0;
+  border-radius: 10px;
+  overflow-x: auto;
+}
+.dft-diagram-wrap svg {
+  display: block;
+  margin: 0 auto;
+  max-width: 860px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.dft-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0 16px 0;
+  font-size: 12.5px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.dft-table thead th {
+  background: #f1f5f9;
+  color: #0f172a;
+  font-weight: 800;
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1.5px solid #cbd5e1;
+}
+.dft-table tbody td {
+  padding: 7.5px 10px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #1e293b;
+  vertical-align: top;
+  line-height: 1.48;
+}
+.dft-table tbody tr:nth-child(even) {
+  background: #fafcff;
+}
+
+/* Hands-On Practice Box Linked to Live Data Analysis */
+.dft-lab-box {
+  margin: 20px 0 6px 0;
+  border: 1.5px solid #c7d9f8;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #f0f7ff 0%, #f8fbff 100%);
+  padding: 14px 16px;
+}
+.dft-lab-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.dft-lab-eyebrow {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #1d4ed8;
+}
+.dft-lab-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+}
+.dft-lab-btns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.dft-steps {
+  margin: 0 0 0 18px;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1.65;
+  color: #1e293b;
+}
+.dft-steps li {
+  margin-bottom: 4px;
+}
+
+/* Lecture 10 6-Stage Workflow Cards */
+.dft-workflow-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 10px;
+  margin: 12px 0 16px 0;
+}
+.dft-wf-card {
+  background: #fffdf9;
+  border: 1px solid #e4d8c8;
+  border-top: 3px solid #b45309;
+  border-radius: 9px;
+  padding: 11px 13px;
+}
+.dft-wf-step {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #b45309;
+  margin-bottom: 2px;
+}
+.dft-wf-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 5px;
+}
+.dft-wf-card p {
+  font-size: 12.2px;
+  line-height: 1.55;
+  color: #334155;
+  margin: 0;
+}
+
+.dft-lec-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1.5px solid #f1e7d9;
+}
