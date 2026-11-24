@@ -627,6 +627,264 @@ function drawSciText(ctx, text, x, y) {
 window.drawSciText = drawSciText;
 
 // ============================================================================
+// 1B. Unified Publication Plot Style Engine (v135 — Times New Roman Journal Standard)
+// Shared by ALL CASTEP plots: Band & PDOS, Optical, Spin Matrix, Mulliken,
+// Charge Density Difference, and SCF/Geometry Convergence.
+// ============================================================================
+
+const CASTEP_PLOT_STYLE_STORAGE_KEY = "castep_plot_style_v1";
+
+const CASTEP_PLOT_STYLE_PRESETS = {
+  journal_tnr: {
+    preset: "journal_tnr",
+    fontFamily: '"Times New Roman", Times, Georgia, serif',
+    titleSize: 14,
+    axisLabelSize: 13,
+    tickSize: 12,
+    legendSize: 11,
+    borderWidth: 1.8,
+    lineWidth: 1.8,
+    tickDir: "in",
+    tickLength: 5,
+    gridMode: "off",
+    inkColor: "#000000",
+    boldAxes: true
+  },
+  acs_arial: {
+    preset: "acs_arial",
+    fontFamily: "Arial, Helvetica, sans-serif",
+    titleSize: 13,
+    axisLabelSize: 12,
+    tickSize: 11,
+    legendSize: 10,
+    borderWidth: 1.6,
+    lineWidth: 1.8,
+    tickDir: "in",
+    tickLength: 5,
+    gridMode: "off",
+    inkColor: "#000000",
+    boldAxes: true
+  },
+  presentation: {
+    preset: "presentation",
+    fontFamily: '"Times New Roman", Times, Georgia, serif',
+    titleSize: 16,
+    axisLabelSize: 15,
+    tickSize: 14,
+    legendSize: 12,
+    borderWidth: 2.2,
+    lineWidth: 2.4,
+    tickDir: "in",
+    tickLength: 6,
+    gridMode: "subtle",
+    inkColor: "#000000",
+    boldAxes: true
+  },
+  origin_grid: {
+    preset: "origin_grid",
+    fontFamily: '"Times New Roman", Times, Georgia, serif',
+    titleSize: 14,
+    axisLabelSize: 13,
+    tickSize: 12,
+    legendSize: 11,
+    borderWidth: 1.8,
+    lineWidth: 1.8,
+    tickDir: "in",
+    tickLength: 5,
+    gridMode: "subtle",
+    inkColor: "#000000",
+    boldAxes: true
+  }
+};
+
+function getCastepPlotStyle() {
+  if (!window._castepPlotStyle) {
+    let saved = null;
+    try {
+      const raw = localStorage.getItem(CASTEP_PLOT_STYLE_STORAGE_KEY);
+      if (raw) saved = JSON.parse(raw);
+    } catch (_) {}
+    window._castepPlotStyle = { ...CASTEP_PLOT_STYLE_PRESETS.journal_tnr, ...(saved || {}) };
+  }
+  return window._castepPlotStyle;
+}
+window.getCastepPlotStyle = getCastepPlotStyle;
+
+function saveCastepPlotStyle(st) {
+  window._castepPlotStyle = { ...CASTEP_PLOT_STYLE_PRESETS.journal_tnr, ...st };
+  try {
+    localStorage.setItem(CASTEP_PLOT_STYLE_STORAGE_KEY, JSON.stringify(window._castepPlotStyle));
+  } catch (_) {}
+}
+
+function castepPlotFont(role, scale = 1.0, stylePrefix = null) {
+  const st = getCastepPlotStyle();
+  let basePx = st.tickSize;
+  let defaultWeight = "";
+  if (role === "title") { basePx = st.titleSize; defaultWeight = st.boldAxes ? "bold " : ""; }
+  else if (role === "axis") { basePx = st.axisLabelSize; defaultWeight = st.boldAxes ? "bold " : ""; }
+  else if (role === "legend") { basePx = st.legendSize; defaultWeight = ""; }
+  else if (role === "tick") { basePx = st.tickSize; defaultWeight = ""; }
+  const px = Math.max(8, Number((basePx * scale).toFixed(2)));
+  const pref = stylePrefix !== null ? (stylePrefix ? stylePrefix.trim() + " " : "") : defaultWeight;
+  return `${pref}${px}px ${st.fontFamily}`;
+}
+window.castepPlotFont = castepPlotFont;
+
+function formatPubMinus(str) {
+  return String(str).replace(/^-/, "\u2212");
+}
+
+function drawPubGridLines(ctx, x, y, w, h, st, xPositions = [], yPositions = []) {
+  if (!st || st.gridMode === "off") return;
+  ctx.save();
+  ctx.strokeStyle = st.gridMode === "normal" ? "#cbd5e1" : "#e5e7eb";
+  ctx.lineWidth = st.gridMode === "normal" ? 0.9 : 0.75;
+  ctx.setLineDash(st.gridMode === "normal" ? [] : [3, 3]);
+  (xPositions || []).forEach(px => {
+    if (px > x + 2 && px < x + w - 2) {
+      ctx.beginPath(); ctx.moveTo(Math.round(px) + 0.5, y); ctx.lineTo(Math.round(px) + 0.5, y + h); ctx.stroke();
+    }
+  });
+  (yPositions || []).forEach(py => {
+    if (py > y + 2 && py < y + h - 2) {
+      ctx.beginPath(); ctx.moveTo(x, Math.round(py) + 0.5); ctx.lineTo(x + w, Math.round(py) + 0.5); ctx.stroke();
+    }
+  });
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+function drawPubAxisBox(ctx, x, y, w, h, st, opts = {}) {
+  const rx = Math.round(x) + 0.5;
+  const ry = Math.round(y) + 0.5;
+  const rw = Math.round(w);
+  const rh = Math.round(h);
+  const bw = opts.compact ? Math.max(1.1, st.borderWidth * 0.84) : st.borderWidth;
+  ctx.save();
+  ctx.strokeStyle = st.inkColor || "#000000";
+  ctx.lineWidth = bw;
+  ctx.setLineDash([]);
+  ctx.strokeRect(rx, ry, rw, rh);
+
+  if (st.tickDir !== "none") {
+    const tl = opts.compact ? Math.max(3, (st.tickLength || 5) - 1.5) : (st.tickLength || 5);
+    const sgn = st.tickDir === "out" ? -1 : 1; // +1 = inward, -1 = outward
+    ctx.lineWidth = Math.max(1.0, bw * 0.85);
+    const drawTick = (x1, y1, x2, y2) => {
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    };
+    const xTicks = opts.xTicks || [];
+    xTicks.forEach(px => {
+      const tx = Math.round(px) + 0.5;
+      if (tx <= rx + 1.5 || tx >= rx + rw - 1.5) return;
+      drawTick(tx, ry + rh, tx, ry + rh - sgn * tl);
+      if (opts.mirrorTop) drawTick(tx, ry, tx, ry + sgn * tl);
+    });
+    const yTicks = opts.yTicks || [];
+    yTicks.forEach(py => {
+      const ty = Math.round(py) + 0.5;
+      if (ty <= ry + 1.5 || ty >= ry + rh - 1.5) return;
+      drawTick(rx, ty, rx + sgn * tl, ty);
+      if (opts.mirrorRight) drawTick(rx + rw, ty, rx + rw - sgn * tl, ty);
+    });
+    const rTicks = opts.rightYTicks || [];
+    rTicks.forEach(py => {
+      const ty = Math.round(py) + 0.5;
+      if (ty <= ry + 1.5 || ty >= ry + rh - 1.5) return;
+      drawTick(rx + rw, ty, rx + rw - sgn * tl, ty);
+    });
+  }
+  ctx.restore();
+}
+
+function syncCastepPlotStyleUI() {
+  const st = getCastepPlotStyle();
+  const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = String(v); };
+  setV("castep-ps-font", st.fontFamily);
+  setV("castep-ps-title-size", st.titleSize);
+  setV("castep-ps-axis-size", st.axisLabelSize);
+  setV("castep-ps-tick-size", st.tickSize);
+  setV("castep-ps-legend-size", st.legendSize);
+  setV("castep-ps-border-w", st.borderWidth);
+  setV("castep-ps-line-w", st.lineWidth);
+  setV("castep-ps-tick-dir", st.tickDir);
+  setV("castep-ps-grid", st.gridMode);
+  setV("castep-ps-ink", st.inkColor);
+  const chk = document.getElementById("castep-ps-bold-axes");
+  if (chk) chk.checked = !!st.boldAxes;
+
+  document.querySelectorAll("#castep-plot-style-bar [data-style-preset]").forEach(btn => {
+    const isAct = btn.getAttribute("data-style-preset") === st.preset;
+    btn.style.background = isAct ? "#0f172a" : "";
+    btn.style.color = isAct ? "#ffffff" : "";
+    btn.style.borderColor = isAct ? "#0f172a" : "";
+  });
+}
+window.syncCastepPlotStyleUI = syncCastepPlotStyleUI;
+
+function toggleCastepPlotStyleBar(forceState) {
+  const bar = document.getElementById("castep-plot-style-bar");
+  const btn = document.getElementById("castep-plot-style-toggle-btn");
+  if (!bar) return;
+  const nextShow = typeof forceState === "boolean" ? forceState : (bar.style.display === "none" || !bar.style.display);
+  bar.style.display = nextShow ? "block" : "none";
+  if (btn) {
+    btn.style.background = nextShow ? "#0f172a" : "#f8fafc";
+    btn.style.color = nextShow ? "#ffffff" : "#0f172a";
+  }
+  if (nextShow) syncCastepPlotStyleUI();
+}
+window.toggleCastepPlotStyleBar = toggleCastepPlotStyleBar;
+
+function rerenderAllActiveCastepPlots() {
+  if (typeof renderCastepElectronicPlots === "function") renderCastepElectronicPlots();
+  if (typeof renderCastepOpticalPlots === "function") renderCastepOpticalPlots();
+  if (typeof renderCastepChdiffPlots === "function") renderCastepChdiffPlots();
+  if (typeof renderCastepMullikenPane === "function") renderCastepMullikenPane();
+  if (typeof renderCastepConvergencePlots === "function") renderCastepConvergencePlots();
+}
+window.rerenderAllActiveCastepPlots = rerenderAllActiveCastepPlots;
+
+function applyCastepPlotStylePreset(presetKey) {
+  const preset = CASTEP_PLOT_STYLE_PRESETS[presetKey];
+  if (!preset) return;
+  saveCastepPlotStyle({ ...preset });
+  syncCastepPlotStyleUI();
+  rerenderAllActiveCastepPlots();
+}
+window.applyCastepPlotStylePreset = applyCastepPlotStylePreset;
+
+function updateCastepPlotStyleFromUI() {
+  const clamp = (v, lo, hi, fb) => { const n = parseFloat(v); return isFinite(n) ? Math.max(lo, Math.min(hi, n)) : fb; };
+  const cur = getCastepPlotStyle();
+  const next = {
+    preset: "custom",
+    fontFamily: document.getElementById("castep-ps-font")?.value || cur.fontFamily,
+    titleSize: clamp(document.getElementById("castep-ps-title-size")?.value, 10, 22, cur.titleSize),
+    axisLabelSize: clamp(document.getElementById("castep-ps-axis-size")?.value, 9, 20, cur.axisLabelSize),
+    tickSize: clamp(document.getElementById("castep-ps-tick-size")?.value, 8, 18, cur.tickSize),
+    legendSize: clamp(document.getElementById("castep-ps-legend-size")?.value, 8, 16, cur.legendSize),
+    borderWidth: clamp(document.getElementById("castep-ps-border-w")?.value, 0.8, 3.5, cur.borderWidth),
+    lineWidth: clamp(document.getElementById("castep-ps-line-w")?.value, 0.8, 4.0, cur.lineWidth),
+    tickDir: document.getElementById("castep-ps-tick-dir")?.value || cur.tickDir,
+    tickLength: cur.tickLength || 5,
+    gridMode: document.getElementById("castep-ps-grid")?.value || cur.gridMode,
+    inkColor: document.getElementById("castep-ps-ink")?.value || cur.inkColor,
+    boldAxes: !!document.getElementById("castep-ps-bold-axes")?.checked
+  };
+  saveCastepPlotStyle(next);
+  syncCastepPlotStyleUI();
+  rerenderAllActiveCastepPlots();
+}
+window.updateCastepPlotStyleFromUI = updateCastepPlotStyleFromUI;
+
+function resetCastepPlotStyle() {
+  applyCastepPlotStylePreset("journal_tnr");
+}
+window.resetCastepPlotStyle = resetCastepPlotStyle;
+
+// ============================================================================
 // 2. Multi-Format CASTEP Parsers (.cell, .param, .castep, .geom, .xsd, .xcd, .bands)
 // ============================================================================
 
@@ -5579,12 +5837,14 @@ function renderCastepElectronicPlots() {
 
   const parentW = canvas.parentElement ? (canvas.parentElement.clientWidth - 24) : 880;
   const width = Math.max(320, Math.floor(parentW));
-  const height = 510;
-  const dpr = window.devicePixelRatio || 1;
+  const height = 530;
+  const dpr = Math.max(2, window.devicePixelRatio || 1);
   if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
     canvas.width = Math.round(width * dpr);
     canvas.height = Math.round(height * dpr);
   }
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
   const ctx = canvas.getContext("2d");
   ctx.save();
   ctx.scale(dpr, dpr);
@@ -5739,48 +5999,63 @@ function renderCastepElectronicPlots() {
     `;
   }
 
-  const padT = 36, padB = 44, padL = 56, padR = 20;
+  const st = getCastepPlotStyle();
+  const extraT = Math.max(0, st.titleSize - 14);
+  const extraB = Math.max(0, (st.tickSize - 12) * 1.4 + (st.axisLabelSize - 13) * 1.3);
+  const extraL = Math.max(0, (st.tickSize - 12) * 2.2 + (st.axisLabelSize - 13) * 1.2);
+  const padT = Math.round(34 + extraT);
+  const padB = Math.round(48 + extraB);
+  const padL = Math.round(62 + extraL);
+  const padR = 22;
   const plotH = height - padT - padB;
+  canvas._elecPlotGeom = { padT, padB, plotH };
   const eToY = (e) => padT + plotH * (1 - (e - emin) / ((emax - emin) || 1));
 
   let bandX0 = padL, bandW = width - padL - padR;
   let dosX0 = padL, dosW = width - padL - padR;
   if (layout === "joint") {
-    bandW = Math.round((width - padL - padR - 26) * 0.56);
-    dosX0 = bandX0 + bandW + 26;
+    const gapBetween = Math.round(24 + Math.max(0, (st.tickSize - 12) * 1.5));
+    bandW = Math.round((width - padL - padR - gapBetween) * 0.56);
+    dosX0 = bandX0 + bandW + gapBetween;
     dosW = width - dosX0 - padR;
   }
 
   const stepE = (emax - emin) <= 8 ? 1 : 2;
+  const eTicksList = [];
+  for (let e = Math.ceil(emin); e <= Math.floor(emax); e += stepE) eTicksList.push(e);
+  const yTickPxList = eTicksList.map(e => eToY(e));
+  const outTickExtra = st.tickDir === "out" ? (st.tickLength || 5) + 2 : 0;
 
   // --- PANEL 1: Electronic Band Structure ---
   if (layout === "joint" || layout === "band") {
+    const kTickPxList = bandTicks.map(t => bandX0 + t.pos * bandW);
     ctx.save();
-    ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 1.2;
-    ctx.strokeRect(bandX0, padT, bandW, plotH);
     ctx.beginPath(); ctx.rect(bandX0, padT, bandW, plotH); ctx.clip();
 
+    drawPubGridLines(ctx, bandX0, padT, bandW, plotH, st, [], yTickPxList);
+
+    // High-symmetry vertical reference lines (always subtle black/gray dashed-or-thin)
     bandTicks.forEach(t => {
-      const tx = bandX0 + t.pos * bandW;
+      const tx = Math.round(bandX0 + t.pos * bandW) + 0.5;
+      if (tx <= bandX0 + 2 || tx >= bandX0 + bandW - 2) return;
       ctx.beginPath(); ctx.moveTo(tx, padT); ctx.lineTo(tx, padT + plotH);
-      ctx.strokeStyle = "#e2e8f0"; ctx.lineWidth = 1.0; ctx.stroke();
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.30)"; ctx.lineWidth = Math.max(0.8, st.borderWidth * 0.55); ctx.stroke();
     });
 
-    for (let e = Math.ceil(emin); e <= Math.floor(emax); e += stepE) {
-      const y = eToY(e);
-      ctx.beginPath(); ctx.moveTo(bandX0, y); ctx.lineTo(bandX0 + bandW, y);
-      if (e === 0) { ctx.setLineDash([5, 4]); ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 1.4; }
-      else { ctx.setLineDash([]); ctx.strokeStyle = "#f1f5f9"; ctx.lineWidth = 1.0; }
-      ctx.stroke();
+    // Fermi level E - E_F = 0 reference line
+    if (emin <= 0 && emax >= 0) {
+      const yF = Math.round(eToY(0)) + 0.5;
+      ctx.beginPath(); ctx.moveTo(bandX0, yF); ctx.lineTo(bandX0 + bandW, yF);
+      ctx.setLineDash([5, 4]); ctx.strokeStyle = st.inkColor; ctx.lineWidth = Math.max(1.1, st.borderWidth * 0.72); ctx.stroke();
+      ctx.setLineDash([]);
     }
-    ctx.setLineDash([]);
 
     bandSeries.forEach((ser, sIdx) => {
       const isBeta = sIdx === 1 || /beta|dn|down/i.test(ser.name);
       if (!isBeta && !showUp) return;
       if (isBeta && !showDn) return;
       ctx.strokeStyle = isBeta ? "#dc2626" : "#2563eb";
-      ctx.lineWidth = isBeta ? 1.35 : 1.65;
+      ctx.lineWidth = isBeta ? Math.max(1.0, st.lineWidth * 0.85) : st.lineWidth;
       if (isBeta) ctx.setLineDash([4, 3]); else ctx.setLineDash([]);
       (ser.segments || []).forEach(seg => {
         if (!seg.length) return;
@@ -5795,24 +6070,33 @@ function renderCastepElectronicPlots() {
     });
     ctx.restore();
 
-    ctx.fillStyle = "#0f172a"; ctx.font = "bold 12px Inter, sans-serif"; ctx.textAlign = "center";
-    ctx.fillText(`Band Structure${bandSeries.length >= 2 ? " (— α Up / ┄ β Down)" : ""}`, bandX0 + bandW / 2, 20);
-
-    bandTicks.forEach(t => {
-      const tx = bandX0 + t.pos * bandW;
-      ctx.font = "bold 11.5px Inter, sans-serif"; ctx.fillStyle = "#0f172a";
-      ctx.fillText(t.label === "G" ? "Γ" : t.label, tx, padT + plotH + 18);
+    // Crisp unified publication frame + ticks drawn ON TOP of curves
+    drawPubAxisBox(ctx, bandX0, padT, bandW, plotH, st, {
+      xTicks: kTickPxList,
+      yTicks: yTickPxList,
+      mirrorTop: true,
+      mirrorRight: true
     });
 
-    ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.font = "10.5px Inter, sans-serif";
-    for (let e = Math.ceil(emin); e <= Math.floor(emax); e += stepE) {
-      ctx.fillStyle = "#334155";
-      ctx.fillText(`${e}`, bandX0 - 7, eToY(e));
-    }
+    ctx.fillStyle = st.inkColor; ctx.font = castepPlotFont("title"); ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+    ctx.fillText(`Band Structure${bandSeries.length >= 2 ? " (— α Up / ┄ β Down)" : ""}`, bandX0 + bandW / 2, padT - 11);
+
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    bandTicks.forEach(t => {
+      const tx = bandX0 + t.pos * bandW;
+      ctx.font = castepPlotFont("tick", 1.0, st.boldAxes ? "bold" : ""); ctx.fillStyle = st.inkColor;
+      ctx.fillText(t.label === "G" ? "Γ" : t.label, tx, padT + plotH + 7 + outTickExtra);
+    });
+
+    ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.font = castepPlotFont("tick");
+    eTicksList.forEach(e => {
+      ctx.fillStyle = st.inkColor;
+      ctx.fillText(formatPubMinus(e), bandX0 - 8 - outTickExtra, eToY(e));
+    });
     ctx.save();
-    ctx.translate(16, padT + plotH / 2); ctx.rotate(-Math.PI / 2);
-    ctx.textAlign = "center"; ctx.font = "bold 11.5px Inter, sans-serif"; ctx.fillStyle = "#0f172a";
-    drawSciText(ctx, "Energy E − E_{F} (eV)", 0, 0);
+    ctx.translate(18, padT + plotH / 2); ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = castepPlotFont("axis"); ctx.fillStyle = st.inkColor;
+    drawSciText(ctx, "Energy E \u2212 E_{F} (eV)", 0, 0);
     ctx.restore();
   }
 
@@ -5833,9 +6117,10 @@ function renderCastepElectronicPlots() {
     });
     maxDos *= 1.12;
 
+    const dosXTicksPx = [];
+    const dosYTicksPx = [];
+
     ctx.save();
-    ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 1.2;
-    ctx.strokeRect(dosX0, padT, dosW, plotH);
     ctx.beginPath(); ctx.rect(dosX0, padT, dosW, plotH); ctx.clip();
 
     if (layout === "joint") {
@@ -5843,22 +6128,28 @@ function renderCastepElectronicPlots() {
       const xZeroDos = useMirror ? (dosX0 + dosW * 0.5) : dosX0;
       const halfSpan = useMirror ? (dosW * 0.48) : (dosW * 0.96);
 
-      for (let e = Math.ceil(emin); e <= Math.floor(emax); e += stepE) {
-        const y = eToY(e);
-        ctx.beginPath(); ctx.moveTo(dosX0, y); ctx.lineTo(dosX0 + dosW, y);
-        if (e === 0) { ctx.setLineDash([5, 4]); ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 1.4; }
-        else { ctx.setLineDash([]); ctx.strokeStyle = "#f1f5f9"; ctx.lineWidth = 1.0; }
-        ctx.stroke();
+      if (useMirror) {
+        dosXTicksPx.push(dosX0 + dosW * 0.25, dosX0 + dosW * 0.5, dosX0 + dosW * 0.75);
+      } else {
+        dosXTicksPx.push(dosX0 + dosW * 0.5);
       }
-      ctx.setLineDash([]);
+      dosYTicksPx.push(...yTickPxList);
+      drawPubGridLines(ctx, dosX0, padT, dosW, plotH, st, dosXTicksPx, yTickPxList);
+
+      if (emin <= 0 && emax >= 0) {
+        const yF = Math.round(eToY(0)) + 0.5;
+        ctx.beginPath(); ctx.moveTo(dosX0, yF); ctx.lineTo(dosX0 + dosW, yF);
+        ctx.setLineDash([5, 4]); ctx.strokeStyle = st.inkColor; ctx.lineWidth = Math.max(1.1, st.borderWidth * 0.72); ctx.stroke();
+        ctx.setLineDash([]);
+      }
 
       if (useMirror) {
-        ctx.beginPath(); ctx.moveTo(xZeroDos, padT); ctx.lineTo(xZeroDos, padT + plotH);
-        ctx.strokeStyle = "#475569"; ctx.lineWidth = 1.1; ctx.stroke();
+        const xz = Math.round(xZeroDos) + 0.5;
+        ctx.beginPath(); ctx.moveTo(xz, padT); ctx.lineTo(xz, padT + plotH);
+        ctx.strokeStyle = st.inkColor; ctx.lineWidth = Math.max(1.0, st.borderWidth * 0.65); ctx.stroke();
       }
 
       pdosCurves.forEach(c => {
-        // Draw Spin-Up (or Sum) to right of xZeroDos
         if (showUp || !useMirror) {
           ctx.beginPath();
           for (let i = 0; i < eGrid.length; i++) {
@@ -5868,7 +6159,7 @@ function renderCastepElectronicPlots() {
             if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
           }
           ctx.strokeStyle = c.color;
-          ctx.lineWidth = c.isTotal ? 1.8 : 1.45;
+          ctx.lineWidth = c.isTotal ? st.lineWidth : Math.max(1.0, st.lineWidth * 0.85);
           ctx.stroke();
           if (!c.isTotal) {
             ctx.lineTo(xZeroDos, eToY(eGrid[eGrid.length - 1]));
@@ -5878,7 +6169,6 @@ function renderCastepElectronicPlots() {
             ctx.fill();
           }
         }
-        // Draw Spin-Down mirrored to left of xZeroDos
         if (useMirror && showDn && c.dn) {
           ctx.beginPath();
           for (let i = 0; i < eGrid.length; i++) {
@@ -5887,7 +6177,7 @@ function renderCastepElectronicPlots() {
             if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
           }
           ctx.strokeStyle = c.color;
-          ctx.lineWidth = c.isTotal ? 1.8 : 1.45;
+          ctx.lineWidth = c.isTotal ? st.lineWidth : Math.max(1.0, st.lineWidth * 0.85);
           ctx.stroke();
           if (!c.isTotal) {
             ctx.lineTo(xZeroDos, eToY(eGrid[eGrid.length - 1]));
@@ -5900,10 +6190,10 @@ function renderCastepElectronicPlots() {
       });
 
       if (useMirror) {
-        ctx.fillStyle = "#dc2626"; ctx.font = "bold 10px Inter, sans-serif"; ctx.textAlign = "left";
-        ctx.fillText("← Spin ↓ (β)", dosX0 + 6, padT + 14);
+        ctx.fillStyle = "#dc2626"; ctx.font = castepPlotFont("legend", 0.95, "bold"); ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+        ctx.fillText("← Spin ↓ (β)", dosX0 + 8, padT + 16);
         ctx.fillStyle = "#2563eb"; ctx.textAlign = "right";
-        ctx.fillText("Spin ↑ (α) →", dosX0 + dosW - 6, padT + 14);
+        ctx.fillText("Spin ↑ (α) →", dosX0 + dosW - 8, padT + 16);
       }
     } else {
       // Standalone Horizontal Energy axis; Vertical DOS axis (Spin ↑ up, Spin ↓ mirrored down!)
@@ -5911,19 +6201,21 @@ function renderCastepElectronicPlots() {
       const yZeroDos = useMirror ? (padT + plotH * 0.5) : (padT + plotH);
       const halfH = useMirror ? (plotH * 0.47) : (plotH * 0.96);
 
-      // Vertical grid & Fermi line
-      for (let e = Math.ceil(emin); e <= Math.floor(emax); e += stepE) {
-        const x = eToX(e);
-        ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, padT + plotH);
-        if (e === 0) { ctx.setLineDash([5, 4]); ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 1.4; }
-        else { ctx.setLineDash([]); ctx.strokeStyle = "#f1f5f9"; ctx.lineWidth = 1.0; }
-        ctx.stroke();
+      eTicksList.forEach(e => dosXTicksPx.push(eToX(e)));
+      dosYTicksPx.push(padT + plotH * 0.25, padT + plotH * 0.5, padT + plotH * 0.75);
+      drawPubGridLines(ctx, dosX0, padT, dosW, plotH, st, dosXTicksPx, dosYTicksPx);
+
+      if (emin <= 0 && emax >= 0) {
+        const xF = Math.round(eToX(0)) + 0.5;
+        ctx.beginPath(); ctx.moveTo(xF, padT); ctx.lineTo(xF, padT + plotH);
+        ctx.setLineDash([5, 4]); ctx.strokeStyle = st.inkColor; ctx.lineWidth = Math.max(1.1, st.borderWidth * 0.72); ctx.stroke();
+        ctx.setLineDash([]);
       }
-      ctx.setLineDash([]);
 
       if (useMirror) {
-        ctx.beginPath(); ctx.moveTo(dosX0, yZeroDos); ctx.lineTo(dosX0 + dosW, yZeroDos);
-        ctx.strokeStyle = "#334155"; ctx.lineWidth = 1.2; ctx.stroke();
+        const yz = Math.round(yZeroDos) + 0.5;
+        ctx.beginPath(); ctx.moveTo(dosX0, yz); ctx.lineTo(dosX0 + dosW, yz);
+        ctx.strokeStyle = st.inkColor; ctx.lineWidth = Math.max(1.0, st.borderWidth * 0.65); ctx.stroke();
       }
 
       pdosCurves.forEach(c => {
@@ -5935,7 +6227,7 @@ function renderCastepElectronicPlots() {
             const sy = yZeroDos - (val / maxDos) * halfH;
             if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
           }
-          ctx.strokeStyle = c.color; ctx.lineWidth = c.isTotal ? 2.0 : 1.55; ctx.stroke();
+          ctx.strokeStyle = c.color; ctx.lineWidth = c.isTotal ? st.lineWidth : Math.max(1.0, st.lineWidth * 0.88); ctx.stroke();
           if (!c.isTotal) {
             ctx.lineTo(eToX(eGrid[eGrid.length - 1]), yZeroDos);
             ctx.lineTo(eToX(eGrid[0]), yZeroDos);
@@ -5949,7 +6241,7 @@ function renderCastepElectronicPlots() {
             const sy = yZeroDos + (c.dn[i] / maxDos) * halfH;
             if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
           }
-          ctx.strokeStyle = c.color; ctx.lineWidth = c.isTotal ? 2.0 : 1.55; ctx.stroke();
+          ctx.strokeStyle = c.color; ctx.lineWidth = c.isTotal ? st.lineWidth : Math.max(1.0, st.lineWidth * 0.88); ctx.stroke();
           if (!c.isTotal) {
             ctx.lineTo(eToX(eGrid[eGrid.length - 1]), yZeroDos);
             ctx.lineTo(eToX(eGrid[0]), yZeroDos);
@@ -5959,69 +6251,81 @@ function renderCastepElectronicPlots() {
       });
 
       if (useMirror) {
-        ctx.fillStyle = "#2563eb"; ctx.font = "bold 10.5px Inter, sans-serif"; ctx.textAlign = "left";
-        ctx.fillText("Spin ↑ (+α)", dosX0 + 8, padT + 15);
+        ctx.fillStyle = "#2563eb"; ctx.font = castepPlotFont("legend", 1.0, "bold"); ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+        ctx.fillText("Spin ↑ (+α)", dosX0 + 10, padT + 18);
         ctx.fillStyle = "#dc2626";
-        ctx.fillText("Spin ↓ (−β)", dosX0 + 8, padT + plotH - 8);
+        ctx.fillText("Spin ↓ (\u2212β)", dosX0 + 10, padT + plotH - 9);
       }
     }
     ctx.restore();
 
-    // Panel Title & Clean Legend Strip
-    ctx.fillStyle = "#0f172a"; ctx.font = "bold 12px Inter, sans-serif"; ctx.textAlign = "center";
-    const modeLabel = pdosMode === "atom" ? "Atomic-Resolved PDOS" : (pdosMode === "element" ? "Element-Resolved PDOS" : (pdosMode === "orbital" ? "Orbital-Resolved PDOS" : "Element + Orbital PDOS"));
-    ctx.fillText(modeLabel, dosX0 + dosW / 2, 20);
+    // Crisp unified publication frame + ticks ON TOP of PDOS curves
+    drawPubAxisBox(ctx, dosX0, padT, dosW, plotH, st, {
+      xTicks: dosXTicksPx,
+      yTicks: dosYTicksPx,
+      mirrorTop: true,
+      mirrorRight: true
+    });
 
-    // Compact legend box inside top-right of DOS panel
+    // Panel Title & Clean Legend Strip
+    ctx.fillStyle = st.inkColor; ctx.font = castepPlotFont("title"); ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+    const modeLabel = pdosMode === "atom" ? "Atomic-Resolved PDOS" : (pdosMode === "element" ? "Element-Resolved PDOS" : (pdosMode === "orbital" ? "Orbital-Resolved PDOS" : "Element + Orbital PDOS"));
+    ctx.fillText(modeLabel, dosX0 + dosW / 2, padT - 11);
+
+    // Compact legend inside top-right of DOS panel
     if (pdosCurves.length) {
-      const legX = dosX0 + dosW - 6;
-      let legY = padT + (useMirror && layout === "joint" ? 28 : 14);
-      ctx.font = "bold 10px Inter, sans-serif";
+      const legX = dosX0 + dosW - 9;
+      let legY = padT + (useMirror && layout === "joint" ? 32 : 16);
+      ctx.font = castepPlotFont("legend", 1.0, st.boldAxes ? "bold" : "");
       ctx.textAlign = "right";
+      ctx.textBaseline = "alphabetic";
+      const rowStep = Math.max(13, Math.round(st.legendSize * 1.25));
       pdosCurves.slice(0, 10).forEach(c => {
         ctx.fillStyle = c.color;
         ctx.fillText(`● ${c.label}`, legX, legY);
-        legY += 13;
+        legY += rowStep;
       });
     }
 
-    // DOS Axes ticks
-    ctx.fillStyle = "#475569"; ctx.font = "10px Inter, sans-serif";
+    // DOS Axes ticks & labels
+    ctx.fillStyle = st.inkColor; ctx.font = castepPlotFont("tick");
     if (layout === "joint") {
-      ctx.textAlign = "center";
+      ctx.textAlign = "center"; ctx.textBaseline = "top";
+      const txY = padT + plotH + 7 + outTickExtra;
       if (useMirror) {
-        ctx.fillText(`-${maxDos.toFixed(1)}`, dosX0 + 10, padT + plotH + 14);
-        ctx.fillText("0", dosX0 + dosW * 0.5, padT + plotH + 14);
-        ctx.fillText(`+${maxDos.toFixed(1)}`, dosX0 + dosW - 10, padT + plotH + 14);
+        ctx.fillText(formatPubMinus(`-${maxDos.toFixed(1)}`), dosX0 + 12, txY);
+        ctx.fillText("0", dosX0 + dosW * 0.5, txY);
+        ctx.fillText(`+${maxDos.toFixed(1)}`, dosX0 + dosW - 12, txY);
       } else {
-        ctx.fillText("0", dosX0, padT + plotH + 14);
-        ctx.fillText((maxDos / 2).toFixed(1), dosX0 + dosW * 0.5, padT + plotH + 14);
-        ctx.fillText(maxDos.toFixed(1), dosX0 + dosW - 6, padT + plotH + 14);
+        ctx.fillText("0", dosX0 + 2, txY);
+        ctx.fillText((maxDos / 2).toFixed(1), dosX0 + dosW * 0.5, txY);
+        ctx.fillText(maxDos.toFixed(1), dosX0 + dosW - 8, txY);
       }
-      ctx.font = "bold 11px Inter, sans-serif"; ctx.fillStyle = "#334155";
-      ctx.fillText("PDOS (states/eV)", dosX0 + dosW / 2, padT + plotH + 30);
+      ctx.font = castepPlotFont("axis"); ctx.fillStyle = st.inkColor;
+      ctx.fillText("PDOS (states/eV)", dosX0 + dosW / 2, txY + st.tickSize + 6);
     } else {
       const eToX = (e) => dosX0 + ((e - emin) / ((emax - emin) || 1)) * dosW;
-      ctx.textAlign = "center";
-      for (let e = Math.ceil(emin); e <= Math.floor(emax); e += stepE) {
-        ctx.fillText(`${e}`, eToX(e), padT + plotH + 15);
-      }
-      ctx.font = "bold 11.5px Inter, sans-serif"; ctx.fillStyle = "#0f172a";
-      drawSciText(ctx, "Energy E − E_{F} (eV)", dosX0 + dosW / 2, padT + plotH + 31);
+      ctx.textAlign = "center"; ctx.textBaseline = "top";
+      const txY = padT + plotH + 7 + outTickExtra;
+      eTicksList.forEach(e => {
+        ctx.fillText(formatPubMinus(e), eToX(e), txY);
+      });
+      ctx.font = castepPlotFont("axis"); ctx.fillStyle = st.inkColor;
+      drawSciText(ctx, "Energy E \u2212 E_{F} (eV)", dosX0 + dosW / 2, txY + st.tickSize + 7);
 
-      ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.font = "10px Inter, sans-serif";
+      ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.font = castepPlotFont("tick");
       if (useMirror) {
-        ctx.fillText(`+${maxDos.toFixed(1)}`, dosX0 - 6, padT + 8);
-        ctx.fillText("0.0", dosX0 - 6, padT + plotH * 0.5);
-        ctx.fillText(`-${maxDos.toFixed(1)}`, dosX0 - 6, padT + plotH - 6);
+        ctx.fillText(`+${maxDos.toFixed(1)}`, dosX0 - 8 - outTickExtra, padT + 6);
+        ctx.fillText("0.0", dosX0 - 8 - outTickExtra, padT + plotH * 0.5);
+        ctx.fillText(formatPubMinus(`-${maxDos.toFixed(1)}`), dosX0 - 8 - outTickExtra, padT + plotH - 6);
       } else {
-        ctx.fillText(maxDos.toFixed(1), dosX0 - 6, padT + 8);
-        ctx.fillText((maxDos / 2).toFixed(1), dosX0 - 6, padT + plotH * 0.5);
-        ctx.fillText("0.0", dosX0 - 6, padT + plotH);
+        ctx.fillText(maxDos.toFixed(1), dosX0 - 8 - outTickExtra, padT + 6);
+        ctx.fillText((maxDos / 2).toFixed(1), dosX0 - 8 - outTickExtra, padT + plotH * 0.5);
+        ctx.fillText("0.0", dosX0 - 8 - outTickExtra, padT + plotH - 4);
       }
       ctx.save();
-      ctx.translate(16, padT + plotH / 2); ctx.rotate(-Math.PI / 2);
-      ctx.textAlign = "center"; ctx.font = "bold 11.5px Inter, sans-serif"; ctx.fillStyle = "#0f172a";
+      ctx.translate(18, padT + plotH / 2); ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = castepPlotFont("axis"); ctx.fillStyle = st.inkColor;
       ctx.fillText("PDOS (states/eV)", 0, 0);
       ctx.restore();
     }
@@ -6042,8 +6346,8 @@ function initCastepElectronicCanvasHover() {
     const my = e.clientY - rect.top;
     const emin = parseFloat(document.getElementById("castep-elec-emin")?.value) || -5.0;
     const emax = parseFloat(document.getElementById("castep-elec-emax")?.value) || 5.0;
-    const padT = 36, padB = 46;
-    const plotH = (rect.height || 520) - padT - padB;
+    const g = canvas._elecPlotGeom || { padT: 34, padB: 48, plotH: (rect.height || 520) - 82 };
+    const padT = g.padT, plotH = g.plotH || ((rect.height || 520) - g.padT - g.padB);
     const eCursor = emax - ((my - padT) / plotH) * (emax - emin);
     if (my >= padT && my <= padT + plotH) {
       readout.innerHTML = `Cursor Energy: <strong>E − E<sub>F</sub> = ${eCursor.toFixed(3)} eV</strong> (${eCursor > 0 ? "Conduction Band" : "Valence Band"}) • X = ${Math.round(mx)} px`;
@@ -6132,26 +6436,32 @@ function renderCastepConvergencePlots() {
 window.renderCastepConvergencePlots = renderCastepConvergencePlots;
 
 function drawSimpleLineChart2D(canvas, points, opts = {}) {
+  const st = getCastepPlotStyle();
   const parentW = canvas.parentElement ? (canvas.parentElement.clientWidth - 24) : 420;
   const width = Math.max(260, Math.floor(parentW));
-  const height = 300;
-  const dpr = window.devicePixelRatio || 1;
+  const height = 310;
+  const dpr = Math.max(2, window.devicePixelRatio || 1);
   canvas.width = Math.round(width * dpr);
   canvas.height = Math.round(height * dpr);
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
   const ctx = canvas.getContext("2d");
   ctx.save();
   ctx.scale(dpr, dpr);
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
-  const padL = 68, padR = 20, padT = 20, padB = 38;
+  const outTickExtra = st.tickDir === "out" ? (st.tickLength || 5) + 2 : 0;
+  const padL = Math.round(78 + Math.max(0, (st.tickSize - 12) * 2.5));
+  const padR = 18;
+  const padT = 18;
+  const padB = Math.round(46 + Math.max(0, (st.tickSize - 12) * 1.4 + (st.axisLabelSize - 13) * 1.2));
   const pw = width - padL - padR, ph = height - padT - padB;
-  ctx.strokeStyle = "#cbd5e1";
-  ctx.strokeRect(padL, padT, pw, ph);
 
   if (!points || !points.length) {
+    drawPubAxisBox(ctx, padL, padT, pw, ph, st);
     ctx.fillStyle = "#64748b";
-    ctx.font = "12px Inter, sans-serif";
+    ctx.font = castepPlotFont("tick");
     ctx.textAlign = "center";
     ctx.fillText("No iteration points available for this job", padL + pw / 2, padT + ph / 2);
     ctx.restore();
@@ -6178,57 +6488,71 @@ function drawSimpleLineChart2D(canvas, points, opts = {}) {
   const toX = (x) => padL + ((x - minX) / ((maxX - minX) || 1)) * pw;
   const toY = (y) => padT + ph * (1 - (y - minY) / ((maxY - minY) || 1));
 
-  // Threshold dashed line
-  if (opts.thresholdY !== undefined) {
-    const ty = toY(opts.thresholdY);
-    ctx.beginPath();
-    ctx.moveTo(padL, ty);
-    ctx.lineTo(padL + pw, ty);
-    ctx.setLineDash([5, 4]);
-    ctx.strokeStyle = "#16a34a";
-    ctx.lineWidth = 1.3;
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = "#16a34a";
-    ctx.font = "bold 10px Inter, sans-serif";
-    ctx.textAlign = "right";
-    ctx.fillText("Convergence Tol.", padL + pw - 6, ty - 5);
-  }
+  const yTickVals = [0, 1, 2, 3, 4].map(i => minY + (maxY - minY) * (i / 4));
+  const xTickVals = [0, 1, 2, 3, 4].map(i => minX + (maxX - minX) * (i / 4));
+  const yTickPx = yTickVals.map(v => toY(v));
+  const xTickPx = xTickVals.map(v => toX(v));
 
   ctx.save();
-  ctx.beginPath();
-  ctx.rect(padL, padT, pw, ph);
-  ctx.clip();
-  // Line path
+  ctx.beginPath(); ctx.rect(padL, padT, pw, ph); ctx.clip();
+  drawPubGridLines(ctx, padL, padT, pw, ph, st, xTickPx, yTickPx);
+
+  if (opts.thresholdY !== undefined) {
+    const ty = toY(opts.thresholdY);
+    ctx.beginPath(); ctx.moveTo(padL, ty); ctx.lineTo(padL + pw, ty);
+    ctx.setLineDash([5, 4]); ctx.strokeStyle = "#16a34a"; ctx.lineWidth = Math.max(1.1, st.lineWidth * 0.75); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#16a34a"; ctx.font = castepPlotFont("legend", 0.92, "bold"); ctx.textAlign = "left";
+    ctx.fillText("Convergence Tol.", padL + 8, ty - 6);
+  }
+
   ctx.beginPath();
   points.forEach((pt, idx) => {
     const px = toX(pt[0]), py = toY(pt[1]);
-    if (idx === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
+    if (idx === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
   });
   ctx.strokeStyle = opts.color || "#2563eb";
-  ctx.lineWidth = 2.0;
+  ctx.lineWidth = st.lineWidth;
   ctx.stroke();
 
-  // Dots
+  const dotR = Math.max(2.4, st.lineWidth * 1.65);
   points.forEach(pt => {
     ctx.beginPath();
-    ctx.arc(toX(pt[0]), toY(pt[1]), 3.2, 0, Math.PI * 2);
+    ctx.arc(toX(pt[0]), toY(pt[1]), dotR, 0, Math.PI * 2);
     ctx.fillStyle = opts.color || "#2563eb";
     ctx.fill();
   });
-
   ctx.restore();
-  // Labels
-  ctx.fillStyle = "#334155";
-  ctx.font = "10.5px Inter, sans-serif";
+
+  drawPubAxisBox(ctx, padL, padT, pw, ph, st, { xTicks: xTickPx, yTicks: yTickPx, mirrorTop: true, mirrorRight: true });
+
+  // Y Ticks & Axis Label
+  ctx.fillStyle = st.inkColor;
+  ctx.font = castepPlotFont("tick", 0.92);
   ctx.textAlign = "right";
-  for (let i = 0; i <= 4; i++) {
-    const yVal = minY + (maxY - minY) * (i / 4);
-    ctx.fillText(yVal.toFixed(2), padL - 6, toY(yVal) + 3);
+  ctx.textBaseline = "middle";
+  yTickVals.forEach(yVal => {
+    ctx.fillText(formatPubMinus(yVal.toFixed(Math.abs(yVal) >= 1000 ? 1 : 2)), padL - 7 - outTickExtra, toY(yVal));
+  });
+  if (opts.yLabel) {
+    ctx.save();
+    ctx.translate(15, padT + ph / 2); ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = castepPlotFont("axis", 0.92); ctx.fillStyle = st.inkColor;
+    drawSciText(ctx, opts.yLabel.replace("log10", "log_{10}"), 0, 0);
+    ctx.restore();
   }
+
+  // X Ticks & Axis Label
   ctx.textAlign = "center";
-  ctx.fillText(opts.xLabel || "Step", padL + pw / 2, height - 8);
+  ctx.textBaseline = "top";
+  ctx.font = castepPlotFont("tick", 0.92);
+  const txY = padT + ph + 6 + outTickExtra;
+  xTickVals.forEach(xVal => {
+    ctx.fillText(Math.round(xVal).toString(), toX(xVal), txY);
+  });
+  ctx.font = castepPlotFont("axis", 0.94);
+  ctx.fillStyle = st.inkColor;
+  ctx.fillText(opts.xLabel || "Step", padL + pw / 2, txY + Math.round(st.tickSize * 0.92) + 5);
   ctx.restore();
 }
 
@@ -9826,12 +10150,14 @@ function renderCastepOpticalPlots() {
 
   const parentW = canvas.parentElement ? (canvas.parentElement.clientWidth - 24) : 880;
   const width = Math.max(320, Math.floor(parentW));
-  const height = 510;
-  const dpr = window.devicePixelRatio || 1;
+  const height = 530;
+  const dpr = Math.max(2, window.devicePixelRatio || 1);
   if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
     canvas.width = Math.round(width * dpr);
     canvas.height = Math.round(height * dpr);
   }
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
   const ctx = canvas.getContext("2d");
   ctx.save();
   ctx.scale(dpr, dpr);
@@ -9888,6 +10214,11 @@ function renderCastepOpticalPlots() {
   const xTitle = axCfg.xTitle;
 
   function drawOpticalSubPanel(boxX, boxY, boxW, boxH, cfg) {
+    const st = getCastepPlotStyle();
+    const isCompactPanel = (prop === "multigrid");
+    const fontScale = isCompactPanel ? 0.88 : 1.0;
+    const outTickExtra = st.tickDir === "out" ? (st.tickLength || 5) + 1 : 0;
+
     const pKey = cfg.panelKey || "single";
     const pz = (CASTEP_STUDIO_STATE.optPanelZooms && CASTEP_STUDIO_STATE.optPanelZooms[pKey]) || { emin: 0, emax: null, nmMin: 180, nmMax: 1100, yScale: 1.0 };
     let xMin = 0, xMax = axCfg.evToX(fullEmax);
@@ -9911,7 +10242,11 @@ function renderCastepOpticalPlots() {
 
     const hasRightAxis = cfg.series.some(s => s.axis === "right");
     const multiRowLegend = cfg.series.length >= 3;
-    const padL = 54, padR = hasRightAxis ? 48 : 16, padT = multiRowLegend ? 44 : 28, padB = 34;
+    const extraTickPad = Math.max(0, (st.tickSize - 12) * 1.6);
+    const padL = Math.round(58 + extraTickPad + outTickExtra);
+    const padR = hasRightAxis ? Math.round(52 + extraTickPad + outTickExtra) : 18;
+    const padT = Math.round((multiRowLegend ? 46 : 30) + Math.max(0, st.titleSize - 14));
+    const padB = Math.round(38 + Math.max(0, (st.tickSize - 12) * 1.2 + (st.axisLabelSize - 13) * 1.1) + outTickExtra);
     const pw = Math.max(60, boxW - padL - padR);
     const ph = Math.max(50, boxH - padT - padB);
     const px0 = boxX + padL;
@@ -9919,10 +10254,10 @@ function renderCastepOpticalPlots() {
 
     if (isActiveSub) {
       ctx.save();
-      ctx.fillStyle = "rgba(239, 246, 255, 0.32)";
+      ctx.fillStyle = "rgba(239, 246, 255, 0.28)";
       ctx.fillRect(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
-      ctx.strokeStyle = "rgba(37, 99, 235, 0.45)";
-      ctx.lineWidth = 1.4;
+      ctx.strokeStyle = "rgba(37, 99, 235, 0.40)";
+      ctx.lineWidth = 1.2;
       ctx.strokeRect(boxX + 2.5, boxY + 2.5, boxW - 5, boxH - 5);
       ctx.restore();
     }
@@ -9960,10 +10295,14 @@ function renderCastepOpticalPlots() {
     const toYLeft = (y) => py0 + ph * (1 - (y - leftR.yMin) / ((leftR.yMax - leftR.yMin) || 1));
     const toYRight = (y) => rightR ? py0 + ph * (1 - (y - rightR.yMin) / ((rightR.yMax - rightR.yMin) || 1)) : toYLeft(y);
 
+    const yTickVals = [0, 1, 2, 3, 4].map(g => leftR.yMin + (leftR.yMax - leftR.yMin) * (g / 4));
+    const yTickPx = yTickVals.map(v => toYLeft(v));
+    const xTickVals = [0, 1, 2, 3, 4, 5].map(g => xMin + (xMax - xMin) * (g / 5));
+    const xTickPx = xTickVals.map(v => toX(v));
+    const rTickVals = rightR ? [0, 1, 2, 3, 4].map(g => rightR.yMin + (rightR.yMax - rightR.yMin) * (g / 4)) : [];
+    const rTickPx = rightR ? rTickVals.map(v => toYRight(v)) : [];
+
     ctx.save();
-    ctx.strokeStyle = "#cbd5e1";
-    ctx.lineWidth = 1.2;
-    ctx.strokeRect(px0, py0, pw, ph);
     ctx.beginPath();
     ctx.rect(px0, py0, pw, ph);
     ctx.clip();
@@ -9990,18 +10329,15 @@ function renderCastepOpticalPlots() {
       }
     }
 
-    for (let g = 1; g <= 3; g++) {
-      const gy = py0 + (ph * g) / 4;
-      ctx.beginPath();
-      ctx.moveTo(px0, gy); ctx.lineTo(px0 + pw, gy);
-      ctx.strokeStyle = "#f1f5f9"; ctx.lineWidth = 1.0; ctx.stroke();
-    }
+    drawPubGridLines(ctx, px0, py0, pw, ph, st, xTickPx, yTickPx);
+
     if (leftR.yMin < 0 && leftR.yMax > 0) {
-      const y0 = toYLeft(0);
+      const y0 = Math.round(toYLeft(0)) + 0.5;
       ctx.beginPath(); ctx.moveTo(px0, y0); ctx.lineTo(px0 + pw, y0);
-      ctx.setLineDash([4, 3]); ctx.strokeStyle = "#64748b"; ctx.lineWidth = 1.1; ctx.stroke(); ctx.setLineDash([]);
+      ctx.setLineDash([4, 3]); ctx.strokeStyle = st.inkColor; ctx.lineWidth = Math.max(0.9, st.borderWidth * 0.6); ctx.stroke(); ctx.setLineDash([]);
     }
 
+    const lwScale = st.lineWidth / 1.8;
     cfg.series.forEach(s => {
       const toY = s.axis === "right" ? toYRight : toYLeft;
       const pts = [];
@@ -10026,7 +10362,7 @@ function renderCastepOpticalPlots() {
         if (idx === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
       });
       ctx.strokeStyle = s.color;
-      ctx.lineWidth = s.width || 2.0;
+      ctx.lineWidth = Math.max(0.8, (s.width || 1.8) * lwScale);
       if (s.dashed) ctx.setLineDash([5, 3]); else ctx.setLineDash([]);
       ctx.stroke();
       ctx.setLineDash([]);
@@ -10041,7 +10377,7 @@ function renderCastepOpticalPlots() {
       ctx.lineTo(toX(x2), toYLeft(y2));
       ctx.setLineDash([6, 4]);
       ctx.strokeStyle = "#dc2626";
-      ctx.lineWidth = 2.0;
+      ctx.lineWidth = Math.max(1.2, st.lineWidth);
       ctx.stroke();
       ctx.setLineDash([]);
       ctx.beginPath();
@@ -10051,30 +10387,40 @@ function renderCastepOpticalPlots() {
     }
     ctx.restore();
 
-    ctx.fillStyle = isActiveSub ? "#1d4ed8" : "#0f172a";
-    ctx.font = "bold 11.5px Inter, sans-serif";
+    // Crisp unified publication frame + ticks ON TOP of optical curves
+    drawPubAxisBox(ctx, px0, py0, pw, ph, st, {
+      compact: isCompactPanel,
+      xTicks: xTickPx,
+      yTicks: yTickPx,
+      rightYTicks: hasRightAxis ? rTickPx : [],
+      mirrorTop: true,
+      mirrorRight: !hasRightAxis
+    });
+
+    ctx.fillStyle = isActiveSub ? "#1d4ed8" : st.inkColor;
+    ctx.font = castepPlotFont("title", fontScale);
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
-    drawSciText(ctx, cfg.title, px0, boxY + 16);
+    drawSciText(ctx, cfg.title, px0, boxY + (multiRowLegend ? 16 : padT - 9));
     if (isZoomedX || (Number(pz.yScale) || 1.0) > 1.05) {
       const zTxt = `🔍 ${zoomFactorDisp.toFixed(1)}×`;
       ctx.save();
-      ctx.font = "bold 9.5px Inter, sans-serif";
+      ctx.font = castepPlotFont("legend", 0.85, "bold");
       const tw = ctx.measureText(zTxt).width + 10;
       ctx.fillStyle = "rgba(37, 99, 235, 0.12)";
       ctx.strokeStyle = "rgba(37, 99, 235, 0.45)";
       ctx.lineWidth = 1;
-      ctx.fillRect(px0 + 4, py0 + 4, tw, 16);
-      ctx.strokeRect(px0 + 4, py0 + 4, tw, 16);
+      ctx.fillRect(px0 + 6, py0 + 6, tw, 16);
+      ctx.strokeRect(px0 + 6, py0 + 6, tw, 16);
       ctx.fillStyle = "#1d4ed8";
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
-      ctx.fillText(zTxt, px0 + 9, py0 + 12);
+      ctx.fillText(zTxt, px0 + 11, py0 + 14);
       ctx.restore();
     }
 
-    const legY = multiRowLegend ? (boxY + 34) : (boxY + 16);
-    ctx.font = multiRowLegend ? "bold 10px Inter, sans-serif" : "bold 10.5px Inter, sans-serif";
+    const legY = multiRowLegend ? (boxY + padT - 8) : (boxY + padT - 9);
+    ctx.font = castepPlotFont("legend", fontScale, st.boldAxes ? "bold" : "");
     ctx.textBaseline = "alphabetic";
     if (multiRowLegend) {
       let lx = px0;
@@ -10098,36 +10444,35 @@ function renderCastepOpticalPlots() {
       }
     }
 
-    ctx.fillStyle = hasRightAxis ? (leftSeries[0]?.color || "#475569") : "#475569";
-    ctx.font = "10px Inter, sans-serif";
+    ctx.fillStyle = hasRightAxis ? (leftSeries[0]?.color || st.inkColor) : st.inkColor;
+    ctx.font = castepPlotFont("tick", fontScale);
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
-    for (let g = 0; g <= 4; g++) {
-      const yVal = leftR.yMin + (leftR.yMax - leftR.yMin) * (g / 4);
+    yTickVals.forEach(yVal => {
       const fmt = Math.abs(leftR.yMax) >= 100 ? Math.round(yVal).toString() : (Math.abs(leftR.yMax) <= 2 ? yVal.toFixed(2) : yVal.toFixed(1));
-      ctx.fillText(fmt, px0 - 5, toYLeft(yVal));
-    }
+      ctx.fillText(formatPubMinus(fmt), px0 - 6 - outTickExtra, toYLeft(yVal));
+    });
 
     if (rightR) {
       ctx.fillStyle = rightSeries[0]?.color || "#be123c";
       ctx.textAlign = "left";
-      for (let g = 0; g <= 4; g++) {
-        const yVal = rightR.yMin + (rightR.yMax - rightR.yMin) * (g / 4);
+      rTickVals.forEach(yVal => {
         const fmt = Math.abs(rightR.yMax) >= 100 ? Math.round(yVal).toString() : yVal.toFixed(2);
-        ctx.fillText(fmt, px0 + pw + 5, toYRight(yVal));
-      }
+        ctx.fillText(formatPubMinus(fmt), px0 + pw + 6 + outTickExtra, toYRight(yVal));
+      });
     }
 
-    ctx.fillStyle = "#475569";
+    ctx.fillStyle = st.inkColor;
+    ctx.font = castepPlotFont("tick", fontScale);
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
-    for (let g = 0; g <= 5; g++) {
-      const xVal = xMin + (xMax - xMin) * (g / 5);
-      ctx.fillText(axCfg.fmtTick(xVal), toX(xVal), py0 + ph + 4);
-    }
-    ctx.font = "bold 10.5px Inter, sans-serif";
-    ctx.fillStyle = "#334155";
-    drawSciText(ctx, xTitle, px0 + pw / 2, py0 + ph + 18);
+    const txY = py0 + ph + 5 + outTickExtra;
+    xTickVals.forEach(xVal => {
+      ctx.fillText(formatPubMinus(axCfg.fmtTick(xVal)), toX(xVal), txY);
+    });
+    ctx.font = castepPlotFont("axis", fontScale);
+    ctx.fillStyle = st.inkColor;
+    drawSciText(ctx, xTitle, px0 + pw / 2, txY + Math.round(st.tickSize * fontScale) + 4);
   }
 
   const alpha10k = spec.alphaCm.map(v => v / 1e4);
@@ -11038,12 +11383,14 @@ function renderCastepChdiffPlots() {
   if (!canvas) return;
   const parentW = canvas.parentElement ? (canvas.parentElement.clientWidth - 24) : 880;
   const width = Math.max(320, Math.floor(parentW));
-  const height = 500;
-  const dpr = window.devicePixelRatio || 1;
+  const height = 510;
+  const dpr = Math.max(2, window.devicePixelRatio || 1);
   if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
     canvas.width = Math.round(width * dpr);
     canvas.height = Math.round(height * dpr);
   }
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
   const ctx = canvas.getContext("2d");
   ctx.save();
   ctx.scale(dpr, dpr);
@@ -11094,14 +11441,13 @@ function renderCastepChdiffPlots() {
 
   // Helper 1: Panel (a) 3D Structure + Volumetric Δρ Isosurfaces
   function draw3DIsosurfacePanel(bx, by, bw, bh) {
+    const stP = getCastepPlotStyle();
     ctx.save();
-    ctx.strokeStyle = "#cbd5e1";
-    ctx.lineWidth = 1.2;
-    ctx.strokeRect(bx + 8, by + 26, bw - 16, bh - 34);
-    ctx.fillStyle = "#0f172a";
-    ctx.font = "bold 11.5px Inter, sans-serif";
+    ctx.fillStyle = stP.inkColor;
+    ctx.font = castepPlotFont("title", 0.88);
     ctx.textAlign = "left";
-    ctx.fillText(`(a) 3D Structure + Δρ (±${isoVal.toFixed(4)} ${chGrid.unit || "e/Å³"})`, bx + 10, by + 17);
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(`(a) 3D Structure + Δρ (±${isoVal.toFixed(4)} ${chGrid.unit || "e/Å³"})`, bx + 10, by + 18);
 
     ctx.beginPath();
     ctx.rect(bx + 9, by + 27, bw - 18, bh - 36);
@@ -11217,19 +11563,22 @@ function renderCastepChdiffPlots() {
     });
 
     // Color legend inside bottom of Panel (a)
-    ctx.fillStyle = "rgba(255,255,255,0.88)";
+    ctx.fillStyle = "rgba(255,255,255,0.90)";
     ctx.fillRect(bx + 14, by + bh - 30, bw - 28, 18);
-    ctx.font = "bold 10px Inter, sans-serif";
+    ctx.font = castepPlotFont("legend", 0.90, "bold");
     ctx.textAlign = "left";
-    ctx.fillStyle = posStr; ctx.fillText("● +Δρ Accumulation", bx + 18, by + bh - 18);
+    ctx.fillStyle = posStr; ctx.fillText("● +Δρ Accumulation", bx + 18, by + bh - 17);
     ctx.textAlign = "right";
-    ctx.fillStyle = negStr; ctx.fillText("● −Δρ Depletion", bx + bw - 18, by + bh - 18);
+    ctx.fillStyle = negStr; ctx.fillText("● \u2212Δρ Depletion", bx + bw - 18, by + bh - 17);
     ctx.restore();
+    drawPubAxisBox(ctx, bx + 8, by + 26, bw - 16, bh - 34, getCastepPlotStyle(), { compact: true });
   }
 
   // Helper 2: Panel (b) 2D Cross-Sectional Slice Heatmap & Contour Map
   function draw2DSlicePanel(bx, by, bw, bh) {
-    const padL = 38, padR = 52, padT = 26, padB = 34;
+    const stP = getCastepPlotStyle();
+    const outTickExtra = stP.tickDir === "out" ? (stP.tickLength || 5) + 1 : 0;
+    const padL = Math.round(44 + outTickExtra), padR = 58, padT = 28, padB = Math.round(38 + outTickExtra);
     const pw = Math.max(60, bw - padL - padR);
     const ph = Math.max(60, bh - padT - padB);
     const px0 = bx + padL, py0 = by + padT;
@@ -11283,9 +11632,6 @@ function renderCastepChdiffPlots() {
     octx.putImageData(img, 0, 0);
     ctx.drawImage(off, px0, py0, pw, ph);
 
-    ctx.strokeStyle = "#94a3b8"; ctx.lineWidth = 1.2;
-    ctx.strokeRect(px0, py0, pw, ph);
-
     // Overlay nearby atoms projected onto slice
     const st = CASTEP_STUDIO_STATE.structure;
     (st?.atoms || []).forEach(at => {
@@ -11298,8 +11644,16 @@ function renderCastepChdiffPlots() {
         ctx.arc(sx, sy, 4.2, 0, Math.PI * 2);
         ctx.fillStyle = getVestaElementColor(at.element);
         ctx.fill();
-        ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 1.0; ctx.stroke();
+        ctx.strokeStyle = stP.inkColor; ctx.lineWidth = 1.0; ctx.stroke();
       }
+    });
+
+    drawPubAxisBox(ctx, px0, py0, pw, ph, stP, {
+      compact: true,
+      xTicks: [px0 + pw * 0.5],
+      yTicks: [py0 + ph * 0.5],
+      mirrorTop: true,
+      mirrorRight: true
     });
 
     // Calibrated Color Bar on right
@@ -11310,25 +11664,28 @@ function renderCastepChdiffPlots() {
       ctx.fillStyle = `rgb(${r},${g},${b})`;
       ctx.fillRect(cbX, py0 + y, cbW, 1.5);
     }
-    ctx.strokeStyle = "#94a3b8"; ctx.strokeRect(cbX, py0, cbW, ph);
-    ctx.fillStyle = "#334155"; ctx.font = "9.5px Inter, sans-serif"; ctx.textAlign = "left";
-    ctx.fillText(`+${satMax.toFixed(3)}`, cbX + cbW + 3, py0 + 8);
-    ctx.fillText("0.000", cbX + cbW + 3, py0 + ph / 2 + 3);
-    ctx.fillText(`-${satMax.toFixed(3)}`, cbX + cbW + 3, py0 + ph - 2);
+    ctx.strokeStyle = stP.inkColor; ctx.lineWidth = Math.max(1.0, stP.borderWidth * 0.72);
+    ctx.strokeRect(Math.round(cbX) + 0.5, Math.round(py0) + 0.5, cbW, Math.round(ph));
+    ctx.fillStyle = stP.inkColor; ctx.font = castepPlotFont("tick", 0.80); ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillText(`+${satMax.toFixed(3)}`, cbX + cbW + 4, py0 + 5);
+    ctx.fillText("0.000", cbX + cbW + 4, py0 + ph / 2);
+    ctx.fillText(formatPubMinus(`-${satMax.toFixed(3)}`), cbX + cbW + 4, py0 + ph - 4);
 
-    ctx.fillStyle = "#0f172a"; ctx.font = "bold 11.5px Inter, sans-serif"; ctx.textAlign = "left";
-    ctx.fillText(`(b) 2D Slice ${planeTitle}`, px0, by + 17);
-    ctx.fillStyle = "#475569"; ctx.font = "10px Inter, sans-serif"; ctx.textAlign = "center";
-    ctx.fillText(xLbl, px0 + pw / 2, py0 + ph + 18);
-    ctx.textAlign = "right";
-    ctx.fillText("1.0", px0 - 5, py0 + 8);
-    ctx.fillText("0.5", px0 - 5, py0 + ph / 2 + 3);
-    ctx.fillText("0.0", px0 - 5, py0 + ph);
+    ctx.fillStyle = stP.inkColor; ctx.font = castepPlotFont("title", 0.88); ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+    ctx.fillText(`(b) 2D Slice ${planeTitle}`, px0, by + 18);
+    ctx.fillStyle = stP.inkColor; ctx.font = castepPlotFont("axis", 0.88); ctx.textAlign = "center"; ctx.textBaseline = "top";
+    ctx.fillText(xLbl, px0 + pw / 2, py0 + ph + 10 + outTickExtra);
+    ctx.font = castepPlotFont("tick", 0.86); ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    ctx.fillText("1.0", px0 - 6 - outTickExtra, py0 + 5);
+    ctx.fillText("0.5", px0 - 6 - outTickExtra, py0 + ph / 2);
+    ctx.fillText("0.0", px0 - 6 - outTickExtra, py0 + ph - 4);
   }
 
   // Helper 3: Panel (c) 1D Planar-Averaged Δρ(z) & Cumulative Charge Transfer ΔQ(z)
   function draw1DPlanarPanel(bx, by, bw, bh) {
-    const padL = 56, padR = 46, padT = 26, padB = 34;
+    const stP = getCastepPlotStyle();
+    const outTickExtra = stP.tickDir === "out" ? (stP.tickLength || 5) + 1 : 0;
+    const padL = Math.round(62 + outTickExtra), padR = Math.round(52 + outTickExtra), padT = 28, padB = Math.round(40 + outTickExtra);
     const pw = Math.max(60, bw - padL - padR);
     const ph = Math.max(60, bh - padT - padB);
     const px0 = bx + padL, py0 = by + padT;
@@ -11356,16 +11713,17 @@ function renderCastepChdiffPlots() {
     const toYP = (v) => py0 + ph * (0.5 - v / (2 * maxAbsP));
     const toYQ = (q) => py0 + ph * (0.5 - q / (2 * maxAbsQ));
 
-    ctx.save();
-    ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 1.2;
-    ctx.strokeRect(px0, py0, pw, ph);
+    const xTickVals = [0, 1, 2, 3, 4].map(g => zMin + (zMax - zMin) * (g / 4));
+    const xTickPx = xTickVals.map(zv => toX(zv));
+    const yTickPx = [py0, yZero, py0 + ph];
 
+    ctx.save();
     ctx.beginPath(); ctx.rect(px0, py0, pw, ph); ctx.clip();
+    drawPubGridLines(ctx, px0, py0, pw, ph, stP, xTickPx, [yZero]);
 
     // Zero baseline
-    const yZero = toYP(0);
-    ctx.beginPath(); ctx.moveTo(px0, yZero); ctx.lineTo(px0 + pw, yZero);
-    ctx.setLineDash([4, 3]); ctx.strokeStyle = "#64748b"; ctx.lineWidth = 1.1; ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(px0, Math.round(yZero) + 0.5); ctx.lineTo(px0 + pw, Math.round(yZero) + 0.5);
+    ctx.setLineDash([4, 3]); ctx.strokeStyle = stP.inkColor; ctx.lineWidth = Math.max(0.9, stP.borderWidth * 0.6); ctx.stroke(); ctx.setLineDash([]);
 
     // Atomic layer markers along z
     const st = CASTEP_STUDIO_STATE.structure;
@@ -11383,7 +11741,6 @@ function renderCastepChdiffPlots() {
       const posFill = palette === "red-blue" ? "rgba(239,68,68,0.28)" : (palette === "green-magenta" ? "rgba(34,197,94,0.28)" : "rgba(234,179,8,0.34)");
       const negFill = palette === "red-blue" ? "rgba(59,130,246,0.28)" : (palette === "green-magenta" ? "rgba(217,70,239,0.28)" : "rgba(6,182,212,0.30)");
 
-      // Positive fill
       ctx.beginPath();
       ctx.moveTo(toX(0), yZero);
       for (let i = 0; i < prof.length; i++) {
@@ -11393,7 +11750,6 @@ function renderCastepChdiffPlots() {
       ctx.lineTo(toX(cLen), yZero);
       ctx.closePath(); ctx.fillStyle = posFill; ctx.fill();
 
-      // Negative fill
       ctx.beginPath();
       ctx.moveTo(toX(0), yZero);
       for (let i = 0; i < prof.length; i++) {
@@ -11403,14 +11759,13 @@ function renderCastepChdiffPlots() {
       ctx.lineTo(toX(cLen), yZero);
       ctx.closePath(); ctx.fillStyle = negFill; ctx.fill();
 
-      // Δρ(z) outline
       ctx.beginPath();
       for (let i = 0; i < prof.length; i++) {
         const z = (i / (prof.length - 1)) * cLen;
         const sx = toX(z), sy = toYP(prof[i]);
         if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
       }
-      ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 1.8; ctx.stroke();
+      ctx.strokeStyle = stP.inkColor; ctx.lineWidth = stP.lineWidth; ctx.stroke();
     }
 
     // Integrated Charge Transfer ΔQ(z) (Right Y-axis, dashed purple)
@@ -11422,37 +11777,45 @@ function renderCastepChdiffPlots() {
         if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
       }
       ctx.setLineDash([5, 3]);
-      ctx.strokeStyle = "#7c3aed"; ctx.lineWidth = 1.8; ctx.stroke();
+      ctx.strokeStyle = "#7c3aed"; ctx.lineWidth = stP.lineWidth; ctx.stroke();
       ctx.setLineDash([]);
     }
     ctx.restore();
 
-    // Titles & Clear Two-Curve Legend (Black = Δρ(z) Left, Purple = ΔQ(z) Right)
-    ctx.fillStyle = "#0f172a"; ctx.font = "bold 11px Inter, sans-serif"; ctx.textAlign = "left";
-    ctx.fillText(`(c) ━━ Δρ(z) [${unit1DLbl}]`, px0, by + 17);
-    ctx.fillStyle = "#7c3aed"; ctx.font = "bold 10.5px Inter, sans-serif"; ctx.textAlign = "right";
-    ctx.fillText("┄┄ ΔQ(z) [e]", px0 + pw, by + 17);
+    drawPubAxisBox(ctx, px0, py0, pw, ph, stP, {
+      compact: true,
+      xTicks: xTickPx,
+      yTicks: yTickPx,
+      rightYTicks: yTickPx,
+      mirrorTop: true
+    });
+
+    // Titles & Clear Two-Curve Legend
+    ctx.fillStyle = stP.inkColor; ctx.font = castepPlotFont("title", 0.85); ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+    ctx.fillText(`(c) ━━ Δρ(z) [${unit1DLbl}]`, px0, by + 18);
+    ctx.fillStyle = "#7c3aed"; ctx.font = castepPlotFont("legend", 0.88, "bold"); ctx.textAlign = "right";
+    ctx.fillText("┄┄ ΔQ(z) [e]", px0 + pw, by + 18);
 
     // Left Y ticks (Δρ)
-    ctx.fillStyle = "#334155"; ctx.font = "9.5px Inter, sans-serif"; ctx.textAlign = "right";
-    ctx.fillText(`+${maxAbsP.toExponential(1)}`, px0 - 4, py0 + 8);
-    ctx.fillText("0", px0 - 4, yZero + 3);
-    ctx.fillText(`-${maxAbsP.toExponential(1)}`, px0 - 4, py0 + ph);
+    ctx.fillStyle = stP.inkColor; ctx.font = castepPlotFont("tick", 0.80); ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    ctx.fillText(`+${maxAbsP.toExponential(1)}`, px0 - 5 - outTickExtra, py0 + 5);
+    ctx.fillText("0", px0 - 5 - outTickExtra, yZero);
+    ctx.fillText(formatPubMinus(`-${maxAbsP.toExponential(1)}`), px0 - 5 - outTickExtra, py0 + ph - 4);
 
     // Right Y ticks (ΔQ in e)
     ctx.fillStyle = "#7c3aed"; ctx.textAlign = "left";
-    ctx.fillText(`+${maxAbsQ.toFixed(3)}`, px0 + pw + 4, py0 + 8);
-    ctx.fillText("0", px0 + pw + 4, yZero + 3);
-    ctx.fillText(`-${maxAbsQ.toFixed(3)}`, px0 + pw + 4, py0 + ph);
+    ctx.fillText(`+${maxAbsQ.toFixed(3)}`, px0 + pw + 5 + outTickExtra, py0 + 5);
+    ctx.fillText("0", px0 + pw + 5 + outTickExtra, yZero);
+    ctx.fillText(formatPubMinus(`-${maxAbsQ.toFixed(3)}`), px0 + pw + 5 + outTickExtra, py0 + ph - 4);
 
     // X ticks (z in Å)
-    ctx.fillStyle = "#475569"; ctx.textAlign = "center";
-    for (let g = 0; g <= 4; g++) {
-      const zv = zMin + (zMax - zMin) * (g / 4);
-      ctx.fillText(zv.toFixed(1), toX(zv), py0 + ph + 13);
-    }
-    ctx.font = "bold 10.5px Inter, sans-serif"; ctx.fillStyle = "#334155";
-    ctx.fillText("z coordinate (Å)", px0 + pw / 2, py0 + ph + 26);
+    ctx.fillStyle = stP.inkColor; ctx.font = castepPlotFont("tick", 0.86); ctx.textAlign = "center"; ctx.textBaseline = "top";
+    const txY = py0 + ph + 5 + outTickExtra;
+    xTickVals.forEach(zv => {
+      ctx.fillText(zv.toFixed(1), toX(zv), txY);
+    });
+    ctx.font = castepPlotFont("axis", 0.88); ctx.fillStyle = stP.inkColor;
+    ctx.fillText("z coordinate (Å)", px0 + pw / 2, txY + Math.round(stP.tickSize * 0.86) + 4);
   }
 
   if (layout === "tri") {
@@ -12614,55 +12977,64 @@ function renderCastepMullikenPane() {
   }
 
   // 3) Render Left Chart: Atomic / Orbital Magnetism or Charge Comparison
+  const stM = getCastepPlotStyle();
+  const outTickM = stM.tickDir === "out" ? (stM.tickLength || 5) + 1 : 0;
+
   if (magCanvas) {
     const w = Math.max(260, Math.floor((magCanvas.parentElement?.clientWidth || 440) - 24));
-    const h = 300, dpr = window.devicePixelRatio || 1;
+    const h = 310, dpr = Math.max(2, window.devicePixelRatio || 1);
     magCanvas.width = Math.round(w * dpr); magCanvas.height = Math.round(h * dpr);
+    magCanvas.style.width = `${w}px`; magCanvas.style.height = `${h}px`;
     const ctx = magCanvas.getContext("2d");
     ctx.save(); ctx.scale(dpr, dpr);
     ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, w, h);
 
-    const padL = 52, padR = 16, padT = 26, padB = 46;
+    const padL = Math.round(58 + Math.max(0, (stM.tickSize - 12) * 2) + outTickM);
+    const padR = 16, padT = Math.round(28 + Math.max(0, stM.legendSize - 11));
+    const padB = Math.round(48 + outTickM);
     const pw = w - padL - padR, ph = h - padT - padB;
-    ctx.strokeStyle = "#cbd5e1"; ctx.strokeRect(padL, padT, pw, ph);
 
     const titleEl = document.getElementById("castep-mulliken-mag-title");
 
     if (chartMode === "spin_atomic") {
       if (titleEl) titleEl.innerHTML = "Atomic Magnetic Moment Contribution μ<sub>i</sub> (μ<sub>B</sub>)";
-      // Sort top 24 most magnetic atoms (or all if <= 24)
       const sorted = [...visAtoms].sort((a, b) => Math.abs(b.spin) - Math.abs(a.spin)).slice(0, 24);
       let maxAbs = Math.max(0.1, ...sorted.map(a => Math.abs(a.spin))) * 1.15;
       const toY = (v) => padT + ph * (0.5 - v / (2 * maxAbs));
       const y0 = toY(0);
-      ctx.beginPath(); ctx.moveTo(padL, y0); ctx.lineTo(padL + pw, y0);
-      ctx.strokeStyle = "#475569"; ctx.lineWidth = 1.1; ctx.stroke();
+      const yTicksPx = [toY(maxAbs), toY(maxAbs * 0.5), y0, toY(-maxAbs * 0.5), toY(-maxAbs)];
+      drawPubGridLines(ctx, padL, padT, pw, ph, stM, [], yTicksPx);
+      ctx.beginPath(); ctx.moveTo(padL, Math.round(y0) + 0.5); ctx.lineTo(padL + pw, Math.round(y0) + 0.5);
+      ctx.strokeStyle = stM.inkColor; ctx.lineWidth = Math.max(1.0, stM.borderWidth * 0.65); ctx.stroke();
 
       const bw = Math.max(4, (pw / Math.max(1, sorted.length)) * 0.72);
       const step = pw / Math.max(1, sorted.length);
+      const xTicksPx = [];
       sorted.forEach((a, i) => {
         const cx = padL + (i + 0.5) * step;
+        xTicksPx.push(cx);
         const yv = toY(a.spin);
         ctx.fillStyle = a.spin >= 0 ? "#dc2626" : "#2563eb";
         ctx.fillRect(cx - bw / 2, Math.min(y0, yv), bw, Math.max(1.5, Math.abs(yv - y0)));
         if (sorted.length <= 16 || i % 2 === 0) {
-          ctx.save(); ctx.translate(cx, padT + ph + 8); ctx.rotate(-Math.PI / 4);
-          ctx.fillStyle = "#334155"; ctx.font = "9.5px Inter, sans-serif"; ctx.textAlign = "right";
+          ctx.save(); ctx.translate(cx, padT + ph + 8 + outTickM); ctx.rotate(-Math.PI / 4);
+          ctx.fillStyle = stM.inkColor; ctx.font = castepPlotFont("tick", 0.85); ctx.textAlign = "right"; ctx.textBaseline = "middle";
           ctx.fillText(a.label, 0, 0); ctx.restore();
         }
       });
-      ctx.fillStyle = "#475569"; ctx.font = "10px Inter, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
-      ctx.fillText(`+${maxAbs.toFixed(2)}`, padL - 5, padT + 4);
-      ctx.fillText("0.00", padL - 5, y0);
-      ctx.fillText(`-${maxAbs.toFixed(2)}`, padL - 5, padT + ph - 4);
-      ctx.font = "bold 10px Inter, sans-serif"; ctx.textAlign = "right";
-      const lblDn = "■ −μ_{B} (↓)";
+      drawPubAxisBox(ctx, padL, padT, pw, ph, stM, { compact: true, xTicks: xTicksPx.length <= 16 ? xTicksPx : [], yTicks: yTicksPx, mirrorRight: true });
+      ctx.fillStyle = stM.inkColor; ctx.font = castepPlotFont("tick", 0.90); ctx.textAlign = "right"; ctx.textBaseline = "middle";
+      ctx.fillText(`+${maxAbs.toFixed(2)}`, padL - 6 - outTickM, padT + 4);
+      ctx.fillText("0.00", padL - 6 - outTickM, y0);
+      ctx.fillText(formatPubMinus(`-${maxAbs.toFixed(2)}`), padL - 6 - outTickM, padT + ph - 4);
+      ctx.font = castepPlotFont("legend", 0.92, "bold"); ctx.textAlign = "right"; ctx.textBaseline = "alphabetic";
+      const lblDn = "■ \u2212μ_{B} (↓)";
       const lblUp = "■ +μ_{B} (↑)";
       const wDn = measureSciText(ctx, lblDn);
       ctx.fillStyle = "#2563eb";
-      drawSciText(ctx, lblDn, padL + pw, padT - 10);
+      drawSciText(ctx, lblDn, padL + pw, padT - 9);
       ctx.fillStyle = "#dc2626";
-      drawSciText(ctx, lblUp, padL + pw - wDn - 14, padT - 10);
+      drawSciText(ctx, lblUp, padL + pw - wDn - 14, padT - 9);
     } else if (chartMode === "spin_orbital" || chartMode === "elec_orbital") {
       const isMag = chartMode === "spin_orbital";
       if (titleEl) titleEl.innerHTML = isMag ? "Orbital Magnetic Contribution (μ<sub>s</sub>, μ<sub>p</sub>, μ<sub>d</sub>, μ<sub>f</sub>) by Element" : "Avg Orbital Electron Population (s, p, d, f) by Element";
@@ -12680,17 +13052,19 @@ function renderCastepMullikenPane() {
         });
       });
       const absMax = Math.max(Math.abs(minV), Math.abs(maxV), 0.1) * 1.15;
-      const toY = isMag
-        ? (v) => padT + ph * (0.5 - v / (2 * absMax))
-        : (v) => padT + ph * (1 - v / absMax);
+      const toY = isMag ? (v) => padT + ph * (0.5 - v / (2 * absMax)) : (v) => padT + ph * (1 - v / absMax);
       const y0 = toY(0);
-      ctx.beginPath(); ctx.moveTo(padL, y0); ctx.lineTo(padL + pw, y0);
-      ctx.strokeStyle = "#475569"; ctx.lineWidth = 1.1; ctx.stroke();
+      const yTicksPx = isMag ? [padT, toY(absMax * 0.5), y0, toY(-absMax * 0.5), padT + ph] : [padT, padT + ph * 0.5, padT + ph];
+      drawPubGridLines(ctx, padL, padT, pw, ph, stM, [], yTicksPx);
+      ctx.beginPath(); ctx.moveTo(padL, Math.round(y0) + 0.5); ctx.lineTo(padL + pw, Math.round(y0) + 0.5);
+      ctx.strokeStyle = stM.inkColor; ctx.lineWidth = Math.max(1.0, stM.borderWidth * 0.65); ctx.stroke();
 
       const grpW = pw / Math.max(1, spList.length);
       const barW = Math.max(5, Math.min(20, (grpW * 0.72) / 4));
+      const xTicksPx = [];
       spList.forEach((sp, si) => {
         const gx = padL + (si + 0.5) * grpW;
+        xTicksPx.push(gx);
         orbKeys.forEach((k, oi) => {
           const val = isMag ? sp[k] : (sp[k] / sp.count);
           const bx = gx + (oi - 1.5) * (barW + 1.5) - barW / 2;
@@ -12698,20 +13072,21 @@ function renderCastepMullikenPane() {
           ctx.fillStyle = orbCols[oi];
           ctx.fillRect(bx, Math.min(y0, yv), barW, Math.max(1.5, Math.abs(yv - y0)));
         });
-        ctx.fillStyle = "#0f172a"; ctx.font = "bold 11px Inter, sans-serif"; ctx.textAlign = "center";
-        ctx.fillText(sp.element, gx, padT + ph + 15);
+        ctx.fillStyle = stM.inkColor; ctx.font = castepPlotFont("tick", 0.96, stM.boldAxes ? "bold" : ""); ctx.textAlign = "center"; ctx.textBaseline = "top";
+        ctx.fillText(sp.element, gx, padT + ph + 7 + outTickM);
       });
-      ctx.fillStyle = "#475569"; ctx.font = "10px Inter, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
-      ctx.fillText(absMax.toFixed(2), padL - 5, padT + 4);
-      ctx.fillText("0.00", padL - 5, y0);
-      if (isMag) ctx.fillText((-absMax).toFixed(2), padL - 5, padT + ph - 4);
+      drawPubAxisBox(ctx, padL, padT, pw, ph, stM, { compact: true, xTicks: xTicksPx, yTicks: yTicksPx, mirrorRight: true });
+      ctx.fillStyle = stM.inkColor; ctx.font = castepPlotFont("tick", 0.90); ctx.textAlign = "right"; ctx.textBaseline = "middle";
+      ctx.fillText(absMax.toFixed(2), padL - 6 - outTickM, padT + 4);
+      ctx.fillText("0.00", padL - 6 - outTickM, y0);
+      if (isMag) ctx.fillText(formatPubMinus((-absMax).toFixed(2)), padL - 6 - outTickM, padT + ph - 4);
       let lx = padL + pw;
-      ctx.font = "bold 10px Inter, sans-serif"; ctx.textAlign = "right";
+      ctx.font = castepPlotFont("legend", 0.92, "bold"); ctx.textAlign = "right"; ctx.textBaseline = "alphabetic";
       for (let oi = 3; oi >= 0; oi--) {
         ctx.fillStyle = orbCols[oi];
         const t = `■ ${orbLbls[oi]}`;
-        drawSciText(ctx, t, lx, padT - 10);
-        lx -= measureSciText(ctx, t) + 11;
+        drawSciText(ctx, t, lx, padT - 9);
+        lx -= measureSciText(ctx, t) + 12;
       }
     } else {
       if (titleEl) titleEl.textContent = "Atomic Charge Comparison: Mulliken vs. Hirshfeld (e)";
@@ -12719,8 +13094,10 @@ function renderCastepMullikenPane() {
       let absMax = Math.max(0.2, ...sample.map(a => Math.max(Math.abs(a.charge), Math.abs(a.hirshfeldCharge || 0)))) * 1.18;
       const toY = (v) => padT + ph * (0.5 - v / (2 * absMax));
       const y0 = toY(0);
-      ctx.beginPath(); ctx.moveTo(padL, y0); ctx.lineTo(padL + pw, y0);
-      ctx.strokeStyle = "#475569"; ctx.lineWidth = 1.1; ctx.stroke();
+      const yTicksPx = [padT, y0, padT + ph];
+      drawPubGridLines(ctx, padL, padT, pw, ph, stM, [], yTicksPx);
+      ctx.beginPath(); ctx.moveTo(padL, Math.round(y0) + 0.5); ctx.lineTo(padL + pw, Math.round(y0) + 0.5);
+      ctx.strokeStyle = stM.inkColor; ctx.lineWidth = Math.max(1.0, stM.borderWidth * 0.65); ctx.stroke();
       const step = pw / Math.max(1, sample.length);
       const bw = Math.max(3, Math.min(12, step * 0.36));
       sample.forEach((a, i) => {
@@ -12733,17 +13110,18 @@ function renderCastepMullikenPane() {
           ctx.fillStyle = "#ea580c";
           ctx.fillRect(cx + 0.5, Math.min(y0, yh), bw, Math.max(1.5, Math.abs(yh - y0)));
         }
-        ctx.save(); ctx.translate(cx, padT + ph + 8); ctx.rotate(-Math.PI / 4);
-        ctx.fillStyle = "#334155"; ctx.font = "9.5px Inter, sans-serif"; ctx.textAlign = "right";
+        ctx.save(); ctx.translate(cx, padT + ph + 8 + outTickM); ctx.rotate(-Math.PI / 4);
+        ctx.fillStyle = stM.inkColor; ctx.font = castepPlotFont("tick", 0.84); ctx.textAlign = "right"; ctx.textBaseline = "middle";
         ctx.fillText(a.label, 0, 0); ctx.restore();
       });
-      ctx.fillStyle = "#475569"; ctx.font = "10px Inter, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
-      ctx.fillText(`+${absMax.toFixed(2)}`, padL - 5, padT + 4);
-      ctx.fillText("0.00", padL - 5, y0);
-      ctx.fillText(`-${absMax.toFixed(2)}`, padL - 5, padT + ph - 4);
-      ctx.fillStyle = "#2563eb"; ctx.font = "bold 10px Inter, sans-serif"; ctx.textAlign = "right";
-      ctx.fillText("■ Mulliken   ", padL + pw - 62, padT - 10);
-      ctx.fillStyle = "#ea580c"; ctx.fillText("■ Hirshfeld", padL + pw, padT - 10);
+      drawPubAxisBox(ctx, padL, padT, pw, ph, stM, { compact: true, yTicks: yTicksPx, mirrorRight: true });
+      ctx.fillStyle = stM.inkColor; ctx.font = castepPlotFont("tick", 0.90); ctx.textAlign = "right"; ctx.textBaseline = "middle";
+      ctx.fillText(`+${absMax.toFixed(2)}`, padL - 6 - outTickM, padT + 4);
+      ctx.fillText("0.00", padL - 6 - outTickM, y0);
+      ctx.fillText(formatPubMinus(`-${absMax.toFixed(2)}`), padL - 6 - outTickM, padT + ph - 4);
+      ctx.fillStyle = "#2563eb"; ctx.font = castepPlotFont("legend", 0.92, "bold"); ctx.textAlign = "right"; ctx.textBaseline = "alphabetic";
+      ctx.fillText("■ Mulliken   ", padL + pw - 68, padT - 9);
+      ctx.fillStyle = "#ea580c"; ctx.fillText("■ Hirshfeld", padL + pw, padT - 9);
     }
     ctx.restore();
   }
@@ -12751,18 +13129,21 @@ function renderCastepMullikenPane() {
   // 4) Render Right Chart: Mulliken Bond Population vs Bond Length (Å)
   if (bondCanvas) {
     const w = Math.max(260, Math.floor((bondCanvas.parentElement?.clientWidth || 440) - 24));
-    const h = 300, dpr = window.devicePixelRatio || 1;
+    const h = 310, dpr = Math.max(2, window.devicePixelRatio || 1);
     bondCanvas.width = Math.round(w * dpr); bondCanvas.height = Math.round(h * dpr);
+    bondCanvas.style.width = `${w}px`; bondCanvas.style.height = `${h}px`;
     const ctx = bondCanvas.getContext("2d");
     ctx.save(); ctx.scale(dpr, dpr);
     ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, w, h);
 
-    const padL = 52, padR = 16, padT = 26, padB = 42;
+    const padL = Math.round(58 + Math.max(0, (stM.tickSize - 12) * 2) + outTickM);
+    const padR = 16, padT = Math.round(28 + Math.max(0, stM.legendSize - 11));
+    const padB = Math.round(44 + outTickM);
     const pw = w - padL - padR, ph = h - padT - padB;
-    ctx.strokeStyle = "#cbd5e1"; ctx.strokeRect(padL, padT, pw, ph);
 
     if (!visBonds.length) {
-      ctx.fillStyle = "#64748b"; ctx.font = "12px Inter, sans-serif"; ctx.textAlign = "center";
+      drawPubAxisBox(ctx, padL, padT, pw, ph, stM, { compact: true });
+      ctx.fillStyle = "#64748b"; ctx.font = castepPlotFont("tick"); ctx.textAlign = "center";
       ctx.fillText("No Mulliken bond pairs available", padL + pw / 2, padT + ph / 2);
       ctx.restore();
     } else {
@@ -12777,10 +13158,18 @@ function renderCastepMullikenPane() {
       const toX = (x) => padL + ((x - minL) / ((maxL - minL) || 1)) * pw;
       const toY = (y) => padT + ph * (1 - (y - minP) / ((maxP - minP) || 1));
 
-      // Pop = 0 antibonding/bonding divider
-      const yZero = toY(0);
+      const yTicksVals = [0, 1, 2, 3, 4].map(g => minP + (maxP - minP) * (g / 4));
+      const xTicksVals = [0, 1, 2, 3, 4].map(g => minL + (maxL - minL) * (g / 4));
+      const yTicksPx = yTicksVals.map(v => toY(v));
+      const xTicksPx = xTicksVals.map(v => toX(v));
+
+      ctx.save();
+      ctx.beginPath(); ctx.rect(padL, padT, pw, ph); ctx.clip();
+      drawPubGridLines(ctx, padL, padT, pw, ph, stM, xTicksPx, yTicksPx);
+
+      const yZero = Math.round(toY(0)) + 0.5;
       ctx.beginPath(); ctx.moveTo(padL, yZero); ctx.lineTo(padL + pw, yZero);
-      ctx.setLineDash([4, 3]); ctx.strokeStyle = "#64748b"; ctx.lineWidth = 1.1; ctx.stroke(); ctx.setLineDash([]);
+      ctx.setLineDash([4, 3]); ctx.strokeStyle = stM.inkColor; ctx.lineWidth = Math.max(0.9, stM.borderWidth * 0.6); ctx.stroke(); ctx.setLineDash([]);
 
       const pairTypes = [...new Set(visBonds.map(b => b.pairType))];
       const pairCol = {};
@@ -12792,33 +13181,38 @@ function renderCastepMullikenPane() {
         ctx.arc(sx, sy, 5.2, 0, Math.PI * 2);
         ctx.fillStyle = pairCol[b.pairType] + "cc";
         ctx.fill();
-        ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 0.8; ctx.stroke();
+        ctx.strokeStyle = stM.inkColor; ctx.lineWidth = 0.85; ctx.stroke();
       });
+      ctx.restore();
+
+      drawPubAxisBox(ctx, padL, padT, pw, ph, stM, { compact: true, xTicks: xTicksPx, yTicks: yTicksPx, mirrorTop: true, mirrorRight: true });
 
       // Legend for bond pairs
+      const pairTypesLeg = [...new Set(visBonds.map(b => b.pairType))];
+      const pairColLeg = {};
+      pairTypesLeg.forEach((pt, idx) => { pairColLeg[pt] = PDOS_CURVE_PALETTE[idx % PDOS_CURVE_PALETTE.length]; });
       let lx = padL + pw;
-      ctx.font = "bold 10px Inter, sans-serif"; ctx.textAlign = "right";
-      for (let i = Math.min(pairTypes.length - 1, 5); i >= 0; i--) {
-        const pt = pairTypes[i];
-        ctx.fillStyle = pairCol[pt];
+      ctx.font = castepPlotFont("legend", 0.90, "bold"); ctx.textAlign = "right"; ctx.textBaseline = "alphabetic";
+      for (let i = Math.min(pairTypesLeg.length - 1, 5); i >= 0; i--) {
+        const pt = pairTypesLeg[i];
+        ctx.fillStyle = pairColLeg[pt];
         const lbl = `● ${pt}`;
-        ctx.fillText(lbl, lx, padT - 10);
+        ctx.fillText(lbl, lx, padT - 9);
         lx -= ctx.measureText(lbl).width + 9;
       }
 
-      // Ticks
-      ctx.fillStyle = "#475569"; ctx.font = "10px Inter, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
-      for (let g = 0; g <= 4; g++) {
-        const pv = minP + (maxP - minP) * (g / 4);
-        ctx.fillText(pv.toFixed(2), padL - 5, toY(pv));
-      }
+      // Ticks & axis label
+      ctx.fillStyle = stM.inkColor; ctx.font = castepPlotFont("tick", 0.90); ctx.textAlign = "right"; ctx.textBaseline = "middle";
+      yTicksVals.forEach(pv => {
+        ctx.fillText(formatPubMinus(pv.toFixed(2)), padL - 6 - outTickM, toY(pv));
+      });
       ctx.textAlign = "center"; ctx.textBaseline = "top";
-      for (let g = 0; g <= 4; g++) {
-        const lv = minL + (maxL - minL) * (g / 4);
-        ctx.fillText(lv.toFixed(2), toX(lv), padT + ph + 5);
-      }
-      ctx.font = "bold 10.5px Inter, sans-serif"; ctx.fillStyle = "#334155";
-      ctx.fillText("Bond Length (Å)", padL + pw / 2, padT + ph + 21);
+      const txY = padT + ph + 6 + outTickM;
+      xTicksVals.forEach(lv => {
+        ctx.fillText(lv.toFixed(2), toX(lv), txY);
+      });
+      ctx.font = castepPlotFont("axis", 0.94); ctx.fillStyle = stM.inkColor;
+      ctx.fillText("Bond Length (Å)", padL + pw / 2, txY + Math.round(stM.tickSize * 0.90) + 4);
       ctx.restore();
     }
   }
@@ -13228,21 +13622,24 @@ function formatSpinMatrixNumber(v, decimals) {
 }
 
 function measureOrbitalMathLabel(ctx, orbKey, basePx) {
+  const st = getCastepPlotStyle();
+  const ff = st.fontFamily || '"Times New Roman", Times, Georgia, serif';
+  const wPref = st.boldAxes ? "bold " : "";
   const spec = CASTEP_ORBITAL_SPEC[orbKey] || { base: orbKey, sub: [] };
   const subPx = Math.max(8, basePx * 0.66);
   const supPx = Math.max(6.5, basePx * 0.46);
   const prevFont = ctx.font;
-  ctx.font = `bold italic ${basePx}px "Times New Roman", Georgia, serif`;
+  ctx.font = `${wPref}italic ${basePx}px ${ff}`;
   let w = ctx.measureText(spec.base).width;
   if (spec.sub && spec.sub.length) {
     w += basePx * 0.05;
     for (const tok of spec.sub) {
       if (tok.sup) {
-        ctx.font = `bold ${supPx}px "Times New Roman", Georgia, serif`;
+        ctx.font = `${wPref}${supPx}px ${ff}`;
       } else {
         ctx.font = tok.it === false
-          ? `bold ${subPx}px "Times New Roman", Georgia, serif`
-          : `bold italic ${subPx}px "Times New Roman", Georgia, serif`;
+          ? `${wPref}${subPx}px ${ff}`
+          : `${wPref}italic ${subPx}px ${ff}`;
       }
       w += ctx.measureText(tok.t).width;
     }
@@ -13252,6 +13649,9 @@ function measureOrbitalMathLabel(ctx, orbKey, basePx) {
 }
 
 function drawOrbitalMathLabel(ctx, orbKey, x, y, basePx, align = "center") {
+  const st = getCastepPlotStyle();
+  const ff = st.fontFamily || '"Times New Roman", Times, Georgia, serif';
+  const wPref = st.boldAxes ? "bold " : "";
   const spec = CASTEP_ORBITAL_SPEC[orbKey] || { base: orbKey, sub: [] };
   const subPx = Math.max(8, basePx * 0.66);
   const supPx = Math.max(6.5, basePx * 0.46);
@@ -13262,10 +13662,10 @@ function drawOrbitalMathLabel(ctx, orbKey, x, y, basePx, align = "center") {
   else if (align === "right") curX = x - totalW;
 
   ctx.save();
-  ctx.fillStyle = "#000000";
+  ctx.fillStyle = st.inkColor || "#000000";
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
-  ctx.font = `bold italic ${basePx}px "Times New Roman", Georgia, serif`;
+  ctx.font = `${wPref}italic ${basePx}px ${ff}`;
   ctx.fillText(spec.base, curX, y);
   curX += ctx.measureText(spec.base).width + (spec.sub?.length ? basePx * 0.05 : 0);
 
@@ -13274,12 +13674,12 @@ function drawOrbitalMathLabel(ctx, orbKey, x, y, basePx, align = "center") {
     const supInSubY = subY - subPx * 0.34;
     for (const tok of spec.sub) {
       if (tok.sup) {
-        ctx.font = `bold ${supPx}px "Times New Roman", Georgia, serif`;
+        ctx.font = `${wPref}${supPx}px ${ff}`;
         ctx.fillText(tok.t, curX, supInSubY);
       } else {
         ctx.font = tok.it === false
-          ? `bold ${subPx}px "Times New Roman", Georgia, serif`
-          : `bold italic ${subPx}px "Times New Roman", Georgia, serif`;
+          ? `${wPref}${subPx}px ${ff}`
+          : `${wPref}italic ${subPx}px ${ff}`;
         ctx.fillText(tok.t, curX, subY);
       }
       curX += ctx.measureText(tok.t).width;
@@ -13341,17 +13741,24 @@ function getSpinMatrixCellColors(val, maxAbs, palette, decimals) {
 }
 
 function drawSingleSpinMatrixPanel(ctx, boxX, boxY, boxSize, entries, opts) {
+  const st = getCastepPlotStyle();
+  const ff = st.fontFamily || '"Times New Roman", Times, Georgia, serif';
   const N = Math.max(1, entries.length);
   const decimals = opts.decimals ?? 3;
   const palette = opts.palette || "journal_green";
   const cell = boxSize / N;
   const maxAbs = Math.max(1e-6, ...entries.map(e => Math.abs(e.val)));
-  const labelPx = opts.labelPx || Math.max(9.5, Math.min(18, cell * (N <= 5 ? (opts.compact ? 0.27 : 0.30) : (N <= 7 ? 0.25 : 0.23))));
-  const numPx = opts.numPx || Math.max(8.5, Math.min(18, cell * (opts.compact && N >= 5 ? 0.225 : (N <= 5 ? 0.28 : (N <= 7 ? 0.24 : 0.21)))));
+  const axisScale = (st.axisLabelSize || 13) / 13;
+  const tickScale = (st.tickSize || 12) / 12;
+  const labelPx = opts.labelPx
+    ? opts.labelPx * axisScale
+    : Math.max(9.5, Math.min(20, cell * (N <= 5 ? (opts.compact ? 0.27 : 0.30) : (N <= 7 ? 0.25 : 0.23)) * axisScale));
+  const numPx = opts.numPx
+    ? opts.numPx * tickScale
+    : Math.max(8.5, Math.min(20, cell * (opts.compact && N >= 5 ? 0.225 : (N <= 5 ? 0.28 : (N <= 7 ? 0.24 : 0.21))) * tickScale));
 
   // 1) Draw N×N cells with diagonal bottom-left (i=0,j=0) -> top-right (i=N-1,j=N-1)
   for (let row = 0; row < N; row++) {
-    // row 0 is bottom (y = boxY + (N - 1 - row) * cell), matching user's reference figure!
     const cy = boxY + (N - 1 - row) * cell;
     for (let col = 0; col < N; col++) {
       const cx = boxX + col * cell;
@@ -13359,17 +13766,16 @@ function drawSingleSpinMatrixPanel(ctx, boxX, boxY, boxSize, entries, opts) {
       const { bg, fg } = getSpinMatrixCellColors(val, maxAbs, palette, decimals);
       ctx.fillStyle = bg;
       ctx.fillRect(cx, cy, cell + 0.5, cell + 0.5);
-      if (palette !== "journal_green") {
-        ctx.strokeStyle = "rgba(15, 23, 42, 0.08)";
+      if (palette !== "journal_green" || st.gridMode !== "off") {
+        ctx.strokeStyle = st.gridMode === "normal" ? "rgba(15, 23, 42, 0.22)" : "rgba(15, 23, 42, 0.09)";
         ctx.lineWidth = 0.7;
         ctx.strokeRect(cx + 0.5, cy + 0.5, cell - 1, cell - 1);
       }
 
-      // Draw formatted cell value
       const str = formatSpinMatrixNumber(val, decimals);
       ctx.save();
-      ctx.fillStyle = fg;
-      ctx.font = `${row === col && Math.abs(val) >= 0.5 * Math.pow(10, -decimals) && palette !== "journal_green" ? "bold " : ""}${numPx}px "Times New Roman", Georgia, serif`;
+      ctx.fillStyle = fg === "#000000" ? (st.inkColor || "#000000") : fg;
+      ctx.font = `${row === col && Math.abs(val) >= 0.5 * Math.pow(10, -decimals) && palette !== "journal_green" ? "bold " : ""}${numPx}px ${ff}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(str, cx + cell * 0.5, cy + cell * 0.52);
@@ -13377,33 +13783,23 @@ function drawSingleSpinMatrixPanel(ctx, boxX, boxY, boxSize, entries, opts) {
     }
   }
 
-  // 2) Crisp solid black outer frame + inward-pointing ticks (matching reference screenshot)
-  ctx.save();
-  ctx.strokeStyle = "#000000";
-  ctx.lineWidth = opts.compact ? 1.4 : 1.9;
-  ctx.strokeRect(Math.round(boxX) + 0.5, Math.round(boxY) + 0.5, Math.round(boxSize), Math.round(boxSize));
-
-  const tickLen = opts.compact ? 2.5 : 5.5;
-  ctx.lineWidth = opts.compact ? 1.1 : 1.6;
+  // 2) Crisp unified publication outer frame + inward/outward ticks
+  const tickXs = [];
+  const tickYs = [];
   for (let i = 0; i < N; i++) {
-    const ty = boxY + (N - 0.5 - i) * cell;
-    const tx = boxX + (i + 0.5) * cell;
-    // Left inward tick
-    ctx.beginPath();
-    ctx.moveTo(boxX + 0.5, ty);
-    ctx.lineTo(boxX + 0.5 + tickLen, ty);
-    ctx.stroke();
-    // Bottom inward tick
-    ctx.beginPath();
-    ctx.moveTo(tx, boxY + boxSize + 0.5);
-    ctx.lineTo(tx, boxY + boxSize + 0.5 - Math.max(3, tickLen - 1));
-    ctx.stroke();
+    tickYs.push(boxY + (N - 0.5 - i) * cell);
+    tickXs.push(boxX + (i + 0.5) * cell);
   }
-  ctx.restore();
+  drawPubAxisBox(ctx, boxX, boxY, boxSize, boxSize, st, {
+    compact: !!opts.compact,
+    xTicks: tickXs,
+    yTicks: tickYs
+  });
 
   // 3) Y-axis orbital labels (left of box, bottom -> top) & X-axis orbital labels (below box, left -> right)
-  const yPad = opts.compact ? 6 : 9;
-  const xPad = opts.compact ? 14 : 20;
+  const outExtra = st.tickDir === "out" ? (st.tickLength || 5) + 1 : 0;
+  const yPad = (opts.compact ? 6 : 9) + outExtra;
+  const xPad = (opts.compact ? 14 : 20) + outExtra;
   const maxXLabelW = Math.max(...entries.map(e => measureOrbitalMathLabel(ctx, e.key, labelPx)));
   const rotateX = (maxXLabelW > cell * 0.94);
 
@@ -13413,7 +13809,7 @@ function drawSingleSpinMatrixPanel(ctx, boxX, boxY, boxSize, entries, opts) {
     drawOrbitalMathLabel(ctx, entries[i].key, boxX - yPad, ty, labelPx, "right");
     if (rotateX) {
       ctx.save();
-      ctx.translate(tx + 2, boxY + boxSize + 10);
+      ctx.translate(tx + 2, boxY + boxSize + 10 + outExtra);
       ctx.rotate(-Math.PI / 5.5);
       drawOrbitalMathLabel(ctx, entries[i].key, 0, 0, Math.max(9.5, labelPx * 0.88), "right");
       ctx.restore();
@@ -13422,11 +13818,11 @@ function drawSingleSpinMatrixPanel(ctx, boxX, boxY, boxSize, entries, opts) {
     }
   }
 
-  // 4) Optional title above panel (used in All-Elements Grid & optional header)
+  // 4) Optional title above panel (used in All-Elements Grid)
   if (opts.title) {
     ctx.save();
-    ctx.fillStyle = "#0f172a";
-    ctx.font = `bold ${opts.compact ? 11.5 : 13}px Inter, sans-serif`;
+    ctx.fillStyle = st.inkColor || "#000000";
+    ctx.font = castepPlotFont("title", opts.compact ? 0.84 : 0.96);
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
     drawSciText(ctx, opts.title, boxX + boxSize * 0.5, boxY - (opts.compact ? 6 : 10));
@@ -13439,17 +13835,17 @@ function drawSingleSpinMatrixPanel(ctx, boxX, boxY, boxSize, entries, opts) {
     const cbW = 12;
     const steps = 40;
     for (let s = 0; s < steps; s++) {
-      const frac = 1 - (2 * s) / (steps - 1); // +1 top -> -1 bottom
+      const frac = 1 - (2 * s) / (steps - 1);
       const { bg } = getSpinMatrixCellColors(frac * maxAbs, maxAbs, palette, decimals);
       ctx.fillStyle = bg;
       const sy = boxY + (s / steps) * boxSize;
       ctx.fillRect(cbX, sy, cbW, boxSize / steps + 0.8);
     }
-    ctx.strokeStyle = "#334155";
-    ctx.lineWidth = 0.9;
-    ctx.strokeRect(cbX + 0.5, boxY + 0.5, cbW, boxSize);
-    ctx.fillStyle = "#334155";
-    ctx.font = "10px Inter, sans-serif";
+    ctx.strokeStyle = st.inkColor || "#000000";
+    ctx.lineWidth = Math.max(1.0, st.borderWidth * 0.72);
+    ctx.strokeRect(Math.round(cbX) + 0.5, Math.round(boxY) + 0.5, cbW, Math.round(boxSize));
+    ctx.fillStyle = st.inkColor || "#000000";
+    ctx.font = castepPlotFont("tick", 0.84);
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
     ctx.fillText(`+${maxAbs.toFixed(decimals)}`, cbX + cbW + 4, boxY + 5);
@@ -13726,10 +14122,10 @@ function renderCastepSpinMatrix() {
         sy: "Spin Matrix S_{y} (μ_{B})",
         smag: "Spin Magnitude Matrix |S| (μ_{B})"
       }[qty] || "Spin Matrix";
-      ctx.fillStyle = "#0f172a";
-      ctx.font = "bold 13.5px Inter, sans-serif";
+      ctx.fillStyle = getCastepPlotStyle().inkColor || "#000000";
+      ctx.font = castepPlotFont("title", 1.0);
       ctx.textAlign = "center";
-      drawSciText(ctx, `All-Elements Orbital ${qtySciTitle} (${atomMode === "sum" ? "Element Sum" : "Element Average"})`, totalW / 2, 19);
+      drawSciText(ctx, `All-Elements Orbital ${qtySciTitle} (${atomMode === "sum" ? "Element Sum" : "Element Average"})`, totalW / 2, 20);
 
       elSummary.forEach((sp, idx) => {
         const c = idx % cols;
@@ -13778,16 +14174,19 @@ function renderCastepSpinMatrix() {
   const absTraceVal = entries.reduce((s, e) => s + Math.abs(e.val), 0);
 
   if (canvas) {
-    const wrapW = Math.max(320, Math.min(450, Math.floor((canvas.parentElement?.clientWidth || 430) - 20)));
+    const stS = getCastepPlotStyle();
+    const wrapW = Math.max(320, Math.min(460, Math.floor((canvas.parentElement?.clientWidth || 430) - 20)));
     const showCb = (palette !== "journal_green");
     const estLabelPx = N <= 5 ? 16.5 : (N <= 7 ? 13.5 : 11.5);
+    const scaledLabelPx = estLabelPx * ((stS.axisLabelSize || 13) / 13);
+    const outExtra = stS.tickDir === "out" ? (stS.tickLength || 5) + 1 : 0;
     const tmpCtx = canvas.getContext("2d");
-    const maxLblW = Math.max(40, ...entries.map(e => measureOrbitalMathLabel(tmpCtx, e.key, estLabelPx)));
-    const padL = Math.ceil(maxLblW + 18);
-    const padR = showCb ? 64 : 18;
+    const maxLblW = Math.max(40, ...entries.map(e => measureOrbitalMathLabel(tmpCtx, e.key, scaledLabelPx)));
+    const padL = Math.ceil(maxLblW + 18 + outExtra);
+    const padR = showCb ? 66 : 18;
     const padT = 18;
-    const padB = N >= 7 ? 56 : 42;
-    const boxSize = Math.max(190, Math.min(wrapW - padL - padR, 355));
+    const padB = Math.ceil((N >= 7 ? 56 : 44) + Math.max(0, scaledLabelPx - 16.5) + outExtra);
+    const boxSize = Math.max(180, Math.min(wrapW - padL - padR, 355));
     const totalW = padL + boxSize + padR;
     const totalH = padT + boxSize + padB;
     const dpr = Math.max(2, window.devicePixelRatio || 1);
