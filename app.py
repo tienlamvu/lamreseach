@@ -2264,19 +2264,36 @@ def _parse_pdos_bin_backend(pdos_path: str, bands_obj: dict, species_order: list
         ions_arr = struct.unpack(f"{endian}{norb}i", ion_b)
         am_arr = struct.unpack(f"{endian}{norb}i", am_b)
 
+        import math
         l_names = {0: "s", 1: "p", 2: "d", 3: "f"}
+        orb_m_names = {
+            0: ["S"],
+            1: ["Px", "Py", "Pz"],
+            2: ["Dzz", "Dzy", "Dzx", "Dxx-yy", "Dxy"],
+            3: ["Fzzz", "Fzzx", "Fzzy", "Fz(xx-yy)", "Fxyz", "Fx(xx-3yy)", "Fy(3xx-yy)"],
+        }
         # Map each orbital index -> (channel_key: (species_symbol, ion_index, l_char))
+        # and also -> exact real-orbital (species_symbol, ion_index, m_label) for Spin Matrix
         orb_to_chan = []
+        orb_to_ml = []
+        seen_ml = {}
         chan_meta = {}
         for o in range(norb):
             sp_idx = species_arr[o]
             el = species_order[sp_idx - 1] if (1 <= sp_idx <= len(species_order)) else f"Sp{sp_idx}"
             ion = ions_arr[o]
-            l_ch = l_names.get(am_arr[o], "s")
+            am = am_arr[o]
+            l_ch = l_names.get(am, "s")
             ckey = f"{el}|{ion}|{l_ch}"
             orb_to_chan.append(ckey)
             if ckey not in chan_meta:
                 chan_meta[ckey] = {"element": el, "ion": ion, "atom": f"{el}{ion}", "orbital": l_ch}
+            ml_key = (el, ion, am)
+            m_cnt = seen_ml.get(ml_key, 0)
+            seen_ml[ml_key] = m_cnt + 1
+            m_list = orb_m_names.get(am)
+            m_lbl = m_list[m_cnt % len(m_list)] if m_list else f"L{am}_{m_cnt}"
+            orb_to_ml.append((el, ion, m_lbl))
 
         # Build fine energy histogram grid [-20.0, +15.0] eV (1400 bins, dE = 0.025 eV)
         e_min, e_max, n_bins = -20.0, 15.0, 1400
@@ -2287,9 +2304,10 @@ def _parse_pdos_bin_backend(pdos_path: str, bands_obj: dict, species_order: list
         orb_to_cidx = [key_to_cidx[ck] for ck in orb_to_chan]
         n_chans = len(chan_keys)
 
-        # Allocate bins[spin][chan][bin] and total_bins[spin][bin]
+        # Allocate bins[spin][chan][bin], total_bins[spin][bin], and m-resolved orbital occupations orb_occ[spin][o]
         bins = [[[0.0] * n_bins for _ in range(n_chans)] for _ in range(ns)]
         total_bins = [[0.0] * n_bins for _ in range(ns)]
+        orb_occ = [[0.0] * norb for _ in range(ns)]
 
         # Index bands_obj kpoints for matching k-vectors or 1-based k_idx
         kpts_bands = bands_obj.get("kpoints") or []
@@ -2354,18 +2372,33 @@ def _parse_pdos_bin_backend(pdos_path: str, bands_obj: dict, species_order: list
                     if not eig_list or b >= len(eig_list):
                         continue
                     ev = eig_list[b]
-                    if ev < e_min or ev >= e_max:
+                    # Fermi-Dirac occupation weight (kT = 0.05 eV) across ALL bands (including deep semicore states)
+                    if ev <= -1.0:
+                        f_occ = 1.0
+                    elif ev >= 1.0:
+                        f_occ = 0.0
+                    else:
+                        f_occ = 1.0 / (1.0 + math.exp(ev / 0.05))
+                    in_hist = (e_min <= ev < e_max)
+                    if not in_hist and f_occ <= 1e-9:
                         continue
-                    b_idx = int((ev - e_min) * inv_dE)
-                    if b_idx < 0 or b_idx >= n_bins:
-                        continue
-                    total_bins[s_idx][b_idx] += wt_eff
                     w_vals = struct.unpack(orb_fmt, wb)
-                    c_bins = bins[s_idx]
-                    for o in range(norb):
-                        wv = w_vals[o]
-                        if wv > 1e-6:
-                            c_bins[orb_to_cidx[o]][b_idx] += wt_eff * wv
+                    if f_occ > 1e-9:
+                        occ_wt = wt * f_occ
+                        o_acc = orb_occ[s_idx]
+                        for o in range(norb):
+                            wv = w_vals[o]
+                            if wv != 0.0:
+                                o_acc[o] += occ_wt * wv
+                    if in_hist:
+                        b_idx = int((ev - e_min) * inv_dE)
+                        if 0 <= b_idx < n_bins:
+                            total_bins[s_idx][b_idx] += wt_eff
+                            c_bins = bins[s_idx]
+                            for o in range(norb):
+                                wv = w_vals[o]
+                                if wv > 1e-6:
+                                    c_bins[orb_to_cidx[o]][b_idx] += wt_eff * wv
 
         # Sparse-encode non-zero bins per channel to keep JSON compact and fast
         channels_out = []
@@ -2388,6 +2421,61 @@ def _parse_pdos_bin_backend(pdos_path: str, bands_obj: dict, species_order: list
         if ns >= 2:
             total_out["dn"] = [[i, round(v, 5)] for i, v in enumerate(total_bins[1]) if v > 1e-6]
 
+        # Aggregate exact m-resolved orbital populations & spins per (element, ion), summing duplicate radial shells
+        atom_orb_map = {}
+        atom_orb_order = []
+        for o in range(norb):
+            el, ion, m_lbl = orb_to_ml[o]
+            akey = (el, ion)
+            if akey not in atom_orb_map:
+                atom_orb_map[akey] = {
+                    "element": el,
+                    "ion": ion,
+                    "label": f"{el}{ion}",
+                    "orbitals": {},
+                }
+                atom_orb_order.append(akey)
+            orbs_d = atom_orb_map[akey]["orbitals"]
+            if m_lbl not in orbs_d:
+                orbs_d[m_lbl] = {"up": 0.0, "dn": 0.0, "charge": 0.0, "spin": 0.0}
+            if ns >= 2:
+                u = orb_occ[0][o]
+                d = orb_occ[1][o]
+                orbs_d[m_lbl]["up"] += u
+                orbs_d[m_lbl]["dn"] += d
+                orbs_d[m_lbl]["charge"] += (u + d)
+                orbs_d[m_lbl]["spin"] += (u - d)
+            else:
+                u = orb_occ[0][o]
+                orbs_d[m_lbl]["up"] += u
+                orbs_d[m_lbl]["dn"] += u
+                orbs_d[m_lbl]["charge"] += (2.0 * u)
+
+        atoms_orb_out = []
+        for akey in atom_orb_order:
+            ent = atom_orb_map[akey]
+            r_orbs = {}
+            for m_lbl, vals in ent["orbitals"].items():
+                r_orbs[m_lbl] = {
+                    "up": round(vals["up"], 5),
+                    "dn": round(vals["dn"], 5),
+                    "charge": round(vals["charge"], 5),
+                    "spin": round(vals["spin"], 5),
+                }
+            atoms_orb_out.append({
+                "element": ent["element"],
+                "ion": ent["ion"],
+                "label": ent["label"],
+                "orbitals": r_orbs,
+            })
+
+        orbital_populations = {
+            "mode": "collinear" if ns >= 2 else "nonspin",
+            "source": "pdos_bin",
+            "source_file": os.path.basename(pdos_path),
+            "atoms": atoms_orb_out,
+        }
+
         return {
             "source_file": os.path.basename(pdos_path),
             "nk": nk,
@@ -2401,6 +2489,7 @@ def _parse_pdos_bin_backend(pdos_path: str, bands_obj: dict, species_order: list
             "elements": species_order,
             "total_hist": total_out,
             "channels": channels_out,
+            "orbital_populations": orbital_populations,
         }
     except Exception:
         return None
@@ -3086,12 +3175,21 @@ def api_castep_job_detail(folder: str, seed: Optional[str] = None):
         casteps = [f[:-7] for f in all_files if f.lower().endswith(".castep") and not f.lower().endswith(("_bandstr.castep", "_dos.castep", "_optics.castep"))]
         seed = (casteps[0] if casteps else (cells[0] if cells else "CASTEP_Job"))
 
-    def _read(fname, limit_b=500000):
+    def _read(fname, limit_b=500000, append_tail=False):
         if not fname:
             return ""
         fp = os.path.join(folder, fname)
         if not os.path.exists(fp):
             return ""
+        if append_tail:
+            fsize = os.path.getsize(fp)
+            if fsize > limit_b:
+                half = limit_b // 2
+                with open(fp, "rb") as f:
+                    head = f.read(half)
+                    f.seek(max(half, fsize - half))
+                    tail = f.read(half)
+                return head.decode("latin1", errors="ignore") + "\n...\n" + tail.decode("latin1", errors="ignore")
         with open(fp, "r", encoding="latin1", errors="ignore") as f:
             return f.read(limit_b)
 
@@ -3228,7 +3326,7 @@ def api_castep_job_detail(folder: str, seed: Optional[str] = None):
         "files_list": all_files,
         "cell_text": _read(_find_match(lambda l: l.endswith(".cell") and not l.endswith(("_bandstr.cell", "_dos.cell", "_optics.cell")))),
         "param_text": _read(_find_match(lambda l: l.endswith(".param") and not l.endswith(("_bandstr.param", "_dos.param", "_optics.param")))),
-        "castep_text": _read(_find_match(lambda l: l.endswith(".castep") and not l.endswith(("_bandstr.castep", "_dos.castep", "_optics.castep"))), 2500000),
+        "castep_text": _read(_find_match(lambda l: l.endswith(".castep") and not l.endswith(("_bandstr.castep", "_dos.castep", "_optics.castep"))), 2500000, append_tail=True),
         "optics_castep_text": _read(optics_castep_f, 200000),
         "optics_castep_file": optics_castep_f,
         "optics_bands_file": optics_bands_f,
