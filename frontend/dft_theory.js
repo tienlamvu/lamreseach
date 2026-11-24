@@ -1,25 +1,38 @@
 /* ============================================================================
-   DFT Theory Curriculum Module (v141) — Comprehensive Graduate Guide + Admin CMS
-   From Quantum Many-Body Foundations to First-Principles CASTEP Data Analysis
-   100% Self-Contained Publication Math Typography, Inline Vector Diagrams,
-   Peer-Reviewed DOI References & Strict-Admin Lecture CMS
+   DFT Theory Curriculum Module (v142) — Publication Math (KaTeX) + Dual-Mode CMS
+   Word Equation (Cambria Math) / MathType (STIX/Times) / LaTeX (Computer Modern)
+   Strict-Admin Visual (WYSIWYG) + Simultaneous Split + HTML/LaTeX Code Editor
    ============================================================================ */
 
 (function () {
-  const STORAGE_KEY = "dft_theory_lectures_v1";
+  const STORAGE_KEY = "dft_theory_lectures_v2";
+  const LEGACY_KEY = "dft_theory_lectures_v1";
   const ACTIVE_KEY = "dft_theory_active_lec";
+  const MATH_FONT_KEY = "dft_math_font_pref";
 
-  // Compact publication math typography helpers (Cambria Math / Times New Roman)
-  const fr = (num, den) =>
-    `<span class="dft-frac"><span class="dft-num">${num}</span><span class="dft-den">${den}</span></span>`;
+  function escAttr(str) {
+    return String(str == null ? "" : str)
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function escHtml(str) {
+    return String(str == null ? "" : str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
   const vec = (s) => `<span class="dft-vec">${s}</span>`;
   const hat = (s) => `<span class="dft-hat">${s}</span>`;
-  const opSum = (sub, sup = "") =>
-    `<span class="dft-bigop"><span class="dft-op-sup">${sup}</span><span class="dft-op-sym">&sum;</span><span class="dft-op-sub">${sub}</span></span>`;
-  const opInt = (sub = "", sup = "") =>
-    `<span class="dft-bigop"><span class="dft-op-sup">${sup}</span><span class="dft-op-sym">&int;</span><span class="dft-op-sub">${sub}</span></span>`;
-  const eq = (expr, num, note = "") =>
-    `<div class="dft-eq-box"><div class="dft-eq-inner"><div class="dft-eq-math">${expr}</div><div class="dft-eq-num">(${num})</div></div>${note ? `<div class="dft-eq-note">${note}</div>` : ""}</div>`;
+
+  // Publication LaTeX / KaTeX display equation helper (cleanly editable in Visual & Code!)
+  const eq = (tex, num, note = "") =>
+    `<div class="dft-eq-box" data-eqnum="${escAttr(num)}"><div class="dft-eq-inner"><div class="dft-eq-math" data-tex="${escAttr(tex)}">${escHtml(tex)}</div><div class="dft-eq-num">(${escHtml(num)})</div></div>${note ? `<div class="dft-eq-note">${note}</div>` : ""}</div>`;
+
   const defBox = (title, body) =>
     `<div class="dft-callout dft-callout-def"><div class="dft-callout-title">&#128216; Definition &mdash; ${title}</div><div class="dft-callout-body">${body}</div></div>`;
   const tipBox = (title, body) =>
@@ -51,20 +64,160 @@
     mulliken: "Mulliken & Spin"
   };
 
-  function escHtml(str) {
-    return String(str == null ? "" : str)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  }
-
   function cloneJson(obj) {
     return JSON.parse(JSON.stringify(obj));
   }
 
   // =========================================================================
-  // BUILT-IN 10-LECTURE CURRICULUM (JSON-Serializable contentHtml + DOI Refs)
+  // KATEX EQUATION ENGINE & MATH FONT PRESET (WORD CAMBRIA / MATHTYPE / LATEX)
+  // =========================================================================
+  let _katexRetryTimer = null;
+
+  function applyDftMathFont(mode) {
+    const valid = ["cambria", "mathtype", "latex"].includes(mode) ? mode : "cambria";
+    try { localStorage.setItem(MATH_FONT_KEY, valid); } catch (_) {}
+    ["tab-dft-theory", "dft-lecture-editor-modal", "dft-eq-builder-modal"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.setAttribute("data-math-font", valid);
+    });
+    const sel = document.getElementById("dft-math-font-select");
+    if (sel && sel.value !== valid) sel.value = valid;
+    return valid;
+  }
+  window.applyDftMathFont = applyDftMathFont;
+
+  function getSavedDftMathFont() {
+    try {
+      const v = localStorage.getItem(MATH_FONT_KEY);
+      if (["cambria", "mathtype", "latex"].includes(v)) return v;
+    } catch (_) {}
+    return "cambria";
+  }
+
+  function renderSingleKatexNode(el, displayMode) {
+    const tex = el.getAttribute("data-tex") || "";
+    if (!tex) return false;
+    if (typeof window.katex !== "undefined" && typeof window.katex.render === "function") {
+      try {
+        window.katex.render(tex, el, {
+          displayMode: Boolean(displayMode),
+          throwOnError: false,
+          strict: "ignore",
+          trust: false
+        });
+        el.setAttribute("data-katex-rendered", "1");
+        return true;
+      } catch (err) {
+        el.textContent = tex;
+        return false;
+      }
+    }
+    return false;
+  }
+
+  function upgradeRawDollarMathInTextNodes(rootEl) {
+    if (!rootEl || typeof window.katex === "undefined") return;
+    const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        if (!node.nodeValue || !node.nodeValue.includes("$")) return NodeFilter.FILTER_REJECT;
+        const p = node.parentElement;
+        if (!p) return NodeFilter.FILTER_REJECT;
+        if (p.closest("code, pre, textarea, script, style, svg, .katex, .dft-eq-math, .dft-inline-math")) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    const textNodes = [];
+    while (walker.nextNode()) textNodes.push(walker.currentNode);
+    const re = /(\$\$[\s\S]+?\$\$|\$(?!\s)([^$\n]+?)(?<!\s)\$)/g;
+    textNodes.forEach(tn => {
+      const text = tn.nodeValue;
+      if (!re.test(text)) return;
+      re.lastIndex = 0;
+      const frag = document.createDocumentFragment();
+      let lastIdx = 0;
+      let m;
+      while ((m = re.exec(text)) !== null) {
+        if (m.index > lastIdx) {
+          frag.appendChild(document.createTextNode(text.slice(lastIdx, m.index)));
+        }
+        const token = m[0];
+        const isDisp = token.startsWith("$$");
+        const tex = isDisp ? token.slice(2, -2).trim() : token.slice(1, -1).trim();
+        const span = document.createElement(isDisp ? "div" : "span");
+        span.className = isDisp ? "dft-eq-math" : "dft-inline-math";
+        span.setAttribute("data-tex", tex);
+        renderSingleKatexNode(span, isDisp);
+        frag.appendChild(span);
+        lastIdx = re.lastIndex;
+      }
+      if (lastIdx < text.length) {
+        frag.appendChild(document.createTextNode(text.slice(lastIdx)));
+      }
+      if (tn.parentNode) tn.parentNode.replaceChild(frag, tn);
+    });
+  }
+
+  function decorateVisualEquationsForEditing(rootEl) {
+    if (!rootEl) return;
+    rootEl.querySelectorAll(".dft-eq-box").forEach(box => {
+      box.setAttribute("contenteditable", "false");
+      box.classList.add("dft-vis-eq-card");
+      if (!box.querySelector(".dft-vis-eq-actions")) {
+        const bar = document.createElement("div");
+        bar.className = "dft-vis-eq-actions";
+        bar.setAttribute("data-editor-ui", "1");
+        bar.innerHTML = `<button type="button" class="dft-vis-eq-btn" onclick="openDftEquationBuilderForVisualNode(this.closest('.dft-eq-box'))" title="Edit equation in MathType / LaTeX builder">&#9999;&#65039; Edit Eq</button><button type="button" class="dft-vis-eq-btn dft-vis-eq-del" onclick="removeDftVisualEquationNode(this.closest('.dft-eq-box'))" title="Remove equation">&times;</button>`;
+        box.appendChild(bar);
+      }
+    });
+    rootEl.querySelectorAll(".dft-inline-math[data-tex]").forEach(sp => {
+      sp.setAttribute("contenteditable", "false");
+      sp.classList.add("dft-vis-inline-eq");
+      sp.title = "Double-click to edit inline equation";
+    });
+  }
+
+  function renderDftMathInElement(rootEl, opts = {}) {
+    if (!rootEl) return;
+    applyDftMathFont(getSavedDftMathFont());
+    if (typeof window.katex === "undefined") {
+      if (!_katexRetryTimer) {
+        _katexRetryTimer = setInterval(() => {
+          if (typeof window.katex !== "undefined") {
+            clearInterval(_katexRetryTimer);
+            _katexRetryTimer = null;
+            const stage = document.getElementById("dft-theory-lecture-stage");
+            if (stage) renderDftMathInElement(stage);
+            const vis = document.getElementById("dft-ed-visual");
+            if (vis && vis.offsetParent !== null) renderDftMathInElement(vis, { editable: true });
+          }
+        }, 120);
+        setTimeout(() => {
+          if (_katexRetryTimer) { clearInterval(_katexRetryTimer); _katexRetryTimer = null; }
+        }, 8000);
+      }
+      return;
+    }
+
+    rootEl.querySelectorAll(".dft-eq-math[data-tex]").forEach(el => {
+      renderSingleKatexNode(el, true);
+    });
+    rootEl.querySelectorAll(".dft-inline-math[data-tex]").forEach(el => {
+      renderSingleKatexNode(el, false);
+    });
+    if (!opts.skipDollarUpgrade) {
+      upgradeRawDollarMathInTextNodes(rootEl);
+    }
+    if (opts.editable) {
+      decorateVisualEquationsForEditing(rootEl);
+    }
+  }
+  window.renderDftMathInElement = renderDftMathInElement;
+
+  // =========================================================================
+  // BUILT-IN 10-LECTURE CURRICULUM (TRUE LATEX/KATEX + PEER-REVIEWED DOIs)
   // =========================================================================
   const DEFAULT_LECTURES = [
     // =========================================================================
@@ -91,21 +244,21 @@
       contentHtml: `
         <h3>1.1 The Many-Body Problem &amp; Born–Oppenheimer Approximation</h3>
         <p>Every equilibrium and dynamical property of a crystal, surface, or molecule—its lattice constants, electronic band gap, magnetism, optical spectrum, and catalytic activity—is governed by the non-relativistic time-independent <strong>many-body Schrödinger equation</strong> for <i>N</i> electrons at coordinates {${vec('r')}<sub><i>i</i></sub>} and <i>M</i> nuclei of charges <i>Z<sub>I</sub></i> and masses <i>M<sub>I</sub></i> at positions {${vec('R')}<sub><i>I</i></sub>}:</p>
-        ${eq(`${hat('H')} &Psi;({${vec('r')}<sub><i>i</i></sub>}, {${vec('R')}<sub><i>I</i></sub>}) = <i>E</i> &Psi;({${vec('r')}<sub><i>i</i></sub>}, {${vec('R')}<sub><i>I</i></sub>})`, "1.1")}
+        ${eq(String.raw`\hat{H}\,\Psi\!\left(\{\mathbf{r}_i\}, \{\mathbf{R}_I\}\right) = E\,\Psi\!\left(\{\mathbf{r}_i\}, \{\mathbf{R}_I\}\right)`, "1.1")}
         <p>In atomic units (&#8463; = <i>m</i><sub>e</sub> = <i>e</i> = 4&pi;&epsilon;<sub>0</sub> = 1, where lengths are in Bohr <i>a</i><sub>0</sub> = 0.529177 &Aring; and energies in Hartree 1 Ha = 27.211386 eV), the exact molecular or crystalline Hamiltonian comprises five distinct physical operators:</p>
-        ${eq(`${hat('H')} = &minus;${fr("1", "2")} ${opSum("<i>i</i>=1", "<i>N</i>")} &nabla;<sub><i>i</i></sub><sup>2</sup> &minus; ${opSum("<i>I</i>=1", "<i>M</i>")} ${fr("1", "2<i>M<sub>I</sub></i>")} &nabla;<sub><i>I</i></sub><sup>2</sup> &minus; ${opSum("<i>i</i>,<i>I</i>")} ${fr("<i>Z<sub>I</sub></i>", `|${vec('r')}<sub><i>i</i></sub> &minus; ${vec('R')}<sub><i>I</i></sub>|`)} + ${fr("1", "2")} ${opSum("<i>i</i>&ne;<i>j</i>")} ${fr("1", `|${vec('r')}<sub><i>i</i></sub> &minus; ${vec('r')}<sub><i>j</i></sub>|`)} + ${fr("1", "2")} ${opSum("<i>I</i>&ne;<i>J</i>")} ${fr("<i>Z<sub>I</sub>Z<sub>J</sub></i>", `|${vec('R')}<sub><i>I</i></sub> &minus; ${vec('R')}<sub><i>J</i></sub>|`)}`, "1.2",
+        ${eq(String.raw`\hat{H} = -\frac{1}{2}\sum_{i=1}^{N}\nabla_i^2 - \sum_{I=1}^{M}\frac{1}{2M_I}\nabla_I^2 - \sum_{i,I}\frac{Z_I}{\left|\mathbf{r}_i - \mathbf{R}_I\right|} + \frac{1}{2}\sum_{i\neq j}\frac{1}{\left|\mathbf{r}_i - \mathbf{r}_j\right|} + \frac{1}{2}\sum_{I\neq J}\frac{Z_I Z_J}{\left|\mathbf{R}_I - \mathbf{R}_J\right|}`, "1.2",
           "Terms left to right: electronic kinetic energy <i>T</i><sub>e</sub>, nuclear kinetic energy <i>T</i><sub>n</sub>, electron–nucleus Coulomb attraction <i>V</i><sub>ne</sub>, electron–electron Coulomb repulsion <i>V</i><sub>ee</sub>, and nucleus–nucleus Ewald repulsion <i>E</i><sub>II</sub>.")}
 
         ${defBox("Born–Oppenheimer (Adiabatic) Approximation",
           "Because nuclei are 1,836 to &gt;400,000 times heavier than electrons (<i>M<sub>I</sub></i> &gg; <i>m</i><sub>e</sub>), electrons relax almost instantaneously to any nuclear displacement. Factoring the wavefunction as &Psi;({<b>r</b><sub><i>i</i></sub>}, {<b>R</b><sub><i>I</i></sub>}) &approx; &psi;<sub>el</sub>({<b>r</b><sub><i>i</i></sub>}; {<b>R</b><sub><i>I</i></sub>}) &chi;<sub>nuc</sub>({<b>R</b><sub><i>I</i></sub>}) decouples nuclear motion and solves the electronic problem at fixed nuclear positions {<b>R</b><sub><i>I</i></sub>}. The parametric electronic ground-state energy plus <i>E</i><sub>II</sub> defines the <strong>Potential Energy Surface (PES)</strong> <i>E</i>({<b>R</b><sub><i>I</i></sub>}).")}
 
         <p>Under the Born–Oppenheimer approximation, the clamped nuclei produce a static external potential <i>v</i><sub>ext</sub>(${vec('r')}) = &minus;&sum;<sub><i>I</i></sub> <i>Z<sub>I</sub></i> / |${vec('r')} &minus; ${vec('R')}<sub><i>I</i></sub>|, reducing Eq. (1.2) to the interacting electronic Hamiltonian:</p>
-        ${eq(`${hat('H')}<sub>el</sub> = ${hat('T')}<sub>e</sub> + ${hat('V')}<sub>ee</sub> + ${opSum("<i>i</i>=1", "<i>N</i>")} <i>v</i><sub>ext</sub>(${vec('r')}<sub><i>i</i></sub>)`, "1.3")}
+        ${eq(String.raw`\hat{H}_{\mathrm{el}} = \hat{T}_{\mathrm{e}} + \hat{V}_{\mathrm{ee}} + \sum_{i=1}^{N} v_{\mathrm{ext}}(\mathbf{r}_i)`, "1.3")}
         <p><strong>Why Wavefunction Methods Hit an Exponential Wall:</strong> Representing the antisymmetric wavefunction &psi;(${vec('r')}<sub>1</sub>, &hellip;, ${vec('r')}<sub><i>N</i></sub>) on a coarse 10-point 3D grid per electron requires 10<sup>3<i>N</i></sup> complex amplitudes. Even for a single Fe atom (<i>N</i> = 26), 10<sup>78</sup> numbers exceeds the count of atoms in the observable universe. Density Functional Theory bypasses this exponential barrier completely.</p>
 
         <h3>1.2 Electron Density, Hohenberg–Kohn Theorems &amp; Levy–Lieb Search</h3>
         <p>Instead of the 3<i>N</i>-dimensional wavefunction, DFT uses the <strong>3-dimensional electron number density</strong> <i>n</i>(${vec('r')})—a scalar physical observable depending on only three spatial coordinates (<i>x</i>, <i>y</i>, <i>z</i>):</p>
-        ${eq(`<i>n</i>(${vec('r')}) = <i>N</i> ${opInt()} d<sup>3</sup>${vec('r')}<sub>2</sub> &#8943; d<sup>3</sup>${vec('r')}<sub><i>N</i></sub> |&psi;(${vec('r')}, ${vec('r')}<sub>2</sub>, &hellip;, ${vec('r')}<sub><i>N</i></sub>)|<sup>2</sup>, &nbsp;&nbsp;&nbsp; ${opInt()} <i>n</i>(${vec('r')}) d<sup>3</sup>${vec('r')} = <i>N</i>`, "1.4")}
+        ${eq(String.raw`n(\mathbf{r}) = N \int \mathrm{d}^3\mathbf{r}_2 \cdots \mathrm{d}^3\mathbf{r}_N \,\left|\psi(\mathbf{r}, \mathbf{r}_2, \dots, \mathbf{r}_N)\right|^2, \qquad \int n(\mathbf{r})\,\mathrm{d}^3\mathbf{r} = N`, "1.4")}
 
         <div class="dft-two-col">
           ${defBox("Hohenberg–Kohn Theorem I (Uniqueness)",
@@ -114,24 +267,24 @@
             "A universal functional <i>F</i><sub>HK</sub>[<i>n</i>] independent of <i>v</i><sub>ext</sub>(<b>r</b>) exists such that <i>E</i>[<i>n</i>] = <i>F</i><sub>HK</sub>[<i>n</i>] + &int;<i>v</i><sub>ext</sub>(<b>r</b>)<i>n</i>(<b>r</b>)d<sup>3</sup><b>r</b> attains its exact global minimum <i>E</i><sub>0</sub> if and only if <i>n</i>(<b>r</b>) = <i>n</i><sub>0</sub>(<b>r</b>): <i>E</i>[<i>n</i>] &ge; <i>E</i>[<i>n</i><sub>0</sub>] = <i>E</i><sub>0</sub>.")}
         </div>
         <p>To eliminate the original <i>v</i>-representability restriction of Hohenberg and Kohn (1964) and cover degenerate ground states, Mel Levy (1979) and Elliott Lieb (1983) formulated the rigorous <strong>Constrained-Search Functional</strong> minimizing over all antisymmetric <i>N</i>-electron wavefunctions yielding a given density <i>n</i>(${vec('r')}):</p>
-        ${eq(`<i>F</i><sub>LL</sub>[<i>n</i>] = min<sub>&psi; &rarr; <i>n</i></sub> &lang;&psi;|&thinsp;${hat('T')}<sub>e</sub> + ${hat('V')}<sub>ee</sub>&thinsp;|&psi;&rang;, &nbsp;&nbsp;&nbsp;&nbsp; <i>E</i><sub>0</sub> = min<sub><i>n</i></sub> <span class="dft-bigdel">{</span> <i>F</i><sub>LL</sub>[<i>n</i>] + ${opInt()} <i>v</i><sub>ext</sub>(${vec('r')}) <i>n</i>(${vec('r')}) d<sup>3</sup>${vec('r')} <span class="dft-bigdel">}</span>`, "1.5")}
+        ${eq(String.raw`F_{\mathrm{LL}}[n] = \min_{\psi \to n}\langle \psi | \hat{T}_{\mathrm{e}} + \hat{V}_{\mathrm{ee}} | \psi \rangle, \qquad E_0 = \min_{n}\left\{\, F_{\mathrm{LL}}[n] + \int v_{\mathrm{ext}}(\mathbf{r})\,n(\mathbf{r})\,\mathrm{d}^3\mathbf{r} \,\right\}`, "1.5")}
 
         <h3>1.3 The Kohn–Sham Ansatz (1965) &amp; Janak's Theorem</h3>
         <p>Although <i>F</i><sub>LL</sub>[<i>n</i>] is formally exact, direct density-only kinetic energy functionals (such as Thomas–Fermi) fail to reproduce atomic shell structure or chemical bonding. Walter Kohn and Lu Jeu Sham solved this by mapping the interacting system onto a <strong>fictitious system of <i>N</i> non-interacting electrons</strong> moving in an effective local potential <i>v</i><sub>eff</sub>(${vec('r')}) whose ground-state density equals the exact interacting density:</p>
-        ${eq(`<i>n</i>(${vec('r')}) = ${opSum("<i>i</i>=1", "<i>N</i>")} <i>f<sub>i</sub></i> |&phi;<sub><i>i</i></sub>(${vec('r')})|<sup>2</sup>`, "1.6",
+        ${eq(String.raw`n(\mathbf{r}) = \sum_{i=1}^{N} f_i\,\left|\phi_i(\mathbf{r})\right|^2`, "1.6",
           "where &phi;<sub><i>i</i></sub>(<b>r</b>) are orthonormal Kohn–Sham orbitals and <i>f<sub>i</sub></i> &isin; [0, 2] (or [0, 1] per spin channel) are occupation numbers.")}
         <p>The Kohn–Sham total energy functional separates four explicitly computable pieces from a single remaining unknown term, the <strong>exchange–correlation functional</strong> <i>E</i><sub>xc</sub>[<i>n</i>]:</p>
-        ${eq(`<i>E</i><sub>KS</sub>[<i>n</i>] = <i>T</i><sub>s</sub>[{&phi;<sub><i>i</i></sub>}] + ${opInt()} <i>v</i><sub>ext</sub>(${vec('r')}) <i>n</i>(${vec('r')}) d<sup>3</sup>${vec('r')} + <i>E</i><sub>H</sub>[<i>n</i>] + <i>E</i><sub>xc</sub>[<i>n</i>] + <i>E</i><sub>II</sub>`, "1.7")}
-        ${eq(`<i>T</i><sub>s</sub>[{&phi;<sub><i>i</i></sub>}] = &minus;${fr("1", "2")} ${opSum("<i>i</i>=1", "<i>N</i>")} <i>f<sub>i</sub></i> ${opInt()} &phi;<sub><i>i</i></sub>*(${vec('r')}) &nabla;<sup>2</sup> &phi;<sub><i>i</i></sub>(${vec('r')}) d<sup>3</sup>${vec('r')}, &nbsp;&nbsp;&nbsp; <i>E</i><sub>H</sub>[<i>n</i>] = ${fr("1", "2")} ${opInt()} ${opInt()} ${fr(`<i>n</i>(${vec('r')}) <i>n</i>(${vec('r')}&prime;)`, `|${vec('r')} &minus; ${vec('r')}&prime;|`)} d<sup>3</sup>${vec('r')} d<sup>3</sup>${vec('r')}&prime;`, "1.8")}
+        ${eq(String.raw`E_{\mathrm{KS}}[n] = T_{\mathrm{s}}\!\left[\{\phi_i\}\right] + \int v_{\mathrm{ext}}(\mathbf{r})\,n(\mathbf{r})\,\mathrm{d}^3\mathbf{r} + E_{\mathrm{H}}[n] + E_{\mathrm{xc}}[n] + E_{\mathrm{II}}`, "1.7")}
+        ${eq(String.raw`T_{\mathrm{s}}\!\left[\{\phi_i\}\right] = -\frac{1}{2}\sum_{i=1}^{N} f_i \int \phi_i^*(\mathbf{r})\,\nabla^2\phi_i(\mathbf{r})\,\mathrm{d}^3\mathbf{r}, \qquad E_{\mathrm{H}}[n] = \frac{1}{2}\iint \frac{n(\mathbf{r})\,n(\mathbf{r}')}{\left|\mathbf{r} - \mathbf{r}'\right|}\,\mathrm{d}^3\mathbf{r}\,\mathrm{d}^3\mathbf{r}'`, "1.8")}
         <p>Imposing stationarity &delta;<i>E</i><sub>KS</sub> / &delta;&phi;<sub><i>i</i></sub>* = 0 with Lagrange multipliers &varepsilon;<sub><i>i</i></sub> enforcing orthonormality &lang;&phi;<sub><i>i</i></sub>|&phi;<sub><i>j</i></sub>&rang; = &delta;<sub><i>ij</i></sub> yields the <strong>Kohn–Sham single-particle equations</strong>:</p>
-        ${eq(`<span class="dft-bigdel">[</span> &minus;${fr("&#8463;<sup>2</sup>", "2<i>m</i><sub>0</sub>")} &nabla;<sup>2</sup> + <i>v</i><sub>eff</sub>(${vec('r')}) <span class="dft-bigdel">]</span> &phi;<sub><i>i</i></sub>(${vec('r')}) = &varepsilon;<sub><i>i</i></sub> &phi;<sub><i>i</i></sub>(${vec('r')}), &nbsp;&nbsp;&nbsp;&nbsp; <i>v</i><sub>eff</sub>(${vec('r')}) = <i>v</i><sub>ext</sub>(${vec('r')}) + <i>v</i><sub>H</sub>(${vec('r')}) + ${fr("&delta;<i>E</i><sub>xc</sub>[<i>n</i>]", `&delta;<i>n</i>(${vec('r')})`)}`, "1.9")}
+        ${eq(String.raw`\left[-\frac{\hbar^2}{2m_0}\nabla^2 + v_{\mathrm{eff}}(\mathbf{r})\right]\phi_i(\mathbf{r}) = \varepsilon_i\,\phi_i(\mathbf{r}), \qquad v_{\mathrm{eff}}(\mathbf{r}) = v_{\mathrm{ext}}(\mathbf{r}) + v_{\mathrm{H}}(\mathbf{r}) + \frac{\delta E_{\mathrm{xc}}[n]}{\delta n(\mathbf{r})}`, "1.9")}
 
         ${tipBox("Physical Meaning of Kohn–Sham Eigenvalues &amp; Janak's Theorem",
           "Strictly speaking, Kohn–Sham eigenvalues &varepsilon;<sub><i>i</i></sub> are Lagrange multipliers of the auxiliary non-interacting system, not exact single-electron removal energies. However, <strong>Janak's Theorem</strong> proves &part;<i>E</i><sub>KS</sub>/&part;<i>f<sub>i</sub></i> = &varepsilon;<sub><i>i</i></sub>, and for the exact functional the highest occupied eigenvalue equals the negative exact ionization potential (&varepsilon;<sub>HOMO</sub> = &minus;<i>I</i>). In practice, KS eigenvalues provide an excellent starting description of band dispersion and orbital ordering, while quantitative band gaps require Hybrid DFT (HSE06) or many-body <i>GW</i> corrections (Lecture 2).")}
 
         <h3>1.4 The Self-Consistent Field (SCF) Loop, Pulay Mixing &amp; Kerker Damping</h3>
-        <p>Because <i>v</i><sub>H</sub>[<i>n</i>] and <i>v</i><sub>xc</sub>[<i>n</i>] depend on the output density <i>n</i><sub>out</sub>(${vec('r')}), Eq. (1.9) must be iterated to self-consistency. Simple linear mixing <i>n</i><sub>in</sub><sup>(<i>k</i>+1)</sup> = (1 &minus; &alpha;)<i>n</i><sub>in</sub><sup>(<i>k</i>)</sup> + &alpha;<i>n</i><sub>out</sub><sup>(<i>k</i>)</sup> diverges in metallic slabs because the Hartree potential scales as 4&pi;/<i>q</i><sup>2</sup> at long wavelengths (<i>q</i> &rarr; 0), causing <strong>charge sloshing</strong>. Modern codes (CASTEP, VASP) combine <strong>Pulay DIIS</strong> (optimal linear combination of the last <i>m</i> residual vectors <i>R</i><sup>(<i>k</i>)</sup> = <i>n</i><sub>out</sub><sup>(<i>k</i>)</sup> &minus; <i>n</i><sub>in</sub><sup>(<i>k</i>)</sup>) with <strong>Kerker reciprocal-space preconditioning</strong>:</p>
-        ${eq(`<i>G</i><sub>Kerker</sub>(<i>q</i>) = <i>A</i> ${fr("<i>q</i><sup>2</sup>", "<i>q</i><sup>2</sup> + <i>q</i><sub>0</sub><sup>2</sup>")}, &nbsp;&nbsp;&nbsp;&nbsp; <i>n</i><sub>in</sub><sup>(<i>k</i>+1)</sup>(${vec('q')}) = <i>n</i><sub>opt</sub><sup>(<i>k</i>)</sup>(${vec('q')}) + <i>G</i><sub>Kerker</sub>(<i>q</i>) <i>R</i><sub>opt</sub><sup>(<i>k</i>)</sup>(${vec('q')})`, "1.10",
+        <p>Because <i>v</i><sub>H</sub>[<i>n</i>] and <i>v</i><sub>xc</sub>[<i>n</i>] depend on the output density <i>n</i><sub>out</sub>(${vec('r')}), Eq. (1.9) must be iterated to self-consistency. Simple linear mixing diverges in metallic slabs because the Hartree potential scales as 4&pi;/<i>q</i><sup>2</sup> at long wavelengths (<i>q</i> &rarr; 0), causing <strong>charge sloshing</strong>. Modern codes (CASTEP, VASP) combine <strong>Pulay DIIS</strong> with <strong>Kerker reciprocal-space preconditioning</strong>:</p>
+        ${eq(String.raw`G_{\mathrm{Kerker}}(q) = A\,\frac{q^2}{q^2 + q_0^2}, \qquad n_{\mathrm{in}}^{(k+1)}(\mathbf{q}) = n_{\mathrm{opt}}^{(k)}(\mathbf{q}) + G_{\mathrm{Kerker}}(q)\,R_{\mathrm{opt}}^{(k)}(\mathbf{q})`, "1.10",
           "Kerker preconditioning damps long-wavelength <i>q</i> &rarr; 0 charge sloshing while accelerating short-wavelength convergence (controlled in CASTEP via <code>mix_charge_amp</code> and <code>mix_charge_gmax</code>).")}
 
         <div class="dft-diagram-wrap">
@@ -229,10 +382,10 @@
       contentHtml: `
         <h3>2.1 What Lives Inside <i>E</i><sub>xc</sub>[<i>n</i>] &amp; Why Semilocal Band Gaps Are Too Small</h3>
         <p>Kohn–Sham DFT is <em>formally exact</em>—all many-body quantum mechanics beyond classical electrostatics is concentrated into a single universal functional, <i>E</i><sub>xc</sub>[<i>n</i>]:</p>
-        ${eq(`<i>E</i><sub>xc</sub>[<i>n</i>] = (<i>T</i><sub>e</sub>[<i>n</i>] &minus; <i>T</i><sub>s</sub>[<i>n</i>]) + (<i>V</i><sub>ee</sub>[<i>n</i>] &minus; <i>E</i><sub>H</sub>[<i>n</i>])`, "2.1",
+        ${eq(String.raw`E_{\mathrm{xc}}[n] = \left(T_{\mathrm{e}}[n] - T_{\mathrm{s}}[n]\right) + \left(V_{\mathrm{ee}}[n] - E_{\mathrm{H}}[n]\right)`, "2.1",
           "<i>E</i><sub>xc</sub> accounts for: (1) Pauli Fermi exchange keeping parallel-spin electrons apart, (2) dynamical Coulomb correlation keeping antiparallel electrons apart, (3) exact cancellation of unphysical Hartree self-interaction, and (4) the interacting vs. non-interacting kinetic energy difference.")}
         <p>Even for the <em>exact</em> Kohn–Sham functional, the fundamental experimental band gap <i>E</i><sub>g</sub> = <i>I</i> &minus; <i>A</i> (ionization potential minus electron affinity) exceeds the Kohn–Sham eigenvalue gap <i>E</i><sub>g</sub><sup>KS</sup> = &varepsilon;<sub>CBM</sub> &minus; &varepsilon;<sub>VBM</sub> by the <strong>exchange–correlation derivative discontinuity</strong> &Delta;<sub>xc</sub> as electron number crosses an integer <i>N</i>:</p>
-        ${eq(`<i>E</i><sub>g</sub><sup>exact</sup> = <i>E</i><sub>g</sub><sup>KS</sup> + &Delta;<sub>xc</sub>, &nbsp;&nbsp;&nbsp;&nbsp; &Delta;<sub>xc</sub> = lim<sub>&eta;&rarr;0<sup>+</sup></sub> <span class="dft-bigdel">[</span> <i>v</i><sub>xc</sub><sup><i>N</i>+&eta;</sup>(${vec('r')}) &minus; <i>v</i><sub>xc</sub><sup><i>N</i>&minus;&eta;</sup>(${vec('r')}) <span class="dft-bigdel">]</span>`, "2.2",
+        ${eq(String.raw`E_{\mathrm{g}}^{\mathrm{exact}} = E_{\mathrm{g}}^{\mathrm{KS}} + \Delta_{\mathrm{xc}}, \qquad \Delta_{\mathrm{xc}} = \lim_{\eta \to 0^+}\!\left[\,v_{\mathrm{xc}}^{N+\eta}(\mathbf{r}) - v_{\mathrm{xc}}^{N-\eta}(\mathbf{r})\,\right]`, "2.2",
           "Because continuous semilocal functionals (LDA, PBE) have &Delta;<sub>xc</sub> = 0 and suffer from delocalization (self-interaction) error, they systematically underestimate semiconductor band gaps by 30–50%.")}
 
         <h3>2.2 Perdew's Jacob's Ladder of Exchange–Correlation Functionals</h3>
@@ -261,23 +414,23 @@
         </div>
 
         <p><strong>1. Local Density Approximation (LDA):</strong> Models every local volume d<sup>3</sup>${vec('r')} as a homogeneous electron gas parameterized from Ceperley–Alder Quantum Monte Carlo data:</p>
-        ${eq(`<i>E</i><sub>xc</sub><sup>LDA</sup>[<i>n</i>] = ${opInt()} <i>n</i>(${vec('r')}) &varepsilon;<sub>xc</sub><sup>unif</sup>(<i>n</i>(${vec('r')})) d<sup>3</sup>${vec('r')}`, "2.3")}
+        ${eq(String.raw`E_{\mathrm{xc}}^{\mathrm{LDA}}[n] = \int n(\mathbf{r})\,\varepsilon_{\mathrm{xc}}^{\mathrm{unif}}\!\left(n(\mathbf{r})\right)\mathrm{d}^3\mathbf{r}`, "2.3")}
         <p><strong>2. Generalized Gradient Approximation (GGA &mdash; PBE / PBEsol / RPBE):</strong> Modulates uniform exchange via an enhancement factor <i>F</i><sub>xc</sub>(<i>n</i>, <i>s</i>) depending on the dimensionless reduced density gradient <i>s</i> = |&nabla;<i>n</i>| / (2<i>k</i><sub>F</sub><i>n</i>):</p>
-        ${eq(`<i>E</i><sub>xc</sub><sup>GGA</sup>[<i>n</i>] = ${opInt()} <i>n</i>(${vec('r')}) &varepsilon;<sub>x</sub><sup>unif</sup>(<i>n</i>) <i>F</i><sub>xc</sub>(<i>n</i>, <i>s</i>) d<sup>3</sup>${vec('r')}`, "2.4")}
+        ${eq(String.raw`E_{\mathrm{xc}}^{\mathrm{GGA}}[n] = \int n(\mathbf{r})\,\varepsilon_{\mathrm{x}}^{\mathrm{unif}}(n)\,F_{\mathrm{xc}}(n, s)\,\mathrm{d}^3\mathbf{r}`, "2.4")}
         <p><strong>3. Meta-GGA (SCAN / r<sup>2</sup>SCAN):</strong> Introduces the Kohn–Sham orbital kinetic energy density &tau;(${vec('r')}) = &frac12;&sum;<sub><i>i</i></sub>|&nabla;&phi;<sub><i>i</i></sub>|<sup>2</sup> through the dimensionless iso-orbital indicator &alpha;(${vec('r')}) that automatically recognizes bonding regimes:</p>
-        ${eq(`&alpha;(${vec('r')}) = ${fr(`&tau;(${vec('r')}) &minus; &tau;<sup>W</sup>(${vec('r')})`, `&tau;<sup>unif</sup>(${vec('r')})`)}, &nbsp;&nbsp;&nbsp; &tau;<sup>W</sup> = ${fr("|&nabla;<i>n</i>|<sup>2</sup>", "8<i>n</i>")}, &nbsp;&nbsp;&nbsp; &tau;<sup>unif</sup> = ${fr("3", "10")}(3&pi;<sup>2</sup>)<sup>2/3</sup> <i>n</i><sup>5/3</sup>`, "2.5",
+        ${eq(String.raw`\alpha(\mathbf{r}) = \frac{\tau(\mathbf{r}) - \tau^{\mathrm{W}}(\mathbf{r})}{\tau^{\mathrm{unif}}(\mathbf{r})}, \qquad \tau^{\mathrm{W}} = \frac{|\nabla n|^2}{8n}, \qquad \tau^{\mathrm{unif}} = \frac{3}{10}(3\pi^2)^{2/3}\,n^{5/3}`, "2.5",
           "&alpha; = 0 flags single-orbital covalent regions, &alpha; &approx; 1 flags metallic uniform regions, and &alpha; &gg; 1 flags weak non-covalent / van der Waals overlap—allowing SCAN to satisfy all 17 known exact semilocal constraints.")}
         <p><strong>4. Screened Range-Separated Hybrid Functional (HSE06):</strong> Splits the Coulomb interaction 1/<i>r</i> = erfc(&omega;<i>r</i>)/<i>r</i> + erf(&omega;<i>r</i>)/<i>r</i> (&omega; = 0.2 &Aring;<sup>&minus;1</sup>) and mixes 25% exact short-range Hartree–Fock exchange, restoring non-zero generalized KS derivative discontinuity and experimental-grade semiconductor band gaps:</p>
-        ${eq(`<i>E</i><sub>xc</sub><sup>HSE06</sup> = ${fr("1", "4")} <i>E</i><sub>x</sub><sup>HF,SR</sup>(&omega;) + ${fr("3", "4")} <i>E</i><sub>x</sub><sup>PBE,SR</sup>(&omega;) + <i>E</i><sub>x</sub><sup>PBE,LR</sup>(&omega;) + <i>E</i><sub>c</sub><sup>PBE</sup>`, "2.6")}
+        ${eq(String.raw`E_{\mathrm{xc}}^{\mathrm{HSE06}} = \frac{1}{4}E_{\mathrm{x}}^{\mathrm{HF,SR}}(\omega) + \frac{3}{4}E_{\mathrm{x}}^{\mathrm{PBE,SR}}(\omega) + E_{\mathrm{x}}^{\mathrm{PBE,LR}}(\omega) + E_{\mathrm{c}}^{\mathrm{PBE}}`, "2.6")}
 
         <h3>2.3 Long-Range van der Waals Dispersion Corrections (DFT-D2/D3 &amp; TS)</h3>
         <p>Standard LDA and GGA functionals decay exponentially where electron clouds do not overlap and therefore <strong>completely omit</strong> long-range London dispersion (&minus;<i>C</i><sub>6</sub>/<i>R</i><sup>6</sup>) from correlated quantum dipole fluctuations. Without dispersion corrections, graphite, 2D heterobilayers (MoS<sub>2</sub>/WS<sub>2</sub>), and physisorbed molecules fail to bind at the correct interlayer distance! Pairwise DFT-D adds a damped asymptotic tail:</p>
-        ${eq(`<i>E</i><sub>DFT-D</sub> = <i>E</i><sub>KS-DFT</sub> &minus; <i>s</i><sub>6</sub> ${opSum("<i>I</i>&lt;<i>J</i>")} ${fr("<i>C</i><sub>6</sub><sup><i>IJ</i></sup>", "<i>R<sub>IJ</sub></i><sup>6</sup>")} <i>f</i><sub>damp</sub>(<i>R<sub>IJ</sub></i>)`, "2.7",
+        ${eq(String.raw`E_{\mathrm{DFT\text{-}D}} = E_{\mathrm{KS\text{-}DFT}} - s_6 \sum_{I < J}\frac{C_6^{IJ}}{R_{IJ}^6}\,f_{\mathrm{damp}}(R_{IJ})`, "2.7",
           "In CASTEP, <code>sedc_scheme: G06</code> activates Grimme DFT-D2 (fixed atomic <i>C</i><sub>6</sub>), <code>TS</code> activates Tkatchenko–Scheffler (environment-dependent Hirshfeld-volume-scaled <i>C</i><sub>6</sub><sup>eff</sup> and polarizabilities), and <code>MBD*</code> captures full many-body collective screening.")}
 
         <h3>2.4 Strongly Correlated 3<i>d</i>/4<i>f</i> Systems: Dudarev DFT+<i>U</i></h3>
         <p>For transition-metal oxides, Prussian Blue analogues (e.g. <code>KCoHCF</code>), and lanthanides with tightly localized 3<i>d</i> or 4<i>f</i> shells, GGA overly delocalizes electrons and can falsely predict magnetic insulators to be non-magnetic metals. The rotationally invariant <strong>Dudarev DFT+<i>U</i></strong> penalty discourages fractional orbital occupations <i>n<sub>m&sigma;</sub></i> &isin; (0, 1) and restores integer orbital occupancy and Mott/charge-transfer gaps:</p>
-        ${eq(`<i>E</i><sub>DFT+<i>U</i></sub> = <i>E</i><sub>DFT</sub> + ${fr("<i>U</i><sub>eff</sub>", "2")} ${opSum("<i>I</i>,&sigma;")} ${opSum("<i>m</i>")} <i>n</i><sub><i>m</i>&sigma;</sub><sup><i>I</i></sup> (1 &minus; <i>n</i><sub><i>m</i>&sigma;</sub><sup><i>I</i></sup>), &nbsp;&nbsp;&nbsp; <i>U</i><sub>eff</sub> = <i>U</i> &minus; <i>J</i>`, "2.8",
+        ${eq(String.raw`E_{\mathrm{DFT}+U} = E_{\mathrm{DFT}} + \frac{U_{\mathrm{eff}}}{2}\sum_{I,\sigma}\sum_{m} n_{m\sigma}^I\left(1 - n_{m\sigma}^I\right), \qquad U_{\mathrm{eff}} = U - J`, "2.8",
           "Crucially, total energies computed with different <i>U</i><sub>eff</sub> values cannot be subtracted directly; keep <i>U</i><sub>eff</sub> identical (or justify via linear-response Cococcioni–de Gironcoli theory) when comparing polymorphs or redox phases.")}
 
         <table class="dft-table">
@@ -334,21 +487,21 @@
       contentHtml: `
         <h3>3.1 Real-Space &amp; Reciprocal-Space Lattices</h3>
         <p>An ideal crystal repeats a finite <strong>unit cell</strong> defined by three lattice vectors ${vec('a')}<sub>1</sub>, ${vec('a')}<sub>2</sub>, ${vec('a')}<sub>3</sub> (volume &Omega; = |${vec('a')}<sub>1</sub> &middot; (${vec('a')}<sub>2</sub> &times; ${vec('a')}<sub>3</sub>)|). Every atom's Cartesian position is ${vec('r')} = <i>f</i><sub>1</sub>${vec('a')}<sub>1</sub> + <i>f</i><sub>2</sub>${vec('a')}<sub>2</sub> + <i>f</i><sub>3</sub>${vec('a')}<sub>3</sub> in fractional coordinates (<i>f</i><sub>1</sub>, <i>f</i><sub>2</sub>, <i>f</i><sub>3</sub>) &isin; [0, 1). The dual <strong>reciprocal lattice vectors</strong> ${vec('b')}<sub>1</sub>, ${vec('b')}<sub>2</sub>, ${vec('b')}<sub>3</sub> (units: &Aring;<sup>&minus;1</sup>) satisfy ${vec('b')}<sub><i>i</i></sub> &middot; ${vec('a')}<sub><i>j</i></sub> = 2&pi;&delta;<sub><i>ij</i></sub>:</p>
-        ${eq(`${vec('b')}<sub>1</sub> = ${fr("2&pi;", "&Omega;")} (${vec('a')}<sub>2</sub> &times; ${vec('a')}<sub>3</sub>), &nbsp;&nbsp;&nbsp; ${vec('b')}<sub>2</sub> = ${fr("2&pi;", "&Omega;")} (${vec('a')}<sub>3</sub> &times; ${vec('a')}<sub>1</sub>), &nbsp;&nbsp;&nbsp; ${vec('b')}<sub>3</sub> = ${fr("2&pi;", "&Omega;")} (${vec('a')}<sub>1</sub> &times; ${vec('a')}<sub>2</sub>)`, "3.1")}
+        ${eq(String.raw`\mathbf{b}_1 = \frac{2\pi}{\Omega}(\mathbf{a}_2 \times \mathbf{a}_3), \qquad \mathbf{b}_2 = \frac{2\pi}{\Omega}(\mathbf{a}_3 \times \mathbf{a}_1), \qquad \mathbf{b}_3 = \frac{2\pi}{\Omega}(\mathbf{a}_1 \times \mathbf{a}_2)`, "3.1")}
         <p>The Wigner–Seitz cell of the reciprocal lattice is the <strong>First Brillouin Zone (BZ)</strong>, enclosing every inequivalent crystal wavevector ${vec('k')}.</p>
 
         <h3>3.2 Bloch's Theorem &amp; Plane-Wave Basis Expansion</h3>
         ${defBox("Bloch's Theorem (1929)",
           "In any periodic potential <i>v</i><sub>eff</sub>(<b>r</b> + <b>R</b>) = <i>v</i><sub>eff</sub>(<b>r</b>), every Kohn–Sham eigenstate takes the form of a plane wave modulated by a cell-periodic function <i>u</i><sub><i>n</i><b>k</b></sub>(<b>r</b> + <b>R</b>) = <i>u</i><sub><i>n</i><b>k</b></sub>(<b>r</b>), indexed by band number <i>n</i> and wavevector <b>k</b> inside the First Brillouin Zone.")}
         <p>Expanding <i>u</i><sub><i>n</i>${vec('k')}}(${vec('r')}) as a Fourier series over reciprocal lattice vectors ${vec('G')} = <i>m</i><sub>1</sub>${vec('b')}<sub>1</sub> + <i>m</i><sub>2</sub>${vec('b')}<sub>2</sub> + <i>m</i><sub>3</sub>${vec('b')}<sub>3</sub> yields the universal <strong>plane-wave basis set</strong> of CASTEP, VASP, and Quantum ESPRESSO:</p>
-        ${eq(`&psi;<sub><i>n</i>${vec('k')}}(${vec('r')}) = <i>e</i><sup><i>i</i>${vec('k')}&middot;${vec('r')}</sup> <i>u</i><sub><i>n</i>${vec('k')}}(${vec('r')}) = ${fr("1", "&radic;&Omega;")} ${opSum(`${vec('G')}`)} <i>c</i><sub><i>n</i>,${vec('k')}+${vec('G')}</sub> <i>e</i><sup><i>i</i>(${vec('k')}+${vec('G')})&middot;${vec('r')}</sup>`, "3.2")}
+        ${eq(String.raw`\psi_{n\mathbf{k}}(\mathbf{r}) = e^{i\mathbf{k}\cdot\mathbf{r}}\,u_{n\mathbf{k}}(\mathbf{r}) = \frac{1}{\sqrt{\Omega}}\sum_{\mathbf{G}} c_{n,\mathbf{k}+\mathbf{G}}\,e^{i(\mathbf{k}+\mathbf{G})\cdot\mathbf{r}}`, "3.2")}
         <p>The infinite Fourier expansion is truncated cleanly by one systematic convergence knob—the <strong>plane-wave kinetic energy cutoff <i>E</i><sub>cut</sub></strong> (eV):</p>
-        ${eq(`${fr("&#8463;<sup>2</sup>", "2<i>m</i><sub>0</sub>")} |${vec('k')} + ${vec('G')}|<sup>2</sup> &le; <i>E</i><sub>cut</sub>`, "3.3",
+        ${eq(String.raw`\frac{\hbar^2}{2m_0}\left|\mathbf{k} + \mathbf{G}\right|^2 \le E_{\mathrm{cut}}`, "3.3",
           "Increasing <i>E</i><sub>cut</sub> monotonically refines spatial resolution everywhere in space uniformly—guaranteeing zero Pulay basis-derivative forces and zero Basis Set Superposition Error (BSSE).")}
 
         <h3>3.3 Pseudopotentials (NCPP, USPP) &amp; Projector Augmented Wave (PAW)</h3>
         <p>Close to an atomic nucleus (<i>r</i> &lt; <i>r<sub>c</sub></i>), valence wavefunctions oscillate rapidly to remain orthogonal to tightly bound core shells (1<i>s</i>, 2<i>s</i>, 2<i>p</i>, &hellip;), which would require prohibitive <i>E</i><sub>cut</sub> (&gt;10<sup>5</sup> eV). <strong>Pseudopotentials</strong> freeze the chemically inert core and replace the &minus;<i>Z</i>/<i>r</i> Coulomb singularity and nodal valence states inside cutoff radius <i>r<sub>c</sub></i> with a smooth, nodeless pseudo-wavefunction &psi;<sup>PS</sup>(<i>r</i>) matching the exact all-electron &psi;<sup>AE</sup>(<i>r</i>) identically for <i>r</i> &ge; <i>r<sub>c</sub></i>. Blöchl's <strong>PAW formalism</strong> further reconstructs the exact all-electron wavefunction via a linear transformation:</p>
-        ${eq(`|&psi;<sub><i>n</i></sub><sup>AE</sup>&rang; = |&psi;&#771;<sub><i>n</i></sub>&rang; + ${opSum("<i>i</i>")} <span class="dft-bigdel">(</span> |&phi;<sub><i>i</i></sub><sup>AE</sup>&rang; &minus; |&phi;&#771;<sub><i>i</i></sub>&rang; <span class="dft-bigdel">)</span> &lang;<i>p&#771;<sub>i</sub></i> | &psi;&#771;<sub><i>n</i></sub>&rang;`, "3.4",
+        ${eq(String.raw`\left|\psi_n^{\mathrm{AE}}\right\rangle = \left|\tilde{\psi}_n\right\rangle + \sum_{i}\left(\left|\phi_i^{\mathrm{AE}}\right\rangle - \left|\tilde{\phi}_i\right\rangle\right)\left\langle \tilde{p}_i \middle| \tilde{\psi}_n \right\rangle`, "3.4",
           "PAW retains full core-region accuracy (essential for NMR, hyperfine fields, and 3<i>d</i>/4<i>f</i> magnetism) while keeping the low plane-wave cutoff of Ultrasoft pseudopotentials.")}
 
         <div class="dft-diagram-wrap">
@@ -387,10 +540,10 @@
 
         <h3>3.4 Brillouin-Zone Sampling, Metallic Smearing &amp; 2D Supercell Vacuum</h3>
         <p>Integrals over the First Brillouin Zone are discretized on a uniform <strong>Monkhorst–Pack k-mesh</strong> (<i>N</i><sub>1</sub> &times; <i>N</i><sub>2</sub> &times; <i>N</i><sub>3</sub>) folded by crystal symmetry into the Irreducible Brillouin Zone (IBZ) with weights <i>w</i><sub>${vec('k')}</sub> (&sum;<i>w</i><sub>${vec('k')}</sub> = 1):</p>
-        ${eq(`${fr("1", "&Omega;<sub>BZ</sub>")} ${opInt("BZ")} <i>g</i>(${vec('k')}) d<sup>3</sup>${vec('k')} &approx; ${opSum(`${vec('k')}&isin;IBZ`)} <i>w</i><sub>${vec('k')}</sub> <i>g</i>(${vec('k')})`, "3.5",
+        ${eq(String.raw`\frac{1}{\Omega_{\mathrm{BZ}}}\int_{\mathrm{BZ}} g(\mathbf{k})\,\mathrm{d}^3\mathbf{k} \approx \sum_{\mathbf{k}\in\mathrm{IBZ}} w_{\mathbf{k}}\,g(\mathbf{k})`, "3.5",
           "Choose k-spacing &Delta;<i>k</i> &le; 0.03 &Aring;<sup>&minus;1</sup> for semiconductors (<i>N<sub>i</sub></i> &approx; |<b>b</b><sub><i>i</i></sub>| / 2&pi;&Delta;<i>k</i>) and &le; 0.02 &Aring;<sup>&minus;1</sup> for metals, with <i>N</i><sub>3</sub> = 1 along the vacuum axis of a 2D slab (vacuum &ge; 15–20 &Aring;).")}
         <p>In metals, the discontinuous Fermi-surface step function &Theta;(<i>E</i><sub>F</sub> &minus; <i>E</i>) converges slowly with k-points. Broadening occupations with a smearing width &sigma; (Gaussian, Methfessel–Paxton, or Cold Smearing) introduces a fictitious electronic entropy term &minus;<i>TS</i>; always report the <strong>0 K extrapolated energy</strong> (<code>Final energy, E-TS/2</code> in CASTEP / <code>energy(sigma->0)</code> in VASP):</p>
-        ${eq(`<i>F</i>(<i>T</i>) = <i>E</i>(<i>T</i>) &minus; <i>TS</i>, &nbsp;&nbsp;&nbsp;&nbsp; <i>E</i>(<i>T</i> &rarr; 0) = ${fr("1", "2")} <span class="dft-bigdel">[</span> <i>E</i>(<i>T</i>) + <i>F</i>(<i>T</i>) <span class="dft-bigdel">]</span> = <i>E</i>(<i>T</i>) &minus; ${fr("1", "2")} <i>TS</i>`, "3.6",
+        ${eq(String.raw`F(T) = E(T) - TS, \qquad E(T \to 0) = \frac{1}{2}\big[E(T) + F(T)\big] = E(T) - \frac{1}{2}TS`, "3.6",
           "Keep |<i>TS</i>| &lt; 1 meV/atom so smearing does not distort equilibrium geometries or magnetic moments.")}
 
         ${labBox("Build Unit Cells, Cut (hkl) Surface Slabs &amp; Inspect Symmetry", "builder", "Open 3D VESTA Builder",
@@ -434,12 +587,12 @@
       contentHtml: `
         <h3>4.1 The Hellmann–Feynman Force Theorem</h3>
         <p>Locating the equilibrium crystal structure requires the force ${vec('F')}<sub><i>I</i></sub> = &minus;&part;<i>E</i>/&part;${vec('R')}<sub><i>I</i></sub> acting on every nucleus <i>I</i>. Differentiating <i>E</i> = &lang;&Psi;|${hat('H')}|&Psi;&rang; appears to involve costly wavefunction derivatives &part;&Psi;/&part;${vec('R')}<sub><i>I</i></sub>. Remarkably, for any normalized eigenstate &lang;&Psi;|&Psi;&rang; = 1, those terms cancel identically:</p>
-        ${eq(`${vec('F')}<sub><i>I</i></sub> = &minus;${fr("&part;<i>E</i>", `&part;${vec('R')}<sub><i>I</i></sub>`)} = &minus;&lang;&Psi;|&thinsp;${fr(`&part;${hat('H')}`, `&part;${vec('R')}<sub><i>I</i></sub>`)}&thinsp;|&Psi;&rang; = &minus;${opInt()} <i>n</i>(${vec('r')}) ${fr(`&part;<i>v</i><sub>ext</sub>(${vec('r')})`, `&part;${vec('R')}<sub><i>I</i></sub>`)} d<sup>3</sup>${vec('r')} &minus; ${fr("&part;<i>E</i><sub>II</sub>", `&part;${vec('R')}<sub><i>I</i></sub>`)}`, "4.1",
+        ${eq(String.raw`\mathbf{F}_I = -\frac{\partial E}{\partial \mathbf{R}_I} = -\left\langle \Psi \left|\frac{\partial \hat{H}}{\partial \mathbf{R}_I}\right| \Psi \right\rangle = -\int n(\mathbf{r})\,\frac{\partial v_{\mathrm{ext}}(\mathbf{r})}{\partial \mathbf{R}_I}\,\mathrm{d}^3\mathbf{r} - \frac{\partial E_{\mathrm{II}}}{\partial \mathbf{R}_I}`, "4.1",
           "Because plane waves <i>e</i><sup><i>i</i>(<b>k</b>+<b>G</b>)&middot;<b>r</b></sup> do not depend on atomic coordinates <b>R</b><sub><i>I</i></sub>, there are zero Pulay basis-derivative forces once SCF is tightly converged.")}
 
         <h3>4.2 Stress Tensor &amp; Variable-Cell Relaxation</h3>
         <p>When relaxing both atomic coordinates and lattice vectors (<code>fix_all_cell: false</code>), the macroscopic <strong>Cauchy stress tensor</strong> &sigma;<sub>&alpha;&beta;</sub> is the energy derivative with respect to homogeneous strain &varepsilon;<sub>&alpha;&beta;</sub> (1 eV/&Aring;<sup>3</sup> = 160.21766 GPa):</p>
-        ${eq(`&sigma;<sub>&alpha;&beta;</sub> = ${fr("1", "&Omega;")} ${fr("&part;<i>E</i>", "&part;&varepsilon;<sub>&alpha;&beta;</sub>")}, &nbsp;&nbsp;&nbsp;&nbsp; <i>H</i> = <i>E</i> + <i>P</i>&Omega;`, "4.2",
+        ${eq(String.raw`\sigma_{\alpha\beta} = \frac{1}{\Omega}\frac{\partial E}{\partial \varepsilon_{\alpha\beta}}, \qquad H = E + P\Omega`, "4.2",
           "Under external hydrostatic pressure <i>P</i>, cell optimization minimizes the <strong>enthalpy</strong> <i>H</i> = <i>E</i> + <i>P</i>&Omega;. CASTEP applies an automatic finite-basis-set correction (<code>finite_basis_corr: 2</code>) to cancel Pulay stress caused by discrete jumps in the plane-wave count as &Omega; changes.")}
 
         <h3>4.3 Quasi-Newton Optimization (BFGS / LBFGS) &amp; Dynamical Phonon Stability</h3>
@@ -454,14 +607,14 @@
           </tbody>
         </table>
         <p>Zero forces confirm a <em>stationary point</em>, not yet a true minimum. To prove <strong>dynamical stability</strong>, one diagonalizes the mass-weighted <strong>harmonic phonon dynamical matrix</strong> <b>D</b>(${vec('q')}) constructed from second-order force constants &Phi;<sub><i>I</i>&alpha;,<i>J</i>&beta;</sub> = &part;<sup>2</sup><i>E</i> / (&part;<i>u</i><sub><i>I</i>&alpha;</sub>&part;<i>u</i><sub><i>J</i>&beta;</sub>) via DFPT or finite supercell displacements:</p>
-        ${eq(`<i>D</i><sub><i>I</i>&alpha;,<i>J</i>&beta;</sub>(${vec('q')}) = ${fr("1", "&radic;(<i>M<sub>I</sub> M<sub>J</sub></i>)")} ${opSum(`${vec('R')}`)} &Phi;<sub><i>I</i>&alpha;,<i>J</i>&beta;</sub>(<b>0</b>, ${vec('R')}) <i>e</i><sup><i>i</i>${vec('q')}&middot;${vec('R')}</sup>, &nbsp;&nbsp;&nbsp;&nbsp; <b>D</b>(${vec('q')}) <b>e</b><sub>&nu;</sub> = &omega;<sub>&nu;</sub><sup>2</sup>(${vec('q')}) <b>e</b><sub>&nu;</sub>`, "4.3",
+        ${eq(String.raw`D_{I\alpha,J\beta}(\mathbf{q}) = \frac{1}{\sqrt{M_I M_J}}\sum_{\mathbf{R}} \Phi_{I\alpha,J\beta}(\mathbf{0},\mathbf{R})\,e^{i\mathbf{q}\cdot\mathbf{R}}, \qquad \mathbf{D}(\mathbf{q})\,\mathbf{e}_\nu = \omega_\nu^2(\mathbf{q})\,\mathbf{e}_\nu`, "4.3",
           "All real frequencies (&omega;<sub>&nu;</sub><sup>2</sup> &ge; 0 throughout the BZ) confirm dynamical stability; imaginary modes (&omega;<sup>2</sup> &lt; 0, plotted negative) signal a spontaneous structural distortion or phase instability.")}
 
         <h3>4.4 Thermodynamic Stability, NEB Barriers &amp; Computational Hydrogen Electrode</h3>
         <p>Because absolute DFT energies depend on pseudopotential cores, every physical observable is evaluated as an <strong>energy difference</strong> using identical <i>E</i><sub>cut</sub>, functional, and k-density:</p>
-        ${eq(`<i>E</i><sub>f</sub> = ${fr("1", "<i>N</i><sub>tot</sub>")} <span class="dft-bigdel">[</span> <i>E</i><sub>tot</sub>(A<sub><i>x</i></sub>B<sub><i>y</i></sub>) &minus; <i>x</i>&mu;<sub>A</sub> &minus; <i>y</i>&mu;<sub>B</sub> <span class="dft-bigdel">]</span>, &nbsp;&nbsp;&nbsp; &gamma;<sub>surf</sub> = ${fr("<i>E</i><sub>slab</sub> &minus; <i>N</i><sub>slab</sub> <i>E</i><sub>bulk</sub>", "2<i>A</i><sub>surf</sub>")}`, "4.4",
+        ${eq(String.raw`E_{\mathrm{f}} = \frac{1}{N_{\mathrm{tot}}}\left[E_{\mathrm{tot}}(\mathrm{A}_x\mathrm{B}_y) - x\mu_{\mathrm{A}} - y\mu_{\mathrm{B}}\right], \qquad \gamma_{\mathrm{surf}} = \frac{E_{\mathrm{slab}} - N_{\mathrm{slab}}E_{\mathrm{bulk}}}{2A_{\mathrm{surf}}}`, "4.4",
           "Negative formation energy <i>E</i><sub>f</sub> &lt; 0 indicates thermodynamic stability against elemental phases; &gamma;<sub>surf</sub> (J/m<sup>2</sup> or eV/&Aring;<sup>2</sup>) gives the cleavage cost of a surface of area <i>A</i><sub>surf</sub> (factor 2 accounts for top and bottom slab faces).")}
-        ${eq(`<i>E</i><sub>ads</sub> = <i>E</i><sub>slab+ads</sub> &minus; <i>E</i><sub>slab</sub> &minus; <i>E</i><sub>ads(gas)</sub>, &nbsp;&nbsp;&nbsp; &Delta;<i>G</i>(<i>U</i>) = <i>E</i><sub>ads</sub> + &Delta;<i>E</i><sub>ZPE</sub> &minus; <i>T</i>&Delta;<i>S</i> &minus; <i>n e U</i><sub>RHE</sub>`, "4.5",
+        ${eq(String.raw`E_{\mathrm{ads}} = E_{\mathrm{slab+ads}} - E_{\mathrm{slab}} - E_{\mathrm{ads(gas)}}, \qquad \Delta G(U) = E_{\mathrm{ads}} + \Delta E_{\mathrm{ZPE}} - T\Delta S - n e U_{\mathrm{RHE}}`, "4.5",
           "<strong>Computational Hydrogen Electrode (CHE):</strong> At pH = 0 and <i>U</i> = 0 V, (H<sup>+</sup> + <i>e</i><sup>&minus;</sup>) is in equilibrium with &frac12;H<sub>2</sub>(g). Zero-point energy &Delta;<i>E</i><sub>ZPE</sub> = &frac12;&sum;&#8463;&omega;<sub><i>i</i></sub> comes from vibrational frequency calculations; kinetic migration/reaction barriers <i>E</i><sub>a</sub> = <i>E</i><sub>TS</sub> &minus; <i>E</i><sub>IS</sub> are located along the minimum energy path using Climbing-Image NEB (CI-NEB).")}
 
         ${labBox("Track Optimization Forces &amp; Place Adsorbates on Surfaces", "convergence", "Open Convergence & Forces",
@@ -505,12 +658,11 @@
       contentHtml: `
         <h3>5.1 Electronic Band Structure <i>E<sub>n</sub></i>(${vec('k')}) &amp; High-Symmetry BZ Paths</h3>
         <p>Solving the Kohn–Sham equation non-self-consistently at the converged density along high-symmetry lines of the First Brillouin Zone yields the <strong>electronic band structure</strong> <i>E<sub>n&sigma;</sub></i>(${vec('k')}) (band index <i>n</i>, spin &sigma; &isin; {&uarr;, &darr;}). Energies are referenced to the Fermi level <i>E</i><sub>F</sub> (metals) or the <strong>Valence Band Maximum (VBM)</strong> (semiconductors, so <i>E</i> &minus; <i>E</i><sub>VBM</sub> = 0 at VBM):</p>
-        ${eq(`<i>E</i><sub>g</sub> = min<sub>${vec('k')}</sub> <i>E</i><sub>CBM</sub>(${vec('k')}) &minus; max<sub>${vec('k')}</sub> <i>E</i><sub>VBM</sub>(${vec('k')})`, "5.1",
+        ${eq(String.raw`E_{\mathrm{g}} = \min_{\mathbf{k}} E_{\mathrm{CBM}}(\mathbf{k}) - \max_{\mathbf{k}} E_{\mathrm{VBM}}(\mathbf{k})`, "5.1",
           "If <b>k</b><sub>CBM</sub> = <b>k</b><sub>VBM</sub> (e.g., K &rarr; K in monolayer MoS<sub>2</sub> or Janus MoSi<sub>2</sub>N<sub>2</sub>P<sub>2</sub>), the gap is <strong>Direct</strong> (strong optical emission/absorption without phonon assistance). If <b>k</b><sub>CBM</sub> &ne; <b>k</b><sub>VBM</sub> (e.g., Si: &Gamma; &rarr; &Delta;), it is <strong>Indirect</strong>.")}
 
         <div class="dft-diagram-wrap">
           <svg viewBox="0 0 860 175" width="100%" height="175" role="img" aria-label="Direct vs Indirect Band Structure and Synchronized PDOS">
-            <!-- Direct Gap Panel -->
             <rect x="14" y="14" width="250" height="148" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.3"/>
             <text x="139" y="33" text-anchor="middle" font-size="11.5" font-weight="800" fill="#0f172a">Direct Semiconductor (k<tspan dy="2.5" font-size="8">CBM</tspan><tspan dy="-2.5"> = k</tspan><tspan dy="2.5" font-size="8">VBM</tspan><tspan dy="-2.5">)</tspan></text>
             <line x1="34" y1="95" x2="246" y2="95" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4 3"/>
@@ -522,7 +674,6 @@
             <text x="148" y="84" font-size="10" font-weight="700" fill="#047857">E<tspan dy="2.5" font-size="7.5">g</tspan><tspan dy="-2.5"> (vertical)</tspan></text>
             <text x="140" y="155" text-anchor="middle" font-size="10" font-weight="700" fill="#334155">K (or &Gamma;)</text>
 
-            <!-- Indirect Gap Panel -->
             <rect x="284" y="14" width="250" height="148" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.3"/>
             <text x="409" y="33" text-anchor="middle" font-size="11.5" font-weight="800" fill="#0f172a">Indirect Semiconductor (k<tspan dy="2.5" font-size="8">CBM</tspan><tspan dy="-2.5"> &ne; k</tspan><tspan dy="2.5" font-size="8">VBM</tspan><tspan dy="-2.5">)</tspan></text>
             <line x1="304" y1="98" x2="516" y2="98" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4 3"/>
@@ -535,15 +686,12 @@
             <text x="362" y="155" text-anchor="middle" font-size="10" font-weight="700" fill="#334155">&Gamma;</text>
             <text x="460" y="155" text-anchor="middle" font-size="10" font-weight="700" fill="#334155">M / X</text>
 
-            <!-- Synchronized Spin-Mirrored PDOS Panel -->
             <rect x="554" y="14" width="292" height="148" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.3"/>
             <text x="700" y="33" text-anchor="middle" font-size="11.5" font-weight="800" fill="#0f172a">Spin-Mirrored PDOS (+&alpha; / &minus;&beta;)</text>
             <line x1="700" y1="42" x2="700" y2="152" stroke="#334155" stroke-width="1.3"/>
             <line x1="575" y1="95" x2="830" y2="95" stroke="#b45309" stroke-width="1.2" stroke-dasharray="4 3"/>
             <text x="828" y="91" text-anchor="end" font-size="9.5" font-weight="700" fill="#b45309">E<tspan dy="2" font-size="7">F</tspan></text>
-            <!-- Spin Up (+alpha) crossing EF (metallic) -->
             <path d="M 700 48 Q 765 56 720 74 Q 795 92 740 112 Q 775 130 700 148" fill="#dbeafe" fill-opacity="0.7" stroke="#2563eb" stroke-width="2"/>
-            <!-- Spin Down (-beta) gapped around EF (half-metal!) -->
             <path d="M 700 48 Q 635 58 688 74 L 700 82 L 700 110 L 642 124 Q 635 138 700 148" fill="#fee2e2" fill-opacity="0.7" stroke="#dc2626" stroke-width="2"/>
             <text x="765" y="54" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1d4ed8">Spin &uarr; (Metal)</text>
             <text x="632" y="54" text-anchor="middle" font-size="9.5" font-weight="700" fill="#b91c1c">Spin &darr; (Gapped)</text>
@@ -564,10 +712,10 @@
 
         <h3>5.2 Total DOS, Projected DOS (<code>.pdos_bin</code>) &amp; Spin Polarization</h3>
         <p>The <strong>Total Electronic Density of States</strong> <i>g</i>(<i>E</i>) counts electronic states per unit energy per unit cell across the Brillouin Zone. For finite k-meshes, Dirac delta functions are broadened via Gaussian smearing &sigma; (typically 0.05–0.15 eV) or Blöchl's linear tetrahedron method:</p>
-        ${eq(`<i>g</i><sub>&sigma;</sub>(<i>E</i>) = ${opSum(`<i>n</i>,${vec('k')}`)} <i>g</i><sub>s</sub> <i>w</i><sub>${vec('k')}</sub> ${fr("1", "&sigma;&radic;(2&pi;)")} exp<span class="dft-bigdel">[</span> &minus;${fr(`(<i>E</i> &minus; <i>E</i><sub><i>n</i>${vec('k')}}</sub>)<sup>2</sup>`, "2&sigma;<sup>2</sup>")} <span class="dft-bigdel">]</span>`, "5.2",
+        ${eq(String.raw`g_\sigma(E) = \sum_{n,\mathbf{k}} g_{\mathrm{s}}\,w_{\mathbf{k}}\,\frac{1}{\sigma\sqrt{2\pi}}\exp\!\left[-\frac{(E - E_{n\mathbf{k}})^2}{2\sigma^2}\right]`, "5.2",
           "where <i>g</i><sub>s</sub> = 2 for non-spin-polarized calculations and <i>g</i><sub>s</sub> = 1 per spin channel (&alpha; &uarr; positive, &beta; &darr; mirrored negative) in collinear spin-polarized DFT.")}
         <p>To uncover <em>which atoms and angular-momentum shells</em> (<i>s</i>, <i>p</i>, <i>d</i>, <i>f</i>) compose the VBM and CBM, CASTEP projects Bloch states |&psi;<sub><i>n</i>${vec('k')}}&rang; onto localized atomic pseudo-orbitals |&chi;<sub><i>I</i>,<i>lm</i></sub>&rang; and saves the weights in binary <code>*.pdos_bin</code> files. For spin-polarized systems, the <strong>Fermi-level spin polarization</strong> <i>P</i>(<i>E</i><sub>F</sub>) quantifies spintronic half-metallicity:</p>
-        ${eq(`<i>g</i><sub><i>I</i>,<i>lm</i></sub>(<i>E</i>) = ${opSum(`<i>n</i>,${vec('k')}`)} <i>g</i><sub>s</sub> <i>w</i><sub>${vec('k')}</sub> |&lang;&chi;<sub><i>I</i>,<i>lm</i></sub> | &psi;<sub><i>n</i>${vec('k')}}&rang;|<sup>2</sup> &delta;(<i>E</i> &minus; <i>E</i><sub><i>n</i>${vec('k')}}</sub>), &nbsp;&nbsp;&nbsp;&nbsp; <i>P</i>(<i>E</i><sub>F</sub>) = ${fr("<i>g</i><sub>&uarr;</sub>(<i>E</i><sub>F</sub>) &minus; <i>g</i><sub>&darr;</sub>(<i>E</i><sub>F</sub>)", "<i>g</i><sub>&uarr;</sub>(<i>E</i><sub>F</sub>) + <i>g</i><sub>&darr;</sub>(<i>E</i><sub>F</sub>)")}`, "5.3")}
+        ${eq(String.raw`g_{I,lm}(E) = \sum_{n,\mathbf{k}} g_{\mathrm{s}}\,w_{\mathbf{k}}\left|\langle \chi_{I,lm} | \psi_{n\mathbf{k}} \rangle\right|^2 \delta(E - E_{n\mathbf{k}}), \qquad P(E_{\mathrm{F}}) = \frac{g_\uparrow(E_{\mathrm{F}}) - g_\downarrow(E_{\mathrm{F}})}{g_\uparrow(E_{\mathrm{F}}) + g_\downarrow(E_{\mathrm{F}})}`, "5.3")}
 
         <table class="dft-table">
           <thead><tr><th>Crystal Lattice System</th><th>Standard High-Symmetry Path (Setyawan–Curtarolo)</th><th>Representative Materials</th></tr></thead>
@@ -623,38 +771,32 @@
       contentHtml: `
         <h3>6.1 Semiclassical Dynamics &amp; Band-Edge Effective Mass Tensor</h3>
         <p>Under an external electric field, a Bloch electron wavepacket centered at wavevector ${vec('k')} propagates at group velocity ${vec('v')}<sub>g</sub> = (1/&#8463;)&nabla;<sub>${vec('k')}</sub><i>E<sub>n</sub></i>(${vec('k')}) and responds to crystal forces with an inertia set by band curvature—the <strong>inverse effective mass tensor</strong>:</p>
-        ${eq(`${fr("1", "<i>m</i>*<sub>&alpha;&beta;</sub>")} = ${fr("1", "&#8463;<sup>2</sup>")} ${fr(`&part;<sup>2</sup><i>E<sub>n</sub></i>(${vec('k')})`, "&part;<i>k</i><sub>&alpha;</sub>&part;<i>k</i><sub>&beta;</sub>")} &nbsp;&nbsp;&rArr;&nbsp;&nbsp; ${fr("<i>m</i>*", "<i>m</i><sub>0</sub>")} = ${fr("7.61996 eV&middot;&Aring;<sup>2</sup>", "&part;<sup>2</sup><i>E</i> / &part;<i>k</i><sup>2</sup>")}`, "6.1",
+        ${eq(String.raw`\frac{1}{m^*_{\alpha\beta}} = \frac{1}{\hbar^2}\frac{\partial^2 E_n(\mathbf{k})}{\partial k_\alpha \partial k_\beta} \;\implies\; \frac{m^*}{m_0} = \frac{7.61996\;\mathrm{eV}\!\cdot\!\text{Å}^2}{\partial^2 E / \partial k^2}`, "6.1",
           "Steeply dispersing bands yield light, high-mobility carriers (small <i>m</i>*); flat localized bands (3<i>d</i>/4<i>f</i> states) yield heavy carriers (large <i>m</i>*). At the VBM, &part;<sup>2</sup><i>E</i>/&part;<i>k</i><sup>2</sup> &lt; 0, giving positive hole mass <i>m</i>*<sub>h</sub> = &minus;&#8463;<sup>2</sup>/(&part;<sup>2</sup><i>E</i>/&part;<i>k</i><sup>2</sup>) &gt; 0.")}
         <p>Away from the immediate band extremum (especially in narrow-gap semiconductors and heavily doped degenerate conductors), band coupling softens dispersion via the <strong>Kane Non-Parabolic Model</strong>:</p>
-        ${eq(`&Delta;<i>E</i>(1 + &alpha;<sub>K</sub>&Delta;<i>E</i>) = ${fr("&#8463;<sup>2</sup><i>q</i><sup>2</sup>", "2<i>m</i>*<sub>0</sub>")}, &nbsp;&nbsp;&nbsp;&nbsp; <i>q</i> = |${vec('k')} &minus; ${vec('k')}<sub>0</sub>|`, "6.2",
+        ${eq(String.raw`\Delta E\left(1 + \alpha_{\mathrm{K}}\Delta E\right) = \frac{\hbar^2 q^2}{2m_0^*}, \qquad q = \left|\mathbf{k} - \mathbf{k}_0\right|`, "6.2",
           "where <i>m</i>*<sub>0</sub> is the band-edge effective mass and &alpha;<sub>K</sub> (eV<sup>&minus;1</sup>) is the non-parabolicity parameter (pure parabolic limit: &alpha;<sub>K</sub> = 0; two-band <b>k</b>&middot;<b>p</b> estimate: &alpha;<sub>K</sub> &approx; (1 &minus; <i>m</i>*<sub>0</sub>/<i>m</i><sub>0</sub>)<sup>2</sup> / <i>E</i><sub>g</sub>).")}
 
         <div class="dft-diagram-wrap">
           <svg viewBox="0 0 860 168" width="100%" height="168" role="img" aria-label="Parabolic vs Kane Non-Parabolic Dispersion and Drude Conductivity">
-            <!-- Left: Parabolic vs Kane Band Curvature -->
             <rect x="14" y="12" width="404" height="146" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.3"/>
             <text x="216" y="31" text-anchor="middle" font-size="11.5" font-weight="800" fill="#0f172a">Band-Edge Dispersion: Parabolic vs. Kane Non-Parabolic</text>
             <line x1="50" y1="138" x2="390" y2="138" stroke="#334155" stroke-width="1.3"/>
             <line x1="216" y1="42" x2="216" y2="142" stroke="#94a3b8" stroke-width="1.1" stroke-dasharray="4 3"/>
             <text x="216" y="152" text-anchor="middle" font-size="10" font-weight="700" fill="#334155">k<tspan dy="2" font-size="7.5">0</tspan><tspan dy="-2"> (CBM)</tspan></text>
             <text x="44" y="54" text-anchor="end" font-size="10" fill="#334155">&Delta;E</text>
-            <!-- Pure Parabolic (steeper) -->
             <path d="M 86 48 Q 216 218 346 48" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-dasharray="5 3"/>
-            <!-- Kane Non-Parabolic (flattens slightly away from k0) -->
             <path d="M 60 72 Q 216 196 372 72" fill="none" stroke="#dc2626" stroke-width="2.3"/>
             <text x="216" y="54" text-anchor="middle" font-size="9.5" font-weight="700" fill="#2563eb">--- Parabolic (&alpha;<tspan dy="2" font-size="7">K</tspan><tspan dy="-2"> = 0, constant m*)</tspan></text>
             <text x="216" y="70" text-anchor="middle" font-size="9.5" font-weight="700" fill="#dc2626">&mdash;&mdash; Kane (&alpha;<tspan dy="2" font-size="7">K</tspan><tspan dy="-2"> &gt; 0, m* grows with E)</tspan></text>
 
-            <!-- Right: Drude Optical Conductivity sigma1(omega) -->
             <rect x="442" y="12" width="404" height="146" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.3"/>
             <text x="644" y="31" text-anchor="middle" font-size="11.5" font-weight="800" fill="#0f172a">Drude Optical Conductivity &sigma;<tspan dy="2.5" font-size="8">1</tspan><tspan dy="-2.5">(&omega;) &amp; Damping &gamma;</tspan><tspan dy="2.5" font-size="8">D</tspan><tspan dy="-2.5"> = &hbar;/&tau;</tspan></text>
             <line x1="478" y1="138" x2="824" y2="138" stroke="#334155" stroke-width="1.3"/>
             <line x1="478" y1="44" x2="478" y2="138" stroke="#334155" stroke-width="1.3"/>
             <text x="820" y="152" text-anchor="end" font-size="10" fill="#334155">Photon Energy &hbar;&omega; (eV)</text>
             <text x="472" y="54" text-anchor="end" font-size="10" fill="#334155">&sigma;<tspan dy="2" font-size="7.5">1</tspan></text>
-            <!-- Sharp Lorentzian (Long tau) -->
             <path d="M 478 52 C 500 54 516 118 565 130 C 630 135 730 137 820 137" fill="none" stroke="#059669" stroke-width="2.4"/>
-            <!-- Broad Lorentzian (Short tau) -->
             <path d="M 478 86 C 535 88 585 112 655 126 C 720 134 780 136 820 137" fill="none" stroke="#d97706" stroke-width="2.2" stroke-dasharray="5 3"/>
             <line x1="478" y1="95" x2="522" y2="95" stroke="#059669" stroke-width="1.3" stroke-dasharray="3 2"/>
             <text x="530" y="70" font-size="9.5" font-weight="700" fill="#047857">Long &tau; (high &mu;): sharp peak, small &gamma;<tspan dy="2" font-size="7">D</tspan></text>
@@ -664,23 +806,23 @@
 
         <h3>6.2 Conductivity Mass vs. Direct DFT DOS Effective Mass (2D &amp; 3D)</h3>
         <p>For anisotropic or multi-valley semiconductors with directional masses <i>m</i>*<sub>1</sub>, &hellip;, <i>m</i>*<sub><i>M</i></sub> and valley degeneracy <i>g<sub>v</sub></i> (e.g., <i>g<sub>v</sub></i> = 2 at hexagonal K/K&prime;, <i>g<sub>v</sub></i> = 6 in Si), electrical transport obeys the harmonic <strong>conductivity effective mass</strong> <i>m</i>*<sub>c</sub> = ((1/<i>M</i>)&sum;1/<i>m</i>*<sub><i>i</i></sub>)<sup>&minus;1</sup>, whereas thermodynamic carrier density obeys the <strong>DOS effective mass</strong> <i>m</i>*<sub>DOS</sub>. Crucially, <i>m</i>*<sub>DOS</sub> can be extracted <em>directly</em> from the cumulative DFT state count <i>N</i><sub>cell</sub>(&Delta;<i>E</i>) without assuming single-valley parabolicity:</p>
-        ${eq(`<b>2D Slab:</b> &nbsp; ${fr("<i>m</i>*<sub>DOS</sub>", "<i>m</i><sub>0</sub>")} = ${fr("2&pi;(&#8463;<sup>2</sup>/<i>m</i><sub>0</sub>)", "<i>g</i><sub>s</sub> <i>S</i><sub>cell</sub>")} ${fr("<i>N</i><sub>cell</sub>(&Delta;<i>E</i>)", "&Delta;<i>E</i>")}, &nbsp;&nbsp;&nbsp;&nbsp; <b>3D Bulk:</b> &nbsp; ${fr("<i>m</i>*<sub>DOS</sub>", "<i>m</i><sub>0</sub>")} = ${fr("&#8463;<sup>2</sup>", "2<i>m</i><sub>0</sub>&Delta;<i>E</i>")} <span class="dft-bigdel">(</span> ${fr("6&pi;<sup>2</sup> <i>N</i><sub>cell</sub>(&Delta;<i>E</i>)", "<i>g</i><sub>s</sub> &Omega;")} <span class="dft-bigdel">)</span><sup>2/3</sup>`, "6.3")}
+        ${eq(String.raw`\textbf{2D Slab:}\;\frac{m^*_{\mathrm{DOS}}}{m_0} = \frac{2\pi(\hbar^2/m_0)}{g_{\mathrm{s}}\,S_{\mathrm{cell}}}\frac{N_{\mathrm{cell}}(\Delta E)}{\Delta E}, \qquad \textbf{3D Bulk:}\;\frac{m^*_{\mathrm{DOS}}}{m_0} = \frac{\hbar^2}{2m_0\Delta E}\left(\frac{6\pi^2\,N_{\mathrm{cell}}(\Delta E)}{g_{\mathrm{s}}\,\Omega}\right)^{2/3}`, "6.3")}
         <p>From <i>m</i>*<sub>DOS,e</sub>, <i>m</i>*<sub>DOS,h</sub>, band gap <i>E</i><sub>g</sub>, and dielectric constant &varepsilon;<sub>r</sub>, we obtain the effective densities of states <i>N</i><sub>c</sub>(<i>T</i>), <i>N</i><sub>v</sub>(<i>T</i>), intrinsic carrier density <i>n<sub>i</sub></i>(<i>T</i>), and <strong>Wannier–Mott exciton binding energy</strong> <i>E</i><sub>b</sub> &amp; Bohr radius <i>a</i><sub>B</sub>*:</p>
-        ${eq(`<i>n<sub>i</sub></i>(<i>T</i>) = &radic;(<i>N</i><sub>c</sub><i>N</i><sub>v</sub>) exp<span class="dft-bigdel">(</span>&minus;${fr("<i>E</i><sub>g</sub>", "2<i>k</i><sub>B</sub><i>T</i>")}<span class="dft-bigdel">)</span>, &nbsp;&nbsp;&nbsp; &mu;*<sub>ex</sub> = ${fr("<i>m</i>*<sub>e</sub><i>m</i>*<sub>h</sub>", "<i>m</i>*<sub>e</sub> + <i>m</i>*<sub>h</sub>")}, &nbsp;&nbsp;&nbsp; <i>E</i><sub>b</sub><sup>3D</sup> = 13.606 ${fr("&mu;*<sub>ex</sub>", "&varepsilon;<sub>r</sub><sup>2</sup>")} eV, &nbsp;&nbsp;&nbsp; <i>a</i><sub>B</sub>* = <i>a</i><sub>0</sub> ${fr("&varepsilon;<sub>r</sub>", "&mu;*<sub>ex</sub>")}`, "6.4")}
+        ${eq(String.raw`n_i(T) = \sqrt{N_{\mathrm{c}} N_{\mathrm{v}}}\,\exp\!\left(-\frac{E_{\mathrm{g}}}{2k_{\mathrm{B}}T}\right), \qquad \mu^*_{\mathrm{ex}} = \frac{m^*_{\mathrm{e}}\,m^*_{\mathrm{h}}}{m^*_{\mathrm{e}} + m^*_{\mathrm{h}}}, \qquad E_{\mathrm{b}}^{\mathrm{3D}} = 13.606\,\frac{\mu^*_{\mathrm{ex}}}{\varepsilon_{\mathrm{r}}^2}\;\mathrm{eV}, \qquad a_{\mathrm{B}}^* = a_0\,\frac{\varepsilon_{\mathrm{r}}}{\mu^*_{\mathrm{ex}}}`, "6.4")}
 
         <h3>6.3 Carrier Mobility (&mu;<sub>e</sub>, &mu;<sub>h</sub>), Multi-Channel Scattering &amp; Diffusion</h3>
         <p>In the relaxation-time approximation of the Boltzmann Transport Equation, scattering rates from acoustic phonons (ADP), polar optical phonons (POP), and ionized impurities (IMP) add via <strong>Matthiessen's Rule</strong>, and mobility connects directly to carrier diffusivity via the <strong>Einstein relation</strong>:</p>
-        ${eq(`${fr("1", "&tau;<sub>tot</sub>")} = ${fr("1", "&tau;<sub>ADP</sub>")} + ${fr("1", "&tau;<sub>POP</sub>")} + ${fr("1", "&tau;<sub>IMP</sub>")}, &nbsp;&nbsp;&nbsp; &mu;<sub>tot</sub> = ${fr("<i>e</i> &tau;<sub>tot</sub>", "<i>m</i>*<sub>Drude</sub>")}, &nbsp;&nbsp;&nbsp; <i>D<sub>c</sub></i> = ${fr("&mu;<sub>tot</sub> <i>k</i><sub>B</sub><i>T</i>", "<i>e</i>")}`, "6.5")}
+        ${eq(String.raw`\frac{1}{\tau_{\mathrm{tot}}} = \frac{1}{\tau_{\mathrm{ADP}}} + \frac{1}{\tau_{\mathrm{POP}}} + \frac{1}{\tau_{\mathrm{IMP}}}, \qquad \mu_{\mathrm{tot}} = \frac{e\,\tau_{\mathrm{tot}}}{m^*_{\mathrm{Drude}}}, \qquad D_c = \frac{\mu_{\mathrm{tot}}\,k_{\mathrm{B}}T}{e}`, "6.5")}
         <p><strong>1. Acoustic Deformation Potential (Takagi 2D &amp; Bardeen–Shockley 3D):</strong> Longitudinal acoustic strain &varepsilon; shifts band edges by &Delta;<i>E</i><sub>edge</sub> = <i>E</i><sub>1</sub>&varepsilon;. Using in-plane stiffness <i>C</i><sub>2D</sub> = (1/<i>S</i><sub>0</sub>)(&part;<sup>2</sup><i>E</i>/&part;&varepsilon;<sup>2</sup>) (N/m) or bulk elastic constant <i>C</i><sub>3D</sub> = (1/&Omega;<sub>0</sub>)(&part;<sup>2</sup><i>E</i>/&part;&varepsilon;<sup>2</sup>) (GPa):</p>
-        ${eq(`&mu;<sub>ADP,2D</sub> = ${fr("<i>e</i>&#8463;<sup>3</sup><i>C</i><sub>2D</sub>", "<i>k</i><sub>B</sub><i>T</i> <i>m</i>*<sub>&alpha;</sub> <i>m</i>*<sub>d</sub> <i>E</i><sub>1</sub><sup>2</sup>")}, &nbsp;&nbsp;&nbsp;&nbsp; &mu;<sub>ADP,3D</sub> = ${fr("2&radic;(2&pi;) <i>e</i>&#8463;<sup>4</sup><i>C</i><sub>3D</sub>", "3 (<i>k</i><sub>B</sub><i>T</i>)<sup>3/2</sup> <i>m</i>*<sub>&alpha;</sub> (<i>m</i>*<sub>d</sub>)<sup>3/2</sup> <i>E</i><sub>1</sub><sup>2</sup>")}`, "6.6")}
+        ${eq(String.raw`\mu_{\mathrm{ADP,2D}} = \frac{e\hbar^3 C_{\mathrm{2D}}}{k_{\mathrm{B}}T\,m^*_\alpha\,m^*_{\mathrm{d}}\,E_1^2}, \qquad \mu_{\mathrm{ADP,3D}} = \frac{2\sqrt{2\pi}\,e\hbar^4 C_{\mathrm{3D}}}{3\,(k_{\mathrm{B}}T)^{3/2}\,m^*_\alpha\,(m^*_{\mathrm{d}})^{3/2}\,E_1^2}`, "6.6")}
         <p><strong>2. Fr&ouml;hlich Polar Optical Phonon (POP) &amp; 3. Brooks–Herring Ionized Impurity (IMP):</strong> In polar crystals (&varepsilon;<sub>0</sub> &gt; &varepsilon;<sub>&infin;</sub>), LO phonons of energy &#8463;&omega;<sub>LO</sub> couple to carriers through the dimensionless Fr&ouml;hlich constant &alpha;<sub>F</sub>, while screened ionized impurities of density <i>N<sub>i</sub></i> dominate low-temperature transport (&gamma;<sub>BH</sub> = 24<i>m</i>*<i>k</i><sub>B</sub><i>T</i>/&hbar;<sup>2</sup>&beta;<sub>s</sub><sup>2</sup>):</p>
-        ${eq(`&alpha;<sub>F</sub> = ${fr("<i>e</i><sup>2</sup>", "4&pi;&varepsilon;<sub>0</sub>&#8463;")} <span class="dft-bigdel">(</span>${fr("1", "&varepsilon;<sub>&infin;</sub>")} &minus; ${fr("1", "&varepsilon;<sub>0</sub>")}<span class="dft-bigdel">)</span> &radic;<span class="dft-bigdel">(</span>${fr("<i>m</i>*", "2&#8463;&omega;<sub>LO</sub>")}<span class="dft-bigdel">)</span>, &nbsp;&nbsp;&nbsp; &tau;<sub>POP</sub> &approx; ${fr("<i>e</i><sup>&#8463;&omega;<sub>LO</sub>/<i>k</i><sub>B</sub><i>T</i></sup> &minus; 1", "2&alpha;<sub>F</sub> &omega;<sub>LO</sub>")}, &nbsp;&nbsp;&nbsp; &mu;<sub>IMP</sub> &prop; ${fr("&varepsilon;<sub>0</sub><sup>2</sup> (<i>k</i><sub>B</sub><i>T</i>)<sup>3/2</sup>", "<i>N<sub>i</sub></i> &radic;<i>m</i>* [ln(1+&gamma;<sub>BH</sub>) &minus; &gamma;<sub>BH</sub>/(1+&gamma;<sub>BH</sub>)]")}`, "6.7")}
+        ${eq(String.raw`\alpha_{\mathrm{F}} = \frac{e^2}{4\pi\varepsilon_0\hbar}\!\left(\frac{1}{\varepsilon_\infty} - \frac{1}{\varepsilon_0}\right)\!\sqrt{\frac{m^*}{2\hbar\omega_{\mathrm{LO}}}}, \qquad \tau_{\mathrm{POP}} \approx \frac{e^{\hbar\omega_{\mathrm{LO}}/k_{\mathrm{B}}T} - 1}{2\alpha_{\mathrm{F}}\omega_{\mathrm{LO}}}, \qquad \mu_{\mathrm{IMP}} \propto \frac{\varepsilon_0^2\,(k_{\mathrm{B}}T)^{3/2}}{N_i\sqrt{m^*}\left[\ln(1+\gamma_{\mathrm{BH}}) - \frac{\gamma_{\mathrm{BH}}}{1+\gamma_{\mathrm{BH}}}\right]}`, "6.7")}
 
         <h3>6.4 Drude Effective Mass (<i>m</i>*<sub>Drude</sub>) &amp; Drude Relaxation Time (&tau;<sub>e</sub>, &tau;<sub>h</sub>)</h3>
         <p>When a semiconductor is doped to electron density <i>n</i> or hole density <i>p</i> (or in a metal at <i>E</i><sub>F</sub>), free carriers oscillate collectively at the <strong>Drude plasma frequency</strong> &omega;<sub>p</sub> and generate an intraband optical conductivity &sigma;<sub>Drude</sub>(&omega;) and dielectric tail &varepsilon;<sup>Drude</sup>(&omega;):</p>
-        ${eq(`&omega;<sub>p,<i>c</i></sub><sup>2</sup>(&mu;<sub><i>c</i></sub>,<i>T</i>) = ${fr("<i>e</i><sup>2</sup>", "&varepsilon;<sub>0</sub>&Omega;")} ${opSum(`<i>n</i>,${vec('k')}`)} <i>g</i><sub>s</sub><i>w</i><sub>${vec('k')}}</i> <i>v</i><sub><i>n</i>${vec('k')}}</sub><sup>2</sup> <span class="dft-bigdel">(</span>&minus;${fr("&part;<i>f</i><sub>0</sub>", "&part;<i>E</i>")}<span class="dft-bigdel">)</span>, &nbsp;&nbsp;&nbsp;&nbsp; <i>m</i>*<sub>Drude,<i>c</i></sub>(<i>n<sub>c</sub></i>,<i>T</i>) = ${fr("<i>n<sub>c</sub></i> <i>e</i><sup>2</sup>", "&varepsilon;<sub>0</sub> &omega;<sub>p,<i>c</i></sub><sup>2</sup>")}`, "6.8",
+        ${eq(String.raw`\omega_{\mathrm{p},c}^2(\mu_c, T) = \frac{e^2}{\varepsilon_0\Omega}\sum_{n,\mathbf{k}} g_{\mathrm{s}}\,w_{\mathbf{k}}\,v_{n\mathbf{k}}^2\!\left(-\frac{\partial f_0}{\partial E}\right), \qquad m^*_{\mathrm{Drude},c}(n_c, T) = \frac{n_c\,e^2}{\varepsilon_0\,\omega_{\mathrm{p},c}^2}`, "6.8",
           "For non-parabolic Kane bands at degenerate Fermi energy <i>E</i><sub>F</sub>, <i>m</i>*<sub>Drude</sub>(<i>E</i><sub>F</sub>) = <i>m</i>*<sub>0</sub>(1 + 2&alpha;<sub>K</sub><i>E</i><sub>F</sub>)—the Drude mass increases monotonically with doping.")}
-        ${eq(`&tau;<sub><i>c</i></sub> = ${fr("&#8463;", "&gamma;<sub>D,<i>c</i></sub>")} = ${fr("&sigma;<sub>0,<i>c</i></sub> <i>m</i>*<sub>Drude,<i>c</i></sub>", "<i>n<sub>c</sub></i> <i>e</i><sup>2</sup>")}, &nbsp;&nbsp;&nbsp;&nbsp; &varepsilon;<sup>Drude</sup>(&omega;) = &varepsilon;<sub>&infin;</sub> &minus; ${fr("&omega;<sub>p</sub><sup>2</sup>", "&omega;(&omega; + <i>i</i>&gamma;<sub>D</sub>)")}, &nbsp;&nbsp;&nbsp;&nbsp; &sigma;<sub>Drude</sub>(&omega;) = ${fr("<i>n e</i><sup>2</sup>&tau; / <i>m</i>*<sub>Drude</sub>", "1 &minus; <i>i</i>&omega;&tau;")}`, "6.9",
+        ${eq(String.raw`\tau_c = \frac{\hbar}{\gamma_{\mathrm{D},c}} = \frac{\sigma_{0,c}\,m^*_{\mathrm{Drude},c}}{n_c\,e^2}, \qquad \varepsilon^{\mathrm{Drude}}(\omega) = \varepsilon_\infty - \frac{\omega_{\mathrm{p}}^2}{\omega(\omega + i\gamma_{\mathrm{D}})}, \qquad \sigma_{\mathrm{Drude}}(\omega) = \frac{n e^2 \tau / m^*_{\mathrm{Drude}}}{1 - i\omega\tau}`, "6.9",
           "Drude relaxation time &tau; (fs) maps directly onto the optical damping rate &gamma;<sub>D</sub> (eV) via &tau;[fs] = 0.65821 / &gamma;<sub>D</sub>[eV] and controls the carrier mean free path &ell; = <i>v</i><sub>rms</sub>&tau;.")}
 
         ${labBox("Compute Band/DOS Effective Mass, Mobility &amp; Drude &tau; on Real CASTEP Jobs", "transport", "Open m* & Drude Tab",
@@ -724,7 +866,7 @@
       contentHtml: `
         <h3>7.1 Complex Dielectric Tensor &amp; Interband Transitions (<code>*.ome_bin</code>)</h3>
         <p>When light of photon energy &#8463;&omega; illuminates a crystal, vertical interband transitions promote electrons from occupied valence bands <i>v</i> to unoccupied conduction bands <i>c</i> at virtually unchanged wavevector ${vec('k')} (<i>q</i><sub>photon</sub> &approx; 0). Within the independent-particle dipole approximation (IPA / Fermi's Golden Rule), the imaginary part of the symmetrized 3&times;3 dielectric tensor &varepsilon;<sub>2,&alpha;&beta;</sub>(&omega;) is built directly from the optical momentum matrix elements ${vec('p')}<sub><i>cv</i>${vec('k')}}</sub> = &lang;&psi;<sub><i>c</i>${vec('k')}}</sub>|${hat('p')}|&psi;<sub><i>v</i>${vec('k')}}</sub>&rang; stored in CASTEP binary <code>*.ome_bin</code> files:</p>
-        ${eq(`&varepsilon;<sub>2,&alpha;&beta;</sub>(&omega;) = ${fr("4&pi;<sup>2</sup><i>e</i><sup>2</sup>", "&Omega;<i>m</i><sub>0</sub><sup>2</sup>&omega;<sup>2</sup>")} ${opSum(`<i>v</i>,<i>c</i>,${vec('k')}`)} <i>g</i><sub>s</sub><i>w</i><sub>${vec('k')}}</i> (<i>f</i><sub><i>v</i>${vec('k')}}</sub> &minus; <i>f</i><sub><i>c</i>${vec('k')}}</sub>) &lang;&psi;<sub><i>c</i>${vec('k')}}</sub>|${hat('p')}<sub>&alpha;</sub>|&psi;<sub><i>v</i>${vec('k')}}</sub>&rang;&lang;&psi;<sub><i>v</i>${vec('k')}}</sub>|${hat('p')}<sub>&beta;</sub>|&psi;<sub><i>c</i>${vec('k')}}</sub>&rang; &delta;(<i>E</i><sub><i>c</i>${vec('k')}}</sub> &minus; <i>E</i><sub><i>v</i>${vec('k')}}</sub> &minus; &#8463;&omega;)`, "7.1",
+        ${eq(String.raw`\varepsilon_{2,\alpha\beta}(\omega) = \frac{4\pi^2 e^2}{\Omega m_0^2 \omega^2}\sum_{v,c,\mathbf{k}} g_{\mathrm{s}}\,w_{\mathbf{k}}\,(f_{v\mathbf{k}} - f_{c\mathbf{k}})\,\langle \psi_{c\mathbf{k}}|\hat{p}_\alpha|\psi_{v\mathbf{k}}\rangle\langle \psi_{v\mathbf{k}}|\hat{p}_\beta|\psi_{c\mathbf{k}}\rangle\,\delta(E_{c\mathbf{k}} - E_{v\mathbf{k}} - \hbar\omega)`, "7.1",
           "A rigid <strong>Levine–Allan scissors shift</strong> &Delta;<sub>sc</sub> corrects semilocal PBE gap underestimation (<i>E<sub>c</sub></i> &minus; <i>E<sub>v</sub></i> &rarr; <i>E<sub>c</sub></i> &minus; <i>E<sub>v</sub></i> + &Delta;<sub>sc</sub>) while renormalizing matrix elements by (<i>E<sub>cv</sub></i> + &Delta;<sub>sc</sub>)/<i>E<sub>cv</sub></i> to preserve the optical f-sum rule.")}
 
         <div class="dft-diagram-wrap">
@@ -771,7 +913,7 @@
 
         <h3>7.2 Causality, Kramers–Kronig Transform &amp; Optical f-Sum Rule</h3>
         <p>Because electromagnetic polarization cannot precede the incident field (causality), the real dispersive part &varepsilon;<sub>1,&alpha;&beta;</sub>(&omega;) follows uniquely from &varepsilon;<sub>2,&alpha;&beta;</sub>(&omega;) via the Cauchy principal-value <strong>Kramers–Kronig transform</strong>, while total oscillator strength satisfies the <strong>Thomas–Reiche–Kuhn f-sum rule</strong>:</p>
-        ${eq(`&varepsilon;<sub>1,&alpha;&beta;</sub>(&omega;) = &delta;<sub>&alpha;&beta;</sub> + ${fr("2", "&pi;")} &#8472; ${opInt("0", "&infin;")} ${fr("&omega;&prime; &varepsilon;<sub>2,&alpha;&beta;</sub>(&omega;&prime;)", "&omega;&prime;<sup>2</sup> &minus; &omega;<sup>2</sup>")} d&omega;&prime;, &nbsp;&nbsp;&nbsp;&nbsp; ${opInt("0", "&infin;")} &omega; &varepsilon;<sub>2</sub>(&omega;) d&omega; = ${fr("&pi;", "2")} &omega;<sub>p,val</sub><sup>2</sup>`, "7.2",
+        ${eq(String.raw`\varepsilon_{1,\alpha\beta}(\omega) = \delta_{\alpha\beta} + \frac{2}{\pi}\,\mathcal{P}\!\int_0^\infty \frac{\omega'\,\varepsilon_{2,\alpha\beta}(\omega')}{\omega'^2 - \omega^2}\,\mathrm{d}\omega', \qquad \int_0^\infty \omega\,\varepsilon_2(\omega)\,\mathrm{d}\omega = \frac{\pi}{2}\,\omega_{\mathrm{p,val}}^2`, "7.2",
           "Evaluating at &omega; = 0 yields the electronic static dielectric constant &varepsilon;<sub>1</sub>(0) = &varepsilon;<sub>&infin;</sub> and static refractive index <i>n</i>(0) = &radic;&varepsilon;<sub>1</sub>(0). Sufficient unoccupied bands (<code>optics_nbands</code>) must be included so the f-sum rule converges.")}
 
         <h3>7.3 Polarization Geometries (Crystal Anisotropy)</h3>
@@ -787,10 +929,10 @@
 
         <h3>7.4 Derived Optical Functions, Optical Conductivity &amp; Tauc Optical Gap</h3>
         <p>From the complex dielectric function &varepsilon;(&omega;) = &varepsilon;<sub>1</sub>(&omega;) + <i>i</i>&varepsilon;<sub>2</sub>(&omega;) = (<i>n</i> + <i>ik</i>)<sup>2</sup>, every measurable optical spectrum follows analytically:</p>
-        ${eq(`<i>n</i>(&omega;) = ${fr("1", "&radic;2")} <span class="dft-bigdel">[</span>&radic;(&varepsilon;<sub>1</sub><sup>2</sup> + &varepsilon;<sub>2</sub><sup>2</sup>) + &varepsilon;<sub>1</sub><span class="dft-bigdel">]</span><sup>1/2</sup>, &nbsp;&nbsp;&nbsp;&nbsp; <i>k</i>(&omega;) = ${fr("1", "&radic;2")} <span class="dft-bigdel">[</span>&radic;(&varepsilon;<sub>1</sub><sup>2</sup> + &varepsilon;<sub>2</sub><sup>2</sup>) &minus; &varepsilon;<sub>1</sub><span class="dft-bigdel">]</span><sup>1/2</sup>`, "7.3")}
-        ${eq(`&alpha;(&omega;) = ${fr("2&omega; <i>k</i>(&omega;)", "<i>c</i>")}, &nbsp;&nbsp; <i>R</i>(&omega;) = ${fr("(<i>n</i> &minus; 1)<sup>2</sup> + <i>k</i><sup>2</sup>", "(<i>n</i> + 1)<sup>2</sup> + <i>k</i><sup>2</sup>")}, &nbsp;&nbsp; <i>L</i>(&omega;) = ${fr("&varepsilon;<sub>2</sub>", "&varepsilon;<sub>1</sub><sup>2</sup> + &varepsilon;<sub>2</sub><sup>2</sup>")}, &nbsp;&nbsp; &sigma;<sub>1</sub>(&omega;) = &varepsilon;<sub>0</sub>&omega;&varepsilon;<sub>2</sub>(&omega;)`, "7.4",
+        ${eq(String.raw`n(\omega) = \frac{1}{\sqrt{2}}\left[\sqrt{\varepsilon_1^2 + \varepsilon_2^2} + \varepsilon_1\right]^{1/2}, \qquad k(\omega) = \frac{1}{\sqrt{2}}\left[\sqrt{\varepsilon_1^2 + \varepsilon_2^2} - \varepsilon_1\right]^{1/2}`, "7.3")}
+        ${eq(String.raw`\alpha(\omega) = \frac{2\omega\,k(\omega)}{c}, \qquad R(\omega) = \frac{(n - 1)^2 + k^2}{(n + 1)^2 + k^2}, \qquad L(\omega) = \frac{\varepsilon_2}{\varepsilon_1^2 + \varepsilon_2^2}, \qquad \sigma_1(\omega) = \varepsilon_0\omega\varepsilon_2(\omega)`, "7.4",
           "Peaks in the Electron Energy Loss Function <i>L</i>(&omega;) = Im(&minus;1/&varepsilon;) mark collective bulk plasmon resonances (&#8463;&omega;<sub>p</sub>). Note: Materials Studio CASTEP plots &alpha; = 2<i>k</i>/&lambda; whereas SI optics textbooks use 4&pi;<i>k</i>/&lambda;—both conventions are selectable in our Optical <strong>More...</strong> menu.")}
-        ${eq(`(&alpha; &#8463;&omega;)<sup>1/<i>r</i></sup> = <i>A</i>(&#8463;&omega; &minus; <i>E</i><sub>g</sub><sup>opt</sup>), &nbsp;&nbsp;&nbsp; <i>r</i> = ${fr("1", "2")} (direct allowed), &nbsp; <i>r</i> = 2 (indirect allowed)`, "7.5",
+        ${eq(String.raw`(\alpha\,\hbar\omega)^{1/r} = A\left(\hbar\omega - E_{\mathrm{g}}^{\mathrm{opt}}\right), \qquad r = \frac{1}{2}\;(\text{direct allowed}), \quad r = 2\;(\text{indirect allowed})`, "7.5",
           "<strong>Tauc Relation:</strong> Extrapolating the linear absorption onset of (&alpha;&#8463;&omega;)<sup>2</sup> (direct) or (&alpha;&#8463;&omega;)<sup>1/2</sup> (indirect) to zero gives the optical band gap <i>E</i><sub>g</sub><sup>opt</sup>.")}
 
         ${tipBox("When Independent-Particle DFT Optics Needs GW + BSE",
@@ -837,21 +979,21 @@
       contentHtml: `
         <h3>8.1 Two Physical Definitions of Charge Density Difference (&Delta;&rho;)</h3>
         <p>Total valence electron density &rho;(${vec('r')}) is dominated by nearly spherical core-adjacent shells, masking subtle chemical bonding rearrangements. Subtracting a well-defined reference isolates exact electron redistribution (yellow: accumulation +&Delta;&rho;, cyan: depletion &minus;&Delta;&rho;):</p>
-        ${eq(`<b>Deformation Density (<code>*.chdiff</code>):</b> &nbsp; &Delta;&rho;<sub>def</sub>(${vec('r')}) = &rho;<sub>SCF</sub>(${vec('r')}) &minus; ${opSum("<i>I</i>")} &rho;<sub><i>I</i></sub><sup>free atom</sup>(${vec('r')})`, "8.1",
+        ${eq(String.raw`\textbf{Deformation Density:}\quad \Delta\rho_{\mathrm{def}}(\mathbf{r}) = \rho_{\mathrm{SCF}}(\mathbf{r}) - \sum_I \rho_I^{\mathrm{free\ atom}}(\mathbf{r})`, "8.1",
           "Shows how neutral isolated atoms deform upon crystal bond formation—positive accumulation lobes along bond midpoints directly expose covalent shared electron pairs.")}
-        ${eq(`<b>Interfacial / Adsorption Density:</b> &nbsp; &Delta;&rho;<sub>ads</sub>(${vec('r')}) = &rho;<sub>AB</sub>(${vec('r')}) &minus; &rho;<sub>A</sub>(${vec('r')}) &minus; &rho;<sub>B</sub>(${vec('r')})`, "8.2",
+        ${eq(String.raw`\textbf{Interfacial / Adsorption Density:}\quad \Delta\rho_{\mathrm{ads}}(\mathbf{r}) = \rho_{\mathrm{AB}}(\mathbf{r}) - \rho_{\mathrm{A}}(\mathbf{r}) - \rho_{\mathrm{B}}(\mathbf{r})`, "8.2",
           "Must be computed on the <em>exact same FFT grid, supercell dimensions, and fixed atomic coordinates</em> for the combined system (AB) and isolated fragments (A = slab, B = adsorbate or second 2D layer).")}
 
         <h3>8.2 1D Planar-Averaged &Delta;&rho;(<i>z</i>) &amp; Integrated Charge Transfer &Delta;<i>Q</i>(<i>z</i>)</h3>
         <p>For 2D surfaces, van der Waals heterojunctions (e.g., <code>WS<sub>2</sub>/MoSe<sub>2</sub></code>), and adsorbed catalysts, integrating &Delta;&rho;(<i>x</i>,<i>y</i>,<i>z</i>) across the in-plane unit cell area <i>S<sub>ab</sub></i> collapses 3D clouds into a quantitative 1D charge-transfer curve along surface normal <i>z</i>:</p>
-        ${eq(`&Delta;&rho;<sub>1D</sub>(<i>z</i>) = ${opInt("<i>S<sub>ab</sub></i>")} &Delta;&rho;(<i>x</i>,<i>y</i>,<i>z</i>) d<i>x</i> d<i>y</i>, &nbsp;&nbsp;&nbsp;&nbsp; &Delta;<i>Q</i>(<i>z</i>) = ${opInt("0", "<i>z</i>")} &Delta;&rho;<sub>1D</sub>(<i>z</i>&prime;) d<i>z</i>&prime;`, "8.3",
+        ${eq(String.raw`\Delta\rho_{\mathrm{1D}}(z) = \iint_{S_{ab}} \Delta\rho(x,y,z)\,\mathrm{d}x\,\mathrm{d}y, \qquad \Delta Q(z) = \int_0^z \Delta\rho_{\mathrm{1D}}(z')\,\mathrm{d}z'`, "8.3",
           "Charge conservation guarantees &Delta;<i>Q</i>(<i>c</i>) = 0 across the full cell. The extremum max |&Delta;<i>Q</i>(<i>z</i>)| at the interfacial zero-crossing plane gives the exact number of electrons transferred from donor to acceptor layer.")}
 
         <h3>8.3 Work Function (&Phi;), Dipole Correction &amp; Electron Localization Function (ELF)</h3>
         <p>The <strong>work function</strong> &Phi; is the minimum energy to remove an electron from <i>E</i><sub>F</sub> into the flat vacuum electrostatic potential <i>V</i><sub>vac</sub>. Interfacial charge transfer induces a surface dipole &Delta;&mu;<sub><i>z</i></sub> that shifts &Phi; via the Helmholtz equation. In asymmetric slabs (Janus monolayers or single-sided adsorption), a sawtooth <strong>Neugebauer–Scheffler dipole correction</strong> eliminates artificial periodic electric fields across the vacuum:</p>
-        ${eq(`&Phi; = <i>V</i><sub>vac</sub> &minus; <i>E</i><sub>F</sub>, &nbsp;&nbsp;&nbsp;&nbsp; &Delta;&Phi; = &minus;${fr("<i>e</i>", "&varepsilon;<sub>0</sub>")} &Delta;&mu;<sub><i>z</i></sub> = &minus;${fr("<i>e</i>", "&varepsilon;<sub>0</sub><i>S<sub>ab</sub></i>")} ${opInt()} <i>z</i> &Delta;&rho;<sub>1D</sub>(<i>z</i>) d<i>z</i>`, "8.4")}
+        ${eq(String.raw`\Phi = V_{\mathrm{vac}} - E_{\mathrm{F}}, \qquad \Delta\Phi = -\frac{e}{\varepsilon_0}\Delta\mu_z = -\frac{e}{\varepsilon_0 S_{ab}}\int z\,\Delta\rho_{\mathrm{1D}}(z)\,\mathrm{d}z`, "8.4")}
         <p>To classify local electron pairing without a promolecule reference, Becke and Edgecombe formulated the dimensionless <strong>Electron Localization Function (ELF)</strong> &isin; [0, 1] comparing the excess Pauli kinetic energy density <i>D</i>(${vec('r')}) to a uniform electron gas <i>D</i><sub>h</sub>(${vec('r')}) = (3/10)(3&pi;<sup>2</sup>)<sup>2/3</sup><i>n</i><sup>5/3</sup>:</p>
-        ${eq(`ELF(${vec('r')}) = ${fr("1", `1 + [<i>D</i>(${vec('r')}) / <i>D</i><sub>h</sub>(${vec('r')})]<sup>2</sup>`)}, &nbsp;&nbsp;&nbsp;&nbsp; <i>D</i>(${vec('r')}) = ${fr("1", "2")} ${opSum("<i>i</i>")} |&nabla;&phi;<sub><i>i</i></sub>|<sup>2</sup> &minus; ${fr("1", "8")} ${fr("|&nabla;<i>n</i>|<sup>2</sup>", "<i>n</i>")}`, "8.5",
+        ${eq(String.raw`\mathrm{ELF}(\mathbf{r}) = \frac{1}{1 + \left[D(\mathbf{r}) / D_{\mathrm{h}}(\mathbf{r})\right]^2}, \qquad D(\mathbf{r}) = \frac{1}{2}\sum_i \left|\nabla\phi_i\right|^2 - \frac{1}{8}\frac{|\nabla n|^2}{n}`, "8.5",
           "<strong>ELF = 1.0:</strong> perfect spin-paired localization (covalent bonds, lone pairs); <strong>ELF &approx; 0.5:</strong> homogeneous electron gas (metallic bonding); <strong>ELF &rarr; 0:</strong> low-density closed-shell ionic regions.")}
 
         <h3>8.4 Comparing Atomic Charge Partitioning Schemes</h3>
@@ -906,22 +1048,22 @@
       contentHtml: `
         <h3>9.1 Collinear Spin-Polarized DFT, Stoner Criterion &amp; Non-Collinear SOC</h3>
         <p>In open-shell transition metals, defects, and radicals, spin-up (&uarr;, &alpha;) and spin-down (&darr;, &beta;) electrons experience distinct exchange potentials because Pauli exchange acts solely between parallel spins. Spin-polarized DFT splits total density and magnetization density into two coupled channels:</p>
-        ${eq(`<i>n</i>(${vec('r')}) = <i>n</i><sub>&uarr;</sub>(${vec('r')}) + <i>n</i><sub>&darr;</sub>(${vec('r')}), &nbsp;&nbsp;&nbsp;&nbsp; <i>m</i>(${vec('r')}) = <i>n</i><sub>&uarr;</sub>(${vec('r')}) &minus; <i>n</i><sub>&darr;</sub>(${vec('r')}), &nbsp;&nbsp;&nbsp;&nbsp; <i>M</i><sub>net</sub> = &mu;<sub>B</sub> ${opInt()} <i>m</i>(${vec('r')}) d<sup>3</sup>${vec('r')}`, "9.1",
+        ${eq(String.raw`n(\mathbf{r}) = n_\uparrow(\mathbf{r}) + n_\downarrow(\mathbf{r}), \qquad m(\mathbf{r}) = n_\uparrow(\mathbf{r}) - n_\downarrow(\mathbf{r}), \qquad M_{\mathrm{net}} = \mu_{\mathrm{B}}\int m(\mathbf{r})\,\mathrm{d}^3\mathbf{r}`, "9.1",
           "Comparing net moment <i>M</i><sub>net</sub> = &sum;&mu;<sub><i>I</i></sub> against absolute moment <i>M</i><sub>abs</sub> = &sum;|&mu;<sub><i>I</i></sub>| identifies the magnetic phase: <strong>FM</strong> (|<i>M</i><sub>net</sub>| &approx; <i>M</i><sub>abs</sub>), <strong>AFM</strong> (<i>M</i><sub>net</sub> &approx; 0, <i>M</i><sub>abs</sub> &gt; 0), or <strong>FiM</strong> (0 &lt; |<i>M</i><sub>net</sub>| &lt; <i>M</i><sub>abs</sub>). In itinerant metals, spontaneous spin splitting occurs when the <strong>Stoner Criterion</strong> <i>I</i><sub>Stoner</sub> &middot; <i>g</i>(<i>E</i><sub>F</sub>) &gt; 1 is met.")}
         <p>Mapping total energies of FM and AFM spin configurations onto the <strong>Heisenberg Spin Hamiltonian</strong> determines inter-site magnetic exchange constants <i>J<sub>ij</sub></i> and the mean-field Curie/N&eacute;el ordering temperature <i>T</i><sub>C</sub>, while relativistic <strong>Spin–Orbit Coupling (SOC)</strong> (&lambda;<sub>SOC</sub>&thinsp;<b>L</b>&middot;<b>S</b>) with 2-component Pauli spinors yields the <strong>Magnetic Anisotropy Energy (MAE)</strong>:</p>
-        ${eq(`${hat('H')}<sub>spin</sub> = &minus;${opSum("<i>i</i>&lt;<i>j</i>")} <i>J<sub>ij</sub></i> ${vec('S')}<sub><i>i</i></sub> &middot; ${vec('S')}<sub><i>j</i></sub>, &nbsp;&nbsp;&nbsp;&nbsp; <i>T</i><sub>C</sub><sup>MF</sup> = ${fr("2 <i>z</i> <i>J</i> <i>S</i>(<i>S</i> + 1)", "3 <i>k</i><sub>B</sub>")}, &nbsp;&nbsp;&nbsp;&nbsp; MAE = <i>E</i><sub>&parallel;</sub> &minus; <i>E</i><sub>&perp;</sub>`, "9.2",
+        ${eq(String.raw`\hat{H}_{\mathrm{spin}} = -\sum_{i < j} J_{ij}\,\mathbf{S}_i \cdot \mathbf{S}_j, \qquad T_{\mathrm{C}}^{\mathrm{MF}} = \frac{2 z J\,S(S+1)}{3 k_{\mathrm{B}}}, \qquad \mathrm{MAE} = E_{\parallel} - E_{\perp}`, "9.2",
           "Positive <i>J</i> &gt; 0 favors ferromagnetism; negative <i>J</i> &lt; 0 favors antiferromagnetism (governed in oxides and cyanides like KCoHCF by the Goodenough–Kanamori–Anderson superexchange rules).")}
 
         <h3>9.2 Mulliken Population, Overlap Bond Population &amp; Hirshfeld Charges</h3>
         <p>Because plane waves span the entire unit cell, CASTEP projects converged Bloch states onto a localized atomic-orbital basis {&chi;<sub>&mu;</sub>} (Segall–Pickard formalism) to compute the density matrix <b>P</b> and overlap matrix <b>S</b>:</p>
-        ${eq(`<i>q</i><sub><i>I</i></sub><sup>Mulliken</sup> = <i>Z</i><sub><i>I</i></sub><sup>val</sup> &minus; ${opSum("&mu;&isin;<i>I</i>")} (<b>P</b><b>S</b>)<sub>&mu;&mu;</sub>, &nbsp;&nbsp;&nbsp;&nbsp; <i>P</i><sub><i>IJ</i></sub><sup>bond</sup> = 2 ${opSum("&mu;&isin;<i>I</i>,&thinsp;&nu;&isin;<i>J</i>")} <i>P</i><sub>&mu;&nu;</sub> <i>S</i><sub>&nu;&mu;</sub>`, "9.3",
+        ${eq(String.raw`q_I^{\mathrm{Mulliken}} = Z_I^{\mathrm{val}} - \sum_{\mu \in I}(\mathbf{P}\mathbf{S})_{\mu\mu}, \qquad P_{IJ}^{\mathrm{bond}} = 2\sum_{\mu\in I,\,\nu\in J} P_{\mu\nu}\,S_{\nu\mu}`, "9.3",
           "<strong>Mulliken Bond Population <i>P</i><sub><i>IJ</i></sub>:</strong> large positive values (+0.5 to +1.9, e.g., C&equiv;N or Si–N) indicate strong <strong>covalent</strong> bonding; values near 0 indicate <strong>ionic</strong> character; negative values denote <strong>antibonding</strong> repulsion.")}
         <p><strong>Hirshfeld ("Stockholder") Population Analysis</strong> partitions real-space density directly using promolecule atomic weights, making Hirshfeld charges basis-set-independent:</p>
-        ${eq(`<i>w<sub>I</sub></i>(${vec('r')}) = ${fr(`&rho;<sub><i>I</i></sub><sup>free</sup>(${vec('r')})`, `${opSum("<i>J</i>")} &rho;<sub><i>J</i></sub><sup>free</sup>(${vec('r')})`)}, &nbsp;&nbsp;&nbsp;&nbsp; <i>q<sub>I</sub></i><sup>Hirsh</sup> = <i>Z<sub>I</sub></i><sup>val</sup> &minus; ${opInt()} <i>w<sub>I</sub></i>(${vec('r')}) &rho;<sub>SCF</sub>(${vec('r')}) d<sup>3</sup>${vec('r')}`, "9.4")}
+        ${eq(String.raw`w_I(\mathbf{r}) = \frac{\rho_I^{\mathrm{free}}(\mathbf{r})}{\sum_J \rho_J^{\mathrm{free}}(\mathbf{r})}, \qquad q_I^{\mathrm{Hirsh}} = Z_I^{\mathrm{val}} - \int w_I(\mathbf{r})\,\rho_{\mathrm{SCF}}(\mathbf{r})\,\mathrm{d}^3\mathbf{r}`, "9.4")}
 
         <h3>9.3 Orbital-Resolved Spin Density Matrix &amp; Crystal-Field Splitting</h3>
         <p>Decomposing atomic spin moments &mu;<sub><i>I</i></sub> = &sum;<sub><i>l</i>,<i>m</i></sub> (<i>n</i><sub><i>I</i>,<i>lm</i></sub><sup>&uarr;</sup> &minus; <i>n</i><sub><i>I</i>,<i>lm</i></sub><sup>&darr;</sup>)&thinsp;&mu;<sub>B</sub> across individual magnetic quantum numbers—<i>p<sub>x</sub></i>, <i>p<sub>y</sub></i>, <i>p<sub>z</sub></i> and the five <i>d</i>-orbitals (<i>d</i><sub><i>z</i><sup>2</sup></sub>, <i>d<sub>zy</sub></i>, <i>d<sub>zx</sub></i>, <i>d</i><sub><i>x</i><sup>2</sup>&minus;<i>y</i><sup>2</sup></sub>, <i>d<sub>xy</sub></i>)—constructs the <strong>Orbital-Resolved Spin Matrix</strong>:</p>
-        ${eq(`<i>S</i><sub><i>m</i>,<i>m</i>&prime;</sub><sup>(<i>I</i>,<i>l</i>)</sup> = &delta;<sub><i>mm</i>&prime;</sub> <span class="dft-bigdel">(</span> <i>n</i><sub><i>I</i>,<i>lm</i></sub><sup>&uarr;</sup> &minus; <i>n</i><sub><i>I</i>,<i>lm</i></sub><sup>&darr;</sup> <span class="dft-bigdel">)</span> &mu;<sub>B</sub>, &nbsp;&nbsp;&nbsp;&nbsp; Tr<span class="dft-bigdel">[</span><b>S</b><sup>(<i>I</i>,<i>l</i>)</sup><span class="dft-bigdel">]</span> = &mu;<sub><i>I</i>,<i>l</i></sub>`, "9.5")}
+        ${eq(String.raw`S_{m,m'}^{(I,l)} = \delta_{mm'}\left(n_{I,lm}^\uparrow - n_{I,lm}^\downarrow\right)\mu_{\mathrm{B}}, \qquad \mathrm{Tr}\!\left[\mathbf{S}^{(I,l)}\right] = \mu_{I,l}`, "9.5")}
 
         <div class="dft-diagram-wrap">
           <svg viewBox="0 0 860 155" width="100%" height="155" role="img" aria-label="Octahedral Crystal Field Splitting of d-orbitals into t2g and eg">
@@ -1140,6 +1282,23 @@
       });
   }
 
+  function migrateLegacyLecturesIfNeeded() {
+    try {
+      if (localStorage.getItem(STORAGE_KEY)) return null;
+      const legacyRaw = localStorage.getItem(LEGACY_KEY);
+      if (!legacyRaw) return null;
+      const parsed = JSON.parse(legacyRaw);
+      if (!Array.isArray(parsed) || !parsed.length) return null;
+      // Preserve any admin-added custom lectures while upgrading built-in lec1..lec10 to v142 KaTeX!
+      const defaultIds = new Set(DEFAULT_LECTURES.map(d => d.id));
+      const customExtras = parsed.filter(l => l && l.id && !defaultIds.has(l.id));
+      if (!customExtras.length) return null;
+      return [...cloneJson(DEFAULT_LECTURES), ...customExtras];
+    } catch (_) {
+      return null;
+    }
+  }
+
   function getDftTheoryLectures() {
     if (typeof STATE !== "undefined" && Array.isArray(STATE.dftLectures) && STATE.dftLectures.length > 0) {
       window.DFT_THEORY_LECTURES = STATE.dftLectures;
@@ -1153,6 +1312,9 @@
         if (Array.isArray(parsed) && parsed.length > 0) loaded = parsed;
       }
     } catch (_) {}
+    if (!loaded) {
+      loaded = migrateLegacyLecturesIfNeeded();
+    }
     if (!loaded && typeof STATE !== "undefined" && STATE.masterData && Array.isArray(STATE.masterData.dft_lectures) && STATE.masterData.dft_lectures.length > 0) {
       loaded = STATE.masterData.dft_lectures;
     }
@@ -1204,15 +1366,19 @@
     }
   }
 
-  // Initialize active lecture array immediately on script load
   window.DFT_THEORY_LECTURES = getDftTheoryLectures();
 
   // =========================================================================
-  // INTERACTIVE LECTURE CONTROLLER (Sub-Tabs, References, Search, Live Bridges)
+  // INTERACTIVE LECTURE CONTROLLER (Sub-Tabs, KaTeX, References, Search)
   // =========================================================================
   let _activeLectureId = "lec1";
   let _editingLectureId = null;
-  let _editorPreviewVisible = false;
+  let _editorMode = "split"; // "visual" | "split" | "code"
+  let _syncingEditor = false;
+  let _visualSyncTimer = null;
+  let _codeSyncTimer = null;
+  let _savedVisualRange = null;
+  let _eqBuilderTargetNode = null;
 
   function openCastepToolFromLecture(paneId) {
     if (typeof switchTabByName === "function") {
@@ -1300,7 +1466,7 @@
               </button>
             </div>
             <div class="dft-admin-bar strict-admin-only" role="group" aria-label="Admin Lecture Controls">
-              <button type="button" class="dft-admin-btn dft-admin-edit" onclick="openDftLectureEditorModal('${escHtml(found.id)}')" title="Edit this lecture's title, equations, content &amp; references">&#9999;&#65039; Edit Lecture</button>
+              <button type="button" class="dft-admin-btn dft-admin-edit" onclick="openDftLectureEditorModal('${escHtml(found.id)}')" title="Edit this lecture visually or via HTML/LaTeX code">&#9999;&#65039; Edit Lecture</button>
               <button type="button" class="dft-admin-btn" onclick="moveDftLecture('${escHtml(found.id)}', -1)" ${idx === 0 ? "disabled" : ""} title="Move lecture earlier in curriculum">&#11013;&#65039;</button>
               <button type="button" class="dft-admin-btn" onclick="moveDftLecture('${escHtml(found.id)}', 1)" ${idx === lectures.length - 1 ? "disabled" : ""} title="Move lecture later in curriculum">&#10145;&#65039;</button>
               <button type="button" class="dft-admin-btn dft-admin-del" onclick="deleteDftLecture('${escHtml(found.id)}')" title="Delete this lecture">&#128465;&#65039; Delete</button>
@@ -1327,6 +1493,8 @@
         </footer>
       </article>
     `;
+
+    renderDftMathInElement(stage);
 
     if (shouldScroll) {
       const container = document.getElementById("tab-dft-theory");
@@ -1369,6 +1537,7 @@
   window.filterDftLectures = filterDftLectures;
 
   function renderDftTheoryTab(lecIdOverride, forceRebuild = false) {
+    applyDftMathFont(getSavedDftMathFont());
     const lectures = getDftTheoryLectures();
     const tabsBar = document.getElementById("dft-theory-lecture-tabs");
     if (tabsBar && (forceRebuild || !tabsBar.dataset.built)) {
@@ -1407,7 +1576,7 @@
     const lectures = getDftTheoryLectures();
     const subEl = document.getElementById("dashboard-dft-card-sub");
     if (subEl) {
-      subEl.innerHTML = `${lectures.length} structured English lectures covering Hohenberg–Kohn/Kohn–Sham, XC functionals, Bloch plane waves, forces, Band/PDOS, Effective Mass &amp; Drude, Optics, &Delta;&rho;, and Spin Matrix—each with peer-reviewed DOI references and live Data Analysis links.`;
+      subEl.innerHTML = `${lectures.length} structured English lectures covering Hohenberg–Kohn/Kohn–Sham, XC functionals, Bloch plane waves, forces, Band/PDOS, Effective Mass &amp; Drude, Optics, &Delta;&rho;, and Spin Matrix—each with MathType/Word-quality equations, peer-reviewed DOI references, and live Data Analysis links.`;
     }
     if (!grid || !lectures.length) return;
     grid.innerHTML = lectures.map(lec => `
@@ -1420,7 +1589,445 @@
   window.initDashboardDftCard = initDashboardDftCard;
 
   // =========================================================================
-  // STRICT-ADMIN LECTURE CMS (Add, Edit, Reorder, Delete, Reset, Live Preview)
+  // STRICT-ADMIN DUAL-MODE LECTURE CMS (VISUAL WYSIWYG + SPLIT + CODE)
+  // =========================================================================
+  function serializeDftVisualToCode(visualEl) {
+    if (!visualEl) return "";
+    const clone = visualEl.cloneNode(true);
+    // Strip editor-only UI overlays
+    clone.querySelectorAll("[data-editor-ui='1']").forEach(n => n.remove());
+    // Strip transient KaTeX rendered HTML back into crisp semantic data-tex placeholders
+    clone.querySelectorAll(".dft-eq-box").forEach(box => {
+      box.removeAttribute("contenteditable");
+      box.classList.remove("dft-vis-eq-card");
+    });
+    clone.querySelectorAll(".dft-eq-math[data-tex], .dft-inline-math[data-tex]").forEach(m => {
+      const tex = m.getAttribute("data-tex") || "";
+      m.removeAttribute("data-katex-rendered");
+      m.removeAttribute("contenteditable");
+      m.removeAttribute("title");
+      m.classList.remove("dft-vis-inline-eq");
+      m.textContent = tex;
+    });
+    return clone.innerHTML.trim();
+  }
+  window.serializeDftVisualToCode = serializeDftVisualToCode;
+
+  function syncDftCodeToVisual() {
+    const ta = document.getElementById("dft-ed-body");
+    const vis = document.getElementById("dft-ed-visual");
+    if (!ta || !vis) return;
+    _syncingEditor = true;
+    try {
+      vis.innerHTML = ta.value;
+      renderDftMathInElement(vis, { editable: true });
+    } finally {
+      _syncingEditor = false;
+    }
+  }
+  window.syncDftCodeToVisual = syncDftCodeToVisual;
+
+  function syncDftVisualToCodeNow() {
+    const ta = document.getElementById("dft-ed-body");
+    const vis = document.getElementById("dft-ed-visual");
+    if (!ta || !vis) return;
+    _syncingEditor = true;
+    try {
+      ta.value = serializeDftVisualToCode(vis);
+    } finally {
+      _syncingEditor = false;
+    }
+  }
+  window.syncDftVisualToCodeNow = syncDftVisualToCodeNow;
+
+  function handleDftVisualInput() {
+    if (_syncingEditor) return;
+    clearTimeout(_visualSyncTimer);
+    _visualSyncTimer = setTimeout(() => {
+      syncDftVisualToCodeNow();
+    }, 110);
+  }
+  window.handleDftVisualInput = handleDftVisualInput;
+
+  function handleDftCodeInput() {
+    if (_syncingEditor) return;
+    if (_editorMode === "code") return;
+    clearTimeout(_codeSyncTimer);
+    _codeSyncTimer = setTimeout(() => {
+      syncDftCodeToVisual();
+    }, 160);
+  }
+  window.handleDftCodeInput = handleDftCodeInput;
+
+  function saveDftVisualSelection() {
+    const vis = document.getElementById("dft-ed-visual");
+    const sel = window.getSelection();
+    if (!vis || !sel || sel.rangeCount === 0) return;
+    const rng = sel.getRangeAt(0);
+    if (vis.contains(rng.commonAncestorContainer)) {
+      _savedVisualRange = rng.cloneRange();
+    }
+  }
+  window.saveDftVisualSelection = saveDftVisualSelection;
+
+  function restoreDftVisualSelection() {
+    const vis = document.getElementById("dft-ed-visual");
+    if (!vis) return false;
+    vis.focus();
+    if (_savedVisualRange && vis.contains(_savedVisualRange.commonAncestorContainer)) {
+      const sel = window.getSelection();
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(_savedVisualRange);
+      }
+      return true;
+    }
+    return false;
+  }
+
+  function setDftEditorMode(mode) {
+    const valid = ["visual", "split", "code"].includes(mode) ? mode : "split";
+    // Flush latest changes from whichever pane was active before switching
+    if (_editorMode === "visual") {
+      syncDftVisualToCodeNow();
+    } else if (_editorMode === "code" && valid !== "code") {
+      syncDftCodeToVisual();
+    }
+    _editorMode = valid;
+    const workspace = document.getElementById("dft-ed-workspace");
+    if (workspace) workspace.setAttribute("data-mode", valid);
+
+    document.querySelectorAll(".dft-ed-mode-btn").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.mode === valid);
+    });
+
+    if (valid === "visual" || valid === "split") {
+      syncDftCodeToVisual();
+    }
+  }
+  window.setDftEditorMode = setDftEditorMode;
+
+  function execDftVisualCmd(cmd, value = null) {
+    if (_editorMode === "code") {
+      // Friendly HTML tag wrappers when editing directly in Code-only mode
+      const map = {
+        bold: ["<strong>", "</strong>"],
+        italic: ["<i>", "</i>"],
+        underline: ["<u>", "</u>"],
+        subscript: ["<sub>", "</sub>"],
+        superscript: ["<sup>", "</sup>"],
+        insertUnorderedList: ["\n<ul>\n  <li>", "</li>\n</ul>\n"],
+        insertOrderedList: ["\n<ol>\n  <li>", "</li>\n</ol>\n"]
+      };
+      const ta = document.getElementById("dft-ed-body");
+      if (ta && map[cmd]) {
+        const [pre, post] = map[cmd];
+        const s = ta.selectionStart || 0;
+        const e = ta.selectionEnd || s;
+        const selText = ta.value.slice(s, e) || "text";
+        ta.value = ta.value.slice(0, s) + pre + selText + post + ta.value.slice(e);
+        ta.selectionStart = s + pre.length;
+        ta.selectionEnd = s + pre.length + selText.length;
+        ta.focus();
+      }
+      return;
+    }
+    restoreDftVisualSelection();
+    try {
+      document.execCommand(cmd, false, value);
+    } catch (_) {}
+    saveDftVisualSelection();
+    syncDftVisualToCodeNow();
+  }
+  window.execDftVisualCmd = execDftVisualCmd;
+
+  function execDftVisualBlock(tag) {
+    if (!tag) return;
+    if (_editorMode === "code") {
+      const ta = document.getElementById("dft-ed-body");
+      if (!ta) return;
+      const t = tag.toLowerCase();
+      const s = ta.selectionStart || 0;
+      const e = ta.selectionEnd || s;
+      const selText = ta.value.slice(s, e) || "Section Heading";
+      const ins = `\n<${t}>${selText}</${t}>\n`;
+      ta.value = ta.value.slice(0, s) + ins + ta.value.slice(e);
+      ta.focus();
+      return;
+    }
+    restoreDftVisualSelection();
+    try {
+      document.execCommand("formatBlock", false, `<${tag}>`);
+    } catch (_) {
+      try { document.execCommand("formatBlock", false, tag); } catch (__) {}
+    }
+    saveDftVisualSelection();
+    syncDftVisualToCodeNow();
+  }
+  window.execDftVisualBlock = execDftVisualBlock;
+
+  function insertDftInlineCode() {
+    if (_editorMode === "code") {
+      const ta = document.getElementById("dft-ed-body");
+      if (!ta) return;
+      const s = ta.selectionStart || 0;
+      const e = ta.selectionEnd || s;
+      const txt = ta.value.slice(s, e) || "keyword";
+      ta.value = ta.value.slice(0, s) + `<code>${txt}</code>` + ta.value.slice(e);
+      ta.focus();
+      return;
+    }
+    restoreDftVisualSelection();
+    const sel = window.getSelection();
+    const txt = (sel && sel.toString()) ? sel.toString() : "keyword";
+    try {
+      document.execCommand("insertHTML", false, `<code>${escHtml(txt)}</code>&nbsp;`);
+    } catch (_) {}
+    saveDftVisualSelection();
+    syncDftVisualToCodeNow();
+  }
+  window.insertDftInlineCode = insertDftInlineCode;
+
+  function insertHtmlIntoDftEditor(htmlSnippet) {
+    if (_editorMode === "code") {
+      const ta = document.getElementById("dft-ed-body");
+      if (!ta) return;
+      const start = ta.selectionStart || ta.value.length;
+      const end = ta.selectionEnd || start;
+      ta.value = ta.value.slice(0, start) + htmlSnippet + ta.value.slice(end);
+      ta.selectionStart = ta.selectionEnd = start + htmlSnippet.length;
+      ta.focus();
+      return;
+    }
+    const vis = document.getElementById("dft-ed-visual");
+    if (!vis) return;
+    const restored = restoreDftVisualSelection();
+    if (restored) {
+      try {
+        document.execCommand("insertHTML", false, htmlSnippet);
+      } catch (_) {
+        vis.insertAdjacentHTML("beforeend", htmlSnippet);
+      }
+    } else {
+      vis.insertAdjacentHTML("beforeend", htmlSnippet);
+    }
+    renderDftMathInElement(vis, { editable: true });
+    saveDftVisualSelection();
+    syncDftVisualToCodeNow();
+  }
+
+  function insertDftEditorSnippet(kind) {
+    if (kind === "equation") {
+      openDftEquationBuilder(null);
+      return;
+    }
+    const lectures = getDftTheoryLectures();
+    const lecNum = _editingLectureId
+      ? ((lectures.find(l => l.id === _editingLectureId) || {}).num || 1)
+      : (lectures.length + 1);
+    const snippets = {
+      heading: `<h3>${lecNum}.X New Section Title</h3><p>Introduce the theoretical definitions and physical motivation here...</p>`,
+      definition: `<div class="dft-callout dft-callout-def"><div class="dft-callout-title">&#128216; Definition &mdash; Key Concept</div><div class="dft-callout-body">Write the formal scientific definition here.</div></div><p></p>`,
+      insight: `<div class="dft-callout dft-callout-tip"><div class="dft-callout-title">&#128161; Physical Insight &mdash; Key Takeaway</div><div class="dft-callout-body">Highlight physical intuition or practical DFT caveats here.</div></div><p></p>`,
+      table: `<table class="dft-table"><thead><tr><th>Parameter / Symbol</th><th>Physical Meaning</th><th>Typical Range / Units</th></tr></thead><tbody><tr><td><strong>Item 1</strong></td><td>Description</td><td>Value</td></tr><tr><td><strong>Item 2</strong></td><td>Description</td><td>Value</td></tr></tbody></table><p></p>`,
+      lab: `<div class="dft-lab-box"><div class="dft-lab-head"><div><div class="dft-lab-eyebrow">HANDS-ON PRACTICE IN DATA ANALYSIS</div><div class="dft-lab-title">&#129514; Practice Exercise Title</div></div><div class="dft-lab-btns"><button type="button" class="btn btn-primary btn-sm" onclick="openCastepToolFromLecture('electronic')">&#128640; Open Tool &rarr;</button></div></div><div class="dft-lab-body"><ol class="dft-steps"><li>Step 1 instruction...</li><li>Step 2 instruction...</li></ol></div></div><p></p>`,
+      figure: `<figure class="dft-fig-box"><img src="" alt="Scientific diagram" style="max-width:100%; border-radius:8px;"/><figcaption>Figure: Add descriptive caption here.</figcaption></figure><p></p>`
+    };
+    const snippet = snippets[kind];
+    if (snippet) insertHtmlIntoDftEditor(snippet);
+  }
+  window.insertDftEditorSnippet = insertDftEditorSnippet;
+
+  function triggerDftFigureImageUpload() {
+    const inp = document.getElementById("dft-ed-image-file");
+    if (inp) {
+      inp.value = "";
+      inp.click();
+    }
+  }
+  window.triggerDftFigureImageUpload = triggerDftFigureImageUpload;
+
+  function handleDftFigureImageFile(event) {
+    const file = event && event.target && event.target.files && event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const caption = window.prompt("Enter figure caption (optional):", file.name.replace(/\.[^.]+$/, "")) || "";
+      const figHtml = `<figure class="dft-fig-box"><img src="${reader.result}" alt="${escAttr(caption || file.name)}" />${caption ? `<figcaption>${escHtml(caption)}</figcaption>` : ""}</figure><p></p>`;
+      insertHtmlIntoDftEditor(figHtml);
+    };
+    reader.readAsDataURL(file);
+  }
+  window.handleDftFigureImageFile = handleDftFigureImageFile;
+
+  // =========================================================================
+  // INTERACTIVE MATHTYPE / LATEX EQUATION BUILDER SUB-DIALOG
+  // =========================================================================
+  function openDftEquationBuilder(targetNode = null) {
+    const modal = document.getElementById("dft-eq-builder-modal");
+    if (!modal) return;
+    saveDftVisualSelection();
+    _eqBuilderTargetNode = targetNode || null;
+    applyDftMathFont(getSavedDftMathFont());
+
+    const lectures = getDftTheoryLectures();
+    const lecNum = _editingLectureId
+      ? ((lectures.find(l => l.id === _editingLectureId) || {}).num || 1)
+      : (lectures.length + 1);
+
+    const typeSel = document.getElementById("dft-eqb-type");
+    const numInp = document.getElementById("dft-eqb-num");
+    const texInp = document.getElementById("dft-eqb-tex");
+    const noteInp = document.getElementById("dft-eqb-note");
+    const titleEl = document.getElementById("dft-eqb-title");
+
+    if (targetNode && targetNode.classList.contains("dft-eq-box")) {
+      const mathEl = targetNode.querySelector(".dft-eq-math");
+      const numEl = targetNode.querySelector(".dft-eq-num");
+      const noteEl = targetNode.querySelector(".dft-eq-note");
+      if (typeSel) typeSel.value = "display";
+      if (numInp) numInp.value = (targetNode.getAttribute("data-eqnum") || (numEl ? numEl.textContent.replace(/[()]/g, "") : "")).trim();
+      if (texInp) texInp.value = (mathEl && mathEl.getAttribute("data-tex")) || "";
+      if (noteInp) noteInp.value = noteEl ? noteEl.innerHTML.trim() : "";
+      if (titleEl) titleEl.textContent = "\u270f\ufe0f Edit Display Equation (MathType / LaTeX)";
+    } else if (targetNode && targetNode.classList.contains("dft-inline-math")) {
+      if (typeSel) typeSel.value = "inline";
+      if (numInp) numInp.value = "";
+      if (texInp) texInp.value = targetNode.getAttribute("data-tex") || "";
+      if (noteInp) noteInp.value = "";
+      if (titleEl) titleEl.textContent = "\u270f\ufe0f Edit Inline Equation";
+    } else {
+      const existingCount = document.querySelectorAll("#dft-ed-visual .dft-eq-box").length;
+      if (typeSel) typeSel.value = "display";
+      if (numInp) numInp.value = `${lecNum}.${existingCount + 1}`;
+      if (texInp) texInp.value = String.raw`E(\mathbf{k}) = E_0 + \frac{\hbar^2 k^2}{2m^*}`;
+      if (noteInp) noteInp.value = "";
+      if (titleEl) titleEl.textContent = "\u2211 Insert Publication Equation (Word / MathType / LaTeX)";
+    }
+
+    updateDftEqBuilderPreview();
+    modal.style.display = "flex";
+    setTimeout(() => { if (texInp) texInp.focus(); }, 40);
+  }
+  window.openDftEquationBuilder = openDftEquationBuilder;
+
+  function openDftEquationBuilderForVisualNode(node) {
+    if (!node) return;
+    openDftEquationBuilder(node);
+  }
+  window.openDftEquationBuilderForVisualNode = openDftEquationBuilderForVisualNode;
+
+  function removeDftVisualEquationNode(node) {
+    if (!node) return;
+    node.remove();
+    syncDftVisualToCodeNow();
+  }
+  window.removeDftVisualEquationNode = removeDftVisualEquationNode;
+
+  function closeDftEquationBuilder() {
+    const modal = document.getElementById("dft-eq-builder-modal");
+    if (modal) modal.style.display = "none";
+    _eqBuilderTargetNode = null;
+  }
+  window.closeDftEquationBuilder = closeDftEquationBuilder;
+
+  function insertTexTokenIntoEqBuilder(token, cursorBack = 0) {
+    const ta = document.getElementById("dft-eqb-tex");
+    if (!ta) return;
+    const s = ta.selectionStart || 0;
+    const e = ta.selectionEnd || s;
+    ta.value = ta.value.slice(0, s) + token + ta.value.slice(e);
+    const pos = s + token.length - cursorBack;
+    ta.selectionStart = ta.selectionEnd = Math.max(0, pos);
+    ta.focus();
+    updateDftEqBuilderPreview();
+  }
+  window.insertTexTokenIntoEqBuilder = insertTexTokenIntoEqBuilder;
+
+  function applyDftEqTemplate(tex, note = "") {
+    const texInp = document.getElementById("dft-eqb-tex");
+    const noteInp = document.getElementById("dft-eqb-note");
+    if (texInp) texInp.value = tex;
+    if (noteInp && note) noteInp.value = note;
+    updateDftEqBuilderPreview();
+  }
+  window.applyDftEqTemplate = applyDftEqTemplate;
+
+  function updateDftEqBuilderPreview() {
+    const typeSel = document.getElementById("dft-eqb-type");
+    const numInp = document.getElementById("dft-eqb-num");
+    const texInp = document.getElementById("dft-eqb-tex");
+    const prevMath = document.getElementById("dft-eqb-preview-math");
+    const prevNum = document.getElementById("dft-eqb-preview-num");
+    const numWrap = document.getElementById("dft-eqb-num-group");
+    const noteWrap = document.getElementById("dft-eqb-note-group");
+    if (!prevMath || !texInp) return;
+
+    const isDisplay = !typeSel || typeSel.value !== "inline";
+    if (numWrap) numWrap.style.display = isDisplay ? "" : "none";
+    if (noteWrap) noteWrap.style.display = isDisplay ? "" : "none";
+    if (prevNum) {
+      prevNum.style.display = isDisplay && numInp && numInp.value.trim() ? "" : "none";
+      prevNum.textContent = numInp && numInp.value.trim() ? `(${numInp.value.trim()})` : "";
+    }
+
+    const tex = texInp.value.trim() || "\\;";
+    prevMath.setAttribute("data-tex", tex);
+    renderSingleKatexNode(prevMath, isDisplay);
+  }
+  window.updateDftEqBuilderPreview = updateDftEqBuilderPreview;
+
+  function confirmDftEquationBuilder() {
+    const typeVal = document.getElementById("dft-eqb-type")?.value || "display";
+    const eqNum = (document.getElementById("dft-eqb-num")?.value || "").trim();
+    const tex = (document.getElementById("dft-eqb-tex")?.value || "").trim();
+    const note = (document.getElementById("dft-eqb-note")?.value || "").trim();
+    if (!tex) {
+      notifyUser("Please enter a LaTeX equation expression.", "error");
+      return;
+    }
+
+    if (_eqBuilderTargetNode) {
+      if (_eqBuilderTargetNode.classList.contains("dft-eq-box")) {
+        _eqBuilderTargetNode.setAttribute("data-eqnum", eqNum);
+        const mathEl = _eqBuilderTargetNode.querySelector(".dft-eq-math");
+        if (mathEl) {
+          mathEl.setAttribute("data-tex", tex);
+          renderSingleKatexNode(mathEl, true);
+        }
+        const numEl = _eqBuilderTargetNode.querySelector(".dft-eq-num");
+        if (numEl) numEl.textContent = eqNum ? `(${eqNum})` : "";
+        let noteEl = _eqBuilderTargetNode.querySelector(".dft-eq-note");
+        if (note) {
+          if (!noteEl) {
+            noteEl = document.createElement("div");
+            noteEl.className = "dft-eq-note";
+            _eqBuilderTargetNode.insertBefore(noteEl, _eqBuilderTargetNode.querySelector(".dft-vis-eq-actions"));
+          }
+          noteEl.innerHTML = note;
+        } else if (noteEl) {
+          noteEl.remove();
+        }
+      } else if (_eqBuilderTargetNode.classList.contains("dft-inline-math")) {
+        _eqBuilderTargetNode.setAttribute("data-tex", tex);
+        renderSingleKatexNode(_eqBuilderTargetNode, false);
+      }
+      closeDftEquationBuilder();
+      syncDftVisualToCodeNow();
+      return;
+    }
+
+    const htmlOut = typeVal === "inline"
+      ? `<span class="dft-inline-math" data-tex="${escAttr(tex)}">${escHtml(tex)}</span>&nbsp;`
+      : `<div class="dft-eq-box" data-eqnum="${escAttr(eqNum)}"><div class="dft-eq-inner"><div class="dft-eq-math" data-tex="${escAttr(tex)}">${escHtml(tex)}</div><div class="dft-eq-num">${eqNum ? `(${escHtml(eqNum)})` : ""}</div></div>${note ? `<div class="dft-eq-note">${note}</div>` : ""}</div><p></p>`;
+
+    closeDftEquationBuilder();
+    insertHtmlIntoDftEditor(htmlOut);
+  }
+  window.confirmDftEquationBuilder = confirmDftEquationBuilder;
+
+  // =========================================================================
+  // REFERENCE ROWS & MAIN MODAL LIFECYCLE
   // =========================================================================
   function buildRefEditorRowHtml(ref = {}) {
     return `
@@ -1454,7 +2061,7 @@
     const lectures = getDftTheoryLectures();
     const existing = lecIdOrNull ? lectures.find(l => l.id === lecIdOrNull) : null;
     _editingLectureId = existing ? existing.id : null;
-    _editorPreviewVisible = false;
+    applyDftMathFont(getSavedDftMathFont());
 
     const nextNum = existing ? existing.num : lectures.length + 1;
     const headingEl = document.getElementById("dft-ed-modal-title");
@@ -1476,7 +2083,7 @@
     setVal("dft-ed-objectives", existing ? (existing.objectives || []).join("\n") : "");
     setVal("dft-ed-body", existing
       ? existing.contentHtml
-      : `<h3>${nextNum}.1 Core Physical Principles</h3>\n<p>Introduce the theoretical definitions and physical motivation here...</p>\n\n<div class="dft-eq-box"><div class="dft-eq-inner"><div class="dft-eq-math"><i>E</i> = &#8463;&omega;</div><div class="dft-eq-num">(${nextNum}.1)</div></div><div class="dft-eq-note">Add physical explanation of symbols and units here.</div></div>\n\n<h3>${nextNum}.2 Practical Application in Data Analysis</h3>\n<p>Describe how researchers apply this concept on real CASTEP calculations.</p>`
+      : `<h3>${nextNum}.1 Core Physical Principles</h3>\n<p>Introduce the theoretical definitions and physical motivation here...</p>\n\n<div class="dft-eq-box" data-eqnum="${nextNum}.1"><div class="dft-eq-inner"><div class="dft-eq-math" data-tex="E(\\mathbf{k}) = E_0 + \\frac{\\hbar^2 k^2}{2m^*}">E(\\mathbf{k}) = E_0 + \\frac{\\hbar^2 k^2}{2m^*}</div><div class="dft-eq-num">(${nextNum}.1)</div></div><div class="dft-eq-note">Add physical explanation of symbols and units here.</div></div>\n\n<h3>${nextNum}.2 Practical Application in Data Analysis</h3>\n<p>Describe how researchers apply this concept on real CASTEP calculations.</p>`
     );
 
     const refsListEl = document.getElementById("dft-ed-refs-list");
@@ -1488,13 +2095,31 @@
       refs.forEach(r => addDftRefRow(r));
     }
 
-    const prevPane = document.getElementById("dft-ed-preview-pane");
-    const prevBtn = document.getElementById("dft-ed-preview-toggle-btn");
-    if (prevPane) prevPane.style.display = "none";
-    if (prevBtn) prevBtn.textContent = "\ud83d\udc41\ufe0f Live Preview";
+    // Bind double-click equation editing once on the visual editor surface
+    const vis = document.getElementById("dft-ed-visual");
+    if (vis && !vis.dataset.dblBound) {
+      vis.dataset.dblBound = "1";
+      vis.addEventListener("dblclick", (ev) => {
+        const eqBox = ev.target.closest(".dft-eq-box");
+        if (eqBox) {
+          ev.preventDefault();
+          openDftEquationBuilder(eqBox);
+          return;
+        }
+        const inl = ev.target.closest(".dft-inline-math[data-tex]");
+        if (inl) {
+          ev.preventDefault();
+          openDftEquationBuilder(inl);
+        }
+      });
+    }
 
     modal.style.display = "flex";
     document.body.style.overflow = "hidden";
+    // Default into Split Mode so Admin sees Visual (WYSIWYG) + Code simultaneously!
+    _editorMode = "code"; // force clean sync Code -> Visual on open
+    setDftEditorMode("split");
+
     setTimeout(() => {
       const titleInput = document.getElementById("dft-ed-title");
       if (titleInput) titleInput.focus();
@@ -1509,32 +2134,6 @@
     _editingLectureId = null;
   }
   window.closeDftLectureEditorModal = closeDftLectureEditorModal;
-
-  function insertDftEditorSnippet(kind) {
-    const ta = document.getElementById("dft-ed-body");
-    if (!ta) return;
-    const lectures = getDftTheoryLectures();
-    const lecNum = _editingLectureId
-      ? ((lectures.find(l => l.id === _editingLectureId) || {}).num || 1)
-      : (lectures.length + 1);
-    const snippets = {
-      heading: `\n<h3>${lecNum}.X Section Title</h3>\n<p>Section explanation text...</p>\n`,
-      equation: `\n<div class="dft-eq-box"><div class="dft-eq-inner"><div class="dft-eq-math"><i>E</i>(<b>k</b>) = <i>E</i><sub>0</sub> + <span class="dft-frac"><span class="dft-num">&#8463;<sup>2</sup><i>k</i><sup>2</sup></span><span class="dft-den">2<i>m</i>*</span></span></div><div class="dft-eq-num">(${lecNum}.X)</div></div><div class="dft-eq-note">Explain variables, units, and physical assumptions here.</div></div>\n`,
-      fraction: `<span class="dft-frac"><span class="dft-num">numerator</span><span class="dft-den">denominator</span></span>`,
-      definition: `\n<div class="dft-callout dft-callout-def"><div class="dft-callout-title">&#128216; Definition &mdash; Key Concept</div><div class="dft-callout-body">Write the formal definition here.</div></div>\n`,
-      insight: `\n<div class="dft-callout dft-callout-tip"><div class="dft-callout-title">&#128161; Physical Insight &mdash; Key Takeaway</div><div class="dft-callout-body">Highlight physical intuition or common DFT caveats here.</div></div>\n`,
-      table: `\n<table class="dft-table">\n  <thead><tr><th>Parameter / Concept</th><th>Physical Meaning</th><th>Typical Range</th></tr></thead>\n  <tbody>\n    <tr><td><strong>Item 1</strong></td><td>Description</td><td>Value</td></tr>\n    <tr><td><strong>Item 2</strong></td><td>Description</td><td>Value</td></tr>\n  </tbody>\n</table>\n`,
-      lab: `\n<div class="dft-lab-box"><div class="dft-lab-head"><div><div class="dft-lab-eyebrow">HANDS-ON PRACTICE IN DATA ANALYSIS</div><div class="dft-lab-title">&#129514; Practice Exercise Title</div></div><div class="dft-lab-btns"><button type="button" class="btn btn-primary btn-sm" onclick="openCastepToolFromLecture('electronic')">&#128640; Open Tool &rarr;</button></div></div><div class="dft-lab-body"><ol class="dft-steps"><li>Step 1 instruction...</li><li>Step 2 instruction...</li></ol></div></div>\n`
-    };
-    const text = snippets[kind] || "";
-    const start = ta.selectionStart || ta.value.length;
-    const end = ta.selectionEnd || start;
-    ta.value = ta.value.slice(0, start) + text + ta.value.slice(end);
-    ta.selectionStart = ta.selectionEnd = start + text.length;
-    ta.focus();
-    if (_editorPreviewVisible) updateDftEditorPreview();
-  }
-  window.insertDftEditorSnippet = insertDftEditorSnippet;
 
   function collectRefsFromEditorModal() {
     const rows = document.querySelectorAll("#dft-ed-refs-list .dft-ref-edit-row");
@@ -1552,35 +2151,14 @@
     return refs;
   }
 
-  function updateDftEditorPreview() {
-    const prevPane = document.getElementById("dft-ed-preview-pane");
-    const ta = document.getElementById("dft-ed-body");
-    if (!prevPane || !ta) return;
-    const refs = collectRefsFromEditorModal();
-    prevPane.innerHTML = `<div class="dft-lec-content">${ta.value}${buildReferencesHtml(refs)}</div>`;
-  }
-  window.updateDftEditorPreview = updateDftEditorPreview;
-
-  function toggleDftEditorPreview() {
-    const prevPane = document.getElementById("dft-ed-preview-pane");
-    const prevBtn = document.getElementById("dft-ed-preview-toggle-btn");
-    if (!prevPane) return;
-    _editorPreviewVisible = !_editorPreviewVisible;
-    if (_editorPreviewVisible) {
-      updateDftEditorPreview();
-      prevPane.style.display = "block";
-      if (prevBtn) prevBtn.textContent = "\ud83d\udcdd Hide Preview";
-    } else {
-      prevPane.style.display = "none";
-      if (prevBtn) prevBtn.textContent = "\ud83d\udc41\ufe0f Live Preview";
-    }
-  }
-  window.toggleDftEditorPreview = toggleDftEditorPreview;
-
   function saveDftLectureFromModal() {
     if (!isAdminAuthorized()) {
       notifyUser("Administrator privileges required to save DFT lectures.", "error");
       return;
+    }
+    // Always sync visual edits to the clean HTML source before saving (unless user is strictly in code mode)
+    if (_editorMode === "visual") {
+      syncDftVisualToCodeNow();
     }
     const getVal = (id) => (document.getElementById(id)?.value || "").trim();
     const title = getVal("dft-ed-title");
@@ -1699,8 +2277,12 @@
   window.resetDftLecturesToDefault = resetDftLecturesToDefault;
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initDashboardDftCard);
+    document.addEventListener("DOMContentLoaded", () => {
+      applyDftMathFont(getSavedDftMathFont());
+      initDashboardDftCard();
+    });
   } else {
+    applyDftMathFont(getSavedDftMathFont());
     initDashboardDftCard();
   }
 })();
