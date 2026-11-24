@@ -11634,8 +11634,15 @@ sup {
   color: #475569;
   border: 1px solid #cbd5e1;
 }
+.ms-gw-preset-select {
+  width: 185px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #0f172a;
+  background: #f8fafc;
+}
 .ms-gw-url-input {
-  width: 175px;
+  width: 205px;
   font-size: 11.5px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
@@ -11740,16 +11747,17 @@ sup {
 }
 .ms-gateway-title-text {
   font-family: "Segoe UI", Tahoma, Arial, sans-serif;
-  font-size: 20px;
+  font-size: 16.5px;
   color: #0f172a;
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 8px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 .ms-gw-brand {
-  letter-spacing: 0.08em;
-  font-weight: 500;
+  letter-spacing: 0.06em;
+  font-weight: 600;
 }
 .ms-gw-pipe {
   color: #334155;
@@ -11787,17 +11795,17 @@ sup {
 }
 .ms-gateway-body-grid {
   display: grid;
-  grid-template-columns: 122px minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: 108px minmax(0, 1fr);
+  gap: 8px;
   align-items: start;
 }
 .ms-gateway-left-nav {
   background: #dbeafe;
   border: 1.5px solid #0284c7;
-  padding: 12px 10px;
+  padding: 10px 8px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 13px;
   text-align: right;
   min-height: 210px;
 }
@@ -11824,13 +11832,13 @@ sup {
   border-collapse: separate;
   border-spacing: 1.5px;
   font-family: Verdana, Tahoma, Arial, sans-serif;
-  font-size: 11.2px;
+  font-size: 10.8px;
   background: #ffffff;
 }
 .ms-gateway-table th {
   background: #cde4f7;
   border: 1px solid #0284c7;
-  padding: 6px 5px;
+  padding: 5px 3px;
   font-weight: 700;
   color: #000000;
   text-align: center;
@@ -11840,10 +11848,22 @@ sup {
 .ms-gateway-table td {
   background: #e6f2fc;
   border: 1px solid #0284c7;
-  padding: 6px 6px;
+  padding: 5px 4px;
   color: #000000;
   vertical-align: top;
   line-height: 1.3;
+}
+#ms-gw-subview-jobs .ms-gateway-table td:nth-child(1) {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+#ms-gw-subview-jobs .ms-gateway-table td:nth-child(2),
+#ms-gw-subview-jobs .ms-gateway-table td:nth-child(3),
+#ms-gw-subview-jobs .ms-gateway-table td:nth-child(4),
+#ms-gw-subview-jobs .ms-gateway-table td:nth-child(5),
+#ms-gw-subview-jobs .ms-gateway-table td:nth-child(9),
+#ms-gw-subview-jobs .ms-gateway-table td:nth-child(10) {
+  white-space: nowrap;
 }
 .ms-gateway-table tr:hover td {
   background: #d8ecff;
