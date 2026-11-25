@@ -1,5 +1,5 @@
 /* ============================================================================
-   DFT Theory Curriculum Module (v143) — Word Equation (Cambria) + Auto-Wrap
+   DFT Theory Curriculum Module (v144) — Word Equation (Cambria) + Auto-Wrap
    Auto-Fetch DOI References + Academic Author/Updated Byline + Dual-Mode CMS
    ============================================================================ */
 
@@ -1456,6 +1456,310 @@
   let _savedVisualRange = null;
   let _eqBuilderTargetNode = null;
 
+  let _sectionsObserver = null;
+
+  // =========================================================================
+  // PER-LECTURE PERMANENT DEEP-LINK URL, COPY LINK & SHARE MENU
+  // =========================================================================
+  function getDftLectureShareUrl(lecId, sectionId = "") {
+    const id = String(lecId || _activeLectureId || "lec1").trim();
+    const base = `${window.location.origin}${window.location.pathname}`;
+    const url = `${base}?lecture=${encodeURIComponent(id)}`;
+    return sectionId ? `${url}#${encodeURIComponent(sectionId)}` : url;
+  }
+  window.getDftLectureShareUrl = getDftLectureShareUrl;
+
+  function resolveDftLectureId(rawToken) {
+    const token = String(rawToken || "").trim();
+    if (!token) return null;
+    const lectures = getDftTheoryLectures();
+    // Exact ID match (e.g. "lec6" or "lec_1795...")
+    const byId = lectures.find(l => String(l.id).toLowerCase() === token.toLowerCase());
+    if (byId) return byId.id;
+    // Numeric shorthand match (e.g. "?lecture=6" or "lecture6" or "l6")
+    const numMatch = token.match(/^(?:lec(?:ture)?|l)?(\d+)$/i);
+    if (numMatch) {
+      const n = parseInt(numMatch[1], 10);
+      const byNum = lectures.find(l => l.num === n) || lectures[n - 1];
+      if (byNum) return byNum.id;
+    }
+    return null;
+  }
+
+  function extractDftLectureFromUrl() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const qLec = params.get("lecture") || params.get("lec");
+      const hashRaw = (window.location.hash || "").replace(/^#/, "");
+      let lecToken = qLec || "";
+      let sectionId = "";
+
+      if (hashRaw) {
+        if (hashRaw.startsWith("dft-sec-")) {
+          sectionId = decodeURIComponent(hashRaw);
+        } else if (/^lecture[=\-_]/i.test(hashRaw)) {
+          lecToken = lecToken || decodeURIComponent(hashRaw.replace(/^lecture[=\-_]/i, ""));
+        }
+      }
+      const lecId = resolveDftLectureId(lecToken);
+      if (!lecId) return null;
+      return { lecId, sectionId };
+    } catch (_) {
+      return null;
+    }
+  }
+  window.extractDftLectureFromUrl = extractDftLectureFromUrl;
+
+  function syncUrlWithDftLecture(lecId, sectionId = "") {
+    try {
+      const tabEl = document.getElementById("tab-dft-theory");
+      if (!tabEl || !tabEl.classList.contains("active")) return;
+      const urlObj = new URL(window.location.href);
+      urlObj.searchParams.set("lecture", lecId);
+      urlObj.searchParams.delete("article");
+      const newHash = sectionId ? `#${encodeURIComponent(sectionId)}` : "";
+      const nextUrl = `${urlObj.pathname}?${urlObj.searchParams.toString()}${newHash}`;
+      window.history.replaceState({ dftLectureId: lecId }, "", nextUrl);
+    } catch (_) {}
+  }
+  window.syncUrlWithDftLecture = syncUrlWithDftLecture;
+
+  function clearDftLectureUrlParam() {
+    try {
+      const urlObj = new URL(window.location.href);
+      if (!urlObj.searchParams.has("lecture") && !(window.location.hash || "").startsWith("#dft-sec-")) return;
+      urlObj.searchParams.delete("lecture");
+      const qs = urlObj.searchParams.toString();
+      const keepHash = (window.location.hash || "").startsWith("#dft-sec-") ? "" : window.location.hash;
+      window.history.replaceState({}, "", `${urlObj.pathname}${qs ? "?" + qs : ""}${keepHash}`);
+    } catch (_) {}
+  }
+  window.clearDftLectureUrlParam = clearDftLectureUrlParam;
+
+  function checkAndHandleDftLectureDeepLink() {
+    const info = extractDftLectureFromUrl();
+    if (!info || !info.lecId) return false;
+    _activeLectureId = info.lecId;
+    if (typeof switchTabByName === "function") {
+      switchTabByName("dft-theory");
+    } else if (typeof switchTab === "function") {
+      switchTab("dft-theory");
+    }
+    renderDftTheoryTab(info.lecId, true);
+    if (info.sectionId) {
+      setTimeout(() => scrollToDftSection(info.sectionId, info.lecId, false), 220);
+    }
+    return true;
+  }
+  window.checkAndHandleDftLectureDeepLink = checkAndHandleDftLectureDeepLink;
+
+  async function copyTextSafe(text) {
+    try {
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch (_) {}
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      ta.remove();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  async function copyDftLectureLink(lecId, btnEl = null) {
+    const lectures = getDftTheoryLectures();
+    const lec = lectures.find(l => l.id === lecId) || lectures[0];
+    if (!lec) return;
+    const url = getDftLectureShareUrl(lec.id);
+    const ok = await copyTextSafe(url);
+    if (ok) {
+      notifyUser(`Copied direct link for Lecture ${lec.num}: ${url}`, "success");
+      if (btnEl) {
+        const prev = btnEl.innerHTML;
+        btnEl.classList.add("is-copied");
+        btnEl.innerHTML = "&#10004; Copied!";
+        setTimeout(() => {
+          btnEl.classList.remove("is-copied");
+          btnEl.innerHTML = prev;
+        }, 1800);
+      }
+    } else {
+      notifyUser("Could not access clipboard. Copy the link from the address bar.", "error");
+    }
+    closeAllDftShareMenus();
+  }
+  window.copyDftLectureLink = copyDftLectureLink;
+
+  async function copyDftLectureCitation(lecId) {
+    const lectures = getDftTheoryLectures();
+    const lec = lectures.find(l => l.id === lecId) || lectures[0];
+    if (!lec) return;
+    const author = lec.author || getDefaultLectureAuthor();
+    const aff = lec.affiliation || getDefaultLectureAffiliation();
+    const updated = lec.updatedAt || DEFAULT_UPDATED_AT;
+    const url = getDftLectureShareUrl(lec.id);
+    const plainTitle = String(lec.title || "").replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").trim();
+    const citation = `${author}, "${plainTitle}," DFT Theory Curriculum, ${aff} (Updated ${updated}). Available: ${url}`;
+    const ok = await copyTextSafe(citation);
+    notifyUser(ok ? "Copied academic lecture citation to clipboard!" : "Could not copy citation.", ok ? "success" : "error");
+    closeAllDftShareMenus();
+  }
+  window.copyDftLectureCitation = copyDftLectureCitation;
+
+  function shareDftLectureVia(channel, lecId) {
+    const lectures = getDftTheoryLectures();
+    const lec = lectures.find(l => l.id === lecId) || lectures[0];
+    if (!lec) return;
+    const url = getDftLectureShareUrl(lec.id);
+    const plainTitle = String(lec.title || "").replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").trim();
+    const text = `${plainTitle} — Density Functional Theory Curriculum`;
+
+    if (channel === "native" && navigator.share) {
+      navigator.share({ title: plainTitle, text, url }).catch(() => {});
+    } else if (channel === "email") {
+      const subject = encodeURIComponent(plainTitle);
+      const body = encodeURIComponent(`${text}\n\nRead this DFT lecture online:\n${url}`);
+      window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    } else if (channel === "linkedin") {
+      window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`, "_blank", "noopener,noreferrer");
+    } else if (channel === "x") {
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, "_blank", "noopener,noreferrer");
+    }
+    closeAllDftShareMenus();
+  }
+  window.shareDftLectureVia = shareDftLectureVia;
+
+  function closeAllDftShareMenus() {
+    document.querySelectorAll(".dft-share-menu.open").forEach(m => m.classList.remove("open"));
+  }
+  window.closeAllDftShareMenus = closeAllDftShareMenus;
+
+  function toggleDftShareMenu(event, lecId, menuId = "dft-share-menu-top") {
+    if (event) event.stopPropagation();
+    const menu = document.getElementById(menuId);
+    if (!menu) return;
+    const willOpen = !menu.classList.contains("open");
+    closeAllDftShareMenus();
+    if (willOpen) {
+      const urlEl = menu.querySelector(".dft-share-url-preview");
+      if (urlEl) urlEl.textContent = getDftLectureShareUrl(lecId);
+      menu.classList.add("open");
+    }
+  }
+  window.toggleDftShareMenu = toggleDftShareMenu;
+
+  document.addEventListener("click", (ev) => {
+    if (!ev.target.closest(".dft-share-wrap")) {
+      closeAllDftShareMenus();
+    }
+  });
+
+  // =========================================================================
+  // NATURE / SPRINGER-STYLE STICKY SECTIONS SIDEBAR & SCROLLSPY
+  // =========================================================================
+  function scrollToDftSection(secId, lecId = null, updateHash = true) {
+    const target = document.getElementById(secId);
+    if (!target) return;
+    const header = document.querySelector(".top-app-header");
+    const headerH = header ? Math.ceil(header.getBoundingClientRect().height) : 116;
+    const y = target.getBoundingClientRect().top + window.scrollY - (headerH + 14);
+    window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+    setActiveDftSectionLink(secId);
+    if (updateHash) {
+      syncUrlWithDftLecture(lecId || _activeLectureId, secId);
+    }
+    // Collapse mobile sections drawer after tap
+    const mobDetails = document.querySelector(".dft-sections-mobile[open]");
+    if (mobDetails) mobDetails.removeAttribute("open");
+  }
+  window.scrollToDftSection = scrollToDftSection;
+
+  function setActiveDftSectionLink(secId) {
+    document.querySelectorAll(".dft-sec-link").forEach(a => {
+      a.classList.toggle("is-active", a.dataset.secId === secId);
+    });
+  }
+
+  function buildLectureSectionsNavigation(stage, found) {
+    if (_sectionsObserver) {
+      try { _sectionsObserver.disconnect(); } catch (_) {}
+      _sectionsObserver = null;
+    }
+    const contentEl = stage.querySelector(".dft-lec-content");
+    const headerEl = stage.querySelector(".dft-lec-header");
+    if (!contentEl || !headerEl) return;
+
+    const sections = [];
+    const overviewId = `dft-sec-${found.id}-overview`;
+    headerEl.id = overviewId;
+    sections.push({ id: overviewId, label: "Overview" });
+
+    // Extract every H3 section heading automatically (works for built-in & Admin-edited lectures!)
+    const h3s = [...contentEl.querySelectorAll("h3")];
+    h3s.forEach((h3, idx) => {
+      const secId = `dft-sec-${found.id}-s${idx + 1}`;
+      h3.id = secId;
+      const cleanLabel = (h3.textContent || "").replace(/\s+/g, " ").trim();
+      if (cleanLabel) {
+        sections.push({ id: secId, label: cleanLabel });
+      }
+    });
+
+    // Detect Hands-On Practice Lab box
+    const labEl = contentEl.querySelector(".dft-lab-box");
+    if (labEl) {
+      const labId = `dft-sec-${found.id}-lab`;
+      labEl.id = labId;
+      sections.push({ id: labId, label: "Hands-on practice" });
+    }
+
+    // Detect Peer-Reviewed References box
+    const refsEl = contentEl.querySelector(".dft-refs-box");
+    if (refsEl) {
+      const refsId = `dft-sec-${found.id}-refs`;
+      refsEl.id = refsId;
+      sections.push({ id: refsId, label: "References" });
+    }
+
+    const linksHtml = sections.map((sec, idx) => `
+      <a href="#${escAttr(sec.id)}" class="dft-sec-link${idx === 0 ? " is-active" : ""}" data-sec-id="${escAttr(sec.id)}" onclick="event.preventDefault(); scrollToDftSection('${escAttr(sec.id)}', '${escAttr(found.id)}', true);">
+        ${escHtml(sec.label)}
+      </a>
+    `).join("");
+
+    const desktopList = stage.querySelector("#dft-sections-desktop-list");
+    if (desktopList) desktopList.innerHTML = linksHtml;
+
+    const mobileList = stage.querySelector("#dft-sections-mobile-list");
+    if (mobileList) mobileList.innerHTML = linksHtml;
+
+    // Setup ScrollSpy via IntersectionObserver
+    if (typeof IntersectionObserver !== "undefined") {
+      const observedEls = sections.map(s => document.getElementById(s.id)).filter(Boolean);
+      _sectionsObserver = new IntersectionObserver((entries) => {
+        const visible = entries
+          .filter(e => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible.length > 0) {
+          setActiveDftSectionLink(visible[0].target.id);
+        }
+      }, {
+        rootMargin: "-128px 0px -65% 0px",
+        threshold: 0.01
+      });
+      observedEls.forEach(el => _sectionsObserver.observe(el));
+    }
+  }
+
   function openCastepToolFromLecture(paneId) {
     if (typeof switchTabByName === "function") {
       switchTabByName("castep");
@@ -1530,54 +1834,108 @@
       : (typeof found.html === "function" ? found.html() : "");
     const refsHtml = buildReferencesHtml(found.references);
 
-    stage.innerHTML = `
-      <article class="dft-lec-article">
-        <header class="dft-lec-header">
-          <div class="dft-lec-meta-bar">
-            <div class="dft-lec-meta-row">
-              <span class="dft-level-badge dft-level-${escHtml(found.levelClass)}">Lecture ${found.num} of ${lectures.length} &bull; ${escHtml(found.level)}</span>
-              <span class="dft-meta-pill">&#9201; ${escHtml(found.readTime)} read</span>
-              <button type="button" class="dft-meta-pill dft-meta-link" onclick="openCastepToolFromLecture('${escHtml(found.toolPane)}')" title="Jump directly to the matching live module in Data Analysis">
-                &#128640; Linked Tool: ${escHtml(found.toolName)} &rarr;
-              </button>
-            </div>
-            <div class="dft-admin-bar strict-admin-only" role="group" aria-label="Admin Lecture Controls">
-              <button type="button" class="dft-admin-btn dft-admin-edit" onclick="openDftLectureEditorModal('${escHtml(found.id)}')" title="Edit this lecture visually or via HTML/LaTeX code">&#9999;&#65039; Edit Lecture</button>
-              <button type="button" class="dft-admin-btn" onclick="moveDftLecture('${escHtml(found.id)}', -1)" ${idx === 0 ? "disabled" : ""} title="Move lecture earlier in curriculum">&#11013;&#65039;</button>
-              <button type="button" class="dft-admin-btn" onclick="moveDftLecture('${escHtml(found.id)}', 1)" ${idx === lectures.length - 1 ? "disabled" : ""} title="Move lecture later in curriculum">&#10145;&#65039;</button>
-              <button type="button" class="dft-admin-btn dft-admin-del" onclick="deleteDftLecture('${escHtml(found.id)}')" title="Delete this lecture">&#128465;&#65039; Delete</button>
-            </div>
-          </div>
-          <h2 class="dft-lec-title">${found.title}</h2>
-          <p class="dft-lec-subtitle">${found.subtitle}</p>
-          <div class="dft-byline-bar" aria-label="Lecture authorship and revision info">
-            <span class="dft-byline-item">&#9997;&#65039; <strong>Compiled by:</strong> ${escHtml(found.author || getDefaultLectureAuthor())}${found.affiliation ? ` <span class="dft-byline-sep">&middot;</span> <em>${escHtml(found.affiliation)}</em>` : ""}</span>
-            <span class="dft-byline-divider">|</span>
-            <span class="dft-byline-item">&#128197; <strong>Last Updated:</strong> ${escHtml(found.updatedAt || DEFAULT_UPDATED_AT)}</span>
-            <span class="dft-byline-divider">|</span>
-            <span class="dft-byline-item">&#128218; <strong>References:</strong> ${(found.references || []).length} peer-reviewed</span>
-          </div>
-          ${objItems ? `<div class="dft-obj-box"><div class="dft-obj-title">&#127919; Learning Objectives</div><ul>${objItems}</ul></div>` : ""}
-        </header>
+    const shareUrl = getDftLectureShareUrl(found.id);
+    const hasNativeShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
 
-        <div class="dft-lec-content">
-          ${bodyHtml}
-          ${refsHtml}
+    const buildShareDropdownHtml = (menuId) => `
+      <div id="${menuId}" class="dft-share-menu" role="menu" aria-label="Share this lecture">
+        <div class="dft-share-menu-head">Share Lecture ${found.num}</div>
+        <div class="dft-share-url-preview" title="Direct URL for this lecture">${escHtml(shareUrl)}</div>
+        <button type="button" class="dft-share-item" onclick="copyDftLectureLink('${escHtml(found.id)}')">&#128279; Copy Direct Link</button>
+        <button type="button" class="dft-share-item" onclick="copyDftLectureCitation('${escHtml(found.id)}')">&#128203; Copy Academic Citation</button>
+        ${hasNativeShare ? `<button type="button" class="dft-share-item" onclick="shareDftLectureVia('native', '${escHtml(found.id)}')">&#128241; Share via Device...</button>` : ""}
+        <button type="button" class="dft-share-item" onclick="shareDftLectureVia('email', '${escHtml(found.id)}')">&#9993;&#65039; Share via Email</button>
+        <button type="button" class="dft-share-item" onclick="shareDftLectureVia('linkedin', '${escHtml(found.id)}')">&#128188; Share on LinkedIn</button>
+        <button type="button" class="dft-share-item" onclick="shareDftLectureVia('x', '${escHtml(found.id)}')">&#120143; Share on X</button>
+      </div>
+    `;
+
+    stage.innerHTML = `
+      <div class="dft-lec-layout">
+        <div class="dft-lec-main">
+          <article class="dft-lec-article">
+            <header class="dft-lec-header">
+              <div class="dft-lec-meta-bar">
+                <div class="dft-lec-meta-row">
+                  <span class="dft-level-badge dft-level-${escHtml(found.levelClass)}">Lecture ${found.num} of ${lectures.length} &bull; ${escHtml(found.level)}</span>
+                  <span class="dft-meta-pill">&#9201; ${escHtml(found.readTime)} read</span>
+                  <button type="button" class="dft-meta-pill dft-meta-link" onclick="openCastepToolFromLecture('${escHtml(found.toolPane)}')" title="Jump directly to the matching live module in Data Analysis">
+                    &#128640; Linked Tool: ${escHtml(found.toolName)} &rarr;
+                  </button>
+                </div>
+                <div class="dft-admin-bar strict-admin-only" role="group" aria-label="Admin Lecture Controls">
+                  <button type="button" class="dft-admin-btn dft-admin-edit" onclick="openDftLectureEditorModal('${escHtml(found.id)}')" title="Edit this lecture visually or via HTML/LaTeX code">&#9999;&#65039; Edit Lecture</button>
+                  <button type="button" class="dft-admin-btn" onclick="moveDftLecture('${escHtml(found.id)}', -1)" ${idx === 0 ? "disabled" : ""} title="Move lecture earlier in curriculum">&#11013;&#65039;</button>
+                  <button type="button" class="dft-admin-btn" onclick="moveDftLecture('${escHtml(found.id)}', 1)" ${idx === lectures.length - 1 ? "disabled" : ""} title="Move lecture later in curriculum">&#10145;&#65039;</button>
+                  <button type="button" class="dft-admin-btn dft-admin-del" onclick="deleteDftLecture('${escHtml(found.id)}')" title="Delete this lecture">&#128465;&#65039; Delete</button>
+                </div>
+              </div>
+              <h2 class="dft-lec-title">${found.title}</h2>
+              <p class="dft-lec-subtitle">${found.subtitle}</p>
+              <div class="dft-byline-bar" aria-label="Lecture authorship, revision date, and share controls">
+                <div class="dft-byline-info">
+                  <span class="dft-byline-item">&#9997;&#65039; <strong>Compiled by:</strong> ${escHtml(found.author || getDefaultLectureAuthor())}${found.affiliation ? ` <span class="dft-byline-sep">&middot;</span> <em>${escHtml(found.affiliation)}</em>` : ""}</span>
+                  <span class="dft-byline-divider">|</span>
+                  <span class="dft-byline-item">&#128197; <strong>Last Updated:</strong> ${escHtml(found.updatedAt || DEFAULT_UPDATED_AT)}</span>
+                </div>
+                <div class="dft-byline-actions">
+                  <button type="button" id="dft-copy-link-btn" class="dft-share-pill" onclick="copyDftLectureLink('${escHtml(found.id)}', this)" title="Copy direct shareable URL for Lecture ${found.num}">
+                    &#128279; Copy Link
+                  </button>
+                  <div class="dft-share-wrap">
+                    <button type="button" id="dft-share-btn" class="dft-share-pill dft-share-pill-accent" onclick="toggleDftShareMenu(event, '${escHtml(found.id)}', 'dft-share-menu-top')" title="Share Lecture ${found.num}">
+                      &#128228; Share &#9662;
+                    </button>
+                    ${buildShareDropdownHtml("dft-share-menu-top")}
+                  </div>
+                </div>
+              </div>
+              ${objItems ? `<div class="dft-obj-box"><div class="dft-obj-title">&#127919; Learning Objectives</div><ul>${objItems}</ul></div>` : ""}
+            </header>
+
+            <!-- Collapsible SECTIONS card for Mobile & Tablet (<= 1020px) -->
+            <details class="dft-sections-mobile">
+              <summary class="dft-sections-mobile-summary">SECTIONS</summary>
+              <nav id="dft-sections-mobile-list" class="dft-sections-nav" aria-label="Lecture sections"></nav>
+            </details>
+
+            <div class="dft-lec-content">
+              ${bodyHtml}
+              ${refsHtml}
+            </div>
+
+            <footer class="dft-lec-footer">
+              ${prevLec
+                ? `<button type="button" class="btn btn-outline btn-sm" onclick="switchDftLecture('${escHtml(prevLec.id)}', true)">&larr; Lecture ${prevLec.num}: ${escHtml(prevLec.shortTab.replace(/^L\d+:\s*/, ""))}</button>`
+                : `<span></span>`}
+              <span style="font-size:11.5px; color:#64748b; font-weight:600;">Lecture ${found.num} / ${lectures.length} &bull; Density Functional Theory Curriculum</span>
+              ${nextLec
+                ? `<button type="button" class="btn btn-primary btn-sm" onclick="switchDftLecture('${escHtml(nextLec.id)}', true)">Lecture ${nextLec.num}: ${escHtml(nextLec.shortTab.replace(/^L\d+:\s*/, ""))} &rarr;</button>`
+                : `<button type="button" class="btn btn-teal btn-sm" onclick="openCastepToolFromLecture('builder')">&#128640; Launch Data Analysis Workbench &rarr;</button>`}
+            </footer>
+          </article>
         </div>
 
-        <footer class="dft-lec-footer">
-          ${prevLec
-            ? `<button type="button" class="btn btn-outline btn-sm" onclick="switchDftLecture('${escHtml(prevLec.id)}', true)">&larr; Lecture ${prevLec.num}: ${escHtml(prevLec.shortTab.replace(/^L\d+:\s*/, ""))}</button>`
-            : `<span></span>`}
-          <span style="font-size:11.5px; color:#64748b; font-weight:600;">Lecture ${found.num} / ${lectures.length} &bull; Density Functional Theory Curriculum</span>
-          ${nextLec
-            ? `<button type="button" class="btn btn-primary btn-sm" onclick="switchDftLecture('${escHtml(nextLec.id)}', true)">Lecture ${nextLec.num}: ${escHtml(nextLec.shortTab.replace(/^L\d+:\s*/, ""))} &rarr;</button>`
-            : `<button type="button" class="btn btn-teal btn-sm" onclick="openCastepToolFromLecture('builder')">&#128640; Launch Data Analysis Workbench &rarr;</button>`}
-        </footer>
-      </article>
+        <!-- Sticky Nature / Springer-Style SECTIONS Sidebar (Desktop > 1020px) -->
+        <aside class="dft-sections-aside" aria-label="Lecture Sections">
+          <div class="dft-sections-card">
+            <div class="dft-sections-title">SECTIONS</div>
+            <nav id="dft-sections-desktop-list" class="dft-sections-nav"></nav>
+            <div class="dft-sections-card-foot">
+              <button type="button" class="dft-sec-foot-btn" onclick="copyDftLectureLink('${escHtml(found.id)}', this)" title="Copy direct link to this lecture">&#128279; Copy link</button>
+              <div class="dft-share-wrap">
+                <button type="button" class="dft-sec-foot-btn" onclick="toggleDftShareMenu(event, '${escHtml(found.id)}', 'dft-share-menu-side')" title="Share this lecture">&#128228; Share</button>
+                ${buildShareDropdownHtml("dft-share-menu-side")}
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
     `;
 
     renderDftMathInElement(stage);
+    buildLectureSectionsNavigation(stage, found);
+    syncUrlWithDftLecture(found.id);
 
     if (shouldScroll) {
       const container = document.getElementById("tab-dft-theory");
@@ -2603,11 +2961,21 @@
   }
   window.resetDftLecturesToDefault = resetDftLecturesToDefault;
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => {
-        initDashboardDftCard();
-    });
-  } else {
+  function initDftTheoryModule() {
     initDashboardDftCard();
+    // Auto-open specific lecture if direct URL (?lecture=lec6) was visited
+    setTimeout(() => {
+      checkAndHandleDftLectureDeepLink();
+    }, 60);
+  }
+
+  window.addEventListener("popstate", () => {
+    checkAndHandleDftLectureDeepLink();
+  });
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initDftTheoryModule);
+  } else {
+    initDftTheoryModule();
   }
 })();
