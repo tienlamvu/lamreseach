@@ -357,6 +357,9 @@ function switchTab(tabId, btnEl) {
   } else if (tabId === "news") {
     if (typeof renderNewsTab === "function") renderNewsTab();
   }
+  if (tabId !== "dft-theory" && typeof clearDftLectureUrlParam === "function") {
+    clearDftLectureUrlParam();
+  }
 }
 
 window.stepMobileTab = stepMobileTab;
@@ -33491,6 +33494,10 @@ function checkAndHandleArticleDeepLink() {
     if (typeof openNewsJournalModal === "function") {
       openNewsJournalModal(artId);
     }
+    return;
+  }
+  if (typeof checkAndHandleDftLectureDeepLink === "function") {
+    checkAndHandleDftLectureDeepLink();
   }
 }
 
