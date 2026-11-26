@@ -18681,19 +18681,75 @@ function extractCastepScfSpinCrossCheck(job) {
   const txt = job?.castep_text || "";
   let intSpin = null;
   let intAbsSpin = null;
+  let mullSumSpin = null;
+  let mullAbsSpin = null;
+  let mullAtomCount = 0;
+  let mullOrder = "";
+
+  // 1) Parse CASTEP Mulliken Analysis table (cached or fresh)
+  let mull = job?._mullikenCache || null;
+  if (!mull && txt && typeof parseCastepMullikenAnalysis === "function") {
+    mull = parseCastepMullikenAnalysis(txt);
+    if (mull && job) job._mullikenCache = mull;
+  }
+  if (mull) {
+    if (isFinite(mull.sumSpin)) mullSumSpin = mull.sumSpin;
+    if (isFinite(mull.sumAbsSpin)) mullAbsSpin = mull.sumAbsSpin;
+    if (Array.isArray(mull.atoms)) {
+      mullAtomCount = mull.atoms.length;
+      if (mullSumSpin === null && mull.atoms.length) {
+        mullSumSpin = mull.atoms.reduce((s, a) => s + (Number(a.spin) || 0), 0);
+        mullAbsSpin = mull.atoms.reduce((s, a) => s + Math.abs(Number(a.spin) || 0), 0);
+      }
+    }
+    if (isFinite(mull.integratedSpin)) intSpin = mull.integratedSpin;
+    if (isFinite(mull.integratedAbsSpin)) intAbsSpin = mull.integratedAbsSpin;
+    mullOrder = mull.magneticOrder || "";
+  }
+
+  // 2) Directly extract CASTEP SCF Integrated Spin Density (supports BOTH "2*Integrated Spin Density" and modern "Integrated Spin Density = ... hbar/2")
   if (txt) {
-    const mSpin = [...txt.matchAll(/2\*Integrated Spin Density\s*=\s*([+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/gi)];
-    if (mSpin.length) intSpin = parseFloat(mSpin[mSpin.length - 1][1]);
-    const mAbs = [...txt.matchAll(/2\*Integrated \|Spin Density\|\s*=\s*([+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/gi)];
-    if (mAbs.length) intAbsSpin = parseFloat(mAbs[mAbs.length - 1][1]);
+    const mSpin = [...txt.matchAll(/(?:2\*\s*)?Integrated Spin Density\s*=\s*([+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)(?:\s*(hbar\/2|hbar))?/gi)];
+    if (mSpin.length) {
+      const last = mSpin[mSpin.length - 1];
+      const mult = (last[2] && last[2].toLowerCase() === "hbar") ? 2.0 : 1.0;
+      intSpin = parseFloat(last[1]) * mult;
+    }
+    const mAbs = [...txt.matchAll(/(?:2\*\s*)?Integrated \|Spin Density\|\s*=\s*([+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)(?:\s*(hbar\/2|hbar))?/gi)];
+    if (mAbs.length) {
+      const last = mAbs[mAbs.length - 1];
+      const mult = (last[2] && last[2].toLowerCase() === "hbar") ? 2.0 : 1.0;
+      intAbsSpin = parseFloat(last[1]) * mult;
+    }
   }
-  if (intSpin === null && job?._mullikenCache && isFinite(job._mullikenCache.integratedSpin)) {
-    intSpin = job._mullikenCache.integratedSpin;
+  return { intSpin, intAbsSpin, mullSumSpin, mullAbsSpin, mullAtomCount, mullOrder };
+}
+
+function stonerErfc(x) {
+  // Abramowitz & Stegun 7.1.26 approximation (accuracy < 1.5e-7)
+  const sign = x >= 0 ? 1 : -1;
+  const ax = Math.abs(x);
+  const t = 1.0 / (1.0 + 0.3275911 * ax);
+  const poly = (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t;
+  const erfcPos = poly * Math.exp(-ax * ax);
+  return sign >= 0 ? erfcPos : (2.0 - erfcPos);
+}
+
+function computeExactGaussianDosMomentFromBands(bandsObj, sigma = 0.10) {
+  // Exact analytical integral of Gaussian-broadened DOS over (-inf, E_F=0]:
+  // M_cell = sum_k w_k [ sum_b 0.5*erfc(E_{k,b,up}/(sqrt(2)*sigma)) - sum_b 0.5*erfc(E_{k,b,dn}/(sqrt(2)*sigma)) ]
+  if (!bandsObj || !bandsObj.kpoints?.length || (bandsObj.ns || 1) < 2) return null;
+  const invS2 = 1.0 / (Math.max(0.015, sigma) * Math.SQRT2);
+  let nUp = 0, nDn = 0;
+  const kpts = bandsObj.kpoints;
+  for (let k = 0; k < kpts.length; k++) {
+    const wt = kpts[k].w || (1.0 / kpts.length);
+    const eUp = kpts[k].e?.[0] || [];
+    const eDn = kpts[k].e?.[1] || [];
+    for (let b = 0; b < eUp.length; b++) nUp += wt * 0.5 * stonerErfc(eUp[b] * invS2);
+    for (let b = 0; b < eDn.length; b++) nDn += wt * 0.5 * stonerErfc(eDn[b] * invS2);
   }
-  if (intAbsSpin === null && job?._mullikenCache && isFinite(job._mullikenCache.integratedAbsSpin)) {
-    intAbsSpin = job._mullikenCache.integratedAbsSpin;
-  }
-  return { intSpin, intAbsSpin };
+  return { nUpCell: nUp, nDnCell: nDn, mCell: nUp - nDn };
 }
 
 function trapzIntegrate(xArr, yArr, xLo, xHi) {
@@ -18777,6 +18833,124 @@ function findSpinPeakInWindow(eGrid, arr, winMin, winMax, mode = "dominant") {
     }
   }
   return { ePeak, height: Math.max(0, height), idx: chosenIdx, found: true };
+}
+
+function refineParabolicPeakAt(eGrid, arr, idx) {
+  const n = eGrid.length;
+  if (idx < 0 || idx >= n) return { ePeak: 0, height: 0, idx: -1, found: false };
+  let ePeak = eGrid[idx], height = arr[idx];
+  if (idx > 0 && idx < n - 1) {
+    const yL = arr[idx - 1], yC = arr[idx], yR = arr[idx + 1];
+    const denom = yL - 2 * yC + yR;
+    if (denom < -1e-12) {
+      const dIdx = Math.max(-0.5, Math.min(0.5, 0.5 * (yL - yR) / denom));
+      ePeak = eGrid[idx] + dIdx * (eGrid[idx + 1] - eGrid[idx]);
+      height = yC - 0.25 * (yL - yR) * dIdx;
+    }
+  }
+  return { ePeak, height: Math.max(0, height), idx, found: true };
+}
+
+function findSpinSplitPartnerPeaks(eGrid, upArr, dnArr, winMin, winMax, momentSign = 0) {
+  const n = eGrid.length;
+  if (!n || !upArr || !dnArr) {
+    return { pkUp: { ePeak: 0, height: 0, idx: -1, found: false }, pkDn: { ePeak: 0, height: 0, idx: -1, found: false }, deltaEv: 0, signedShiftEv: 0, found: false };
+  }
+  let i0 = 0, i1 = n - 1;
+  for (let i = 0; i < n; i++) { if (eGrid[i] >= winMin) { i0 = i; break; } }
+  for (let i = n - 1; i >= 0; i--) { if (eGrid[i] <= winMax) { i1 = i; break; } }
+  if (i1 <= i0 + 2) {
+    return { pkUp: { ePeak: 0, height: 0, idx: -1, found: false }, pkDn: { ePeak: 0, height: 0, idx: -1, found: false }, deltaEv: 0, signedShiftEv: 0, found: false };
+  }
+
+  let maxD = 0, maxPos = 0, maxNeg = 0;
+  const posArr = new Float64Array(n);
+  const negArr = new Float64Array(n);
+  for (let i = i0; i <= i1; i++) {
+    const u = upArr[i], d = dnArr[i];
+    if (u > maxD) maxD = u;
+    if (d > maxD) maxD = d;
+    const diff = u - d;
+    if (diff > 0) { posArr[i] = diff; if (diff > maxPos) maxPos = diff; }
+    else if (diff < 0) { negArr[i] = -diff; if (-diff > maxNeg) maxNeg = -diff; }
+  }
+
+  // Reject pure non-magnetic numerical noise (< 3% spin asymmetry across window)
+  if (maxD <= 1e-7 || Math.max(maxPos, maxNeg) < 0.03 * maxD || maxPos <= 1e-6 || maxNeg <= 1e-6) {
+    return { pkUp: { ePeak: 0, height: 0, idx: -1, found: false }, pkDn: { ePeak: 0, height: 0, idx: -1, found: false }, deltaEv: 0, signedShiftEv: 0, found: false };
+  }
+
+  const dE = (eGrid[n - 1] - eGrid[0]) / Math.max(1, n - 1);
+  const snapRad = Math.max(3, Math.round(0.30 / (dE || 0.025)));
+
+  const snapToLocalMax = (arr, ic) => {
+    let bestI = ic, bestDist = 1e9;
+    const baseV = arr[ic];
+    const lo = Math.max(i0 + 1, ic - snapRad);
+    const hi = Math.min(i1 - 1, ic + snapRad);
+    for (let j = lo; j <= hi; j++) {
+      if (arr[j] >= arr[j - 1] && arr[j] >= arr[j + 1] && arr[j] >= baseV * 0.92) {
+        const dist = Math.abs(j - ic);
+        if (dist < bestDist || (dist === bestDist && arr[j] > arr[bestI])) {
+          bestI = j; bestDist = dist;
+        }
+      }
+    }
+    return refineParabolicPeakAt(eGrid, arr, bestI);
+  };
+
+  const collectExcessPeaks = (excArr, arrRaw, maxExc) => {
+    const out = [];
+    for (let i = i0 + 1; i < i1; i++) {
+      const v = excArr[i];
+      if (v >= 0.15 * maxExc && v >= excArr[i - 1] && v >= excArr[i + 1] && (v > excArr[i - 1] || v > excArr[i + 1])) {
+        const snapped = snapToLocalMax(arrRaw, i);
+        out.push({ excVal: v, relExc: v / maxExc, ...snapped });
+      }
+    }
+    if (!out.length) {
+      let bestI = i0, bestV = 0;
+      for (let i = i0; i <= i1; i++) if (excArr[i] > bestV) { bestV = excArr[i]; bestI = i; }
+      if (bestV > 0) out.push({ excVal: bestV, relExc: 1.0, ...snapToLocalMax(arrRaw, bestI) });
+    }
+    return out;
+  };
+
+  const upCands = collectExcessPeaks(posArr, upArr, maxPos);
+  const dnCands = collectExcessPeaks(negArr, dnArr, maxNeg);
+
+  // Score physically consistent spin-split pairs:
+  // For M > 0, majority spin-up shifts DOWN relative to minority spin-down => E_dn >= E_up.
+  // For M < 0, spin-down is majority => E_up >= E_dn.
+  let bestPair = null, bestScore = -1;
+  const checkPairs = (enforceSign) => {
+    for (const u of upCands) {
+      for (const d of dnCands) {
+        const shift = d.ePeak - u.ePeak;
+        const absSh = Math.abs(shift);
+        if (absSh < 0.015 || absSh > 4.2) continue;
+        if (enforceSign) {
+          if (momentSign > 0.02 && shift < 0) continue;
+          if (momentSign < -0.02 && shift > 0) continue;
+        }
+        const avgAbsE = 0.5 * (Math.abs(u.ePeak) + Math.abs(d.ePeak));
+        const score = (u.relExc * d.relExc) / (1.0 + 0.35 * avgAbsE + 0.12 * absSh);
+        if (score > bestScore) { bestScore = score; bestPair = { u, d }; }
+      }
+    }
+  };
+  checkPairs(true);
+  if (!bestPair) checkPairs(false);
+  if (!bestPair) {
+    const u0 = upCands.sort((a, b) => b.excVal - a.excVal)[0];
+    const d0 = dnCands.sort((a, b) => b.excVal - a.excVal)[0];
+    if (u0 && d0) bestPair = { u: u0, d: d0 };
+  }
+  if (!bestPair) {
+    return { pkUp: { ePeak: 0, height: 0, idx: -1, found: false }, pkDn: { ePeak: 0, height: 0, idx: -1, found: false }, deltaEv: 0, signedShiftEv: 0, found: false };
+  }
+  const signedShiftEv = bestPair.d.ePeak - bestPair.u.ePeak;
+  return { pkUp: bestPair.u, pkDn: bestPair.d, deltaEv: Math.abs(signedShiftEv), signedShiftEv, found: true };
 }
 
 function computeCrossCorrelationExchangeSplit(eGrid, upArr, dnArr, winMin, winMax) {
@@ -18883,7 +19057,10 @@ function readCastepStonerOptions(job) {
   if (pkMax <= pkMin + 0.2) { pkMin = -3.0; pkMax = 3.0; }
 
   const channelId = document.getElementById("castep-st-channel")?.value || "auto";
-  const exMethod = document.getElementById("castep-st-ex-method")?.value || "peak";
+  const exMethod = document.getElementById("castep-st-ex-method")?.value || "partner";
+  const mSource = document.getElementById("castep-st-msource")?.value || "dos_integral";
+  const manEupRaw = parseFloat(document.getElementById("castep-st-man-eup")?.value);
+  const manEdnRaw = parseFloat(document.getElementById("castep-st-man-edn")?.value);
   const dConv = document.getElementById("castep-st-dconv")?.value || "spin_avg";
   const customDnm = parseFloat(document.getElementById("castep-st-custom-dnm")?.value);
   const customI = parseFloat(document.getElementById("castep-st-custom-i")?.value);
@@ -18892,7 +19069,10 @@ function readCastepStonerOptions(job) {
 
   return {
     fInfo, zFu, sigma, emin, emax, pkMin, pkMax,
-    channelId, exMethod, dConv,
+    channelId, exMethod, mSource,
+    manEup: isFinite(manEupRaw) ? manEupRaw : -1.0,
+    manEdn: isFinite(manEdnRaw) ? manEdnRaw : 0.0,
+    dConv,
     customDnm: isFinite(customDnm) && customDnm > 0 ? customDnm : 0,
     customI: isFinite(customI) && customI > 0 ? customI : 0,
     chart1Right, chart2Left
@@ -19103,41 +19283,74 @@ function computeCastepStonerAnalysis(job) {
   if (!lib) return null;
 
   const { eGrid, eFull, fullMin, isSpinPolarized, sourceLabel, totalChan, channels } = lib;
-  const { zFu, pkMin, pkMax, exMethod, dConv, customDnm, customI } = opts;
+  const { zFu, pkMin, pkMax, exMethod, mSource, dConv, customDnm, customI } = opts;
 
-  // 1) Spin-Resolved Total DOS & Spin Polarization at Fermi level (Supplementary Note 7.1)
+  // 1) Spin-Resolved Total DOS & Spin Polarization at Fermi level
   const dUpEf = Math.max(0, interpUniformGrid(eFull, totalChan.fullUp, 0.0));
   const dDnEf = Math.max(0, interpUniformGrid(eFull, totalChan.fullDn, 0.0));
   const dTotEf = dUpEf + dDnEf;
-  const dAvgEf = 0.5 * dTotEf; // Spin-averaged DOS per f.u. = non-magnetic per-spin DOS convention
+  const dAvgEf = 0.5 * dTotEf; // Spin-averaged (per-spin) DOS per f.u. — canonical Stoner theory convention
   const deltaDEf = dUpEf - dDnEf;
   const isMetallicAtEf = dTotEf > 1e-3;
   const pEf = isMetallicAtEf ? (deltaDEf / dTotEf) * 100.0 : null;
 
-  // 2) Integrated Total Magnetic Moment M_tot (mu_B / f.u.)
-  const mTotDosFu = totalChan.mIntFu;
-  const mTotDosCell = mTotDosFu * zFu;
+  // 2) Total Magnetic Moment M_tot (mu_B / f.u.) — User-selectable: DOS Integral Eq. vs Mulliken Analysis vs SCF
   const bandsRef = job.dos_bands || job.bandstr_bands || null;
+  const exactGauss = computeExactGaussianDosMomentFromBands(bandsRef, opts.sigma);
   const exactOcc = computeExactOccMomentFromBands(bandsRef, opts.sigma);
   const scfCross = extractCastepScfSpinCrossCheck(job);
   const gapInfo = bandsRef ? computeBandGapFromBandsObj(bandsRef) : null;
 
-  // Best magnetic moment M_tot for Stoner I = Delta_ex / |M_tot| (use DOS integral, fallback to exact occ if bands only)
-  const mTotFu = isSpinPolarized ? mTotDosFu : 0.0;
+  // Analytical erfc Gaussian DOS integral matches plotted DOS with zero lower-bound truncation error
+  const mTotDosCell = isSpinPolarized ? (exactGauss ? exactGauss.mCell : totalChan.mIntFu * zFu) : 0.0;
+  const mTotDosFu = mTotDosCell / zFu;
+  const mTotMullCell = scfCross.mullSumSpin !== null ? scfCross.mullSumSpin : null;
+  const mTotMullFu = mTotMullCell !== null ? (mTotMullCell / zFu) : null;
+  const mTotScfCell = scfCross.intSpin !== null ? scfCross.intSpin : null;
+  const mTotScfFu = mTotScfCell !== null ? (mTotScfCell / zFu) : null;
+
+  let mTotFu = mTotDosFu;
+  let mSourceLabel = "DOS Integral ∫[D↑−D↓]dE";
+  let mSourceFallbackNote = "";
+  if (mSource === "mulliken") {
+    if (mTotMullFu !== null) {
+      mTotFu = mTotMullFu;
+      mSourceLabel = "Mulliken Analysis (Σ Atomic Spin)";
+    } else if (mTotScfFu !== null) {
+      mTotFu = mTotScfFu;
+      mSourceLabel = "CASTEP SCF Spin (Mulliken table unavailable)";
+      mSourceFallbackNote = "Mulliken table not found in .castep; fell back to SCF Integrated Spin.";
+    } else {
+      mSourceLabel = "DOS Integral (Mulliken unavailable)";
+      mSourceFallbackNote = "No Mulliken data in .castep; using DOS integral.";
+    }
+  } else if (mSource === "scf_spin") {
+    if (mTotScfFu !== null) {
+      mTotFu = mTotScfFu;
+      mSourceLabel = "CASTEP SCF Integrated Spin";
+    } else {
+      mSourceLabel = "DOS Integral (SCF log unavailable)";
+      mSourceFallbackNote = "No SCF Integrated Spin in .castep; using DOS integral.";
+    }
+  }
+  const mTotCell = mTotFu * zFu;
   const absMTotFu = Math.abs(mTotFu);
+  const isMagneticallyOrdered = isSpinPolarized && absMTotFu >= 0.01;
+  const isAfmLocal = !isMagneticallyOrdered && ((scfCross.mullAbsSpin || 0) >= 0.10 || (scfCross.intAbsSpin || 0) >= 0.10);
 
   // Spin-resolved channel gap & Half-metallic spin-flip gap E_HM
   let upGapEv = gapInfo?.isCollinear ? gapInfo.upGapEv : (gapInfo?.gapEv || 0);
   let dnGapEv = gapInfo?.isCollinear ? gapInfo.dnGapEv : (gapInfo?.gapEv || 0);
   let hmGapEv = null;
   let phaseLabel = "Non-Magnetic Metal";
-  if (!isSpinPolarized || absMTotFu < 0.015) {
+  if (isAfmLocal) {
+    phaseLabel = isMetallicAtEf ? "Antiferromagnetic / Compensated Metal" : "Antiferromagnetic / Compensated Semiconductor";
+  } else if (!isMagneticallyOrdered) {
     phaseLabel = isMetallicAtEf ? "Non-Magnetic Metal" : "Non-Magnetic Semiconductor / Insulator";
   } else if (!isMetallicAtEf) {
     phaseLabel = "Ferromagnetic Semiconductor / Insulator";
   } else if (Math.abs(pEf) >= 98.0) {
     phaseLabel = "Half-Metallic Ferromagnet (|P(E_F)| ≈ 100%)";
-    // Compute spin-flip half-metallic gap on the gapped spin channel
     const gappedArr = (dUpEf < dDnEf) ? totalChan.fullUp : totalChan.fullDn;
     let eBelow = null, eAbove = null;
     for (let i = 0; i < eFull.length; i++) {
@@ -19155,37 +19368,46 @@ function computeCastepStonerAnalysis(job) {
     const dEf = Math.max(0, interpUniformGrid(eFull, ch.fullDn, 0.0));
     const totCh = uEf + dEf;
     const pCh = totCh > 1e-4 ? ((uEf - dEf) / totCh) * 100.0 : null;
+    const partner = findSpinSplitPartnerPeaks(eFull, ch.fullUp, ch.fullDn, pkMin, pkMax, mTotFu);
     const pkUpDom = findSpinPeakInWindow(eFull, ch.fullUp, pkMin, pkMax, "dominant");
     const pkDnDom = findSpinPeakInWindow(eFull, ch.fullDn, pkMin, pkMax, "dominant");
-    const pkUpNear = findSpinPeakInWindow(eFull, ch.fullUp, pkMin, pkMax, "nearest_ef");
-    const pkDnNear = findSpinPeakInWindow(eFull, ch.fullDn, pkMin, pkMax, "nearest_ef");
     const xcorr = computeCrossCorrelationExchangeSplit(eFull, ch.fullUp, ch.fullDn, pkMin, pkMax);
     const cent = computeBandCenterExchangeSplit(eFull, ch.fullUp, ch.fullDn, pkMin, pkMax);
 
     const deltaPeak = (pkUpDom.found && pkDnDom.found) ? Math.abs(pkDnDom.ePeak - pkUpDom.ePeak) : 0;
-    const deltaNear = (pkUpNear.found && pkDnNear.found) ? Math.abs(pkDnNear.ePeak - pkUpNear.ePeak) : 0;
+    const deltaPartner = partner.found ? partner.deltaEv : 0;
 
-    let activeDelta = deltaPeak;
-    let activePkUp = pkUpDom, activePkDn = pkDnDom;
-    let signedShift = pkDnDom.ePeak - pkUpDom.ePeak;
-    if (exMethod === "nearest_ef") {
-      activeDelta = deltaNear;
-      activePkUp = pkUpNear; activePkDn = pkDnNear;
-      signedShift = pkDnNear.ePeak - pkUpNear.ePeak;
+    let activeDelta = deltaPartner;
+    let activePkUp = partner.pkUp, activePkDn = partner.pkDn;
+    let signedShift = partner.signedShiftEv;
+    if (exMethod === "peak") {
+      activeDelta = isMagneticallyOrdered || isAfmLocal ? deltaPeak : 0;
+      activePkUp = pkUpDom; activePkDn = pkDnDom;
+      signedShift = pkDnDom.ePeak - pkUpDom.ePeak;
     } else if (exMethod === "xcorr") {
       activeDelta = xcorr.deltaEv;
+      activePkUp = partner.found ? partner.pkUp : pkUpDom;
+      activePkDn = partner.found ? partner.pkDn : pkDnDom;
       signedShift = xcorr.signedShiftEv;
     } else if (exMethod === "center") {
       activeDelta = cent.deltaEv;
+      activePkUp = partner.found ? partner.pkUp : pkUpDom;
+      activePkDn = partner.found ? partner.pkDn : pkDnDom;
       signedShift = cent.signedShiftEv;
+    } else if (exMethod === "manual") {
+      const mUp = opts.manEup, mDn = opts.manEdn;
+      activePkUp = { ePeak: mUp, height: interpUniformGrid(eFull, ch.fullUp, mUp), idx: -1, found: true };
+      activePkDn = { ePeak: mDn, height: interpUniformGrid(eFull, ch.fullDn, mDn), idx: -1, found: true };
+      signedShift = mDn - mUp;
+      activeDelta = Math.abs(signedShift);
     }
 
-    const iEff = absMTotFu > 0.01 ? (activeDelta / absMTotFu) : null;
+    const iEff = (absMTotFu >= 0.01 && activeDelta > 0.005) ? (activeDelta / absMTotFu) : null;
     return {
       ...ch,
       dUpEf: uEf, dDnEf: dEf, dTotEf: totCh, pEf: pCh,
-      pkUpDom, pkDnDom, pkUpNear, pkDnNear, xcorr, cent,
-      deltaPeak, deltaNear, activeDelta, activePkUp, activePkDn, signedShift, iEff
+      partner, pkUpDom, pkDnDom, xcorr, cent,
+      deltaPeak, deltaPartner, activeDelta, activePkUp, activePkDn, signedShift, iEff
     };
   });
 
@@ -19197,30 +19419,35 @@ function computeCastepStonerAnalysis(job) {
   if (!activeChan) {
     // Auto: pick Element-Orbital with highest |mIntFu| (if magnetic & pdos exists), else Total DOS
     const eoChans = channelStats.filter(c => c.kind === "element_orbital");
-    if (eoChans.length && isSpinPolarized) {
+    if (eoChans.length && isMagneticallyOrdered) {
       const sorted = [...eoChans].sort((a, b) => Math.abs(b.mIntFu) - Math.abs(a.mIntFu));
       if (Math.abs(sorted[0].mIntFu) > 0.02) activeChan = sorted[0];
     }
     if (!activeChan) activeChan = channelStats[0];
   }
 
-  // 4) Exchange Splitting Δ_ex & Stoner Parameter I (Supplementary Notes 7.2 & 7.4)
-  const deltaExEv = isSpinPolarized ? activeChan.activeDelta : 0.0;
-  const signedShiftEv = isSpinPolarized ? activeChan.signedShift : 0.0;
-  const iAutoEv = (isSpinPolarized && absMTotFu > 0.01 && deltaExEv > 1e-5) ? (deltaExEv / absMTotFu) : null;
+  // 4) Exchange Splitting Δ_ex & Stoner Parameter I (STRICT — NEVER fabricate fake I when non-magnetic!)
+  const deltaExEv = (isSpinPolarized && (isMagneticallyOrdered || isAfmLocal || exMethod === "manual")) ? activeChan.activeDelta : 0.0;
+  const signedShiftEv = (isSpinPolarized && (isMagneticallyOrdered || isAfmLocal || exMethod === "manual")) ? activeChan.signedShift : 0.0;
+  const iAutoEv = (isMagneticallyOrdered && deltaExEv > 0.005) ? (deltaExEv / absMTotFu) : null;
 
-  let iUsedEv = iAutoEv;
-  let iSourceNote = "I = Δ_ex / M_tot (First-Principles)";
+  let iUsedEv = null;
+  let iIsManual = false;
+  let iSourceNote = "Undefined (Non-Magnetic: M_tot ≈ 0)";
   if (customI > 0) {
     iUsedEv = customI;
-    iSourceNote = `Custom Stoner I = ${customI.toFixed(3)} eV`;
-  } else if (iUsedEv === null) {
-    iUsedEv = 0.85; // Canonical transition-metal / itinerant reference for non-magnetic instability screening
-    iSourceNote = isSpinPolarized ? "Fallback I = 0.85 eV (Δ_ex ≈ 0)" : "Reference I = 0.85 eV (Non-Magnetic Scan)";
+    iIsManual = true;
+    iSourceNote = `Manual / Ref Stoner I = ${customI.toFixed(3)} eV`;
+  } else if (iAutoEv !== null) {
+    iUsedEv = iAutoEv;
+    iSourceNote = "I = Δ_ex / |M_tot| (First-Principles)";
+  } else if (isMagneticallyOrdered) {
+    iSourceNote = "Undefined (Δ_ex ≈ 0 on active channel)";
   }
+  const hasStonerI = (iUsedEv !== null && isFinite(iUsedEv) && iUsedEv > 0);
 
   // 5) Reconstructed Rigid-Band Unsplit Non-Magnetic DOS D_NM*(E)
-  const halfShift = isSpinPolarized ? Math.max(-3.0, Math.min(3.0, signedShiftEv * 0.5)) : 0.0;
+  const halfShift = isMagneticallyOrdered ? Math.max(-3.0, Math.min(3.0, signedShiftEv * 0.5)) : 0.0;
   const dUnsplitGrid = new Float64Array(eGrid.length);
   for (let i = 0; i < eGrid.length; i++) {
     const e = eGrid[i];
@@ -19233,7 +19460,7 @@ function computeCastepStonerAnalysis(job) {
     interpUniformGrid(eFull, totalChan.fullDn, +halfShift)
   );
 
-  // 6) Active D(E_F) for Stoner Criterion I·D(E_F) (Supplementary Note 7.3)
+  // 6) Active D(E_F) for Stoner Criterion I·D(E_F)
   let dStonerEf = dAvgEf;
   let dStonerLabel = "D_avg(E_F) = [D↑ + D↓] / 2";
   if (dConv === "total_fu") {
@@ -19247,39 +19474,56 @@ function computeCastepStonerAnalysis(job) {
     dStonerLabel = "Custom Non-Magnetic D_NM(E_F)";
   }
 
-  const stonerProduct = iUsedEv * dStonerEf;
-  const stonerProductUnsplit = iUsedEv * dUnsplitEf;
-  const dCritFu = iUsedEv > 1e-6 ? (1.0 / iUsedEv) : Infinity;
-  const stonerFavored = stonerProduct > 1.0;
-  const chiEnhancement = (stonerProduct < 0.9999) ? (1.0 / (1.0 - stonerProduct)) : null;
+  const stonerProduct = hasStonerI ? (iUsedEv * dStonerEf) : null;
+  const stonerProductUnsplit = hasStonerI ? (iUsedEv * dUnsplitEf) : null;
+  const dCritFu = hasStonerI ? (1.0 / iUsedEv) : null;
+  const stonerFavored = hasStonerI && stonerProduct > 1.0;
+  const chiEnhancement = (hasStonerI && stonerProduct < 0.9999) ? (1.0 / (1.0 - stonerProduct)) : null;
 
-  let stonerVerdict = "Paramagnetic / Non-Magnetic Stable";
-  let stonerBadgeColor = "#2563eb";
-  if (stonerFavored) {
-    stonerVerdict = "Spontaneous Itinerant Ferromagnetism Favored";
+  let stonerVerdict = "Non-Magnetic / Paramagnetic State (M_tot ≈ 0)";
+  let stonerBadgeColor = "#475569";
+  if (!hasStonerI) {
+    stonerVerdict = isAfmLocal
+      ? "Antiferromagnetic / Compensated (Net M_tot ≈ 0; I = Δex/M_tot N/A)"
+      : (isMagneticallyOrdered ? "Δ_ex ≈ 0 on selected channel (Pick magnetic PDOS or set Peak Win)" : "Non-Magnetic Ground State (M_tot ≈ 0; enter manual I to test instability)");
+    stonerBadgeColor = "#475569";
+  } else if (stonerFavored) {
+    stonerVerdict = iIsManual && !isMagneticallyOrdered
+      ? "Manual I Screening: I·D(EF) > 1 (Check Z supercell & D_avg convention)"
+      : "Spontaneous Itinerant Ferromagnetism Favored";
     stonerBadgeColor = "#dc2626";
-  } else if (isSpinPolarized && absMTotFu > 0.05 && stonerProductUnsplit > 1.0) {
+  } else if (isMagneticallyOrdered && stonerProductUnsplit > 1.0) {
     stonerVerdict = "Spin-Split FM (Unsplit I·D*(EF) > 1; Post-Split D(EF) Reduced)";
     stonerBadgeColor = "#d97706";
   } else if (stonerProduct >= 0.80) {
     stonerVerdict = "Nearly Ferromagnetic (Strong Stoner Enhancement)";
     stonerBadgeColor = "#b45309";
+  } else {
+    stonerVerdict = "Paramagnetic / Non-Magnetic Stable (I·D(EF) < 1)";
+    stonerBadgeColor = "#2563eb";
   }
 
+  const supercellWarning = (iIsManual && opts.fInfo.nAtoms >= 12 && zFu === 1)
+    ? `Supercell notice: ${opts.fInfo.nAtoms} atoms with Z = 1 — verify Z (f.u./cell) when applying a per-f.u. reference I.`
+    : "";
+
   // 7) Stoner Free-Energy Landscape E(m) - E0 = 0.5 * [1/D(E_F) - I] * m^2 + 0.25 * beta * m^4
-  const dEffForLandau = Math.max(1e-3, dStonerEf);
-  const alpha2 = (1.0 / dEffForLandau) - iUsedEv; // eV / mu_B^2
-  const mRef = Math.max(0.25, absMTotFu > 0.05 ? absMTotFu : 1.0);
-  const beta4 = alpha2 < 0 ? (-alpha2 / (mRef * mRef)) : (Math.max(0.15, Math.abs(alpha2) * 0.35) / (mRef * mRef));
-  const mMaxPlot = Math.max(1.2, mRef * 1.65);
-  const deltaEfmEv = alpha2 < 0 ? (0.25 * alpha2 * mRef * mRef) : 0.0;
+  let alpha2 = null, beta4 = null, mRef = 1.0, mMaxPlot = 1.6, deltaEfmEv = 0.0;
   const energyCurve = [];
-  const nM = 160;
-  for (let i = 0; i <= nM; i++) {
-    const m = -mMaxPlot + (2 * mMaxPlot) * (i / nM);
-    const eQuad = 0.5 * alpha2 * m * m;
-    const eFullLandau = eQuad + 0.25 * beta4 * m * m * m * m;
-    energyCurve.push({ m, eLandau: eFullLandau, eQuad });
+  if (hasStonerI) {
+    const dEffForLandau = Math.max(1e-3, dStonerEf);
+    alpha2 = (1.0 / dEffForLandau) - iUsedEv;
+    mRef = Math.max(0.25, absMTotFu > 0.05 ? absMTotFu : 1.0);
+    beta4 = alpha2 < 0 ? (-alpha2 / (mRef * mRef)) : (Math.max(0.15, Math.abs(alpha2) * 0.35) / (mRef * mRef));
+    mMaxPlot = Math.max(1.2, mRef * 1.65);
+    deltaEfmEv = alpha2 < 0 ? (0.25 * alpha2 * mRef * mRef) : 0.0;
+    const nM = 160;
+    for (let i = 0; i <= nM; i++) {
+      const m = -mMaxPlot + (2 * mMaxPlot) * (i / nM);
+      const eQuad = 0.5 * alpha2 * m * m;
+      const eFullLandau = eQuad + 0.25 * beta4 * m * m * m * m;
+      energyCurve.push({ m, eLandau: eFullLandau, eQuad });
+    }
   }
 
   // 8) Energy-Resolved Profiles: P(E), M(E), ΔD(E), Stoner Product I·D(E), Rigid-Band Doping Δn(E)
@@ -19291,7 +19535,6 @@ function computeCastepStonerAnalysis(job) {
   const stonerUnsplitCurve = new Float64Array(eGrid.length);
   const dopingCurve = new Float64Array(eGrid.length);
 
-  // Precompute cumulative moment M(E) and doping Δn(E) starting from exact totalChan
   const diffFullArr = new Float64Array(eFull.length);
   const totFullArr = new Float64Array(eFull.length);
   for (let i = 0; i < eFull.length; i++) {
@@ -19307,7 +19550,7 @@ function computeCastepStonerAnalysis(job) {
   }
   const nAtEf = interpUniformGrid(eFull, cumNFull, 0.0);
 
-  let maxStonerInWin = 0, maxStonerE = 0, maxStonerDn = 0;
+  let maxStonerInWin = null, maxStonerE = 0, maxStonerDn = 0;
   let nearestHoleCrit = null, nearestElecCrit = null;
 
   for (let i = 0; i < eGrid.length; i++) {
@@ -19321,21 +19564,26 @@ function computeCastepStonerAnalysis(job) {
     const dn = interpUniformGrid(eFull, cumNFull, e) - nAtEf;
     dopingCurve[i] = dn;
 
-    const dForMap = (dConv === "total_fu") ? tot : (dConv === "unsplit_nm" ? dUnsplitGrid[i] : 0.5 * tot);
-    const sVal = iUsedEv * dForMap;
-    stonerActiveCurve[i] = sVal;
-    stonerUnsplitCurve[i] = iUsedEv * dUnsplitGrid[i];
+    if (hasStonerI) {
+      const dForMap = (dConv === "total_fu") ? tot : (dConv === "unsplit_nm" ? dUnsplitGrid[i] : 0.5 * tot);
+      const sVal = iUsedEv * dForMap;
+      stonerActiveCurve[i] = sVal;
+      stonerUnsplitCurve[i] = iUsedEv * dUnsplitGrid[i];
 
-    if (sVal > maxStonerInWin) {
-      maxStonerInWin = sVal; maxStonerE = e; maxStonerDn = dn;
-    }
-    if (sVal >= 1.0) {
-      if (e <= 0 && (!nearestHoleCrit || Math.abs(e) < Math.abs(nearestHoleCrit.e))) {
-        nearestHoleCrit = { e, dn, sVal };
+      if (maxStonerInWin === null || sVal > maxStonerInWin) {
+        maxStonerInWin = sVal; maxStonerE = e; maxStonerDn = dn;
       }
-      if (e >= 0 && (!nearestElecCrit || Math.abs(e) < Math.abs(nearestElecCrit.e))) {
-        nearestElecCrit = { e, dn, sVal };
+      if (sVal >= 1.0) {
+        if (e <= 0 && (!nearestHoleCrit || Math.abs(e) < Math.abs(nearestHoleCrit.e))) {
+          nearestHoleCrit = { e, dn, sVal };
+        }
+        if (e >= 0 && (!nearestElecCrit || Math.abs(e) < Math.abs(nearestElecCrit.e))) {
+          nearestElecCrit = { e, dn, sVal };
+        }
       }
+    } else {
+      stonerActiveCurve[i] = NaN;
+      stonerUnsplitCurve[i] = NaN;
     }
   }
 
@@ -19346,6 +19594,11 @@ function computeCastepStonerAnalysis(job) {
     opts,
     sourceLabel,
     isSpinPolarized,
+    isMagneticallyOrdered,
+    isAfmLocal,
+    hasStonerI,
+    iIsManual,
+    supercellWarning,
     zFu,
     fInfo: opts.fInfo,
     eGrid,
@@ -19355,8 +19608,11 @@ function computeCastepStonerAnalysis(job) {
     dUpEf, dDnEf, dTotEf, dAvgEf, deltaDEf,
     dUnsplitEf, dStonerEf, dStonerLabel,
     isMetallicAtEf, pEf,
-    mTotFu, mTotDosCell, absMTotFu,
-    nUpFu: totalChan.nUpFu, nDnFu: totalChan.nDnFu,
+    mTotFu, mTotCell, mTotDosFu, mTotDosCell,
+    mTotMullFu, mTotMullCell, mTotScfFu, mTotScfCell,
+    mSourceLabel, mSourceFallbackNote, absMTotFu,
+    nUpFu: exactGauss ? (exactGauss.nUpCell / zFu) : totalChan.nUpFu,
+    nDnFu: exactGauss ? (exactGauss.nDnCell / zFu) : totalChan.nDnFu,
     exactOcc, scfCross, gapInfo,
     upGapEv, dnGapEv, hmGapEv, phaseLabel,
     deltaExEv, signedShiftEv,
@@ -19847,9 +20103,24 @@ function drawCastepStonerCriterionCanvas(res) {
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
-  if (!res) {
-    ctx.fillStyle = "#64748b"; ctx.font = "12.5px Inter, sans-serif"; ctx.textAlign = "center";
-    ctx.fillText("Load a calculation with DOS / PDOS data to visualize Stoner Criterion I·D(E) & Free-Energy Landscape E(m).", width / 2, height / 2);
+  if (!res || !res.hasStonerI) {
+    ctx.fillStyle = "#334155"; ctx.font = "700 13.5px Inter, sans-serif"; ctx.textAlign = "center";
+    const headline = !res
+      ? "No Spin-Resolved DOS / PDOS Data Loaded"
+      : (res.isAfmLocal
+          ? "Antiferromagnetic / Compensated State (Net M_tot ≈ 0)"
+          : (res.isMagneticallyOrdered
+              ? "Exchange Splitting Δex ≈ 0 on Selected Channel"
+              : "Non-Magnetic Ground State (M_tot ≈ 0, Δex ≈ 0)"));
+    ctx.fillText(headline, width / 2, height / 2 - 14);
+    ctx.fillStyle = "#64748b"; ctx.font = "12px Inter, sans-serif";
+    const subMsg = !res
+      ? "Load a calculation with DOS / PDOS data to evaluate Stoner Criterion I·D(E) & Free-Energy Landscape E(m)."
+      : (res.isMagneticallyOrdered
+          ? "Select a spin-polarized PDOS channel (or adjust Peak Win / Manual Peaks) so I = Δex / |M_tot| can be extracted."
+          : "First-principles I = Δex / M_tot is undefined when M_tot = 0. Enter a manual or reference Stoner I (eV) above to screen hypothetical I·D(E).");
+    ctx.fillText(subMsg, width / 2, height / 2 + 12);
+    canvas._subPanelRects = [];
     ctx.restore();
     return;
   }
@@ -20217,10 +20488,19 @@ function renderCastepStonerPane() {
   const res = computeCastepStonerAnalysis(job);
   window._lastCastepStonerResult = res;
 
-  // Toggle custom D_NM(E_F) input visibility
+  // Toggle custom D_NM(E_F) and Manual Peaks inputs visibility
   const dConv = document.getElementById("castep-st-dconv")?.value || "spin_avg";
   const dnmWrap = document.getElementById("castep-st-custom-dnm-wrap");
   if (dnmWrap) dnmWrap.style.display = dConv === "custom_dnm" ? "inline-flex" : "none";
+  const exM = document.getElementById("castep-st-ex-method")?.value || "partner";
+  const manWrap = document.getElementById("castep-st-manual-pk-wrap");
+  if (manWrap) manWrap.style.display = exM === "manual" ? "inline-flex" : "none";
+  if (res && exM !== "manual" && res.activeChan?.activePkUp?.found && res.activeChan?.activePkDn?.found) {
+    const upEl = document.getElementById("castep-st-man-eup");
+    const dnEl = document.getElementById("castep-st-man-edn");
+    if (upEl) upEl.value = res.activeChan.activePkUp.ePeak.toFixed(3);
+    if (dnEl) dnEl.value = res.activeChan.activePkDn.ePeak.toFixed(3);
+  }
 
   if (res) populateCastepStonerChannelSelect(res);
 
@@ -20231,14 +20511,19 @@ function renderCastepStonerPane() {
       strip.innerHTML = `<span>Load a CASTEP calculation containing <code>*.pdos_bin</code>, <code>*_DOS.bands</code>, or <code>*.xcd</code> to compute Exchange Splitting (Δ<sub>ex</sub>), Spin Polarization P(E<sub>F</sub>), Total Magnetic Moment (M<sub>tot</sub>), Stoner Exchange Parameter (I), and Stoner Criterion I·D(E<sub>F</sub>).</span>`;
     } else {
       const pTxt = res.pEf !== null ? `${res.pEf >= 0 ? "+" : ""}${res.pEf.toFixed(1)}%` : "Gapped";
-      const verdictBg = res.stonerFavored ? "#fef2f2" : (res.stonerProduct >= 0.8 ? "#fffbeb" : "#eff6ff");
+      const iTxt = res.hasStonerI ? `${res.iUsedEv.toFixed(3)} eV${res.iIsManual ? " (Ref)" : ""}` : "N/A (M_tot ≈ 0)";
+      const verdictBg = !res.hasStonerI ? "#f1f5f9" : (res.stonerFavored ? "#fef2f2" : (res.stonerProduct >= 0.8 ? "#fffbeb" : "#eff6ff"));
+      const verdictPillTxt = !res.hasStonerI
+        ? (res.isAfmLocal ? "AFM / Compensated (M_tot ≈ 0)" : (res.isMagneticallyOrdered ? "I·D(E_F): N/A (Δ_ex ≈ 0)" : "Non-Magnetic (M_tot ≈ 0)"))
+        : `I·D(E_F) = ${res.stonerProduct.toFixed(3)} • ${res.stonerFavored ? "FM Favored (>1)" : "PM Stable (<1)"}`;
+      const mTag = res.opts.mSource === "mulliken" ? "Mulliken" : (res.opts.mSource === "scf_spin" ? "SCF" : "DOS");
       strip.innerHTML = `
         <span><strong>System:</strong> ${escapeHtml(res.material)} (Z = ${res.zFu} f.u./cell)</span>
         <span style="color:#4f46e5;"><strong>P(E<sub>F</sub>):</strong> ${pTxt}</span>
-        <span style="color:#0f766e;"><strong>M<sub>tot</sub>:</strong> ${res.mTotFu >= 0 ? "+" : ""}${res.mTotFu.toFixed(3)} μ<sub>B</sub>/f.u.</span>
+        <span style="color:#0f766e;"><strong>M<sub>tot</sub> (${mTag}):</strong> ${res.mTotFu >= 0 ? "+" : ""}${res.mTotFu.toFixed(3)} μ<sub>B</sub>/f.u.</span>
         <span style="color:#b45309;"><strong>Δ<sub>ex</sub> (${escapeHtml(res.activeChan.label)}):</strong> ${res.deltaExEv.toFixed(3)} eV</span>
-        <span style="color:#0369a1;"><strong>I:</strong> ${res.iUsedEv.toFixed(3)} eV</span>
-        <span style="background:${verdictBg}; color:${res.stonerBadgeColor}; border:1px solid ${res.stonerBadgeColor}44; padding:2px 8px; border-radius:999px; font-weight:800;">I·D(E<sub>F</sub>) = ${res.stonerProduct.toFixed(3)} • ${res.stonerFavored ? "FM Favored (>1)" : "PM Stable (<1)"}</span>
+        <span style="color:#0369a1;"><strong>I:</strong> ${iTxt.replace(/M_tot/g, "M<sub>tot</sub>")}</span>
+        <span style="background:${verdictBg}; color:${res.stonerBadgeColor}; border:1px solid ${res.stonerBadgeColor}44; padding:2px 8px; border-radius:999px; font-weight:800;">${verdictPillTxt.replace(/E_F/g, "E<sub>F</sub>").replace(/M_tot/g, "M<sub>tot</sub>").replace(/Δ_ex/g, "Δ<sub>ex</sub>")}</span>
       `;
     }
   }
@@ -20251,12 +20536,13 @@ function renderCastepStonerPane() {
     } else {
       const pValStr = res.pEf !== null ? `${res.pEf >= 0 ? "+" : ""}${res.pEf.toFixed(2)}%` : "Gapped (D = 0)";
       const pColor = res.pEf !== null && Math.abs(res.pEf) >= 98 ? "#15803d" : "#4f46e5";
-      const scfStr = res.scfCross.intSpin !== null
-        ? `${(res.scfCross.intSpin / res.zFu).toFixed(3)} μ<sub>B</sub>/f.u. (${res.scfCross.intSpin.toFixed(2)} /cell)`
+      const mullStr = res.mTotMullFu !== null
+        ? `${res.mTotMullFu >= 0 ? "+" : ""}${res.mTotMullFu.toFixed(3)} μ<sub>B</sub>/f.u. (Σ|m|=${(res.scfCross.mullAbsSpin / res.zFu).toFixed(2)})`
+        : "— (.castep Mulliken N/A)";
+      const scfStr = res.mTotScfFu !== null
+        ? `${res.mTotScfFu >= 0 ? "+" : ""}${res.mTotScfFu.toFixed(3)} μ<sub>B</sub>/f.u.`
         : "—";
-      const occStr = res.exactOcc && res.exactOcc.isSpin
-        ? `${(res.exactOcc.mCell / res.zFu).toFixed(3)} μ<sub>B</sub>/f.u.`
-        : "—";
+      const dosIntStr = `${res.mTotDosFu >= 0 ? "+" : ""}${res.mTotDosFu.toFixed(3)} μ<sub>B</sub>/f.u.`;
 
       cardsEl.innerHTML = `
         <div class="castep-mulliken-sp-card" style="border-top:3px solid #4f46e5;">
@@ -20268,7 +20554,7 @@ function renderCastepStonerPane() {
             <div>Phase: <strong style="font-size:10.5px;">${escapeHtml(res.phaseLabel.split("(")[0].trim())}</strong></div>
             <div>D<sub>↑</sub>(E<sub>F</sub>): <strong style="color:#1d4ed8;">${res.dUpEf.toFixed(3)}</strong> st/eV·f.u.</div>
             <div>D<sub>↓</sub>(E<sub>F</sub>): <strong style="color:#dc2626;">${res.dDnEf.toFixed(3)}</strong> st/eV·f.u.</div>
-            <div>D(E<sub>F</sub>) Total: <strong>${res.dTotEf.toFixed(3)}</strong> st/eV·f.u.</div>
+            <div>D(E<sub>F</sub>) Total: <strong>${res.dTotEf.toFixed(3)}</strong> (Avg: ${res.dAvgEf.toFixed(3)})</div>
             <div>ΔD(E<sub>F</sub>): <strong>${res.deltaDEf >= 0 ? "+" : ""}${res.deltaDEf.toFixed(3)}</strong> st/eV·f.u.</div>
             <div>E<sub>g</sub>(↑) / E<sub>g</sub>(↓): <strong>${res.upGapEv.toFixed(2)} / ${res.dnGapEv.toFixed(2)} eV</strong></div>
             <div>HM Gap E<sub>HM</sub>: <strong>${res.hmGapEv !== null ? res.hmGapEv.toFixed(3) + " eV" : "—"}</strong></div>
@@ -20277,16 +20563,17 @@ function renderCastepStonerPane() {
 
         <div class="castep-mulliken-sp-card" style="border-top:3px solid #0f766e;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-            <strong style="font-size:12px; color:#0f766e;">🧲 Integrated Moment M<sub>tot</sub></strong>
+            <strong style="font-size:12px; color:#0f766e;">🧲 Magnetization M<sub>tot</sub></strong>
             <span class="badge badge-blue" style="font-size:9.5px;">Z = ${res.zFu} f.u.</span>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; font-size:11.5px; color:#1e293b;">
-            <div style="grid-column:1/-1;">M<sub>tot</sub> (DOS Integral): <strong style="color:#0f766e; font-size:13px;">${res.mTotFu >= 0 ? "+" : ""}${res.mTotFu.toFixed(4)} μ<sub>B</sub>/f.u.</strong></div>
-            <div>M<sub>cell</sub> (Full Cell): <strong>${res.mTotDosCell >= 0 ? "+" : ""}${res.mTotDosCell.toFixed(3)} μ<sub>B</sub></strong></div>
-            <div>Exact Band Occ: <strong>${occStr}</strong></div>
-            <div>N<sub>↑</sub> / N<sub>↓</sub> (f.u.): <strong>${res.nUpFu.toFixed(2)} / ${res.nDnFu.toFixed(2)} e</strong></div>
+            <div style="grid-column:1/-1;">Active M<sub>tot</sub> (${escapeHtml(res.mSourceLabel)}): <strong style="color:#0f766e; font-size:13px;">${res.mTotFu >= 0 ? "+" : ""}${res.mTotFu.toFixed(4)} μ<sub>B</sub>/f.u.</strong></div>
+            <div>DOS Integral ∫[D<sub>↑</sub>−D<sub>↓</sub>]: <strong>${dosIntStr}</strong></div>
             <div>SCF (.castep): <strong>${scfStr}</strong></div>
-            <div style="grid-column:1/-1; font-size:10.5px; color:#64748b;">Formula: <strong>${escapeHtml(res.fInfo.fuFormula)}</strong> (${res.fInfo.nAtoms} atoms/cell)</div>
+            <div style="grid-column:1/-1;">Mulliken Σ Atomic Spin: <strong>${mullStr}</strong></div>
+            <div>N<sub>↑</sub> / N<sub>↓</sub> (f.u.): <strong>${res.nUpFu.toFixed(2)} / ${res.nDnFu.toFixed(2)} e</strong></div>
+            <div>M<sub>cell</sub>: <strong>${res.mTotCell >= 0 ? "+" : ""}${res.mTotCell.toFixed(3)} μ<sub>B</sub></strong></div>
+            ${res.mSourceFallbackNote ? `<div style="grid-column:1/-1; font-size:10.5px; color:#b45309;">⚠️ ${escapeHtml(res.mSourceFallbackNote)}</div>` : `<div style="grid-column:1/-1; font-size:10.5px; color:#64748b;">Formula: <strong>${escapeHtml(res.fInfo.fuFormula)}</strong> (${res.fInfo.nAtoms} atoms/cell)</div>`}
           </div>
         </div>
 
@@ -20309,13 +20596,14 @@ function renderCastepStonerPane() {
             <strong style="font-size:12px; color:${res.stonerBadgeColor};">🧭 Stoner Criterion I·D(E<sub>F</sub>)</strong>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; font-size:11.5px; color:#1e293b;">
-            <div>Stoner I: <strong style="color:#0369a1; font-size:13px;">${res.iUsedEv.toFixed(4)} eV</strong></div>
-            <div>I·D(E<sub>F</sub>): <strong style="color:${res.stonerBadgeColor}; font-size:13px;">${res.stonerProduct.toFixed(4)}</strong></div>
-            <div>D<sub>crit</sub> = 1/I: <strong>${isFinite(res.dCritFu) ? res.dCritFu.toFixed(3) : "—"}</strong> st/eV·f.u.</div>
-            <div>Unsplit I·D<sub>NM</sub>*: <strong>${res.stonerProductUnsplit.toFixed(3)}</strong></div>
-            <div>${res.stonerFavored ? "ΔE<sub>FM</sub>" : "Enhanc. χ/χ<sub>0</sub>"}: <strong>${res.stonerFavored ? (res.deltaEfmEv * 1000).toFixed(1) + " meV" : (res.chiEnhancement ? res.chiEnhancement.toFixed(2) + "×" : "∞")}</strong></div>
-            <div>Max I·D(E): <strong>${res.maxStonerInWin.toFixed(2)}</strong> @ ${res.maxStonerE.toFixed(2)} eV</div>
-            <div style="grid-column:1/-1; font-size:10.5px; font-weight:700; color:${res.stonerBadgeColor};">${escapeHtml(res.stonerVerdict).replace(/\(EF\)/g, "(E<sub>F</sub>)")}</div>
+            <div>Stoner I: <strong style="color:#0369a1; font-size:13px;">${res.hasStonerI ? res.iUsedEv.toFixed(4) + " eV" : "N/A"}</strong></div>
+            <div>I·D(E<sub>F</sub>): <strong style="color:${res.stonerBadgeColor}; font-size:13px;">${res.hasStonerI ? res.stonerProduct.toFixed(4) : "N/A"}</strong></div>
+            <div>D<sub>crit</sub> = 1/I: <strong>${res.hasStonerI && isFinite(res.dCritFu) ? res.dCritFu.toFixed(3) + " st/eV·f.u." : "—"}</strong></div>
+            <div>Unsplit I·D<sub>NM</sub>*: <strong>${res.hasStonerI ? res.stonerProductUnsplit.toFixed(3) : "—"}</strong></div>
+            <div>${res.stonerFavored ? "ΔE<sub>FM</sub>" : "Enhanc. χ/χ<sub>0</sub>"}: <strong>${!res.hasStonerI ? "—" : (res.stonerFavored ? (res.deltaEfmEv * 1000).toFixed(1) + " meV" : (res.chiEnhancement ? res.chiEnhancement.toFixed(2) + "×" : "∞"))}</strong></div>
+            <div>Max I·D(E): <strong>${res.hasStonerI && res.maxStonerInWin !== null ? res.maxStonerInWin.toFixed(2) + " @ " + res.maxStonerE.toFixed(2) + " eV" : "—"}</strong></div>
+            <div style="grid-column:1/-1; font-size:10.5px; font-weight:700; color:${res.stonerBadgeColor};">${escapeHtml(res.stonerVerdict).replace(/\(EF\)/g, "(E<sub>F</sub>)").replace(/M_tot/g, "M<sub>tot</sub>").replace(/Δ_ex/g, "Δ<sub>ex</sub>")}</div>
+            ${res.supercellWarning ? `<div style="grid-column:1/-1; font-size:10px; color:#b45309;">⚠️ ${escapeHtml(res.supercellWarning)}</div>` : ""}
           </div>
         </div>
       `;
@@ -20365,14 +20653,15 @@ function renderCastepStonerPane() {
         ["Total DOS at E<sub>F</sub>", "D(E<sub>F</sub>) = D<sub>↑</sub> + D<sub>↓</sub>", `${res.dTotEf.toFixed(4)}`, "states / (eV·f.u.)"],
         ["Spin Asymmetry at E<sub>F</sub>", "ΔD(E<sub>F</sub>) = D<sub>↑</sub> − D<sub>↓</sub>", `${res.deltaDEf >= 0 ? "+" : ""}${res.deltaDEf.toFixed(4)}`, "states / (eV·f.u.)"],
         ["Spin Polarization at E<sub>F</sub>", "P(E<sub>F</sub>) = [ΔD / D] × 100%", res.pEf !== null ? `${res.pEf >= 0 ? "+" : ""}${res.pEf.toFixed(2)}%` : "Gapped (0 states)", "%"],
-        ["Total Magnetic Moment", "M<sub>tot</sub> = μ<sub>B</sub>∫[D<sub>↑</sub>−D<sub>↓</sub>]dE", `${res.mTotFu >= 0 ? "+" : ""}${res.mTotFu.toFixed(4)}`, "μ<sub>B</sub> / f.u."],
+        ["Active Magnetization M<sub>tot</sub>", escapeHtml(res.mSourceLabel), `${res.mTotFu >= 0 ? "+" : ""}${res.mTotFu.toFixed(4)}`, "μ<sub>B</sub> / f.u."],
+        ["M<sub>tot</sub> (DOS Integral / Mulliken / SCF)", "Cross-check across methods", `${res.mTotDosFu >= 0 ? "+" : ""}${res.mTotDosFu.toFixed(3)} / ${res.mTotMullFu !== null ? (res.mTotMullFu >= 0 ? "+" : "") + res.mTotMullFu.toFixed(3) : "—"} / ${res.mTotScfFu !== null ? (res.mTotScfFu >= 0 ? "+" : "") + res.mTotScfFu.toFixed(3) : "—"}`, "μ<sub>B</sub> / f.u."],
         ["Exchange Splitting", `Δ<sub>ex</sub> = |E<sub>peak,↓</sub> − E<sub>peak,↑</sub>| (${escapeHtml(res.activeChan.label)})`, `${res.deltaExEv.toFixed(4)}`, "eV"],
-        ["Stoner Exchange Parameter", res.iSourceNote.replace("Δ_ex", "Δ<sub>ex</sub>").replace("M_tot", "M<sub>tot</sub>"), `${res.iUsedEv.toFixed(4)}`, "eV"],
+        ["Stoner Exchange Parameter", res.iSourceNote.replace(/Δ_ex/g, "Δ<sub>ex</sub>").replace(/M_tot/g, "M<sub>tot</sub>"), res.hasStonerI ? `${res.iUsedEv.toFixed(4)}` : "N/A", "eV"],
         ["Active Stoner DOS", res.dStonerLabel.replace(/E_F/g, "E<sub>F</sub>").replace(/D_avg/g, "D<sub>avg</sub>").replace(/D_tot/g, "D<sub>tot</sub>").replace(/D_NM/g, "D<sub>NM</sub>"), `${res.dStonerEf.toFixed(4)}`, "states / (eV·f.u.)"],
-        ["Stoner Criterion Product", "I · D(E<sub>F</sub>) &gt; 1 ⇒ FM", `<strong style="color:${res.stonerBadgeColor};">${res.stonerProduct.toFixed(4)} (${res.stonerFavored ? "FM &gt; 1" : "PM &lt; 1"})</strong>`, "dimensionless"],
-        ["Critical Stoner DOS", "D<sub>crit</sub> = 1 / I", `${isFinite(res.dCritFu) ? res.dCritFu.toFixed(4) : "—"}`, "states / (eV·f.u.)"],
-        ["Hole-Doping FM Threshold", "Nearest E &lt; E<sub>F</sub> with I·D(E) &ge; 1", res.nearestHoleCrit ? `ΔE = ${res.nearestHoleCrit.e.toFixed(2)} eV (Δn = ${res.nearestHoleCrit.dn.toFixed(2)} e/f.u.)` : "None in window", "Rigid-band"],
-        ["Electron-Doping FM Threshold", "Nearest E &gt; E<sub>F</sub> with I·D(E) &ge; 1", res.nearestElecCrit ? `ΔE = +${res.nearestElecCrit.e.toFixed(2)} eV (Δn = +${res.nearestElecCrit.dn.toFixed(2)} e/f.u.)` : "None in window", "Rigid-band"]
+        ["Stoner Criterion Product", "I · D(E<sub>F</sub>) &gt; 1 ⇒ FM", res.hasStonerI ? `<strong style="color:${res.stonerBadgeColor};">${res.stonerProduct.toFixed(4)} (${res.stonerFavored ? "FM &gt; 1" : "PM &lt; 1"})</strong>` : `<strong style="color:#475569;">N/A (Non-Magnetic)</strong>`, "dimensionless"],
+        ["Critical Stoner DOS", "D<sub>crit</sub> = 1 / I", res.hasStonerI && isFinite(res.dCritFu) ? `${res.dCritFu.toFixed(4)}` : "—", "states / (eV·f.u.)"],
+        ["Hole-Doping FM Threshold", "Nearest E &lt; E<sub>F</sub> with I·D(E) &ge; 1", res.nearestHoleCrit ? `ΔE = ${res.nearestHoleCrit.e.toFixed(2)} eV (Δn = ${res.nearestHoleCrit.dn.toFixed(2)} e/f.u.)` : (res.hasStonerI ? "None in window" : "—"), "Rigid-band"],
+        ["Electron-Doping FM Threshold", "Nearest E &gt; E<sub>F</sub> with I·D(E) &ge; 1", res.nearestElecCrit ? `ΔE = +${res.nearestElecCrit.e.toFixed(2)} eV (Δn = +${res.nearestElecCrit.dn.toFixed(2)} e/f.u.)` : (res.hasStonerI ? "None in window" : "—"), "Rigid-band"]
       ];
       eqTbody.innerHTML = rows.map(r => `<tr>
         <td style="font-weight:700;">${r[0]}</td>
@@ -20433,21 +20722,25 @@ function buildStonerExportTables() {
     ["D_avg_EF", Number(res.dAvgEf.toFixed(5)), "states/(eV*f.u.)"],
     ["Delta_D_EF", Number(res.deltaDEf.toFixed(5)), "states/(eV*f.u.)"],
     ["Spin_Polarization_P_EF", res.pEf !== null ? Number(res.pEf.toFixed(3)) : "Gapped", "%"],
-    ["Total_Magnetic_Moment_Mtot_DOS", Number(res.mTotFu.toFixed(5)), "mu_B/f.u."],
-    ["Total_Magnetic_Moment_Cell", Number(res.mTotDosCell.toFixed(5)), "mu_B/cell"],
+    ["Active_Mtot_Source", res.mSourceLabel, ""],
+    ["Active_Mtot_muB_fu", Number(res.mTotFu.toFixed(5)), "mu_B/f.u."],
+    ["Mtot_DOS_Integral", Number(res.mTotDosFu.toFixed(5)), "mu_B/f.u."],
+    ["Mtot_Mulliken_Sum", res.mTotMullFu !== null ? Number(res.mTotMullFu.toFixed(5)) : "", "mu_B/f.u."],
+    ["Mtot_CASTEP_SCF", res.mTotScfFu !== null ? Number(res.mTotScfFu.toFixed(5)) : "", "mu_B/f.u."],
+    ["Active_Mtot_Cell", Number(res.mTotCell.toFixed(5)), "mu_B/cell"],
     ["Exchange_Splitting_Channel", res.activeChan.label, ""],
     ["E_peak_up", res.activeChan.activePkUp.found ? Number(res.activeChan.activePkUp.ePeak.toFixed(4)) : "", "eV"],
     ["E_peak_dn", res.activeChan.activePkDn.found ? Number(res.activeChan.activePkDn.ePeak.toFixed(4)) : "", "eV"],
     ["Exchange_Splitting_Delta_ex", Number(res.deltaExEv.toFixed(5)), "eV"],
     ["Delta_ex_CrossCorr", Number(res.activeChan.xcorr.deltaEv.toFixed(5)), "eV"],
     ["Delta_ex_BandCenter", Number(res.activeChan.cent.deltaEv.toFixed(5)), "eV"],
-    ["Stoner_Parameter_I", Number(res.iUsedEv.toFixed(5)), "eV"],
+    ["Stoner_Parameter_I", res.hasStonerI ? Number(res.iUsedEv.toFixed(5)) : "N/A", "eV"],
     ["Stoner_Active_D_EF", Number(res.dStonerEf.toFixed(5)), "states/(eV*f.u.)"],
-    ["Stoner_Product_I_x_D_EF", Number(res.stonerProduct.toFixed(5)), "dimensionless"],
-    ["Stoner_Unsplit_I_x_DNM_EF", Number(res.stonerProductUnsplit.toFixed(5)), "dimensionless"],
+    ["Stoner_Product_I_x_D_EF", res.hasStonerI ? Number(res.stonerProduct.toFixed(5)) : "N/A", "dimensionless"],
+    ["Stoner_Unsplit_I_x_DNM_EF", res.hasStonerI ? Number(res.stonerProductUnsplit.toFixed(5)) : "N/A", "dimensionless"],
     ["Stoner_Verdict", res.stonerVerdict, ""],
-    ["Critical_DOS_Dcrit", isFinite(res.dCritFu) ? Number(res.dCritFu.toFixed(5)) : "", "states/(eV*f.u.)"],
-    ["Susceptibility_Enhancement_chi_chi0", res.chiEnhancement ? Number(res.chiEnhancement.toFixed(4)) : "FM_Instability", "ratio"]
+    ["Critical_DOS_Dcrit", res.hasStonerI && isFinite(res.dCritFu) ? Number(res.dCritFu.toFixed(5)) : "", "states/(eV*f.u.)"],
+    ["Susceptibility_Enhancement_chi_chi0", !res.hasStonerI ? "N/A" : (res.chiEnhancement ? Number(res.chiEnhancement.toFixed(4)) : "FM_Instability"), "ratio"]
   ];
 
   const dosHeaders = [
@@ -20465,8 +20758,8 @@ function buildStonerExportTables() {
     isFinite(res.pCurve[i]) ? Number(res.pCurve[i].toFixed(3)) : "",
     Number(res.mCumCurve[i].toFixed(5)),
     Number(res.dopingCurve[i].toFixed(5)),
-    Number(res.stonerActiveCurve[i].toFixed(5)),
-    Number(res.stonerUnsplitCurve[i].toFixed(5)),
+    isFinite(res.stonerActiveCurve[i]) ? Number(res.stonerActiveCurve[i].toFixed(5)) : "",
+    isFinite(res.stonerUnsplitCurve[i]) ? Number(res.stonerUnsplitCurve[i].toFixed(5)) : "",
     Number(res.activeChan.up[i].toFixed(5)),
     Number(res.activeChan.dn[i].toFixed(5))
   ]);
