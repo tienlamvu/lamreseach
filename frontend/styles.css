@@ -10831,22 +10831,44 @@ sup {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 4px;
+  gap: 6px;
   margin-top: 4px;
-  padding: 2px 5px;
-  border-radius: 4px;
-  background: rgba(241, 245, 249, 0.85);
-  border: 1px solid rgba(226, 232, 240, 0.8);
-  font-size: 10px;
-  color: #475569;
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: rgba(248, 250, 252, 0.92);
+  border: 1px solid rgba(226, 232, 240, 0.85);
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
 }
-.castep-job-path-txt {
+.castep-job-path-icon {
+  font-size: 13px;
+  line-height: 1;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0.5px 0 rgba(180, 83, 9, 0.18));
+}
+.castep-job-path-stack {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  gap: 1px;
+}
+.castep-job-path-parent {
+  font-size: 9.5px;
+  color: #64748b;
+  font-weight: 500;
+  line-height: 1.2;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  min-width: 0;
-  flex: 1;
+}
+.castep-job-path-leaf {
+  font-size: 10.2px;
+  color: #1e293b;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .castep-job-path-edit {
   border: none;
