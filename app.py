@@ -1883,9 +1883,14 @@ def _discover_default_castep_roots():
     candidates = [
         os.path.expanduser(r"~\Documents\Materials Studio Projects"),
         r"D:\DATA LAM\DATA TINH TOAN\2026",
+        r"D:\DATA LAM\DATA TINH TOAN",
         r"D:\Data_Server",
     ]
-    return [p for p in candidates if p and os.path.isdir(p)]
+    out = []
+    for p in candidates:
+        if p and os.path.isdir(p) and not any(os.path.normcase(p) == os.path.normcase(x) for x in out):
+            out.append(p)
+    return out
 
 
 def _detect_castep_processes():
@@ -3190,6 +3195,75 @@ def api_castep_scan(root_path: Optional[str] = None, limit: int = 120):
         "roots": roots,
         "total_found": len(discovered),
         "jobs": discovered[:limit],
+    }
+
+
+@app.post("/api/castep/resolve-parent")
+async def api_castep_resolve_parent(request: Request):
+    """Resolve the real OS parent folder & full path for a browser-mounted leaf folder
+    by matching folder name + sample file sizes/mtimes across local CASTEP roots."""
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    folder_name = str(body.get("folder_name") or "").strip()
+    sample_files = body.get("sample_files") or []
+    if not folder_name:
+        return {"ok": False}
+
+    target_low = folder_name.lower()
+    roots = _discover_default_castep_roots()
+    skip = {".git", "node_modules", "__pycache__", "$recycle.bin", "system volume information"}
+
+    best_path = None
+    best_score = -1
+    visited_dirs = set()
+
+    for root in roots:
+        for cur_root, dirnames, filenames in os.walk(root):
+            dirnames[:] = [d for d in dirnames if d.lower() not in skip and not d.startswith(".")]
+            if os.path.basename(cur_root).lower() != target_low:
+                continue
+            norm_cur = os.path.normcase(os.path.abspath(cur_root))
+            if norm_cur in visited_dirs:
+                continue
+            visited_dirs.add(norm_cur)
+
+            f_low_map = {fn.lower(): fn for fn in filenames}
+            score = 0
+            matched_files = 0
+            for sf in sample_files[:6]:
+                sname = str(sf.get("name") or "").lower()
+                if sname not in f_low_map:
+                    continue
+                matched_files += 1
+                score += 2
+                fp = os.path.join(cur_root, f_low_map[sname])
+                try:
+                    st = os.stat(fp)
+                    req_sz = sf.get("size")
+                    if req_sz is not None and int(req_sz) == int(st.st_size):
+                        score += 10
+                    req_mt = sf.get("mtime_ms")
+                    if req_mt is not None and abs(float(req_mt) - st.st_mtime * 1000.0) < 5000.0:
+                        score += 5
+                except Exception:
+                    pass
+            if matched_files > 0 and score > best_score:
+                best_score = score
+                best_path = cur_root
+            elif best_path is None and not sample_files:
+                best_path = cur_root
+                best_score = 1
+
+    if not best_path:
+        return {"ok": False}
+    parent_dir = os.path.dirname(best_path)
+    return {
+        "ok": True,
+        "full_path": best_path,
+        "parent_name": os.path.basename(parent_dir) if parent_dir else "",
+        "leaf_name": os.path.basename(best_path),
     }
 
 
