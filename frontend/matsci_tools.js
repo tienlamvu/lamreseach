@@ -2076,10 +2076,10 @@ function renderCastepJobsList() {
     const isChk = CASTEP_STUDIO_STATE.selectedJobIds.has(j.id);
     const isRunning = /running|active/i.test(j.status);
     const statusBadge = isRunning
-      ? `<span class="badge" style="background:#dcfce7; color:#15803d; border:1px solid #86efac; font-size:10.5px;">🟢 Active</span>`
+      ? `<span class="castep-job-status-pill" style="background:#dcfce7; color:#15803d; border:1px solid #86efac;">● Active</span>`
       : (j.status === "Input Ready"
-        ? `<span class="badge" style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; font-size:10.5px;">📄 Ready</span>`
-        : `<span class="badge" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-size:10.5px;">✅ Done</span>`);
+        ? `<span class="castep-job-status-pill" style="background:#fef3c7; color:#b45309; border:1px solid #fde68a;">● Ready</span>`
+        : `<span class="castep-job-status-pill" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;">✓ Done</span>`);
 
     const files = j.files_list || [];
     const keyExts = [];
@@ -2094,10 +2094,10 @@ function renderCastepJobsList() {
     if (j.has_chdiff || j.chdiff_data || files.some(f => /\.(chdiff|charg_frm)$/i.test(f))) keyExts.push("Δρ");
 
     const eText = (j.totalEnergyEv !== null && j.totalEnergyEv !== undefined && !isNaN(j.totalEnergyEv))
-      ? `E = ${Number(j.totalEnergyEv).toFixed(2)} eV`
+      ? `E = ${Number(j.totalEnergyEv).toFixed(1)} eV`
       : `${files.length} file${files.length === 1 ? "" : "s"}`;
     const bgText = (j.bandGapEv !== null && j.bandGapEv !== undefined && !isNaN(j.bandGapEv))
-      ? ` • E<sub>g</sub> = ${Number(j.bandGapEv).toFixed(3)} eV`
+      ? ` · E<sub>g</sub> ${Number(j.bandGapEv).toFixed(2)}`
       : "";
 
     const rawPath = j.customLocation || j.folder || "";
@@ -2106,36 +2106,39 @@ function renderCastepJobsList() {
     displayPathSeen[dupKey] = (displayPathSeen[dupKey] || 0) + 1;
     const dupIdx = displayPathCounts[dupKey] > 1 ? displayPathSeen[dupKey] : 0;
     const dupBadge = dupIdx > 0
-      ? `<span style="display:inline-block; margin-left:4px; padding:0 4px; border-radius:4px; background:#e0f2fe; color:#0369a1; font-weight:800; font-size:9.5px; font-family:Inter,sans-serif;">#${dupIdx}</span>`
+      ? `<span style="display:inline-block; margin-left:4px; padding:0 4px; border-radius:4px; background:#e0f2fe; color:#0369a1; font-weight:800; font-size:9.5px; font-family:Inter,sans-serif; flex-shrink:0;">#${dupIdx}</span>`
       : "";
     const canLiveRefresh = Boolean(j._dirHandle || (j.folder && (CASTEP_STUDIO_STATE.localBackendConnected || /^[A-Za-z]:[\\/]|^\//.test(j.folder))));
+    const shortTitle = j.seed || j.material || j.title || "CASTEP Job";
+    const fullTitle = j.title || shortTitle;
+    const shortTime = (j.updated_at || "").slice(0, 16);
 
     return `
       <div class="castep-job-item ${isAct ? "active" : ""}" data-job-id="${j.id}" onclick="loadCastepJobIntoStudio('${j.id}')">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:5px;">
-          <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:800; font-size:12.5px; color:#0f172a; flex:1; min-width:0;" onclick="event.stopPropagation()">
-            <input type="checkbox" ${isChk ? "checked" : ""} onchange="toggleSelectCastepJob('${j.id}', this.checked)" />
-            <span style="overflow:hidden; text-overflow:ellipsis;">${escapeHtml(j.title || j.seed)}</span>
+        <div class="castep-job-row1">
+          <label class="castep-job-title-lbl" title="${escapeHtml(fullTitle)}" onclick="event.stopPropagation()">
+            <input type="checkbox" ${isChk ? "checked" : ""} onchange="toggleSelectCastepJob('${j.id}', this.checked)" style="flex-shrink:0;" />
+            <span class="castep-job-title-txt">${escapeHtml(shortTitle)}</span>
           </label>
-          <div style="display:flex; align-items:center; gap:3px; flex-shrink:0;" onclick="event.stopPropagation()">
-            ${canLiveRefresh ? `<button type="button" class="castep-mini-icon-btn" onclick="refreshCastepJobFromDisk('${j.id}', this)" title="Refresh files from disk (detect added / modified / removed files)" style="border:1px solid #cbd5e1; background:#ffffff; color:#0369a1; border-radius:5px; padding:1px 5px; font-size:11px; cursor:pointer; line-height:1.35;">🔄</button>` : ""}
-            <button type="button" class="castep-mini-icon-btn" onclick="removeCastepJobFromList('${j.id}', event)" title="Close / remove this folder from list" style="border:1px solid #e2e8f0; background:#ffffff; color:#94a3b8; border-radius:5px; padding:1px 5px; font-size:10.5px; cursor:pointer; line-height:1.35;">✕</button>
+          <div class="castep-job-head-actions" onclick="event.stopPropagation()">
             ${statusBadge}
+            ${canLiveRefresh ? `<button type="button" class="castep-job-icon-btn" onclick="refreshCastepJobFromDisk('${j.id}', this)" title="Refresh files from disk">↻</button>` : ""}
+            <button type="button" class="castep-job-icon-btn del" onclick="removeCastepJobFromList('${j.id}', event)" title="Close folder">×</button>
           </div>
         </div>
-        <div style="font-size:11px; color:#1e40af; font-weight:700; margin-top:3px;">
-          ${escapeHtml(j.taskType || "CASTEP Calculation")} • ${escapeHtml(j.material || j.seed)}
+        <div class="castep-job-meta-row">
+          <span style="color:#1e40af; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(j.taskType || "CASTEP")}</span>
+          <span style="color:#334155; font-weight:600; white-space:nowrap; flex-shrink:0;">${eText}${bgText}</span>
         </div>
-        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:4px; font-size:10.5px; color:#475569; font-family:monospace; margin-top:3px; background:rgba(241,245,249,0.75); padding:2px 6px; border-radius:4px;" title="${escapeHtml(j.folder || rawPath)}">
-          <span style="word-break:break-word; line-height:1.35;">📁 ${escapeHtml(compactPath || "Local Folder")}${dupBadge}</span>
-          <button type="button" onclick="editCastepJobLocationLabel('${j.id}', event)" title="Rename short path label to distinguish folders" style="border:none; background:transparent; color:#94a3b8; cursor:pointer; padding:0 2px; font-size:10px; flex-shrink:0;">✏️</button>
+        <div class="castep-job-path-row" title="${escapeHtml(j.folder || rawPath)}">
+          <span class="castep-job-path-txt">📁 ${escapeHtml(compactPath || "Local Folder")}</span>${dupBadge}
+          <button type="button" class="castep-job-path-edit" onclick="editCastepJobLocationLabel('${j.id}', event)" title="Rename short path label">✎</button>
         </div>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px; font-size:11px; color:#334155; font-weight:600;">
-          <span>${eText}${bgText}</span>
-          <span style="color:#64748b; font-size:10px;">${escapeHtml(j.updated_at || "")}</span>
-        </div>
-        <div style="display:flex; gap:3px; flex-wrap:wrap; margin-top:6px;">
-          ${keyExts.map(ext => `<span class="castep-file-chip">${ext}</span>`).join("")}
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:4px; margin-top:4px;">
+          <div style="display:flex; gap:3px; flex-wrap:wrap; flex:1; min-width:0;">
+            ${keyExts.map(ext => `<span class="castep-file-chip">${ext}</span>`).join("")}
+          </div>
+          ${shortTime ? `<span style="color:#94a3b8; font-size:9.5px; white-space:nowrap; flex-shrink:0;">${escapeHtml(shortTime)}</span>` : ""}
         </div>
       </div>
     `;
