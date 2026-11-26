@@ -869,6 +869,7 @@ function rerenderAllActiveCastepPlots() {
   if (typeof renderCastepChdiffPlots === "function") renderCastepChdiffPlots();
   if (typeof renderCastepMullikenPane === "function") renderCastepMullikenPane();
   if (typeof renderCastepTransportPane === "function") renderCastepTransportPane();
+  if (typeof renderCastepStonerPane === "function") renderCastepStonerPane();
   if (typeof renderCastepConvergencePlots === "function") renderCastepConvergencePlots();
 }
 window.rerenderAllActiveCastepPlots = rerenderAllActiveCastepPlots;
@@ -1584,6 +1585,7 @@ function initCastepStudioTab() {
           else if (pane === "chdiff") renderCastepChdiffPlots();
           else if (pane === "mulliken") renderCastepMullikenPane();
           else if (pane === "transport") renderCastepTransportPane();
+          else if (pane === "stoner") renderCastepStonerPane();
           else if (pane === "convergence") renderCastepConvergencePlots();
         });
       });
@@ -1635,6 +1637,7 @@ function initCastepStudioTab() {
     if (CASTEP_STUDIO_STATE.activeStagePane === "chdiff") renderCastepChdiffPlots();
     if (CASTEP_STUDIO_STATE.activeStagePane === "mulliken") renderCastepMullikenPane();
     if (CASTEP_STUDIO_STATE.activeStagePane === "transport") renderCastepTransportPane();
+    if (CASTEP_STUDIO_STATE.activeStagePane === "stoner") renderCastepStonerPane();
     if (CASTEP_STUDIO_STATE.activeStagePane === "convergence") renderCastepConvergencePlots();
   }, 60);
 }
@@ -2451,7 +2454,7 @@ async function loadCastepJobIntoStudio(jobId) {
   updateCastepKpiBar();
 
   // 6) Mark all non-active panes dirty and render ONLY the currently visible tab immediately!
-  CASTEP_STUDIO_STATE._dirtyPanes = new Set(["builder", "electronic", "optics", "chdiff", "mulliken", "convergence", "files", "atoms", "adsorb"]);
+  CASTEP_STUDIO_STATE._dirtyPanes = new Set(["builder", "electronic", "transport", "stoner", "optics", "chdiff", "mulliken", "convergence", "files", "atoms", "adsorb"]);
   const activePane = CASTEP_STUDIO_STATE.activeStagePane || "builder";
 
   if (activePane === "builder") {
@@ -2484,6 +2487,9 @@ async function loadCastepJobIntoStudio(jobId) {
   } else if (activePane === "transport") {
     CASTEP_STUDIO_STATE._dirtyPanes.delete("transport");
     renderCastepTransportPane();
+  } else if (activePane === "stoner") {
+    CASTEP_STUDIO_STATE._dirtyPanes.delete("stoner");
+    renderCastepStonerPane();
   } else if (activePane === "convergence") {
     CASTEP_STUDIO_STATE._dirtyPanes.delete("convergence");
     renderCastepConvergencePlots();
@@ -2546,6 +2552,7 @@ async function switchCastepStagePane(paneId, btnEl) {
     else if (paneId === "chdiff") renderCastepChdiffPlots();
     else if (paneId === "mulliken") renderCastepMullikenPane();
     else if (paneId === "transport") renderCastepTransportPane();
+    else if (paneId === "stoner") renderCastepStonerPane();
     else if (paneId === "convergence") renderCastepConvergencePlots();
     else if (paneId === "files") {
       if (job) populateCastepParamFormFromText(job.param_text || "");
@@ -6179,7 +6186,10 @@ function renderCastepElectronicPlots() {
       <span style="color:#0369a1;"><strong>PDOS Source:</strong> ${escapeHtml(pdosSourceLabel || "Band Structure Only")}</span>
       <span><strong>BZ Path:</strong> ${escapeHtml(pathLabels)}</span>
       <span style="color:#047857;"><strong>Zero Ref:</strong> ${formatSciHtml(align.label)}</span>
-      <button type="button" class="castep-preset-chip" style="margin-left:auto; font-weight:700; color:#1d4ed8; border-color:#93c5fd; background:#ffffff;" onclick="switchCastepStagePane('transport')" title="Analyze Carrier Effective Mass (m*e, m*h), Mobility &amp; Drude Relaxation Time from Band Structure &amp; DOS">⚡ Analyze m*, Mobility &amp; Drude →</button>
+      <span style="margin-left:auto; display:inline-flex; gap:5px; flex-wrap:wrap;">
+        <button type="button" class="castep-preset-chip" style="font-weight:700; color:#1d4ed8; border-color:#93c5fd; background:#ffffff;" onclick="switchCastepStagePane('transport')" title="Analyze Carrier Effective Mass (m*e, m*h), Mobility &amp; Drude Relaxation Time from Band Structure &amp; DOS">⚡ m* &amp; Drude →</button>
+        <button type="button" class="castep-preset-chip" style="font-weight:700; color:#b45309; border-color:#fcd34d; background:#fffbeb;" onclick="switchCastepStagePane('stoner')" title="Calculate Exchange Splitting (Δex), Spin Polarization P(EF), Magnetic Moment &amp; Stoner Criterion I·D(EF) from Spin-Resolved DOS/PDOS">🧭 Stoner &amp; P(E<sub>F</sub>) →</button>
+      </span>
     `;
   }
 
@@ -8248,6 +8258,8 @@ function getPlotRendererForCanvas(canvasId) {
     case "castep-mulliken-bond-canvas": return typeof renderCastepMullikenPane === "function" ? renderCastepMullikenPane : null;
     case "castep-transport-fit-canvas":
     case "castep-transport-drude-canvas": return typeof renderCastepTransportPane === "function" ? renderCastepTransportPane : null;
+    case "castep-stoner-dos-canvas":
+    case "castep-stoner-criterion-canvas": return typeof renderCastepStonerPane === "function" ? renderCastepStonerPane : null;
     case "castep-energy-chart-canvas":
     case "castep-conv-chart-canvas": return typeof renderCastepConvergencePlots === "function" ? renderCastepConvergencePlots : null;
     case "castep-3d-canvas": return typeof renderCastep3DScene === "function" ? renderCastep3DScene : null;
@@ -8634,6 +8646,35 @@ function buildCastepPlotDataForClipboard(plotKey, subPart = "auto") {
     return { title: "Semiconductor & Drude Summary", headers: pkg.summarySheet.headers, rows: pkg.summarySheet.rows };
   }
 
+  if (plotKey === "stoner") {
+    const pkg = typeof buildStonerExportTables === "function" ? buildStonerExportTables() : null;
+    if (!pkg) return null;
+    if (subPart === "dos" && pkg.dosSheet?.rows?.length) {
+      return { title: "Spin-Resolved DOS, Polarization P(E) & Stoner I·D(E)", headers: pkg.dosSheet.headers, rows: pkg.dosSheet.rows };
+    }
+    if (subPart === "energy" && pkg.energySheet?.rows?.length) {
+      return { title: "Stoner Free-Energy Landscape E(m) − E0", headers: pkg.energySheet.headers, rows: pkg.energySheet.rows };
+    }
+    if (subPart === "channels" && pkg.channelSheet?.rows?.length) {
+      return { title: "Channel-Resolved Exchange Splitting & Spin Polarization", headers: pkg.channelSheet.headers, rows: pkg.channelSheet.rows };
+    }
+    if (subPart === "full") {
+      const rows = [
+        ...pkg.summarySheet.rows,
+        [],
+        ["=== CHANNEL-RESOLVED EXCHANGE SPLITTING & POLARIZATION ==="],
+        pkg.channelSheet.headers,
+        ...pkg.channelSheet.rows,
+        [],
+        ["=== SPIN DOS, P(E), M(E) & STONER CRITERION I*D(E) ==="],
+        pkg.dosSheet.headers,
+        ...pkg.dosSheet.rows
+      ];
+      return { title: "Full Stoner Magnetism & Spin Polarization Report", headers: pkg.summarySheet.headers, rows };
+    }
+    return { title: "Stoner Magnetism Summary", headers: pkg.summarySheet.headers, rows: pkg.summarySheet.rows };
+  }
+
   return null;
 }
 window.buildCastepPlotDataForClipboard = buildCastepPlotDataForClipboard;
@@ -8926,6 +8967,24 @@ const CASTEP_PLOT_CTX_SPECS = {
     dataItems: [
       { label: "🌡️ Copy Temperature Sweep 100–600 K (TSV)", plotKey: "transport", subPart: "temp_sweep" },
       { label: "🔋 Copy Doping Sweep Table (TSV)", plotKey: "transport", subPart: "doping_sweep" }
+    ]
+  },
+  "castep-stoner-dos-canvas": {
+    label: "Spin DOS, Δex & Spin Polarization P(E)",
+    pngName: "CASTEP_Stoner_SpinDOS_Polarization.png",
+    fullDataItem: { label: "🧭 Copy Full Stoner & Spin Report (TSV)", plotKey: "stoner", subPart: "full" },
+    dataItems: [
+      { label: "📊 Copy Spin DOS & P(E) Curves (TSV)", plotKey: "stoner", subPart: "dos" },
+      { label: "⚡ Copy Channel Exchange Splitting Table (TSV)", plotKey: "stoner", subPart: "channels" }
+    ]
+  },
+  "castep-stoner-criterion-canvas": {
+    label: "Stoner Criterion Map & Free Energy E(m)",
+    pngName: "CASTEP_Stoner_Criterion_Energy.png",
+    fullDataItem: { label: "🧭 Copy Full Stoner & Spin Report (TSV)", plotKey: "stoner", subPart: "full" },
+    dataItems: [
+      { label: "🔥 Copy Stoner Free-Energy E(m) Curve (TSV)", plotKey: "stoner", subPart: "energy" },
+      { label: "📊 Copy Stoner Criterion I·D(E) Table (TSV)", plotKey: "stoner", subPart: "dos" }
     ]
   }
 };
@@ -18564,4 +18623,1919 @@ function exportCastepTransportXLSX() {
   }
 }
 window.exportCastepTransportXLSX = exportCastepTransportXLSX;
+
+
+// ============================================================================
+// 12. Exchange Splitting, Spin Polarization P(E_F) & Stoner Magnetism Engine
+//     (Based on Spin-Resolved DOS/PDOS, Rigid-Band Stoner Theory & Landau E(m))
+// ============================================================================
+
+window._lastCastepStonerResult = null;
+window._castepStonerUiState = {
+  lastJobId: null,
+  userEditedZ: false
+};
+
+const STONER_REF_I_PRESETS = {
+  fe: { label: "Fe (3d, Janak 1977)", val: 0.92 },
+  co: { label: "Co (3d, Janak 1977)", val: 0.99 },
+  ni: { label: "Ni (3d, Janak 1977)", val: 1.01 },
+  mn: { label: "Mn (3d, Janak 1977)", val: 0.82 },
+  cr: { label: "Cr (3d, Janak 1977)", val: 0.76 },
+  v:  { label: "V (3d, Janak 1977)",  val: 0.72 },
+  pd: { label: "Pd (4d, Janak 1977)", val: 0.70 },
+  mo: { label: "Mo (4d, Janak 1977)", val: 0.62 },
+  p2: { label: "2p Flat-Band (C/N/O/GaSe)", val: 1.20 }
+};
+
+function stonerGcd(a, b) {
+  let x = Math.abs(Math.round(a || 0));
+  let y = Math.abs(Math.round(b || 0));
+  while (y) { const t = y; y = x % y; x = t; }
+  return x || 1;
+}
+
+function detectStonerFormulaUnitsZ(job) {
+  const atoms = (CASTEP_STUDIO_STATE.structure?.atoms?.length ? CASTEP_STUDIO_STATE.structure.atoms : null)
+    || (job?.structure?.atoms?.length ? job.structure.atoms : null)
+    || (CASTEP_STUDIO_STATE.parsedLog?.atoms?.length ? CASTEP_STUDIO_STATE.parsedLog.atoms : null)
+    || [];
+  const counts = {};
+  atoms.forEach(a => {
+    const el = String(a.element || a.species || a.symbol || "").replace(/[^A-Za-z]/g, "");
+    if (el) counts[el] = (counts[el] || 0) + 1;
+  });
+  const vals = Object.values(counts);
+  if (!vals.length) {
+    return { zAuto: 1, nAtoms: 0, cellFormula: job?.material || job?.seed || "Unit Cell", fuFormula: job?.material || job?.seed || "f.u.", counts };
+  }
+  let g = vals[0];
+  for (let i = 1; i < vals.length; i++) g = stonerGcd(g, vals[i]);
+  const els = Object.keys(counts);
+  const cellFormula = els.map(el => counts[el] > 1 ? `${el}${counts[el]}` : el).join("");
+  const fuFormula = els.map(el => (counts[el] / g) > 1 ? `${el}${counts[el] / g}` : el).join("");
+  return { zAuto: Math.max(1, g), nAtoms: atoms.length, cellFormula, fuFormula, counts };
+}
+
+function extractCastepScfSpinCrossCheck(job) {
+  const txt = job?.castep_text || "";
+  let intSpin = null;
+  let intAbsSpin = null;
+  if (txt) {
+    const mSpin = [...txt.matchAll(/2\*Integrated Spin Density\s*=\s*([+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/gi)];
+    if (mSpin.length) intSpin = parseFloat(mSpin[mSpin.length - 1][1]);
+    const mAbs = [...txt.matchAll(/2\*Integrated \|Spin Density\|\s*=\s*([+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/gi)];
+    if (mAbs.length) intAbsSpin = parseFloat(mAbs[mAbs.length - 1][1]);
+  }
+  if (intSpin === null && job?._mullikenCache && isFinite(job._mullikenCache.integratedSpin)) {
+    intSpin = job._mullikenCache.integratedSpin;
+  }
+  if (intAbsSpin === null && job?._mullikenCache && isFinite(job._mullikenCache.integratedAbsSpin)) {
+    intAbsSpin = job._mullikenCache.integratedAbsSpin;
+  }
+  return { intSpin, intAbsSpin };
+}
+
+function trapzIntegrate(xArr, yArr, xLo, xHi) {
+  if (!xArr || !yArr || xArr.length < 2) return 0;
+  let sum = 0;
+  for (let i = 0; i < xArr.length - 1; i++) {
+    const x0 = xArr[i], x1 = xArr[i + 1];
+    if (x1 <= xLo || x0 >= xHi) continue;
+    let a = x0, b = x1;
+    let ya = yArr[i], yb = yArr[i + 1];
+    const dx = x1 - x0;
+    if (dx <= 0) continue;
+    if (a < xLo) {
+      const t = (xLo - x0) / dx;
+      ya = yArr[i] + t * (yArr[i + 1] - yArr[i]);
+      a = xLo;
+    }
+    if (b > xHi) {
+      const t = (xHi - x0) / dx;
+      yb = yArr[i] + t * (yArr[i + 1] - yArr[i]);
+      b = xHi;
+    }
+    sum += 0.5 * (ya + yb) * (b - a);
+  }
+  return sum;
+}
+
+function interpUniformGrid(eGrid, yArr, eTarget) {
+  const n = eGrid.length;
+  if (!n || !yArr || !yArr.length) return 0;
+  if (eTarget <= eGrid[0]) return yArr[0];
+  if (eTarget >= eGrid[n - 1]) return yArr[n - 1];
+  const step = (eGrid[n - 1] - eGrid[0]) / (n - 1);
+  const f = (eTarget - eGrid[0]) / (step || 1e-9);
+  const i = Math.max(0, Math.min(n - 2, Math.floor(f)));
+  const t = f - i;
+  return yArr[i] * (1 - t) + yArr[i + 1] * t;
+}
+
+function findSpinPeakInWindow(eGrid, arr, winMin, winMax, mode = "dominant") {
+  const n = eGrid.length;
+  if (!n || !arr || !arr.length) return { ePeak: 0, height: 0, idx: -1, found: false };
+  let iStart = 0, iEnd = n - 1;
+  for (let i = 0; i < n; i++) { if (eGrid[i] >= winMin) { iStart = i; break; } }
+  for (let i = n - 1; i >= 0; i--) { if (eGrid[i] <= winMax) { iEnd = i; break; } }
+  if (iEnd <= iStart + 1) return { ePeak: 0, height: 0, idx: -1, found: false };
+
+  let maxVal = 0, maxIdx = -1;
+  const localPeaks = [];
+  for (let i = iStart; i <= iEnd; i++) {
+    const v = arr[i];
+    if (v > maxVal) { maxVal = v; maxIdx = i; }
+    if (i > iStart && i < iEnd && v >= arr[i - 1] && v >= arr[i + 1] && (v > arr[i - 1] || v > arr[i + 1])) {
+      localPeaks.push({ idx: i, e: eGrid[i], val: v });
+    }
+  }
+  if (maxVal <= 1e-7 || maxIdx < 0) return { ePeak: 0, height: 0, idx: -1, found: false };
+
+  let chosenIdx = maxIdx;
+  if (mode === "nearest_ef" && localPeaks.length) {
+    const prominent = localPeaks.filter(p => p.val >= 0.25 * maxVal);
+    const pool = prominent.length ? prominent : localPeaks;
+    pool.sort((a, b) => Math.abs(a.e) - Math.abs(b.e));
+    chosenIdx = pool[0].idx;
+  } else if (localPeaks.length) {
+    // Prefer true interior local maximum if at least 75% of boundary value
+    localPeaks.sort((a, b) => b.val - a.val);
+    if (localPeaks[0].val >= 0.75 * maxVal) chosenIdx = localPeaks[0].idx;
+  }
+
+  let ePeak = eGrid[chosenIdx];
+  let height = arr[chosenIdx];
+  if (chosenIdx > 0 && chosenIdx < n - 1) {
+    const yL = arr[chosenIdx - 1], yC = arr[chosenIdx], yR = arr[chosenIdx + 1];
+    const denom = yL - 2 * yC + yR;
+    if (Math.abs(denom) > 1e-12 && denom < 0) {
+      const deltaIdx = Math.max(-0.5, Math.min(0.5, 0.5 * (yL - yR) / denom));
+      const dE = eGrid[chosenIdx + 1] - eGrid[chosenIdx];
+      ePeak = eGrid[chosenIdx] + deltaIdx * dE;
+      height = yC - 0.25 * (yL - yR) * deltaIdx;
+    }
+  }
+  return { ePeak, height: Math.max(0, height), idx: chosenIdx, found: true };
+}
+
+function computeCrossCorrelationExchangeSplit(eGrid, upArr, dnArr, winMin, winMax) {
+  const n = eGrid.length;
+  if (n < 10 || !upArr || !dnArr) return { deltaEv: 0, signedShiftEv: 0, score: 0 };
+  const dE = (eGrid[n - 1] - eGrid[0]) / (n - 1);
+  if (dE <= 0) return { deltaEv: 0, signedShiftEv: 0, score: 0 };
+
+  let i0 = 0, i1 = n - 1;
+  for (let i = 0; i < n; i++) { if (eGrid[i] >= winMin) { i0 = i; break; } }
+  for (let i = n - 1; i >= 0; i--) { if (eGrid[i] <= winMax) { i1 = i; break; } }
+  if (i1 - i0 < 6) return { deltaEv: 0, signedShiftEv: 0, score: 0 };
+
+  let normU = 0, normD = 0;
+  for (let i = i0; i <= i1; i++) { normU += upArr[i] * upArr[i]; normD += dnArr[i] * dnArr[i]; }
+  const denom = Math.sqrt(normU * normD);
+  if (denom < 1e-10) return { deltaEv: 0, signedShiftEv: 0, score: 0 };
+
+  // Shift lag s: compare D_up(E) with D_dn(E + s*dE) -> positive s means E_dn > E_up
+  const maxLag = Math.min(Math.floor(5.0 / dE), Math.floor((i1 - i0) * 0.75));
+  const scores = [];
+  let bestIdx = 0, bestScore = -1;
+  for (let lag = -maxLag; lag <= maxLag; lag++) {
+    let dot = 0;
+    for (let i = i0; i <= i1; i++) {
+      const j = i + lag;
+      if (j >= 0 && j < n) dot += upArr[i] * dnArr[j];
+    }
+    const sc = dot / denom;
+    scores.push({ lag, sc });
+    if (sc > bestScore) { bestScore = sc; bestIdx = scores.length - 1; }
+  }
+  let bestLag = scores[bestIdx]?.lag || 0;
+  if (bestIdx > 0 && bestIdx < scores.length - 1) {
+    const yL = scores[bestIdx - 1].sc, yC = scores[bestIdx].sc, yR = scores[bestIdx + 1].sc;
+    const dd = yL - 2 * yC + yR;
+    if (dd < -1e-12) {
+      bestLag += Math.max(-0.5, Math.min(0.5, 0.5 * (yL - yR) / dd));
+    }
+  }
+  const signedShiftEv = bestLag * dE;
+  return { deltaEv: Math.abs(signedShiftEv), signedShiftEv, score: bestScore };
+}
+
+function computeBandCenterExchangeSplit(eGrid, upArr, dnArr, winMin, winMax) {
+  let numU = 0, denU = 0, numD = 0, denD = 0;
+  for (let i = 0; i < eGrid.length - 1; i++) {
+    const eMid = 0.5 * (eGrid[i] + eGrid[i + 1]);
+    if (eMid < winMin || eMid > winMax) continue;
+    const dE = eGrid[i + 1] - eGrid[i];
+    const u = 0.5 * (upArr[i] + upArr[i + 1]) * dE;
+    const d = 0.5 * (dnArr[i] + dnArr[i + 1]) * dE;
+    numU += eMid * u; denU += u;
+    numD += eMid * d; denD += d;
+  }
+  const eUp = denU > 1e-8 ? numU / denU : 0;
+  const eDn = denD > 1e-8 ? numD / denD : 0;
+  return { eUp, eDn, signedShiftEv: eDn - eUp, deltaEv: Math.abs(eDn - eUp), hasData: denU > 1e-8 && denD > 1e-8 };
+}
+
+function computeExactOccMomentFromBands(bandsObj, sigma = 0.05) {
+  if (!bandsObj || !bandsObj.kpoints?.length) return null;
+  const ns = bandsObj.ns || 1;
+  if (ns < 2) return { isSpin: false, nUpCell: 0, nDnCell: 0, mCell: 0, nTotCell: bandsObj.nelec || 0 };
+  let nUp = 0, nDn = 0;
+  const kT = Math.max(0.005, Math.min(0.05, sigma * 0.5));
+  const kpts = bandsObj.kpoints;
+  for (let k = 0; k < kpts.length; k++) {
+    const wt = kpts[k].w || (1.0 / kpts.length);
+    const eUp = kpts[k].e?.[0] || [];
+    const eDn = kpts[k].e?.[1] || [];
+    for (let b = 0; b < eUp.length; b++) {
+      const ev = eUp[b];
+      nUp += wt * (ev <= -0.6 ? 1 : (ev >= 0.6 ? 0 : 1 / (1 + Math.exp(ev / kT))));
+    }
+    for (let b = 0; b < eDn.length; b++) {
+      const ev = eDn[b];
+      nDn += wt * (ev <= -0.6 ? 1 : (ev >= 0.6 ? 0 : 1 / (1 + Math.exp(ev / kT))));
+    }
+  }
+  return { isSpin: true, nUpCell: nUp, nDnCell: nDn, mCell: nUp - nDn, nTotCell: nUp + nDn };
+}
+
+function readCastepStonerOptions(job) {
+  const fInfo = detectStonerFormulaUnitsZ(job);
+  const zInput = document.getElementById("castep-st-zfu");
+  if (job && window._castepStonerUiState.lastJobId !== job.id) {
+    window._castepStonerUiState.lastJobId = job.id;
+    window._castepStonerUiState.userEditedZ = false;
+    if (zInput) zInput.value = String(fInfo.zAuto);
+  }
+  const zFu = Math.max(1, parseFloat(zInput?.value) || fInfo.zAuto || 1);
+  const sigma = Math.max(0.02, Math.min(0.80, parseFloat(document.getElementById("castep-st-sigma")?.value) || 0.10));
+  let emin = parseFloat(document.getElementById("castep-st-emin")?.value);
+  let emax = parseFloat(document.getElementById("castep-st-emax")?.value);
+  if (!isFinite(emin)) emin = -4.0;
+  if (!isFinite(emax)) emax = 4.0;
+  if (emax <= emin + 0.4) { emin = -4.0; emax = 4.0; }
+
+  let pkMin = parseFloat(document.getElementById("castep-st-pkmin")?.value);
+  let pkMax = parseFloat(document.getElementById("castep-st-pkmax")?.value);
+  if (!isFinite(pkMin)) pkMin = -3.0;
+  if (!isFinite(pkMax)) pkMax = 3.0;
+  if (pkMax <= pkMin + 0.2) { pkMin = -3.0; pkMax = 3.0; }
+
+  const channelId = document.getElementById("castep-st-channel")?.value || "auto";
+  const exMethod = document.getElementById("castep-st-ex-method")?.value || "peak";
+  const dConv = document.getElementById("castep-st-dconv")?.value || "spin_avg";
+  const customDnm = parseFloat(document.getElementById("castep-st-custom-dnm")?.value);
+  const customI = parseFloat(document.getElementById("castep-st-custom-i")?.value);
+  const chart1Right = document.getElementById("castep-st-chart1-right")?.value || "polarization";
+  const chart2Left = document.getElementById("castep-st-chart2-left")?.value || "energy";
+
+  return {
+    fInfo, zFu, sigma, emin, emax, pkMin, pkMax,
+    channelId, exMethod, dConv,
+    customDnm: isFinite(customDnm) && customDnm > 0 ? customDnm : 0,
+    customI: isFinite(customI) && customI > 0 ? customI : 0,
+    chart1Right, chart2Left
+  };
+}
+
+function buildStonerDosChannels(job, opts) {
+  if (!job) return null;
+  const { emin, emax, sigma, zFu } = opts;
+
+  // Build uniform display grid guaranteed to contain exact E = 0 if 0 in [emin, emax]
+  const nDisp = 360;
+  const eGrid = new Array(nDisp + 1);
+  for (let i = 0; i <= nDisp; i++) eGrid[i] = emin + (emax - emin) * (i / nDisp);
+
+  // Full occupied-state integration grid (down to -22 eV so M_tot integral is accurate)
+  const fullMin = Math.min(-22.0, emin - 2.0);
+  const fullMax = Math.max(6.0, emax + 1.0);
+  const dEFull = 0.025;
+  const nFull = Math.max(400, Math.round((fullMax - fullMin) / dEFull));
+  const eFull = new Array(nFull + 1);
+  for (let i = 0; i <= nFull; i++) eFull[i] = fullMin + (fullMax - fullMin) * (i / nFull);
+
+  const channels = []; // { id, label, kind: "total"|"element"|"element_orbital", element, orbital, up, dn, fullUp, fullDn, mIntFu }
+  let isSpinPolarized = false;
+  let sourceLabel = "";
+  let totalChan = null;
+
+  const scaleToFu = (arr, factor = 1.0) => {
+    const out = new Float64Array(arr.length);
+    const inv = factor / zFu;
+    for (let i = 0; i < arr.length; i++) out[i] = arr[i] * inv;
+    return out;
+  };
+
+  // Priority 1: Exact CASTEP *.pdos_bin (Total DOS + Element + Element-Orbital PDOS)
+  if (job.pdos_bin_data && job.pdos_bin_data.total_hist && Array.isArray(job.pdos_bin_data.channels)) {
+    const pb = job.pdos_bin_data;
+    isSpinPolarized = Boolean(pb.ns >= 2 && pb.total_hist.dn && pb.total_hist.dn.length);
+    sourceLabel = `Exact CASTEP ${pb.source_file || "*.pdos_bin"} (${isSpinPolarized ? "Collinear Spin ↑/↓" : "Non-Spin"})`;
+    const eMinH = pb.e_min ?? -20.0;
+    const dEH = pb.dE ?? 0.025;
+
+    const makeFromHist = (id, label, kind, element, orbital, upPairsList, dnPairsList) => {
+      const dispUp = new Float64Array(eGrid.length);
+      const dispDn = new Float64Array(eGrid.length);
+      const fullUp = new Float64Array(eFull.length);
+      const fullDn = new Float64Array(eFull.length);
+      const halfFactor = isSpinPolarized ? 1.0 : 0.5;
+
+      upPairsList.forEach(sp => {
+        const uD = convolveSparseHistGaussian(sp, eMinH, dEH, eGrid, sigma, 0.0);
+        const uF = convolveSparseHistGaussian(sp, eMinH, dEH, eFull, sigma, 0.0);
+        for (let i = 0; i < eGrid.length; i++) dispUp[i] += uD[i] * halfFactor / zFu;
+        for (let i = 0; i < eFull.length; i++) fullUp[i] += uF[i] * halfFactor / zFu;
+      });
+      if (isSpinPolarized) {
+        dnPairsList.forEach(sp => {
+          const dD = convolveSparseHistGaussian(sp, eMinH, dEH, eGrid, sigma, 0.0);
+          const dF = convolveSparseHistGaussian(sp, eMinH, dEH, eFull, sigma, 0.0);
+          for (let i = 0; i < eGrid.length; i++) dispDn[i] += dD[i] / zFu;
+          for (let i = 0; i < eFull.length; i++) fullDn[i] += dF[i] / zFu;
+        });
+      } else {
+        dispDn.set(dispUp);
+        fullDn.set(fullUp);
+      }
+
+      const diffFull = new Float64Array(eFull.length);
+      for (let i = 0; i < eFull.length; i++) diffFull[i] = fullUp[i] - fullDn[i];
+      const mIntFu = trapzIntegrate(eFull, diffFull, fullMin, 0.0);
+      const nUpFu = trapzIntegrate(eFull, fullUp, fullMin, 0.0);
+      const nDnFu = trapzIntegrate(eFull, fullDn, fullMin, 0.0);
+      return { id, label, kind, element, orbital, up: dispUp, dn: dispDn, fullUp, fullDn, mIntFu, nUpFu, nDnFu };
+    };
+
+    totalChan = makeFromHist(
+      "total", "Total DOS", "total", "All", "tot",
+      [pb.total_hist.up], isSpinPolarized ? [pb.total_hist.dn] : []
+    );
+    channels.push(totalChan);
+
+    // Group by Element-Orbital (e.g. Co-d, Fe-d, N-p)
+    const eoMap = {};
+    const eoOrder = [];
+    const elMap = {};
+    const elOrder = [];
+    pb.channels.forEach(ch => {
+      const eoKey = `${ch.element}-${ch.orbital}`;
+      if (!eoMap[eoKey]) { eoMap[eoKey] = { el: ch.element, orb: ch.orbital, ups: [], dns: [] }; eoOrder.push(eoKey); }
+      eoMap[eoKey].ups.push(ch.up);
+      if (ch.dn) eoMap[eoKey].dns.push(ch.dn);
+
+      if (!elMap[ch.element]) { elMap[ch.element] = { el: ch.element, ups: [], dns: [] }; elOrder.push(ch.element); }
+      elMap[ch.element].ups.push(ch.up);
+      if (ch.dn) elMap[ch.element].dns.push(ch.dn);
+    });
+
+    eoOrder.forEach(k => {
+      const g = eoMap[k];
+      channels.push(makeFromHist(`eo:${k}`, k, "element_orbital", g.el, g.orb, g.ups, g.dns));
+    });
+    elOrder.forEach(el => {
+      const g = elMap[el];
+      channels.push(makeFromHist(`el:${el}`, `${el} (all)`, "element", el, "all", g.ups, g.dns));
+    });
+  } else if (job.dos_bands || job.bandstr_bands) {
+    // Priority 2: Direct Gaussian broadening of CASTEP *.bands eigenvalues
+    const srcB = job.dos_bands || job.bandstr_bands;
+    isSpinPolarized = (srcB.ns >= 2);
+    sourceLabel = `CASTEP ${job.dos_bands ? "*_DOS.bands" : "*_BandStr.bands"} (${isSpinPolarized ? "Collinear Spin ↑/↓" : "Non-Spin"})`;
+    const dispUp = new Float64Array(eGrid.length);
+    const dispDn = new Float64Array(eGrid.length);
+    const fullUp = new Float64Array(eFull.length);
+    const fullDn = new Float64Array(eFull.length);
+    const invSig = 1.0 / sigma;
+    const norm = invSig / Math.sqrt(2.0 * Math.PI);
+    const cut = 4.0 * sigma;
+
+    const addBandsToGrid = (grid, upOut, dnOut) => {
+      const g0 = grid[0], gMax = grid[grid.length - 1];
+      const invStep = (grid.length - 1) / ((gMax - g0) || 1e-9);
+      (srcB.kpoints || []).forEach(kp => {
+        const wt = (kp.w || (1.0 / srcB.kpoints.length)) / zFu;
+        const nSp = isSpinPolarized ? 2 : 1;
+        for (let sIdx = 0; sIdx < nSp; sIdx++) {
+          const evs = kp.e?.[sIdx] || [];
+          const tgt = (sIdx === 1) ? dnOut : upOut;
+          for (let b = 0; b < evs.length; b++) {
+            const ev = evs[b];
+            if (ev < g0 - cut || ev > gMax + cut) continue;
+            const iA = Math.max(0, Math.floor((ev - cut - g0) * invStep));
+            const iB = Math.min(grid.length - 1, Math.ceil((ev + cut - g0) * invStep));
+            for (let g = iA; g <= iB; g++) {
+              const z = (grid[g] - ev) * invSig;
+              tgt[g] += wt * Math.exp(-0.5 * z * z) * norm;
+            }
+          }
+        }
+      });
+      if (!isSpinPolarized) dnOut.set(upOut);
+    };
+
+    addBandsToGrid(eGrid, dispUp, dispDn);
+    addBandsToGrid(eFull, fullUp, fullDn);
+    const diffFull = new Float64Array(eFull.length);
+    for (let i = 0; i < eFull.length; i++) diffFull[i] = fullUp[i] - fullDn[i];
+    const mIntFu = trapzIntegrate(eFull, diffFull, fullMin, 0.0);
+    const nUpFu = trapzIntegrate(eFull, fullUp, fullMin, 0.0);
+    const nDnFu = trapzIntegrate(eFull, fullDn, fullMin, 0.0);
+    totalChan = { id: "total", label: "Total DOS", kind: "total", element: "All", orbital: "tot", up: dispUp, dn: dispDn, fullUp, fullDn, mIntFu, nUpFu, nDnFu };
+    channels.push(totalChan);
+  } else if (job.pdos_xcd?.series?.length || job.dos_xcd?.series?.length) {
+    // Priority 3: Fallback CASTEP *.xcd DOS/PDOS
+    const xcd = job.pdos_xcd?.series?.length ? job.pdos_xcd : job.dos_xcd;
+    sourceLabel = job.pdos_xcd ? "CASTEP PDOS (.xcd)" : "CASTEP DOS (.xcd)";
+    const ser = xcd.series || [];
+    const upSer = ser.find(s => /alpha|spin\s*up|\bup\b/i.test(s.name || ""));
+    const dnSer = ser.find(s => /beta|spin\s*down|\bdown\b|\bdn\b/i.test(s.name || ""));
+    const totSer = ser.find(s => /sum|total/i.test(s.name || "")) || ser[0];
+
+    const samplePts = (pts, grid) => {
+      const out = new Float64Array(grid.length);
+      if (!pts || !pts.length) return out;
+      const absPts = pts.map(p => [p[0], Math.abs(p[1])]).sort((a, b) => a[0] - b[0]);
+      for (let i = 0; i < grid.length; i++) {
+        if (grid[i] < absPts[0][0] || grid[i] > absPts[absPts.length - 1][0]) out[i] = 0;
+        else out[i] = Math.max(0, interpSortedXY(absPts, grid[i])) / zFu;
+      }
+      return out;
+    };
+
+    let dispUp, dispDn, fullUp, fullDn;
+    if (upSer && dnSer) {
+      isSpinPolarized = true;
+      dispUp = samplePts(upSer.segments?.[0], eGrid);
+      dispDn = samplePts(dnSer.segments?.[0], eGrid);
+      fullUp = samplePts(upSer.segments?.[0], eFull);
+      fullDn = samplePts(dnSer.segments?.[0], eFull);
+    } else if (totSer) {
+      isSpinPolarized = false;
+      const rawD = samplePts(totSer.segments?.[0], eGrid);
+      const rawF = samplePts(totSer.segments?.[0], eFull);
+      dispUp = scaleToFu(rawD, 0.5 * zFu);
+      dispDn = new Float64Array(dispUp);
+      fullUp = scaleToFu(rawF, 0.5 * zFu);
+      fullDn = new Float64Array(fullUp);
+    }
+    if (dispUp) {
+      const diffFull = new Float64Array(eFull.length);
+      for (let i = 0; i < eFull.length; i++) diffFull[i] = fullUp[i] - fullDn[i];
+      const mIntFu = trapzIntegrate(eFull, diffFull, fullMin, 0.0);
+      const nUpFu = trapzIntegrate(eFull, fullUp, fullMin, 0.0);
+      const nDnFu = trapzIntegrate(eFull, fullDn, fullMin, 0.0);
+      totalChan = { id: "total", label: "Total DOS", kind: "total", element: "All", orbital: "tot", up: dispUp, dn: dispDn, fullUp, fullDn, mIntFu, nUpFu, nDnFu };
+      channels.push(totalChan);
+    }
+  }
+
+  if (!totalChan) return null;
+  return { eGrid, eFull, fullMin, isSpinPolarized, sourceLabel, totalChan, channels };
+}
+
+function computeCastepStonerAnalysis(job) {
+  if (!job) return null;
+  const opts = readCastepStonerOptions(job);
+  const lib = buildStonerDosChannels(job, opts);
+  if (!lib) return null;
+
+  const { eGrid, eFull, fullMin, isSpinPolarized, sourceLabel, totalChan, channels } = lib;
+  const { zFu, pkMin, pkMax, exMethod, dConv, customDnm, customI } = opts;
+
+  // 1) Spin-Resolved Total DOS & Spin Polarization at Fermi level (Supplementary Note 7.1)
+  const dUpEf = Math.max(0, interpUniformGrid(eFull, totalChan.fullUp, 0.0));
+  const dDnEf = Math.max(0, interpUniformGrid(eFull, totalChan.fullDn, 0.0));
+  const dTotEf = dUpEf + dDnEf;
+  const dAvgEf = 0.5 * dTotEf; // Spin-averaged DOS per f.u. = non-magnetic per-spin DOS convention
+  const deltaDEf = dUpEf - dDnEf;
+  const isMetallicAtEf = dTotEf > 1e-3;
+  const pEf = isMetallicAtEf ? (deltaDEf / dTotEf) * 100.0 : null;
+
+  // 2) Integrated Total Magnetic Moment M_tot (mu_B / f.u.)
+  const mTotDosFu = totalChan.mIntFu;
+  const mTotDosCell = mTotDosFu * zFu;
+  const bandsRef = job.dos_bands || job.bandstr_bands || null;
+  const exactOcc = computeExactOccMomentFromBands(bandsRef, opts.sigma);
+  const scfCross = extractCastepScfSpinCrossCheck(job);
+  const gapInfo = bandsRef ? computeBandGapFromBandsObj(bandsRef) : null;
+
+  // Best magnetic moment M_tot for Stoner I = Delta_ex / |M_tot| (use DOS integral, fallback to exact occ if bands only)
+  const mTotFu = isSpinPolarized ? mTotDosFu : 0.0;
+  const absMTotFu = Math.abs(mTotFu);
+
+  // Spin-resolved channel gap & Half-metallic spin-flip gap E_HM
+  let upGapEv = gapInfo?.isCollinear ? gapInfo.upGapEv : (gapInfo?.gapEv || 0);
+  let dnGapEv = gapInfo?.isCollinear ? gapInfo.dnGapEv : (gapInfo?.gapEv || 0);
+  let hmGapEv = null;
+  let phaseLabel = "Non-Magnetic Metal";
+  if (!isSpinPolarized || absMTotFu < 0.015) {
+    phaseLabel = isMetallicAtEf ? "Non-Magnetic Metal" : "Non-Magnetic Semiconductor / Insulator";
+  } else if (!isMetallicAtEf) {
+    phaseLabel = "Ferromagnetic Semiconductor / Insulator";
+  } else if (Math.abs(pEf) >= 98.0) {
+    phaseLabel = "Half-Metallic Ferromagnet (|P(E_F)| ≈ 100%)";
+    // Compute spin-flip half-metallic gap on the gapped spin channel
+    const gappedArr = (dUpEf < dDnEf) ? totalChan.fullUp : totalChan.fullDn;
+    let eBelow = null, eAbove = null;
+    for (let i = 0; i < eFull.length; i++) {
+      if (eFull[i] < 0 && gappedArr[i] > 0.015) eBelow = eFull[i];
+      if (eFull[i] > 0 && eAbove === null && gappedArr[i] > 0.015) eAbove = eFull[i];
+    }
+    if (eBelow !== null && eAbove !== null) hmGapEv = Math.min(Math.abs(eBelow), Math.abs(eAbove));
+  } else {
+    phaseLabel = "Itinerant Spin-Polarized Ferromagnetic Metal";
+  }
+
+  // 3) Evaluate ALL channels for the Channel Breakdown Table & auto-select dominant magnetic channel
+  const channelStats = channels.map(ch => {
+    const uEf = Math.max(0, interpUniformGrid(eFull, ch.fullUp, 0.0));
+    const dEf = Math.max(0, interpUniformGrid(eFull, ch.fullDn, 0.0));
+    const totCh = uEf + dEf;
+    const pCh = totCh > 1e-4 ? ((uEf - dEf) / totCh) * 100.0 : null;
+    const pkUpDom = findSpinPeakInWindow(eFull, ch.fullUp, pkMin, pkMax, "dominant");
+    const pkDnDom = findSpinPeakInWindow(eFull, ch.fullDn, pkMin, pkMax, "dominant");
+    const pkUpNear = findSpinPeakInWindow(eFull, ch.fullUp, pkMin, pkMax, "nearest_ef");
+    const pkDnNear = findSpinPeakInWindow(eFull, ch.fullDn, pkMin, pkMax, "nearest_ef");
+    const xcorr = computeCrossCorrelationExchangeSplit(eFull, ch.fullUp, ch.fullDn, pkMin, pkMax);
+    const cent = computeBandCenterExchangeSplit(eFull, ch.fullUp, ch.fullDn, pkMin, pkMax);
+
+    const deltaPeak = (pkUpDom.found && pkDnDom.found) ? Math.abs(pkDnDom.ePeak - pkUpDom.ePeak) : 0;
+    const deltaNear = (pkUpNear.found && pkDnNear.found) ? Math.abs(pkDnNear.ePeak - pkUpNear.ePeak) : 0;
+
+    let activeDelta = deltaPeak;
+    let activePkUp = pkUpDom, activePkDn = pkDnDom;
+    let signedShift = pkDnDom.ePeak - pkUpDom.ePeak;
+    if (exMethod === "nearest_ef") {
+      activeDelta = deltaNear;
+      activePkUp = pkUpNear; activePkDn = pkDnNear;
+      signedShift = pkDnNear.ePeak - pkUpNear.ePeak;
+    } else if (exMethod === "xcorr") {
+      activeDelta = xcorr.deltaEv;
+      signedShift = xcorr.signedShiftEv;
+    } else if (exMethod === "center") {
+      activeDelta = cent.deltaEv;
+      signedShift = cent.signedShiftEv;
+    }
+
+    const iEff = absMTotFu > 0.01 ? (activeDelta / absMTotFu) : null;
+    return {
+      ...ch,
+      dUpEf: uEf, dDnEf: dEf, dTotEf: totCh, pEf: pCh,
+      pkUpDom, pkDnDom, pkUpNear, pkDnNear, xcorr, cent,
+      deltaPeak, deltaNear, activeDelta, activePkUp, activePkDn, signedShift, iEff
+    };
+  });
+
+  // Choose active channel for Exchange Splitting Δ_ex
+  let activeChan = null;
+  if (opts.channelId && opts.channelId !== "auto") {
+    activeChan = channelStats.find(c => c.id === opts.channelId) || null;
+  }
+  if (!activeChan) {
+    // Auto: pick Element-Orbital with highest |mIntFu| (if magnetic & pdos exists), else Total DOS
+    const eoChans = channelStats.filter(c => c.kind === "element_orbital");
+    if (eoChans.length && isSpinPolarized) {
+      const sorted = [...eoChans].sort((a, b) => Math.abs(b.mIntFu) - Math.abs(a.mIntFu));
+      if (Math.abs(sorted[0].mIntFu) > 0.02) activeChan = sorted[0];
+    }
+    if (!activeChan) activeChan = channelStats[0];
+  }
+
+  // 4) Exchange Splitting Δ_ex & Stoner Parameter I (Supplementary Notes 7.2 & 7.4)
+  const deltaExEv = isSpinPolarized ? activeChan.activeDelta : 0.0;
+  const signedShiftEv = isSpinPolarized ? activeChan.signedShift : 0.0;
+  const iAutoEv = (isSpinPolarized && absMTotFu > 0.01 && deltaExEv > 1e-5) ? (deltaExEv / absMTotFu) : null;
+
+  let iUsedEv = iAutoEv;
+  let iSourceNote = "I = Δ_ex / M_tot (First-Principles)";
+  if (customI > 0) {
+    iUsedEv = customI;
+    iSourceNote = `Custom Stoner I = ${customI.toFixed(3)} eV`;
+  } else if (iUsedEv === null) {
+    iUsedEv = 0.85; // Canonical transition-metal / itinerant reference for non-magnetic instability screening
+    iSourceNote = isSpinPolarized ? "Fallback I = 0.85 eV (Δ_ex ≈ 0)" : "Reference I = 0.85 eV (Non-Magnetic Scan)";
+  }
+
+  // 5) Reconstructed Rigid-Band Unsplit Non-Magnetic DOS D_NM*(E)
+  const halfShift = isSpinPolarized ? Math.max(-3.0, Math.min(3.0, signedShiftEv * 0.5)) : 0.0;
+  const dUnsplitGrid = new Float64Array(eGrid.length);
+  for (let i = 0; i < eGrid.length; i++) {
+    const e = eGrid[i];
+    const uUn = interpUniformGrid(eFull, totalChan.fullUp, e - halfShift);
+    const dUn = interpUniformGrid(eFull, totalChan.fullDn, e + halfShift);
+    dUnsplitGrid[i] = 0.5 * (uUn + dUn);
+  }
+  const dUnsplitEf = 0.5 * (
+    interpUniformGrid(eFull, totalChan.fullUp, -halfShift) +
+    interpUniformGrid(eFull, totalChan.fullDn, +halfShift)
+  );
+
+  // 6) Active D(E_F) for Stoner Criterion I·D(E_F) (Supplementary Note 7.3)
+  let dStonerEf = dAvgEf;
+  let dStonerLabel = "D_avg(E_F) = [D↑ + D↓] / 2";
+  if (dConv === "total_fu") {
+    dStonerEf = dTotEf;
+    dStonerLabel = "D_tot(E_F) = D↑ + D↓";
+  } else if (dConv === "unsplit_nm") {
+    dStonerEf = dUnsplitEf;
+    dStonerLabel = "D_NM*(E_F) (Rigid-Band Unsplit)";
+  } else if (dConv === "custom_dnm" && customDnm > 0) {
+    dStonerEf = customDnm;
+    dStonerLabel = "Custom Non-Magnetic D_NM(E_F)";
+  }
+
+  const stonerProduct = iUsedEv * dStonerEf;
+  const stonerProductUnsplit = iUsedEv * dUnsplitEf;
+  const dCritFu = iUsedEv > 1e-6 ? (1.0 / iUsedEv) : Infinity;
+  const stonerFavored = stonerProduct > 1.0;
+  const chiEnhancement = (stonerProduct < 0.9999) ? (1.0 / (1.0 - stonerProduct)) : null;
+
+  let stonerVerdict = "Paramagnetic / Non-Magnetic Stable";
+  let stonerBadgeColor = "#2563eb";
+  if (stonerFavored) {
+    stonerVerdict = "Spontaneous Itinerant Ferromagnetism Favored";
+    stonerBadgeColor = "#dc2626";
+  } else if (isSpinPolarized && absMTotFu > 0.05 && stonerProductUnsplit > 1.0) {
+    stonerVerdict = "Spin-Split FM (Unsplit I·D*(EF) > 1; Post-Split D(EF) Reduced)";
+    stonerBadgeColor = "#d97706";
+  } else if (stonerProduct >= 0.80) {
+    stonerVerdict = "Nearly Ferromagnetic (Strong Stoner Enhancement)";
+    stonerBadgeColor = "#b45309";
+  }
+
+  // 7) Stoner Free-Energy Landscape E(m) - E0 = 0.5 * [1/D(E_F) - I] * m^2 + 0.25 * beta * m^4
+  const dEffForLandau = Math.max(1e-3, dStonerEf);
+  const alpha2 = (1.0 / dEffForLandau) - iUsedEv; // eV / mu_B^2
+  const mRef = Math.max(0.25, absMTotFu > 0.05 ? absMTotFu : 1.0);
+  const beta4 = alpha2 < 0 ? (-alpha2 / (mRef * mRef)) : (Math.max(0.15, Math.abs(alpha2) * 0.35) / (mRef * mRef));
+  const mMaxPlot = Math.max(1.2, mRef * 1.65);
+  const deltaEfmEv = alpha2 < 0 ? (0.25 * alpha2 * mRef * mRef) : 0.0;
+  const energyCurve = [];
+  const nM = 160;
+  for (let i = 0; i <= nM; i++) {
+    const m = -mMaxPlot + (2 * mMaxPlot) * (i / nM);
+    const eQuad = 0.5 * alpha2 * m * m;
+    const eFullLandau = eQuad + 0.25 * beta4 * m * m * m * m;
+    energyCurve.push({ m, eLandau: eFullLandau, eQuad });
+  }
+
+  // 8) Energy-Resolved Profiles: P(E), M(E), ΔD(E), Stoner Product I·D(E), Rigid-Band Doping Δn(E)
+  const pCurve = new Float64Array(eGrid.length);
+  const mCumCurve = new Float64Array(eGrid.length);
+  const deltaDCurve = new Float64Array(eGrid.length);
+  const dTotCurve = new Float64Array(eGrid.length);
+  const stonerActiveCurve = new Float64Array(eGrid.length);
+  const stonerUnsplitCurve = new Float64Array(eGrid.length);
+  const dopingCurve = new Float64Array(eGrid.length);
+
+  // Precompute cumulative moment M(E) and doping Δn(E) starting from exact totalChan
+  const diffFullArr = new Float64Array(eFull.length);
+  const totFullArr = new Float64Array(eFull.length);
+  for (let i = 0; i < eFull.length; i++) {
+    diffFullArr[i] = totalChan.fullUp[i] - totalChan.fullDn[i];
+    totFullArr[i] = totalChan.fullUp[i] + totalChan.fullDn[i];
+  }
+  const cumMFull = new Float64Array(eFull.length);
+  const cumNFull = new Float64Array(eFull.length);
+  for (let i = 1; i < eFull.length; i++) {
+    const dE = eFull[i] - eFull[i - 1];
+    cumMFull[i] = cumMFull[i - 1] + 0.5 * (diffFullArr[i - 1] + diffFullArr[i]) * dE;
+    cumNFull[i] = cumNFull[i - 1] + 0.5 * (totFullArr[i - 1] + totFullArr[i]) * dE;
+  }
+  const nAtEf = interpUniformGrid(eFull, cumNFull, 0.0);
+
+  let maxStonerInWin = 0, maxStonerE = 0, maxStonerDn = 0;
+  let nearestHoleCrit = null, nearestElecCrit = null;
+
+  for (let i = 0; i < eGrid.length; i++) {
+    const e = eGrid[i];
+    const u = totalChan.up[i], d = totalChan.dn[i];
+    const tot = u + d;
+    dTotCurve[i] = tot;
+    deltaDCurve[i] = u - d;
+    pCurve[i] = tot > 1e-3 ? ((u - d) / tot) * 100.0 : NaN;
+    mCumCurve[i] = interpUniformGrid(eFull, cumMFull, e);
+    const dn = interpUniformGrid(eFull, cumNFull, e) - nAtEf;
+    dopingCurve[i] = dn;
+
+    const dForMap = (dConv === "total_fu") ? tot : (dConv === "unsplit_nm" ? dUnsplitGrid[i] : 0.5 * tot);
+    const sVal = iUsedEv * dForMap;
+    stonerActiveCurve[i] = sVal;
+    stonerUnsplitCurve[i] = iUsedEv * dUnsplitGrid[i];
+
+    if (sVal > maxStonerInWin) {
+      maxStonerInWin = sVal; maxStonerE = e; maxStonerDn = dn;
+    }
+    if (sVal >= 1.0) {
+      if (e <= 0 && (!nearestHoleCrit || Math.abs(e) < Math.abs(nearestHoleCrit.e))) {
+        nearestHoleCrit = { e, dn, sVal };
+      }
+      if (e >= 0 && (!nearestElecCrit || Math.abs(e) < Math.abs(nearestElecCrit.e))) {
+        nearestElecCrit = { e, dn, sVal };
+      }
+    }
+  }
+
+  return {
+    jobId: job.id,
+    seed: sanitizeExportSeed(job.seed || opts.fInfo.fuFormula || "CASTEP"),
+    material: job.material || opts.fInfo.fuFormula || job.seed || "CASTEP System",
+    opts,
+    sourceLabel,
+    isSpinPolarized,
+    zFu,
+    fInfo: opts.fInfo,
+    eGrid,
+    totalChan,
+    activeChan,
+    channelStats,
+    dUpEf, dDnEf, dTotEf, dAvgEf, deltaDEf,
+    dUnsplitEf, dStonerEf, dStonerLabel,
+    isMetallicAtEf, pEf,
+    mTotFu, mTotDosCell, absMTotFu,
+    nUpFu: totalChan.nUpFu, nDnFu: totalChan.nDnFu,
+    exactOcc, scfCross, gapInfo,
+    upGapEv, dnGapEv, hmGapEv, phaseLabel,
+    deltaExEv, signedShiftEv,
+    iAutoEv, iUsedEv, iSourceNote,
+    stonerProduct, stonerProductUnsplit, dCritFu, stonerFavored,
+    chiEnhancement, stonerVerdict, stonerBadgeColor,
+    alpha2, beta4, mRef, mMaxPlot, deltaEfmEv, energyCurve,
+    pCurve, mCumCurve, deltaDCurve, dTotCurve,
+    stonerActiveCurve, stonerUnsplitCurve, dopingCurve,
+    maxStonerInWin, maxStonerE, maxStonerDn,
+    nearestHoleCrit, nearestElecCrit
+  };
+}
+window.computeCastepStonerAnalysis = computeCastepStonerAnalysis;
+
+// ---------------- Publication-Grade Stoner Canvas Renderers ----------------
+
+function drawCastepStonerDosCanvas(res) {
+  const canvas = document.getElementById("castep-stoner-dos-canvas");
+  if (!canvas) return;
+  const parentW = canvas.parentElement ? (canvas.parentElement.clientWidth - 24) : 880;
+  const width = Math.max(360, Math.floor(parentW));
+  const height = 365;
+  const dpr = getCastepCanvasDpr(width, height);
+  if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+  }
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
+  const ctx = canvas.getContext("2d");
+  ctx.save();
+  ctx.scale(dpr, dpr);
+  applyCrispCanvasQuality(ctx);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+
+  if (!res) {
+    ctx.fillStyle = "#475569"; ctx.font = "700 14px Inter, sans-serif"; ctx.textAlign = "center";
+    ctx.fillText("No Spin-Resolved DOS / PDOS Data Loaded", width / 2, height / 2 - 10);
+    ctx.fillStyle = "#64748b"; ctx.font = "12px Inter, sans-serif";
+    ctx.fillText("Load a CASTEP calculation with *.pdos_bin, *_DOS.bands, or *.xcd (or click '📥 Load DOS/PDOS' above).", width / 2, height / 2 + 14);
+    ctx.restore();
+    return;
+  }
+
+  const st = getCastepPlotStyle();
+  const outExtra = st.tickDir === "out" ? (st.tickLength || 5) + 2 : 0;
+  const padT = Math.round(32 + Math.max(0, st.titleSize - 14));
+  const padB = Math.round(48 + Math.max(0, (st.tickSize - 12) * 1.4 + (st.axisLabelSize - 13) * 1.2) + outExtra);
+  const padL = Math.round(62 + Math.max(0, (st.tickSize - 12) * 2.0 + (st.axisLabelSize - 13) * 1.1) + outExtra);
+  const padR = 20;
+  const leftOverhang = Math.round(18 + outExtra);
+  const rightLeftPad = Math.round(60 + Math.max(0, (st.tickSize - 12) * 2.0 + (st.axisLabelSize - 13) * 1.1) + outExtra);
+  const gapX = leftOverhang + rightLeftPad;
+  const panelW = Math.floor((width - padL - padR - gapX) / 2);
+  const panelH = height - padT - padB;
+  const x0L = padL;
+  const x0R = padL + panelW + gapX;
+  const splitX = Math.round(x0L + panelW + leftOverhang);
+  const yLabelOff = Math.round(44 + Math.max(0, (st.tickSize - 12) * 1.8) + outExtra);
+
+  const rMode = res.opts.chart1Right || "polarization";
+  const rightTitleMap = {
+    polarization: "Spin Polarization P(E) at Fermi Level",
+    moment: "Cumulative Magnetic Moment M(E)",
+    asymmetry: "Spin Asymmetry ΔD(E) = D_{↑}(E) − D_{↓}(E)"
+  };
+  const rightPngMap = {
+    polarization: "CASTEP_Spin_Polarization_PE.png",
+    moment: "CASTEP_Cumulative_Moment_ME.png",
+    asymmetry: "CASTEP_Spin_Asymmetry_DeltaD.png"
+  };
+
+  canvas._subPanelRects = [
+    {
+      key: "stoner_dos",
+      label: `Spin DOS & Δex (${res.activeChan.label})`,
+      x: 0, y: 0, w: splitX, h: height,
+      plotKey: "stoner", dataSubPart: "dos",
+      pngName: `CASTEP_SpinDOS_ExchangeSplitting_${res.activeChan.label.replace(/[^A-Za-z0-9_-]/g, "_")}.png`
+    },
+    {
+      key: "stoner_pol",
+      label: rMode === "moment" ? "Cumulative Moment M(E)" : (rMode === "asymmetry" ? "Spin Asymmetry ΔD(E)" : "Spin Polarization P(E)"),
+      x: splitX, y: 0, w: width - splitX, h: height,
+      plotKey: "stoner", dataSubPart: "dos",
+      pngName: rightPngMap[rMode] || "CASTEP_Spin_Polarization_PE.png"
+    }
+  ];
+
+  // ---- LEFT PANEL: Mirrored Spin-Resolved DOS/PDOS (+D_up / -D_dn) & Exchange Splitting Δ_ex ----
+  {
+    const px = x0L, py = padT, pw = panelW, ph = panelH;
+    const eGrid = res.eGrid;
+    const ch = res.activeChan;
+    const xMin = res.opts.emin, xMax = res.opts.emax;
+
+    let maxD = 0.05;
+    for (let i = 0; i < eGrid.length; i++) {
+      if (ch.up[i] > maxD) maxD = ch.up[i];
+      if (ch.dn[i] > maxD) maxD = ch.dn[i];
+    }
+    const yLim = maxD * 1.24;
+    const yMin = -yLim, yMax = yLim;
+    const toX = e => px + ((e - xMin) / ((xMax - xMin) || 1)) * pw;
+    const toY = v => py + ph - ((v - yMin) / ((yMax - yMin) || 1)) * ph;
+
+    // Attach exact plotted series for right-click Sub-Plot TSV Copy
+    const leftSeriesExport = [
+      { label: `${ch.label} Spin-Up D_{↑}(E)`, pts: eGrid.map((e, i) => [e, ch.up[i]]) },
+      { label: `${ch.label} Spin-Down −D_{↓}(E)`, pts: eGrid.map((e, i) => [e, -ch.dn[i]]) }
+    ];
+    if (ch.id !== "total") {
+      leftSeriesExport.push(
+        { label: "Total DOS +D_{↑}(E)", pts: eGrid.map((e, i) => [e, res.totalChan.up[i]]) },
+        { label: "Total DOS −D_{↓}(E)", pts: eGrid.map((e, i) => [e, -res.totalChan.dn[i]]) }
+      );
+    }
+    canvas._subPanelRects[0].exactSeries = {
+      title: `Spin-Resolved DOS (${ch.label}) & Exchange Splitting`,
+      xLabel: "Energy E − E_{F} (eV)",
+      yUnit: "states/(eV·f.u.)",
+      series: leftSeriesExport
+    };
+
+    ctx.fillStyle = st.inkColor;
+    ctx.font = `700 ${st.titleSize}px ${st.fontFamily}`;
+    ctx.textAlign = "center";
+    drawSciText(ctx, `Spin-Resolved ${ch.id === "total" ? "TDOS" : ch.label + " PDOS"} & Δ_{ex}`, px + pw / 2, py - 10);
+
+    const xTicks = [], xTickVals = [], yTicks = [], yTickVals = [];
+    for (let i = 0; i <= 4; i++) {
+      const xv = xMin + (xMax - xMin) * (i / 4);
+      xTickVals.push(xv); xTicks.push(toX(xv));
+      const yv = yMin + (yMax - yMin) * (i / 4);
+      yTickVals.push(yv); yTicks.push(toY(yv));
+    }
+    drawPubGridLines(ctx, px, py, pw, ph, st, xTicks, yTicks);
+
+    ctx.save();
+    ctx.beginPath(); ctx.rect(px, py, pw, ph); ctx.clip();
+
+    // Subtle peak-search window shading
+    const wx0 = Math.max(px, toX(res.opts.pkMin));
+    const wx1 = Math.min(px + pw, toX(res.opts.pkMax));
+    if (wx1 > wx0 + 2) {
+      ctx.fillStyle = "rgba(241, 245, 249, 0.55)";
+      ctx.fillRect(wx0, py, wx1 - wx0, ph);
+    }
+
+    // Zero baseline (D = 0)
+    const yZero = Math.round(toY(0)) + 0.5;
+    ctx.strokeStyle = "#475569"; ctx.lineWidth = 1.0;
+    ctx.beginPath(); ctx.moveTo(px, yZero); ctx.lineTo(px + pw, yZero); ctx.stroke();
+
+    // Optional light gray outline of Total DOS scaled softly when inspecting a specific orbital PDOS
+    if (ch.id !== "total") {
+      let totMax = 0.05;
+      for (let i = 0; i < eGrid.length; i++) {
+        totMax = Math.max(totMax, res.totalChan.up[i], res.totalChan.dn[i]);
+      }
+      if (totMax <= yLim * 2.5) {
+        ctx.strokeStyle = "rgba(100, 116, 139, 0.35)"; ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        eGrid.forEach((e, i) => { const cx = toX(e), cy = toY(res.totalChan.up[i]); if (i === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy); });
+        ctx.stroke();
+        ctx.beginPath();
+        eGrid.forEach((e, i) => { const cx = toX(e), cy = toY(-res.totalChan.dn[i]); if (i === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy); });
+        ctx.stroke();
+      }
+    }
+
+    // Fill & stroke Spin-Up (+D_up, royal blue)
+    ctx.fillStyle = "rgba(37, 99, 235, 0.16)";
+    ctx.beginPath();
+    ctx.moveTo(toX(eGrid[0]), yZero);
+    eGrid.forEach((e, i) => ctx.lineTo(toX(e), toY(ch.up[i])));
+    ctx.lineTo(toX(eGrid[eGrid.length - 1]), yZero);
+    ctx.closePath(); ctx.fill();
+
+    ctx.strokeStyle = "#2563eb"; ctx.lineWidth = st.lineWidth;
+    ctx.beginPath();
+    eGrid.forEach((e, i) => { const cx = toX(e), cy = toY(ch.up[i]); if (i === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy); });
+    ctx.stroke();
+
+    // Fill & stroke Spin-Down (-D_dn, crimson)
+    ctx.fillStyle = "rgba(220, 38, 38, 0.14)";
+    ctx.beginPath();
+    ctx.moveTo(toX(eGrid[0]), yZero);
+    eGrid.forEach((e, i) => ctx.lineTo(toX(e), toY(-ch.dn[i])));
+    ctx.lineTo(toX(eGrid[eGrid.length - 1]), yZero);
+    ctx.closePath(); ctx.fill();
+
+    ctx.strokeStyle = "#dc2626"; ctx.lineWidth = st.lineWidth;
+    ctx.beginPath();
+    eGrid.forEach((e, i) => { const cx = toX(e), cy = toY(-ch.dn[i]); if (i === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy); });
+    ctx.stroke();
+
+    // Fermi level vertical dashed line (E - E_F = 0)
+    if (xMin <= 0 && xMax >= 0) {
+      const xF = Math.round(toX(0)) + 0.5;
+      ctx.strokeStyle = st.inkColor; ctx.lineWidth = 1.25; ctx.setLineDash([5, 3]);
+      ctx.beginPath(); ctx.moveTo(xF, py); ctx.lineTo(xF, py + ph); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Exchange Splitting Δ_ex Peak Markers & Double-Headed Arrow Annotation
+    if (res.isSpinPolarized && ch.activePkUp?.found && ch.activePkDn?.found && res.deltaExEv > 0.005) {
+      const eUp = ch.activePkUp.ePeak, hUp = ch.activePkUp.height;
+      const eDn = ch.activePkDn.ePeak, hDn = ch.activePkDn.height;
+      const xUp = toX(eUp), yUp = toY(hUp);
+      const xDn = toX(eDn), yDn = toY(-hDn);
+
+      // Vertical dotted drop lines to peaks
+      const yArr = py + 28;
+      ctx.setLineDash([3, 3]);
+      ctx.strokeStyle = "#1d4ed8"; ctx.lineWidth = 1.1;
+      ctx.beginPath(); ctx.moveTo(xUp, yArr); ctx.lineTo(xUp, yUp); ctx.stroke();
+      ctx.strokeStyle = "#b91c1c"; ctx.lineWidth = 1.1;
+      ctx.beginPath(); ctx.moveTo(xDn, yArr); ctx.lineTo(xDn, yDn); ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Peak markers
+      ctx.fillStyle = "#1d4ed8"; ctx.beginPath(); ctx.arc(xUp, yUp, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.fillStyle = "#b91c1c"; ctx.beginPath(); ctx.arc(xDn, yDn, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.2; ctx.stroke();
+
+      // Double-headed arrow connecting E_peak,up and E_peak,dn with clean clearance below top border
+      const xA = Math.min(xUp, xDn), xB = Math.max(xUp, xDn);
+      ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(xA, yArr); ctx.lineTo(xB, yArr); ctx.stroke();
+      if (xB - xA > 12) {
+        ctx.fillStyle = "#0f172a";
+        ctx.beginPath(); ctx.moveTo(xA, yArr); ctx.lineTo(xA + 6, yArr - 3.5); ctx.lineTo(xA + 6, yArr + 3.5); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(xB, yArr); ctx.lineTo(xB - 6, yArr - 3.5); ctx.lineTo(xB - 6, yArr + 3.5); ctx.closePath(); ctx.fill();
+      }
+      const midX = Math.max(px + 54, Math.min(px + pw - 54, 0.5 * (xA + xB)));
+      const badgeTxt = `Δ_{ex} = ${res.deltaExEv.toFixed(2)} eV`;
+      ctx.font = `700 ${Math.max(10, st.legendSize)}px ${st.fontFamily}`;
+      const bw = Math.max(84, ctx.measureText(`Δex = ${res.deltaExEv.toFixed(2)} eV`).width + 12);
+      ctx.fillStyle = "rgba(254, 249, 195, 0.96)";
+      ctx.strokeStyle = "#ca8a04"; ctx.lineWidth = 1.0;
+      ctx.fillRect(midX - bw / 2, yArr - 19, bw, 16);
+      ctx.strokeRect(midX - bw / 2, yArr - 19, bw, 16);
+      ctx.fillStyle = "#713f12"; ctx.textAlign = "center";
+      drawSciText(ctx, badgeTxt, midX, yArr - 7);
+    }
+
+    ctx.restore();
+
+    drawPubAxisBox(ctx, px, py, pw, ph, st, { xTicks, yTicks, mirrorTop: true, mirrorRight: true });
+    ctx.fillStyle = st.inkColor;
+    ctx.font = `${st.tickSize}px ${st.fontFamily}`;
+    xTickVals.forEach((xv, i) => {
+      ctx.textAlign = "center";
+      ctx.fillText(formatPubMinus(xv.toFixed(1)), xTicks[i], py + ph + st.tickSize + 4 + outExtra);
+    });
+    yTickVals.forEach((yv, i) => {
+      ctx.textAlign = "right";
+      const lbl = Math.abs(yv) >= 10 ? Math.abs(yv).toFixed(0) : (Math.abs(yv) < 1e-6 ? "0" : Math.abs(yv).toFixed(1));
+      ctx.fillText(formatPubMinus(yv < -1e-6 ? `-${lbl}` : lbl), px - 6 - outExtra, yTicks[i] + st.tickSize * 0.34);
+    });
+
+    ctx.font = `${st.boldAxisLabels ? "700" : "400"} ${st.axisLabelSize}px ${st.fontFamily}`;
+    ctx.textAlign = "center";
+    drawSciText(ctx, "Energy E − E_{F} (eV)", px + pw / 2, py + ph + st.tickSize + st.axisLabelSize + 8 + outExtra);
+    ctx.save();
+    ctx.translate(px - yLabelOff, py + ph / 2);
+    ctx.rotate(-Math.PI / 2);
+    drawSciText(ctx, "DOS (states / eV·f.u.)", 0, 0);
+    ctx.restore();
+
+    // Compact legend (top-right corner where unoccupied DOS is typically clear)
+    const legW = 114, legH = 34;
+    const legX = px + pw - legW - 7, legY = py + 7;
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 0.9;
+    ctx.fillRect(legX, legY, legW, legH); ctx.strokeRect(legX, legY, legW, legH);
+    ctx.font = `600 ${Math.max(9.5, st.legendSize - 0.5)}px ${st.fontFamily}`;
+    ctx.textAlign = "left";
+    ctx.strokeStyle = "#2563eb"; ctx.lineWidth = 2.0;
+    ctx.beginPath(); ctx.moveTo(legX + 6, legY + 10); ctx.lineTo(legX + 20, legY + 10); ctx.stroke();
+    ctx.fillStyle = st.inkColor; drawSciText(ctx, "Spin-Up D_{↑}", legX + 24, legY + 13);
+    ctx.strokeStyle = "#dc2626"; ctx.lineWidth = 2.0;
+    ctx.beginPath(); ctx.moveTo(legX + 6, legY + 24); ctx.lineTo(legX + 20, legY + 24); ctx.stroke();
+    ctx.fillStyle = st.inkColor; drawSciText(ctx, "Spin-Down D_{↓}", legX + 24, legY + 27);
+  }
+
+  // ---- RIGHT PANEL: Spin Polarization P(E) | Cumulative M(E) | Spin Asymmetry ΔD(E) ----
+  {
+    const px = x0R, py = padT, pw = panelW, ph = panelH;
+    const eGrid = res.eGrid;
+    const xMin = res.opts.emin, xMax = res.opts.emax;
+    let yMin = -105, yMax = 105;
+    let yLabel = "Spin Polarization P(E) (%)";
+    let exportYUnit = "%";
+    let plotSeries = [];
+    let efMarker = null;
+
+    if (rMode === "polarization") {
+      yMin = -108; yMax = 108;
+      plotSeries = [{ label: "P(E) = [D_{↑} − D_{↓}] / D", color: "#4f46e5", width: 2.1, pts: eGrid.map((e, i) => [e, res.pCurve[i]]) }];
+      if (res.pEf !== null) efMarker = { x: 0, y: res.pEf, txt: `P(E_{F}) = ${res.pEf >= 0 ? "+" : ""}${res.pEf.toFixed(1)}%` };
+    } else if (rMode === "moment") {
+      yLabel = "Cumulative Moment M(E) (μ_{B}/f.u.)";
+      exportYUnit = "mu_B/f.u.";
+      let lo = 0, hi = 0;
+      for (let i = 0; i < res.mCumCurve.length; i++) {
+        if (res.mCumCurve[i] < lo) lo = res.mCumCurve[i];
+        if (res.mCumCurve[i] > hi) hi = res.mCumCurve[i];
+      }
+      const sp = Math.max(0.2, hi - lo);
+      yMin = lo - sp * 0.14; yMax = hi + sp * 0.22;
+      plotSeries = [{ label: "M(E) = ∫[D_{↑} − D_{↓}]dE", color: "#0f766e", width: 2.2, fill: "rgba(15,118,110,0.12)", pts: eGrid.map((e, i) => [e, res.mCumCurve[i]]) }];
+      efMarker = { x: 0, y: res.mTotFu, txt: `M_{tot} = ${res.mTotFu >= 0 ? "+" : ""}${res.mTotFu.toFixed(3)} μ_{B}` };
+    } else {
+      yLabel = "DOS / Asymmetry (states / eV·f.u.)";
+      exportYUnit = "states/(eV·f.u.)";
+      let lo = -0.1, hi = 0.1;
+      for (let i = 0; i < eGrid.length; i++) {
+        if (res.deltaDCurve[i] < lo) lo = res.deltaDCurve[i];
+        if (res.deltaDCurve[i] > hi) hi = res.deltaDCurve[i];
+        if (res.dTotCurve[i] > hi) hi = res.dTotCurve[i];
+      }
+      const sp = Math.max(0.2, hi - lo);
+      yMin = lo - sp * 0.12; yMax = hi + sp * 0.18;
+      plotSeries = [
+        { label: "Total D(E) = D_{↑} + D_{↓}", color: "#475569", dash: [4, 3], width: 1.5, pts: eGrid.map((e, i) => [e, res.dTotCurve[i]]) },
+        { label: "Asymmetry ΔD(E) = D_{↑} − D_{↓}", color: "#7c3aed", width: 2.1, fill: "rgba(124,58,237,0.12)", pts: eGrid.map((e, i) => [e, res.deltaDCurve[i]]) }
+      ];
+      efMarker = { x: 0, y: res.deltaDEf, txt: `ΔD(E_{F}) = ${res.deltaDEf >= 0 ? "+" : ""}${res.deltaDEf.toFixed(2)}` };
+    }
+
+    canvas._subPanelRects[1].exactSeries = {
+      title: rightTitleMap[rMode] || "Spin Polarization P(E)",
+      xLabel: "Energy E − E_{F} (eV)",
+      yUnit: exportYUnit,
+      series: plotSeries.map(s => ({ label: s.label, pts: s.pts }))
+    };
+
+    const toX = e => px + ((e - xMin) / ((xMax - xMin) || 1)) * pw;
+    const toY = v => py + ph - ((v - yMin) / ((yMax - yMin) || 1)) * ph;
+
+    ctx.fillStyle = st.inkColor;
+    ctx.font = `700 ${st.titleSize}px ${st.fontFamily}`;
+    ctx.textAlign = "center";
+    drawSciText(ctx, rightTitleMap[rMode] || "Spin Polarization P(E)", px + pw / 2, py - 10);
+
+    const xTicks = [], xTickVals = [], yTicks = [], yTickVals = [];
+    for (let i = 0; i <= 4; i++) {
+      const xv = xMin + (xMax - xMin) * (i / 4);
+      xTickVals.push(xv); xTicks.push(toX(xv));
+    }
+    if (rMode === "polarization") {
+      [-100, -50, 0, 50, 100].forEach(yv => { yTickVals.push(yv); yTicks.push(toY(yv)); });
+    } else {
+      for (let i = 0; i <= 4; i++) {
+        const yv = yMin + (yMax - yMin) * (i / 4);
+        yTickVals.push(yv); yTicks.push(toY(yv));
+      }
+    }
+    drawPubGridLines(ctx, px, py, pw, ph, st, xTicks, yTicks);
+
+    ctx.save();
+    ctx.beginPath(); ctx.rect(px, py, pw, ph); ctx.clip();
+
+    // Reference horizontal lines (0% and ±100% half-metal limits)
+    if (yMin <= 0 && yMax >= 0) {
+      const y0 = Math.round(toY(0)) + 0.5;
+      ctx.strokeStyle = "#94a3b8"; ctx.lineWidth = 1.0;
+      ctx.beginPath(); ctx.moveTo(px, y0); ctx.lineTo(px + pw, y0); ctx.stroke();
+    }
+    if (rMode === "polarization") {
+      ctx.strokeStyle = "rgba(22, 163, 74, 0.55)"; ctx.lineWidth = 1.0; ctx.setLineDash([4, 3]);
+      [100, -100].forEach(lim => {
+        const yl = Math.round(toY(lim)) + 0.5;
+        ctx.beginPath(); ctx.moveTo(px, yl); ctx.lineTo(px + pw, yl); ctx.stroke();
+      });
+      ctx.setLineDash([]);
+    }
+
+    // Fermi level line
+    if (xMin <= 0 && xMax >= 0) {
+      const xF = Math.round(toX(0)) + 0.5;
+      ctx.strokeStyle = st.inkColor; ctx.lineWidth = 1.25; ctx.setLineDash([5, 3]);
+      ctx.beginPath(); ctx.moveTo(xF, py); ctx.lineTo(xF, py + ph); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Plot curves
+    plotSeries.forEach(s => {
+      if (s.fill) {
+        const yBase = toY(Math.max(yMin, Math.min(yMax, 0)));
+        ctx.fillStyle = s.fill;
+        ctx.beginPath();
+        let started = false, lastX = px;
+        s.pts.forEach(([e, v]) => {
+          if (!isFinite(v)) {
+            if (started) { ctx.lineTo(lastX, yBase); ctx.closePath(); ctx.fill(); ctx.beginPath(); started = false; }
+            return;
+          }
+          const cx = toX(e), cy = toY(v);
+          if (!started) { ctx.moveTo(cx, yBase); ctx.lineTo(cx, cy); started = true; }
+          else ctx.lineTo(cx, cy);
+          lastX = cx;
+        });
+        if (started) { ctx.lineTo(lastX, yBase); ctx.closePath(); ctx.fill(); }
+      }
+
+      ctx.strokeStyle = s.color; ctx.lineWidth = s.width || st.lineWidth;
+      ctx.setLineDash(s.dash || []);
+      ctx.beginPath();
+      let started = false;
+      s.pts.forEach(([e, v]) => {
+        if (!isFinite(v)) { started = false; return; }
+        const cx = toX(e), cy = toY(v);
+        if (!started) { ctx.moveTo(cx, cy); started = true; } else ctx.lineTo(cx, cy);
+      });
+      ctx.stroke();
+      ctx.setLineDash([]);
+    });
+
+    // Highlighted Fermi-level value callout
+    if (efMarker && xMin <= 0 && xMax >= 0 && isFinite(efMarker.y)) {
+      const mx = toX(0), my = Math.max(py + 12, Math.min(py + ph - 12, toY(efMarker.y)));
+      ctx.fillStyle = "#dc2626";
+      ctx.beginPath(); ctx.arc(mx, my, 4.5, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5; ctx.stroke();
+
+      ctx.font = `700 ${Math.max(10, st.legendSize)}px ${st.fontFamily}`;
+      const bxW = 128;
+      const bx = (mx + 10 + bxW < px + pw) ? (mx + 8) : (mx - bxW - 8);
+      const by = Math.max(py + 6, Math.min(py + ph - 24, my - 10));
+      ctx.fillStyle = "rgba(255,255,255,0.95)";
+      ctx.strokeStyle = "#4f46e5"; ctx.lineWidth = 1.0;
+      ctx.fillRect(bx, by, bxW, 18); ctx.strokeRect(bx, by, bxW, 18);
+      ctx.fillStyle = "#1e1b4b"; ctx.textAlign = "center";
+      drawSciText(ctx, efMarker.txt, bx + bxW / 2, by + 13);
+    }
+
+    ctx.restore();
+
+    drawPubAxisBox(ctx, px, py, pw, ph, st, { xTicks, yTicks, mirrorTop: true, mirrorRight: true });
+    ctx.fillStyle = st.inkColor;
+    ctx.font = `${st.tickSize}px ${st.fontFamily}`;
+    xTickVals.forEach((xv, i) => {
+      ctx.textAlign = "center";
+      ctx.fillText(formatPubMinus(xv.toFixed(1)), xTicks[i], py + ph + st.tickSize + 4 + outExtra);
+    });
+    yTickVals.forEach((yv, i) => {
+      ctx.textAlign = "right";
+      const lbl = rMode === "polarization" ? `${yv.toFixed(0)}` : (Math.abs(yv) >= 10 ? yv.toFixed(1) : yv.toFixed(2));
+      ctx.fillText(formatPubMinus(lbl), px - 6 - outExtra, yTicks[i] + st.tickSize * 0.34);
+    });
+
+    ctx.font = `${st.boldAxisLabels ? "700" : "400"} ${st.axisLabelSize}px ${st.fontFamily}`;
+    ctx.textAlign = "center";
+    drawSciText(ctx, "Energy E − E_{F} (eV)", px + pw / 2, py + ph + st.tickSize + st.axisLabelSize + 8 + outExtra);
+    ctx.save();
+    ctx.translate(px - yLabelOff, py + ph / 2);
+    ctx.rotate(-Math.PI / 2);
+    drawSciText(ctx, yLabel, 0, 0);
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+function drawCastepStonerCriterionCanvas(res) {
+  const canvas = document.getElementById("castep-stoner-criterion-canvas");
+  if (!canvas) return;
+  const parentW = canvas.parentElement ? (canvas.parentElement.clientWidth - 24) : 880;
+  const width = Math.max(360, Math.floor(parentW));
+  const height = 355;
+  const dpr = getCastepCanvasDpr(width, height);
+  if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+  }
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
+  const ctx = canvas.getContext("2d");
+  ctx.save();
+  ctx.scale(dpr, dpr);
+  applyCrispCanvasQuality(ctx);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+
+  if (!res) {
+    ctx.fillStyle = "#64748b"; ctx.font = "12.5px Inter, sans-serif"; ctx.textAlign = "center";
+    ctx.fillText("Load a calculation with DOS / PDOS data to visualize Stoner Criterion I·D(E) & Free-Energy Landscape E(m).", width / 2, height / 2);
+    ctx.restore();
+    return;
+  }
+
+  const st = getCastepPlotStyle();
+  const outExtra = st.tickDir === "out" ? (st.tickLength || 5) + 2 : 0;
+  const padT = Math.round(32 + Math.max(0, st.titleSize - 14));
+  const padB = Math.round(48 + Math.max(0, (st.tickSize - 12) * 1.4 + (st.axisLabelSize - 13) * 1.2) + outExtra);
+  const padL = Math.round(62 + Math.max(0, (st.tickSize - 12) * 2.0 + (st.axisLabelSize - 13) * 1.1) + outExtra);
+  const padR = 20;
+  const leftOverhang = Math.round(18 + outExtra);
+  const rightLeftPad = Math.round(62 + Math.max(0, (st.tickSize - 12) * 2.0 + (st.axisLabelSize - 13) * 1.1) + outExtra);
+  const gapX = leftOverhang + rightLeftPad;
+  const panelW = Math.floor((width - padL - padR - gapX) / 2);
+  const panelH = height - padT - padB;
+  const x0L = padL;
+  const x0R = padL + panelW + gapX;
+  const splitX = Math.round(x0L + panelW + leftOverhang);
+  const yLabelOff = Math.round(45 + Math.max(0, (st.tickSize - 12) * 1.8) + outExtra);
+
+  const lMode = res.opts.chart2Left || "energy";
+  canvas._subPanelRects = [
+    {
+      key: "stoner_map",
+      label: lMode === "doping" ? "Stoner Criterion I·D vs Doping Δn" : "Stoner Criterion Map I·D(E)",
+      x: 0, y: 0, w: splitX, h: height,
+      plotKey: "stoner", dataSubPart: "dos",
+      pngName: lMode === "doping" ? "CASTEP_Stoner_Doping_Map.png" : "CASTEP_Stoner_Criterion_Map.png"
+    },
+    {
+      key: "stoner_landau",
+      label: "Stoner Free Energy E(m) − E0",
+      x: splitX, y: 0, w: width - splitX, h: height,
+      plotKey: "stoner", dataSubPart: "energy",
+      pngName: "CASTEP_Stoner_Free_Energy_Em.png"
+    }
+  ];
+
+  // ---- LEFT PANEL: Stoner Instability Map I·D(E) vs E - E_F (or vs Doping Δn) ----
+  {
+    const px = x0L, py = padT, pw = panelW, ph = panelH;
+    const xArr = lMode === "doping" ? Array.from(res.dopingCurve) : res.eGrid;
+    const xMin = xArr[0], xMax = xArr[xArr.length - 1];
+    let yMax = 1.4;
+    for (let i = 0; i < xArr.length; i++) {
+      if (res.stonerActiveCurve[i] > yMax) yMax = res.stonerActiveCurve[i];
+      if (res.isSpinPolarized && res.stonerUnsplitCurve[i] > yMax) yMax = res.stonerUnsplitCurve[i];
+    }
+    yMax = Math.min(Math.max(1.5, yMax * 1.18), Math.max(4.0, res.stonerProduct * 1.6, 12.0));
+    const yMin = 0;
+    const toX = x => px + ((x - xMin) / ((xMax - xMin) || 1)) * pw;
+    const toY = v => py + ph - ((v - yMin) / ((yMax - yMin) || 1)) * ph;
+
+    const mapSeries = [
+      { label: "I · D(E)", pts: xArr.map((x, i) => [x, res.stonerActiveCurve[i]]) }
+    ];
+    if (res.isSpinPolarized && res.opts.dConv !== "unsplit_nm") {
+      mapSeries.push({ label: "I · D_{NM}*(E) (Unsplit)", pts: xArr.map((x, i) => [x, res.stonerUnsplitCurve[i]]) });
+    }
+    canvas._subPanelRects[0].exactSeries = {
+      title: lMode === "doping" ? "Stoner Criterion I·D vs Rigid-Band Doping" : "Stoner Criterion Map I·D(E)",
+      xLabel: lMode === "doping" ? "Rigid-Band Doping Δn (e / f.u.)" : "Energy E − E_{F} (eV)",
+      yUnit: "dimensionless",
+      series: mapSeries
+    };
+
+    ctx.fillStyle = st.inkColor;
+    ctx.font = `700 ${st.titleSize}px ${st.fontFamily}`;
+    ctx.textAlign = "center";
+    drawSciText(ctx, lMode === "doping" ? "Stoner Criterion I·D vs. Doping Δn" : "Stoner Instability Map I·D(E)", px + pw / 2, py - 10);
+
+    const xTicks = [], xTickVals = [], yTicks = [], yTickVals = [];
+    for (let i = 0; i <= 4; i++) {
+      const xv = xMin + (xMax - xMin) * (i / 4);
+      xTickVals.push(xv); xTicks.push(toX(xv));
+      const yv = yMin + (yMax - yMin) * (i / 4);
+      yTickVals.push(yv); yTicks.push(toY(yv));
+    }
+    drawPubGridLines(ctx, px, py, pw, ph, st, xTicks, yTicks);
+
+    ctx.save();
+    ctx.beginPath(); ctx.rect(px, py, pw, ph); ctx.clip();
+
+    // Shaded Ferromagnetic Instability Zone (I·D > 1)
+    const yOne = toY(1.0);
+    if (yOne > py) {
+      ctx.fillStyle = "rgba(254, 226, 226, 0.52)";
+      ctx.fillRect(px, py, pw, Math.min(ph, yOne - py));
+      ctx.strokeStyle = "#dc2626"; ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]);
+      ctx.beginPath(); ctx.moveTo(px, yOne); ctx.lineTo(px + pw, yOne); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = "#b91c1c"; ctx.font = `700 ${Math.max(9.5, st.legendSize - 0.5)}px ${st.fontFamily}`;
+      ctx.textAlign = "right";
+      drawSciText(ctx, "FM Instability (I·D > 1)", px + pw - 6, Math.max(py + 13, yOne - 5));
+    }
+
+    // Fermi level / zero doping vertical dashed line
+    if (xMin <= 0 && xMax >= 0) {
+      const x0 = Math.round(toX(0)) + 0.5;
+      ctx.strokeStyle = st.inkColor; ctx.lineWidth = 1.2; ctx.setLineDash([5, 3]);
+      ctx.beginPath(); ctx.moveTo(x0, py); ctx.lineTo(x0, py + ph); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Unsplit non-magnetic I·D_NM*(E) reference curve (dashed teal)
+    if (res.isSpinPolarized && res.opts.dConv !== "unsplit_nm") {
+      ctx.strokeStyle = "#0f766e"; ctx.lineWidth = 1.6; ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      xArr.forEach((x, i) => {
+        const cx = toX(x), cy = toY(Math.min(yMax * 1.15, res.stonerUnsplitCurve[i]));
+        if (i === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy);
+      });
+      ctx.stroke(); ctx.setLineDash([]);
+    }
+
+    // Active I·D(E) curve (bold blue with subtle area fill)
+    ctx.fillStyle = "rgba(37, 99, 235, 0.12)";
+    ctx.beginPath();
+    ctx.moveTo(toX(xArr[0]), toY(0));
+    xArr.forEach((x, i) => ctx.lineTo(toX(x), toY(Math.min(yMax * 1.15, res.stonerActiveCurve[i]))));
+    ctx.lineTo(toX(xArr[xArr.length - 1]), toY(0));
+    ctx.closePath(); ctx.fill();
+
+    ctx.strokeStyle = "#1d4ed8"; ctx.lineWidth = 2.1;
+    ctx.beginPath();
+    xArr.forEach((x, i) => {
+      const cx = toX(x), cy = toY(Math.min(yMax * 1.15, res.stonerActiveCurve[i]));
+      if (i === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy);
+    });
+    ctx.stroke();
+
+    // Mark active Fermi point (0, I·D(E_F))
+    if (xMin <= 0 && xMax >= 0) {
+      const mx = toX(0), my = toY(Math.min(yMax * 0.98, res.stonerProduct));
+      ctx.fillStyle = res.stonerFavored ? "#dc2626" : "#1d4ed8";
+      ctx.beginPath(); ctx.arc(mx, my, 4.8, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+
+    ctx.restore();
+
+    drawPubAxisBox(ctx, px, py, pw, ph, st, { xTicks, yTicks, mirrorTop: true, mirrorRight: true });
+    ctx.fillStyle = st.inkColor;
+    ctx.font = `${st.tickSize}px ${st.fontFamily}`;
+    xTickVals.forEach((xv, i) => {
+      ctx.textAlign = "center";
+      ctx.fillText(formatPubMinus(xv.toFixed(1)), xTicks[i], py + ph + st.tickSize + 4 + outExtra);
+    });
+    yTickVals.forEach((yv, i) => {
+      ctx.textAlign = "right";
+      ctx.fillText(formatPubMinus(yv.toFixed(2)), px - 6 - outExtra, yTicks[i] + st.tickSize * 0.34);
+    });
+    ctx.font = `${st.boldAxisLabels ? "700" : "400"} ${st.axisLabelSize}px ${st.fontFamily}`;
+    ctx.textAlign = "center";
+    drawSciText(ctx, lMode === "doping" ? "Rigid-Band Doping Δn (e / f.u.)" : "Energy E − E_{F} (eV)", px + pw / 2, py + ph + st.tickSize + st.axisLabelSize + 8 + outExtra);
+    ctx.save();
+    ctx.translate(px - yLabelOff, py + ph / 2);
+    ctx.rotate(-Math.PI / 2);
+    drawSciText(ctx, "Stoner Product I · D(E)", 0, 0);
+    ctx.restore();
+
+    // Compact legend (top-left inside panel)
+    const hasUnsplit = res.isSpinPolarized && res.opts.dConv !== "unsplit_nm";
+    const legW = hasUnsplit ? 148 : 112, legH = hasUnsplit ? 34 : 20;
+    const legX = px + 7, legY = py + 7;
+    ctx.fillStyle = "rgba(255,255,255,0.92)"; ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 0.9;
+    ctx.fillRect(legX, legY, legW, legH); ctx.strokeRect(legX, legY, legW, legH);
+    ctx.font = `600 ${Math.max(9.5, st.legendSize - 0.5)}px ${st.fontFamily}`; ctx.textAlign = "left";
+    ctx.strokeStyle = "#1d4ed8"; ctx.lineWidth = 2.0;
+    ctx.beginPath(); ctx.moveTo(legX + 6, legY + 10); ctx.lineTo(legX + 20, legY + 10); ctx.stroke();
+    ctx.fillStyle = st.inkColor; drawSciText(ctx, `I·D(E_{F}) = ${res.stonerProduct.toFixed(2)}`, legX + 24, legY + 13);
+    if (hasUnsplit) {
+      ctx.strokeStyle = "#0f766e"; ctx.lineWidth = 1.6; ctx.setLineDash([4, 3]);
+      ctx.beginPath(); ctx.moveTo(legX + 6, legY + 24); ctx.lineTo(legX + 20, legY + 24); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = st.inkColor; drawSciText(ctx, `Unsplit = ${res.stonerProductUnsplit.toFixed(2)}`, legX + 24, legY + 27);
+    }
+  }
+
+  // ---- RIGHT PANEL: Stoner Free-Energy Landscape E(m) - E0 vs Magnetic Moment m ----
+  {
+    const px = x0R, py = padT, pw = panelW, ph = panelH;
+    const ec = res.energyCurve;
+    const xMin = -res.mMaxPlot, xMax = res.mMaxPlot;
+    let yLo = 0, yHi = 0;
+    ec.forEach(p => {
+      if (p.eLandau < yLo) yLo = p.eLandau;
+      if (p.eLandau > yHi) yHi = p.eLandau;
+    });
+    const ySpan = Math.max(0.05, yHi - yLo);
+    const yMin = yLo - ySpan * 0.16;
+    const yMax = yHi + ySpan * 0.24;
+    const toX = m => px + ((m - xMin) / ((xMax - xMin) || 1)) * pw;
+    const toY = v => py + ph - ((v - yMin) / ((yMax - yMin) || 1)) * ph;
+
+    canvas._subPanelRects[1].exactSeries = {
+      title: "Stoner Free-Energy Landscape E(m) − E0",
+      xLabel: "Magnetic Moment m (mu_B/f.u.)",
+      yUnit: "eV/f.u.",
+      series: [
+        { label: "Stoner Landau E(m) − E_{0}", pts: ec.map(p => [p.m, p.eLandau]) },
+        { label: "Quadratic ½[1/D − I]m^{2}", pts: ec.map(p => [p.m, p.eQuad]) }
+      ]
+    };
+
+    ctx.fillStyle = st.inkColor;
+    ctx.font = `700 ${st.titleSize}px ${st.fontFamily}`;
+    ctx.textAlign = "center";
+    drawSciText(ctx, "Stoner Energy Landscape E(m) − E_{0}", px + pw / 2, py - 10);
+
+    const xTicks = [], xTickVals = [], yTicks = [], yTickVals = [];
+    for (let i = 0; i <= 4; i++) {
+      const xv = xMin + (xMax - xMin) * (i / 4);
+      xTickVals.push(xv); xTicks.push(toX(xv));
+      const yv = yMin + (yMax - yMin) * (i / 4);
+      yTickVals.push(yv); yTicks.push(toY(yv));
+    }
+    drawPubGridLines(ctx, px, py, pw, ph, st, xTicks, yTicks);
+
+    ctx.save();
+    ctx.beginPath(); ctx.rect(px, py, pw, ph); ctx.clip();
+
+    // Axes E=E0 and m=0
+    const yZero = Math.round(toY(0)) + 0.5;
+    const xZero = Math.round(toX(0)) + 0.5;
+    ctx.strokeStyle = "#94a3b8"; ctx.lineWidth = 1.0; ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.moveTo(px, yZero); ctx.lineTo(px + pw, yZero); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(xZero, py); ctx.lineTo(xZero, py + ph); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Quadratic Stoner term dashed
+    ctx.strokeStyle = "#94a3b8"; ctx.lineWidth = 1.4; ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ec.forEach((p, i) => {
+      const cx = toX(p.m), cy = toY(p.eQuad);
+      if (i === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy);
+    });
+    ctx.stroke(); ctx.setLineDash([]);
+
+    // Full Landau E(m) - E0 curve
+    const curveColor = res.stonerFavored ? "#dc2626" : "#2563eb";
+    ctx.strokeStyle = curveColor; ctx.lineWidth = 2.3;
+    ctx.beginPath();
+    ec.forEach((p, i) => {
+      const cx = toX(p.m), cy = toY(p.eLandau);
+      if (i === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy);
+    });
+    ctx.stroke();
+
+    // Mark equilibrium minimum(s)
+    if (res.stonerFavored) {
+      [-res.mRef, +res.mRef].forEach(meq => {
+        const mx = toX(meq), my = toY(res.deltaEfmEv);
+        ctx.fillStyle = "#dc2626";
+        ctx.beginPath(); ctx.arc(mx, my, 4.5, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5; ctx.stroke();
+      });
+    } else {
+      ctx.fillStyle = "#2563eb";
+      ctx.beginPath(); ctx.arc(toX(0), toY(0), 4.5, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+
+    // Verdict callout box at top center
+    const boxTxt = res.stonerFavored
+      ? `FM Double-Well (I·D = ${res.stonerProduct.toFixed(2)} > 1)`
+      : `PM Single-Well (I·D = ${res.stonerProduct.toFixed(2)} < 1)`;
+    ctx.font = `700 ${Math.max(9.5, st.legendSize - 0.5)}px ${st.fontFamily}`;
+    const bw = Math.min(pw - 14, ctx.measureText(boxTxt).width + 16);
+    const bx = px + (pw - bw) / 2, by = py + 7;
+    ctx.fillStyle = res.stonerFavored ? "rgba(254,242,242,0.95)" : "rgba(239,246,255,0.95)";
+    ctx.strokeStyle = curveColor; ctx.lineWidth = 1.0;
+    ctx.fillRect(bx, by, bw, 18); ctx.strokeRect(bx, by, bw, 18);
+    ctx.fillStyle = res.stonerFavored ? "#991b1b" : "#1e3a8a"; ctx.textAlign = "center";
+    drawSciText(ctx, boxTxt, px + pw / 2, by + 12.5);
+
+    ctx.restore();
+
+    drawPubAxisBox(ctx, px, py, pw, ph, st, { xTicks, yTicks, mirrorTop: true, mirrorRight: true });
+    ctx.fillStyle = st.inkColor;
+    ctx.font = `${st.tickSize}px ${st.fontFamily}`;
+    xTickVals.forEach((xv, i) => {
+      ctx.textAlign = "center";
+      ctx.fillText(formatPubMinus(xv.toFixed(1)), xTicks[i], py + ph + st.tickSize + 4 + outExtra);
+    });
+    yTickVals.forEach((yv, i) => {
+      ctx.textAlign = "right";
+      const lbl = Math.abs(yv) < 1e-4 ? "0.00" : (Math.abs(yv) >= 10 ? yv.toFixed(1) : yv.toFixed(2));
+      ctx.fillText(formatPubMinus(lbl), px - 6 - outExtra, yTicks[i] + st.tickSize * 0.34);
+    });
+    ctx.font = `${st.boldAxisLabels ? "700" : "400"} ${st.axisLabelSize}px ${st.fontFamily}`;
+    ctx.textAlign = "center";
+    drawSciText(ctx, "Magnetic Moment m (μ_{B} / f.u.)", px + pw / 2, py + ph + st.tickSize + st.axisLabelSize + 8 + outExtra);
+    ctx.save();
+    ctx.translate(px - yLabelOff, py + ph / 2);
+    ctx.rotate(-Math.PI / 2);
+    drawSciText(ctx, "E(m) − E_{0} (eV / f.u.)", 0, 0);
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+// ---------------- Master UI Controller for Stoner Magnetism Pane ----------------
+
+function populateCastepStonerChannelSelect(res) {
+  const sel = document.getElementById("castep-st-channel");
+  if (!sel || !res) return;
+  const prev = sel.value || "auto";
+  const optsHtml = [`<option value="auto">🎯 Auto (${escapeHtml(res.activeChan.label)})</option>`];
+  res.channelStats.forEach(c => {
+    const tag = c.kind === "total" ? "Total DOS" : (c.kind === "element_orbital" ? `${c.label} (m = ${c.mIntFu >= 0 ? "+" : ""}${c.mIntFu.toFixed(2)} μB)` : `${c.label} (m = ${c.mIntFu >= 0 ? "+" : ""}${c.mIntFu.toFixed(2)} μB)`);
+    optsHtml.push(`<option value="${escapeHtml(c.id)}">${escapeHtml(tag)}</option>`);
+  });
+  sel.innerHTML = optsHtml.join("");
+  if (prev === "auto" || res.channelStats.some(c => c.id === prev)) {
+    sel.value = prev;
+  } else {
+    sel.value = "auto";
+  }
+}
+
+function selectCastepStonerChannel(chanId) {
+  const sel = document.getElementById("castep-st-channel");
+  if (sel) {
+    sel.value = chanId;
+    renderCastepStonerPane();
+  }
+}
+window.selectCastepStonerChannel = selectCastepStonerChannel;
+
+function setCastepStonerPeakWindow(lo, hi) {
+  const a = document.getElementById("castep-st-pkmin");
+  const b = document.getElementById("castep-st-pkmax");
+  if (a) a.value = String(lo);
+  if (b) b.value = String(hi);
+  renderCastepStonerPane();
+}
+window.setCastepStonerPeakWindow = setCastepStonerPeakWindow;
+
+function applyCastepStonerRefIPreset(key) {
+  const inp = document.getElementById("castep-st-custom-i");
+  if (!inp) return;
+  if (!key || key === "auto") {
+    inp.value = "0";
+  } else if (STONER_REF_I_PRESETS[key]) {
+    inp.value = String(STONER_REF_I_PRESETS[key].val);
+  }
+  renderCastepStonerPane();
+}
+window.applyCastepStonerRefIPreset = applyCastepStonerRefIPreset;
+
+function resetCastepStonerZAuto() {
+  const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
+  const fInfo = detectStonerFormulaUnitsZ(job);
+  const inp = document.getElementById("castep-st-zfu");
+  if (inp) inp.value = String(fInfo.zAuto);
+  window._castepStonerUiState.userEditedZ = false;
+  renderCastepStonerPane();
+}
+window.resetCastepStonerZAuto = resetCastepStonerZAuto;
+
+function renderCastepStonerPane() {
+  const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
+  const res = computeCastepStonerAnalysis(job);
+  window._lastCastepStonerResult = res;
+
+  // Toggle custom D_NM(E_F) input visibility
+  const dConv = document.getElementById("castep-st-dconv")?.value || "spin_avg";
+  const dnmWrap = document.getElementById("castep-st-custom-dnm-wrap");
+  if (dnmWrap) dnmWrap.style.display = dConv === "custom_dnm" ? "inline-flex" : "none";
+
+  if (res) populateCastepStonerChannelSelect(res);
+
+  // 1) Top Summary Strip
+  const strip = document.getElementById("castep-stoner-summary-strip");
+  if (strip) {
+    if (!res) {
+      strip.innerHTML = `<span>Load a CASTEP calculation containing <code>*.pdos_bin</code>, <code>*_DOS.bands</code>, or <code>*.xcd</code> to compute Exchange Splitting (Δ<sub>ex</sub>), Spin Polarization P(E<sub>F</sub>), Total Magnetic Moment (M<sub>tot</sub>), Stoner Exchange Parameter (I), and Stoner Criterion I·D(E<sub>F</sub>).</span>`;
+    } else {
+      const pTxt = res.pEf !== null ? `${res.pEf >= 0 ? "+" : ""}${res.pEf.toFixed(1)}%` : "Gapped";
+      const verdictBg = res.stonerFavored ? "#fef2f2" : (res.stonerProduct >= 0.8 ? "#fffbeb" : "#eff6ff");
+      strip.innerHTML = `
+        <span><strong>System:</strong> ${escapeHtml(res.material)} (Z = ${res.zFu} f.u./cell)</span>
+        <span style="color:#4f46e5;"><strong>P(E<sub>F</sub>):</strong> ${pTxt}</span>
+        <span style="color:#0f766e;"><strong>M<sub>tot</sub>:</strong> ${res.mTotFu >= 0 ? "+" : ""}${res.mTotFu.toFixed(3)} μ<sub>B</sub>/f.u.</span>
+        <span style="color:#b45309;"><strong>Δ<sub>ex</sub> (${escapeHtml(res.activeChan.label)}):</strong> ${res.deltaExEv.toFixed(3)} eV</span>
+        <span style="color:#0369a1;"><strong>I:</strong> ${res.iUsedEv.toFixed(3)} eV</span>
+        <span style="background:${verdictBg}; color:${res.stonerBadgeColor}; border:1px solid ${res.stonerBadgeColor}44; padding:2px 8px; border-radius:999px; font-weight:800;">I·D(E<sub>F</sub>) = ${res.stonerProduct.toFixed(3)} • ${res.stonerFavored ? "FM Favored (>1)" : "PM Stable (<1)"}</span>
+      `;
+    }
+  }
+
+  // 2) Render 4 Publication KPI Cards
+  const cardsEl = document.getElementById("castep-stoner-kpi-cards");
+  if (cardsEl) {
+    if (!res) {
+      cardsEl.innerHTML = "";
+    } else {
+      const pValStr = res.pEf !== null ? `${res.pEf >= 0 ? "+" : ""}${res.pEf.toFixed(2)}%` : "Gapped (D = 0)";
+      const pColor = res.pEf !== null && Math.abs(res.pEf) >= 98 ? "#15803d" : "#4f46e5";
+      const scfStr = res.scfCross.intSpin !== null
+        ? `${(res.scfCross.intSpin / res.zFu).toFixed(3)} μ<sub>B</sub>/f.u. (${res.scfCross.intSpin.toFixed(2)} /cell)`
+        : "—";
+      const occStr = res.exactOcc && res.exactOcc.isSpin
+        ? `${(res.exactOcc.mCell / res.zFu).toFixed(3)} μ<sub>B</sub>/f.u.`
+        : "—";
+
+      cardsEl.innerHTML = `
+        <div class="castep-mulliken-sp-card" style="border-top:3px solid #4f46e5;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <strong style="font-size:12px; color:#4f46e5;">📊 Spin DOS &amp; Polarization P(E<sub>F</sub>)</strong>
+            <span class="badge badge-blue" style="font-size:9.5px;">Note 7.1</span>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; font-size:11.5px; color:#1e293b;">
+            <div>P(E<sub>F</sub>): <strong style="color:${pColor}; font-size:13px;">${pValStr}</strong></div>
+            <div>Phase: <strong style="font-size:10.5px;">${escapeHtml(res.phaseLabel.split("(")[0].trim())}</strong></div>
+            <div>D<sub>↑</sub>(E<sub>F</sub>): <strong style="color:#1d4ed8;">${res.dUpEf.toFixed(3)}</strong> st/eV·f.u.</div>
+            <div>D<sub>↓</sub>(E<sub>F</sub>): <strong style="color:#dc2626;">${res.dDnEf.toFixed(3)}</strong> st/eV·f.u.</div>
+            <div>D(E<sub>F</sub>) Total: <strong>${res.dTotEf.toFixed(3)}</strong> st/eV·f.u.</div>
+            <div>ΔD(E<sub>F</sub>): <strong>${res.deltaDEf >= 0 ? "+" : ""}${res.deltaDEf.toFixed(3)}</strong> st/eV·f.u.</div>
+            <div>E<sub>g</sub>(↑) / E<sub>g</sub>(↓): <strong>${res.upGapEv.toFixed(2)} / ${res.dnGapEv.toFixed(2)} eV</strong></div>
+            <div>HM Gap E<sub>HM</sub>: <strong>${res.hmGapEv !== null ? res.hmGapEv.toFixed(3) + " eV" : "—"}</strong></div>
+          </div>
+        </div>
+
+        <div class="castep-mulliken-sp-card" style="border-top:3px solid #0f766e;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <strong style="font-size:12px; color:#0f766e;">🧲 Integrated Moment M<sub>tot</sub></strong>
+            <span class="badge badge-blue" style="font-size:9.5px;">Z = ${res.zFu} f.u.</span>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; font-size:11.5px; color:#1e293b;">
+            <div style="grid-column:1/-1;">M<sub>tot</sub> (DOS Integral): <strong style="color:#0f766e; font-size:13px;">${res.mTotFu >= 0 ? "+" : ""}${res.mTotFu.toFixed(4)} μ<sub>B</sub>/f.u.</strong></div>
+            <div>M<sub>cell</sub> (Full Cell): <strong>${res.mTotDosCell >= 0 ? "+" : ""}${res.mTotDosCell.toFixed(3)} μ<sub>B</sub></strong></div>
+            <div>Exact Band Occ: <strong>${occStr}</strong></div>
+            <div>N<sub>↑</sub> / N<sub>↓</sub> (f.u.): <strong>${res.nUpFu.toFixed(2)} / ${res.nDnFu.toFixed(2)} e</strong></div>
+            <div>SCF (.castep): <strong>${scfStr}</strong></div>
+            <div style="grid-column:1/-1; font-size:10.5px; color:#64748b;">Formula: <strong>${escapeHtml(res.fInfo.fuFormula)}</strong> (${res.fInfo.nAtoms} atoms/cell)</div>
+          </div>
+        </div>
+
+        <div class="castep-mulliken-sp-card" style="border-top:3px solid #d97706;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <strong style="font-size:12px; color:#b45309;">⚡ Exchange Splitting Δ<sub>ex</sub></strong>
+            <span class="badge badge-blue" style="font-size:9.5px;">Note 7.2</span>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; font-size:11.5px; color:#1e293b;">
+            <div style="grid-column:1/-1;">Δ<sub>ex</sub> (${escapeHtml(res.activeChan.label)}): <strong style="color:#b45309; font-size:13px;">${res.deltaExEv.toFixed(4)} eV</strong></div>
+            <div>E<sub>peak,↑</sub>: <strong style="color:#1d4ed8;">${res.activeChan.activePkUp.found ? res.activeChan.activePkUp.ePeak.toFixed(3) + " eV" : "—"}</strong></div>
+            <div>E<sub>peak,↓</sub>: <strong style="color:#dc2626;">${res.activeChan.activePkDn.found ? res.activeChan.activePkDn.ePeak.toFixed(3) + " eV" : "—"}</strong></div>
+            <div>Cross-Corr Δ<sub>ex</sub>: <strong>${res.activeChan.xcorr.deltaEv.toFixed(3)} eV</strong></div>
+            <div>Band-Center Δ<sub>ex</sub>: <strong>${res.activeChan.cent.deltaEv.toFixed(3)} eV</strong></div>
+            <div style="grid-column:1/-1; font-size:10.5px; color:#64748b;">Window: [${res.opts.pkMin.toFixed(1)}, +${res.opts.pkMax.toFixed(1)}] eV • σ = ${res.opts.sigma.toFixed(2)} eV</div>
+          </div>
+        </div>
+
+        <div class="castep-mulliken-sp-card" style="border-top:3px solid ${res.stonerBadgeColor};">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <strong style="font-size:12px; color:${res.stonerBadgeColor};">🧭 Stoner Criterion I·D(E<sub>F</sub>)</strong>
+            <span class="badge badge-blue" style="font-size:9.5px;">Notes 7.3–7.4</span>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; font-size:11.5px; color:#1e293b;">
+            <div>Stoner I: <strong style="color:#0369a1; font-size:13px;">${res.iUsedEv.toFixed(4)} eV</strong></div>
+            <div>I·D(E<sub>F</sub>): <strong style="color:${res.stonerBadgeColor}; font-size:13px;">${res.stonerProduct.toFixed(4)}</strong></div>
+            <div>D<sub>crit</sub> = 1/I: <strong>${isFinite(res.dCritFu) ? res.dCritFu.toFixed(3) : "—"}</strong> st/eV·f.u.</div>
+            <div>Unsplit I·D<sub>NM</sub>*: <strong>${res.stonerProductUnsplit.toFixed(3)}</strong></div>
+            <div>${res.stonerFavored ? "ΔE<sub>FM</sub>" : "Enhanc. χ/χ<sub>0</sub>"}: <strong>${res.stonerFavored ? (res.deltaEfmEv * 1000).toFixed(1) + " meV" : (res.chiEnhancement ? res.chiEnhancement.toFixed(2) + "×" : "∞")}</strong></div>
+            <div>Max I·D(E): <strong>${res.maxStonerInWin.toFixed(2)}</strong> @ ${res.maxStonerE.toFixed(2)} eV</div>
+            <div style="grid-column:1/-1; font-size:10.5px; font-weight:700; color:${res.stonerBadgeColor};">${escapeHtml(res.stonerVerdict).replace(/\(EF\)/g, "(E<sub>F</sub>)")}</div>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  // 3) Render Both High-DPI Dual-Panel Publication Canvases
+  drawCastepStonerDosCanvas(res);
+  drawCastepStonerCriterionCanvas(res);
+
+  // 4) Table 1: Channel-Resolved Spin Polarization & Exchange Splitting Breakdown
+  const chTbody = document.getElementById("castep-st-channels-tbody");
+  const chCnt = document.getElementById("castep-st-channels-count");
+  if (chTbody) {
+    if (!res || !res.channelStats.length) {
+      if (chCnt) chCnt.textContent = "0 channels";
+      chTbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:14px; color:#64748b;">No spin-resolved DOS/PDOS channels available.</td></tr>`;
+    } else {
+      if (chCnt) chCnt.textContent = `${res.channelStats.length} channels`;
+      chTbody.innerHTML = res.channelStats.map(c => {
+        const isAct = c.id === res.activeChan.id;
+        const rowStyle = isAct ? `background:#eff6ff; font-weight:700; cursor:pointer;` : `cursor:pointer;`;
+        const pCell = c.pEf !== null ? `${c.pEf >= 0 ? "+" : ""}${c.pEf.toFixed(1)}%` : "—";
+        const iCell = c.iEff !== null ? c.iEff.toFixed(3) : "—";
+        return `<tr style="${rowStyle}" onclick="selectCastepStonerChannel('${escapeHtml(c.id)}')" title="Click to plot ${escapeHtml(c.label)} and use its Δ_ex for Stoner I">
+          <td style="font-weight:800; color:${isAct ? "#1d4ed8" : "#0f172a"};">${isAct ? "▶ " : ""}${escapeHtml(c.label)}</td>
+          <td style="color:#1d4ed8;">${c.dUpEf.toFixed(3)}</td>
+          <td style="color:#dc2626;">${c.dDnEf.toFixed(3)}</td>
+          <td style="font-weight:700; color:#4f46e5;">${pCell}</td>
+          <td style="font-family:monospace;">${c.activePkUp.found ? c.activePkUp.ePeak.toFixed(3) : "—"}</td>
+          <td style="font-family:monospace;">${c.activePkDn.found ? c.activePkDn.ePeak.toFixed(3) : "—"}</td>
+          <td style="font-weight:800; color:#b45309;">${c.activeDelta.toFixed(3)}</td>
+          <td style="font-weight:700; color:#0f766e;">${c.mIntFu >= 0 ? "+" : ""}${c.mIntFu.toFixed(3)}</td>
+          <td style="font-family:monospace; color:#0369a1;">${iCell}</td>
+        </tr>`;
+      }).join("");
+    }
+  }
+
+  // 5) Table 2: Stoner Equations Verification & Rigid-Band Doping Instability Thresholds
+  const eqTbody = document.getElementById("castep-st-summary-tbody");
+  if (eqTbody) {
+    if (!res) {
+      eqTbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:14px; color:#64748b;">No Stoner summary available.</td></tr>`;
+    } else {
+      const rows = [
+        ["Total DOS at E<sub>F</sub>", "D(E<sub>F</sub>) = D<sub>↑</sub> + D<sub>↓</sub>", `${res.dTotEf.toFixed(4)}`, "states / (eV·f.u.)"],
+        ["Spin Asymmetry at E<sub>F</sub>", "ΔD(E<sub>F</sub>) = D<sub>↑</sub> − D<sub>↓</sub>", `${res.deltaDEf >= 0 ? "+" : ""}${res.deltaDEf.toFixed(4)}`, "states / (eV·f.u.)"],
+        ["Spin Polarization at E<sub>F</sub>", "P(E<sub>F</sub>) = [ΔD / D] × 100%", res.pEf !== null ? `${res.pEf >= 0 ? "+" : ""}${res.pEf.toFixed(2)}%` : "Gapped (0 states)", "%"],
+        ["Total Magnetic Moment", "M<sub>tot</sub> = μ<sub>B</sub>∫[D<sub>↑</sub>−D<sub>↓</sub>]dE", `${res.mTotFu >= 0 ? "+" : ""}${res.mTotFu.toFixed(4)}`, "μ<sub>B</sub> / f.u."],
+        ["Exchange Splitting", `Δ<sub>ex</sub> = |E<sub>peak,↓</sub> − E<sub>peak,↑</sub>| (${escapeHtml(res.activeChan.label)})`, `${res.deltaExEv.toFixed(4)}`, "eV"],
+        ["Stoner Exchange Parameter", res.iSourceNote.replace("Δ_ex", "Δ<sub>ex</sub>").replace("M_tot", "M<sub>tot</sub>"), `${res.iUsedEv.toFixed(4)}`, "eV"],
+        ["Active Stoner DOS", res.dStonerLabel.replace(/E_F/g, "E<sub>F</sub>").replace(/D_avg/g, "D<sub>avg</sub>").replace(/D_tot/g, "D<sub>tot</sub>").replace(/D_NM/g, "D<sub>NM</sub>"), `${res.dStonerEf.toFixed(4)}`, "states / (eV·f.u.)"],
+        ["Stoner Criterion Product", "I · D(E<sub>F</sub>) &gt; 1 ⇒ FM", `<strong style="color:${res.stonerBadgeColor};">${res.stonerProduct.toFixed(4)} (${res.stonerFavored ? "FM &gt; 1" : "PM &lt; 1"})</strong>`, "dimensionless"],
+        ["Critical Stoner DOS", "D<sub>crit</sub> = 1 / I", `${isFinite(res.dCritFu) ? res.dCritFu.toFixed(4) : "—"}`, "states / (eV·f.u.)"],
+        ["Hole-Doping FM Threshold", "Nearest E &lt; E<sub>F</sub> with I·D(E) &ge; 1", res.nearestHoleCrit ? `ΔE = ${res.nearestHoleCrit.e.toFixed(2)} eV (Δn = ${res.nearestHoleCrit.dn.toFixed(2)} e/f.u.)` : "None in window", "Rigid-band"],
+        ["Electron-Doping FM Threshold", "Nearest E &gt; E<sub>F</sub> with I·D(E) &ge; 1", res.nearestElecCrit ? `ΔE = +${res.nearestElecCrit.e.toFixed(2)} eV (Δn = +${res.nearestElecCrit.dn.toFixed(2)} e/f.u.)` : "None in window", "Rigid-band"]
+      ];
+      eqTbody.innerHTML = rows.map(r => `<tr>
+        <td style="font-weight:700;">${r[0]}</td>
+        <td style="font-size:11px; color:#334155;">${r[1]}</td>
+        <td style="font-family:monospace; font-weight:700; color:#0f172a;">${r[2]}</td>
+        <td style="font-size:10.5px; color:#64748b;">${r[3]}</td>
+      </tr>`).join("");
+    }
+  }
+}
+window.renderCastepStonerPane = renderCastepStonerPane;
+
+// ---------------- Direct File Upload & Multi-Format Exporters ----------------
+
+async function handleCastepStonerFilesUpload(event) {
+  const files = Array.from(event?.target?.files || []);
+  if (!files.length) return;
+  const xcdFiles = files.filter(f => f.name.toLowerCase().endsWith(".xcd"));
+  const otherFiles = files.filter(f => !f.name.toLowerCase().endsWith(".xcd"));
+  if (otherFiles.length && typeof handleCastepSpinMatrixFileUpload === "function") {
+    await handleCastepSpinMatrixFileUpload({ target: { files: otherFiles, value: "" } });
+  }
+  if (xcdFiles.length) {
+    let job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
+    if (!job) {
+      job = { id: "stoner_local_" + Date.now(), seed: xcdFiles[0].name.replace(/\.xcd$/i, ""), folder: "Local Upload", files_list: [] };
+      CASTEP_STUDIO_STATE.jobs = CASTEP_STUDIO_STATE.jobs || [];
+      CASTEP_STUDIO_STATE.jobs.unshift(job);
+      CASTEP_STUDIO_STATE.activeJobId = job.id;
+    }
+    for (const f of xcdFiles) {
+      const txt = await f.text();
+      const parsed = typeof parseCastepXcdXmlClient === "function" ? parseCastepXcdXmlClient(txt, false) : null;
+      if (parsed && parsed.series?.length) {
+        if (/pdos|partial/i.test(f.name)) job.pdos_xcd = parsed;
+        else job.dos_xcd = parsed;
+      }
+    }
+    if (typeof showToast === "function") showToast(`Loaded ${xcdFiles.length} DOS/PDOS .xcd file(s) for Stoner analysis!`, "success");
+  }
+  if (event?.target) event.target.value = "";
+  renderCastepStonerPane();
+}
+window.handleCastepStonerFilesUpload = handleCastepStonerFilesUpload;
+
+function buildStonerExportTables() {
+  const res = window._lastCastepStonerResult;
+  if (!res) return null;
+
+  const summaryRows = [
+    ["Material", res.material, ""],
+    ["Data_Source", res.sourceLabel, ""],
+    ["Formula_Units_Per_Cell_Z", res.zFu, "f.u./cell"],
+    ["Electronic_Magnetic_Phase", res.phaseLabel, ""],
+    ["D_up_EF", Number(res.dUpEf.toFixed(5)), "states/(eV*f.u.)"],
+    ["D_dn_EF", Number(res.dDnEf.toFixed(5)), "states/(eV*f.u.)"],
+    ["D_tot_EF", Number(res.dTotEf.toFixed(5)), "states/(eV*f.u.)"],
+    ["D_avg_EF", Number(res.dAvgEf.toFixed(5)), "states/(eV*f.u.)"],
+    ["Delta_D_EF", Number(res.deltaDEf.toFixed(5)), "states/(eV*f.u.)"],
+    ["Spin_Polarization_P_EF", res.pEf !== null ? Number(res.pEf.toFixed(3)) : "Gapped", "%"],
+    ["Total_Magnetic_Moment_Mtot_DOS", Number(res.mTotFu.toFixed(5)), "mu_B/f.u."],
+    ["Total_Magnetic_Moment_Cell", Number(res.mTotDosCell.toFixed(5)), "mu_B/cell"],
+    ["Exchange_Splitting_Channel", res.activeChan.label, ""],
+    ["E_peak_up", res.activeChan.activePkUp.found ? Number(res.activeChan.activePkUp.ePeak.toFixed(4)) : "", "eV"],
+    ["E_peak_dn", res.activeChan.activePkDn.found ? Number(res.activeChan.activePkDn.ePeak.toFixed(4)) : "", "eV"],
+    ["Exchange_Splitting_Delta_ex", Number(res.deltaExEv.toFixed(5)), "eV"],
+    ["Delta_ex_CrossCorr", Number(res.activeChan.xcorr.deltaEv.toFixed(5)), "eV"],
+    ["Delta_ex_BandCenter", Number(res.activeChan.cent.deltaEv.toFixed(5)), "eV"],
+    ["Stoner_Parameter_I", Number(res.iUsedEv.toFixed(5)), "eV"],
+    ["Stoner_Active_D_EF", Number(res.dStonerEf.toFixed(5)), "states/(eV*f.u.)"],
+    ["Stoner_Product_I_x_D_EF", Number(res.stonerProduct.toFixed(5)), "dimensionless"],
+    ["Stoner_Unsplit_I_x_DNM_EF", Number(res.stonerProductUnsplit.toFixed(5)), "dimensionless"],
+    ["Stoner_Verdict", res.stonerVerdict, ""],
+    ["Critical_DOS_Dcrit", isFinite(res.dCritFu) ? Number(res.dCritFu.toFixed(5)) : "", "states/(eV*f.u.)"],
+    ["Susceptibility_Enhancement_chi_chi0", res.chiEnhancement ? Number(res.chiEnhancement.toFixed(4)) : "FM_Instability", "ratio"]
+  ];
+
+  const dosHeaders = [
+    "Energy_E_minus_EF_eV", "Total_D_up_fu", "Total_D_dn_fu", "Total_D_sum_fu",
+    "Delta_D_fu", "Spin_Polarization_Pct", "Cumulative_Moment_muB_fu",
+    "RigidBand_Doping_e_fu", "Stoner_I_x_D", "Stoner_Unsplit_I_x_DNM",
+    `${res.activeChan.label}_D_up`, `${res.activeChan.label}_D_dn`
+  ];
+  const dosRows = res.eGrid.map((e, i) => [
+    Number(e.toFixed(5)),
+    Number(res.totalChan.up[i].toFixed(5)),
+    Number(res.totalChan.dn[i].toFixed(5)),
+    Number(res.dTotCurve[i].toFixed(5)),
+    Number(res.deltaDCurve[i].toFixed(5)),
+    isFinite(res.pCurve[i]) ? Number(res.pCurve[i].toFixed(3)) : "",
+    Number(res.mCumCurve[i].toFixed(5)),
+    Number(res.dopingCurve[i].toFixed(5)),
+    Number(res.stonerActiveCurve[i].toFixed(5)),
+    Number(res.stonerUnsplitCurve[i].toFixed(5)),
+    Number(res.activeChan.up[i].toFixed(5)),
+    Number(res.activeChan.dn[i].toFixed(5))
+  ]);
+
+  const energyHeaders = ["Moment_m_muB_fu", "Stoner_Landau_E_minus_E0_eV", "Quadratic_Term_eV"];
+  const energyRows = res.energyCurve.map(p => [
+    Number(p.m.toFixed(5)),
+    Number(p.eLandau.toFixed(6)),
+    Number(p.eQuad.toFixed(6))
+  ]);
+
+  const chanHeaders = [
+    "Channel", "Kind", "D_up_EF", "D_dn_EF", "P_EF_Pct",
+    "E_peak_up_eV", "E_peak_dn_eV", "Delta_ex_eV", "Delta_ex_XCorr_eV",
+    "Delta_ex_Center_eV", "Moment_m_int_muB_fu", "I_eff_eV"
+  ];
+  const chanRows = res.channelStats.map(c => [
+    c.label, c.kind,
+    Number(c.dUpEf.toFixed(5)), Number(c.dDnEf.toFixed(5)),
+    c.pEf !== null ? Number(c.pEf.toFixed(3)) : "",
+    c.activePkUp.found ? Number(c.activePkUp.ePeak.toFixed(4)) : "",
+    c.activePkDn.found ? Number(c.activePkDn.ePeak.toFixed(4)) : "",
+    Number(c.activeDelta.toFixed(5)),
+    Number(c.xcorr.deltaEv.toFixed(5)),
+    Number(c.cent.deltaEv.toFixed(5)),
+    Number(c.mIntFu.toFixed(5)),
+    c.iEff !== null ? Number(c.iEff.toFixed(5)) : ""
+  ]);
+
+  return {
+    seed: res.seed,
+    summarySheet: { name: "Stoner_Summary", headers: ["Metric", "Value", "Unit"], rows: summaryRows },
+    dosSheet: { name: "Spin_DOS_Polarization", headers: dosHeaders, rows: dosRows },
+    energySheet: { name: "Stoner_Energy_Em", headers: energyHeaders, rows: energyRows },
+    channelSheet: { name: "Channel_Exchange_Split", headers: chanHeaders, rows: chanRows }
+  };
+}
+window.buildStonerExportTables = buildStonerExportTables;
+
+function exportCastepStonerCSV(mode = "summary") {
+  const pkg = buildStonerExportTables();
+  if (!pkg) {
+    if (typeof showToast === "function") showToast("No Stoner / Spin Polarization data available to export.", "warning");
+    return;
+  }
+  const sheet = mode === "dos" ? pkg.dosSheet : (mode === "channels" ? pkg.channelSheet : (mode === "energy" ? pkg.energySheet : pkg.summarySheet));
+  const csv = buildCsvString(sheet.headers, sheet.rows);
+  const fname = `${pkg.seed}_Stoner_${mode}.csv`;
+  triggerBlobDownload(new Blob([csv], { type: "text/csv;charset=utf-8" }), fname);
+  if (typeof showToast === "function") showToast(`Exported ${fname} (${sheet.rows.length} rows)!`, "success");
+}
+window.exportCastepStonerCSV = exportCastepStonerCSV;
+
+function exportCastepStonerXLSX() {
+  const pkg = buildStonerExportTables();
+  if (!pkg) {
+    if (typeof showToast === "function") showToast("No Stoner / Spin Polarization data available to export.", "warning");
+    return;
+  }
+  const sheets = [pkg.summarySheet, pkg.dosSheet, pkg.energySheet, pkg.channelSheet].filter(s => s && s.rows.length);
+  const blob = buildXlsxBlob(sheets);
+  const fname = `${pkg.seed}_Stoner_Magnetism_SpinPolarization.xlsx`;
+  triggerBlobDownload(blob, fname);
+  if (typeof showToast === "function") {
+    showToast(`Exported multi-tab workbook ${fname} (${sheets.map(s => s.name).join(" | ")})!`, "success");
+  }
+}
+window.exportCastepStonerXLSX = exportCastepStonerXLSX;
 
