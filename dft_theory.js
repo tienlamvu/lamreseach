@@ -4,8 +4,8 @@
    ============================================================================ */
 
 (function () {
-  const STORAGE_KEY = "dft_theory_lectures_v2";
-  const LEGACY_KEY = "dft_theory_lectures_v1";
+  const STORAGE_KEY = "dft_theory_lectures_v3";
+  const LEGACY_KEYS = ["dft_theory_lectures_v2", "dft_theory_lectures_v1"];
   const ACTIVE_KEY = "dft_theory_active_lec";
   const DEFAULT_AUTHOR = "Vu Tien Lam";
   const DEFAULT_AFFILIATION = "Sungkyunkwan University";
@@ -1190,135 +1190,18 @@
     },
 
     // =========================================================================
-    // LECTURE 10: PRACTICAL END-TO-END DFT WORKFLOW & PUBLICATION STANDARDS
+    // LECTURE 10: EXCHANGE SPLITTING, SPIN POLARIZATION & STONER MAGNETISM
     // =========================================================================
     {
       id: "lec10",
       num: 10,
-      shortTab: "L10: Full Workflow",
-      level: "Practical Capstone",
-      levelClass: "cap",
-      readTime: "16 min",
-      toolPane: "gateway",
-      toolName: "Gateway & Export",
-      title: "Lecture 10: Practical End-to-End DFT Workflow, Code Translation &amp; Publication Best Practices",
-      subtitle: "A reproducible 6-stage protocol from raw .cif import to converged CASTEP/VASP production runs, troubleshooting SCF failures, cross-code reproducibility, and 600 DPI journal figures.",
-      keywords: "workflow convergence test ecut kpoint vacuum troubleshooting scf mixing dipole correction publication figure dpi tnr gateway castep vasp rosetta stone reproducibility checklist",
-      objectives: [
-        "Execute a reproducible 6-stage DFT research workflow from .cif import to publication-ready figures.",
-        "Translate production input parameters seamlessly between CASTEP (.param/.cell) and VASP (INCAR/KPOINTS).",
-        "Diagnose and fix the 5 most common DFT calculation failures (SCF oscillation, false metals, spin collapse, Pulay stress, slab dipoles).",
-        "Standardize figure typography, 400–600 DPI PNG export, and raw TSV/Excel data archiving on this platform."
-      ],
-      contentHtml: `
-        <h3>10.1 The 6-Stage Reproducible DFT Calculation Protocol</h3>
-        <div class="dft-workflow-grid">
-          <div class="dft-wf-card">
-            <div class="dft-wf-step">STAGE 1</div>
-            <div class="dft-wf-title">Structure &amp; Symmetry Validation</div>
-            <p>Import experimental or Materials Project <code>.cif</code>, verify space group &amp; Wyckoff multiplicity, remove partial occupancies, and build required supercells, defects, or 2D slabs (&ge; 15–20 &Aring; vacuum).</p>
-          </div>
-          <div class="dft-wf-card">
-            <div class="dft-wf-step">STAGE 2</div>
-            <div class="dft-wf-title">Basis &amp; k-Grid Convergence</div>
-            <p>Sweep <i>E</i><sub>cut</sub> (400 &rarr; 800 eV) and k-spacing (0.06 &rarr; 0.02 &Aring;<sup>&minus;1</sup>) until total energy differences converge within <strong>&lt; 1 meV/atom</strong> and forces within <strong>&lt; 0.005 eV/&Aring;</strong>.</p>
-          </div>
-          <div class="dft-wf-card">
-            <div class="dft-wf-step">STAGE 3</div>
-            <div class="dft-wf-title">Geometry &amp; Cell Optimization</div>
-            <p>Relax cell + ions using <code>PBE + DFT-D (G06/TS)</code> and <code>LBFGS</code> until |<b>F</b><sub>max</sub>| &le; 0.01 eV/&Aring; and |&sigma;<sub>max</sub>| &le; 0.02 GPa. Enable <code>spin_polarized: true</code> for any 3<i>d</i>/4<i>f</i>/defect system.</p>
-          </div>
-          <div class="dft-wf-card">
-            <div class="dft-wf-step">STAGE 4</div>
-            <div class="dft-wf-title">Electronic Bands, PDOS &amp; m*</div>
-            <p>Run static SinglePoint + high-symmetry BandStr + dense-mesh DOS (<code>.pdos_bin</code>). Extract <i>E</i><sub>g</sub>, PDOS hybridization, directional effective masses <i>m</i>*<sub>e</sub>/<i>m</i>*<sub>h</sub>, mobility &mu;, and Drude &tau;.</p>
-          </div>
-          <div class="dft-wf-card">
-            <div class="dft-wf-step">STAGE 5</div>
-            <div class="dft-wf-title">Optics, &Delta;&rho; &amp; Magnetism</div>
-            <p>Compute linear-response <code>*.ome_bin</code> optical tensor (with Scissors/HSE06 gap), volumetric <code>*.chdiff</code> / <code>*.charg_frm</code> charge transfer &Delta;<i>Q</i>(<i>z</i>), and Mulliken/Hirshfeld + Orbital Spin Matrix.</p>
-          </div>
-          <div class="dft-wf-card">
-            <div class="dft-wf-step">STAGE 6</div>
-            <div class="dft-wf-title">Publication Figures &amp; Archiving</div>
-            <p>Apply unified <strong>Times New Roman</strong> or <strong>Arial</strong> journal style, export 400–600 DPI figures with embedded PNG DPI metadata, and archive full multi-sheet Excel workbooks &amp; structures.</p>
-          </div>
-        </div>
-
-        <h3>10.2 CASTEP &harr; VASP Production Keyword Rosetta Stone</h3>
-        <p>The landmark &Delta;-gauge reproducibility study (Lejaeghere <i>et al.</i>, <i>Science</i> 2016) proved that modern plane-wave DFT codes (CASTEP, VASP, Quantum ESPRESSO, ABINIT) agree to within <strong>&lt; 1 meV/atom</strong> across 71 elemental crystals when converged. Use this cross-reference table to translate setups seamlessly:</p>
-        <table class="dft-table">
-          <thead><tr><th>Physical Setting</th><th>CASTEP (<code>.param</code> / <code>.cell</code>)</th><th>VASP (<code>INCAR</code> / <code>KPOINTS</code>)</th><th>Recommended Production Value</th></tr></thead>
-          <tbody>
-            <tr><td>Plane-wave cutoff</td><td><code>cut_off_energy</code></td><td><code>ENCUT</code></td><td>500–600 eV (USPP/PAW)</td></tr>
-            <tr><td>XC Functional</td><td><code>xc_functional: PBE / HSE06</code></td><td><code>GGA = PE</code> / <code>LHFCALC = .TRUE.</code></td><td>PBE+D for geom, HSE06 for <i>E</i><sub>g</sub></td></tr>
-            <tr><td>vdW Dispersion</td><td><code>sedc_apply: true</code>, <code>sedc_scheme: TS</code></td><td><code>IVDW = 12</code> (D3-BJ) / <code>20</code> (TS)</td><td>Required for 2D / adsorption</td></tr>
-            <tr><td>SCF Energy Tol.</td><td><code>elec_energy_tol</code></td><td><code>EDIFF</code></td><td>&le; 1&times;10<sup>&minus;6</sup> eV/atom</td></tr>
-            <tr><td>Force Convergence</td><td><code>geom_force_tol</code></td><td><code>EDIFFG = -0.01</code></td><td>&le; 0.01 eV/&Aring; (high precision)</td></tr>
-            <tr><td>Spin Polarization</td><td><code>spin_polarized: true</code></td><td><code>ISPIN = 2</code> + <code>MAGMOM</code></td><td>Mandatory for 3<i>d</i>/4<i>f</i>/radicals</td></tr>
-            <tr><td>Electronic Smearing</td><td><code>smearing_width: 0.05 eV</code></td><td><code>ISMEAR = 0</code>, <code>SIGMA = 0.05</code></td><td>0.05 eV (Gaussian/MP)</td></tr>
-            <tr><td>k-Point Grid</td><td><code>kpoint_mp_grid</code> / <code>kpoint_mp_spacing</code></td><td><code>KPOINTS</code> (Monkhorst–Pack)</td><td>&Delta;<i>k</i> &le; 0.03 &Aring;<sup>&minus;1</sup> (SC), 0.02 (metal)</td></tr>
-          </tbody>
-        </table>
-
-        <h3>10.3 Troubleshooting Common DFT Pitfalls</h3>
-        <table class="dft-table">
-          <thead><tr><th>Symptom / Problem</th><th>Physical Cause</th><th>Recommended Fix in CASTEP / VASP</th></tr></thead>
-          <tbody>
-            <tr><td><strong>SCF energy oscillates / never converges</strong></td><td>Charge sloshing in metals, slabs, or small-gap systems</td><td>Reduce <code>mix_charge_amp</code> (0.8 &rarr; 0.2), use Pulay/Kerker mixing, raise <code>smearing_width</code> to 0.05–0.10 eV, increase <code>nextra_bands</code>.</td></tr>
-            <tr><td><strong>Semiconductor predicted metallic</strong></td><td>PBE self-interaction error closes narrow band gaps</td><td>Verify with <strong>HSE06</strong> or <strong>PBE+<i>U</i></strong> (3<i>d</i>/4<i>f</i>); check if spin polarization splits the Fermi-crossing band.</td></tr>
-            <tr><td><strong>2D slab vacuum potential is tilted</strong></td><td>Asymmetric Janus / adsorbed slab creates net <i>z</i>-dipole</td><td>Enable dipole correction (<code>dipole_correction: selfconsistent</code> / <code>LDIPOL = .TRUE.</code>) and vacuum &ge; 18–20 &Aring;.</td></tr>
-            <tr><td><strong>Magnetic moment collapses to 0 &mu;<sub>B</sub></strong></td><td>Zero initial spin symmetry traps SCF at non-magnetic saddle</td><td>Seed non-zero initial atomic spins (<code>SPIN=3.0</code> on Fe/Co/Mn/Cr) and compare FM vs. AFM initial orderings.</td></tr>
-            <tr><td><strong>Noisy effective mass / jagged DOS</strong></td><td>Too few k-points near VBM/CBM or overly broad smearing</td><td>Increase path density (&Delta;<i>k</i> &le; 0.015 &Aring;<sup>&minus;1</sup> near extrema) and verify <i>R</i><sup>2</sup> &ge; 0.99 in <strong>m* &amp; Drude</strong>.</td></tr>
-          </tbody>
-        </table>
-
-        <h3>10.4 Quick-Reference Map: DFT Theory &rarr; Live Website Modules</h3>
-        <table class="dft-table">
-          <thead><tr><th>Physical Observable</th><th>Required CASTEP Files</th><th>Live Module in Data Analysis</th></tr></thead>
-          <tbody>
-            <tr><td>Crystal Symmetry, Slabs, Defects, Adsorbates</td><td><code>.cif</code>, <code>.cell</code>, <code>.xsd</code></td><td><button type="button" class="castep-preset-chip" onclick="openCastepToolFromLecture('builder')">&#129521; 3D View</button></td></tr>
-            <tr><td>Live Remote Cluster Job Queue &amp; Monitoring</td><td>BIOVIA Gateway (<code>:18888</code>)</td><td><button type="button" class="castep-preset-chip" onclick="openCastepToolFromLecture('gateway')">&#128421; Gateway</button></td></tr>
-            <tr><td>Band Structure, Direct/Indirect Gap, PDOS</td><td><code>*_BandStr.bands</code>, <code>*.pdos_bin</code></td><td><button type="button" class="castep-preset-chip" onclick="openCastepToolFromLecture('electronic')">&#128200; Band &amp; PDOS</button></td></tr>
-            <tr><td>Effective Mass (Band/DOS), Mobility, Drude &tau;</td><td><code>*_BandStr.bands</code>, <code>*_DOS.bands</code></td><td><button type="button" class="castep-preset-chip" onclick="openCastepToolFromLecture('transport')">&#128640; m* &amp; Drude</button></td></tr>
-            <tr><td>Exchange Splitting &Delta;<sub>ex</sub>, Spin Polarization <i>P</i>(<i>E</i><sub>F</sub>) &amp; Stoner Criterion</td><td><code>*.pdos_bin</code>, <code>*_DOS.bands</code></td><td><button type="button" class="castep-preset-chip" onclick="openCastepToolFromLecture('stoner')">&#129517; Stoner</button></td></tr>
-            <tr><td>3&times;3 Dielectric Tensor, Absorption, EELS, Tauc</td><td><code>*_Optics.ome_bin</code>, <code>*_Optics.bands</code></td><td><button type="button" class="castep-preset-chip" onclick="openCastepToolFromLecture('optics')">&#127752; Optical</button></td></tr>
-            <tr><td>3D/2D/1D Charge Density Difference &amp; &Delta;Q(z)</td><td><code>*.chdiff</code>, <code>*.charg_frm</code></td><td><button type="button" class="castep-preset-chip" onclick="openCastepToolFromLecture('chdiff')">&#128267; Charge Diff</button></td></tr>
-            <tr><td>Mulliken/Hirshfeld Charges &amp; Orbital Spin Matrix</td><td><code>*.castep</code>, <code>*.pdos_bin</code></td><td><button type="button" class="castep-preset-chip" onclick="openCastepToolFromLecture('mulliken')">&#129522; Mulliken &amp; Spin</button></td></tr>
-            <tr><td>SCF Convergence, Enthalpy &amp; Ionic Forces</td><td><code>*.castep</code>, <code>*.geom</code>, <code>*.xcd</code></td><td><button type="button" class="castep-preset-chip" onclick="openCastepToolFromLecture('convergence')">&#9889; Conv.</button></td></tr>
-          </tbody>
-        </table>
-
-        ${labBox("Monitor Live Jobs &amp; Export Publication-Ready 600 DPI Figures", "gateway", "Open Remote Gateway",
-          `<ol class="dft-steps">
-            <li>Open <strong>Data Analysis &rarr; 🖥️ Gateway</strong> to monitor live BIOVIA Materials Studio CASTEP jobs on the calculation server and download results directly into the analyzer.</li>
-            <li>Click <strong>🎨 Plot Format</strong> at the top-right of Data Analysis to unify <strong>Times New Roman</strong> / <strong>Arial</strong>, font sizes, <code>1.8 px</code> frames, inward ticks, and <strong>400–600 DPI</strong> quality across every single graph simultaneously.</li>
-            <li>Use <strong>📋 Copy HD</strong> (full figure) or <strong>Right-Click</strong> (individual chart panel) to paste crisp figures straight into Word, PowerPoint, or OriginPro!</li>
-          </ol>`,
-          `<button type="button" class="btn btn-outline btn-sm" onclick="openCastepToolFromLecture('electronic')">&#128200; Open Band &amp; PDOS</button>`)}
-      `,
-      references: [
-        { authors: "K. Lejaeghere et al.", title: "Reproducibility in Density Functional Theory Calculations of Solids", venue: "Science 351, aad3000", year: "2016", doi: "10.1126/science.aad3000" },
-        { authors: "D. S. Sholl & J. A. Steckel", title: "Density Functional Theory: A Practical Introduction (2nd Edition)", venue: "John Wiley & Sons", year: "2022", doi: "10.1002/9780470447710" },
-        { authors: "J. Hafner", title: "Ab-Initio Simulations of Materials Using VASP: Density-Functional Theory and Beyond", venue: "J. Comput. Chem. 29, 2044–2078", year: "2008", doi: "10.1002/jcc.21057" },
-        { authors: "P. Giannozzi et al.", title: "Advanced Capabilities for Materials Modelling with Quantum ESPRESSO", venue: "J. Phys.: Condens. Matter 29, 465901", year: "2017", doi: "10.1088/1361-648X/aa8f79" },
-        { authors: "A. Jain, S. P. Ong, G. Hautier, W. Chen, W. D. Richards, S. Dacek, S. Cholia, D. Gunter, D. Skinner, G. Ceder & K. A. Persson", title: "Commentary: The Materials Project: A Materials Genome Approach to Accelerating Materials Innovation", venue: "APL Mater. 1, 011002", year: "2013", doi: "10.1063/1.4812323" }
-      ]
-    },
-
-    // =========================================================================
-    // LECTURE 11: EXCHANGE SPLITTING, SPIN POLARIZATION & STONER MAGNETISM
-    // =========================================================================
-    {
-      id: "lec11",
-      num: 11,
-      shortTab: "L11: Stoner & Spin",
+      shortTab: "L10: Stoner & Spin",
       level: "Advanced",
       levelClass: "adv",
       readTime: "18 min",
       toolPane: "stoner",
       toolName: "Stoner & Spin",
-      title: "Lecture 11: Exchange Splitting, Spin Polarization, Half-Metallicity &amp; Stoner Itinerant Magnetism",
+      title: "Lecture 10: Exchange Splitting, Spin Polarization, Half-Metallicity &amp; Stoner Itinerant Magnetism",
       subtitle: "Quantifying spin-resolved DOS asymmetry, Fermi-level spin polarization <i>P</i>(<i>E</i><sub>F</sub>), exchange splitting &Delta;<sub>ex</sub>, the Stoner criterion <i>I</i>&middot;<i>D</i>(<i>E</i><sub>F</sub>) &gt; 1, and electric-field / doping-induced spontaneous ferromagnetism.",
       keywords: "exchange splitting delta_ex spin polarization P(EF) half metal half-metallicity stoner model stoner criterion stoner parameter I itinerant ferromagnetism paramagnetic susceptibility enhancement rigid band van hove singularity doping electric field induced magnetism pdos",
       objectives: [
@@ -1328,14 +1211,14 @@
         "Determine the effective Stoner exchange parameter <i>I</i> = &Delta;<sub>ex</sub> / <i>M</i><sub>tot</sub> directly from DFT and predict electric-field or carrier-doping-induced magnetic phase transitions in 2D materials."
       ],
       contentHtml: `
-        <h3>11.1 Spin-Resolved Density of States &amp; Spin Polarization at <i>E</i><sub>F</sub></h3>
+        <h3>10.1 Spin-Resolved Density of States &amp; Spin Polarization at <i>E</i><sub>F</sub></h3>
         <p>In a collinear spin-polarized DFT calculation, the Kohn–Sham eigenstates separate into independent majority-spin (&uarr;, &alpha;) and minority-spin (&darr;, &beta;) channels. Summing both spin channels yields the <strong>total density of states (TDOS)</strong> <i>D</i>(<i>E</i>), while their difference at the Fermi energy <i>E</i><sub>F</sub> defines the <strong>Fermi-level spin asymmetry</strong> &Delta;<i>D</i>(<i>E</i><sub>F</sub>):</p>
-        ${eq(String.raw`D(E) = D_\uparrow(E) + D_\downarrow(E), \qquad \Delta D(E_{\mathrm{F}}) = D_\uparrow(E_{\mathrm{F}}) - D_\downarrow(E_{\mathrm{F}})`, "11.1",
+        ${eq(String.raw`D(E) = D_\uparrow(E) + D_\downarrow(E), \qquad \Delta D(E_{\mathrm{F}}) = D_\uparrow(E_{\mathrm{F}}) - D_\downarrow(E_{\mathrm{F}})`, "10.1",
           "Here <i>D</i><sub>&uarr;</sub>(<i>E</i>) and <i>D</i><sub>&darr;</sub>(<i>E</i>) are normalized per formula unit (states&thinsp;eV<sup>&minus;1</sup>&thinsp;f.u.<sup>&minus;1</sup>) by dividing the unit-cell DOS by the number of formula units <i>Z</i> per simulation cell.")}
         <p>The <strong>spin polarization at the Fermi energy</strong>, <i>P</i>(<i>E</i><sub>F</sub>), quantifies the spin-filtering efficiency of conduction carriers in spintronic junctions (such as magnetic tunnel junctions governed by Julli&egrave;re's magnetoresistance formula) and is expressed as a percentage:</p>
-        ${eq(String.raw`P(E_{\mathrm{F}}) = \frac{D_\uparrow(E_{\mathrm{F}}) - D_\downarrow(E_{\mathrm{F}})}{D_\uparrow(E_{\mathrm{F}}) + D_\downarrow(E_{\mathrm{F}})} \times 100\% = \frac{\Delta D(E_{\mathrm{F}})}{D(E_{\mathrm{F}})} \times 100\%`, "11.2")}
+        ${eq(String.raw`P(E_{\mathrm{F}}) = \frac{D_\uparrow(E_{\mathrm{F}}) - D_\downarrow(E_{\mathrm{F}})}{D_\uparrow(E_{\mathrm{F}}) + D_\downarrow(E_{\mathrm{F}})} \times 100\% = \frac{\Delta D(E_{\mathrm{F}})}{D(E_{\mathrm{F}})} \times 100\%`, "10.2")}
         <p>Integrating the spin-density difference across all occupied electronic states up to the Fermi level yields the <strong>total magnetic moment per formula unit</strong> <i>M</i><sub>tot</sub> (in units of Bohr magnetons &mu;<sub>B</sub>/f.u.):</p>
-        ${eq(String.raw`M_{\mathrm{tot}} = \mu_{\mathrm{B}} \int_{-\infty}^{E_{\mathrm{F}}} \left[D_\uparrow(E) - D_\downarrow(E)\right]\mathrm{d}E`, "11.3",
+        ${eq(String.raw`M_{\mathrm{tot}} = \mu_{\mathrm{B}} \int_{-\infty}^{E_{\mathrm{F}}} \left[D_\uparrow(E) - D_\downarrow(E)\right]\mathrm{d}E`, "10.3",
           "For accurate numerical integration, the lower bound must span all occupied valence states below <i>E</i><sub>F</sub> (not merely a narrow plotting window), and the result should agree closely with CASTEP's SCF <code>2*Integrated Spin Density / Z</code>.")}
 
         <table class="dft-table">
@@ -1348,9 +1231,9 @@
           </tbody>
         </table>
 
-        <h3>11.2 Exchange Splitting Energies (&Delta;<sub>ex</sub>) &amp; Rigid-Band Picture</h3>
+        <h3>10.2 Exchange Splitting Energies (&Delta;<sub>ex</sub>) &amp; Rigid-Band Picture</h3>
         <p>The intra-atomic Pauli exchange interaction lowers the potential energy of electrons with parallel spins relative to antiparallel spins, lifting spin degeneracy and shifting majority-spin (&uarr;) states downward relative to minority-spin (&darr;) states. Within first-principles electronic structure analysis, the <strong>exchange splitting energy</strong> &Delta;<sub>ex</sub> is evaluated directly from the energy separation between the dominant corresponding spin-up and spin-down projected density of states (PDOS) peaks near the Fermi level:</p>
-        ${eq(String.raw`\Delta_{\mathrm{ex}} = \left| E_{\mathrm{peak},\downarrow} - E_{\mathrm{peak},\uparrow} \right|`, "11.4",
+        ${eq(String.raw`\Delta_{\mathrm{ex}} = \left| E_{\mathrm{peak},\downarrow} - E_{\mathrm{peak},\uparrow} \right|`, "10.4",
           "When orbital hybridization broadens the PDOS into multi-peak manifolds, &Delta;<sub>ex</sub> from dominant peak separation should be cross-checked against (i) the nearest-to-<i>E</i><sub>F</sub> prominent peak pair, (ii) the rigid-band cross-correlation shift maximizing &int;<i>D</i><sub>&uarr;</sub>(<i>E</i>)<i>D</i><sub>&darr;</sub>(<i>E</i>+&delta;)&thinsp;d<i>E</i>, and (iii) the first-moment band-center difference |<i>E&#772;</i><sub>&darr;</sub> &minus; <i>E&#772;</i><sub>&uarr;</sub>|.")}
 
         <div class="dft-diagram-wrap">
@@ -1409,12 +1292,12 @@
           </svg>
         </div>
 
-        <h3>11.3 The Stoner Model of Itinerant Magnetism &amp; the Stoner Criterion</h3>
+        <h3>10.3 The Stoner Model of Itinerant Magnetism &amp; the Stoner Criterion</h3>
         <p>Unlike localized Heisenberg moments on insulating transition-metal ions, itinerant magnetism in metals, doped semiconductors, and gated 2D sheets arises from a delicate competition between <strong>kinetic energy</strong> and <strong>exchange energy</strong>. Transferring &delta;<i>n</i> = <i>m</i>/2 electrons per formula unit from spin-down into spin-up states near <i>E</i><sub>F</sub> raises their band kinetic energy by &Delta;<i>E</i><sub>kin</sub> = &frac12;&thinsp;<i>m</i><sup>2</sup> / <i>D</i>(<i>E</i><sub>F</sub>) (Pauli exclusion penalty), while the intra-atomic Coulomb exchange interaction lowers the energy by &Delta;<i>E</i><sub>ex</sub> = &minus;&frac12;&thinsp;<i>I</i>&thinsp;<i>m</i><sup>2</sup>. Expanding the total energy as a Landau functional of the magnetic moment <i>m</i> gives:</p>
-        ${eq(String.raw`E(m) = E_0 + \frac{1}{2}\left[\frac{1}{D(E_{\mathrm{F}})} - I\right] m^2 + \mathcal{O}(m^4)`, "11.5",
+        ${eq(String.raw`E(m) = E_0 + \frac{1}{2}\left[\frac{1}{D(E_{\mathrm{F}})} - I\right] m^2 + \mathcal{O}(m^4)`, "10.5",
           "Here <i>D</i>(<i>E</i><sub>F</sub>) is the non-magnetic density of states at the Fermi level per formula unit (or spin-averaged DOS, states&thinsp;eV<sup>&minus;1</sup>&thinsp;f.u.<sup>&minus;1</sup>), and <i>I</i> is the Stoner exchange parameter (eV), quantifying the intra-atomic electron–electron Coulomb exchange interaction.")}
         <p>The non-magnetic state (<i>m</i> = 0) becomes thermodynamically unstable against spontaneous ferromagnetic spin splitting whenever the quadratic curvature turns negative, yielding the celebrated <strong>Stoner Criterion</strong> and the <strong>Stoner-enhanced Pauli spin susceptibility</strong> &chi;:</p>
-        ${eq(String.raw`I \cdot D(E_{\mathrm{F}}) > 1 \quad (\text{Spontaneous FM}), \qquad \chi = \frac{\chi_0}{1 - I \cdot D(E_{\mathrm{F}})}`, "11.6")}
+        ${eq(String.raw`I \cdot D(E_{\mathrm{F}}) > 1 \quad (\text{Spontaneous FM}), \qquad \chi = \frac{\chi_0}{1 - I \cdot D(E_{\mathrm{F}})}`, "10.6")}
 
         ${defBox("Thermodynamic Regimes of the Stoner Criterion",
           `<ul>
@@ -1422,9 +1305,9 @@
             <li><strong>When <i>I</i> &middot; <i>D</i>(<i>E</i><sub>F</sub>) &gt; 1:</strong> The quadratic curvature turns negative, creating a symmetric double-well Landau potential with equilibrium minima at <i>m</i> = &plusmn;<i>M</i><sub>tot</sub> &ne; 0; <strong>spontaneous itinerant ferromagnetism is thermodynamically favored</strong>!</li>
           </ul>`)}
 
-        <h3>11.4 First-Principles Estimation of the Stoner Exchange Parameter (<i>I</i>)</h3>
+        <h3>10.4 First-Principles Estimation of the Stoner Exchange Parameter (<i>I</i>)</h3>
         <p>Within rigid-band Stoner theory (Gunnarsson 1976; Janak 1977), shifting the majority and minority spin bands apart by the exchange splitting &Delta;<sub>ex</sub> is linearly proportional to the self-consistent magnetization <i>M</i><sub>tot</sub>:</p>
-        ${eq(String.raw`\Delta_{\mathrm{ex}} = I \cdot M_{\mathrm{tot}} \qquad \Longrightarrow \qquad I = \frac{\Delta_{\mathrm{ex}}}{M_{\mathrm{tot}}}`, "11.7",
+        ${eq(String.raw`\Delta_{\mathrm{ex}} = I \cdot M_{\mathrm{tot}} \qquad \Longrightarrow \qquad I = \frac{\Delta_{\mathrm{ex}}}{M_{\mathrm{tot}}}`, "10.7",
           "With &Delta;<sub>ex</sub> in eV and <i>M</i><sub>tot</sub> in &mu;<sub>B</sub>/f.u., the extracted effective Stoner parameter <i>I</i> has units of eV. Typical values span 0.6–1.0 eV for 3<i>d</i>/4<i>d</i> transition metals and 1.0–1.6 eV for localized 2<i>p</i>/3<i>p</i> states.")}
 
         <table class="dft-table">
@@ -1438,7 +1321,7 @@
           </tbody>
         </table>
 
-        <h3>11.5 Electric-Field &amp; Doping-Induced Spontaneous Magnetism in 2D Materials</h3>
+        <h3>10.5 Electric-Field &amp; Doping-Induced Spontaneous Magnetism in 2D Materials</h3>
         <p>Many pristine 2D semiconductors—such as monolayer GaSe, InSe, and Janus transition-metal dichalcogenides—are non-magnetic in their neutral ground state because <i>E</i><sub>F</sub> lies inside the band gap (<i>D</i>(<i>E</i><sub>F</sub>) = 0). However, inverted "Mexican-hat" valence bands and saddle-point <strong>Van Hove singularities (VHS)</strong> produce ultra-sharp peaks in <i>D</i>(<i>E</i>) right near the band edges. Applying a perpendicular <strong>electric field</strong> or electrostatic <strong>hole/electron doping</strong> (&Delta;<i>n</i>) shifts <i>E</i><sub>F</sub> directly into this high-DOS manifold, driving <i>I</i>&middot;<i>D</i>(<i>E</i><sub>F</sub>) &gt; 1 and switching on spontaneous, reversible Stoner ferromagnetism and half-metallicity (Cao <i>et al.</i>, <i>Phys. Rev. Lett.</i> 2015).</p>
 
         ${tipBox("Crucial DFT Subtlety: Non-Magnetic vs. Post-Splitting D(E_F)",
@@ -1520,15 +1403,17 @@
   function migrateLegacyLecturesIfNeeded() {
     try {
       if (localStorage.getItem(STORAGE_KEY)) return null;
-      const legacyRaw = localStorage.getItem(LEGACY_KEY);
-      if (!legacyRaw) return null;
-      const parsed = JSON.parse(legacyRaw);
-      if (!Array.isArray(parsed) || !parsed.length) return null;
-      // Preserve any admin-added custom lectures while upgrading built-in lec1..lec10 to v142 KaTeX!
-      const defaultIds = new Set(DEFAULT_LECTURES.map(d => d.id));
-      const customExtras = parsed.filter(l => l && l.id && !defaultIds.has(l.id));
-      if (!customExtras.length) return null;
-      return [...cloneJson(DEFAULT_LECTURES), ...customExtras];
+      const legacyBuiltinIds = new Set(["lec1","lec2","lec3","lec4","lec5","lec6","lec7","lec8","lec9","lec10","lec11"]);
+      for (const lkey of LEGACY_KEYS) {
+        const legacyRaw = localStorage.getItem(lkey);
+        if (!legacyRaw) continue;
+        const parsed = JSON.parse(legacyRaw);
+        if (!Array.isArray(parsed) || !parsed.length) continue;
+        // Preserve any admin-added custom lectures while upgrading built-in lectures cleanly to v3!
+        const customExtras = parsed.filter(l => l && l.id && !legacyBuiltinIds.has(l.id));
+        if (customExtras.length) return [...cloneJson(DEFAULT_LECTURES), ...customExtras];
+      }
+      return null;
     } catch (_) {
       return null;
     }
@@ -1649,6 +1534,11 @@
     // Exact ID match (e.g. "lec6" or "lec_1795...")
     const byId = lectures.find(l => String(l.id).toLowerCase() === token.toLowerCase());
     if (byId) return byId.id;
+    // Redirect legacy lec11 Stoner deep links cleanly to lec10
+    if (/^lec11$/i.test(token)) {
+      const l10 = lectures.find(l => l.id === "lec10");
+      if (l10) return l10.id;
+    }
     // Numeric shorthand match (e.g. "?lecture=6" or "lecture6" or "l6")
     const numMatch = token.match(/^(?:lec(?:ture)?|l)?(\d+)$/i);
     if (numMatch) {
@@ -1994,8 +1884,26 @@
     try { localStorage.setItem(ACTIVE_KEY, found.id); } catch (_) {}
 
     document.querySelectorAll(".dft-lec-tab").forEach(btn => {
-      btn.classList.toggle("active", btn.dataset.lec === found.id);
+      const isAct = btn.dataset.lec === found.id;
+      btn.classList.toggle("active", isAct);
+      if (isAct) {
+        const rail = document.getElementById("dft-lec-rail");
+        if (rail && rail.scrollWidth > rail.clientWidth + 4) {
+          const leftTarget = btn.offsetLeft - (rail.clientWidth - btn.offsetWidth) / 2;
+          rail.scrollLeft = Math.max(0, leftTarget);
+        }
+      }
     });
+    document.querySelectorAll(".dft-syl-item").forEach(item => {
+      item.classList.toggle("active", item.dataset.lec === found.id);
+    });
+    const idxNow = lectures.findIndex(l => l.id === found.id);
+    const stepCnt = document.getElementById("dft-lec-stepper-count");
+    if (stepCnt) stepCnt.textContent = `${found.num} / ${lectures.length}`;
+    const prevBtn = document.getElementById("dft-lec-step-prev");
+    const nextBtn = document.getElementById("dft-lec-step-next");
+    if (prevBtn) prevBtn.disabled = idxNow <= 0;
+    if (nextBtn) nextBtn.disabled = idxNow >= lectures.length - 1;
 
     const stage = document.getElementById("dft-theory-lecture-stage");
     if (!stage) return;
@@ -2122,29 +2030,93 @@
   }
   window.switchDftLecture = switchDftLecture;
 
+  let _syllabusDrawerOpen = false;
+  let _syllabusLevelFilter = "all";
+
+  function toggleDftSyllabusDrawer(forceState) {
+    _syllabusDrawerOpen = typeof forceState === "boolean" ? forceState : !_syllabusDrawerOpen;
+    const drawer = document.getElementById("dft-syllabus-drawer");
+    const btn = document.getElementById("dft-syllabus-toggle-btn");
+    if (drawer) drawer.style.display = _syllabusDrawerOpen ? "block" : "none";
+    if (btn) {
+      btn.classList.toggle("open", _syllabusDrawerOpen);
+      const chev = btn.querySelector(".dft-syl-chev");
+      if (chev) chev.textContent = _syllabusDrawerOpen ? "\u25b4" : "\u25be";
+    }
+  }
+  window.toggleDftSyllabusDrawer = toggleDftSyllabusDrawer;
+
+  function setDftSyllabusLevelFilter(lvl) {
+    _syllabusLevelFilter = lvl || "all";
+    document.querySelectorAll(".dft-syl-filter-chip").forEach(c => {
+      c.classList.toggle("active", c.dataset.lvl === _syllabusLevelFilter);
+    });
+    document.querySelectorAll(".dft-syl-item").forEach(item => {
+      const lc = item.dataset.levelClass || "";
+      const show = _syllabusLevelFilter === "all" || lc === _syllabusLevelFilter;
+      item.style.display = show ? "" : "none";
+    });
+  }
+  window.setDftSyllabusLevelFilter = setDftSyllabusLevelFilter;
+
+  function selectDftLectureFromSyllabus(lecId) {
+    toggleDftSyllabusDrawer(false);
+    switchDftLecture(lecId, false);
+  }
+  window.selectDftLectureFromSyllabus = selectDftLectureFromSyllabus;
+
+  function scrollDftLectureRail(deltaPx) {
+    const rail = document.getElementById("dft-lec-rail");
+    if (!rail) return;
+    try { rail.scrollBy({ left: deltaPx, behavior: "smooth" }); } catch (_) { rail.scrollLeft += deltaPx; }
+  }
+  window.scrollDftLectureRail = scrollDftLectureRail;
+
+  function stepDftLecture(dir) {
+    const lectures = getDftTheoryLectures();
+    const idx = lectures.findIndex(l => l.id === _activeLectureId);
+    const nextIdx = idx + (dir > 0 ? 1 : -1);
+    if (nextIdx >= 0 && nextIdx < lectures.length) {
+      switchDftLecture(lectures[nextIdx].id, false);
+    }
+  }
+  window.stepDftLecture = stepDftLecture;
+
   function filterDftLectures(query) {
     const q = (query || "").trim().toLowerCase();
     const lectures = getDftTheoryLectures();
     let firstMatch = null;
     let matchCount = 0;
-    document.querySelectorAll(".dft-lec-tab").forEach(btn => {
-      const lec = lectures.find(l => l.id === btn.dataset.lec);
-      if (!lec) return;
+    const matchSet = new Set();
+    lectures.forEach(lec => {
       const refsText = (lec.references || []).map(r => `${r.authors} ${r.title} ${r.venue} ${r.doi}`).join(" ");
       const hay = `${lec.title} ${lec.subtitle} ${lec.keywords} ${lec.toolName} ${lec.level} ${refsText}`.toLowerCase();
-      const matched = !q || hay.includes(q);
-      btn.classList.toggle("dft-lec-dim", !matched);
-      btn.classList.toggle("dft-lec-hit", !!q && matched);
-      if (matched) {
+      if (!q || hay.includes(q)) {
+        matchSet.add(lec.id);
         matchCount++;
         if (!firstMatch) firstMatch = lec.id;
       }
     });
+    document.querySelectorAll(".dft-lec-tab").forEach(btn => {
+      const matched = matchSet.has(btn.dataset.lec);
+      btn.classList.toggle("dft-lec-dim", !matched);
+      btn.classList.toggle("dft-lec-hit", !!q && matched);
+    });
+    document.querySelectorAll(".dft-syl-item").forEach(item => {
+      const matched = matchSet.has(item.dataset.lec);
+      item.style.display = matched ? "" : "none";
+      item.classList.toggle("dft-lec-hit", !!q && matched);
+    });
     const statusEl = document.getElementById("dft-theory-search-status");
     if (statusEl) {
-      statusEl.textContent = q
-        ? `${matchCount} / ${lectures.length} matching lectures`
-        : `${lectures.length} Lectures (Basic \u2192 Advanced)`;
+      if (q) {
+        statusEl.textContent = `${matchCount} / ${lectures.length} matching`;
+        statusEl.style.display = "inline-flex";
+      } else {
+        statusEl.textContent = "";
+        statusEl.style.display = "none";
+        if (_syllabusLevelFilter !== "all") setDftSyllabusLevelFilter(_syllabusLevelFilter);
+      }
     }
     if (q && firstMatch && firstMatch !== _activeLectureId) {
       switchDftLecture(firstMatch, false);
@@ -2157,17 +2129,78 @@
     const tabsBar = document.getElementById("dft-theory-lecture-tabs");
     if (tabsBar && (forceRebuild || !tabsBar.dataset.built)) {
       tabsBar.dataset.built = "1";
-      tabsBar.innerHTML = lectures.map(lec => `
+      const railHtml = lectures.map(lec => `
         <button type="button" class="dft-lec-tab${lec.id === _activeLectureId ? " active" : ""}" data-lec="${escHtml(lec.id)}" onclick="switchDftLecture('${escHtml(lec.id)}', false)" title="${escHtml(lec.title)}">
           <span class="dft-lec-tab-num">L${lec.num}</span>
           <span class="dft-lec-tab-lbl">${escHtml(lec.shortTab.replace(/^L\d+:\s*/, ""))}</span>
         </button>
       `).join("");
+
+      const cntBasic = lectures.filter(l => l.levelClass === "basic").length;
+      const cntInterm = lectures.filter(l => l.levelClass === "interm").length;
+      const cntAdv = lectures.filter(l => l.levelClass === "adv" || l.levelClass === "cap").length;
+
+      const decodeEntities = (s) => {
+        const ta = document.createElement("textarea");
+        ta.innerHTML = String(s || "");
+        return ta.value;
+      };
+      const sylItemsHtml = lectures.map(lec => {
+        const cleanTitle = decodeEntities(lec.title.replace(/^Lecture\s+\d+:\s*/i, ""));
+        const lc = lec.levelClass === "cap" ? "adv" : lec.levelClass;
+        return `
+          <button type="button" class="dft-syl-item${lec.id === _activeLectureId ? " active" : ""}" data-lec="${escHtml(lec.id)}" data-level-class="${escHtml(lc)}" onclick="selectDftLectureFromSyllabus('${escHtml(lec.id)}')" title="${escHtml(cleanTitle)}">
+            <span class="dft-syl-num">L${String(lec.num).padStart(2, "0")}</span>
+            <span class="dft-syl-body">
+              <span class="dft-syl-title">${escHtml(cleanTitle)}</span>
+              <span class="dft-syl-meta">
+                <span class="dft-syl-dot dft-syl-dot-${escHtml(lc)}"></span>${escHtml(lec.level)} &middot; ${escHtml(lec.readTime)} &middot; ${escHtml(lec.toolName)}
+              </span>
+            </span>
+            <span class="dft-syl-check" aria-hidden="true">&#10003;</span>
+          </button>
+        `;
+      }).join("");
+
+      tabsBar.innerHTML = `
+        <div class="dft-lec-nav-shell">
+          <div class="dft-lec-nav-bar">
+            <button type="button" id="dft-syllabus-toggle-btn" class="dft-syl-toggle-btn${_syllabusDrawerOpen ? " open" : ""}" onclick="toggleDftSyllabusDrawer()" title="Expand or collapse complete lecture directory">
+              <span class="dft-syl-ico">&#9776;</span>
+              <span>Lectures (${lectures.length})</span>
+              <span class="dft-syl-chev">${_syllabusDrawerOpen ? "\u25b4" : "\u25be"}</span>
+            </button>
+            <div class="dft-lec-rail-wrap">
+              <button type="button" class="dft-rail-arrow" onclick="scrollDftLectureRail(-260)" title="Scroll lectures left" aria-label="Scroll lectures left">&#8249;</button>
+              <div id="dft-lec-rail" class="dft-lec-rail" role="tablist" aria-label="Lecture quick bar">${railHtml}</div>
+              <button type="button" class="dft-rail-arrow" onclick="scrollDftLectureRail(260)" title="Scroll lectures right" aria-label="Scroll lectures right">&#8250;</button>
+            </div>
+            <div class="dft-lec-stepper" aria-label="Step through lectures">
+              <button type="button" id="dft-lec-step-prev" class="dft-step-btn" onclick="stepDftLecture(-1)" title="Previous lecture">&#8249;</button>
+              <span id="dft-lec-stepper-count" class="dft-step-count">1 / ${lectures.length}</span>
+              <button type="button" id="dft-lec-step-next" class="dft-step-btn" onclick="stepDftLecture(1)" title="Next lecture">&#8250;</button>
+            </div>
+          </div>
+          <div id="dft-syllabus-drawer" class="dft-syllabus-drawer" style="display:${_syllabusDrawerOpen ? "block" : "none"};">
+            <div class="dft-syllabus-head">
+              <span class="dft-syllabus-title">Curriculum Directory</span>
+              <div class="dft-syl-filters" role="group" aria-label="Filter lectures by level">
+                <button type="button" class="dft-syl-filter-chip active" data-lvl="all" onclick="setDftSyllabusLevelFilter('all')">All (${lectures.length})</button>
+                ${cntBasic ? `<button type="button" class="dft-syl-filter-chip" data-lvl="basic" onclick="setDftSyllabusLevelFilter('basic')">Basic (${cntBasic})</button>` : ""}
+                ${cntInterm ? `<button type="button" class="dft-syl-filter-chip" data-lvl="interm" onclick="setDftSyllabusLevelFilter('interm')">Intermediate (${cntInterm})</button>` : ""}
+                ${cntAdv ? `<button type="button" class="dft-syl-filter-chip" data-lvl="adv" onclick="setDftSyllabusLevelFilter('adv')">Advanced (${cntAdv})</button>` : ""}
+              </div>
+            </div>
+            <div class="dft-syllabus-grid">${sylItemsHtml}</div>
+          </div>
+        </div>
+      `;
     }
     const statusEl = document.getElementById("dft-theory-search-status");
     const searchInput = document.getElementById("dft-theory-search-input");
     if (statusEl && (!searchInput || !searchInput.value.trim())) {
-      statusEl.textContent = `${lectures.length} Lectures (Basic \u2192 Advanced)`;
+      statusEl.textContent = "";
+      statusEl.style.display = "none";
     }
     let target = lecIdOverride || _activeLectureId;
     if (!lecIdOverride) {
@@ -2191,12 +2224,12 @@
     const lectures = getDftTheoryLectures();
     const subEl = document.getElementById("dashboard-dft-card-sub");
     if (subEl) {
-      subEl.innerHTML = `${lectures.length} structured English lectures covering Hohenberg–Kohn/Kohn–Sham, XC functionals, Bloch plane waves, forces, Band/PDOS, Effective Mass &amp; Drude, Optics, &Delta;&rho;, Spin Matrix, and Exchange Splitting &amp; Stoner Magnetism—each with MathType/Word-quality equations, peer-reviewed DOI references, and live Data Analysis links.`;
+      subEl.innerHTML = `Structured English lectures covering Hohenberg–Kohn/Kohn–Sham, XC functionals, Bloch plane waves, forces, Band/PDOS, Effective Mass &amp; Drude, Optics, &Delta;&rho;, Spin Matrix, and Exchange Splitting &amp; Stoner Magnetism.`;
     }
     if (!grid || !lectures.length) return;
     grid.innerHTML = lectures.map(lec => `
       <button type="button" class="dft-dash-pill" onclick="openDftTheoryLecture('${escHtml(lec.id)}')" title="${escHtml(lec.title)}">
-        <span class="dft-dash-num">Lecture ${lec.num}</span>
+        <span class="dft-dash-num">L${lec.num}</span>
         <span class="dft-dash-name">${escHtml(lec.shortTab.replace(/^L\d+:\s*/, ""))}</span>
       </button>
     `).join("");
