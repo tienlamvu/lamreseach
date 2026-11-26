@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=156_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=156_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=157_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=157_v116_vesta_viewer'" />
   <!-- Publication Math Typography: STIX Two Text (MathType / Times) + KaTeX 0.16.11 (Word/LaTeX Equation Engine) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -76,7 +76,7 @@
         </div>
         <select id="mobile-tab-select" class="mobile-tab-native-select" onchange="switchTab(this.value)" aria-label="Select Navigation Tab">
           <option value="dashboard">📊 Dashboard</option>
-          <option value="dft-theory">🎓 DFT Theory (11 Lectures)</option>
+          <option value="dft-theory">🎓 DFT Theory</option>
           <option value="news">📰 News &amp; Articles</option>
           <option value="literature">📚 References (Literature)</option>
           <option value="calendar">📅 Calendar &amp; Google Calendar</option>
@@ -216,7 +216,7 @@
           <div class="card-header" style="margin-bottom:10px; flex-wrap:wrap; gap:8px;">
             <div>
               <div class="card-title" style="color:#78350f;">🎓 Density Functional Theory (DFT): From Quantum Foundations to First-Principles Simulation</div>
-              <div id="dashboard-dft-card-sub" style="font-size:12px; color:var(--text-muted);">11 structured English lectures covering Hohenberg–Kohn/Kohn–Sham, XC functionals, Bloch plane waves, forces, Band/PDOS, Effective Mass &amp; Drude, Optics, &Delta;&rho;, Spin Matrix, and Exchange Splitting &amp; Stoner Magnetism—each with peer-reviewed DOI references and live Data Analysis links.</div>
+              <div id="dashboard-dft-card-sub" style="font-size:12px; color:var(--text-muted);">Structured English lectures covering Hohenberg–Kohn/Kohn–Sham, XC functionals, Bloch plane waves, forces, Band/PDOS, Effective Mass &amp; Drude, Optics, &Delta;&rho;, Spin Matrix, and Exchange Splitting &amp; Stoner Magnetism.</div>
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
               <button type="button" class="btn btn-outline btn-sm strict-admin-only" onclick="openDftLectureEditorModal(null)" title="Add a new lecture to the DFT Theory curriculum (Admin Only)">➕ Add Lecture</button>
@@ -287,9 +287,9 @@
               <input type="text" id="dft-theory-search-input" class="dft-search-input" placeholder="Search topic, equation, or keyword (e.g. Kohn-Sham, HSE06, Drude, Kramers)..." oninput="filterDftLectures(this.value)" />
             </div>
             <div class="dft-hero-meta">
-              <span id="dft-theory-search-status" class="dft-hero-badge">11 Lectures (Basic &rarr; Advanced)</span>
+              <span id="dft-theory-search-status" class="dft-hero-badge" style="display:none;"></span>
               <button type="button" class="btn btn-primary btn-sm strict-admin-only" onclick="openDftLectureEditorModal(null)" title="Create and publish a new DFT Theory lecture (Admin Only)">&#10133; Add Lecture</button>
-              <button type="button" class="btn btn-outline btn-sm strict-admin-only" onclick="resetDftLecturesToDefault()" title="Restore the 11 built-in DFT lectures and references (Admin Only)">&#8634; Reset Defaults</button>
+              <button type="button" class="btn btn-outline btn-sm strict-admin-only" onclick="resetDftLecturesToDefault()" title="Restore built-in DFT lectures and references (Admin Only)">&#8634; Reset Defaults</button>
               <button type="button" class="btn btn-teal btn-sm" onclick="switchTabByName('castep')">&#128202; Launch Data Analysis &rarr;</button>
             </div>
           </div>
@@ -2734,7 +2734,7 @@
                   <div class="castep-tb-actions">
                     <input type="file" id="castep-st-file-upload" multiple accept=".pdos_bin,.bands,.castep,.xcd" style="display:none;" onchange="handleCastepStonerFilesUpload(event)" />
                     <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="document.getElementById('castep-st-file-upload').click()" title="Load CASTEP *.pdos_bin, *_DOS.bands, *.castep, or *.xcd files">📥 Load DOS/PDOS</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700; color:#7c3aed;" onclick="openDftTheoryLecture('lec11')" title="Read DFT Theory Lecture 11: Exchange Splitting, Spin Polarization &amp; Stoner Magnetism">🎓 Theory L11</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700; color:#7c3aed;" onclick="openDftTheoryLecture('lec10')" title="Read DFT Theory Lecture 10: Exchange Splitting, Spin Polarization &amp; Stoner Magnetism">🎓 Theory L10</button>
                   </div>
                 </div>
               </div>
@@ -2820,7 +2820,6 @@
                 <div class="castep-atoms-table-card">
                   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:6px; flex-wrap:wrap;">
                     <span style="font-weight:800; font-size:12.5px; color:#0f172a;">📐 Stoner Formalism Evaluation &amp; Doping Instability Thresholds</span>
-                    <span class="badge badge-blue" style="font-size:10.5px;">Notes 7.1–7.4</span>
                   </div>
                   <div class="castep-atoms-table-scroll" style="max-height:280px;">
                     <table class="castep-atoms-table">
@@ -6347,10 +6346,10 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=156_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=156_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=156_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=156_v116_vesta_viewer'"></script>
-  <script src="dft_theory.js?v=156_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=156_v116_vesta_viewer'"></script>
-  <script src="app.js?v=156_v116_vesta_viewer" onerror="this.src='/static/app.js?v=156_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=157_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=157_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=157_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=157_v116_vesta_viewer'"></script>
+  <script src="dft_theory.js?v=157_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=157_v116_vesta_viewer'"></script>
+  <script src="app.js?v=157_v116_vesta_viewer" onerror="this.src='/static/app.js?v=157_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
