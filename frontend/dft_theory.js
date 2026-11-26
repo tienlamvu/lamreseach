@@ -1464,7 +1464,7 @@
   function getDftLectureShareUrl(lecId, sectionId = "") {
     const id = String(lecId || _activeLectureId || "lec1").trim();
     const base = `${window.location.origin}${window.location.pathname}`;
-    const url = `${base}?lecture=${encodeURIComponent(id)}`;
+    const url = `${base}?tab=dft-theory&lecture=${encodeURIComponent(id)}`;
     return sectionId ? `${url}#${encodeURIComponent(sectionId)}` : url;
   }
   window.getDftLectureShareUrl = getDftLectureShareUrl;
@@ -1515,11 +1515,13 @@
       const tabEl = document.getElementById("tab-dft-theory");
       if (!tabEl || !tabEl.classList.contains("active")) return;
       const urlObj = new URL(window.location.href);
+      urlObj.searchParams.set("tab", "dft-theory");
       urlObj.searchParams.set("lecture", lecId);
       urlObj.searchParams.delete("article");
+      urlObj.searchParams.delete("structure");
       const newHash = sectionId ? `#${encodeURIComponent(sectionId)}` : "";
       const nextUrl = `${urlObj.pathname}?${urlObj.searchParams.toString()}${newHash}`;
-      window.history.replaceState({ dftLectureId: lecId }, "", nextUrl);
+      window.history.replaceState({ tabId: "dft-theory", dftLectureId: lecId }, "", nextUrl);
     } catch (_) {}
   }
   window.syncUrlWithDftLecture = syncUrlWithDftLecture;
@@ -1541,9 +1543,9 @@
     if (!info || !info.lecId) return false;
     _activeLectureId = info.lecId;
     if (typeof switchTabByName === "function") {
-      switchTabByName("dft-theory");
+      switchTabByName("dft-theory", { skipUrlSync: true });
     } else if (typeof switchTab === "function") {
-      switchTab("dft-theory");
+      switchTab("dft-theory", null, { skipUrlSync: true });
     }
     renderDftTheoryTab(info.lecId, true);
     if (info.sectionId) {
