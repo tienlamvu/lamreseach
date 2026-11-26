@@ -8597,7 +8597,7 @@ function showCastepPlotContextMenu(canvasId, clientX, clientY) {
   );
   if (!hitSub && (canvas._singlePanelExactTable || canvas._singlePanelExactSeries)) {
     itemsHtml.push(
-      `<button type="button" style="${btnCss} color:#0f766e;" onmouseenter="this.style.background='#f0fdfa'" onmouseleave="this.style.background='transparent'" onclick="hideCastepPlotContextMenu(); copyCastepSubPanelData('${canvasId}', null)">📊 Copy plot data</button>`
+      `<button type="button" style="${btnCss} color:#0f766e;" onmouseenter="this.style.background='#f0fdfa'" onmouseleave="this.style.background='transparent'" onclick="hideCastepPlotContextMenu(); copyCastepSubPanelData('${canvasId}', null)">📊 Copy Plot Data (TSV)</button>`
     );
   }
   if (spec.fullDataItem) {
