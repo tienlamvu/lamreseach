@@ -6373,6 +6373,83 @@ function renderCastepElectronicPlots() {
       ctx.restore();
     }
   }
+
+  // ---- Record EXACTLY the plotted curves of each panel for "Copy This Sub-Plot Data (TSV)" ----
+  canvas._singlePanelExactTable = null;
+  canvas._singlePanelExactSeries = null;
+  const buildBandExactTable = () => {
+    const tickLbl = (xN) => {
+      for (const t of (bandTicks || [])) {
+        if (Math.abs(t.pos - xN) < 0.004) return t.label === "G" ? "Γ" : t.label;
+      }
+      return "";
+    };
+    const cols = [];
+    bandSeries.forEach((ser, sIdx) => {
+      const isBeta = sIdx === 1 || /beta|dn|down/i.test(ser.name);
+      if (!isBeta && !showUp) return;
+      if (isBeta && !showDn) return;
+      const spinTag = bandSeries.length >= 2 ? (isBeta ? "Spin↓ " : "Spin↑ ") : "";
+      (ser.segments || []).forEach((seg, bIdx) => {
+        if (!seg || !seg.length) return;
+        const visible = seg.some(pt => Number.isFinite(pt[1]) && pt[1] >= emin && pt[1] <= emax);
+        if (!visible) return;
+        cols.push({ label: `${spinTag}Band ${bIdx + 1} E − E_ref (eV)`, seg });
+      });
+    });
+    if (!cols.length) return { title: "Band Structure (visible)", headers: [], rows: [] };
+    let refSeg = cols[0].seg;
+    cols.forEach(c => { if (c.seg.length > refSeg.length) refSeg = c.seg; });
+    const rows = refSeg.map((pt, k) => {
+      const kx = pt[0];
+      const row = [k + 1, formatPlottedNum(kx), tickLbl(kx)];
+      cols.forEach(c => {
+        let y = null;
+        if (c.seg.length === refSeg.length) y = c.seg[k][1];
+        else {
+          let bestD = 1e9;
+          c.seg.forEach(p => { const d = Math.abs(p[0] - kx); if (d < bestD) { bestD = d; y = p[1]; } });
+          if (bestD > 0.02) y = null;
+        }
+        row.push(formatPlottedNum(y));
+      });
+      return row;
+    });
+    return {
+      title: bandSeries.length >= 2 ? `Band Structure (${[showUp ? "Spin↑" : "", showDn ? "Spin↓" : ""].filter(Boolean).join(" + ")}, ${emin} to ${emax} eV)` : `Band Structure (${emin} to ${emax} eV)`,
+      headers: ["k Index", "k-Path (normalized)", "High-Symmetry Point", ...cols.map(c => c.label)],
+      rows
+    };
+  };
+  const buildPdosExactTable = () => {
+    const useMirrorX = isSpinDos && spinLayout === "mirror" && showUp && showDn;
+    const specs = [];
+    pdosCurves.forEach(c => {
+      const lbl = cleanSciHeaderText(c.label || "Curve");
+      if (useMirrorX) {
+        specs.push({ label: `${lbl} Spin↑ (states/eV)`, get: i => c.up[i] });
+        if (c.dn) specs.push({ label: `${lbl} Spin↓ (−, states/eV)`, get: i => -c.dn[i] });
+      } else {
+        const tag = (isSpinDos && c.dn) ? (showUp && showDn ? " (↑+↓)" : (showUp ? " (Spin↑)" : (showDn ? " (Spin↓)" : ""))) : "";
+        specs.push({ label: `${lbl}${tag} (states/eV)`, get: i => (showUp ? c.up[i] : 0) + (showDn && c.dn ? c.dn[i] : 0) });
+      }
+    });
+    if (!specs.length) return { title: "PDOS (visible)", headers: [], rows: [] };
+    const modeLbl = pdosMode === "atom" ? "Atomic-Resolved PDOS" : (pdosMode === "element" ? "Element-Resolved PDOS" : (pdosMode === "orbital" ? "Orbital-Resolved PDOS" : "Element + Orbital PDOS"));
+    return {
+      title: `${modeLbl} (${emin} to ${emax} eV)`,
+      headers: ["Energy E − E_ref (eV)", ...specs.map(s => s.label)],
+      rows: eGrid.map((e, i) => [formatPlottedNum(e), ...specs.map(s => formatPlottedNum(s.get(i)))])
+    };
+  };
+  if (layout === "joint" && canvas._subPanelRects.length >= 2) {
+    canvas._subPanelRects[0].exactTable = buildBandExactTable();
+    canvas._subPanelRects[1].exactTable = buildPdosExactTable();
+  } else if (layout === "band") {
+    canvas._singlePanelExactTable = buildBandExactTable();
+  } else if (layout === "dos") {
+    canvas._singlePanelExactTable = buildPdosExactTable();
+  }
   ctx.restore();
 }
 window.renderCastepElectronicPlots = renderCastepElectronicPlots;
@@ -6503,6 +6580,7 @@ function drawSimpleLineChart2D(canvas, points, opts = {}) {
   const pw = width - padL - padR, ph = height - padT - padB;
 
   if (!points || !points.length) {
+    canvas._singlePanelExactTable = null;
     drawPubAxisBox(ctx, padL, padT, pw, ph, st);
     ctx.fillStyle = "#64748b";
     ctx.font = castepPlotFont("tick");
@@ -6519,6 +6597,11 @@ function drawSimpleLineChart2D(canvas, points, opts = {}) {
   const minX = rawMinX + rawSpanX * Math.max(0, Math.min(0.95, cz.xMinFrac || 0));
   const maxX = rawMinX + rawSpanX * Math.max((cz.xMinFrac || 0) + 0.05, Math.min(1.0, cz.xMaxFrac !== undefined ? cz.xMaxFrac : 1.0));
   const visPts = points.filter(p => p[0] >= minX - 1e-6 && p[0] <= maxX + 1e-6);
+  canvas._singlePanelExactTable = {
+    title: cleanSciHeaderText(opts.yLabel || "Plot"),
+    headers: [cleanSciHeaderText(opts.xLabel || "X"), cleanSciHeaderText(opts.yLabel || "Y")],
+    rows: visPts.map(p => [formatPlottedNum(p[0]), formatPlottedNum(p[1])])
+  };
   const ys = (visPts.length ? visPts : points).map(p => p[1]);
   let minY = Math.min(...ys), maxY = Math.max(...ys);
   if (opts.thresholdY !== undefined) {
@@ -8074,6 +8157,196 @@ function buildCastepPlotDataForClipboard(plotKey, subPart = "auto") {
 }
 window.buildCastepPlotDataForClipboard = buildCastepPlotDataForClipboard;
 
+function cleanSciHeaderText(raw) {
+  let s = String(raw || "").trim();
+  s = s.replace(/^[●■━┄─\s]+/, "").trim();
+  const supMap = {
+    "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹",
+    "+": "⁺", "-": "⁻", "\u2212": "⁻", "(": "⁽", ")": "⁾", "n": "ⁿ", "i": "ⁱ", "↑": "↑", "↓": "↓"
+  };
+  const subMap = {
+    "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄", "5": "₅", "6": "₆", "7": "₇", "8": "₈", "9": "₉",
+    "+": "₊", "-": "₋", "\u2212": "₋"
+  };
+  s = s.replace(/\^\{([^}]+)\}/g, (_, inner) => {
+    const mapped = inner.split("").map(ch => supMap[ch] || null);
+    return mapped.every(Boolean) ? mapped.join("") : `^(${inner})`;
+  });
+  s = s.replace(/_\{([^}]+)\}/g, (_, inner) => {
+    if (/^[0-9+\-\u2212]+$/.test(inner)) {
+      return inner.split("").map(ch => subMap[ch] || ch).join("");
+    }
+    return `_${inner}`;
+  });
+  return s.replace(/\s+/g, " ").trim();
+}
+window.cleanSciHeaderText = cleanSciHeaderText;
+
+function formatPlottedNum(v) {
+  if (v === null || v === undefined) return "";
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "";
+  if (n === 0) return 0;
+  const a = Math.abs(n);
+  if (a >= 1e6 || a < 1e-4) return Number(n.toExponential(6));
+  return Number(n.toPrecision(7));
+}
+
+function buildTableFromPlottedSeries(spec) {
+  if (!spec || !Array.isArray(spec.series) || !spec.series.length) return null;
+  const xLabelClean = cleanSciHeaderText(spec.xLabel || "X");
+  const xTransform = typeof spec.xTransform === "function" ? spec.xTransform : null;
+  const hasXMin = spec.xMin !== undefined && spec.xMin !== null && Number.isFinite(spec.xMin);
+  const hasXMax = spec.xMax !== undefined && spec.xMax !== null && Number.isFinite(spec.xMax);
+  const logY = !!spec.logY;
+  const yUnitSuffix = spec.yUnit ? ` (${cleanSciHeaderText(spec.yUnit)})` : "";
+
+  const cleaned = [];
+  spec.series.forEach((s, idx) => {
+    if (!s || !Array.isArray(s.pts) || !s.pts.length) return;
+    const pts = [];
+    for (let i = 0; i < s.pts.length; i++) {
+      const pt = s.pts[i];
+      if (!pt || pt.length < 2) continue;
+      const rx = Number(pt[0]);
+      const ry = Number(pt[1]);
+      if (!Number.isFinite(rx) || !Number.isFinite(ry)) continue;
+      if (logY && ry <= 0) continue;
+      if (hasXMin && rx < spec.xMin - 1e-9) continue;
+      if (hasXMax && rx > spec.xMax + 1e-9) continue;
+      const ex = xTransform ? xTransform(rx) : rx;
+      if (!Number.isFinite(ex)) continue;
+      pts.push([ex, ry]);
+    }
+    if (!pts.length) return;
+    let lbl = cleanSciHeaderText(s.exportLabel || s.label || `Series_${idx + 1}`);
+    if (yUnitSuffix && !lbl.includes(cleanSciHeaderText(spec.yUnit))) {
+      lbl += yUnitSuffix;
+    }
+    cleaned.push({
+      label: lbl,
+      xLabel: s.xLabel ? cleanSciHeaderText(s.xLabel) : null,
+      pts
+    });
+  });
+
+  if (!cleaned.length) return null;
+
+  // Detect whether all plotted series share the exact same X grid (clean single-X multi-Y table)
+  let sharedX = cleaned.every(c => !c.xLabel);
+  if (sharedX && cleaned.length > 1) {
+    const ref = cleaned[0].pts;
+    for (let si = 1; si < cleaned.length && sharedX; si++) {
+      const cur = cleaned[si].pts;
+      if (cur.length !== ref.length) { sharedX = false; break; }
+      for (let i = 0; i < ref.length; i++) {
+        const tol = Math.max(1e-9, Math.abs(ref[i][0]) * 1e-6);
+        if (Math.abs(cur[i][0] - ref[i][0]) > tol) { sharedX = false; break; }
+      }
+    }
+  }
+
+  if (sharedX) {
+    const ref = cleaned[0].pts;
+    const headers = [xLabelClean, ...cleaned.map(c => c.label)];
+    const rows = ref.map((pt, i) => [
+      formatPlottedNum(pt[0]),
+      ...cleaned.map(c => formatPlottedNum(c.pts[i][1]))
+    ]);
+    return { title: cleanSciHeaderText(spec.title || "Sub-Plot Data"), headers, rows };
+  }
+
+  // Distinct X grids (e.g., DOS + CB/VB Fits, or Band-Edge DFT + Fit branches) -> paired XY columns for OriginPro/Excel
+  const headers = [];
+  let maxRows = 0;
+  cleaned.forEach(c => {
+    const colX = c.xLabel || `${xLabelClean} [${c.label}]`;
+    headers.push(colX, c.label);
+    if (c.pts.length > maxRows) maxRows = c.pts.length;
+  });
+  const rows = [];
+  for (let i = 0; i < maxRows; i++) {
+    const row = [];
+    for (let si = 0; si < cleaned.length; si++) {
+      const pt = cleaned[si].pts[i];
+      if (pt) {
+        row.push(formatPlottedNum(pt[0]), formatPlottedNum(pt[1]));
+      } else {
+        row.push("", "");
+      }
+    }
+    rows.push(row);
+  }
+  return { title: cleanSciHeaderText(spec.title || "Sub-Plot Data"), headers, rows };
+}
+window.buildTableFromPlottedSeries = buildTableFromPlottedSeries;
+
+async function copyCastepSubPanelData(canvasId, subPanelKey = null) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) {
+    if (typeof showToast === "function") showToast("Plot canvas not found.", "warning");
+    return false;
+  }
+
+  let tbl = null;
+  let metaPlotKey = canvasId;
+  let metaSubPart = subPanelKey || "visible";
+  let usedExact = false;
+
+  if (subPanelKey !== null && subPanelKey !== undefined && subPanelKey !== "") {
+    const rect = (canvas._subPanelRects || []).find(r => r.key === subPanelKey);
+    if (rect) {
+      metaPlotKey = rect.plotKey || canvasId;
+      metaSubPart = rect.key;
+      if (rect.exactTable !== undefined) {
+        tbl = rect.exactTable;
+        usedExact = true;
+      } else if (rect.exactSeries !== undefined) {
+        tbl = buildTableFromPlottedSeries(rect.exactSeries);
+        usedExact = true;
+      } else if (rect.plotKey) {
+        tbl = buildCastepPlotDataForClipboard(rect.plotKey, rect.dataSubPart || "auto");
+      }
+    }
+  } else {
+    if (canvas._singlePanelExactTable !== undefined && canvas._singlePanelExactTable !== null) {
+      tbl = canvas._singlePanelExactTable;
+      usedExact = true;
+    } else if (canvas._singlePanelExactSeries !== undefined && canvas._singlePanelExactSeries !== null) {
+      tbl = buildTableFromPlottedSeries(canvas._singlePanelExactSeries);
+      usedExact = true;
+    }
+  }
+
+  if (!tbl || !tbl.rows || !tbl.rows.length) {
+    window._lastCopiedPlotDataInfo = {
+      canvasId, subPanelKey, plotKey: metaPlotKey, subPart: metaSubPart,
+      title: tbl?.title || "", rows: 0, cols: 0, chars: 0, headers: [], preview: "", exactOnly: usedExact
+    };
+    if (typeof showToast === "function") {
+      showToast("No plotted curves or numerical points are currently displayed on this sub-figure.", "warning");
+    }
+    return false;
+  }
+
+  const tsv = buildTsvString(tbl.headers, tbl.rows);
+  window._lastCopiedPlotDataInfo = {
+    canvasId, subPanelKey, plotKey: metaPlotKey, subPart: metaSubPart,
+    title: tbl.title, rows: tbl.rows.length, cols: tbl.headers.length,
+    chars: tsv.length, headers: tbl.headers, preview: tsv.slice(0, 420), exactOnly: usedExact
+  };
+  const ok = await copyTextToClipboardSafe(tsv);
+  if (typeof showToast === "function") {
+    if (ok) {
+      showToast(`📋 Copied ${tbl.title} (visible plot data only): ${tbl.rows.length} rows × ${tbl.headers.length} cols (TSV) — Ctrl+V into Excel / OriginPro!`, "success");
+    } else {
+      showToast("Browser blocked clipboard text write.", "warning");
+    }
+  }
+  return ok;
+}
+window.copyCastepSubPanelData = copyCastepSubPanelData;
+
 async function copyCastepPlotData(plotKey, subPart = "auto") {
   const tbl = buildCastepPlotDataForClipboard(plotKey, subPart);
   if (!tbl || !tbl.rows || !tbl.rows.length) {
@@ -8218,7 +8491,7 @@ function showCastepPlotContextMenu(canvasId, clientX, clientY) {
     itemsHtml.push(
       `<div style="${hdrCss} color:#0f766e; border-bottom:1px solid #e2e8f0; margin-bottom:2px;">This Sub-Figure: ${escapeHtml(hitSub.label)} • ${dpi} DPI</div>`,
       `<button type="button" style="${btnCss} color:#0f766e;" onmouseenter="this.style.background='#f0fdfa'" onmouseleave="this.style.background='transparent'" onclick="hideCastepPlotContextMenu(); copyCastepSubPanelHD('${canvasId}', '${safeAttr(hitSub.key)}', '${safeAttr(hitSub.label)}')">📋 Copy This Sub-Plot Image (${dpi} DPI)</button>`,
-      `<button type="button" style="${btnCss}" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background='transparent'" onclick="hideCastepPlotContextMenu(); copyCastepPlotData('${hitSub.plotKey}', '${safeAttr(hitSub.dataSubPart)}')">📊 Copy This Sub-Plot Data (TSV)</button>`,
+      `<button type="button" style="${btnCss}" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background='transparent'" onclick="hideCastepPlotContextMenu(); copyCastepSubPanelData('${canvasId}', '${safeAttr(hitSub.key)}')">📊 Copy This Sub-Plot Data (TSV)</button>`,
       `<button type="button" style="${btnCss}" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background='transparent'" onclick="hideCastepPlotContextMenu(); exportCastepSubPanelPNG('${canvasId}', '${safeAttr(hitSub.key)}', '${safeAttr(hitSub.pngName)}')">💾 Save This Sub-Plot PNG (${dpi} DPI)</button>`,
       `<div style="height:1px; background:#e2e8f0; margin:4px 6px;"></div>`
     );
@@ -8229,6 +8502,11 @@ function showCastepPlotContextMenu(canvasId, clientX, clientY) {
     `<div style="${hdrCss} border-bottom:1px solid #f1f5f9; margin-bottom:2px;">Full Figure: ${escapeHtml(spec.label)} • ${dpi} DPI</div>`,
     `<button type="button" style="${btnCss} ${hitSub ? "" : "color:#0f766e;"}" onmouseenter="this.style.background='#f0fdfa'" onmouseleave="this.style.background='transparent'" onclick="hideCastepPlotContextMenu(); copyCastepCanvasHD('${canvasId}', '${safeAttr(spec.label)} (Full)')">📋 Copy Full Image (${dpi} DPI PNG)</button>`
   );
+  if (!hitSub && (canvas._singlePanelExactTable || canvas._singlePanelExactSeries)) {
+    itemsHtml.push(
+      `<button type="button" style="${btnCss} color:#0f766e;" onmouseenter="this.style.background='#f0fdfa'" onmouseleave="this.style.background='transparent'" onclick="hideCastepPlotContextMenu(); copyCastepSubPanelData('${canvasId}', null)">📊 Copy Visible Plot Data Only (TSV)</button>`
+    );
+  }
   if (spec.fullDataItem) {
     itemsHtml.push(
       `<button type="button" style="${btnCss}" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background='transparent'" onclick="hideCastepPlotContextMenu(); copyCastepPlotData('${spec.fullDataItem.plotKey}', '${spec.fullDataItem.subPart}')">${escapeHtml(spec.fullDataItem.label)}</button>`
@@ -10884,6 +11162,8 @@ function renderCastepOpticalPlots() {
   const xTitle = axCfg.xTitle;
 
   canvas._subPanelRects = [];
+  canvas._singlePanelExactTable = null;
+  canvas._singlePanelExactSeries = null;
 
   function drawOpticalSubPanel(boxX, boxY, boxW, boxH, cfg) {
     const st = getCastepPlotStyle();
@@ -10918,6 +11198,28 @@ function renderCastepOpticalPlots() {
     }
 
     const fullSpanX = xAxisMode === "nm" ? 920 : Math.max(0.1, axCfg.evToX(fullEmax));
+
+    // Record EXACTLY the curves drawn in this panel within the visible X window (active units + per-panel zoom)
+    {
+      const idxs = [];
+      for (let i = 0; i < xVals.length; i++) {
+        const xv = xVals[i];
+        if (Number.isFinite(xv) && xv >= xMin && xv <= xMax) idxs.push(i);
+      }
+      idxs.sort((a, b) => xVals[a] - xVals[b]);
+      const unitSfx = cfg.exportYUnit ? ` (${cfg.exportYUnit})` : "";
+      const exactTbl = {
+        title: cleanSciHeaderText(cfg.subLabel || cfg.title),
+        headers: [cleanSciHeaderText(xTitle), ...cfg.series.map(s => cleanSciHeaderText(s.exportLabel || s.label) + unitSfx)],
+        rows: idxs.map(i => [formatPlottedNum(xVals[i]), ...cfg.series.map(s => formatPlottedNum(s.values[i]))])
+      };
+      if (prop === "multigrid" || prop === "anisotropy") {
+        const lastRect = canvas._subPanelRects[canvas._subPanelRects.length - 1];
+        if (lastRect && lastRect.key === pKey) lastRect.exactTable = exactTbl;
+      } else {
+        canvas._singlePanelExactTable = exactTbl;
+      }
+    }
     const isZoomedX = (xMax - xMin) < fullSpanX * 0.985;
     const zoomFactorDisp = fullSpanX / Math.max(1e-6, xMax - xMin);
     const isActiveSub = prop === "multigrid" && CASTEP_STUDIO_STATE.activeOptPanel === pKey && !window._castepExportHideSelection;
@@ -11173,7 +11475,7 @@ function renderCastepOpticalPlots() {
     drawOpticalSubPanel(hw, 0, width - hw, hh, {
       panelKey: "b", title: "Absorption α (×10^{4} cm^{-1})", subLabel: "Absorption α",
       dataSubPart: "absorption", pngName: "CASTEP_Optical_b_Absorption.png",
-      yMinForced: 0,
+      yMinForced: 0, exportYUnit: "×10⁴ cm⁻¹",
       series: [
         { label: "α(ω)", values: alpha10k, color: "#0284c7", width: 2.2, fillAlpha: "rgba(2,132,199,0.12)" }
       ]
@@ -11208,7 +11510,7 @@ function renderCastepOpticalPlots() {
       drawOpticalSubPanel(0, 0, hw, height, {
         panelKey: "a", title: "Dielectric ε_{2}(ω) Optical Anisotropy", subLabel: "Dielectric ε₂ Anisotropy",
         dataSubPart: "anisotropy", pngName: "CASTEP_Optical_Anisotropy_Eps2.png",
-        yMinForced: 0,
+        yMinForced: 0, exportYUnit: "ε₂",
         series: [
           { label: "Pol [100]", values: A.polX.eps2, color: "#2563eb", width: 2.0 },
           { label: "Pol [010]", values: A.polY.eps2, color: "#16a34a", width: 1.8, dashed: true },
@@ -11220,7 +11522,7 @@ function renderCastepOpticalPlots() {
       drawOpticalSubPanel(hw, 0, width - hw, height, {
         panelKey: "b", title: "Absorption α(ω) (×10^{4} cm^{-1}) Anisotropy", subLabel: "Absorption α Anisotropy",
         dataSubPart: "anisotropy", pngName: "CASTEP_Optical_Anisotropy_Alpha.png",
-        yMinForced: 0,
+        yMinForced: 0, exportYUnit: "α, ×10⁴ cm⁻¹",
         series: [
           { label: "Pol [100]", values: A.polX.alphaCm.map(v => v / 1e4), color: "#2563eb", width: 2.0 },
           { label: "Pol [010]", values: A.polY.alphaCm.map(v => v / 1e4), color: "#16a34a", width: 1.8, dashed: true },
@@ -12534,6 +12836,85 @@ function renderCastepChdiffPlots() {
   } else {
     draw1DPlanarPanel(0, 0, width, height);
   }
+
+  // ---- Record EXACTLY the data displayed in each Charge-Diff panel for "Copy This Sub-Plot Data (TSV)" ----
+  const buildChdiff3DExact = () => {
+    const stc = CASTEP_STUDIO_STATE.structure;
+    const vecs = (stc && stc.vectors && stc.vectors.length === 3) ? stc.vectors : [[6,0,0],[0,6,0],[0,0,20]];
+    const unitLbl = chGrid.unit || "e/Å³";
+    const lobes = (chGrid.isosurfaceVoxels || []).filter(vx => Math.abs(vx.val) >= isoVal);
+    const atoms = stc?.atoms || [];
+    const headers = ["Atom", "Element", "x (Å)", "y (Å)", "z (Å)", "",
+      "Isosurface Lobe", "u (frac)", "v (frac)", "w (frac)", "x (Å)", "y (Å)", "z (Å)", `Δρ (${unitLbl})`, `Type (|Δρ| ≥ ${isoVal} ${unitLbl})`];
+    const n = Math.max(atoms.length, lobes.length);
+    const rows = [];
+    for (let i = 0; i < n; i++) {
+      const row = [];
+      const at = atoms[i];
+      if (at) {
+        const [cx, cy, cz] = castepFracToCart(at.x, at.y, at.z, vecs);
+        row.push(at.label || `${at.element}${i + 1}`, castepCleanElement(at.element), formatPlottedNum(cx), formatPlottedNum(cy), formatPlottedNum(cz), "");
+      } else row.push("", "", "", "", "", "");
+      const vx = lobes[i];
+      if (vx) {
+        const [lx, ly, lz] = castepFracToCart(vx.u, vx.v, vx.w, vecs);
+        row.push(i + 1, formatPlottedNum(vx.u), formatPlottedNum(vx.v), formatPlottedNum(vx.w), formatPlottedNum(lx), formatPlottedNum(ly), formatPlottedNum(lz), formatPlottedNum(vx.val), vx.val > 0 ? "+Δρ Accumulation" : "−Δρ Depletion");
+      } else row.push("", "", "", "", "", "", "", "", "");
+      rows.push(row);
+    }
+    return { title: `3D Structure + Δρ Isosurface (±${isoVal} ${unitLbl})`, headers, rows };
+  };
+  const buildChdiff2DExact = () => {
+    const [nx, ny, nz] = chGrid.sample_dims || [1, 1, 1];
+    const flat = chGrid.grid3d_flat || [];
+    const g3 = (i, j, k) => flat[(i * ny + j) * nz + k] || 0;
+    let nU = nx, nV = nz, uL = "a", vL = "c", hkl = "(010)", posL = "v";
+    if (plane === "yz") { nU = ny; nV = nz; uL = "b"; vL = "c"; hkl = "(100)"; posL = "u"; }
+    else if (plane === "xy") { nU = nx; nV = ny; uL = "a"; vL = "b"; hkl = "(001)"; posL = "w"; }
+    const sIdx = plane === "xz" ? Math.min(ny - 1, Math.round(slicePos * (ny - 1)))
+      : (plane === "yz" ? Math.min(nx - 1, Math.round(slicePos * (nx - 1))) : Math.min(nz - 1, Math.round(slicePos * (nz - 1))));
+    const headers = [`${vL} (frac) \\ ${uL} (frac)`];
+    for (let u = 0; u < nU; u++) headers.push(formatPlottedNum(u / Math.max(1, nU - 1)));
+    const rows = [];
+    for (let v = nV - 1; v >= 0; v--) {
+      const row = [formatPlottedNum(v / Math.max(1, nV - 1))];
+      for (let u = 0; u < nU; u++) {
+        row.push(formatPlottedNum(plane === "xz" ? g3(u, sIdx, v) : (plane === "yz" ? g3(sIdx, u, v) : g3(u, v, sIdx))));
+      }
+      rows.push(row);
+    }
+    return { title: `2D Slice ${hkl} ${uL}–${vL} @ ${posL}=${slicePos.toFixed(2)} (Δρ, ${chGrid.unit || "e/Å³"})`, headers, rows };
+  };
+  const buildChdiff1DExact = () => {
+    const unit1D = document.getElementById("castep-chdiff-1d-unit")?.value || "ea3";
+    const useLin = unit1D === "ea" && chGrid.profile_z_linear?.length;
+    const prof = useLin ? chGrid.profile_z_linear : (chGrid.profile_z || []);
+    const unitL = useLin ? "e/Å" : (chGrid.unit || "e/Å³");
+    const dq = chGrid.delta_q_z || [];
+    const cLen = chGrid.c_length_a || CASTEP_STUDIO_STATE.structure?.lattice?.c || 20.0;
+    const zoom = Math.max(1.0, CASTEP_STUDIO_STATE.chdiffState.zoom1D || 1.0);
+    const pan = CASTEP_STUDIO_STATE.chdiffState.pan1D || 0.0;
+    const spanZ = cLen / zoom;
+    const zMin = Math.max(0, Math.min(cLen - spanZ, (cLen - spanZ) / 2 + pan * cLen));
+    const zMax = zMin + spanZ;
+    const nP = Math.max(prof.length, dq.length);
+    const rows = [];
+    for (let i = 0; i < nP; i++) {
+      const z = (i / Math.max(1, nP - 1)) * cLen;
+      if (z < zMin - 1e-9 || z > zMax + 1e-9) continue;
+      rows.push([formatPlottedNum(z), prof.length ? formatPlottedNum(prof[Math.round(i * (prof.length - 1) / Math.max(1, nP - 1))]) : "", dq.length ? formatPlottedNum(dq[Math.round(i * (dq.length - 1) / Math.max(1, nP - 1))]) : ""]);
+    }
+    return { title: `1D Planar Δρ(z) & ΔQ(z) (z = ${zMin.toFixed(2)}–${zMax.toFixed(2)} Å)`, headers: ["z (Å)", `Δρ(z) (${unitL})`, "ΔQ(z) (e)"], rows };
+  };
+  canvas._singlePanelExactTable = null;
+  canvas._singlePanelExactSeries = null;
+  (canvas._subPanelRects || []).forEach(r => {
+    if (r.key === "iso3d") r.exactTable = buildChdiff3DExact();
+    else if (r.key === "slice2d") r.exactTable = buildChdiff2DExact();
+    else if (r.key === "planar1d") r.exactTable = buildChdiff1DExact();
+  });
+  if (layout === "slice2d") canvas._singlePanelExactTable = buildChdiff2DExact();
+  else if (layout !== "tri" && layout !== "iso2d") canvas._singlePanelExactTable = buildChdiff1DExact();
   ctx.restore();
 }
 window.renderCastepChdiffPlots = renderCastepChdiffPlots;
@@ -13701,6 +14082,12 @@ function renderCastepMullikenPane() {
     if (chartMode === "spin_atomic") {
       if (titleEl) titleEl.innerHTML = "Atomic Magnetic Moment Contribution μ<sub>i</sub> (μ<sub>B</sub>)";
       const sorted = [...visAtoms].sort((a, b) => Math.abs(b.spin) - Math.abs(a.spin)).slice(0, 24);
+      magCanvas._singlePanelExactSeries = null;
+      magCanvas._singlePanelExactTable = {
+        title: `Atomic Magnetic Moment μ_i (${elFilter === "all" ? "All Elements" : elFilter})`,
+        headers: ["Atom", "Element", "Magnetic Moment μ_i (μB)"],
+        rows: sorted.map(a => [a.label, a.element, formatPlottedNum(a.spin)])
+      };
       let maxAbs = Math.max(0.1, ...sorted.map(a => Math.abs(a.spin))) * 1.15;
       const toY = (v) => padT + ph * (0.5 - v / (2 * maxAbs));
       const y0 = toY(0);
@@ -13742,6 +14129,12 @@ function renderCastepMullikenPane() {
       if (titleEl) titleEl.innerHTML = isMag ? "Orbital Magnetic Contribution (μ<sub>s</sub>, μ<sub>p</sub>, μ<sub>d</sub>, μ<sub>f</sub>) by Element" : "Avg Orbital Electron Population (s, p, d, f) by Element";
       const spList = elFilter === "all" ? mull.speciesSummary : mull.speciesSummary.filter(s => s.element === elFilter);
       const orbKeys = isMag ? ["muS", "muP", "muD", "muF"] : ["s", "p", "d", "f"];
+      magCanvas._singlePanelExactSeries = null;
+      magCanvas._singlePanelExactTable = {
+        title: isMag ? "Orbital Magnetic Contribution (μ_s, μ_p, μ_d, μ_f)" : "Avg Orbital Electron Population (s, p, d, f)",
+        headers: isMag ? ["Element", "μ_s (μB)", "μ_p (μB)", "μ_d (μB)", "μ_f (μB)"] : ["Element", "s (e)", "p (e)", "d (e)", "f (e)"],
+        rows: spList.map(sp => [sp.element, ...orbKeys.map(k => formatPlottedNum(isMag ? sp[k] : (sp[k] / sp.count)))])
+      };
       const orbCols = ["#2563eb", "#16a34a", "#dc2626", "#9333ea"];
       const orbLbls = isMag ? ["μ_{s}", "μ_{p}", "μ_{d}", "μ_{f}"] : ["s", "p", "d", "f"];
 
@@ -13793,6 +14186,13 @@ function renderCastepMullikenPane() {
     } else {
       if (titleEl) titleEl.textContent = "Atomic Charge Comparison: Mulliken vs. Hirshfeld (e)";
       const sample = visAtoms.slice(0, 20);
+      const hasHirsh = sample.some(a => a.hirshfeldCharge !== null && a.hirshfeldCharge !== undefined);
+      magCanvas._singlePanelExactSeries = null;
+      magCanvas._singlePanelExactTable = {
+        title: `Atomic Charge Comparison (${elFilter === "all" ? "All Elements" : elFilter})`,
+        headers: hasHirsh ? ["Atom", "Mulliken Charge (e)", "Hirshfeld Charge (e)"] : ["Atom", "Mulliken Charge (e)"],
+        rows: sample.map(a => hasHirsh ? [a.label, formatPlottedNum(a.charge), a.hirshfeldCharge !== null ? formatPlottedNum(a.hirshfeldCharge) : ""] : [a.label, formatPlottedNum(a.charge)])
+      };
       let absMax = Math.max(0.2, ...sample.map(a => Math.max(Math.abs(a.charge), Math.abs(a.hirshfeldCharge || 0)))) * 1.18;
       const toY = (v) => padT + ph * (0.5 - v / (2 * absMax));
       const y0 = toY(0);
@@ -13843,6 +14243,13 @@ function renderCastepMullikenPane() {
     const padR = 16, padT = Math.round(28 + Math.max(0, stM.legendSize - 11));
     const padB = Math.round(44 + outTickM);
     const pw = w - padL - padR, ph = h - padT - padB;
+
+    bondCanvas._singlePanelExactSeries = null;
+    bondCanvas._singlePanelExactTable = visBonds.length ? {
+      title: `Mulliken Bond Population vs. Bond Length${bpFilter !== "all" ? ` (${bpFilter})` : ""}`,
+      headers: ["Bond", "Pair Type", "Bond Length (Å)", "Bond Population"],
+      rows: visBonds.map(b => [b.bond, b.pairType, formatPlottedNum(b.lengthA), formatPlottedNum(b.population)])
+    } : null;
 
     if (!visBonds.length) {
       drawPubAxisBox(ctx, padL, padT, pw, ph, stM, { compact: true });
@@ -14832,6 +15239,8 @@ function renderCastepSpinMatrix() {
       drawSciText(ctx, `All-Elements Orbital ${qtySciTitle} (${atomMode === "sum" ? "Element Sum" : "Element Average"})`, totalW / 2, 20);
 
       canvas._subPanelRects = [];
+      canvas._singlePanelExactTable = null;
+      canvas._singlePanelExactSeries = null;
       elSummary.forEach((sp, idx) => {
         const c = idx % cols;
         const r = Math.floor(idx / cols);
@@ -14846,7 +15255,19 @@ function renderCastepSpinMatrix() {
           x: tileX, y: tileY, w: tileW, h: panelH,
           plotKey: "spinmat",
           dataSubPart: `el:${sp.element}`,
-          pngName: `CASTEP_${sp.element}_SpinMatrix.png`
+          pngName: `CASTEP_${sp.element}_SpinMatrix.png`,
+          exactTable: (() => {
+            const lbls = res.entries.map(e => e.spec.plain);
+            const shellTagX = res.effectiveShell === "spdf" ? "s/p/d/f" : (res.effectiveShell === "all_m" ? "all orbitals" : `${res.effectiveShell}-orbitals`);
+            return {
+              title: `${sp.element} Spin Matrix (${shellTagX}, ${qty}, ${atomMode === "sum" ? "Element Sum" : "Element Average"})`,
+              headers: [`${sp.element} ${qty}`, ...lbls],
+              rows: res.entries.map((rowE, rIdx) => [
+                rowE.spec.plain,
+                ...res.entries.map((_, cIdx) => rIdx === cIdx ? formatPlottedNum(rowE.val) : 0)
+              ])
+            };
+          })()
         });
 
         const maxLblW = Math.max(36, ...res.entries.map(e => measureOrbitalMathLabel(ctx, e.key, 12.5)));
@@ -14888,6 +15309,12 @@ function renderCastepSpinMatrix() {
 
   if (canvas) {
     canvas._subPanelRects = [];
+    canvas._singlePanelExactSeries = null;
+    canvas._singlePanelExactTable = {
+      title: `${agg.label} Spin Matrix (${res.effectiveShell}, ${qty})`,
+      headers: [`${agg.label} ${qty}`, ...entries.map(e => e.spec.plain)],
+      rows: entries.map((rowE, rIdx) => [rowE.spec.plain, ...entries.map((_, cIdx) => rIdx === cIdx ? formatPlottedNum(rowE.val) : 0)])
+    };
     const stS = getCastepPlotStyle();
     const wrapW = Math.max(320, Math.min(460, Math.floor((canvas.parentElement?.clientWidth || 430) - 20)));
     const showCb = (palette !== "journal_green");
@@ -16778,7 +17205,7 @@ function drawTransportBandFitCanvas(res) {
   const branchColors = ["#2563eb", "#dc2626", "#059669", "#9333ea", "#d97706", "#0891b2"];
   const act = res.bandRes.active;
 
-  const drawBranchPanel = (px, py, pw, ph, branches, titleText, carrierType) => {
+  const drawBranchPanel = (px, py, pw, ph, branches, titleText, carrierType, slotIdx) => {
     // Title
     ctx.fillStyle = st.inkColor;
     ctx.font = `700 ${st.titleSize}px ${st.fontFamily}`;
@@ -16786,6 +17213,9 @@ function drawTransportBandFitCanvas(res) {
     drawSciText(ctx, titleText, px + pw / 2, py - 10);
 
     if (!branches || !branches.length) {
+      if (canvas._subPanelRects[slotIdx]) {
+        canvas._subPanelRects[slotIdx].exactSeries = { title: titleText, xLabel: "Δk (Å⁻¹)", series: [] };
+      }
       drawPubAxisBox(ctx, px, py, pw, ph, st, { mirrorTop: true, mirrorRight: true });
       ctx.fillStyle = "#64748b";
       ctx.font = `600 12px ${st.fontFamily}`;
@@ -16799,6 +17229,7 @@ function drawTransportBandFitCanvas(res) {
 
     // Build shifted energy ΔE = E(k) - E_edge (meV for crisp reading!)
     const isE = carrierType === "e";
+    const edgeName = isE ? "CBM" : "VBM";
     const refE = isE ? act.cbmE : act.vbmE;
     let qMin = 0, qMax = 0, yMin = 0, yMax = 0;
     const plotted = branches.slice(0, 4).map((br, idx) => {
@@ -16859,11 +17290,15 @@ function drawTransportBandFitCanvas(res) {
     }
     ctx.restore();
 
-    // Draw smooth fitted curves + DFT scatter markers
+    // Draw smooth fitted curves + DFT scatter markers (and record exact plotted series for TSV copy)
+    const exactBranchSeries = [];
     ctx.save();
     ctx.beginPath(); ctx.rect(px, py, pw, ph); ctx.clip();
     plotted.forEach(item => {
       const { br, signQ, pts, color } = item;
+      const roleTag = br.subBandRole && br.subBandRole !== "CBM" && br.subBandRole !== "VBM" ? ` [${br.subBandRole.replace("VBM ", "")}]` : "";
+      const brTag = `${br.dirLabel}${roleTag}`;
+      const fitCurvePts = [];
       ctx.strokeStyle = color;
       ctx.lineWidth = st.lineWidth;
       ctx.beginPath();
@@ -16879,7 +17314,9 @@ function drawTransportBandFitCanvas(res) {
           const dE = (-1 + Math.sqrt(1 + 4 * br.alphaKane * rhs)) / (2 * br.alphaKane);
           eFit = br.e0 + (isE ? dE : -dE);
         }
-        const cx = toX(qVal), cy = toY((eFit - refE) * 1000);
+        const fitMeVVal = (eFit - refE) * 1000;
+        fitCurvePts.push([qVal, fitMeVVal]);
+        const cx = toX(qVal), cy = toY(fitMeVVal);
         if (s === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy);
       }
       ctx.stroke();
@@ -16892,8 +17329,21 @@ function drawTransportBandFitCanvas(res) {
         ctx.lineWidth = 1.6;
         ctx.beginPath(); ctx.arc(cx, cy, 3.6, 0, 2 * Math.PI); ctx.stroke();
       });
+
+      exactBranchSeries.push(
+        { xLabel: `Δk [${brTag} DFT] (Å⁻¹)`, label: `E − E_${edgeName} [${brTag} DFT] (meV)`, pts: pts.map(p => [p.q, p.deMeV]) },
+        { xLabel: `Δk [${brTag} Fit] (Å⁻¹)`, label: `E − E_${edgeName} [${brTag} Fit, m*=${br.mStar.toFixed(3)} m₀] (meV)`, pts: fitCurvePts }
+      );
     });
     ctx.restore();
+
+    if (canvas._subPanelRects[slotIdx]) {
+      canvas._subPanelRects[slotIdx].exactSeries = {
+        title: titleText,
+        xLabel: "Δk (Å⁻¹)",
+        series: exactBranchSeries
+      };
+    }
 
     // Frame & Ticks
     drawPubAxisBox(ctx, px, py, pw, ph, st, { xTicks, yTicks, mirrorTop: true, mirrorRight: true });
@@ -16942,8 +17392,8 @@ function drawTransportBandFitCanvas(res) {
     ctx.restore();
   };
 
-  drawBranchPanel(x0L, padT, panelW, panelH, act.eBranches, `Conduction Band Edge (e^{−}, m*_{c} = ${res.meCond ? res.meCond.toFixed(3) : "—"} m_{0})`, "e");
-  drawBranchPanel(x0R, padT, panelW, panelH, act.hBranches, `Valence Band Edge (h^{+}, m*_{c} = ${res.mhCond ? res.mhCond.toFixed(3) : "—"} m_{0})`, "h");
+  drawBranchPanel(x0L, padT, panelW, panelH, act.eBranches, `Conduction Band Edge (e^{−}, m*_{c} = ${res.meCond ? res.meCond.toFixed(3) : "—"} m_{0})`, "e", 0);
+  drawBranchPanel(x0R, padT, panelW, panelH, act.hBranches, `Valence Band Edge (h^{+}, m*_{c} = ${res.mhCond ? res.mhCond.toFixed(3) : "—"} m_{0})`, "h", 1);
 }
 
 function drawTransportDrudeCanvas(res) {
@@ -16989,14 +17439,21 @@ function drawTransportDrudeCanvas(res) {
 
   const subLabels = {
     dos_temp: ["DOS Effective Mass Fit", "Drude Relaxation Time τ(T)"],
-    doping: ["Drude Mass m*(n,p) & ħωp", "Drude Plasma ħωp vs Doping"],
+    doping: ["Drude Effective Mass m*(n,p)", "Drude Plasma ħωp vs Doping"],
     drude_opt: ["Drude Dielectric ε(ω)", "Drude Optical Conductivity σ(ω)"],
     mobility_t: ["Mobility μ(T) vs Temp", "Intrinsic Carrier Density ni(T)"]
   }[mode] || ["Left Plot", "Right Plot"];
 
+  const subPngNames = {
+    dos_temp: ["CASTEP_DOS_Effective_Mass_Fit.png", "CASTEP_Drude_Relaxation_Time_T.png"],
+    doping: ["CASTEP_Drude_Mass_vs_Doping.png", "CASTEP_Drude_Plasma_vs_Doping.png"],
+    drude_opt: ["CASTEP_Drude_Dielectric_w.png", "CASTEP_Drude_Conductivity_w.png"],
+    mobility_t: ["CASTEP_Carrier_Mobility_T.png", "CASTEP_Intrinsic_Density_T.png"]
+  }[mode] || ["CASTEP_Transport_PanelA.png", "CASTEP_Transport_PanelB.png"];
+
   canvas._subPanelRects = [
-    { key: "drude_a", label: subLabels[0], x: 0, y: 0, w: splitX, h: height, plotKey: "transport", dataSubPart: "temp_sweep", pngName: "CASTEP_Transport_PanelA.png" },
-    { key: "drude_b", label: subLabels[1], x: splitX, y: 0, w: width - splitX, h: height, plotKey: "transport", dataSubPart: "doping_sweep", pngName: "CASTEP_Transport_PanelB.png" }
+    { key: "drude_a", label: subLabels[0], x: 0, y: 0, w: splitX, h: height, plotKey: "transport", dataSubPart: mode === "doping" ? "doping_sweep" : "temp_sweep", pngName: subPngNames[0] },
+    { key: "drude_b", label: subLabels[1], x: splitX, y: 0, w: width - splitX, h: height, plotKey: "transport", dataSubPart: mode === "doping" ? "doping_sweep" : "temp_sweep", pngName: subPngNames[1] }
   ];
 
   // Reusable clean XY scientific panel drawer (linear or log10 Y)
@@ -17007,6 +17464,19 @@ function drawTransportDrudeCanvas(res) {
     drawSciText(ctx, cfg.title, px + pw / 2, py - 10);
 
     const series = (cfg.series || []).filter(s => s.pts && s.pts.length >= 2);
+    // Record EXACTLY the curves drawn on this sub-panel for "Copy This Sub-Plot Data (TSV)"
+    const slotIdx = px < splitX ? 0 : 1;
+    if (canvas._subPanelRects[slotIdx]) {
+      canvas._subPanelRects[slotIdx].exactSeries = {
+        title: cfg.title,
+        xLabel: cfg.exportXLabel || cfg.xLabel,
+        xTransform: cfg.exportXTransform || null,
+        logY: !!cfg.logY,
+        xMin: cfg.xMin, xMax: cfg.xMax,
+        yUnit: cfg.exportYUnit || null,
+        series: series.map(s => ({ label: s.label, exportLabel: s.exportLabel, pts: s.exportPts || s.pts }))
+      };
+    }
     if (!series.length) {
       drawPubAxisBox(ctx, px, py, pw, ph, st, { mirrorTop: true, mirrorRight: true });
       ctx.fillStyle = "#64748b";
@@ -17185,6 +17655,7 @@ function drawTransportDrudeCanvas(res) {
       title: `Direct DFT DOS Effective Mass (${res.is2D ? "2D" : "3D"})`,
       xLabel: "Energy E − E_{F} (eV)",
       yLabel: "DOS g(E) (states / eV·cell)",
+      exportYUnit: "states/eV·cell",
       zeroFloor: true, legLeft: true, legW: 196, vLines,
       series: dosSeries
     });
@@ -17207,6 +17678,7 @@ function drawTransportDrudeCanvas(res) {
       title: "Drude Relaxation Time τ_{e}, τ_{h} vs. Temperature",
       xLabel: "Temperature T (K)",
       yLabel: "Relaxation Time τ (fs)",
+      exportYUnit: "fs",
       logY: true, fmtX: v => v.toFixed(0), legW: 162,
       vLines: [{ x: res.opts.T, color: "#059669" }],
       series: tauSeries
@@ -17221,7 +17693,9 @@ function drawTransportDrudeCanvas(res) {
       title: "Drude Effective Mass m*_{Drude} vs. Doping",
       xLabel: uLbl,
       yLabel: "Drude Effective Mass (m_{0})",
+      exportYUnit: "m_{0}",
       fmtX: fmtPow10, legW: 172,
+      exportXLabel: uLbl, exportXTransform: v => Math.pow(10, v),
       vLines: [{ x: res.opts.nExp, color: "#2563eb" }],
       series: [
         { label: "Electron m*_{Drude} (e^{−})", color: "#2563eb", width: 2.2, pts: res.dopingSweep.map(r => [r.exp, r.e?.mDrude]) },
@@ -17232,7 +17706,9 @@ function drawTransportDrudeCanvas(res) {
       title: "Drude Plasma Frequency ħω_{p} vs. Doping",
       xLabel: uLbl,
       yLabel: "Drude Plasma ħω_{p} (eV)",
+      exportYUnit: "eV",
       logY: true, fmtX: fmtPow10, legLeft: true, legW: 172,
+      exportXLabel: uLbl, exportXTransform: v => Math.pow(10, v),
       vLines: [{ x: res.opts.nExp, color: "#2563eb" }],
       series: [
         { label: "Electron ħω_{p} (e^{−})", color: "#2563eb", width: 2.2, pts: res.dopingSweep.map(r => [r.exp, r.e?.wp_eV]) },
@@ -17246,16 +17722,17 @@ function drawTransportDrudeCanvas(res) {
       yLabel: "Dielectric Function ε(ω)",
       legW: 165,
       series: [
-        { label: "e^{−}: ε_{1}(ω) Real", color: "#2563eb", width: 2.0, pts: res.drudeOptSpectra.map(r => [r.w, Math.max(-40, r.e.e1)]) },
-        { label: "e^{−}: ε_{2}(ω) Imag", color: "#60a5fa", dash: [4, 3], width: 1.8, pts: res.drudeOptSpectra.map(r => [r.w, Math.min(40, r.e.e2)]) },
-        { label: "h^{+}: ε_{1}(ω) Real", color: "#dc2626", width: 2.0, pts: res.drudeOptSpectra.map(r => [r.w, Math.max(-40, r.h.e1)]) },
-        { label: "h^{+}: ε_{2}(ω) Imag", color: "#f87171", dash: [4, 3], width: 1.8, pts: res.drudeOptSpectra.map(r => [r.w, Math.min(40, r.h.e2)]) }
+        { label: "e^{−}: ε_{1}(ω) Real", color: "#2563eb", width: 2.0, pts: res.drudeOptSpectra.map(r => [r.w, Math.max(-40, r.e.e1)]), exportPts: res.drudeOptSpectra.map(r => [r.w, r.e.e1]) },
+        { label: "e^{−}: ε_{2}(ω) Imag", color: "#60a5fa", dash: [4, 3], width: 1.8, pts: res.drudeOptSpectra.map(r => [r.w, Math.min(40, r.e.e2)]), exportPts: res.drudeOptSpectra.map(r => [r.w, r.e.e2]) },
+        { label: "h^{+}: ε_{1}(ω) Real", color: "#dc2626", width: 2.0, pts: res.drudeOptSpectra.map(r => [r.w, Math.max(-40, r.h.e1)]), exportPts: res.drudeOptSpectra.map(r => [r.w, r.h.e1]) },
+        { label: "h^{+}: ε_{2}(ω) Imag", color: "#f87171", dash: [4, 3], width: 1.8, pts: res.drudeOptSpectra.map(r => [r.w, Math.min(40, r.h.e2)]), exportPts: res.drudeOptSpectra.map(r => [r.w, r.h.e2]) }
       ]
     });
     drawXYPanel(x0R, padT, panelW, panelH, {
       title: "Drude Optical Conductivity σ_{1}(ω) (S/cm)",
       xLabel: "Photon Energy ħω (eV)",
       yLabel: "Optical Conductivity σ_{1} (S/cm)",
+      exportYUnit: "S/cm",
       zeroFloor: true, legW: 165,
       series: [
         { label: "Electron σ_{1}(ω)", color: "#2563eb", width: 2.2, fill: "rgba(37,99,235,0.10)", pts: res.drudeOptSpectra.map(r => [r.w, r.e.s1]) },
@@ -17267,6 +17744,7 @@ function drawTransportDrudeCanvas(res) {
       title: `Carrier Mobility μ_{e}(T), μ_{h}(T) (${res.is2D ? "2D" : "3D"})`,
       xLabel: "Temperature T (K)",
       yLabel: "Mobility μ (cm^{2} / V·s)",
+      exportYUnit: "cm^{2}/V·s",
       logY: true, fmtX: v => v.toFixed(0), legW: 160,
       vLines: [{ x: res.opts.T, color: "#059669" }],
       series: [
@@ -17278,6 +17756,7 @@ function drawTransportDrudeCanvas(res) {
       title: `Intrinsic Carrier Density n_{i}(T) (Arrhenius)`,
       xLabel: "Temperature T (K)",
       yLabel: res.is2D ? "n_{i} (cm^{−2})" : "n_{i} (cm^{−3})",
+      exportYUnit: res.is2D ? "cm^{−2}" : "cm^{−3}",
       logY: true, fmtX: v => v.toFixed(0), legLeft: true, legW: 175,
       vLines: [{ x: res.opts.T, color: "#059669" }],
       emptyMsg: "Intrinsic n_{i}(T) applies to gapped semiconductors (E_{g} > 0.02 eV).",
