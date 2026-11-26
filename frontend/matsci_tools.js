@@ -1978,6 +1978,58 @@ function getFilteredCastepJobs() {
   });
 }
 
+function normalizeCastepFolderKey(rawPath) {
+  return String(rawPath || "").trim().replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+}
+
+function formatCompactFolderPath(rawPath, maxSegs = 2) {
+  const s = String(rawPath || "").trim();
+  if (!s) return "";
+  const sep = s.includes("\\") ? "\\" : "/";
+  const parts = s.split(/[\\/]+/).filter(Boolean);
+  if (parts.length <= maxSegs) return parts.join(sep);
+  const tail = parts.slice(-maxSegs).join(sep);
+  // Preserve drive letter (e.g. D:\…\Parent\Leaf) when full Windows OS path is known
+  if (/^[A-Za-z]:$/.test(parts[0])) {
+    return `${parts[0]}${sep}…${sep}${tail}`;
+  }
+  return `…${sep}${tail}`;
+}
+window.formatCompactFolderPath = formatCompactFolderPath;
+
+function editCastepJobLocationLabel(jobId, evt) {
+  if (evt) { evt.preventDefault(); evt.stopPropagation(); }
+  const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === jobId);
+  if (!job) return;
+  const cur = job.customLocation || job.folder || "";
+  const next = window.prompt("Set a short folder path / label to distinguish this calculation:", cur);
+  if (next === null) return;
+  job.customLocation = next.trim();
+  renderCastepJobsList();
+}
+window.editCastepJobLocationLabel = editCastepJobLocationLabel;
+
+function removeCastepJobFromList(jobId, evt) {
+  if (evt) { evt.preventDefault(); evt.stopPropagation(); }
+  const idx = (CASTEP_STUDIO_STATE.jobs || []).findIndex(j => j.id === jobId);
+  if (idx === -1) return;
+  const removed = CASTEP_STUDIO_STATE.jobs[idx];
+  CASTEP_STUDIO_STATE.jobs.splice(idx, 1);
+  CASTEP_STUDIO_STATE.selectedJobIds.delete(jobId);
+  if (CASTEP_STUDIO_STATE.activeJobId === jobId) {
+    const nextJob = CASTEP_STUDIO_STATE.jobs[Math.min(idx, CASTEP_STUDIO_STATE.jobs.length - 1)] || null;
+    if (nextJob) {
+      loadCastepJobIntoStudio(nextJob.id);
+    } else {
+      CASTEP_STUDIO_STATE.activeJobId = null;
+    }
+  }
+  renderCastepJobsList();
+  updateCastepKpiBar();
+  if (typeof showToast === "function") showToast(`Removed "${removed.title || removed.seed}" from workspace list.`, "info");
+}
+window.removeCastepJobFromList = removeCastepJobFromList;
+
 function renderCastepJobsList() {
   const container = document.getElementById("castep-jobs-list");
   if (!container) return;
@@ -2010,6 +2062,15 @@ function renderCastepJobsList() {
     return;
   }
 
+  // Count how many jobs share the same compact display label so same-named leaf folders get a crisp #1 / #2 badge
+  const displayPathCounts = {};
+  const displayPathSeen = {};
+  list.forEach(j => {
+    const rawDisp = j.customLocation || j.folder || "";
+    const key = `${normalizeCastepFolderKey(formatCompactFolderPath(rawDisp, 2))}::${(j.seed || "").toLowerCase()}`;
+    displayPathCounts[key] = (displayPathCounts[key] || 0) + 1;
+  });
+
   container.innerHTML = list.map(j => {
     const isAct = j.id === CASTEP_STUDIO_STATE.activeJobId;
     const isChk = CASTEP_STUDIO_STATE.selectedJobIds.has(j.id);
@@ -2039,20 +2100,35 @@ function renderCastepJobsList() {
       ? ` • E<sub>g</sub> = ${Number(j.bandGapEv).toFixed(3)} eV`
       : "";
 
+    const rawPath = j.customLocation || j.folder || "";
+    const compactPath = formatCompactFolderPath(rawPath, 2);
+    const dupKey = `${normalizeCastepFolderKey(compactPath)}::${(j.seed || "").toLowerCase()}`;
+    displayPathSeen[dupKey] = (displayPathSeen[dupKey] || 0) + 1;
+    const dupIdx = displayPathCounts[dupKey] > 1 ? displayPathSeen[dupKey] : 0;
+    const dupBadge = dupIdx > 0
+      ? `<span style="display:inline-block; margin-left:4px; padding:0 4px; border-radius:4px; background:#e0f2fe; color:#0369a1; font-weight:800; font-size:9.5px; font-family:Inter,sans-serif;">#${dupIdx}</span>`
+      : "";
+    const canLiveRefresh = Boolean(j._dirHandle || (j.folder && (CASTEP_STUDIO_STATE.localBackendConnected || /^[A-Za-z]:[\\/]|^\//.test(j.folder))));
+
     return `
       <div class="castep-job-item ${isAct ? "active" : ""}" data-job-id="${j.id}" onclick="loadCastepJobIntoStudio('${j.id}')">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:6px;">
-          <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:800; font-size:12.5px; color:#0f172a;" onclick="event.stopPropagation()">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:5px;">
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:800; font-size:12.5px; color:#0f172a; flex:1; min-width:0;" onclick="event.stopPropagation()">
             <input type="checkbox" ${isChk ? "checked" : ""} onchange="toggleSelectCastepJob('${j.id}', this.checked)" />
-            <span>${escapeHtml(j.title || j.seed)}</span>
+            <span style="overflow:hidden; text-overflow:ellipsis;">${escapeHtml(j.title || j.seed)}</span>
           </label>
-          ${statusBadge}
+          <div style="display:flex; align-items:center; gap:3px; flex-shrink:0;" onclick="event.stopPropagation()">
+            ${canLiveRefresh ? `<button type="button" class="castep-mini-icon-btn" onclick="refreshCastepJobFromDisk('${j.id}', this)" title="Refresh files from disk (detect added / modified / removed files)" style="border:1px solid #cbd5e1; background:#ffffff; color:#0369a1; border-radius:5px; padding:1px 5px; font-size:11px; cursor:pointer; line-height:1.35;">🔄</button>` : ""}
+            <button type="button" class="castep-mini-icon-btn" onclick="removeCastepJobFromList('${j.id}', event)" title="Close / remove this folder from list" style="border:1px solid #e2e8f0; background:#ffffff; color:#94a3b8; border-radius:5px; padding:1px 5px; font-size:10.5px; cursor:pointer; line-height:1.35;">✕</button>
+            ${statusBadge}
+          </div>
         </div>
         <div style="font-size:11px; color:#1e40af; font-weight:700; margin-top:3px;">
           ${escapeHtml(j.taskType || "CASTEP Calculation")} • ${escapeHtml(j.material || j.seed)}
         </div>
-        <div style="font-size:10.5px; color:#64748b; font-family:monospace; margin-top:2px; word-break:break-all;">
-          📁 ${escapeHtml(j.folder || "")}
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:4px; font-size:10.5px; color:#475569; font-family:monospace; margin-top:3px; background:rgba(241,245,249,0.75); padding:2px 6px; border-radius:4px;" title="${escapeHtml(j.folder || rawPath)}">
+          <span style="word-break:break-word; line-height:1.35;">📁 ${escapeHtml(compactPath || "Local Folder")}${dupBadge}</span>
+          <button type="button" onclick="editCastepJobLocationLabel('${j.id}', event)" title="Rename short path label to distinguish folders" style="border:none; background:transparent; color:#94a3b8; cursor:pointer; padding:0 2px; font-size:10px; flex-shrink:0;">✏️</button>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px; font-size:11px; color:#334155; font-weight:600;">
           <span>${eText}${bgText}</span>
@@ -7141,31 +7217,255 @@ function getActiveStructureCellVolAndC() {
   return { vol: 1.0, cLen: 1.0 };
 }
 
+let _castepMountSessionSeq = 0;
+
+function clearCastepJobParsedCache(job) {
+  if (!job) return;
+  const cacheFields = [
+    "cell_text", "param_text", "castep_text", "geom_text", "status_text", "xsd_text", "cif_text",
+    "band_xcd", "pdos_xcd", "dos_xcd", "conv_xcd", "ener_xcd", "optical_xcds", "optical_xcd",
+    "bandstr_bands", "dos_bands", "optics_bands", "optics_bands_file", "optics_castep_text",
+    "optics_castep_file", "optics_cell_file", "ome_bin_file", "optical_tensor",
+    "pdos_bin_data", "chdiff_data", "_mullikenCache", "_optSpecCache",
+    "totalEnergyEv", "bandGapEv"
+  ];
+  cacheFields.forEach(k => { delete job[k]; });
+  job._hydrated = false;
+}
+
+async function isSameCastepJobEntry(jobA, jobB) {
+  if (!jobA || !jobB) return false;
+  if ((jobA.seed || "").toLowerCase() !== (jobB.seed || "").toLowerCase()) return false;
+  // 1) Native OS-level identity check via File System Access API (exact same folder on disk!)
+  if (jobA._dirHandle && jobB._dirHandle && typeof jobA._dirHandle.isSameEntry === "function") {
+    try {
+      return await jobA._dirHandle.isSameEntry(jobB._dirHandle);
+    } catch (_) {}
+  }
+  // 2) Full OS path match (local backend jobs like D:\...\FolderA vs D:\...\FolderB)
+  const isAbsA = /^[A-Za-z]:[\\/]|^\//.test(jobA.folder || "");
+  const isAbsB = /^[A-Za-z]:[\\/]|^\//.test(jobB.folder || "");
+  if (isAbsA && isAbsB) {
+    return normalizeCastepFolderKey(jobA.folder) === normalizeCastepFolderKey(jobB.folder);
+  }
+  // 3) Fallback upload (<input webkitdirectory>): only treat as duplicate if BOTH path AND file content fingerprint match!
+  if (jobA._contentSig && jobB._contentSig) {
+    return normalizeCastepFolderKey(jobA.folder) === normalizeCastepFolderKey(jobB.folder) && jobA._contentSig === jobB._contentSig;
+  }
+  return false;
+}
+
+async function mergeCastepJobsPreserveDistinct(newJobs) {
+  const existing = [...(CASTEP_STUDIO_STATE.jobs || [])];
+  const merged = [];
+  for (const nj of newJobs) {
+    let matchedIdx = -1;
+    for (let i = 0; i < existing.length; i++) {
+      if (await isSameCastepJobEntry(existing[i], nj)) {
+        matchedIdx = i;
+        break;
+      }
+    }
+    if (matchedIdx >= 0) {
+      const prev = existing.splice(matchedIdx, 1)[0];
+      // Preserve user's custom location label & existing job ID when refreshing the exact same folder
+      if (prev.customLocation && !nj.customLocation) nj.customLocation = prev.customLocation;
+      nj.id = prev.id;
+      merged.push(nj);
+    } else {
+      merged.push(nj);
+    }
+  }
+  CASTEP_STUDIO_STATE.jobs = [...merged, ...existing];
+  return merged;
+}
+
+async function refreshCastepJobFromDisk(jobId = null, btnEl = null) {
+  const targetId = jobId || CASTEP_STUDIO_STATE.activeJobId;
+  const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === targetId);
+  if (!job) {
+    if (typeof showToast === "function") showToast("No active folder selected to refresh. Mount or scan a folder first.", "info");
+    return false;
+  }
+
+  const prevFiles = new Set((job.files_list || []).map(f => f.toLowerCase()));
+  const origBtnTxt = btnEl ? btnEl.textContent : "";
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = "⏳"; }
+
+  try {
+    // Path A: Live browser FileSystemDirectoryHandle (works on GitHub Pages AND local!)
+    if (job._dirHandle && typeof job._dirHandle.values === "function") {
+      // Request read permission if needed
+      if (typeof job._dirHandle.queryPermission === "function") {
+        const perm = await job._dirHandle.queryPermission({ mode: "read" });
+        if (perm !== "granted" && typeof job._dirHandle.requestPermission === "function") {
+          await job._dirHandle.requestPermission({ mode: "read" });
+        }
+      }
+
+      const freshFiles = [];
+      for await (const entry of job._dirHandle.values()) {
+        if (entry.kind === "file" && (CASTEP_RELEVANT_EXT_RE.test(entry.name) || entry.name.toLowerCase() === "status.txt")) {
+          freshFiles.push(entry);
+        }
+      }
+
+      const statusFh = freshFiles.find(fh => fh.name.toLowerCase() === "status.txt") || null;
+      const bySeed = {};
+      for (const fh of freshFiles) {
+        if (fh.name.toLowerCase() === "status.txt") continue;
+        const sd = normalizeCastepSeedClient(fh.name);
+        if (!bySeed[sd]) bySeed[sd] = [];
+        bySeed[sd].push(fh);
+      }
+
+      const seedKey = Object.keys(bySeed).find(k => k.toLowerCase() === (job.seed || "").toLowerCase()) || Object.keys(bySeed)[0];
+      const handles = seedKey ? bySeed[seedKey] : [];
+      const fnames = handles.map(h => h.name);
+      if (statusFh) fnames.push("Status.txt");
+
+      const newFileMap = {};
+      let maxMtime = 0;
+      const sigParts = [];
+      for (const h of handles) {
+        newFileMap[h.name] = h;
+        try {
+          const fm = await h.getFile();
+          if (fm.lastModified > maxMtime) maxMtime = fm.lastModified;
+          sigParts.push(`${h.name}:${fm.size}:${fm.lastModified}`);
+        } catch (_) {}
+      }
+      if (statusFh) newFileMap["Status.txt"] = statusFh;
+
+      clearCastepJobParsedCache(job);
+      if (seedKey) job.seed = seedKey;
+      job._fileMap = newFileMap;
+      job._contentSig = sigParts.sort().join("|");
+      job.files_list = fnames.sort();
+      job.mtime = maxMtime;
+      job.updated_at = maxMtime ? new Date(maxMtime).toISOString().slice(0, 19).replace("T", " ") : "";
+      job.has_optics = fnames.some(n => (/optic|dielec|absorp/i.test(n) && n.toLowerCase().endsWith(".xcd") && !/(convergence|energies)/i.test(n)) || /\.(ome_bin|cst_ome)$/i.test(n) || n.toLowerCase().endsWith("_optics.bands") || n.toLowerCase().endsWith("_optics.castep"));
+      job.has_band_dos = fnames.some(n => n.toLowerCase().endsWith("_bandstr.bands") || n.toLowerCase().endsWith("_dos.bands") || n.toLowerCase().endsWith(".pdos_bin") || (/(band structure|density of states|dos|pdos)/i.test(n) && n.toLowerCase().endsWith(".xcd")));
+      job.has_chdiff = fnames.some(n => /\.(chdiff|charg_frm|den_fmt|cube)$/i.test(n));
+      job.charg_frm_files = fnames.filter(n => /\.(charg_frm|den_fmt|cube)$/i.test(n));
+      const hasCastep = fnames.some(n => n.toLowerCase() === `${(job.seed || "").toLowerCase()}.castep`);
+      job.status = hasCastep ? "Completed" : (statusFh ? "Active / Running" : "Input Ready");
+
+      // Also check if any brand-new seed appeared in the same directory!
+      const extraNewJobs = [];
+      for (const [otherSeed, otherHandles] of Object.entries(bySeed)) {
+        if (otherSeed.toLowerCase() === (job.seed || "").toLowerCase()) continue;
+        const already = CASTEP_STUDIO_STATE.jobs.some(x => x._dirHandle === job._dirHandle && (x.seed || "").toLowerCase() === otherSeed.toLowerCase());
+        if (!already) {
+          const ofnames = otherHandles.map(h => h.name);
+          const omap = {};
+          let omt = 0;
+          for (const h of otherHandles) {
+            omap[h.name] = h;
+            try { const fm = await h.getFile(); if (fm.lastModified > omt) omt = fm.lastModified; } catch (_) {}
+          }
+          extraNewJobs.push(enrichCastepJobSummary({
+            id: `mnt_${++_castepMountSessionSeq}_${Math.abs(hashStringSimple(`${job.folder}::${otherSeed}`))}`,
+            title: `${otherSeed} (${job._dirHandle.name})`,
+            project: job.project || job._dirHandle.name,
+            material: otherSeed,
+            folder: job.folder,
+            customLocation: job.customLocation || "",
+            seed: otherSeed,
+            mtime: omt,
+            updated_at: omt ? new Date(omt).toISOString().slice(0, 19).replace("T", " ") : "",
+            files_list: ofnames.sort(),
+            _dirHandle: job._dirHandle,
+            _fileMap: omap,
+            _hydrated: false
+          }));
+        }
+      }
+      if (extraNewJobs.length) CASTEP_STUDIO_STATE.jobs.unshift(...extraNewJobs);
+
+      await loadCastepJobIntoStudio(job.id);
+      renderCastepJobsList();
+      if (CASTEP_STUDIO_STATE.activeStagePane === "files") refreshCastepFileEditorContent();
+
+      const nextFiles = new Set((job.files_list || []).map(f => f.toLowerCase()));
+      let added = 0, removed = 0;
+      nextFiles.forEach(f => { if (!prevFiles.has(f)) added++; });
+      prevFiles.forEach(f => { if (!nextFiles.has(f)) removed++; });
+      const diffTxt = (added || removed) ? ` (${added ? `+${added} added` : ""}${added && removed ? ", " : ""}${removed ? `−${removed} removed` : ""}, ${nextFiles.size} total)` : ` (${nextFiles.size} files re-read from disk)`;
+      if (typeof showToast === "function") showToast(`🔄 Refreshed "${job.title || job.seed}"${diffTxt}!`, "success");
+      return true;
+    }
+
+    // Path B: Local Python Backend folder (live os.listdir on disk!)
+    if (job.folder) {
+      const base = getCastepApiBase() || (["localhost", "127.0.0.1", "::1"].includes(window.location.hostname) ? "" : "http://127.0.0.1:8877");
+      const resp = await fetch(`${base}/api/castep/job?folder=${encodeURIComponent(job.folder)}&seed=${encodeURIComponent(job.seed || "")}&_t=${Date.now()}`);
+      if (resp.ok) {
+        const detail = await resp.json();
+        CASTEP_STUDIO_STATE.localBackendConnected = true;
+        clearCastepJobParsedCache(job);
+        Object.assign(job, detail);
+        const fnames = detail.files_list || [];
+        job.has_optics = fnames.some(n => (/optic|dielec|absorp/i.test(n) && n.toLowerCase().endsWith(".xcd") && !/(convergence|energies)/i.test(n)) || /\.(ome_bin|cst_ome)$/i.test(n) || n.toLowerCase().endsWith("_optics.bands") || n.toLowerCase().endsWith("_optics.castep"));
+        job.has_band_dos = fnames.some(n => n.toLowerCase().endsWith("_bandstr.bands") || n.toLowerCase().endsWith("_dos.bands") || n.toLowerCase().endsWith(".pdos_bin") || (/(band structure|density of states|dos|pdos)/i.test(n) && n.toLowerCase().endsWith(".xcd")));
+        job.has_chdiff = fnames.some(n => /\.(chdiff|charg_frm|den_fmt|cube)$/i.test(n));
+        Object.assign(job, enrichCastepJobSummary(job));
+        job._hydrated = true;
+
+        await loadCastepJobIntoStudio(job.id);
+        renderCastepJobsList();
+        if (CASTEP_STUDIO_STATE.activeStagePane === "files") refreshCastepFileEditorContent();
+
+        const nextFiles = new Set((job.files_list || []).map(f => f.toLowerCase()));
+        let added = 0, removed = 0;
+        nextFiles.forEach(f => { if (!prevFiles.has(f)) added++; });
+        prevFiles.forEach(f => { if (!nextFiles.has(f)) removed++; });
+        const diffTxt = (added || removed) ? ` (${added ? `+${added} added` : ""}${added && removed ? ", " : ""}${removed ? `−${removed} removed` : ""}, ${nextFiles.size} total)` : ` (${nextFiles.size} files re-read from disk)`;
+        if (typeof showToast === "function") showToast(`🔄 Refreshed "${job.title || job.seed}"${diffTxt}!`, "success");
+        return true;
+      }
+    }
+
+    if (typeof showToast === "function") {
+      showToast("This folder was loaded as a static upload snapshot. Use '📂 Mount Local Folder (Read/Write)' in Chrome/Edge for live 1-click disk refresh.", "warning");
+    }
+    return false;
+  } catch (err) {
+    if (typeof showToast === "function") showToast(`Refresh failed: ${err?.message || err}`, "warning");
+    return false;
+  } finally {
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = origBtnTxt; }
+  }
+}
+window.refreshCastepJobFromDisk = refreshCastepJobFromDisk;
+
 async function scanCastepLocalMachineJobs() {
   const rootPath = (document.getElementById("castep-root-path-input")?.value || "").trim();
   const base = getCastepApiBase() || (["localhost", "127.0.0.1", "::1"].includes(window.location.hostname) ? "" : "http://127.0.0.1:8877");
   try {
-    const resp = await fetch(`${base}/api/castep/scan?root_path=${encodeURIComponent(rootPath)}&limit=120`);
+    const resp = await fetch(`${base}/api/castep/scan?root_path=${encodeURIComponent(rootPath)}&limit=120&_t=${Date.now()}`);
     if (resp.ok) {
       if (base) CASTEP_STUDIO_STATE.apiBase = base;
       const data = await resp.json();
       CASTEP_STUDIO_STATE.localBackendConnected = true;
       CASTEP_STUDIO_STATE.localProcesses = data.processes || [];
       if (Array.isArray(data.jobs)) {
-        // Replace previous local-scanned jobs cleanly with exact scan results for requested path
-        const keptMounted = CASTEP_STUDIO_STATE.jobs.filter(j => j._fileMap || j._dirHandle || String(j.id).startsWith("import_"));
-        const scanned = data.jobs.map(dj => enrichCastepJobSummary(dj));
-        CASTEP_STUDIO_STATE.jobs = [...scanned, ...keptMounted];
+        // Merge by exact full OS path + seed so same-named folders from different directory trees stay open simultaneously!
+        const scanned = data.jobs.map(dj => enrichCastepJobSummary({
+          ...dj,
+          id: "local_" + Math.abs(hashStringSimple(`${normalizeCastepFolderKey(dj.folder)}::${(dj.seed || "").toLowerCase()}`))
+        }));
+        const merged = await mergeCastepJobsPreserveDistinct(scanned);
         renderCastepJobsList();
         updateCastepKpiBar();
-        if (scanned.length > 0) {
-          await loadCastepJobIntoStudio(scanned[0].id);
+        if (merged.length > 0) {
+          await loadCastepJobIntoStudio(merged[0].id);
         }
-        updateCastepConnectionPill(true, `Local Server • ${scanned.length} Jobs in ${rootPath || (data.roots?.[0] || "Workstation")}`);
+        updateCastepConnectionPill(true, `Local Server • ${CASTEP_STUDIO_STATE.jobs.length} Job(s) Loaded`);
         if (typeof showToast === "function") {
           showToast(
             scanned.length > 0
-              ? `🔄 Scanned ${data.total_found} CASTEP calculation(s) (${data.processes.length} active BIOVIA processes).`
+              ? `🔄 Loaded ${scanned.length} CASTEP calculation(s) (${CASTEP_STUDIO_STATE.jobs.length} total in workspace).`
               : `No CASTEP calculation files found in "${rootPath || "default directories"}".`,
             scanned.length > 0 ? "success" : "info"
           );
@@ -7193,19 +7493,19 @@ async function mountCastepLocalDirectory() {
   if (typeof window.showDirectoryPicker === "function") {
     try {
       const dirHandle = await window.showDirectoryPicker({ mode: "readwrite" });
+      const mountSeq = ++_castepMountSessionSeq;
       CASTEP_STUDIO_STATE.mountedDirHandle = dirHandle;
       CASTEP_STUDIO_STATE.mountedDirName = dirHandle.name;
       const discovered = [];
       const sbjList = [];
       const gwMeta = { active: [], archived: [], servers: [], gwInfo: null, gwParams: null };
-      await scanMountedDirectoryHandleRecursive(dirHandle, dirHandle.name, 0, discovered, sbjList, gwMeta);
+      await scanMountedDirectoryHandleRecursive(dirHandle, dirHandle.name, 0, discovered, sbjList, gwMeta, mountSeq, dirHandle);
 
       discovered.sort((a, b) => (b.mtime || 0) - (a.mtime || 0));
+      let mergedDiscovered = discovered;
       if (discovered.length > 0) {
-        // Deduplicate by folder+seed and put newly mounted jobs first
-        const newKeys = new Set(discovered.map(j => `${j.folder}::${j.seed}`));
-        const existing = CASTEP_STUDIO_STATE.jobs.filter(j => !newKeys.has(`${j.folder}::${j.seed}`));
-        CASTEP_STUDIO_STATE.jobs = [...discovered, ...existing];
+        // Merge using OS-level isSameEntry() so TWO DIFFERENT folders with the SAME name NEVER overwrite each other!
+        mergedDiscovered = await mergeCastepJobsPreserveDistinct(discovered);
       }
       if (gwMeta.active.length > 0 || gwMeta.archived.length > 0 || gwMeta.servers.length > 0 || gwMeta.gwInfo) {
         applyMountedGatewayData(dirHandle.name, gwMeta.active, gwMeta.archived, gwMeta.servers, gwMeta.gwInfo, gwMeta.gwParams);
@@ -7213,12 +7513,12 @@ async function mountCastepLocalDirectory() {
 
       renderCastepJobsList();
       updateCastepKpiBar();
-      updateCastepConnectionPill(true, `Mounted: ${dirHandle.name} (${discovered.length} calculation${discovered.length === 1 ? "" : "s"})`);
+      updateCastepConnectionPill(true, `Workspace: ${CASTEP_STUDIO_STATE.jobs.length} calculation(s) • Latest: ${dirHandle.name}`);
 
-      if (discovered.length > 0) {
-        await loadCastepJobIntoStudio(discovered[0].id);
+      if (mergedDiscovered.length > 0) {
+        await loadCastepJobIntoStudio(mergedDiscovered[0].id);
         if (typeof showToast === "function") {
-          showToast(`📂 Mounted "${dirHandle.name}": discovered ${discovered.length} calculation(s)${sbjList.length ? ` + ${sbjList.length} Gateway .sbj jobs` : ""}!`, "success");
+          showToast(`📂 Mounted "${dirHandle.name}": loaded ${mergedDiscovered.length} calculation(s) (${CASTEP_STUDIO_STATE.jobs.length} total open)${sbjList.length ? ` + ${sbjList.length} Gateway .sbj jobs` : ""}!`, "success");
         }
       } else if (sbjList.length > 0) {
         switchCastepStagePane("gateway");
@@ -7325,7 +7625,7 @@ function parseSbsTextClient(text, filename) {
   };
 }
 
-async function scanMountedDirectoryHandleRecursive(dirHandle, relPath, depth, discovered, sbjList, gwMeta = null) {
+async function scanMountedDirectoryHandleRecursive(dirHandle, relPath, depth, discovered, sbjList, gwMeta = null, mountSeq = 0, mountRootHandle = null) {
   if (depth > 10) return;
   const fileHandles = [];
   const subDirs = [];
@@ -7388,11 +7688,13 @@ async function scanMountedDirectoryHandleRecursive(dirHandle, relPath, depth, di
       if (statusFh) fnames.push("Status.txt");
       const fileMap = {};
       let maxMtime = 0;
+      const sigParts = [];
       for (const h of handles) {
         fileMap[h.name] = h;
         try {
           const fMeta = await h.getFile();
           if (fMeta.lastModified > maxMtime) maxMtime = fMeta.lastModified;
+          sigParts.push(`${h.name}:${fMeta.size}:${fMeta.lastModified}`);
         } catch (e) {}
       }
       if (statusFh) fileMap["Status.txt"] = statusFh;
@@ -7400,11 +7702,11 @@ async function scanMountedDirectoryHandleRecursive(dirHandle, relPath, depth, di
       const hasCastep = fnames.some(n => n.toLowerCase() === `${seed.toLowerCase()}.castep`);
       const hasStatus = !!statusFh;
       const hasOptics = fnames.some(n => (/optic|dielec|absorp/i.test(n) && n.toLowerCase().endsWith(".xcd") && !/(convergence|energies)/i.test(n)) || /\.(ome_bin|cst_ome)$/i.test(n) || n.toLowerCase().endsWith("_optics.bands") || n.toLowerCase().endsWith("_optics.castep"));
-      const hasBandDos = fnames.some(n => n.toLowerCase().endsWith("_bandstr.bands") || n.toLowerCase().endsWith("_dos.bands") || (/(band structure|density of states|dos|pdos)/i.test(n) && n.toLowerCase().endsWith(".xcd")));
+      const hasBandDos = fnames.some(n => n.toLowerCase().endsWith("_bandstr.bands") || n.toLowerCase().endsWith("_dos.bands") || n.toLowerCase().endsWith(".pdos_bin") || (/(band structure|density of states|dos|pdos)/i.test(n) && n.toLowerCase().endsWith(".xcd")));
       const hasChdiff = fnames.some(n => /\.(chdiff|charg_frm|den_fmt|cube)$/i.test(n));
 
       const jobObj = enrichCastepJobSummary({
-        id: "mnt_" + Math.abs(hashStringSimple(`${relPath}::${seed}`)),
+        id: `mnt_${mountSeq || (++_castepMountSessionSeq)}_${Math.abs(hashStringSimple(`${relPath}::${seed}`))}`,
         title: `${seed} (${dirHandle.name})`,
         project: relPath.split(/[\\/]/)[0] || "Mounted Folder",
         material: seed,
@@ -7419,6 +7721,8 @@ async function scanMountedDirectoryHandleRecursive(dirHandle, relPath, depth, di
         has_chdiff: hasChdiff,
         charg_frm_files: fnames.filter(n => /\.(charg_frm|den_fmt|cube)$/i.test(n)),
         _dirHandle: dirHandle,
+        _mountRootHandle: mountRootHandle || dirHandle,
+        _contentSig: sigParts.sort().join("|"),
         _fileMap: fileMap,
         _hydrated: false
       });
@@ -7427,7 +7731,7 @@ async function scanMountedDirectoryHandleRecursive(dirHandle, relPath, depth, di
   }
 
   for (const sub of subDirs) {
-    await scanMountedDirectoryHandleRecursive(sub, `${relPath}/${sub.name}`, depth + 1, discovered, sbjList, gwMeta);
+    await scanMountedDirectoryHandleRecursive(sub, `${relPath}/${sub.name}`, depth + 1, discovered, sbjList, gwMeta, mountSeq, mountRootHandle || dirHandle);
   }
 }
 
@@ -7649,18 +7953,21 @@ async function handleCastepFolderFallbackUpload(event) {
       if (!bySeed[seed]) bySeed[seed] = [];
       bySeed[seed].push(f);
     }
+    const uplSeq = ++_castepMountSessionSeq;
     for (const [seed, sfList] of Object.entries(bySeed)) {
       const fnames = sfList.map(f => f.name);
       const fileMap = {};
       let maxMtime = 0;
+      const sigParts = [];
       sfList.forEach(f => {
         fileMap[f.name] = f;
         if (f.lastModified > maxMtime) maxMtime = f.lastModified;
+        sigParts.push(`${f.name}:${f.size}:${f.lastModified}`);
       });
       if (statusF) { fnames.push("Status.txt"); fileMap["Status.txt"] = statusF; }
       const folderName = dir.split(/[\\/]/).pop() || dir;
       discovered.push(enrichCastepJobSummary({
-        id: "upl_" + Math.abs(hashStringSimple(`${dir}::${seed}`)),
+        id: `upl_${uplSeq}_${Math.abs(hashStringSimple(`${dir}::${seed}`))}`,
         title: `${seed} (${folderName})`,
         project: dir.split(/[\\/]/)[0] || "Uploaded Folder",
         material: seed,
@@ -7670,6 +7977,7 @@ async function handleCastepFolderFallbackUpload(event) {
         updated_at: maxMtime ? new Date(maxMtime).toISOString().slice(0, 19).replace("T", " ") : "",
         files_list: fnames.sort(),
         charg_frm_files: fnames.filter(n => /\.(charg_frm|den_fmt|cube)$/i.test(n)),
+        _contentSig: sigParts.sort().join("|"),
         _fileMap: fileMap,
         _hydrated: false
       }));
@@ -7678,13 +7986,12 @@ async function handleCastepFolderFallbackUpload(event) {
 
   discovered.sort((a, b) => (b.mtime || 0) - (a.mtime || 0));
   if (discovered.length > 0) {
-    const newKeys = new Set(discovered.map(j => `${j.folder}::${j.seed}`));
-    CASTEP_STUDIO_STATE.jobs = [...discovered, ...CASTEP_STUDIO_STATE.jobs.filter(j => !newKeys.has(`${j.folder}::${j.seed}`))];
+    const merged = await mergeCastepJobsPreserveDistinct(discovered);
     renderCastepJobsList();
     updateCastepKpiBar();
-    await loadCastepJobIntoStudio(discovered[0].id);
-    updateCastepConnectionPill(true, `Folder Loaded • ${discovered.length} calculation(s)`);
-    if (typeof showToast === "function") showToast(`📂 Loaded ${discovered.length} calculation(s) from folder!`, "success");
+    await loadCastepJobIntoStudio(merged[0].id);
+    updateCastepConnectionPill(true, `Workspace: ${CASTEP_STUDIO_STATE.jobs.length} calculation(s)`);
+    if (typeof showToast === "function") showToast(`📂 Loaded ${merged.length} calculation(s) (${CASTEP_STUDIO_STATE.jobs.length} total open)!`, "success");
   }
   if (sbjList.length > 0) {
     CASTEP_STUDIO_STATE.gatewayJobs = sbjList.sort((a, b) => (b.create_ts || 0) - (a.create_ts || 0));
