@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=150_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=150_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=151_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=151_v116_vesta_viewer'" />
   <!-- Publication Math Typography: STIX Two Text (MathType / Times) + KaTeX 0.16.11 (Word/LaTeX Equation Engine) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -1144,8 +1144,11 @@
             <button type="button" class="btn btn-outline btn-sm castep-action-btn" onclick="mountCastepLocalDirectory()" title="Mount a local Materials Studio / CASTEP calculation folder with direct browser read &amp; write access">
               📂 Mount Local Folder (Read/Write)
             </button>
+            <button type="button" class="btn btn-outline btn-sm castep-action-btn" id="castep-refresh-active-folder-btn" onclick="refreshCastepJobFromDisk(null, this)" title="Re-read files from the active calculation folder on disk (detect newly added, modified, or removed files)">
+              🔄 Refresh Folder
+            </button>
             <button type="button" class="btn btn-outline btn-sm castep-action-btn" onclick="scanCastepLocalMachineJobs()" title="Scan local machine calculation directories for running and completed CASTEP jobs">
-              🔄 Scan Machine Jobs
+              🔍 Scan Machine Jobs
             </button>
             <button type="button" class="btn btn-outline btn-sm castep-action-btn" onclick="document.getElementById('castep-file-upload-input').click()" title="Import .cell, .param, .castep, .xsd, .geom, .bands, .xcd, .cif, or POSCAR files">
               📥 Import CASTEP / Structure Files
@@ -6149,10 +6152,10 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=150_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=150_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=150_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=150_v116_vesta_viewer'"></script>
-  <script src="dft_theory.js?v=150_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=150_v116_vesta_viewer'"></script>
-  <script src="app.js?v=150_v116_vesta_viewer" onerror="this.src='/static/app.js?v=150_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=151_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=151_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=151_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=151_v116_vesta_viewer'"></script>
+  <script src="dft_theory.js?v=151_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=151_v116_vesta_viewer'"></script>
+  <script src="app.js?v=151_v116_vesta_viewer" onerror="this.src='/static/app.js?v=151_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
