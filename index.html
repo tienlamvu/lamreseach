@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=157_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=157_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=158_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=158_v116_vesta_viewer'" />
   <!-- Publication Math Typography: STIX Two Text (MathType / Times) + KaTeX 0.16.11 (Word/LaTeX Equation Engine) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -2666,12 +2666,27 @@
                     </select>
                   </span>
                   <span class="castep-ctrl-grp">
-                    <label class="castep-field-lbl" title="Method for extracting Exchange Splitting Δex between spin-up (↑) and spin-down (↓) DOS">Method:</label>
+                    <label class="castep-field-lbl" title="Method for extracting Exchange Splitting Δex between corresponding spin-up (↑) and spin-down (↓) DOS peaks">Method:</label>
                     <select id="castep-st-ex-method" class="castep-input" style="font-weight:700;" onchange="renderCastepStonerPane()">
-                      <option value="peak" selected>Dominant Peak |E↓ − E↑|</option>
-                      <option value="nearest_ef">Nearest-to-EF Peak</option>
+                      <option value="partner" selected>Spin-Split Partner (Near EF)</option>
+                      <option value="peak">Dominant Peak |E↓ − E↑|</option>
                       <option value="xcorr">Cross-Correlation Shift</option>
                       <option value="center">Band-Center Shift</option>
+                      <option value="manual">Manual Peaks (E↑, E↓)</option>
+                    </select>
+                  </span>
+                  <span id="castep-st-manual-pk-wrap" class="castep-ctrl-grp" style="display:none;">
+                    <label class="castep-field-lbl">E<sub>pk,↑</sub>:</label>
+                    <input type="number" id="castep-st-man-eup" class="castep-input-sm" value="-1.00" step="0.05" style="width:58px;" onchange="renderCastepStonerPane()" />
+                    <label class="castep-field-lbl">E<sub>pk,↓</sub>:</label>
+                    <input type="number" id="castep-st-man-edn" class="castep-input-sm" value="0.00" step="0.05" style="width:58px;" onchange="renderCastepStonerPane()" />
+                  </span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" title="Choose how Total Magnetic Moment Mtot is determined for Stoner I = Δex / |Mtot|">M<sub>tot</sub> Source:</label>
+                    <select id="castep-st-msource" class="castep-input" style="font-weight:700;" onchange="renderCastepStonerPane()">
+                      <option value="dos_integral" selected>∫[D↑−D↓] dE (DOS Eq.)</option>
+                      <option value="mulliken">Mulliken Analysis (Σ Spin)</option>
+                      <option value="scf_spin">CASTEP SCF Integrated Spin</option>
                     </select>
                   </span>
                   <span class="castep-ctrl-grp">
@@ -6346,10 +6361,10 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=157_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=157_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=157_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=157_v116_vesta_viewer'"></script>
-  <script src="dft_theory.js?v=157_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=157_v116_vesta_viewer'"></script>
-  <script src="app.js?v=157_v116_vesta_viewer" onerror="this.src='/static/app.js?v=157_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=158_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=158_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=158_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=158_v116_vesta_viewer'"></script>
+  <script src="dft_theory.js?v=158_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=158_v116_vesta_viewer'"></script>
+  <script src="app.js?v=158_v116_vesta_viewer" onerror="this.src='/static/app.js?v=158_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
