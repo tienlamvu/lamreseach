@@ -6399,12 +6399,10 @@ function renderCastepElectronicPlots() {
       const spinTag = bandSeries.length >= 2 ? (isBeta ? "Spin↓ " : "Spin↑ ") : "";
       (ser.segments || []).forEach((seg, bIdx) => {
         if (!seg || !seg.length) return;
-        const visible = seg.some(pt => Number.isFinite(pt[1]) && pt[1] >= emin && pt[1] <= emax);
-        if (!visible) return;
         cols.push({ label: `${spinTag}Band ${bIdx + 1} E − E_ref (eV)`, seg });
       });
     });
-    if (!cols.length) return { title: "Band Structure (visible)", headers: [], rows: [] };
+    if (!cols.length) return { title: "Band Structure", headers: [], rows: [] };
     let refSeg = cols[0].seg;
     cols.forEach(c => { if (c.seg.length > refSeg.length) refSeg = c.seg; });
     const rows = refSeg.map((pt, k) => {
@@ -6422,16 +6420,101 @@ function renderCastepElectronicPlots() {
       });
       return row;
     });
+    const spinNote = bandSeries.length >= 2 ? ` (${[showUp ? "Spin↑" : "", showDn ? "Spin↓" : ""].filter(Boolean).join(" + ")}, Full Range)` : " (Full Range)";
     return {
-      title: bandSeries.length >= 2 ? `Band Structure (${[showUp ? "Spin↑" : "", showDn ? "Spin↓" : ""].filter(Boolean).join(" + ")}, ${emin} to ${emax} eV)` : `Band Structure (${emin} to ${emax} eV)`,
+      title: `Band Structure${spinNote}`,
       headers: ["k Index", "k-Path (normalized)", "High-Symmetry Point", ...cols.map(c => c.label)],
       rows
     };
   };
   const buildPdosExactTable = () => {
     const useMirrorX = isSpinDos && spinLayout === "mirror" && showUp && showDn;
+    let exportEGrid = eGrid;
+    let exportCurves = pdosCurves;
+
+    // Evaluate the EXACT displayed PDOS curves across the FULL energy range (not clipped by zoom window!)
+    let fMin = emin, fMax = emax;
+    if (job.pdos_bin_data && Array.isArray(job.pdos_bin_data.channels) && job.pdos_bin_data.channels.length) {
+      const pb = job.pdos_bin_data;
+      const sh = align.dosRawShift || 0.0;
+      let loBin = Infinity, hiBin = -Infinity;
+      pb.channels.forEach(ch => {
+        (ch.up || []).forEach(p => { if (p[0] < loBin) loBin = p[0]; if (p[0] > hiBin) hiBin = p[0]; });
+        (ch.dn || []).forEach(p => { if (p[0] < loBin) loBin = p[0]; if (p[0] > hiBin) hiBin = p[0]; });
+      });
+      if (Number.isFinite(loBin) && Number.isFinite(hiBin)) {
+        fMin = Math.min(emin, pb.e_min + loBin * pb.dE + sh - 3 * sigma);
+        fMax = Math.max(emax, pb.e_min + hiBin * pb.dE + sh + 3 * sigma);
+      }
+      const nFull = Math.min(1200, Math.max(300, Math.round((fMax - fMin) / 0.025)));
+      exportEGrid = new Array(nFull + 1);
+      for (let i = 0; i <= nFull; i++) exportEGrid[i] = fMin + (fMax - fMin) * (i / nFull);
+      const rebuilt = buildPdosCurvesFromBin(
+        pb, exportEGrid, sigma, pdosMode, pdosTarget,
+        { showTot, showS, showP, showD, showF },
+        sh
+      );
+      // Match ONLY the curves actually displayed on the canvas!
+      const shownLabels = new Set(pdosCurves.map(c => c.label));
+      exportCurves = rebuilt.curves.filter(c => shownLabels.has(c.label));
+    } else if (job.pdos_xcd?.series?.length || job.dos_xcd?.series?.length) {
+      const srcSer = job.pdos_xcd?.series?.length ? job.pdos_xcd.series : job.dos_xcd.series;
+      const sh = align.dosXcdShift || 0.0;
+      srcSer.forEach(s => {
+        const pts = s.segments?.[0] || [];
+        if (pts.length) {
+          fMin = Math.min(fMin, pts[0][0] + sh);
+          fMax = Math.max(fMax, pts[pts.length - 1][0] + sh);
+        }
+      });
+      const nFull = Math.min(1200, Math.max(300, Math.round((fMax - fMin) / 0.025)));
+      exportEGrid = new Array(nFull + 1);
+      for (let i = 0; i <= nFull; i++) exportEGrid[i] = fMin + (fMax - fMin) * (i / nFull);
+      const shownLabels = new Set(pdosCurves.map(c => c.label));
+      exportCurves = [];
+      srcSer.forEach(s => {
+        if (!shownLabels.has(s.name)) return;
+        const pts = s.segments?.[0] || [];
+        if (!pts.length) return;
+        const arr = new Float64Array(exportEGrid.length);
+        for (let i = 0; i < exportEGrid.length; i++) arr[i] = Math.max(0, interpSortedXY(pts, exportEGrid[i] - sh));
+        exportCurves.push({ label: s.name, up: arr, dn: null });
+      });
+    } else if ((job.dos_bands || job.bandstr_bands) && showTot) {
+      const srcB = job.dos_bands || job.bandstr_bands;
+      const sh = job.dos_bands ? (align.dosRawShift || 0.0) : (align.bandRawShift || 0.0);
+      (srcB.kpoints || []).forEach(kp => (kp.e || []).forEach(sp => sp.forEach(evRaw => {
+        const ev = evRaw + sh;
+        if (ev < fMin) fMin = ev;
+        if (ev > fMax) fMax = ev;
+      })));
+      fMin -= 3 * sigma; fMax += 3 * sigma;
+      const nFull = Math.min(1200, Math.max(300, Math.round((fMax - fMin) / 0.025)));
+      exportEGrid = new Array(nFull + 1);
+      for (let i = 0; i <= nFull; i++) exportEGrid[i] = fMin + (fMax - fMin) * (i / nFull);
+      const upArr = new Float64Array(exportEGrid.length);
+      const dnArr = isSpinDos ? new Float64Array(exportEGrid.length) : null;
+      const invSig = 1.0 / Math.max(0.02, sigma);
+      const norm = invSig / Math.sqrt(2.0 * Math.PI);
+      const deg = isSpinDos ? 1.0 : 2.0;
+      (srcB.kpoints || []).forEach(kp => {
+        const wt = (kp.w || (1.0 / srcB.kpoints.length)) * deg;
+        (kp.e || []).forEach((sp, sIdx) => {
+          const targetArr = (sIdx === 1 && dnArr) ? dnArr : upArr;
+          sp.forEach(evRaw => {
+            const ev = evRaw + sh;
+            for (let g = 0; g < exportEGrid.length; g++) {
+              const z = (exportEGrid[g] - ev) * invSig;
+              if (Math.abs(z) < 4.0) targetArr[g] += wt * Math.exp(-0.5 * z * z) * norm;
+            }
+          });
+        });
+      });
+      exportCurves = [{ label: "Total DOS", up: upArr, dn: dnArr }];
+    }
+
     const specs = [];
-    pdosCurves.forEach(c => {
+    exportCurves.forEach(c => {
       const lbl = cleanSciHeaderText(c.label || "Curve");
       if (useMirrorX) {
         specs.push({ label: `${lbl} Spin↑ (states/eV)`, get: i => c.up[i] });
@@ -6441,21 +6524,21 @@ function renderCastepElectronicPlots() {
         specs.push({ label: `${lbl}${tag} (states/eV)`, get: i => (showUp ? c.up[i] : 0) + (showDn && c.dn ? c.dn[i] : 0) });
       }
     });
-    if (!specs.length) return { title: "PDOS (visible)", headers: [], rows: [] };
+    if (!specs.length) return { title: "PDOS", headers: [], rows: [] };
     const modeLbl = pdosMode === "atom" ? "Atomic-Resolved PDOS" : (pdosMode === "element" ? "Element-Resolved PDOS" : (pdosMode === "orbital" ? "Orbital-Resolved PDOS" : "Element + Orbital PDOS"));
     return {
-      title: `${modeLbl} (${emin} to ${emax} eV)`,
+      title: `${modeLbl} (Full Range)`,
       headers: ["Energy E − E_ref (eV)", ...specs.map(s => s.label)],
-      rows: eGrid.map((e, i) => [formatPlottedNum(e), ...specs.map(s => formatPlottedNum(s.get(i)))])
+      rows: exportEGrid.map((e, i) => [formatPlottedNum(e), ...specs.map(s => formatPlottedNum(s.get(i)))])
     };
   };
   if (layout === "joint" && canvas._subPanelRects.length >= 2) {
-    canvas._subPanelRects[0].exactTable = buildBandExactTable();
-    canvas._subPanelRects[1].exactTable = buildPdosExactTable();
+    canvas._subPanelRects[0].buildExactTable = buildBandExactTable;
+    canvas._subPanelRects[1].buildExactTable = buildPdosExactTable;
   } else if (layout === "band") {
-    canvas._singlePanelExactTable = buildBandExactTable();
+    canvas._singlePanelExactTable = buildBandExactTable;
   } else if (layout === "dos") {
-    canvas._singlePanelExactTable = buildPdosExactTable();
+    canvas._singlePanelExactTable = buildPdosExactTable;
   }
   ctx.restore();
 }
@@ -6607,7 +6690,7 @@ function drawSimpleLineChart2D(canvas, points, opts = {}) {
   canvas._singlePanelExactTable = {
     title: cleanSciHeaderText(opts.yLabel || "Plot"),
     headers: [cleanSciHeaderText(opts.xLabel || "X"), cleanSciHeaderText(opts.yLabel || "Y")],
-    rows: visPts.map(p => [formatPlottedNum(p[0]), formatPlottedNum(p[1])])
+    rows: points.map(p => [formatPlottedNum(p[0]), formatPlottedNum(p[1])])
   };
   const ys = (visPts.length ? visPts : points).map(p => p[1]);
   let minY = Math.min(...ys), maxY = Math.max(...ys);
@@ -8203,8 +8286,8 @@ function buildTableFromPlottedSeries(spec) {
   if (!spec || !Array.isArray(spec.series) || !spec.series.length) return null;
   const xLabelClean = cleanSciHeaderText(spec.xLabel || "X");
   const xTransform = typeof spec.xTransform === "function" ? spec.xTransform : null;
-  const hasXMin = spec.xMin !== undefined && spec.xMin !== null && Number.isFinite(spec.xMin);
-  const hasXMax = spec.xMax !== undefined && spec.xMax !== null && Number.isFinite(spec.xMax);
+  const hasXMin = !!spec.clipToXRange && spec.xMin !== undefined && spec.xMin !== null && Number.isFinite(spec.xMin);
+  const hasXMax = !!spec.clipToXRange && spec.xMax !== undefined && spec.xMax !== null && Number.isFinite(spec.xMax);
   const logY = !!spec.logY;
   const yUnitSuffix = spec.yUnit ? ` (${cleanSciHeaderText(spec.yUnit)})` : "";
 
@@ -8305,8 +8388,11 @@ async function copyCastepSubPanelData(canvasId, subPanelKey = null) {
     if (rect) {
       metaPlotKey = rect.plotKey || canvasId;
       metaSubPart = rect.key;
-      if (rect.exactTable !== undefined) {
-        tbl = rect.exactTable;
+      if (typeof rect.buildExactTable === "function") {
+        tbl = rect.buildExactTable();
+        usedExact = true;
+      } else if (rect.exactTable !== undefined) {
+        tbl = typeof rect.exactTable === "function" ? rect.exactTable() : rect.exactTable;
         usedExact = true;
       } else if (rect.exactSeries !== undefined) {
         tbl = buildTableFromPlottedSeries(rect.exactSeries);
@@ -8317,7 +8403,7 @@ async function copyCastepSubPanelData(canvasId, subPanelKey = null) {
     }
   } else {
     if (canvas._singlePanelExactTable !== undefined && canvas._singlePanelExactTable !== null) {
-      tbl = canvas._singlePanelExactTable;
+      tbl = typeof canvas._singlePanelExactTable === "function" ? canvas._singlePanelExactTable() : canvas._singlePanelExactTable;
       usedExact = true;
     } else if (canvas._singlePanelExactSeries !== undefined && canvas._singlePanelExactSeries !== null) {
       tbl = buildTableFromPlottedSeries(canvas._singlePanelExactSeries);
@@ -8345,7 +8431,7 @@ async function copyCastepSubPanelData(canvasId, subPanelKey = null) {
   const ok = await copyTextToClipboardSafe(tsv);
   if (typeof showToast === "function") {
     if (ok) {
-      showToast(`📋 Copied ${tbl.title} (visible plot data only): ${tbl.rows.length} rows × ${tbl.headers.length} cols (TSV) — Ctrl+V into Excel / OriginPro!`, "success");
+      showToast(`📋 Copied ${tbl.title} (displayed curves, full range): ${tbl.rows.length} rows × ${tbl.headers.length} cols (TSV) — Ctrl+V into Excel / OriginPro!`, "success");
     } else {
       showToast("Browser blocked clipboard text write.", "warning");
     }
@@ -11206,12 +11292,12 @@ function renderCastepOpticalPlots() {
 
     const fullSpanX = xAxisMode === "nm" ? 920 : Math.max(0.1, axCfg.evToX(fullEmax));
 
-    // Record EXACTLY the curves drawn in this panel within the visible X window (active units + per-panel zoom)
+    // Record EXACTLY the curves drawn in this panel across their FULL X range (active X-axis unit, NOT truncated by zoom!)
     {
       const idxs = [];
       for (let i = 0; i < xVals.length; i++) {
         const xv = xVals[i];
-        if (Number.isFinite(xv) && xv >= xMin && xv <= xMax) idxs.push(i);
+        if (Number.isFinite(xv)) idxs.push(i);
       }
       idxs.sort((a, b) => xVals[a] - xVals[b]);
       const unitSfx = cfg.exportYUnit ? ` (${cfg.exportYUnit})` : "";
@@ -12910,10 +12996,9 @@ function renderCastepChdiffPlots() {
     const rows = [];
     for (let i = 0; i < nP; i++) {
       const z = (i / Math.max(1, nP - 1)) * cLen;
-      if (z < zMin - 1e-9 || z > zMax + 1e-9) continue;
       rows.push([formatPlottedNum(z), prof.length ? formatPlottedNum(prof[Math.round(i * (prof.length - 1) / Math.max(1, nP - 1))]) : "", dq.length ? formatPlottedNum(dq[Math.round(i * (dq.length - 1) / Math.max(1, nP - 1))]) : ""]);
     }
-    return { title: `1D Planar Δρ(z) & ΔQ(z) (z = ${zMin.toFixed(2)}–${zMax.toFixed(2)} Å)`, headers: ["z (Å)", `Δρ(z) (${unitL})`, "ΔQ(z) (e)"], rows };
+    return { title: `1D Planar Δρ(z) & ΔQ(z) (0–${cLen.toFixed(2)} Å)`, headers: ["z (Å)", `Δρ(z) (${unitL})`, "ΔQ(z) (e)"], rows };
   };
   canvas._singlePanelExactTable = null;
   canvas._singlePanelExactSeries = null;
