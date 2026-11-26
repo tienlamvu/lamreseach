@@ -6050,9 +6050,10 @@ function renderCastepElectronicPlots() {
 
   let bandX0 = padL, bandW = width - padL - padR;
   let dosX0 = padL, dosW = width - padL - padR;
+  const outTickExtra = st.tickDir === "out" ? (st.tickLength || 5) + 2 : 0;
   canvas._subPanelRects = [];
   if (layout === "joint") {
-    const gapBetween = Math.round(24 + Math.max(0, (st.tickSize - 12) * 1.5));
+    const gapBetween = Math.round(30 + Math.max(0, (st.tickSize - 12) * 1.8) + outTickExtra * 2);
     bandW = Math.round((width - padL - padR - gapBetween) * 0.56);
     dosX0 = bandX0 + bandW + gapBetween;
     dosW = width - dosX0 - padR;
@@ -6067,7 +6068,6 @@ function renderCastepElectronicPlots() {
   const eTicksList = [];
   for (let e = Math.ceil(emin); e <= Math.floor(emax); e += stepE) eTicksList.push(e);
   const yTickPxList = eTicksList.map(e => eToY(e));
-  const outTickExtra = st.tickDir === "out" ? (st.tickLength || 5) + 2 : 0;
 
   // --- PANEL 1: Electronic Band Structure ---
   if (layout === "joint" || layout === "band") {
@@ -6336,14 +6336,21 @@ function renderCastepElectronicPlots() {
       ctx.textAlign = "center"; ctx.textBaseline = "top";
       const txY = padT + plotH + 7 + outTickExtra;
       if (useMirror) {
-        ctx.fillText(formatPubMinus(`-${maxDos.toFixed(1)}`), dosX0 + 12, txY);
+        ctx.textAlign = "left";
+        ctx.fillText(formatPubMinus(`-${maxDos.toFixed(1)}`), dosX0, txY);
+        ctx.textAlign = "center";
         ctx.fillText("0", dosX0 + dosW * 0.5, txY);
-        ctx.fillText(`+${maxDos.toFixed(1)}`, dosX0 + dosW - 12, txY);
+        ctx.textAlign = "right";
+        ctx.fillText(`+${maxDos.toFixed(1)}`, dosX0 + dosW, txY);
       } else {
-        ctx.fillText("0", dosX0 + 2, txY);
+        ctx.textAlign = "left";
+        ctx.fillText("0", dosX0, txY);
+        ctx.textAlign = "center";
         ctx.fillText((maxDos / 2).toFixed(1), dosX0 + dosW * 0.5, txY);
-        ctx.fillText(maxDos.toFixed(1), dosX0 + dosW - 8, txY);
+        ctx.textAlign = "right";
+        ctx.fillText(maxDos.toFixed(1), dosX0 + dosW, txY);
       }
+      ctx.textAlign = "center";
       ctx.font = castepPlotFont("axis"); ctx.fillStyle = st.inkColor;
       ctx.fillText("PDOS (states/eV)", dosX0 + dosW / 2, txY + st.tickSize + 6);
     } else {
@@ -11228,7 +11235,7 @@ function renderCastepOpticalPlots() {
     const multiRowLegend = cfg.series.length >= 3;
     const extraTickPad = Math.max(0, (st.tickSize - 12) * 1.6);
     const padL = Math.round(58 + extraTickPad + outTickExtra);
-    const padR = hasRightAxis ? Math.round(52 + extraTickPad + outTickExtra) : 18;
+    const padR = hasRightAxis ? Math.round(56 + extraTickPad + outTickExtra) : Math.round(24 + extraTickPad * 0.6 + outTickExtra);
     const padT = Math.round((multiRowLegend ? 46 : 30) + Math.max(0, st.titleSize - 14));
     const padB = Math.round(38 + Math.max(0, (st.tickSize - 12) * 1.2 + (st.axisLabelSize - 13) * 1.1) + outTickExtra);
     const pw = Math.max(60, boxW - padL - padR);
@@ -12569,7 +12576,8 @@ function renderCastepChdiffPlots() {
   function draw2DSlicePanel(bx, by, bw, bh) {
     const stP = getCastepPlotStyle();
     const outTickExtra = stP.tickDir === "out" ? (stP.tickLength || 5) + 1 : 0;
-    const padL = Math.round(44 + outTickExtra), padR = 58, padT = 28, padB = Math.round(38 + outTickExtra);
+    const extraTickCh = Math.max(0, (stP.tickSize - 12) * 2.5);
+    const padL = Math.round(44 + extraTickCh * 0.6 + outTickExtra), padR = Math.round(64 + extraTickCh), padT = 28, padB = Math.round(38 + outTickExtra);
     const pw = Math.max(60, bw - padL - padR);
     const ph = Math.max(60, bh - padT - padB);
     const px0 = bx + padL, py0 = by + padT;
@@ -12676,7 +12684,8 @@ function renderCastepChdiffPlots() {
   function draw1DPlanarPanel(bx, by, bw, bh) {
     const stP = getCastepPlotStyle();
     const outTickExtra = stP.tickDir === "out" ? (stP.tickLength || 5) + 1 : 0;
-    const padL = Math.round(62 + outTickExtra), padR = Math.round(52 + outTickExtra), padT = 28, padB = Math.round(40 + outTickExtra);
+    const extraTickCh1 = Math.max(0, (stP.tickSize - 12) * 2.5);
+    const padL = Math.round(64 + extraTickCh1 + outTickExtra), padR = Math.round(54 + extraTickCh1 * 0.8 + outTickExtra), padT = 28, padB = Math.round(40 + outTickExtra);
     const pw = Math.max(60, bw - padL - padR);
     const ph = Math.max(60, bh - padT - padB);
     const px0 = bx + padL, py0 = by + padT;
@@ -17183,19 +17192,23 @@ function drawTransportBandFitCanvas(res) {
     return;
   }
 
+  const outTickExtra = st.tickDir === "out" ? (st.tickLength || 5) + 1 : 0;
   const extraT = Math.max(0, st.titleSize - 14);
-  const extraB = Math.max(0, (st.tickSize - 12) * 1.4 + (st.axisLabelSize - 13) * 1.2);
+  const extraB = Math.max(0, (st.tickSize - 12) * 1.4 + (st.axisLabelSize - 13) * 1.2) + outTickExtra;
   const extraL = Math.max(0, (st.tickSize - 12) * 2.0 + (st.axisLabelSize - 13) * 1.1);
+  const yLabelOff = Math.round(Math.max(46, st.tickSize * 3.4) + outTickExtra);
+  const leftOverhang = Math.round(Math.max(24, st.tickSize * 2.0) + outTickExtra);
+  const rightLeftPad = Math.round(yLabelOff + st.axisLabelSize + 10);
   const padT = Math.round(34 + extraT);
   const padB = Math.round(46 + extraB);
-  const padL = Math.round(62 + extraL);
-  const padR = 18;
-  const gapX = Math.round(58 + extraL);
+  const padL = Math.max(Math.round(62 + extraL), rightLeftPad);
+  const padR = Math.max(24, leftOverhang);
+  const gapX = leftOverhang + rightLeftPad;
   const panelW = Math.floor((width - padL - padR - gapX) / 2);
   const panelH = height - padT - padB;
   const x0L = padL;
   const x0R = padL + panelW + gapX;
-  const splitX = Math.round(x0L + panelW + gapX * 0.5);
+  const splitX = Math.round(x0L + panelW + leftOverhang);
 
   canvas._subPanelRects = [
     { key: "cbm_fit", label: "Electron CBM Fit", x: 0, y: 0, w: splitX, h: height, plotKey: "transport", dataSubPart: "branches", pngName: "CASTEP_Electron_Effective_Mass_Fit.png" },
@@ -17351,19 +17364,19 @@ function drawTransportBandFitCanvas(res) {
     ctx.font = `${st.tickSize}px ${st.fontFamily}`;
     xTickVals.forEach((qv, i) => {
       ctx.textAlign = "center";
-      ctx.fillText(formatPubMinus(qv.toFixed(2)), xTicks[i], py + ph + st.tickSize + 4);
+      ctx.fillText(formatPubMinus(qv.toFixed(2)), xTicks[i], py + ph + st.tickSize + 4 + outTickExtra);
     });
     yTickVals.forEach((yv, i) => {
       ctx.textAlign = "right";
-      ctx.fillText(formatPubMinus(Math.abs(yv) < 0.5 ? "0" : yv.toFixed(0)), px - 6, yTicks[i] + st.tickSize * 0.34);
+      ctx.fillText(formatPubMinus(Math.abs(yv) < 0.5 ? "0" : yv.toFixed(0)), px - 6 - outTickExtra, yTicks[i] + st.tickSize * 0.34);
     });
 
     // Axis Labels
     ctx.font = `${st.boldAxisLabels ? "700" : "400"} ${st.axisLabelSize}px ${st.fontFamily}`;
     ctx.textAlign = "center";
-    drawSciText(ctx, "Δk along BZ path (Å⁻¹)", px + pw / 2, py + ph + st.tickSize + st.axisLabelSize + 8);
+    drawSciText(ctx, "Δk along BZ path (Å⁻¹)", px + pw / 2, py + ph + st.tickSize + st.axisLabelSize + 8 + outTickExtra);
     ctx.save();
-    ctx.translate(px - Math.max(44, st.tickSize * 3.2), py + ph / 2);
+    ctx.translate(px - yLabelOff, py + ph / 2);
     ctx.rotate(-Math.PI / 2);
     drawSciText(ctx, isE ? "E − E_{CBM} (meV)" : "E − E_{VBM} (meV)", 0, 0);
     ctx.restore();
@@ -17423,19 +17436,23 @@ function drawTransportDrudeCanvas(res) {
   }
 
   const mode = res.opts.drudeChartMode || "dos_temp";
+  const outTickExtra = st.tickDir === "out" ? (st.tickLength || 5) + 1 : 0;
   const extraT = Math.max(0, st.titleSize - 14);
-  const extraB = Math.max(0, (st.tickSize - 12) * 1.4 + (st.axisLabelSize - 13) * 1.2);
+  const extraB = Math.max(0, (st.tickSize - 12) * 1.4 + (st.axisLabelSize - 13) * 1.2) + outTickExtra;
   const extraL = Math.max(0, (st.tickSize - 12) * 2.2 + (st.axisLabelSize - 13) * 1.1);
+  const yLabelOff = Math.round(Math.max(52, st.tickSize * 3.9) + outTickExtra);
+  const leftOverhang = Math.round(Math.max(24, st.tickSize * 2.0) + outTickExtra);
+  const rightLeftPad = Math.round(yLabelOff + st.axisLabelSize + 10);
   const padT = Math.round(34 + extraT);
   const padB = Math.round(46 + extraB);
-  const padL = Math.round(64 + extraL);
-  const padR = 18;
-  const gapX = Math.round(64 + extraL);
+  const padL = Math.max(Math.round(64 + extraL), rightLeftPad);
+  const padR = Math.max(24, leftOverhang);
+  const gapX = leftOverhang + rightLeftPad;
   const panelW = Math.floor((width - padL - padR - gapX) / 2);
   const panelH = height - padT - padB;
   const x0L = padL;
   const x0R = padL + panelW + gapX;
-  const splitX = Math.round(x0L + panelW + gapX * 0.5);
+  const splitX = Math.round(x0L + panelW + leftOverhang);
 
   const subLabels = {
     dos_temp: ["DOS Effective Mass Fit", "Drude Relaxation Time τ(T)"],
@@ -17566,7 +17583,7 @@ function drawTransportDrudeCanvas(res) {
     ctx.font = `${st.tickSize}px ${st.fontFamily}`;
     xTickVals.forEach((xv, i) => {
       ctx.textAlign = "center";
-      ctx.fillText(formatPubMinus(cfg.fmtX ? cfg.fmtX(xv) : xv.toFixed(1)), xTicks[i], py + ph + st.tickSize + 4);
+      ctx.fillText(formatPubMinus(cfg.fmtX ? cfg.fmtX(xv) : xv.toFixed(1)), xTicks[i], py + ph + st.tickSize + 4 + outTickExtra);
     });
     yTickVals.forEach((ytv, i) => {
       ctx.textAlign = "right";
@@ -17577,14 +17594,14 @@ function drawTransportDrudeCanvas(res) {
       } else {
         lbl = cfg.fmtY ? cfg.fmtY(ytv) : (Math.abs(ytv) >= 100 ? ytv.toFixed(0) : ytv.toFixed(2));
       }
-      ctx.fillText(formatPubMinus(lbl), px - 6, yTicks[i] + st.tickSize * 0.34);
+      ctx.fillText(formatPubMinus(lbl), px - 6 - outTickExtra, yTicks[i] + st.tickSize * 0.34);
     });
 
     ctx.font = `${st.boldAxisLabels ? "700" : "400"} ${st.axisLabelSize}px ${st.fontFamily}`;
     ctx.textAlign = "center";
-    drawSciText(ctx, cfg.xLabel, px + pw / 2, py + ph + st.tickSize + st.axisLabelSize + 8);
+    drawSciText(ctx, cfg.xLabel, px + pw / 2, py + ph + st.tickSize + st.axisLabelSize + 8 + outTickExtra);
     ctx.save();
-    ctx.translate(px - Math.max(48, st.tickSize * 3.6), py + ph / 2);
+    ctx.translate(px - yLabelOff, py + ph / 2);
     ctx.rotate(-Math.PI / 2);
     drawSciText(ctx, cfg.yLabel, 0, 0);
     ctx.restore();
