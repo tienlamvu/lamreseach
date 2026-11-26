@@ -1883,13 +1883,17 @@ def _discover_default_castep_roots():
     candidates = [
         os.path.expanduser(r"~\Documents\Materials Studio Projects"),
         r"D:\DATA LAM\DATA TINH TOAN\2026",
-        r"D:\DATA LAM\DATA TINH TOAN",
         r"D:\Data_Server",
     ]
     out = []
     for p in candidates:
-        if p and os.path.isdir(p) and not any(os.path.normcase(p) == os.path.normcase(x) for x in out):
-            out.append(p)
+        if not p or not os.path.isdir(p):
+            continue
+        ap = os.path.normcase(os.path.abspath(p))
+        # Never add a directory if it or an ancestor is already in the scan roots
+        if any(ap == x or ap.startswith(x + os.sep) for x in [os.path.normcase(os.path.abspath(r)) for r in out]):
+            continue
+        out.append(p)
     return out
 
 
@@ -3107,6 +3111,7 @@ def api_castep_scan(root_path: Optional[str] = None, limit: int = 120):
 
     procs = _detect_castep_processes()
     discovered = []
+    seen_job_keys = set()
     relevant_exts = (
         ".cell", ".param", ".castep", ".geom", ".bands", ".xcd", ".xsd", ".cif",
         ".chdiff", ".charg_frm", ".den_fmt", ".cube", ".pdos_bin", ".ome_bin", ".cst_ome"
@@ -3171,6 +3176,11 @@ def api_castep_scan(root_path: Optional[str] = None, limit: int = 120):
                     status_str = "Input Ready"
 
                 rel_proj = os.path.relpath(cur_root, base) if cur_root.startswith(base) else cur_root
+                norm_dir = os.path.normcase(os.path.abspath(cur_root))
+                dedup_key = (norm_dir, seed.lower())
+                if dedup_key in seen_job_keys:
+                    continue
+                seen_job_keys.add(dedup_key)
                 job_key = f"{cur_root}::{seed}"
                 discovered.append({
                     "id": "local_" + str(abs(hash(job_key))),
@@ -3212,7 +3222,10 @@ async def api_castep_resolve_parent(request: Request):
         return {"ok": False}
 
     target_low = folder_name.lower()
-    roots = _discover_default_castep_roots()
+    roots = list(_discover_default_castep_roots())
+    extra_parent = r"D:\DATA LAM\DATA TINH TOAN"
+    if os.path.isdir(extra_parent) and not any(os.path.normcase(os.path.abspath(r)) == os.path.normcase(os.path.abspath(extra_parent)) for r in roots):
+        roots.append(extra_parent)
     skip = {".git", "node_modules", "__pycache__", "$recycle.bin", "system volume information"}
 
     best_path = None
