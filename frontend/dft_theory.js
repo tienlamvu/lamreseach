@@ -89,6 +89,7 @@
     convergence: "Conv. & Forces",
     electronic: "Band & PDOS",
     transport: "m* & Drude",
+    stoner: "Stoner & Spin",
     optics: "Optical Tab",
     chdiff: "Charge Diff (\u0394\u03c1)",
     mulliken: "Mulliken & Spin"
@@ -1280,6 +1281,7 @@
             <tr><td>Live Remote Cluster Job Queue &amp; Monitoring</td><td>BIOVIA Gateway (<code>:18888</code>)</td><td><button type="button" class="castep-preset-chip" onclick="openCastepToolFromLecture('gateway')">&#128421; Gateway</button></td></tr>
             <tr><td>Band Structure, Direct/Indirect Gap, PDOS</td><td><code>*_BandStr.bands</code>, <code>*.pdos_bin</code></td><td><button type="button" class="castep-preset-chip" onclick="openCastepToolFromLecture('electronic')">&#128200; Band &amp; PDOS</button></td></tr>
             <tr><td>Effective Mass (Band/DOS), Mobility, Drude &tau;</td><td><code>*_BandStr.bands</code>, <code>*_DOS.bands</code></td><td><button type="button" class="castep-preset-chip" onclick="openCastepToolFromLecture('transport')">&#128640; m* &amp; Drude</button></td></tr>
+            <tr><td>Exchange Splitting &Delta;<sub>ex</sub>, Spin Polarization <i>P</i>(<i>E</i><sub>F</sub>) &amp; Stoner Criterion</td><td><code>*.pdos_bin</code>, <code>*_DOS.bands</code></td><td><button type="button" class="castep-preset-chip" onclick="openCastepToolFromLecture('stoner')">&#129517; Stoner</button></td></tr>
             <tr><td>3&times;3 Dielectric Tensor, Absorption, EELS, Tauc</td><td><code>*_Optics.ome_bin</code>, <code>*_Optics.bands</code></td><td><button type="button" class="castep-preset-chip" onclick="openCastepToolFromLecture('optics')">&#127752; Optical</button></td></tr>
             <tr><td>3D/2D/1D Charge Density Difference &amp; &Delta;Q(z)</td><td><code>*.chdiff</code>, <code>*.charg_frm</code></td><td><button type="button" class="castep-preset-chip" onclick="openCastepToolFromLecture('chdiff')">&#128267; Charge Diff</button></td></tr>
             <tr><td>Mulliken/Hirshfeld Charges &amp; Orbital Spin Matrix</td><td><code>*.castep</code>, <code>*.pdos_bin</code></td><td><button type="button" class="castep-preset-chip" onclick="openCastepToolFromLecture('mulliken')">&#129522; Mulliken &amp; Spin</button></td></tr>
@@ -1301,6 +1303,163 @@
         { authors: "J. Hafner", title: "Ab-Initio Simulations of Materials Using VASP: Density-Functional Theory and Beyond", venue: "J. Comput. Chem. 29, 2044–2078", year: "2008", doi: "10.1002/jcc.21057" },
         { authors: "P. Giannozzi et al.", title: "Advanced Capabilities for Materials Modelling with Quantum ESPRESSO", venue: "J. Phys.: Condens. Matter 29, 465901", year: "2017", doi: "10.1088/1361-648X/aa8f79" },
         { authors: "A. Jain, S. P. Ong, G. Hautier, W. Chen, W. D. Richards, S. Dacek, S. Cholia, D. Gunter, D. Skinner, G. Ceder & K. A. Persson", title: "Commentary: The Materials Project: A Materials Genome Approach to Accelerating Materials Innovation", venue: "APL Mater. 1, 011002", year: "2013", doi: "10.1063/1.4812323" }
+      ]
+    },
+
+    // =========================================================================
+    // LECTURE 11: EXCHANGE SPLITTING, SPIN POLARIZATION & STONER MAGNETISM
+    // =========================================================================
+    {
+      id: "lec11",
+      num: 11,
+      shortTab: "L11: Stoner & Spin",
+      level: "Advanced",
+      levelClass: "adv",
+      readTime: "18 min",
+      toolPane: "stoner",
+      toolName: "Stoner & Spin",
+      title: "Lecture 11: Exchange Splitting, Spin Polarization, Half-Metallicity &amp; Stoner Itinerant Magnetism",
+      subtitle: "Quantifying spin-resolved DOS asymmetry, Fermi-level spin polarization <i>P</i>(<i>E</i><sub>F</sub>), exchange splitting &Delta;<sub>ex</sub>, the Stoner criterion <i>I</i>&middot;<i>D</i>(<i>E</i><sub>F</sub>) &gt; 1, and electric-field / doping-induced spontaneous ferromagnetism.",
+      keywords: "exchange splitting delta_ex spin polarization P(EF) half metal half-metallicity stoner model stoner criterion stoner parameter I itinerant ferromagnetism paramagnetic susceptibility enhancement rigid band van hove singularity doping electric field induced magnetism pdos",
+      objectives: [
+        "Compute the spin-resolved total density of states <i>D</i>(<i>E</i>), Fermi-level spin asymmetry &Delta;<i>D</i>(<i>E</i><sub>F</sub>), spin polarization <i>P</i>(<i>E</i><sub>F</sub>), and integrated total magnetic moment <i>M</i><sub>tot</sub> from first-principles DOS/PDOS.",
+        "Extract the exchange splitting energy &Delta;<sub>ex</sub> from majority (&uarr;) and minority (&darr;) PDOS peaks near <i>E</i><sub>F</sub> and cross-check it with rigid-band cross-correlation and band-center shifts.",
+        "Derive the Stoner Landau total-energy expansion <i>E</i>(<i>m</i>), the Stoner criterion <i>I</i>&middot;<i>D</i>(<i>E</i><sub>F</sub>) &gt; 1, and the Stoner-enhanced Pauli susceptibility &chi;/&chi;<sub>0</sub>.",
+        "Determine the effective Stoner exchange parameter <i>I</i> = &Delta;<sub>ex</sub> / <i>M</i><sub>tot</sub> directly from DFT and predict electric-field or carrier-doping-induced magnetic phase transitions in 2D materials."
+      ],
+      contentHtml: `
+        <h3>11.1 Spin-Resolved Density of States &amp; Spin Polarization at <i>E</i><sub>F</sub></h3>
+        <p>In a collinear spin-polarized DFT calculation, the Kohn–Sham eigenstates separate into independent majority-spin (&uarr;, &alpha;) and minority-spin (&darr;, &beta;) channels. Summing both spin channels yields the <strong>total density of states (TDOS)</strong> <i>D</i>(<i>E</i>), while their difference at the Fermi energy <i>E</i><sub>F</sub> defines the <strong>Fermi-level spin asymmetry</strong> &Delta;<i>D</i>(<i>E</i><sub>F</sub>):</p>
+        ${eq(String.raw`D(E) = D_\uparrow(E) + D_\downarrow(E), \qquad \Delta D(E_{\mathrm{F}}) = D_\uparrow(E_{\mathrm{F}}) - D_\downarrow(E_{\mathrm{F}})`, "11.1",
+          "Here <i>D</i><sub>&uarr;</sub>(<i>E</i>) and <i>D</i><sub>&darr;</sub>(<i>E</i>) are normalized per formula unit (states&thinsp;eV<sup>&minus;1</sup>&thinsp;f.u.<sup>&minus;1</sup>) by dividing the unit-cell DOS by the number of formula units <i>Z</i> per simulation cell.")}
+        <p>The <strong>spin polarization at the Fermi energy</strong>, <i>P</i>(<i>E</i><sub>F</sub>), quantifies the spin-filtering efficiency of conduction carriers in spintronic junctions (such as magnetic tunnel junctions governed by Julli&egrave;re's magnetoresistance formula) and is expressed as a percentage:</p>
+        ${eq(String.raw`P(E_{\mathrm{F}}) = \frac{D_\uparrow(E_{\mathrm{F}}) - D_\downarrow(E_{\mathrm{F}})}{D_\uparrow(E_{\mathrm{F}}) + D_\downarrow(E_{\mathrm{F}})} \times 100\% = \frac{\Delta D(E_{\mathrm{F}})}{D(E_{\mathrm{F}})} \times 100\%`, "11.2")}
+        <p>Integrating the spin-density difference across all occupied electronic states up to the Fermi level yields the <strong>total magnetic moment per formula unit</strong> <i>M</i><sub>tot</sub> (in units of Bohr magnetons &mu;<sub>B</sub>/f.u.):</p>
+        ${eq(String.raw`M_{\mathrm{tot}} = \mu_{\mathrm{B}} \int_{-\infty}^{E_{\mathrm{F}}} \left[D_\uparrow(E) - D_\downarrow(E)\right]\mathrm{d}E`, "11.3",
+          "For accurate numerical integration, the lower bound must span all occupied valence states below <i>E</i><sub>F</sub> (not merely a narrow plotting window), and the result should agree closely with CASTEP's SCF <code>2*Integrated Spin Density / Z</code>.")}
+
+        <table class="dft-table">
+          <thead><tr><th>Electronic / Magnetic Phase</th><th><i>D</i><sub>&uarr;</sub>(<i>E</i><sub>F</sub>) &amp; <i>D</i><sub>&darr;</sub>(<i>E</i><sub>F</sub>)</th><th>|<i>P</i>(<i>E</i><sub>F</sub>)|</th><th><i>M</i><sub>tot</sub> (&mu;<sub>B</sub>/f.u.)</th><th>Spintronic Significance</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Non-Magnetic / Paramagnetic Metal</strong></td><td><i>D</i><sub>&uarr;</sub> = <i>D</i><sub>&darr;</sub> &gt; 0</td><td>0%</td><td>0</td><td>Spin-degenerate bands; susceptible to Stoner transition if <i>I</i>&middot;<i>D</i>(<i>E</i><sub>F</sub>) &rarr; 1</td></tr>
+            <tr><td><strong>Itinerant Ferromagnetic Metal</strong></td><td><i>D</i><sub>&uarr;</sub> &ne; <i>D</i><sub>&darr;</sub>, both &gt; 0</td><td>0% &lt; |<i>P</i>| &lt; 100%</td><td>Non-integer</td><td>Conventional ferromagnets (bcc Fe, hcp Co, fcc Ni); partial spin filtering</td></tr>
+            <tr><td><strong>Half-Metallic Ferromagnet (HMF)</strong></td><td>One channel metallic, one gapped</td><td><strong>100%</strong></td><td>Exact integer</td><td>Ideal spin injector (Heusler alloys, CrO<sub>2</sub>, doped 2D layers); quantified by spin-flip gap <i>E</i><sub>HM</sub></td></tr>
+            <tr><td><strong>Ferromagnetic Semiconductor</strong></td><td><i>D</i><sub>&uarr;</sub> = <i>D</i><sub>&darr;</sub> = 0 (both gapped)</td><td>Gapped</td><td>Integer &gt; 0</td><td>Spin-split VBM/CBM edges; enables optical spin selectivity &amp; dilute magnetic semiconductors</td></tr>
+          </tbody>
+        </table>
+
+        <h3>11.2 Exchange Splitting Energies (&Delta;<sub>ex</sub>) &amp; Rigid-Band Picture</h3>
+        <p>The intra-atomic Pauli exchange interaction lowers the potential energy of electrons with parallel spins relative to antiparallel spins, lifting spin degeneracy and shifting majority-spin (&uarr;) states downward relative to minority-spin (&darr;) states. Within first-principles electronic structure analysis, the <strong>exchange splitting energy</strong> &Delta;<sub>ex</sub> is evaluated directly from the energy separation between the dominant corresponding spin-up and spin-down projected density of states (PDOS) peaks near the Fermi level:</p>
+        ${eq(String.raw`\Delta_{\mathrm{ex}} = \left| E_{\mathrm{peak},\downarrow} - E_{\mathrm{peak},\uparrow} \right|`, "11.4",
+          "When orbital hybridization broadens the PDOS into multi-peak manifolds, &Delta;<sub>ex</sub> from dominant peak separation should be cross-checked against (i) the nearest-to-<i>E</i><sub>F</sub> prominent peak pair, (ii) the rigid-band cross-correlation shift maximizing &int;<i>D</i><sub>&uarr;</sub>(<i>E</i>)<i>D</i><sub>&darr;</sub>(<i>E</i>+&delta;)&thinsp;d<i>E</i>, and (iii) the first-moment band-center difference |<i>E&#772;</i><sub>&darr;</sub> &minus; <i>E&#772;</i><sub>&uarr;</sub>|.")}
+
+        <div class="dft-diagram-wrap">
+          <svg viewBox="0 0 860 218" width="100%" height="218" role="img" aria-label="Exchange Splitting in Spin-Resolved DOS and Stoner Landau Free Energy Landscape">
+            <!-- Left Panel: Spin-Resolved DOS & Exchange Splitting -->
+            <rect x="14" y="12" width="410" height="194" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.2"/>
+            <text x="219" y="31" text-anchor="middle" font-size="11.5" font-weight="800" fill="#0f172a">Spin-Resolved DOS &amp; Exchange Splitting (&Delta;<tspan dy="2.5" font-size="8.5">ex</tspan><tspan dy="-2.5">)</tspan></text>
+
+            <!-- Axes Left -->
+            <line x1="48" y1="115" x2="398" y2="115" stroke="#475569" stroke-width="1.2"/>
+            <line x1="226" y1="42" x2="226" y2="186" stroke="#0f172a" stroke-width="1.3" stroke-dasharray="4 3"/>
+            <text x="232" y="182" font-size="10" font-weight="700" fill="#0f172a">E<tspan dy="2.5" font-size="7.5">F</tspan></text>
+            <text x="394" y="130" text-anchor="end" font-size="9.5" font-weight="700" fill="#334155">E &minus; E<tspan dy="2" font-size="7.5">F</tspan></text>
+
+            <!-- Spin-Up (+D_up) blue peak shifted left -->
+            <path d="M 60 115 C 105 115, 132 108, 152 72 C 166 48, 178 48, 192 72 C 208 98, 232 110, 290 114 L 380 115 Z" fill="rgba(37,99,235,0.18)" stroke="#2563eb" stroke-width="2.1"/>
+            <circle cx="172" cy="54" r="3.8" fill="#1d4ed8"/>
+            <line x1="172" y1="54" x2="172" y2="42" stroke="#1d4ed8" stroke-width="1.1" stroke-dasharray="2.5 2"/>
+            <text x="116" y="72" font-size="10" font-weight="700" fill="#1d4ed8">D<tspan dy="2.5" font-size="7.5">&uarr;</tspan><tspan dy="-2.5">(E)</tspan></text>
+
+            <!-- Spin-Down (-D_dn) red peak shifted right -->
+            <path d="M 110 115 C 160 116, 212 122, 238 156 C 254 178, 268 178, 282 154 C 302 126, 330 117, 385 115 Z" fill="rgba(220,38,38,0.16)" stroke="#dc2626" stroke-width="2.1"/>
+            <circle cx="260" cy="172" r="3.8" fill="#b91c1c"/>
+            <line x1="260" y1="172" x2="260" y2="42" stroke="#b91c1c" stroke-width="1.1" stroke-dasharray="2.5 2"/>
+            <text x="318" y="165" font-size="10" font-weight="700" fill="#b91c1c">D<tspan dy="2.5" font-size="7.5">&darr;</tspan><tspan dy="-2.5">(E)</tspan></text>
+
+            <!-- Double-headed arrow for Delta_ex -->
+            <line x1="174" y1="45" x2="258" y2="45" stroke="#0f172a" stroke-width="1.5"/>
+            <polygon points="172,45 180,41.5 180,48.5" fill="#0f172a"/>
+            <polygon points="260,45 252,41.5 252,48.5" fill="#0f172a"/>
+            <rect x="188" y="34" width="56" height="16" rx="3" fill="#fef9c3" stroke="#ca8a04" stroke-width="0.9"/>
+            <text x="216" y="45.5" text-anchor="middle" font-size="9.5" font-weight="800" fill="#713f12">&Delta;<tspan dy="2" font-size="7">ex</tspan><tspan dy="-2"> = I&middot;M</tspan></text>
+
+            <!-- Right Panel: Stoner Energy Landscape E(m) - E0 -->
+            <rect x="438" y="12" width="408" height="194" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.2"/>
+            <text x="642" y="31" text-anchor="middle" font-size="11.5" font-weight="800" fill="#0f172a">Stoner Free-Energy Landscape E(m) &minus; E<tspan dy="2.5" font-size="8.5">0</tspan></text>
+
+            <!-- Axes Right -->
+            <line x1="478" y1="130" x2="824" y2="130" stroke="#94a3b8" stroke-width="1.1" stroke-dasharray="3 3"/>
+            <line x1="642" y1="42" x2="642" y2="188" stroke="#475569" stroke-width="1.2"/>
+            <text x="820" y="144" text-anchor="end" font-size="9.5" font-weight="700" fill="#334155">Moment m (&mu;<tspan dy="2" font-size="7.5">B</tspan><tspan dy="-2">)</tspan></text>
+            <text x="484" y="54" font-size="9.5" font-weight="700" fill="#334155">E(m) &minus; E<tspan dy="2" font-size="7.5">0</tspan></text>
+
+            <!-- Paramagnetic single-well parabola (I*D < 1, blue) -->
+            <path d="M 535 56 Q 642 204, 749 56" fill="none" stroke="#2563eb" stroke-width="2.2"/>
+            <circle cx="642" cy="130" r="3.6" fill="#2563eb"/>
+            <text x="642" y="76" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1d4ed8">I&middot;D(E<tspan dy="2" font-size="7">F</tspan><tspan dy="-2">) &lt; 1 (PM)</tspan></text>
+
+            <!-- Ferromagnetic double-well Landau curve (I*D > 1, red) -->
+            <path d="M 498 62 C 518 158, 550 176, 578 168 C 606 160, 624 130, 642 130 C 660 130, 678 160, 706 168 C 734 176, 766 158, 786 62" fill="none" stroke="#dc2626" stroke-width="2.4"/>
+            <circle cx="566" cy="169" r="4" fill="#dc2626"/>
+            <circle cx="718" cy="169" r="4" fill="#dc2626"/>
+            <text x="566" y="188" text-anchor="middle" font-size="9.5" font-weight="800" fill="#b91c1c">&minus;M<tspan dy="2" font-size="7">tot</tspan></text>
+            <text x="718" y="188" text-anchor="middle" font-size="9.5" font-weight="800" fill="#b91c1c">+M<tspan dy="2" font-size="7">tot</tspan></text>
+            <text x="642" y="188" text-anchor="middle" font-size="9.5" font-weight="800" fill="#b91c1c">I&middot;D(E<tspan dy="2" font-size="7">F</tspan><tspan dy="-2">) &gt; 1 (FM)</tspan></text>
+          </svg>
+        </div>
+
+        <h3>11.3 The Stoner Model of Itinerant Magnetism &amp; the Stoner Criterion</h3>
+        <p>Unlike localized Heisenberg moments on insulating transition-metal ions, itinerant magnetism in metals, doped semiconductors, and gated 2D sheets arises from a delicate competition between <strong>kinetic energy</strong> and <strong>exchange energy</strong>. Transferring &delta;<i>n</i> = <i>m</i>/2 electrons per formula unit from spin-down into spin-up states near <i>E</i><sub>F</sub> raises their band kinetic energy by &Delta;<i>E</i><sub>kin</sub> = &frac12;&thinsp;<i>m</i><sup>2</sup> / <i>D</i>(<i>E</i><sub>F</sub>) (Pauli exclusion penalty), while the intra-atomic Coulomb exchange interaction lowers the energy by &Delta;<i>E</i><sub>ex</sub> = &minus;&frac12;&thinsp;<i>I</i>&thinsp;<i>m</i><sup>2</sup>. Expanding the total energy as a Landau functional of the magnetic moment <i>m</i> gives:</p>
+        ${eq(String.raw`E(m) = E_0 + \frac{1}{2}\left[\frac{1}{D(E_{\mathrm{F}})} - I\right] m^2 + \mathcal{O}(m^4)`, "11.5",
+          "Here <i>D</i>(<i>E</i><sub>F</sub>) is the non-magnetic density of states at the Fermi level per formula unit (or spin-averaged DOS, states&thinsp;eV<sup>&minus;1</sup>&thinsp;f.u.<sup>&minus;1</sup>), and <i>I</i> is the Stoner exchange parameter (eV), quantifying the intra-atomic electron–electron Coulomb exchange interaction.")}
+        <p>The non-magnetic state (<i>m</i> = 0) becomes thermodynamically unstable against spontaneous ferromagnetic spin splitting whenever the quadratic curvature turns negative, yielding the celebrated <strong>Stoner Criterion</strong> and the <strong>Stoner-enhanced Pauli spin susceptibility</strong> &chi;:</p>
+        ${eq(String.raw`I \cdot D(E_{\mathrm{F}}) > 1 \quad (\text{Spontaneous FM}), \qquad \chi = \frac{\chi_0}{1 - I \cdot D(E_{\mathrm{F}})}`, "11.6")}
+
+        ${defBox("Thermodynamic Regimes of the Stoner Criterion",
+          `<ul>
+            <li><strong>When <i>I</i> &middot; <i>D</i>(<i>E</i><sub>F</sub>) &lt; 1:</strong> The quadratic coefficient is positive, forming a single-well parabola centered at <i>m</i> = 0; the <strong>paramagnetic / non-magnetic state is stable</strong>. When <i>I</i> &middot; <i>D</i>(<i>E</i><sub>F</sub>) approaches 1 from below (e.g., Pd with <i>I</i>&middot;<i>D</i> &approx; 0.8), spin fluctuations produce massive Stoner enhancement &chi;/&chi;<sub>0</sub> = [1 &minus; <i>I</i>&middot;<i>D</i>(<i>E</i><sub>F</sub>)]<sup>&minus;1</sup> &gg; 1.</li>
+            <li><strong>When <i>I</i> &middot; <i>D</i>(<i>E</i><sub>F</sub>) &gt; 1:</strong> The quadratic curvature turns negative, creating a symmetric double-well Landau potential with equilibrium minima at <i>m</i> = &plusmn;<i>M</i><sub>tot</sub> &ne; 0; <strong>spontaneous itinerant ferromagnetism is thermodynamically favored</strong>!</li>
+          </ul>`)}
+
+        <h3>11.4 First-Principles Estimation of the Stoner Exchange Parameter (<i>I</i>)</h3>
+        <p>Within rigid-band Stoner theory (Gunnarsson 1976; Janak 1977), shifting the majority and minority spin bands apart by the exchange splitting &Delta;<sub>ex</sub> is linearly proportional to the self-consistent magnetization <i>M</i><sub>tot</sub>:</p>
+        ${eq(String.raw`\Delta_{\mathrm{ex}} = I \cdot M_{\mathrm{tot}} \qquad \Longrightarrow \qquad I = \frac{\Delta_{\mathrm{ex}}}{M_{\mathrm{tot}}}`, "11.7",
+          "With &Delta;<sub>ex</sub> in eV and <i>M</i><sub>tot</sub> in &mu;<sub>B</sub>/f.u., the extracted effective Stoner parameter <i>I</i> has units of eV. Typical values span 0.6–1.0 eV for 3<i>d</i>/4<i>d</i> transition metals and 1.0–1.6 eV for localized 2<i>p</i>/3<i>p</i> states.")}
+
+        <table class="dft-table">
+          <thead><tr><th>Material / Orbital Class</th><th>Typical Stoner <i>I</i> (eV)</th><th>Non-Magnetic <i>D</i><sub>NM</sub>(<i>E</i><sub>F</sub>)</th><th><i>I</i> &middot; <i>D</i><sub>NM</sub>(<i>E</i><sub>F</sub>)</th><th>Ground State</th></tr></thead>
+          <tbody>
+            <tr><td><strong>bcc Fe (3<i>d</i>)</strong> — Janak (1977)</td><td>0.92 eV</td><td>~1.54 states/(eV&middot;spin&middot;atom)</td><td><strong>~1.42 (&gt; 1)</strong></td><td>Strong Itinerant Ferromagnet</td></tr>
+            <tr><td><strong>hcp Co (3<i>d</i>)</strong> — Janak (1977)</td><td>0.99 eV</td><td>~1.72 states/(eV&middot;spin&middot;atom)</td><td><strong>~1.70 (&gt; 1)</strong></td><td>Strong Itinerant Ferromagnet</td></tr>
+            <tr><td><strong>fcc Ni (3<i>d</i>)</strong> — Janak (1977)</td><td>1.01 eV</td><td>~2.02 states/(eV&middot;spin&middot;atom)</td><td><strong>~2.04 (&gt; 1)</strong></td><td>Strong Itinerant Ferromagnet</td></tr>
+            <tr><td><strong>fcc Pd (4<i>d</i>)</strong> — Janak (1977)</td><td>0.70 eV</td><td>~1.13 states/(eV&middot;spin&middot;atom)</td><td>0.79 (&lt; 1)</td><td>Stoner-Enhanced Paramagnet (&chi;/&chi;<sub>0</sub> &approx; 5&times;)</td></tr>
+            <tr><td><strong>2D <i>p</i>-Orbital Flat Bands (GaSe, Janus)</strong></td><td>1.0–1.5 eV</td><td>Divergent near VHS / Mexican-hat</td><td><strong>&gt; 1 under gating</strong></td><td>Gate-Tunable Itinerant FM / Half-Metal</td></tr>
+          </tbody>
+        </table>
+
+        <h3>11.5 Electric-Field &amp; Doping-Induced Spontaneous Magnetism in 2D Materials</h3>
+        <p>Many pristine 2D semiconductors—such as monolayer GaSe, InSe, and Janus transition-metal dichalcogenides—are non-magnetic in their neutral ground state because <i>E</i><sub>F</sub> lies inside the band gap (<i>D</i>(<i>E</i><sub>F</sub>) = 0). However, inverted "Mexican-hat" valence bands and saddle-point <strong>Van Hove singularities (VHS)</strong> produce ultra-sharp peaks in <i>D</i>(<i>E</i>) right near the band edges. Applying a perpendicular <strong>electric field</strong> or electrostatic <strong>hole/electron doping</strong> (&Delta;<i>n</i>) shifts <i>E</i><sub>F</sub> directly into this high-DOS manifold, driving <i>I</i>&middot;<i>D</i>(<i>E</i><sub>F</sub>) &gt; 1 and switching on spontaneous, reversible Stoner ferromagnetism and half-metallicity (Cao <i>et al.</i>, <i>Phys. Rev. Lett.</i> 2015).</p>
+
+        ${tipBox("Crucial DFT Subtlety: Non-Magnetic vs. Post-Splitting D(E_F)",
+          `<p>Always check which density of states is inserted into <i>I</i>&middot;<i>D</i>(<i>E</i><sub>F</sub>)! In a strongly spin-split ferromagnet or half-metal, once spontaneous spin splitting opens up (&Delta;<sub>ex</sub> &gt; 0), the high-DOS peak splits apart and shifts away from <i>E</i><sub>F</sub>, reducing the post-splitting spin-polarized <i>D</i>(<i>E</i><sub>F</sub>). To test the <em>onset</em> of the Stoner instability rigorously, evaluate <i>D</i><sub>NM</sub>(<i>E</i><sub>F</sub>) either from a separate non-magnetic calculation (<code>spin_polarized: false</code>) or from the <strong>Rigid-Band Unsplit DOS <i>D</i><sub>NM</sub>*(<i>E</i><sub>F</sub>)</strong> automatically reconstructed inside our live <strong>🧭 Stoner</strong> analyzer!</p>`)}
+
+        ${labBox("Compute Exchange Splitting, Spin Polarization P(E_F) &amp; Stoner Criterion Live", "stoner", "Open Stoner & Spin Tab",
+          `<ol class="dft-steps">
+            <li>Load any CASTEP calculation containing <code>*.pdos_bin</code> or <code>*_DOS.bands</code> (e.g., spin-polarized <code>KCoHCF+K</code> or a 2D Janus/TMDC system) and switch to <strong>Data Analysis &rarr; 🧭 Stoner</strong>.</li>
+            <li>Inspect the 4 publication KPI cards and the <strong>Channel-Resolved Breakdown Table</strong>; click any orbital row (e.g., <code>Co-d</code> or <code>Total DOS</code>) to extract its exact peak separation &Delta;<sub>ex</sub> = |<i>E</i><sub>peak,&darr;</sub> &minus; <i>E</i><sub>peak,&uarr;</sub>| and Stoner parameter <i>I</i> = &Delta;<sub>ex</sub> / <i>M</i><sub>tot</sub>.</li>
+            <li>Explore the <strong>Stoner Instability Map <i>I</i>&middot;<i>D</i>(<i>E</i>)</strong> (switch X-axis to <strong>Rigid-Band Doping &Delta;<i>n</i></strong> to locate electric-field/gating FM thresholds) and the <strong>Landau Free-Energy Landscape <i>E</i>(<i>m</i>) &minus; <i>E</i><sub>0</sub></strong>, then right-click any sub-plot to copy 400–600 DPI figures or exact TSV data!</li>
+          </ol>`,
+          `<button type="button" class="btn btn-outline btn-sm" onclick="openCastepToolFromLecture('electronic')">&#128200; Open Band &amp; PDOS</button>`)}
+      `,
+      references: [
+        { authors: "E. C. Stoner", title: "Collective Electron Ferromagnetism", venue: "Proc. R. Soc. Lond. A 165, 372–414", year: "1938", doi: "10.1098/rspa.1938.0066" },
+        { authors: "O. Gunnarsson", title: "Band Model for Magnetism of Transition Metals in the Spin-Density-Functional Formalism", venue: "J. Phys. F: Met. Phys. 6, 587–606", year: "1976", doi: "10.1088/0305-4608/6/4/018" },
+        { authors: "J. F. Janak", title: "Uniform Susceptibilities of Metallic Elements", venue: "Phys. Rev. B 16, 255–262", year: "1977", doi: "10.1103/PhysRevB.16.255" },
+        { authors: "R. A. de Groot, F. M. Mueller, P. G. van Engen & K. H. J. Buschow", title: "New Class of Materials: Half-Metallic Ferromagnets", venue: "Phys. Rev. Lett. 50, 2024–2027", year: "1983", doi: "10.1103/PhysRevLett.50.2024" },
+        { authors: "M. Jullière", title: "Tunneling between Ferromagnetic Films", venue: "Phys. Lett. A 54, 225–226", year: "1975", doi: "10.1016/0375-9601(75)90174-7" },
+        { authors: "M. I. Katsnelson, V. Yu. Irkhin, L. Chioncel, A. I. Lichtenstein & R. A. de Groot", title: "Half-Metallic Ferromagnets: From Band Structure to Many-Body Effects", venue: "Rev. Mod. Phys. 80, 315–378", year: "2008", doi: "10.1103/RevModPhys.80.315" },
+        { authors: "T. Cao, Z. Li & S. G. Louie", title: "Tunable Magnetism and Half-Metallicity in Hole-Doped Monolayer GaSe", venue: "Phys. Rev. Lett. 114, 236602", year: "2015", doi: "10.1103/PhysRevLett.114.236602" }
       ]
     }
   ];
@@ -1397,7 +1556,21 @@
     if (!loaded && Array.isArray(window._SEED_DFT_LECTURES) && window._SEED_DFT_LECTURES.length > 0) {
       loaded = window._SEED_DFT_LECTURES;
     }
-    const normalized = normalizeLecturesArray(loaded || DEFAULT_LECTURES);
+    let merged = loaded ? cloneJson(loaded) : cloneJson(DEFAULT_LECTURES);
+    // Auto-merge newly shipped built-in lectures (e.g. lec11) into cached localStorage lists without wiping user edits!
+    const existingIds = new Set(merged.map(l => l && l.id).filter(Boolean));
+    let addedBuiltin = false;
+    DEFAULT_LECTURES.forEach(defLec => {
+      if (defLec && defLec.id && !existingIds.has(defLec.id)) {
+        merged.push(cloneJson(defLec));
+        existingIds.add(defLec.id);
+        addedBuiltin = true;
+      }
+    });
+    const normalized = normalizeLecturesArray(merged);
+    if (addedBuiltin) {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized)); } catch (_) {}
+    }
     if (typeof STATE !== "undefined") STATE.dftLectures = normalized;
     window.DFT_THEORY_LECTURES = normalized;
     return normalized;
@@ -2018,7 +2191,7 @@
     const lectures = getDftTheoryLectures();
     const subEl = document.getElementById("dashboard-dft-card-sub");
     if (subEl) {
-      subEl.innerHTML = `${lectures.length} structured English lectures covering Hohenberg–Kohn/Kohn–Sham, XC functionals, Bloch plane waves, forces, Band/PDOS, Effective Mass &amp; Drude, Optics, &Delta;&rho;, and Spin Matrix—each with MathType/Word-quality equations, peer-reviewed DOI references, and live Data Analysis links.`;
+      subEl.innerHTML = `${lectures.length} structured English lectures covering Hohenberg–Kohn/Kohn–Sham, XC functionals, Bloch plane waves, forces, Band/PDOS, Effective Mass &amp; Drude, Optics, &Delta;&rho;, Spin Matrix, and Exchange Splitting &amp; Stoner Magnetism—each with MathType/Word-quality equations, peer-reviewed DOI references, and live Data Analysis links.`;
     }
     if (!grid || !lectures.length) return;
     grid.innerHTML = lectures.map(lec => `
