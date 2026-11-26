@@ -163,19 +163,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (typeof updateEnergyConverter === "function") updateEnergyConverter("ev");
   if (typeof updateBragg === "function") updateBragg("twotheta");
 
+  // Apply initial tab immediately from URL (?tab=..., ?structure=..., ?lecture=..., ?article=...) to prevent flash
+  const earlyRouteTab = resolveInitialTabFromUrl();
+  if (earlyRouteTab && earlyRouteTab !== "dashboard") {
+    switchTab(earlyRouteTab, null, { skipUrlSync: true });
+  }
+
   await loadAllData();
   await autofillReportFromDatabase(true);
 
-  checkAndHandleArticleDeepLink();
-  const rawHash = window.location.hash ? window.location.hash.replace("#", "") : "";
-  const hashTab = rawHash.split("?")[0].split("/")[0];
-  if (hashTab && TABS_ORDER.includes(hashTab)) {
-    switchTab(hashTab);
-  } else {
-    const initialActive = document.querySelector(".tab-pane.active");
-    const initialTabId = initialActive ? initialActive.id.replace("tab-", "") : "dashboard";
-    updateMobileNavPill(initialTabId);
-  }
+  handleAppRouteFromUrl({ isInitial: true });
 });
 
 function showToast(msg, type = "info") {
@@ -317,7 +314,361 @@ function toggleMobileHorizontalStrip() {
   }
 }
 
-function switchTab(tabId, btnEl) {
+// ============================================================================
+// Unified Permanent URL Routing for Every Menu Tab & Every Crystal Structure (v150)
+// ============================================================================
+
+const TAB_URL_SLUGS = {
+  "dashboard": "dashboard",
+  "dft-theory": "dft-theory",
+  "news": "news",
+  "literature": "references",
+  "calendar": "calendar",
+  "structures": "structures",
+  "castep": "data-analysis",
+  "weekly-report": "weekly-report",
+  "manuscript": "journal-plagiarism",
+  "toolkit": "periodic-table",
+  "cv": "academic-cv",
+  "profile": "profile"
+};
+
+const TAB_SLUG_TO_ID = (() => {
+  const map = {};
+  Object.entries(TAB_URL_SLUGS).forEach(([tabId, slug]) => {
+    map[tabId.toLowerCase()] = tabId;
+    map[slug.toLowerCase()] = tabId;
+  });
+  Object.assign(map, {
+    "home": "dashboard",
+    "dft": "dft-theory",
+    "theory": "dft-theory",
+    "refs": "literature",
+    "ref": "literature",
+    "schedule": "calendar",
+    "crystals": "structures",
+    "crystal": "structures",
+    "crystal-structures": "structures",
+    "analysis": "castep",
+    "data": "castep",
+    "report": "weekly-report",
+    "journal": "manuscript",
+    "plagiarism": "manuscript",
+    "periodic": "toolkit"
+  });
+  return map;
+})();
+
+function resolveTabIdFromSlug(raw) {
+  const key = String(raw || "").trim().toLowerCase();
+  return TAB_SLUG_TO_ID[key] || null;
+}
+window.resolveTabIdFromSlug = resolveTabIdFromSlug;
+
+function getTabShareUrl(tabId) {
+  const slug = TAB_URL_SLUGS[tabId] || tabId || "dashboard";
+  const base = `${window.location.origin}${window.location.pathname}`;
+  return `${base}?tab=${encodeURIComponent(slug)}`;
+}
+window.getTabShareUrl = getTabShareUrl;
+
+function getStructureCanonicalId(s) {
+  if (!s) return "";
+  if (s.structural_id) return String(s.structural_id).trim();
+  if (typeof _formatStructuralIdNum === "function") return _formatStructuralIdNum(s.id || 1);
+  return `CD-${String(s.id || 1).padStart(4, "0")}`;
+}
+window.getStructureCanonicalId = getStructureCanonicalId;
+
+function getStructureShareUrl(sOrId) {
+  let s = sOrId;
+  if (typeof sOrId === "number" || typeof sOrId === "string") {
+    s = findStructureByRouteToken(String(sOrId));
+  }
+  const sid = s ? getStructureCanonicalId(s) : String(sOrId || "").trim();
+  const base = `${window.location.origin}${window.location.pathname}`;
+  return `${base}?tab=structures&structure=${encodeURIComponent(sid)}`;
+}
+window.getStructureShareUrl = getStructureShareUrl;
+
+function findStructureByRouteToken(token) {
+  const raw = String(token || "").trim();
+  if (!raw || !Array.isArray(STATE.structures) || !STATE.structures.length) return null;
+  const low = raw.toLowerCase();
+  // 1) Exact match on structural_id (e.g. CD-0027) or formatted CD-XXXX
+  let hit = STATE.structures.find(s => getStructureCanonicalId(s).toLowerCase() === low);
+  if (hit) return hit;
+  // 2) Exact numeric database ID match (e.g. 27)
+  if (/^\d+$/.test(raw)) {
+    const num = Number(raw);
+    hit = STATE.structures.find(s => Number(s.id) === num);
+    if (hit) return hit;
+    const padded = `cd-${String(num).padStart(4, "0")}`;
+    hit = STATE.structures.find(s => getStructureCanonicalId(s).toLowerCase() === padded);
+    if (hit) return hit;
+  }
+  // 3) Match CD-27 shorthand -> CD-0027
+  const cdShort = low.match(/^cd[-_]?(\d+)$/);
+  if (cdShort) {
+    const padded = `cd-${String(Number(cdShort[1])).padStart(4, "0")}`;
+    hit = STATE.structures.find(s => getStructureCanonicalId(s).toLowerCase() === padded);
+    if (hit) return hit;
+  }
+  return null;
+}
+window.findStructureByRouteToken = findStructureByRouteToken;
+
+function extractStructureTokenFromUrl() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("structure") || params.get("struct") || params.get("cd");
+    if (q) return q.trim();
+    const hashRaw = (window.location.hash || "").replace(/^#/, "").trim();
+    if (/^structure[=\-_]/i.test(hashRaw)) {
+      return decodeURIComponent(hashRaw.replace(/^structure[=\-_]/i, "")).trim();
+    }
+    if (/^cd-\d+$/i.test(hashRaw)) {
+      return hashRaw.toUpperCase();
+    }
+  } catch (_) {}
+  return "";
+}
+window.extractStructureTokenFromUrl = extractStructureTokenFromUrl;
+
+function updatePageDocumentTitle(tabId, itemLabel = "") {
+  const baseTitle = "Computational Database | Vu Tien Lam";
+  const tabShort = {
+    "dashboard": "Dashboard",
+    "dft-theory": "DFT Theory",
+    "news": "News & Publications",
+    "literature": "References",
+    "calendar": "Calendar",
+    "structures": "Crystal Structures",
+    "castep": "Data Analysis",
+    "weekly-report": "Weekly Report",
+    "manuscript": "Journal & Plagiarism",
+    "toolkit": "Periodic Table & Toolkit",
+    "cv": "Academic CV",
+    "profile": "Profile Settings"
+  }[tabId] || "Computational Database";
+  document.title = itemLabel ? `${itemLabel} — ${tabShort} | ${baseTitle}` : `${tabShort} | ${baseTitle}`;
+}
+
+function syncUrlWithTab(tabId, opts = {}) {
+  try {
+    const slug = TAB_URL_SLUGS[tabId] || tabId || "dashboard";
+    const urlObj = new URL(window.location.href);
+    urlObj.searchParams.set("tab", slug);
+    if (tabId !== "dft-theory") urlObj.searchParams.delete("lecture");
+    if (tabId !== "structures") {
+      urlObj.searchParams.delete("structure");
+      urlObj.searchParams.delete("struct");
+      urlObj.searchParams.delete("cd");
+    }
+    if (tabId !== "news") urlObj.searchParams.delete("article");
+    const keepHash = (tabId === "dft-theory" && (window.location.hash || "").startsWith("#dft-sec-")) ? window.location.hash : "";
+    const nextUrl = `${urlObj.pathname}?${urlObj.searchParams.toString()}${keepHash}`;
+    const curUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (nextUrl !== curUrl) {
+      if (opts.replace) {
+        window.history.replaceState({ tabId }, "", nextUrl);
+      } else {
+        window.history.pushState({ tabId }, "", nextUrl);
+      }
+    }
+    updatePageDocumentTitle(tabId);
+  } catch (_) {}
+}
+window.syncUrlWithTab = syncUrlWithTab;
+
+function syncUrlWithStructure(s, opts = {}) {
+  if (!s) return;
+  try {
+    const sid = getStructureCanonicalId(s);
+    const urlObj = new URL(window.location.href);
+    urlObj.searchParams.set("tab", "structures");
+    urlObj.searchParams.set("structure", sid);
+    urlObj.searchParams.delete("struct");
+    urlObj.searchParams.delete("cd");
+    urlObj.searchParams.delete("lecture");
+    urlObj.searchParams.delete("article");
+    const nextUrl = `${urlObj.pathname}?${urlObj.searchParams.toString()}`;
+    const curUrl = `${window.location.pathname}${window.location.search}`;
+    if (nextUrl !== curUrl) {
+      if (opts.replace) {
+        window.history.replaceState({ tabId: "structures", structureId: sid }, "", nextUrl);
+      } else {
+        window.history.pushState({ tabId: "structures", structureId: sid }, "", nextUrl);
+      }
+    }
+    updatePageDocumentTitle("structures", `${sid} · ${s.name || s.chemical_formula || "Crystal"}`);
+  } catch (_) {}
+}
+window.syncUrlWithStructure = syncUrlWithStructure;
+
+function clearStructureUrlParam(opts = {}) {
+  try {
+    const urlObj = new URL(window.location.href);
+    if (!urlObj.searchParams.has("structure") && !urlObj.searchParams.has("struct") && !urlObj.searchParams.has("cd")) return;
+    urlObj.searchParams.delete("structure");
+    urlObj.searchParams.delete("struct");
+    urlObj.searchParams.delete("cd");
+    const qs = urlObj.searchParams.toString();
+    const nextUrl = `${urlObj.pathname}${qs ? "?" + qs : ""}`;
+    if (opts.replace) {
+      window.history.replaceState({ tabId: "structures" }, "", nextUrl);
+    } else {
+      window.history.pushState({ tabId: "structures" }, "", nextUrl);
+    }
+    const activePane = document.querySelector(".tab-pane.active");
+    const activeTabId = activePane ? activePane.id.replace("tab-", "") : "structures";
+    updatePageDocumentTitle(activeTabId);
+  } catch (_) {}
+}
+window.clearStructureUrlParam = clearStructureUrlParam;
+
+async function copyStructureLink(idOrObj, evt, btnEl = null) {
+  if (evt) {
+    evt.preventDefault();
+    evt.stopPropagation();
+  }
+  let s = idOrObj;
+  if (typeof idOrObj === "number" || typeof idOrObj === "string") {
+    s = findStructureByRouteToken(String(idOrObj));
+  }
+  const sid = s ? getStructureCanonicalId(s) : String(idOrObj || "").trim();
+  if (!sid) return false;
+  const url = getStructureShareUrl(s || sid);
+  let ok = false;
+  try {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      await navigator.clipboard.writeText(url);
+      ok = true;
+    }
+  } catch (_) {}
+  if (!ok) {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = url;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      ok = document.execCommand("copy");
+      ta.remove();
+    } catch (_) {}
+  }
+  if (ok) {
+    showToast(`🔗 Copied direct link for ${sid}: ${url}`, "info");
+    if (btnEl) {
+      const orig = btnEl.innerHTML;
+      btnEl.innerHTML = "✅ Copied!";
+      setTimeout(() => { btnEl.innerHTML = orig; }, 1600);
+    }
+  } else {
+    showToast(`Structure URL: ${url}`, "warn");
+  }
+  return ok;
+}
+window.copyStructureLink = copyStructureLink;
+
+function copyCurrentViewingStructureLink(btnEl = null) {
+  const s = STATE.currentViewingStructure || window.CURRENT_VIEW_CIF;
+  if (!s) return false;
+  return copyStructureLink(s, null, btnEl);
+}
+window.copyCurrentViewingStructureLink = copyCurrentViewingStructureLink;
+
+function resolveInitialTabFromUrl() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("article")) return "news";
+    if (extractStructureTokenFromUrl()) return "structures";
+    if (params.get("lecture") || params.get("lec")) return "dft-theory";
+    const qTab = params.get("tab");
+    if (qTab) {
+      const resolved = resolveTabIdFromSlug(qTab);
+      if (resolved) return resolved;
+    }
+    const rawHash = (window.location.hash || "").replace(/^#/, "");
+    const hashTab = rawHash.split("?")[0].split("/")[0];
+    const resolvedHash = resolveTabIdFromSlug(hashTab);
+    if (resolvedHash) return resolvedHash;
+  } catch (_) {}
+  return null;
+}
+
+function handleAppRouteFromUrl(opts = {}) {
+  const isPop = Boolean(opts.fromPopstate);
+  const isInit = Boolean(opts.isInitial);
+
+  // 1) News Article deep-link (?article=...)
+  if (typeof extractArticleIdFromUrl === "function") {
+    const artId = extractArticleIdFromUrl();
+    if (artId) {
+      switchTab("news", null, { skipUrlSync: true });
+      if (typeof openNewsJournalModal === "function") openNewsJournalModal(artId);
+      return true;
+    }
+  }
+
+  // 2) Crystal Structure deep-link (?structure=CD-0027 or ?tab=structures&structure=CD-0027)
+  const structToken = extractStructureTokenFromUrl();
+  if (structToken) {
+    switchTab("structures", null, { skipUrlSync: true });
+    const s = findStructureByRouteToken(structToken);
+    if (s) {
+      viewCifModalWithObject(s, { fromHistory: true, skipUrlSync: false });
+      return true;
+    }
+    // Structure not found (possibly private or invalid ID)
+    if (STATE.structures && STATE.structures.length > 0 && isInit) {
+      showToast(`Structure "${structToken}" was not found or requires sign-in.`, "warn");
+    }
+    return true;
+  } else if (isPop) {
+    // If user pressed Browser Back away from a structure modal URL, close the modal cleanly!
+    const cvm = document.getElementById("cif-view-modal");
+    if (cvm && cvm.classList.contains("open")) {
+      closeModal("cif-view-modal", { skipUrlSync: true });
+    }
+  }
+
+  // 3) DFT Lecture deep-link (?lecture=lec3 or ?tab=dft-theory&lecture=lec3)
+  if (typeof extractDftLectureFromUrl === "function") {
+    const lecInfo = extractDftLectureFromUrl();
+    if (lecInfo && lecInfo.lecId && typeof checkAndHandleDftLectureDeepLink === "function") {
+      checkAndHandleDftLectureDeepLink();
+      return true;
+    }
+  }
+
+  // 4) Menu Tab deep-link (?tab=data-analysis, ?tab=references, ?tab=structures, #calendar, ...)
+  const targetTab = resolveInitialTabFromUrl();
+  if (targetTab) {
+    switchTab(targetTab, null, { skipUrlSync: isPop, replaceUrl: isInit });
+    return true;
+  }
+
+  // 5) Bare root URL -> default to Dashboard (on popstate, switch back to Dashboard)
+  if (isPop) {
+    switchTab("dashboard", null, { skipUrlSync: true });
+    updatePageDocumentTitle("dashboard");
+  } else {
+    const initialActive = document.querySelector(".tab-pane.active");
+    const initialTabId = initialActive ? initialActive.id.replace("tab-", "") : "dashboard";
+    updateMobileNavPill(initialTabId);
+    updatePageDocumentTitle(initialTabId);
+  }
+  return false;
+}
+window.handleAppRouteFromUrl = handleAppRouteFromUrl;
+
+window.addEventListener("popstate", () => {
+  handleAppRouteFromUrl({ fromPopstate: true });
+});
+
+function switchTab(tabId, btnEl, opts = {}) {
   document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
 
@@ -343,6 +694,11 @@ function switchTab(tabId, btnEl) {
     if (subheadEl) subheadEl.textContent = TAB_TITLES[tabId][1];
   }
 
+  // Sync dedicated tab URL (?tab=<slug>) cleanly
+  if (!opts.skipUrlSync) {
+    syncUrlWithTab(tabId, { replace: Boolean(opts.replaceUrl) });
+  }
+
   if (tabId === "calendar") {
     renderMonthlyCalendar();
     updateCalendarActiveAccountDisplay();
@@ -353,7 +709,10 @@ function switchTab(tabId, btnEl) {
   } else if (tabId === "toolkit") {
     if (typeof renderPeriodicTable === "function") renderPeriodicTable();
   } else if (tabId === "dft-theory") {
-    if (typeof renderDftTheoryTab === "function") renderDftTheoryTab();
+    if (typeof renderDftTheoryTab === "function") {
+      const urlLec = typeof extractDftLectureFromUrl === "function" ? extractDftLectureFromUrl() : null;
+      renderDftTheoryTab(urlLec?.lecId || undefined);
+    }
   } else if (tabId === "news") {
     if (typeof renderNewsTab === "function") renderNewsTab();
   }
@@ -366,14 +725,21 @@ window.stepMobileTab = stepMobileTab;
 window.toggleMobileHorizontalStrip = toggleMobileHorizontalStrip;
 window.updateMobileNavPill = updateMobileNavPill;
 
-function switchTabByName(tabId) {
+function switchTabByName(tabId, opts = {}) {
   const matchedBtn = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
-  switchTab(tabId, matchedBtn);
+  switchTab(tabId, matchedBtn, opts);
 }
 
-function closeModal(modalId) {
+function closeModal(modalId, opts = {}) {
   const m = document.getElementById(modalId);
   if (m) m.classList.remove("open");
+  if (modalId === "cif-view-modal") {
+    STATE.currentViewingStructure = null;
+    window.CURRENT_VIEW_CIF = null;
+    if (!opts.skipUrlSync) {
+      clearStructureUrlParam({ replace: Boolean(opts.fromHistory) });
+    }
+  }
 }
 
 function escapeHtml(str) {
@@ -12664,7 +13030,7 @@ function renderStructuresList() {
 
         ${s.notes ? `<div style="font-size:12px; color:var(--text-secondary); margin-top:4px; line-height:1.45; background:#f8fafc; padding:6px 10px; border-radius:6px;"><strong>Simulation Insight:</strong> ${escapeHtml(s.notes)}</div>` : ""}
 
-        <div class="struct-actions" style="display:flex; gap:8px; margin-top:6px;">
+        <div class="struct-actions" style="display:flex; gap:6px; margin-top:6px;">
           <button class="btn btn-primary btn-sm" onclick="viewCifModal(${s.id})" style="flex:2; height:32px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; justify-content:center; gap:5px;">
             👁️ View CIF / POSCAR
           </button>
@@ -12674,8 +13040,11 @@ function renderStructuresList() {
           <button class="btn btn-teal btn-sm" onclick="downloadPoscarById(${s.id})" style="flex:1; height:32px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; justify-content:center; gap:4px;">
             ⚡ POSCAR
           </button>
-          <button class="btn btn-outline btn-sm" onclick="openStructureInCastepStudio(${s.id})" style="flex:1.2; height:32px; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; gap:4px; background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe;" title="Open in full-page CASTEP Studio 3D Supercell/Slab/Adsorption Builder">
+          <button class="btn btn-outline btn-sm" onclick="openStructureInCastepStudio(${s.id})" style="flex:1.15; height:32px; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; gap:4px; background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe;" title="Open in full-page CASTEP Studio 3D Supercell/Slab/Adsorption Builder">
             🧱 CASTEP Studio
+          </button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="copyStructureLink(${s.id}, event, this)" style="height:32px; padding:0 9px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; justify-content:center; background:#fff;" title="Copy direct link to ${escapeHtml(sid)}">
+            🔗
           </button>
         </div>
       </div>
@@ -12706,6 +13075,7 @@ function renderStructuresList() {
     const svgEdit = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
     const svgTrash = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
     const svgCopy = `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+    const svgLink = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
 
     const canAnyModify = Boolean(STATE.auth && STATE.auth.isLoggedIn) && paged.some(s => Boolean(STATE.auth.isAdmin) || !s._sharedFromAdmin);
 
@@ -12750,21 +13120,22 @@ function renderStructuresList() {
       }
 
       // Column 1: Smart Structural ID (CD-XXXX) + Materials Project ★ Star Pin + 1-click Copy + Duplicate indicator
+      const structPermUrl = getStructureShareUrl(s);
       tdHtml += `
         <td class="mp-td mp-td-sid" title="Structure ID: ${escapeHtml(sid)}${isDup ? ' (Potential duplicate crystallographic fingerprint)' : ''}">
           <div class="mp-sid-cell">
             <button type="button" class="mp-star-btn ${isStarred ? 'starred' : ''}" onclick="toggleStarStructure(${s.id}, event)" title="${isStarred ? 'Unpin starred structure' : 'Pin key structure (★)'}">${isStarred ? '★' : '☆'}</button>
-            <a href="javascript:void(0)" class="mp-sid-link" onclick="viewCifModal(${s.id})">${escapeHtml(sid)}</a>
+            <a href="${escapeHtml(structPermUrl)}" class="mp-sid-link" onclick="if(!event.metaKey&&!event.ctrlKey&&!event.shiftKey){event.preventDefault(); viewCifModal(${s.id});}">${escapeHtml(sid)}</a>
             <button type="button" class="mp-copy-sid-btn" onclick="copyStructuralId('${escapeHtml(sid)}', event)" title="Copy Structure ID (${escapeHtml(sid)})">${svgCopy}</button>
             ${isDup ? `<span class="mp-dup-dot" title="Duplicate crystallographic fingerprint detected"></span>` : ""}
           </div>
         </td>
       `;
 
-      // Column 2: Material Name (clickable to inspect CIF/3D)
+      // Column 2: Material Name (clickable to inspect CIF/3D, supports middle-click / copy link)
       tdHtml += `
         <td class="mp-td mp-td-mat" title="${escapeHtml(displayName)}${s.mp_id ? ' (' + escapeHtml(s.mp_id) + ')' : ''}">
-          <a href="javascript:void(0)" class="mp-mat-link" onclick="viewCifModal(${s.id})">${escapeHtml(displayName)}</a>${hasPaper ? `<span class="mp-paper-dot" title="Linked paper: ${escapeHtml(paperTitle || paperDoi)}"></span>` : ""}
+          <a href="${escapeHtml(structPermUrl)}" class="mp-mat-link" onclick="if(!event.metaKey&&!event.ctrlKey&&!event.shiftKey){event.preventDefault(); viewCifModal(${s.id});}">${escapeHtml(displayName)}</a>${hasPaper ? `<span class="mp-paper-dot" title="Linked paper: ${escapeHtml(paperTitle || paperDoi)}"></span>` : ""}
         </td>
       `;
 
@@ -12810,6 +13181,7 @@ function renderStructuresList() {
       tdHtml += `
         <td class="mp-td mp-td-actions">
           <div class="mp-row-actions">
+            <button type="button" class="mp-icon-btn" onclick="copyStructureLink(${s.id}, event)" title="Copy direct link to ${escapeHtml(sid)}">${svgLink}</button>
             <button type="button" class="mp-icon-btn" onclick="openStructureInCastepStudio(${s.id})" title="Open in CASTEP Studio 3D Builder (Supercell / Slab / Adsorption)" style="color:#2563eb; font-weight:800; font-size:11px;">⚡</button>
             <button type="button" class="mp-icon-btn" onclick="downloadCifById(${s.id})" title="Download CIF">${svgDownload}</button>
             <button type="button" class="mp-icon-btn" onclick="downloadPoscarById(${s.id})" title="Download VASP POSCAR">${svgPoscar}</button>
@@ -12879,6 +13251,7 @@ function renderStructuresList() {
 
           <div style="display:flex; gap:5px; align-items:center;">
             <button class="btn btn-primary btn-sm" onclick="viewCifModal(${s.id})" style="padding:4px 9px; font-size:12px;">👁️ View</button>
+            <button class="btn btn-outline btn-sm" onclick="copyStructureLink(${s.id}, event, this)" style="padding:4px 8px; font-size:12px;" title="Copy direct link to ${escapeHtml(s.structural_id || _formatStructuralIdNum(s.id || 1))}">🔗</button>
             <button class="btn btn-outline btn-sm" onclick="downloadCifById(${s.id})" style="padding:4px 9px; font-size:12px;">📥 CIF</button>
             <button class="btn btn-teal btn-sm" onclick="downloadPoscarById(${s.id})" style="padding:4px 9px; font-size:12px;">⚡ POSCAR</button>
             ${canModifyItem ? `
@@ -13907,15 +14280,19 @@ function switchCvmTab(tab) {
   }
 }
 
-function viewCifModal(id) {
+function viewCifModal(id, opts = {}) {
   const s = STATE.structures.find(x => Number(x.id) === Number(id));
   if (!s) return;
-  viewCifModalWithObject(s);
+  viewCifModalWithObject(s, opts);
 }
 
-function viewCifModalWithObject(s) {
+function viewCifModalWithObject(s, opts = {}) {
   if (!s) return;
   STATE.currentViewingStructure = s;
+  window.CURRENT_VIEW_CIF = s;
+  if (!opts.skipUrlSync) {
+    syncUrlWithStructure(s, { replace: Boolean(opts.fromHistory) });
+  }
 
   const formula = s.chemical_formula || s.formula || "Crystal";
   const sid = s.structural_id || _formatStructuralIdNum(s.id || 1);
