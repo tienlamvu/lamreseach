@@ -78,7 +78,7 @@ const TAB_TITLES = {
   ],
   "dft-theory": [
     "Density Functional Theory (DFT) — Theory & Practice",
-    "10-Lecture Graduate Curriculum from Quantum Foundations to First-Principles Data Analysis"
+    "11-Lecture Graduate Curriculum from Quantum Foundations to First-Principles Data Analysis"
   ],
   "news": [
     "Research News & Scientific Publications",
