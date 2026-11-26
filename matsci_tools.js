@@ -1613,14 +1613,15 @@ function initCastepStudioTab() {
       syncMsGatewayUrlControls(DEFAULT_MS_GATEWAY_URL);
     }
 
-    // Auto-connect to local FastAPI bridge (same-origin on localhost, or quiet local bridge probe on GitHub Pages)
+    // Start with a clean empty workspace on initial load (no auto-scan of local folders or Remote Gateway).
+    // Local folders and Gateway jobs load ONLY when the user explicitly clicks Mount, Scan, or Sync Gateway.
     const isLocalHost = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
     if (isLocalHost) {
       CASTEP_STUDIO_STATE.apiBase = "";
-      autoConnectLocalCastepBackend("");
+      CASTEP_STUDIO_STATE.localBackendConnected = true;
+      updateCastepConnectionPill(true, "Ready • Mount Local Folder, Scan, or Sync Gateway");
     } else {
-      updateCastepConnectionPill(false, "Browser Mode • Click 📂 Mount Local Folder or 📥 Import Files");
-      probeLocalBridgeOnRemoteOrigin();
+      updateCastepConnectionPill(false, "Ready • Mount Local Folder, Scan, or Sync Gateway");
     }
   }
   renderCastepJobsList();
