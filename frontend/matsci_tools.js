@@ -1982,6 +1982,64 @@ function normalizeCastepFolderKey(rawPath) {
   return String(rawPath || "").trim().replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
 }
 
+function splitFolderParentAndLeaf(rawPath) {
+  const s = String(rawPath || "").trim();
+  if (!s) return { parent: "", leaf: "Local Folder" };
+  const parts = s.split(/[\\/]+/).filter(Boolean);
+  if (parts.length <= 1) return { parent: "", leaf: parts[0] || s };
+  const leaf = parts[parts.length - 1];
+  const parent = parts[parts.length - 2];
+  // Avoid showing just a bare drive letter like "D:" as parent if there's only 2 segments
+  if (/^[A-Za-z]:$/.test(parent)) return { parent: "", leaf: `${parent}\\${leaf}` };
+  return { parent, leaf };
+}
+window.splitFolderParentAndLeaf = splitFolderParentAndLeaf;
+
+async function resolveCastepJobParentPathAsync(job) {
+  if (!job || job.customLocation) return;
+  const parts = String(job.folder || "").split(/[\\/]+/).filter(Boolean);
+  if (parts.length >= 2) return; // Already has parent folder!
+  const leafName = parts[0] || job._dirHandle?.name || "";
+  if (!leafName) return;
+
+  // Gather up to 4 sample files (name + exact byte size + mtime) for 100% accurate OS path resolution
+  const sampleFiles = [];
+  const entries = Object.entries(job._fileMap || {}).slice(0, 6);
+  for (const [fname, h] of entries) {
+    try {
+      const f = (typeof h.getFile === "function") ? await h.getFile() : h;
+      if (f && typeof f.size === "number") {
+        sampleFiles.push({ name: fname, size: f.size, mtime_ms: f.lastModified || 0 });
+      }
+    } catch (_) {}
+  }
+  const base = getCastepApiBase() || (["localhost", "127.0.0.1", "::1"].includes(window.location.hostname) ? "" : "http://127.0.0.1:8877");
+  try {
+    const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), 1800) : null;
+    const resp = await fetch(`${base}/api/castep/resolve-parent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folder_name: leafName, sample_files: sampleFiles }),
+      signal: ctrl ? ctrl.signal : undefined
+    });
+    if (timer) clearTimeout(timer);
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (data && data.ok && data.full_path) {
+      job.folder = data.full_path;
+      if (data.parent_name) job.parentFolder = data.parent_name;
+      renderCastepJobsList();
+      if (CASTEP_STUDIO_STATE.activeJobId === job.id) {
+        const folderInp = document.getElementById("castep-save-folder-input");
+        if (folderInp) folderInp.value = job.folder;
+      }
+    }
+  } catch (_) {
+    // Silent fallback when local Python backend is not running
+  }
+}
+
 function formatCompactFolderPath(rawPath, maxSegs = 2) {
   const s = String(rawPath || "").trim();
   if (!s) return "";
@@ -2062,12 +2120,14 @@ function renderCastepJobsList() {
     return;
   }
 
-  // Count how many jobs share the same compact display label so same-named leaf folders get a crisp #1 / #2 badge
+  // Count how many jobs share the same parent+leaf display label so same-named leaf folders get a crisp #1 / #2 badge
   const displayPathCounts = {};
   const displayPathSeen = {};
   list.forEach(j => {
     const rawDisp = j.customLocation || j.folder || "";
-    const key = `${normalizeCastepFolderKey(formatCompactFolderPath(rawDisp, 2))}::${(j.seed || "").toLowerCase()}`;
+    const { parent: pR, leaf: lR } = splitFolderParentAndLeaf(rawDisp);
+    const pEff = pR || j.parentFolder || "";
+    const key = `${normalizeCastepFolderKey(pEff ? `${pEff}/${lR}` : formatCompactFolderPath(rawDisp, 2))}::${(j.seed || "").toLowerCase()}`;
     displayPathCounts[key] = (displayPathCounts[key] || 0) + 1;
   });
 
@@ -2101,12 +2161,14 @@ function renderCastepJobsList() {
       : "";
 
     const rawPath = j.customLocation || j.folder || "";
+    const { parent: pathParentRaw, leaf: pathLeaf } = splitFolderParentAndLeaf(rawPath);
+    const pathParent = pathParentRaw || j.parentFolder || "";
     const compactPath = formatCompactFolderPath(rawPath, 2);
-    const dupKey = `${normalizeCastepFolderKey(compactPath)}::${(j.seed || "").toLowerCase()}`;
+    const dupKey = `${normalizeCastepFolderKey(pathParent ? `${pathParent}/${pathLeaf}` : compactPath)}::${(j.seed || "").toLowerCase()}`;
     displayPathSeen[dupKey] = (displayPathSeen[dupKey] || 0) + 1;
     const dupIdx = displayPathCounts[dupKey] > 1 ? displayPathSeen[dupKey] : 0;
     const dupBadge = dupIdx > 0
-      ? `<span style="display:inline-block; margin-left:4px; padding:0 4px; border-radius:4px; background:#e0f2fe; color:#0369a1; font-weight:800; font-size:9.5px; font-family:Inter,sans-serif; flex-shrink:0;">#${dupIdx}</span>`
+      ? `<span style="display:inline-block; padding:0 4px; border-radius:4px; background:#e0f2fe; color:#0369a1; font-weight:800; font-size:9.5px; font-family:Inter,sans-serif; flex-shrink:0;">#${dupIdx}</span>`
       : "";
     const canLiveRefresh = Boolean(j._dirHandle || (j.folder && (CASTEP_STUDIO_STATE.localBackendConnected || /^[A-Za-z]:[\\/]|^\//.test(j.folder))));
     const shortTitle = j.seed || j.material || j.title || "CASTEP Job";
@@ -2131,8 +2193,13 @@ function renderCastepJobsList() {
           <span style="color:#334155; font-weight:600; white-space:nowrap; flex-shrink:0;">${eText}${bgText}</span>
         </div>
         <div class="castep-job-path-row" title="${escapeHtml(j.folder || rawPath)}">
-          <span class="castep-job-path-txt">📁 ${escapeHtml(compactPath || "Local Folder")}</span>${dupBadge}
-          <button type="button" class="castep-job-path-edit" onclick="editCastepJobLocationLabel('${j.id}', event)" title="Rename short path label">✎</button>
+          <span class="castep-job-path-icon">📁</span>
+          <div class="castep-job-path-stack">
+            ${pathParent ? `<span class="castep-job-path-parent">${escapeHtml(pathParent)} /</span>` : ""}
+            <span class="castep-job-path-leaf">${escapeHtml(pathLeaf)}</span>
+          </div>
+          ${dupBadge}
+          <button type="button" class="castep-job-path-edit" onclick="editCastepJobLocationLabel('${j.id}', event)" title="Edit parent / folder path label">✎</button>
         </div>
         <div style="display:flex; align-items:center; justify-content:space-between; gap:4px; margin-top:4px;">
           <div style="display:flex; gap:3px; flex-wrap:wrap; flex:1; min-width:0;">
@@ -7519,6 +7586,8 @@ async function mountCastepLocalDirectory() {
       updateCastepConnectionPill(true, `Workspace: ${CASTEP_STUDIO_STATE.jobs.length} calculation(s) • Latest: ${dirHandle.name}`);
 
       if (mergedDiscovered.length > 0) {
+        // Resolve real OS parent folder names asynchronously if user mounted leaf folders directly via browser picker
+        mergedDiscovered.forEach(mj => { resolveCastepJobParentPathAsync(mj); });
         await loadCastepJobIntoStudio(mergedDiscovered[0].id);
         if (typeof showToast === "function") {
           showToast(`📂 Mounted "${dirHandle.name}": loaded ${mergedDiscovered.length} calculation(s) (${CASTEP_STUDIO_STATE.jobs.length} total open)${sbjList.length ? ` + ${sbjList.length} Gateway .sbj jobs` : ""}!`, "success");
@@ -7990,6 +8059,7 @@ async function handleCastepFolderFallbackUpload(event) {
   discovered.sort((a, b) => (b.mtime || 0) - (a.mtime || 0));
   if (discovered.length > 0) {
     const merged = await mergeCastepJobsPreserveDistinct(discovered);
+    merged.forEach(mj => { resolveCastepJobParentPathAsync(mj); });
     renderCastepJobsList();
     updateCastepKpiBar();
     await loadCastepJobIntoStudio(merged[0].id);
