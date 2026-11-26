@@ -20262,7 +20262,6 @@ function renderCastepStonerPane() {
         <div class="castep-mulliken-sp-card" style="border-top:3px solid #4f46e5;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
             <strong style="font-size:12px; color:#4f46e5;">📊 Spin DOS &amp; Polarization P(E<sub>F</sub>)</strong>
-            <span class="badge badge-blue" style="font-size:9.5px;">Note 7.1</span>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; font-size:11.5px; color:#1e293b;">
             <div>P(E<sub>F</sub>): <strong style="color:${pColor}; font-size:13px;">${pValStr}</strong></div>
@@ -20294,7 +20293,6 @@ function renderCastepStonerPane() {
         <div class="castep-mulliken-sp-card" style="border-top:3px solid #d97706;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
             <strong style="font-size:12px; color:#b45309;">⚡ Exchange Splitting Δ<sub>ex</sub></strong>
-            <span class="badge badge-blue" style="font-size:9.5px;">Note 7.2</span>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; font-size:11.5px; color:#1e293b;">
             <div style="grid-column:1/-1;">Δ<sub>ex</sub> (${escapeHtml(res.activeChan.label)}): <strong style="color:#b45309; font-size:13px;">${res.deltaExEv.toFixed(4)} eV</strong></div>
@@ -20309,7 +20307,6 @@ function renderCastepStonerPane() {
         <div class="castep-mulliken-sp-card" style="border-top:3px solid ${res.stonerBadgeColor};">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
             <strong style="font-size:12px; color:${res.stonerBadgeColor};">🧭 Stoner Criterion I·D(E<sub>F</sub>)</strong>
-            <span class="badge badge-blue" style="font-size:9.5px;">Notes 7.3–7.4</span>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; font-size:11.5px; color:#1e293b;">
             <div>Stoner I: <strong style="color:#0369a1; font-size:13px;">${res.iUsedEv.toFixed(4)} eV</strong></div>
