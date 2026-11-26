@@ -7330,6 +7330,17 @@ async function mergeCastepJobsPreserveDistinct(newJobs) {
   const existing = [...(CASTEP_STUDIO_STATE.jobs || [])];
   const merged = [];
   for (const nj of newJobs) {
+    // 1) Deduplicate within the incoming batch itself so no duplicate (folder, seed) ever enters the list
+    let dupInBatch = false;
+    for (let k = 0; k < merged.length; k++) {
+      if (await isSameCastepJobEntry(merged[k], nj)) {
+        dupInBatch = true;
+        break;
+      }
+    }
+    if (dupInBatch) continue;
+
+    // 2) Match against already-loaded jobs (preserve custom label & ID for exact same folder)
     let matchedIdx = -1;
     for (let i = 0; i < existing.length; i++) {
       if (await isSameCastepJobEntry(existing[i], nj)) {
@@ -7339,7 +7350,6 @@ async function mergeCastepJobsPreserveDistinct(newJobs) {
     }
     if (matchedIdx >= 0) {
       const prev = existing.splice(matchedIdx, 1)[0];
-      // Preserve user's custom location label & existing job ID when refreshing the exact same folder
       if (prev.customLocation && !nj.customLocation) nj.customLocation = prev.customLocation;
       nj.id = prev.id;
       merged.push(nj);
