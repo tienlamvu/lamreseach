@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=155_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=155_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=156_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=156_v116_vesta_viewer'" />
   <!-- Publication Math Typography: STIX Two Text (MathType / Times) + KaTeX 0.16.11 (Word/LaTeX Equation Engine) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -76,7 +76,7 @@
         </div>
         <select id="mobile-tab-select" class="mobile-tab-native-select" onchange="switchTab(this.value)" aria-label="Select Navigation Tab">
           <option value="dashboard">📊 Dashboard</option>
-          <option value="dft-theory">🎓 DFT Theory (10 Lectures)</option>
+          <option value="dft-theory">🎓 DFT Theory (11 Lectures)</option>
           <option value="news">📰 News &amp; Articles</option>
           <option value="literature">📚 References (Literature)</option>
           <option value="calendar">📅 Calendar &amp; Google Calendar</option>
@@ -216,7 +216,7 @@
           <div class="card-header" style="margin-bottom:10px; flex-wrap:wrap; gap:8px;">
             <div>
               <div class="card-title" style="color:#78350f;">🎓 Density Functional Theory (DFT): From Quantum Foundations to First-Principles Simulation</div>
-              <div id="dashboard-dft-card-sub" style="font-size:12px; color:var(--text-muted);">10 structured English lectures covering Hohenberg–Kohn/Kohn–Sham, XC functionals, Bloch plane waves, forces, Band/PDOS, Effective Mass &amp; Drude, Optics, &Delta;&rho;, and Spin Matrix—each with peer-reviewed DOI references and live Data Analysis links.</div>
+              <div id="dashboard-dft-card-sub" style="font-size:12px; color:var(--text-muted);">11 structured English lectures covering Hohenberg–Kohn/Kohn–Sham, XC functionals, Bloch plane waves, forces, Band/PDOS, Effective Mass &amp; Drude, Optics, &Delta;&rho;, Spin Matrix, and Exchange Splitting &amp; Stoner Magnetism—each with peer-reviewed DOI references and live Data Analysis links.</div>
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
               <button type="button" class="btn btn-outline btn-sm strict-admin-only" onclick="openDftLectureEditorModal(null)" title="Add a new lecture to the DFT Theory curriculum (Admin Only)">➕ Add Lecture</button>
@@ -287,9 +287,9 @@
               <input type="text" id="dft-theory-search-input" class="dft-search-input" placeholder="Search topic, equation, or keyword (e.g. Kohn-Sham, HSE06, Drude, Kramers)..." oninput="filterDftLectures(this.value)" />
             </div>
             <div class="dft-hero-meta">
-              <span id="dft-theory-search-status" class="dft-hero-badge">10 Lectures (Basic &rarr; Advanced)</span>
+              <span id="dft-theory-search-status" class="dft-hero-badge">11 Lectures (Basic &rarr; Advanced)</span>
               <button type="button" class="btn btn-primary btn-sm strict-admin-only" onclick="openDftLectureEditorModal(null)" title="Create and publish a new DFT Theory lecture (Admin Only)">&#10133; Add Lecture</button>
-              <button type="button" class="btn btn-outline btn-sm strict-admin-only" onclick="resetDftLecturesToDefault()" title="Restore the 10 built-in DFT lectures and references (Admin Only)">&#8634; Reset Defaults</button>
+              <button type="button" class="btn btn-outline btn-sm strict-admin-only" onclick="resetDftLecturesToDefault()" title="Restore the 11 built-in DFT lectures and references (Admin Only)">&#8634; Reset Defaults</button>
               <button type="button" class="btn btn-teal btn-sm" onclick="switchTabByName('castep')">&#128202; Launch Data Analysis &rarr;</button>
             </div>
           </div>
@@ -1244,6 +1244,9 @@
               </button>
               <button type="button" class="castep-stage-tab" data-pane="transport" onclick="switchCastepStagePane('transport', this)" title="Carrier Effective Mass (Band &amp; DOS), Semiconductor Mobility, Drude Effective Mass &amp; Relaxation Time (e⁻ / h⁺)">
                 🚀 m* &amp; Drude
+              </button>
+              <button type="button" class="castep-stage-tab" data-pane="stoner" onclick="switchCastepStagePane('stoner', this)" title="Exchange Splitting (Δex), Spin Polarization at Fermi Level P(EF), Total Magnetic Moment (Mtot), Stoner Parameter (I) &amp; Stoner Criterion I·D(EF) from DOS/PDOS">
+                🧭 Stoner
               </button>
               <button type="button" class="castep-stage-tab" data-pane="optics" onclick="switchCastepStagePane('optics', this)">
                 🌈 Optical
@@ -2638,6 +2641,198 @@
                         </tr>
                       </thead>
                       <tbody id="castep-tr-drude-tbody"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- PANE 2C: EXCHANGE SPLITTING, SPIN POLARIZATION & STONER      -->
+            <!-- ============================================================ -->
+            <div id="castep-pane-stoner" class="castep-stage-pane">
+              <!-- Top Stoner & Spin Polarization KPI Strip -->
+              <div id="castep-stoner-summary-strip" class="castep-elec-summary-strip"></div>
+
+              <!-- Master Controls Toolbar -->
+              <div class="castep-plot-toolbar">
+                <!-- Row 1: PDOS Channel, Exchange Splitting Method, Energy & Peak Search Windows -->
+                <div class="castep-tb-row">
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" title="Select Total DOS or an Element/Orbital PDOS channel for Exchange Splitting Δex">Δ<sub>ex</sub> Channel:</label>
+                    <select id="castep-st-channel" class="castep-input" style="font-weight:700; max-width:205px;" onchange="renderCastepStonerPane()">
+                      <option value="auto">🎯 Auto (Dominant Magnetic)</option>
+                      <option value="total">Total DOS</option>
+                    </select>
+                  </span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" title="Method for extracting Exchange Splitting Δex between spin-up (↑) and spin-down (↓) DOS">Method:</label>
+                    <select id="castep-st-ex-method" class="castep-input" style="font-weight:700;" onchange="renderCastepStonerPane()">
+                      <option value="peak" selected>Dominant Peak |E↓ − E↑|</option>
+                      <option value="nearest_ef">Nearest-to-EF Peak</option>
+                      <option value="xcorr">Cross-Correlation Shift</option>
+                      <option value="center">Band-Center Shift</option>
+                    </select>
+                  </span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" title="Peak search energy window relative to EF (eV)">Peak Win:</label>
+                    <input type="number" id="castep-st-pkmin" class="castep-input-sm" value="-3.0" step="0.5" style="width:54px;" onchange="renderCastepStonerPane()" />
+                    <span style="font-size:11px; color:#64748b;">to</span>
+                    <input type="number" id="castep-st-pkmax" class="castep-input-sm" value="3.0" step="0.5" style="width:54px;" onchange="renderCastepStonerPane()" />
+                    <button type="button" class="castep-preset-chip" onclick="setCastepStonerPeakWindow(-1.5,1.5)">±1.5</button>
+                    <button type="button" class="castep-preset-chip" onclick="setCastepStonerPeakWindow(-3,3)">±3</button>
+                    <button type="button" class="castep-preset-chip" onclick="setCastepStonerPeakWindow(-5,5)">±5</button>
+                  </span>
+                  <span class="castep-ctrl-grp" style="margin-left:auto;">
+                    <label class="castep-field-lbl" title="Gaussian broadening σ (eV)">σ (eV):</label>
+                    <input type="number" id="castep-st-sigma" class="castep-input-sm" value="0.10" step="0.02" min="0.02" max="0.60" style="width:54px;" onchange="renderCastepStonerPane()" />
+                  </span>
+                </div>
+
+                <!-- Row 2: Formula Units Z, Stoner D(EF) Convention, Stoner I Override, Plot Range & Upload -->
+                <div class="castep-tb-row">
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" title="Formula units per simulation cell (Z) for per-f.u. normalization of Mtot and D(EF)">Z (f.u.):</label>
+                    <input type="number" id="castep-st-zfu" class="castep-input-sm" value="1" step="1" min="1" max="128" style="width:48px;" oninput="window._castepStonerUiState.userEditedZ=true;" onchange="renderCastepStonerPane()" />
+                    <button type="button" class="castep-preset-chip" onclick="resetCastepStonerZAuto()" title="Auto-detect formula units Z from cell stoichiometry">Auto</button>
+                  </span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" title="Density of states convention D(EF) used in Stoner criterion I·D(EF)">Stoner D(E<sub>F</sub>):</label>
+                    <select id="castep-st-dconv" class="castep-input" style="font-weight:700;" onchange="renderCastepStonerPane()">
+                      <option value="spin_avg" selected>Spin-Avg [D↑+D↓]/2</option>
+                      <option value="unsplit_nm">Rigid-Band Unsplit D*(EF)</option>
+                      <option value="total_fu">Total [D↑+D↓] / f.u.</option>
+                      <option value="custom_dnm">Custom Non-Mag D(EF)</option>
+                    </select>
+                  </span>
+                  <span id="castep-st-custom-dnm-wrap" class="castep-ctrl-grp" style="display:none;">
+                    <label class="castep-field-lbl">D<sub>NM</sub>:</label>
+                    <input type="number" id="castep-st-custom-dnm" class="castep-input-sm" value="1.50" step="0.10" min="0.01" max="50" style="width:58px;" onchange="renderCastepStonerPane()" />
+                  </span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" title="Stoner parameter I (eV): set 0 for Auto first-principles I = Δex / Mtot, or override with literature value">I (eV, 0=Auto):</label>
+                    <input type="number" id="castep-st-custom-i" class="castep-input-sm" value="0" step="0.05" min="0" max="5.0" style="width:56px;" onchange="renderCastepStonerPane()" />
+                    <select class="castep-input" style="max-width:118px;" onchange="applyCastepStonerRefIPreset(this.value); this.value='';" title="Apply canonical Janak (1977) / 2p Stoner I value">
+                      <option value="">📚 Ref I...</option>
+                      <option value="auto">Auto (Δex / Mtot)</option>
+                      <option value="fe">Fe (0.92 eV)</option>
+                      <option value="co">Co (0.99 eV)</option>
+                      <option value="ni">Ni (1.01 eV)</option>
+                      <option value="mn">Mn (0.82 eV)</option>
+                      <option value="cr">Cr (0.76 eV)</option>
+                      <option value="v">V (0.72 eV)</option>
+                      <option value="pd">Pd (0.70 eV)</option>
+                      <option value="mo">Mo (0.62 eV)</option>
+                      <option value="p2">2p Flat-Band (1.20 eV)</option>
+                    </select>
+                  </span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Range:</label>
+                    <input type="number" id="castep-st-emin" class="castep-input-sm" value="-4.0" step="0.5" style="width:52px;" onchange="renderCastepStonerPane()" />
+                    <input type="number" id="castep-st-emax" class="castep-input-sm" value="4.0" step="0.5" style="width:52px;" onchange="renderCastepStonerPane()" />
+                  </span>
+                  <div class="castep-tb-actions">
+                    <input type="file" id="castep-st-file-upload" multiple accept=".pdos_bin,.bands,.castep,.xcd" style="display:none;" onchange="handleCastepStonerFilesUpload(event)" />
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="document.getElementById('castep-st-file-upload').click()" title="Load CASTEP *.pdos_bin, *_DOS.bands, *.castep, or *.xcd files">📥 Load DOS/PDOS</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700; color:#7c3aed;" onclick="openDftTheoryLecture('lec11')" title="Read DFT Theory Lecture 11: Exchange Splitting, Spin Polarization &amp; Stoner Magnetism">🎓 Theory L11</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 4-Column Publication KPI Summary Cards -->
+              <div id="castep-stoner-kpi-cards" class="castep-stoner-cards-grid"></div>
+
+              <!-- Figure 1: Spin-Resolved DOS/PDOS + Δex & Spin Polarization P(E) / M(E) -->
+              <div class="castep-plot-toolbar" style="margin-top:8px; margin-bottom:6px;">
+                <div class="castep-tb-row">
+                  <strong style="font-size:12.5px; color:#0f172a;">📈 Spin-Resolved DOS/PDOS (Δ<sub>ex</sub>) &amp; Spin Polarization</strong>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Right Plot:</label>
+                    <select id="castep-st-chart1-right" class="castep-input" style="font-weight:700;" onchange="renderCastepStonerPane()">
+                      <option value="polarization" selected>🎯 Spin Polarization P(E) (%)</option>
+                      <option value="moment">🧲 Cumulative Moment M(E) (μB/f.u.)</option>
+                      <option value="asymmetry">⚖️ Spin Asymmetry ΔD(E) &amp; TDOS</option>
+                    </select>
+                  </span>
+                  <span style="font-size:10.5px; color:#64748b;">💡 Right-click either plot to copy individually</span>
+                  <div class="castep-tb-actions">
+                    <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="copyCastepCanvasHD('castep-stoner-dos-canvas', 'Spin DOS & Polarization')" title="Copy FULL Spin DOS &amp; Polarization Figure (400–600 DPI)">📋 Copy HD</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="copyCastepPlotData('stoner', 'dos')" title="Copy Spin DOS, P(E), M(E) &amp; I·D(E) Data (TSV)">📋 Copy Data</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepCanvasPNG('castep-stoner-dos-canvas', 'CASTEP_Stoner_SpinDOS_Polarization.png')">📷 PNG</button>
+                  </div>
+                </div>
+              </div>
+              <div class="castep-plot-canvas-card">
+                <canvas id="castep-stoner-dos-canvas" width="900" height="365"></canvas>
+              </div>
+
+              <!-- Figure 2: Stoner Criterion Instability Map I·D(E) & Landau Free Energy E(m) -->
+              <div class="castep-plot-toolbar" style="margin-top:10px; margin-bottom:6px;">
+                <div class="castep-tb-row">
+                  <strong style="font-size:12.5px; color:#0f172a;">🧭 Stoner Criterion I·D(E) &amp; Free-Energy Landscape E(m) − E<sub>0</sub></strong>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl">Left X-Axis:</label>
+                    <select id="castep-st-chart2-left" class="castep-input" style="font-weight:700;" onchange="renderCastepStonerPane()">
+                      <option value="energy" selected>⚡ Energy E − EF (eV)</option>
+                      <option value="doping">🔋 Rigid-Band Doping Δn (e/f.u.)</option>
+                    </select>
+                  </span>
+                  <div class="castep-tb-actions">
+                    <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="copyCastepCanvasHD('castep-stoner-criterion-canvas', 'Stoner Criterion & Energy Landscape')" title="Copy FULL Stoner Criterion &amp; E(m) Figure (400–600 DPI)">📋 Copy HD</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="copyCastepPlotData('stoner', 'full')" title="Copy Full Stoner Report (TSV → Excel / OriginPro)">📋 Copy Report</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepCanvasPNG('castep-stoner-criterion-canvas', 'CASTEP_Stoner_Criterion_Energy.png')">📷 PNG</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepStonerCSV('dos')">📊 CSV</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="exportCastepStonerXLSX()" title="Export 4-tab Excel workbook (Summary, Spin DOS &amp; P(E), Landau E(m), Channel Δex)">📗 Excel</button>
+                  </div>
+                </div>
+              </div>
+              <div class="castep-plot-canvas-card">
+                <canvas id="castep-stoner-criterion-canvas" width="900" height="355"></canvas>
+              </div>
+
+              <!-- 2-Column Publication Tables: Channel Exchange Splitting Breakdown + Stoner Equations Summary -->
+              <div class="castep-conv-tables-grid" style="margin-top:10px;">
+                <div class="castep-atoms-table-card">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:6px; flex-wrap:wrap;">
+                    <span style="font-weight:800; font-size:12.5px; color:#0f172a;">🔬 Channel-Resolved Spin Polarization &amp; Exchange Splitting (Click Row to Plot)</span>
+                    <span id="castep-st-channels-count" class="badge badge-blue" style="font-size:10.5px;">0 channels</span>
+                  </div>
+                  <div class="castep-atoms-table-scroll" style="max-height:280px;">
+                    <table class="castep-atoms-table">
+                      <thead>
+                        <tr>
+                          <th>Channel</th>
+                          <th>D<sub>↑</sub>(E<sub>F</sub>)</th>
+                          <th>D<sub>↓</sub>(E<sub>F</sub>)</th>
+                          <th>P(E<sub>F</sub>)</th>
+                          <th>E<sub>pk,↑</sub></th>
+                          <th>E<sub>pk,↓</sub></th>
+                          <th>Δ<sub>ex</sub> (eV)</th>
+                          <th>m<sub>int</sub> (μ<sub>B</sub>)</th>
+                          <th>I<sub>eff</sub> (eV)</th>
+                        </tr>
+                      </thead>
+                      <tbody id="castep-st-channels-tbody"></tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div class="castep-atoms-table-card">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:6px; flex-wrap:wrap;">
+                    <span style="font-weight:800; font-size:12.5px; color:#0f172a;">📐 Stoner Formalism Evaluation &amp; Doping Instability Thresholds</span>
+                    <span class="badge badge-blue" style="font-size:10.5px;">Notes 7.1–7.4</span>
+                  </div>
+                  <div class="castep-atoms-table-scroll" style="max-height:280px;">
+                    <table class="castep-atoms-table">
+                      <thead>
+                        <tr>
+                          <th>Observable</th>
+                          <th>Governing Equation / Criterion</th>
+                          <th>Computed Value</th>
+                          <th>Unit / Note</th>
+                        </tr>
+                      </thead>
+                      <tbody id="castep-st-summary-tbody"></tbody>
                     </table>
                   </div>
                 </div>
@@ -6152,10 +6347,10 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=155_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=155_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=155_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=155_v116_vesta_viewer'"></script>
-  <script src="dft_theory.js?v=155_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=155_v116_vesta_viewer'"></script>
-  <script src="app.js?v=155_v116_vesta_viewer" onerror="this.src='/static/app.js?v=155_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=156_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=156_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=156_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=156_v116_vesta_viewer'"></script>
+  <script src="dft_theory.js?v=156_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=156_v116_vesta_viewer'"></script>
+  <script src="app.js?v=156_v116_vesta_viewer" onerror="this.src='/static/app.js?v=156_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
