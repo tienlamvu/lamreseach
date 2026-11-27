@@ -14,6 +14,9 @@ window.TOPO_RASHBA_STATE = {
   dataset: null,             // parsed calculation bundle
   analysis: null,            // computed Rashba / Spin / FBZ / Topology package
   panelGeoms: [],            // interactive hover & right-click rects
+  zoom: { A: 1.0, B: 1.0, C: 1.0, D: 1.0 },
+  zoomTarget: "all",         // "all" | "A" | "B" | "C" | "D"
+  wheelZoomEnabled: false,
   dragBound: false,
   hoverBound: false
 };
@@ -73,15 +76,51 @@ function initTopoRashbaTab() {
           dataItems: []
         };
       }
-      canvas.title = "Hover over any panel for exact values • Right-click any sub-panel to Copy HD Image (400–600 DPI) or Copy Numerical Data (TSV)";
+      canvas.title = "Hover for exact values • Ctrl+Scroll (or Wheel Zoom) to zoom any panel • Double-click to reset zoom • Right-click to Copy HD Image or TSV";
       canvas.addEventListener("contextmenu", (ev) => {
         if (typeof showCastepPlotContextMenu === "function") {
           ev.preventDefault();
           showCastepPlotContextMenu("tr-main-canvas", ev.clientX, ev.clientY);
         }
       });
+      canvas.addEventListener("wheel", (ev) => {
+        if (!TOPO_RASHBA_STATE.analysis) return;
+        if (!ev.ctrlKey && !TOPO_RASHBA_STATE.wheelZoomEnabled) return;
+        const rect = canvas.getBoundingClientRect();
+        const mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
+        const halfW = rect.width * 0.5, halfH = rect.height * 0.5;
+        const hitId = (my < halfH) ? (mx < halfW ? "A" : "B") : (mx < halfW ? "C" : "D");
+        ev.preventDefault();
+        const factor = ev.deltaY < 0 ? 1.15 : (1 / 1.15);
+        const target = (TOPO_RASHBA_STATE.zoomTarget === "all" && ev.shiftKey) ? "all" : hitId;
+        if (target === "all") {
+          ["A", "B", "C", "D"].forEach(k => {
+            TOPO_RASHBA_STATE.zoom[k] = Math.max(0.35, Math.min(6.0, Number((TOPO_RASHBA_STATE.zoom[k] * factor).toFixed(3))));
+          });
+        } else {
+          TOPO_RASHBA_STATE.zoom[hitId] = Math.max(0.35, Math.min(6.0, Number((TOPO_RASHBA_STATE.zoom[hitId] * factor).toFixed(3))));
+          TOPO_RASHBA_STATE.zoomTarget = hitId;
+          const sel = document.getElementById("tr-zoom-target");
+          if (sel) sel.value = hitId;
+        }
+        syncTopoRashbaZoomUI();
+        renderTopoRashbaAll();
+      }, { passive: false });
+      canvas.addEventListener("dblclick", (ev) => {
+        if (!TOPO_RASHBA_STATE.analysis) return;
+        const rect = canvas.getBoundingClientRect();
+        const mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
+        const halfW = rect.width * 0.5, halfH = rect.height * 0.5;
+        const hitId = (my < halfH) ? (mx < halfW ? "A" : "B") : (mx < halfW ? "C" : "D");
+        TOPO_RASHBA_STATE.zoom[hitId] = 1.0;
+        syncTopoRashbaZoomUI();
+        renderTopoRashbaAll();
+        if (typeof showToast === "function") showToast(`Reset Panel (${hitId.toLowerCase()}) zoom to 100%.`, "info");
+      });
     }
   }
+  syncTopoRashbaZoomUI();
+  syncPostPlotFormatUI();
 }
 window.initTopoRashbaTab = initTopoRashbaTab;
 
@@ -527,10 +566,164 @@ function resetTopoRashbaSettings() {
   setVal("tr-ecut-ev", "0.08");
   setVal("tr-bz-res", "360");
   setVal("tr-show-berry", true);
+  setVal("tr-fmt-cmap", "rdbu");
+  setVal("tr-fmt-height", "780");
+  setVal("tr-fmt-panel-letters", true);
+  setVal("tr-fmt-iso-contours", true);
+  setVal("tr-fmt-show-basis", true);
+  setVal("tr-fmt-show-kpath", true);
+  setVal("tr-fmt-show-legends", true);
+  TOPO_RASHBA_STATE.zoom = { A: 1.0, B: 1.0, C: 1.0, D: 1.0 };
+  TOPO_RASHBA_STATE.zoomTarget = "all";
+  setVal("tr-zoom-target", "all");
+  syncTopoRashbaZoomUI();
   renderTopoRashbaAll();
-  if (typeof showToast === "function") showToast("Reset Rashba, Spin Texture & Topology settings to defaults.", "info");
+  if (typeof showToast === "function") showToast("Reset Rashba, Spin Texture, Zoom & Topology settings to defaults.", "info");
 }
 window.resetTopoRashbaSettings = resetTopoRashbaSettings;
+
+// ---------------- Interactive Zoom & Publication Plot Format Controllers ----------------
+
+function syncTopoRashbaZoomUI() {
+  const t = TOPO_RASHBA_STATE.zoomTarget || "all";
+  const z = TOPO_RASHBA_STATE.zoom;
+  const val = t === "all" ? ((z.A + z.B + z.C + z.D) / 4) : (z[t] || 1.0);
+  const pct = Math.round(val * 100);
+  const badge = document.getElementById("tr-zoom-badge");
+  if (badge) badge.textContent = `${pct}%`;
+  const slider = document.getElementById("tr-zoom-slider");
+  if (slider) slider.value = String(Number(val.toFixed(2)));
+  const sel = document.getElementById("tr-zoom-target");
+  if (sel && sel.value !== t) sel.value = t;
+}
+window.syncTopoRashbaZoomUI = syncTopoRashbaZoomUI;
+
+function setTopoRashbaZoomTarget(target) {
+  TOPO_RASHBA_STATE.zoomTarget = ["all", "A", "B", "C", "D"].includes(target) ? target : "all";
+  syncTopoRashbaZoomUI();
+}
+window.setTopoRashbaZoomTarget = setTopoRashbaZoomTarget;
+
+function stepTopoRashbaZoom(dir) {
+  const factor = dir > 0 ? 1.2 : (1 / 1.2);
+  const t = TOPO_RASHBA_STATE.zoomTarget || "all";
+  const keys = t === "all" ? ["A", "B", "C", "D"] : [t];
+  keys.forEach(k => {
+    TOPO_RASHBA_STATE.zoom[k] = Math.max(0.35, Math.min(6.0, Number((TOPO_RASHBA_STATE.zoom[k] * factor).toFixed(3))));
+  });
+  syncTopoRashbaZoomUI();
+  renderTopoRashbaAll();
+}
+window.stepTopoRashbaZoom = stepTopoRashbaZoom;
+
+function setTopoRashbaZoomValue(rawVal) {
+  const v = Math.max(0.35, Math.min(6.0, parseFloat(rawVal) || 1.0));
+  const t = TOPO_RASHBA_STATE.zoomTarget || "all";
+  const keys = t === "all" ? ["A", "B", "C", "D"] : [t];
+  keys.forEach(k => { TOPO_RASHBA_STATE.zoom[k] = v; });
+  syncTopoRashbaZoomUI();
+  renderTopoRashbaAll();
+}
+window.setTopoRashbaZoomValue = setTopoRashbaZoomValue;
+
+function resetTopoRashbaZoom(targetOverride = null) {
+  const t = targetOverride || "all";
+  const keys = t === "all" ? ["A", "B", "C", "D"] : [t];
+  keys.forEach(k => { TOPO_RASHBA_STATE.zoom[k] = 1.0; });
+  syncTopoRashbaZoomUI();
+  renderTopoRashbaAll();
+}
+window.resetTopoRashbaZoom = resetTopoRashbaZoom;
+
+function toggleTopoRashbaWheelZoom(checked) {
+  TOPO_RASHBA_STATE.wheelZoomEnabled = !!checked;
+  if (typeof showToast === "function") {
+    showToast(checked ? "Wheel Zoom ON: scroll directly over any of the 4 panels to zoom in/out." : "Wheel Zoom OFF: hold Ctrl + Scroll to zoom panels.", "info");
+  }
+}
+window.toggleTopoRashbaWheelZoom = toggleTopoRashbaWheelZoom;
+
+function syncPostPlotFormatUI() {
+  const st = typeof getCastepPlotStyle === "function" ? getCastepPlotStyle() : {
+    preset: "journal_tnr", fontFamily: "'Times New Roman', Times, serif",
+    titleSize: 14, axisLabelSize: 13, tickSize: 11.5, legendSize: 11,
+    borderWidth: 1.5, lineWidth: 2.0, tickDir: "in", gridMode: "subtle", inkColor: "#000000", boldAxes: true, exportScale: 4
+  };
+  ["tr", "pd"].forEach(pfx => {
+    const setV = (sfx, v) => {
+      const el = document.getElementById(`${pfx}-fmt-${sfx}`);
+      if (!el) return;
+      if (el.type === "checkbox") el.checked = Boolean(v);
+      else el.value = String(v);
+    };
+    setV("preset", st.preset || "journal_tnr");
+    setV("font", st.fontFamily);
+    setV("title-size", st.titleSize);
+    setV("axis-size", st.axisLabelSize);
+    setV("tick-size", st.tickSize);
+    setV("border-w", st.borderWidth);
+    setV("line-w", st.lineWidth);
+    setV("tick-dir", st.tickDir);
+    setV("grid", st.gridMode);
+    setV("dpi", st.exportScale || 4);
+    setV("bold-axes", !!st.boldAxes);
+  });
+}
+window.syncPostPlotFormatUI = syncPostPlotFormatUI;
+
+function applyPostPlotStylePreset(presetKey) {
+  if (typeof applyCastepPlotStylePreset === "function") {
+    applyCastepPlotStylePreset(presetKey);
+  }
+  syncPostPlotFormatUI();
+  if (typeof renderPostDataTab === "function") renderPostDataTab();
+  renderTopoRashbaAll();
+}
+window.applyPostPlotStylePreset = applyPostPlotStylePreset;
+
+function updatePostPlotFormatFromUI(prefix = "tr") {
+  const clamp = (v, lo, hi, fb) => { const n = parseFloat(v); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : fb; };
+  const cur = typeof getCastepPlotStyle === "function" ? getCastepPlotStyle() : {};
+  const g = (sfx) => document.getElementById(`${prefix}-fmt-${sfx}`);
+  const next = {
+    ...cur,
+    preset: "custom",
+    fontFamily: g("font")?.value || cur.fontFamily || "'Times New Roman', Times, serif",
+    titleSize: clamp(g("title-size")?.value, 10, 22, cur.titleSize || 14),
+    axisLabelSize: clamp(g("axis-size")?.value, 9, 20, cur.axisLabelSize || 13),
+    tickSize: clamp(g("tick-size")?.value, 8, 18, cur.tickSize || 11.5),
+    legendSize: clamp(g("tick-size")?.value ? (parseFloat(g("tick-size").value) - 0.5) : cur.legendSize, 8, 16, cur.legendSize || 11),
+    borderWidth: clamp(g("border-w")?.value, 0.8, 3.5, cur.borderWidth || 1.5),
+    lineWidth: clamp(g("line-w")?.value, 0.8, 4.0, cur.lineWidth || 2.0),
+    tickDir: g("tick-dir")?.value || cur.tickDir || "in",
+    gridMode: g("grid")?.value || cur.gridMode || "subtle",
+    boldAxes: g("bold-axes") ? !!g("bold-axes").checked : (cur.boldAxes !== false),
+    exportScale: clamp(g("dpi")?.value, 2, 6, cur.exportScale || 4)
+  };
+  if (typeof saveCastepPlotStyle === "function") saveCastepPlotStyle(next);
+  if (typeof syncCastepPlotStyleUI === "function") syncCastepPlotStyleUI();
+  syncPostPlotFormatUI();
+  if (typeof rerenderAllActiveCastepPlots === "function") rerenderAllActiveCastepPlots();
+  else {
+    if (typeof renderPostDataTab === "function") renderPostDataTab();
+    renderTopoRashbaAll();
+  }
+}
+window.updatePostPlotFormatFromUI = updatePostPlotFormatFromUI;
+
+function focusPostPlotFormatCard(prefix = null) {
+  const pfx = prefix || (TOPO_RASHBA_STATE.activeSubTab === "rashba" ? "tr" : "pd");
+  const det = document.getElementById(`${pfx}-format-details`);
+  if (det) det.open = true;
+  const card = document.getElementById(`${pfx}-format-card`);
+  if (card) {
+    syncPostPlotFormatUI();
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    card.classList.add("pd-card-flash");
+    setTimeout(() => card.classList.remove("pd-card-flash"), 1400);
+  }
+}
+window.focusPostPlotFormatCard = focusPostPlotFormatCard;
 
 // ---------------- Exact 2D First Brillouin Zone (Wigner-Seitz Clipper) ----------------
 
@@ -1351,39 +1544,89 @@ function _trBuildSpinTexture(cfg) {
   };
 }
 
-// ---------------- Color Maps (Red +1 ↔ White 0 ↔ Blue -1) ----------------
+// ---------------- Publication Color Maps & Style Helper ----------------
 
-function _trDivergingColor(val) {
-  // val in [-1, +1]: -1 = royal blue (#2563eb), 0 = crisp slate/white, +1 = crimson red (#dc2626)
-  const v = Math.max(-1, Math.min(1, val));
-  if (v >= 0) {
-    const r = Math.round(235 + (220 - 235) * v);
-    const g = Math.round(238 + (38 - 238) * v);
-    const b = Math.round(244 + (38 - 244) * v);
-    return `rgb(${r},${g},${b})`;
-  } else {
-    const t = -v;
-    const r = Math.round(235 + (37 - 235) * t);
-    const g = Math.round(238 + (99 - 238) * t);
-    const b = Math.round(244 + (235 - 244) * t);
-    return `rgb(${r},${g},${b})`;
-  }
+function _trGetPlotStyle() {
+  const base = (typeof getCastepPlotStyle === "function") ? getCastepPlotStyle() : {
+    fontFamily: "'Times New Roman', Times, serif",
+    titleSize: 13.5, axisLabelSize: 12, tickSize: 11, legendSize: 10.5,
+    borderWidth: 1.4, lineWidth: 2.0, tickDir: "in", tickLength: 5,
+    gridMode: "subtle", inkColor: "#0f172a", boldAxes: true, exportScale: 4
+  };
+  const chk = (id, defVal = true) => {
+    const el = document.getElementById(id);
+    return el ? !!el.checked : defVal;
+  };
+  const figH = Math.max(600, Math.min(1080, parseInt(document.getElementById("tr-fmt-height")?.value || "780", 10) || 780));
+  const cmap = document.getElementById("tr-fmt-cmap")?.value || "rdbu";
+  return {
+    fontFamily: base.fontFamily || "'Times New Roman', Times, serif",
+    titleSize: Math.max(10, Math.min(20, (base.titleSize || 14) - 0.5)),
+    axisLabelSize: Math.max(9.5, Math.min(18, (base.axisLabelSize || 13) - 1.0)),
+    tickSize: Math.max(8.5, Math.min(16, (base.tickSize || 11.5) - 0.5)),
+    legendSize: Math.max(8.5, Math.min(15, (base.legendSize || 11) - 0.5)),
+    borderWidth: Math.max(0.8, Math.min(3.2, base.borderWidth || 1.4)),
+    lineWidth: Math.max(0.9, Math.min(3.8, base.lineWidth || 2.0)),
+    tickDir: base.tickDir || "in",
+    tickLength: base.tickLength || 5,
+    gridMode: base.gridMode || "subtle",
+    inkColor: base.inkColor || "#0f172a",
+    boldAxes: base.boldAxes !== false,
+    cmap,
+    figHeight: figH,
+    panelLetters: chk("tr-fmt-panel-letters", true),
+    isoContours: chk("tr-fmt-iso-contours", true),
+    showBasis: chk("tr-fmt-show-basis", true),
+    showKPath: chk("tr-fmt-show-kpath", true),
+    showLegends: chk("tr-fmt-show-legends", true)
+  };
 }
 
-function _trArrowColor(sz) {
-  const v = Math.max(-1, Math.min(1, sz));
-  if (v >= 0) {
-    const r = Math.round(71 + (220 - 71) * v);
-    const g = Math.round(85 + (38 - 85) * v);
-    const b = Math.round(105 + (38 - 105) * v);
-    return `rgb(${r},${g},${b})`;
-  } else {
-    const t = -v;
-    const r = Math.round(71 + (29 - 71) * t);
-    const g = Math.round(85 + (78 - 85) * t);
-    const b = Math.round(105 + (216 - 105) * t);
-    return `rgb(${r},${g},${b})`;
+function _trColorMapRGB(val, cmap = "rdbu", perceptualGamma = false) {
+  const v = Math.max(-1, Math.min(1, val));
+  const av = perceptualGamma ? Math.pow(Math.abs(v), 0.78) : Math.abs(v);
+  const lerp = (a, b, t) => [
+    Math.round(a[0] + (b[0] - a[0]) * t),
+    Math.round(a[1] + (b[1] - a[1]) * t),
+    Math.round(a[2] + (b[2] - a[2]) * t)
+  ];
+  if (cmap === "viridis") {
+    // Smooth perceptual viridis across [-1, +1] -> t in [0, 1]
+    const t = 0.5 * (v + 1);
+    const stops = [[68, 1, 84], [59, 82, 139], [33, 145, 140], [94, 201, 98], [253, 231, 37]];
+    const scaled = t * (stops.length - 1);
+    const i = Math.min(stops.length - 2, Math.floor(scaled));
+    return lerp(stops[i], stops[i + 1], scaled - i);
   }
+  const palettes = {
+    rdbu:     { neg: [30, 92, 232],  mid: [255, 255, 255], pos: [216, 32, 38] },
+    seismic:  { neg: [15, 35, 165],  mid: [255, 255, 255], pos: [195, 12, 22] },
+    coolwarm: { neg: [59, 76, 192],  mid: [244, 245, 248], pos: [180, 4, 38] },
+    puor:     { neg: [94, 60, 153],  mid: [255, 255, 255], pos: [230, 97, 1] },
+    piyg:     { neg: [197, 27, 125], mid: [255, 255, 255], pos: [39, 100, 25] }
+  };
+  const pal = palettes[cmap] || palettes.rdbu;
+  return v >= 0 ? lerp(pal.mid, pal.pos, av) : lerp(pal.mid, pal.neg, av);
+}
+
+function _trDivergingColor(val, cmap = "rdbu") {
+  const [r, g, b] = _trColorMapRGB(val, cmap, false);
+  return `rgb(${r},${g},${b})`;
+}
+
+function _trArrowColor(sz, cmap = "rdbu") {
+  const v = Math.max(-1, Math.min(1, sz));
+  if (cmap === "viridis") {
+    const [r, g, b] = _trColorMapRGB(v, "viridis", false);
+    return `rgb(${Math.round(r * 0.85)},${Math.round(g * 0.85)},${Math.round(b * 0.85)})`;
+  }
+  const [r, g, b] = _trColorMapRGB(v, cmap, false);
+  // Keep arrows legible even near sz = 0 by mixing with slate #475569
+  const mix = Math.min(1, Math.abs(v) * 1.15);
+  const rr = Math.round(71 + (r - 71) * mix);
+  const gg = Math.round(85 + (g - 85) * mix);
+  const bb = Math.round(105 + (b - 105) * mix);
+  return `rgb(${rr},${gg},${bb})`;
 }
 
 // ---------------- Master Renderer (KPIs + 2x2 High-DPI Canvas + Tables) ----------------
@@ -1548,9 +1791,10 @@ function _trDrawEmptyCanvas(canvas) {
 }
 
 function _trDrawMainCanvas(canvas, an) {
+  const st = _trGetPlotStyle();
   const parentW = canvas.parentElement ? (canvas.parentElement.clientWidth - 20) : 960;
   const width = Math.max(760, Math.floor(parentW));
-  const height = 780;
+  const height = st.figHeight || 780;
   const dpr = typeof getCastepCanvasDpr === "function" ? getCastepCanvasDpr(width, height) : Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = Math.round(width * dpr);
   canvas.height = Math.round(height * dpr);
@@ -1566,18 +1810,11 @@ function _trDrawMainCanvas(canvas, an) {
   const halfW = Math.floor(width / 2);
   const halfH = Math.floor(height / 2);
 
-  // Subtle quadrant separator lines
-  ctx.strokeStyle = "#e2e8f0";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(halfW + 0.5, 10); ctx.lineTo(halfW + 0.5, height - 10);
-  ctx.moveTo(10, halfH + 0.5); ctx.lineTo(width - 10, halfH + 0.5);
-  ctx.stroke();
-
-  const gA = _trDrawPanelA_RashbaDispersion(ctx, 0, 0, halfW, halfH, an);
-  const gB = _trDrawPanelB_SplittingFit(ctx, halfW, 0, width - halfW, halfH, an);
-  const gC = _trDrawPanelC_SpinTexture(ctx, 0, halfH, halfW, height - halfH, an);
-  const gD = _trDrawPanelD_FBZAndBerry(ctx, halfW, halfH, width - halfW, height - halfH, an);
+  // Seamless publication 2x2 layout (no quadrant divider lines between panels)
+  const gA = _trDrawPanelA_RashbaDispersion(ctx, 0, 0, halfW, halfH, an, st);
+  const gB = _trDrawPanelB_SplittingFit(ctx, halfW, 0, width - halfW, halfH, an, st);
+  const gC = _trDrawPanelC_SpinTexture(ctx, 0, halfH, halfW, height - halfH, an, st);
+  const gD = _trDrawPanelD_FBZAndBerry(ctx, halfW, halfH, width - halfW, height - halfH, an, st);
 
   TOPO_RASHBA_STATE.panelGeoms = [gA, gB, gC, gD];
 
@@ -1592,29 +1829,40 @@ function _trDrawMainCanvas(canvas, an) {
   ctx.restore();
 }
 
-function _trDrawAxesBox(ctx, x0, y0, w, h, xTicks, yTicks) {
-  ctx.strokeStyle = "#0f172a";
-  ctx.lineWidth = 1.25;
+function _trDrawAxesBox(ctx, x0, y0, w, h, xTicks, yTicks, st) {
+  const s = st || _trGetPlotStyle();
+  ctx.save();
+  ctx.strokeStyle = s.inkColor || "#0f172a";
+  ctx.lineWidth = s.borderWidth || 1.35;
+  ctx.setLineDash([]);
   ctx.strokeRect(x0, y0, w, h);
-  ctx.lineWidth = 1.0;
-  (xTicks || []).forEach(px => {
-    if (px < x0 - 1 || px > x0 + w + 1) return;
-    ctx.beginPath();
-    ctx.moveTo(px, y0 + h); ctx.lineTo(px, y0 + h - 5);
-    ctx.moveTo(px, y0); ctx.lineTo(px, y0 + 5);
-    ctx.stroke();
-  });
-  (yTicks || []).forEach(py => {
-    if (py < y0 - 1 || py > y0 + h + 1) return;
-    ctx.beginPath();
-    ctx.moveTo(x0, py); ctx.lineTo(x0 + 5, py);
-    ctx.moveTo(x0 + w, py); ctx.lineTo(x0 + w - 5, py);
-    ctx.stroke();
-  });
+  if (s.tickDir !== "none") {
+    const tl = s.tickLength || 5;
+    const sgn = s.tickDir === "out" ? -1 : 1;
+    ctx.lineWidth = Math.max(0.9, (s.borderWidth || 1.35) * 0.8);
+    (xTicks || []).forEach(px => {
+      if (px < x0 - 1 || px > x0 + w + 1) return;
+      ctx.beginPath();
+      ctx.moveTo(px, y0 + h); ctx.lineTo(px, y0 + h - sgn * tl);
+      ctx.moveTo(px, y0); ctx.lineTo(px, y0 + sgn * tl);
+      ctx.stroke();
+    });
+    (yTicks || []).forEach(py => {
+      if (py < y0 - 1 || py > y0 + h + 1) return;
+      ctx.beginPath();
+      ctx.moveTo(x0, py); ctx.lineTo(x0 + sgn * tl, py);
+      ctx.moveTo(x0 + w, py); ctx.lineTo(x0 + w - sgn * tl, py);
+      ctx.stroke();
+    });
+  }
+  ctx.restore();
 }
 
 // --- Panel A (Top-Left): Zoomed Rashba / SOC Band Dispersion around k0 ---
-function _trDrawPanelA_RashbaDispersion(ctx, rx, ry, rw, rh, an) {
+function _trDrawPanelA_RashbaDispersion(ctx, rx, ry, rw, rh, an, st) {
+  const s = st || _trGetPlotStyle();
+  const ff = s.fontFamily;
+  const axWeight = s.boldAxes ? "700 " : "";
   const padL = 62, padR = 20, padT = 36, padB = 46;
   const x0 = rx + padL, y0 = ry + padT, w = rw - padL - padR, h = rh - padT - padB;
   const pts = an.slicePts;
@@ -1630,24 +1878,46 @@ function _trDrawPanelA_RashbaDispersion(ctx, rx, ry, rw, rh, an) {
   const ePad = Math.max(0.015, (eMax - eMin) * 0.18);
   eMin -= ePad; eMax += ePad;
 
-  const sToX = (s) => x0 + ((s - sMin) / (sMax - sMin)) * w;
-  const eToY = (e) => y0 + h * (1 - (e - eMin) / (eMax - eMin));
+  const zoomA = TOPO_RASHBA_STATE.zoom.A || 1.0;
+  if (Math.abs(zoomA - 1.0) > 1e-3) {
+    const sMid = (sMin < 0 && sMax > 0) ? 0 : 0.5 * (sMin + sMax);
+    const sHalfL = (sMid - sMin) / zoomA, sHalfR = (sMax - sMid) / zoomA;
+    sMin = sMid - sHalfL; sMax = sMid + sHalfR;
+    const eMid = 0.5 * (eMin + eMax), eHalf = 0.5 * (eMax - eMin) / zoomA;
+    eMin = eMid - eHalf; eMax = eMid + eHalf;
+  }
+
+  const sToX = (sv) => x0 + ((sv - sMin) / (sMax - sMin)) * w;
+  const eToY = (ev) => y0 + h * (1 - (ev - eMin) / (eMax - eMin));
+
+  const xTickVals = [sMin, sMin * 0.5, 0, sMax * 0.5, sMax].filter((v, i, arr) => v >= sMin - 1e-6 && v <= sMax + 1e-6 && (i === 0 || Math.abs(v - arr[i - 1]) > 1e-4));
+  const yTickVals = [];
+  for (let i = 0; i <= 4; i++) yTickVals.push(eMin + (eMax - eMin) * (i / 4));
 
   // Subtle grid & vertical k0 guide
   ctx.save();
   ctx.beginPath(); ctx.rect(x0, y0, w, h); ctx.clip();
-  ctx.strokeStyle = "#e2e8f0"; ctx.lineWidth = 0.8;
+  if (s.gridMode !== "off") {
+    ctx.strokeStyle = s.gridMode === "normal" ? "#cbd5e1" : "#e5e7eb";
+    ctx.lineWidth = s.gridMode === "normal" ? 0.9 : 0.75;
+    ctx.setLineDash(s.gridMode === "normal" ? [] : [3, 3]);
+    yTickVals.slice(1, -1).forEach(yv => {
+      const py = eToY(yv);
+      ctx.beginPath(); ctx.moveTo(x0, py); ctx.lineTo(x0 + w, py); ctx.stroke();
+    });
+    ctx.setLineDash([]);
+  }
   const xZero = sToX(0);
   if (xZero >= x0 && xZero <= x0 + w) {
     ctx.beginPath(); ctx.setLineDash([4, 3]);
     ctx.moveTo(xZero, y0); ctx.lineTo(xZero, y0 + h);
-    ctx.strokeStyle = "#64748b"; ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = "#64748b"; ctx.lineWidth = 0.9; ctx.stroke(); ctx.setLineDash([]);
   }
 
   // Fitted Bychkov-Rashba model curves (dashed gray-violet reference)
   if (an.alphaR > 1e-4 && pts.length >= 3) {
-    ctx.strokeStyle = "rgba(124, 58, 237, 0.45)";
-    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = "rgba(124, 58, 237, 0.50)";
+    ctx.lineWidth = Math.max(1.1, s.lineWidth * 0.72);
     ctx.setLineDash([5, 3]);
     for (const sgn of [-1, 1]) {
       ctx.beginPath();
@@ -1666,7 +1936,7 @@ function _trDrawPanelA_RashbaDispersion(ctx, rx, ry, rw, rh, an) {
 
   // DFT Lower branch (Solid Blue) & Upper branch (Solid Red)
   const drawBranch = (key, color) => {
-    ctx.strokeStyle = color; ctx.lineWidth = 2.1; ctx.setLineDash([]);
+    ctx.strokeStyle = color; ctx.lineWidth = s.lineWidth; ctx.setLineDash([]);
     ctx.beginPath();
     pts.forEach((p, i) => {
       const px = sToX(p.s), py = eToY(p[key]);
@@ -1675,8 +1945,9 @@ function _trDrawPanelA_RashbaDispersion(ctx, rx, ry, rw, rh, an) {
     ctx.stroke();
     ctx.fillStyle = color;
     const step = pts.length > 45 ? 2 : 1;
+    const rad = Math.max(1.8, Math.min(3.3, s.lineWidth * 1.1));
     for (let i = 0; i < pts.length; i += step) {
-      ctx.beginPath(); ctx.arc(sToX(pts[i].s), eToY(pts[i][key]), 2.2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(sToX(pts[i].s), eToY(pts[i][key]), rad, 0, Math.PI * 2); ctx.fill();
     }
   };
   drawBranch("eLo", "#2563eb");
@@ -1692,49 +1963,53 @@ function _trDrawPanelA_RashbaDispersion(ctx, rx, ry, rw, rh, an) {
     ctx.moveTo(xZero, py0); ctx.lineTo(pxExt, py0);
     ctx.moveTo(pxExt, py0); ctx.lineTo(pxExt, pyExt);
     ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = "#0f766e"; ctx.font = "700 10.5px Inter, sans-serif";
+    ctx.fillStyle = "#0f766e"; ctx.font = `700 ${Math.max(9.5, s.legendSize)}px ${ff}`;
     ctx.textAlign = an.extBest.sExt >= 0 ? "left" : "right";
     ctx.fillText(`E_R=${(an.extBest.ER * 1000).toFixed(1)} meV`, pxExt + (an.extBest.sExt >= 0 ? 5 : -5), (py0 + pyExt) * 0.5);
   }
   ctx.restore();
 
   // Axes & Ticks
-  const xTickVals = [sMin, sMin * 0.5, 0, sMax * 0.5, sMax].filter((v, i, arr) => i === 0 || Math.abs(v - arr[i - 1]) > 1e-4);
-  const yTickVals = [];
-  for (let i = 0; i <= 4; i++) yTickVals.push(eMin + (eMax - eMin) * (i / 4));
-  _trDrawAxesBox(ctx, x0, y0, w, h, xTickVals.map(sToX), yTickVals.map(eToY));
+  _trDrawAxesBox(ctx, x0, y0, w, h, xTickVals.map(sToX), yTickVals.map(eToY), s);
 
   // Title & Legend
-  ctx.fillStyle = "#0f172a"; ctx.font = "700 13px 'Times New Roman', serif"; ctx.textAlign = "center";
-  ctx.fillText(`(a) Rashba / SOC Dispersion near ${an.k0Label} (${an.pairLabel})`, x0 + w / 2, ry + 22);
+  const pfxA = s.panelLetters ? "(a) " : "";
+  ctx.fillStyle = s.inkColor; ctx.font = `${axWeight}${s.titleSize}px ${ff}`; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  ctx.fillText(`${pfxA}Rashba / SOC Dispersion near ${an.k0Label} (${an.pairLabel})`, x0 + w / 2, ry + 22);
 
-  // Compact Legend
-  ctx.save();
-  const lx = x0 + 8, ly = y0 + 8;
-  ctx.fillStyle = "rgba(255,255,255,0.92)"; ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 0.8;
-  ctx.fillRect(lx, ly, 118, 44); ctx.strokeRect(lx, ly, 118, 44);
-  ctx.font = "700 10px 'Times New Roman', serif"; ctx.textAlign = "left";
-  ctx.strokeStyle = "#dc2626"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(lx + 6, ly + 11); ctx.lineTo(lx + 20, ly + 11); ctx.stroke();
-  ctx.fillStyle = "#0f172a"; ctx.fillText(an.isCol ? "Spin ↑ (Upper)" : "E₊(k) Upper", lx + 25, ly + 14);
-  ctx.strokeStyle = "#2563eb"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(lx + 6, ly + 24); ctx.lineTo(lx + 20, ly + 24); ctx.stroke();
-  ctx.fillText(an.isCol ? "Spin ↓ (Lower)" : "E₋(k) Lower", lx + 25, ly + 27);
-  ctx.strokeStyle = "#7c3aed"; ctx.lineWidth = 1.4; ctx.setLineDash([4, 2]); ctx.beginPath(); ctx.moveTo(lx + 6, ly + 36); ctx.lineTo(lx + 20, ly + 36); ctx.stroke(); ctx.setLineDash([]);
-  ctx.fillText("k·p Rashba Fit", lx + 25, ly + 39);
-  ctx.restore();
+  if (s.showLegends) {
+    ctx.save();
+    const lx = x0 + 8, ly = y0 + 8;
+    const legFs = Math.max(9, s.legendSize);
+    const rowStep = Math.round(legFs + 3.5);
+    const boxH = rowStep * 3 + 8;
+    const boxW = Math.round(Math.max(116, legFs * 11.4));
+    ctx.fillStyle = "rgba(255,255,255,0.92)"; ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 0.8;
+    ctx.fillRect(lx, ly, boxW, boxH); ctx.strokeRect(lx, ly, boxW, boxH);
+    ctx.font = `700 ${legFs}px ${ff}`; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.strokeStyle = "#dc2626"; ctx.lineWidth = s.lineWidth; ctx.beginPath(); ctx.moveTo(lx + 6, ly + 8); ctx.lineTo(lx + 20, ly + 8); ctx.stroke();
+    ctx.fillStyle = s.inkColor; ctx.fillText(an.isCol ? "Spin ↑ (Upper)" : "E₊(k) Upper", lx + 25, ly + 8);
+    ctx.strokeStyle = "#2563eb"; ctx.lineWidth = s.lineWidth; ctx.beginPath(); ctx.moveTo(lx + 6, ly + 8 + rowStep); ctx.lineTo(lx + 20, ly + 8 + rowStep); ctx.stroke();
+    ctx.fillText(an.isCol ? "Spin ↓ (Lower)" : "E₋(k) Lower", lx + 25, ly + 8 + rowStep);
+    ctx.strokeStyle = "#7c3aed"; ctx.lineWidth = 1.4; ctx.setLineDash([4, 2]); ctx.beginPath(); ctx.moveTo(lx + 6, ly + 8 + rowStep * 2); ctx.lineTo(lx + 20, ly + 8 + rowStep * 2); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillText("k·p Rashba Fit", lx + 25, ly + 8 + rowStep * 2);
+    ctx.restore();
+  }
 
   // Tick Labels
-  ctx.fillStyle = "#0f172a"; ctx.font = "11px 'Times New Roman', serif"; ctx.textAlign = "center"; ctx.textBaseline = "top";
+  const tickPad = s.tickDir === "out" ? (s.tickLength + 4) : 6;
+  ctx.fillStyle = s.inkColor; ctx.font = `${s.tickSize}px ${ff}`; ctx.textAlign = "center"; ctx.textBaseline = "top";
   xTickVals.forEach(v => {
     const txt = Math.abs(v) < 1e-4 ? an.k0Label : v.toFixed(2);
-    ctx.fillText(txt, sToX(v), y0 + h + 6);
+    ctx.fillText(txt, sToX(v), y0 + h + tickPad);
   });
-  ctx.font = "700 11.5px 'Times New Roman', serif";
-  ctx.fillText(`${an.leftAxisLbl}  ←  k − k(${an.k0Label}) (Å⁻¹)  →  ${an.rightAxisLbl}`, x0 + w / 2, y0 + h + 23);
+  ctx.font = `${axWeight}${s.axisLabelSize}px ${ff}`;
+  ctx.fillText(`${an.leftAxisLbl}  ←  k − k(${an.k0Label}) (Å⁻¹)  →  ${an.rightAxisLbl}`, x0 + w / 2, y0 + h + tickPad + s.tickSize + 5);
 
-  ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.font = "11px 'Times New Roman', serif";
-  yTickVals.forEach(v => ctx.fillText(v.toFixed(3), x0 - 6, eToY(v)));
+  ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.font = `${s.tickSize}px ${ff}`;
+  yTickVals.forEach(v => ctx.fillText(v.toFixed(3), x0 - tickPad, eToY(v)));
   ctx.save(); ctx.translate(rx + 15, y0 + h / 2); ctx.rotate(-Math.PI / 2);
-  ctx.textAlign = "center"; ctx.font = "700 11.5px 'Times New Roman', serif";
+  ctx.textAlign = "center"; ctx.font = `${axWeight}${s.axisLabelSize}px ${ff}`;
   ctx.fillText("Energy E − E_ref (eV)", 0, 0);
   ctx.restore();
 
@@ -1742,12 +2017,16 @@ function _trDrawPanelA_RashbaDispersion(ctx, rx, ry, rw, rh, an) {
 }
 
 // --- Panel B (Top-Right): Momentum-Dependent Spin Splitting ΔE(k) vs |k - k0| ---
-function _trDrawPanelB_SplittingFit(ctx, rx, ry, rw, rh, an) {
+function _trDrawPanelB_SplittingFit(ctx, rx, ry, rw, rh, an, st) {
+  const s = st || _trGetPlotStyle();
+  const ff = s.fontFamily;
+  const axWeight = s.boldAxes ? "700 " : "";
   const padL = 62, padR = 20, padT = 36, padB = 46;
   const x0 = rx + padL, y0 = ry + padT, w = rw - padL - padR, h = rh - padT - padB;
   const pts = an.slicePts;
-  const kMax = Math.max(0.05, ...pts.map(p => p.absK)) * 1.05;
-  const dEMaxMeV = Math.max(5.0, ...pts.map(p => p.dE * 1000)) * 1.18;
+  const zoomB = TOPO_RASHBA_STATE.zoom.B || 1.0;
+  const kMax = (Math.max(0.05, ...pts.map(p => p.absK)) * 1.05) / zoomB;
+  const dEMaxMeV = (Math.max(5.0, ...pts.map(p => p.dE * 1000)) * 1.18) / zoomB;
 
   const kToX = (k) => x0 + (k / kMax) * w;
   const dToY = (mev) => y0 + h * (1 - mev / dEMaxMeV);
@@ -1756,14 +2035,19 @@ function _trDrawPanelB_SplittingFit(ctx, rx, ry, rw, rh, an) {
   ctx.beginPath(); ctx.rect(x0, y0, w, h); ctx.clip();
 
   // Grid
-  ctx.strokeStyle = "#f1f5f9"; ctx.lineWidth = 1;
-  for (let i = 1; i < 4; i++) {
-    const gy = y0 + h * (i / 4);
-    ctx.beginPath(); ctx.moveTo(x0, gy); ctx.lineTo(x0 + w, gy); ctx.stroke();
+  if (s.gridMode !== "off") {
+    ctx.strokeStyle = s.gridMode === "normal" ? "#cbd5e1" : "#f1f5f9";
+    ctx.lineWidth = s.gridMode === "normal" ? 0.9 : 1;
+    ctx.setLineDash(s.gridMode === "normal" ? [] : [3, 3]);
+    for (let i = 1; i < 4; i++) {
+      const gy = y0 + h * (i / 4);
+      ctx.beginPath(); ctx.moveTo(x0, gy); ctx.lineTo(x0 + w, gy); ctx.stroke();
+    }
+    ctx.setLineDash([]);
   }
 
   // Fitted Curve: dE = sqrt(Delta_Z^2 + (2*alpha_R*k + 2*gamma_3*k^3)^2)
-  ctx.strokeStyle = "#7c3aed"; ctx.lineWidth = 2.2;
+  ctx.strokeStyle = "#7c3aed"; ctx.lineWidth = s.lineWidth;
   ctx.beginPath();
   for (let i = 0; i <= 80; i++) {
     const kv = kMax * (i / 80);
@@ -1775,7 +2059,7 @@ function _trDrawPanelB_SplittingFit(ctx, rx, ry, rw, rh, an) {
 
   // Linear pure Rashba tangent 2 * alpha_R * k (dashed amber)
   if (an.alphaR > 1e-4) {
-    ctx.strokeStyle = "#d97706"; ctx.lineWidth = 1.3; ctx.setLineDash([4, 3]);
+    ctx.strokeStyle = "#d97706"; ctx.lineWidth = Math.max(1.1, s.lineWidth * 0.7); ctx.setLineDash([4, 3]);
     ctx.beginPath();
     ctx.moveTo(kToX(0), dToY(0));
     ctx.lineTo(kToX(kMax), dToY(2 * an.alphaR * kMax * 1000));
@@ -1783,9 +2067,10 @@ function _trDrawPanelB_SplittingFit(ctx, rx, ry, rw, rh, an) {
   }
 
   // Raw DFT points (Left branch = Blue circles, Right branch = Red circles)
+  const ptRad = Math.max(2.2, Math.min(4.0, s.lineWidth * 1.4));
   pts.forEach(p => {
     const px = kToX(p.absK), py = dToY(p.dE * 1000);
-    ctx.beginPath(); ctx.arc(px, py, 3.0, 0, Math.PI * 2);
+    ctx.beginPath(); ctx.arc(px, py, ptRad, 0, Math.PI * 2);
     ctx.fillStyle = p.s < 0 ? "#2563eb" : "#dc2626";
     ctx.fill();
     ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 0.8; ctx.stroke();
@@ -1794,33 +2079,40 @@ function _trDrawPanelB_SplittingFit(ctx, rx, ry, rw, rh, an) {
 
   const xTicks = [0, 0.25, 0.5, 0.75, 1.0].map(f => kToX(f * kMax));
   const yTicks = [0, 0.25, 0.5, 0.75, 1.0].map(f => dToY(f * dEMaxMeV));
-  _trDrawAxesBox(ctx, x0, y0, w, h, xTicks, yTicks);
+  _trDrawAxesBox(ctx, x0, y0, w, h, xTicks, yTicks, s);
 
-  ctx.fillStyle = "#0f172a"; ctx.font = "700 13px 'Times New Roman', serif"; ctx.textAlign = "center";
-  ctx.fillText(`(b) Spin Splitting ΔE(k) & Rashba Fit around ${an.k0Label}`, x0 + w / 2, ry + 22);
+  const pfxB = s.panelLetters ? "(b) " : "";
+  ctx.fillStyle = s.inkColor; ctx.font = `${axWeight}${s.titleSize}px ${ff}`; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  ctx.fillText(`${pfxB}Spin Splitting ΔE(k) & Rashba Fit around ${an.k0Label}`, x0 + w / 2, ry + 22);
 
   // Annotation box with exact fit metrics
-  ctx.save();
-  const bx = x0 + 8, by = y0 + 8;
-  ctx.fillStyle = "rgba(255,255,255,0.93)"; ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 0.8;
-  ctx.fillRect(bx, by, 178, 66); ctx.strokeRect(bx, by, 178, 66);
-  ctx.font = "700 10.5px 'Times New Roman', serif"; ctx.textAlign = "left";
-  ctx.fillStyle = "#6d28d9"; ctx.fillText(`α_R = ${an.alphaR.toFixed(4)} eV·Å  (R² = ${an.fitR2.toFixed(3)})`, bx + 7, by + 14);
-  ctx.fillStyle = "#0f172a"; ctx.font = "10px 'Times New Roman', serif";
-  ctx.fillText(`γ₃ = ${an.gamma3.toFixed(3)} eV·Å³  |  Δ_Z = ${(an.deltaZ * 1000).toFixed(2)} meV`, bx + 7, by + 28);
-  ctx.fillStyle = "#dc2626"; ctx.fillText(`● → ${an.rightAxisLbl}: α = ${an.alphaRRight.toFixed(4)} eV·Å`, bx + 7, by + 44);
-  ctx.fillStyle = "#2563eb"; ctx.fillText(`● → ${an.leftAxisLbl}: α = ${an.alphaRLeft.toFixed(4)} eV·Å`, bx + 7, by + 58);
-  ctx.restore();
+  if (s.showLegends) {
+    ctx.save();
+    const bx = x0 + 8, by = y0 + 8;
+    const legFs = Math.max(9, s.legendSize);
+    const boxW = Math.round(Math.max(176, legFs * 17.4));
+    const boxH = Math.round(legFs * 6.3 + 4);
+    ctx.fillStyle = "rgba(255,255,255,0.93)"; ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 0.8;
+    ctx.fillRect(bx, by, boxW, boxH); ctx.strokeRect(bx, by, boxW, boxH);
+    ctx.font = `700 ${legFs}px ${ff}`; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = "#6d28d9"; ctx.fillText(`α_R = ${an.alphaR.toFixed(4)} eV·Å  (R² = ${an.fitR2.toFixed(3)})`, bx + 7, by + legFs + 4);
+    ctx.fillStyle = s.inkColor; ctx.font = `${Math.max(8.5, legFs - 0.5)}px ${ff}`;
+    ctx.fillText(`γ₃ = ${an.gamma3.toFixed(3)} eV·Å³  |  Δ_Z = ${(an.deltaZ * 1000).toFixed(2)} meV`, bx + 7, by + legFs * 2.5 + 4);
+    ctx.fillStyle = "#dc2626"; ctx.fillText(`● → ${an.rightAxisLbl}: α = ${an.alphaRRight.toFixed(4)} eV·Å`, bx + 7, by + legFs * 4.0 + 4);
+    ctx.fillStyle = "#2563eb"; ctx.fillText(`● → ${an.leftAxisLbl}: α = ${an.alphaRLeft.toFixed(4)} eV·Å`, bx + 7, by + legFs * 5.4 + 4);
+    ctx.restore();
+  }
 
-  ctx.fillStyle = "#0f172a"; ctx.font = "11px 'Times New Roman', serif"; ctx.textAlign = "center"; ctx.textBaseline = "top";
-  [0, 0.25, 0.5, 0.75, 1.0].forEach(f => ctx.fillText((f * kMax).toFixed(2), kToX(f * kMax), y0 + h + 6));
-  ctx.font = "700 11.5px 'Times New Roman', serif";
-  ctx.fillText(`|k − k(${an.k0Label})| (Å⁻¹)`, x0 + w / 2, y0 + h + 23);
+  const tickPad = s.tickDir === "out" ? (s.tickLength + 4) : 6;
+  ctx.fillStyle = s.inkColor; ctx.font = `${s.tickSize}px ${ff}`; ctx.textAlign = "center"; ctx.textBaseline = "top";
+  [0, 0.25, 0.5, 0.75, 1.0].forEach(f => ctx.fillText((f * kMax).toFixed(2), kToX(f * kMax), y0 + h + tickPad));
+  ctx.font = `${axWeight}${s.axisLabelSize}px ${ff}`;
+  ctx.fillText(`|k − k(${an.k0Label})| (Å⁻¹)`, x0 + w / 2, y0 + h + tickPad + s.tickSize + 5);
 
-  ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.font = "11px 'Times New Roman', serif";
-  [0, 0.25, 0.5, 0.75, 1.0].forEach(f => ctx.fillText((f * dEMaxMeV).toFixed(1), x0 - 6, dToY(f * dEMaxMeV)));
+  ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.font = `${s.tickSize}px ${ff}`;
+  [0, 0.25, 0.5, 0.75, 1.0].forEach(f => ctx.fillText((f * dEMaxMeV).toFixed(1), x0 - tickPad, dToY(f * dEMaxMeV)));
   ctx.save(); ctx.translate(rx + 15, y0 + h / 2); ctx.rotate(-Math.PI / 2);
-  ctx.textAlign = "center"; ctx.font = "700 11.5px 'Times New Roman', serif";
+  ctx.textAlign = "center"; ctx.font = `${axWeight}${s.axisLabelSize}px ${ff}`;
   ctx.fillText("Spin Splitting ΔE (meV)", 0, 0);
   ctx.restore();
 
@@ -1828,14 +2120,18 @@ function _trDrawPanelB_SplittingFit(ctx, rx, ry, rw, rh, an) {
 }
 
 // --- Panel C (Bottom-Left): 2D Spin Texture & Iso-Energy Contours ---
-function _trDrawPanelC_SpinTexture(ctx, rx, ry, rw, rh, an) {
+function _trDrawPanelC_SpinTexture(ctx, rx, ry, rw, rh, an, st) {
+  const s = st || _trGetPlotStyle();
+  const ff = s.fontFamily;
+  const axWeight = s.boldAxes ? "700 " : "";
   const padL = 56, padR = 54, padT = 36, padB = 46;
   const availW = rw - padL - padR, availH = rh - padT - padB;
   const side = Math.min(availW, availH);
   const x0 = rx + padL + Math.floor((availW - side) * 0.5);
   const y0 = ry + padT + Math.floor((availH - side) * 0.5);
   const stex = an.spinTex;
-  const kMax = stex.kMax || 0.25;
+  const zoomC = TOPO_RASHBA_STATE.zoom.C || 1.0;
+  const kMax = (stex.kMax || 0.25) / zoomC;
 
   const kxToX = (kx) => x0 + ((kx + kMax) / (2 * kMax)) * side;
   const kyToY = (ky) => y0 + ((kMax - ky) / (2 * kMax)) * side;
@@ -1844,22 +2140,24 @@ function _trDrawPanelC_SpinTexture(ctx, rx, ry, rw, rh, an) {
   ctx.beginPath(); ctx.rect(x0, y0, side, side); ctx.clip();
 
   // Subtle radial polar grid & crosshair
-  ctx.strokeStyle = "#f1f5f9"; ctx.lineWidth = 0.9;
-  [0.33, 0.66].forEach(f => {
-    ctx.beginPath(); ctx.arc(kxToX(0), kyToY(0), side * 0.5 * f, 0, Math.PI * 2); ctx.stroke();
-  });
-  ctx.strokeStyle = "#cbd5e1"; ctx.setLineDash([3, 3]);
-  ctx.beginPath();
-  ctx.moveTo(x0, kyToY(0)); ctx.lineTo(x0 + side, kyToY(0));
-  ctx.moveTo(kxToX(0), y0); ctx.lineTo(kxToX(0), y0 + side);
-  ctx.stroke(); ctx.setLineDash([]);
+  if (s.gridMode !== "off") {
+    ctx.strokeStyle = s.gridMode === "normal" ? "#cbd5e1" : "#f1f5f9";
+    ctx.lineWidth = 0.9;
+    [0.33, 0.66].forEach(f => {
+      ctx.beginPath(); ctx.arc(kxToX(0), kyToY(0), side * 0.5 * f, 0, Math.PI * 2); ctx.stroke();
+    });
+    ctx.strokeStyle = "#cbd5e1"; ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(x0, kyToY(0)); ctx.lineTo(x0 + side, kyToY(0));
+    ctx.moveTo(kxToX(0), y0); ctx.lineTo(kxToX(0), y0 + side);
+    ctx.stroke(); ctx.setLineDash([]);
+  }
 
   const drawArrow = (px, py, sx, sy, sz, lenPx) => {
     const inPlane = Math.hypot(sx, sy);
-    const col = _trArrowColor(sz);
+    const col = _trArrowColor(sz, s.cmap);
     if (inPlane < 0.08) {
-      // Nearly pure out-of-plane spin -> draw dot-in-circle (⊙ for +Sz) or cross-in-circle (⊗ for -Sz)
-      ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 1.3;
+      ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = Math.max(1.1, s.lineWidth * 0.7);
       ctx.beginPath(); ctx.arc(px, py, 4.2, 0, Math.PI * 2); ctx.stroke();
       if (sz >= 0) {
         ctx.beginPath(); ctx.arc(px, py, 1.7, 0, Math.PI * 2); ctx.fill();
@@ -1873,7 +2171,7 @@ function _trDrawPanelC_SpinTexture(ctx, rx, ry, rw, rh, an) {
     const dy = -(sy / inPlane) * lenPx * Math.min(1, 0.45 + 0.55 * inPlane);
     const x1 = px - dx * 0.42, y1 = py - dy * 0.42;
     const x2 = px + dx * 0.58, y2 = py + dy * 0.58;
-    ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 1.7;
+    ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = Math.max(1.3, s.lineWidth * 0.85);
     ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
     const ang = Math.atan2(y2 - y1, x2 - x1);
     const hl = 5.4;
@@ -1889,10 +2187,9 @@ function _trDrawPanelC_SpinTexture(ctx, rx, ry, rw, rh, an) {
       drawArrow(kxToX(p.kx), kyToY(p.ky), p.sx, p.sy, p.sz, 16);
     });
   } else {
-    // Draw Outer & Inner iso-energy Fermi contours
     const drawContour = (arr, strokeCol, arrowStep, arrowLen) => {
       if (arr.length < 3) return;
-      ctx.strokeStyle = strokeCol; ctx.lineWidth = 1.6;
+      ctx.strokeStyle = strokeCol; ctx.lineWidth = Math.max(1.2, s.lineWidth * 0.8);
       ctx.beginPath();
       arr.forEach((p, i) => {
         const px = kxToX(p.kx), py = kyToY(p.ky);
@@ -1910,17 +2207,17 @@ function _trDrawPanelC_SpinTexture(ctx, rx, ry, rw, rh, an) {
   ctx.restore();
 
   const ticks = [-kMax * 0.75, 0, kMax * 0.75];
-  _trDrawAxesBox(ctx, x0, y0, side, side, ticks.map(kxToX), ticks.map(kyToY));
+  _trDrawAxesBox(ctx, x0, y0, side, side, ticks.map(kxToX), ticks.map(kyToY), s);
 
   // Vertical S_z Colorbar on right side of Panel C
   const cbX = x0 + side + 10, cbW = 10, cbY = y0 + 14, cbH = side - 28;
   for (let i = 0; i < cbH; i++) {
     const szVal = 1 - 2 * (i / Math.max(1, cbH - 1));
-    ctx.fillStyle = _trArrowColor(szVal);
+    ctx.fillStyle = _trArrowColor(szVal, s.cmap);
     ctx.fillRect(cbX, cbY + i, cbW, 1.5);
   }
   ctx.strokeStyle = "#334155"; ctx.lineWidth = 0.8; ctx.strokeRect(cbX, cbY, cbW, cbH);
-  ctx.fillStyle = "#0f172a"; ctx.font = "700 9.5px 'Times New Roman', serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+  ctx.fillStyle = s.inkColor; ctx.font = `700 ${Math.max(8.5, s.tickSize - 1)}px ${ff}`; ctx.textAlign = "left"; ctx.textBaseline = "middle";
   ctx.fillText("+1", cbX + cbW + 3, cbY + 2);
   ctx.fillText("0", cbX + cbW + 3, cbY + cbH * 0.5);
   ctx.fillText("−1", cbX + cbW + 3, cbY + cbH - 2);
@@ -1928,22 +2225,27 @@ function _trDrawPanelC_SpinTexture(ctx, rx, ry, rw, rh, an) {
   else ctx.fillText("⟨Sz⟩", cbX - 2, cbY - 8);
 
   // Title & Badge
-  ctx.fillStyle = "#0f172a"; ctx.font = "700 13px 'Times New Roman', serif"; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
-  ctx.fillText(`(c) 2D Spin Texture @ ΔE = ${(an.eCutUser * 1000).toFixed(0)} meV (${an.k0Label})`, rx + rw / 2, ry + 22);
-  ctx.font = "700 9.5px Inter, sans-serif"; ctx.fillStyle = stex.isDirect ? "#15803d" : "#6d28d9";
-  ctx.textAlign = "left";
-  ctx.fillText(stex.sourceTag, x0 + 6, y0 + 13);
+  const pfxC = s.panelLetters ? "(c) " : "";
+  ctx.fillStyle = s.inkColor; ctx.font = `${axWeight}${s.titleSize}px ${ff}`; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  ctx.fillText(`${pfxC}2D Spin Texture @ ΔE = ${(an.eCutUser * 1000).toFixed(0)} meV (${an.k0Label})`, rx + rw / 2, ry + 22);
+  if (s.showLegends) {
+    ctx.font = "700 9.5px Inter, sans-serif"; ctx.fillStyle = stex.isDirect ? "#15803d" : "#6d28d9";
+    ctx.textAlign = "left";
+    ctx.fillText(stex.sourceTag, x0 + 6, y0 + 13);
+  }
 
   // Tick Labels
-  ctx.fillStyle = "#0f172a"; ctx.font = "10.5px 'Times New Roman', serif"; ctx.textAlign = "center"; ctx.textBaseline = "top";
-  ticks.forEach(v => ctx.fillText(Math.abs(v) < 1e-4 ? "0" : v.toFixed(2), kxToX(v), y0 + side + 5));
-  ctx.font = "700 11.5px 'Times New Roman', serif";
-  if (typeof drawSciText === "function") drawSciText(ctx, "k_{x} (Å^{-1})", x0 + side / 2, y0 + side + 29);
-  else ctx.fillText("kx (Å⁻¹)", x0 + side / 2, y0 + side + 21);
-  ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.font = "10.5px 'Times New Roman', serif";
-  ticks.forEach(v => ctx.fillText(Math.abs(v) < 1e-4 ? "0" : v.toFixed(2), x0 - 6, kyToY(v)));
+  const decC = kMax < 0.12 ? 3 : 2;
+  const tickPad = s.tickDir === "out" ? (s.tickLength + 4) : 5;
+  ctx.fillStyle = s.inkColor; ctx.font = `${Math.max(9, s.tickSize - 0.5)}px ${ff}`; ctx.textAlign = "center"; ctx.textBaseline = "top";
+  ticks.forEach(v => ctx.fillText(Math.abs(v) < 1e-4 ? "0" : v.toFixed(decC), kxToX(v), y0 + side + tickPad));
+  ctx.font = `${axWeight}${s.axisLabelSize}px ${ff}`;
+  if (typeof drawSciText === "function") drawSciText(ctx, "k_{x} (Å^{-1})", x0 + side / 2, y0 + side + tickPad + s.tickSize + 13);
+  else ctx.fillText("kx (Å⁻¹)", x0 + side / 2, y0 + side + tickPad + s.tickSize + 5);
+  ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.font = `${Math.max(9, s.tickSize - 0.5)}px ${ff}`;
+  ticks.forEach(v => ctx.fillText(Math.abs(v) < 1e-4 ? "0" : v.toFixed(decC), x0 - tickPad, kyToY(v)));
   ctx.save(); ctx.translate(rx + 15, y0 + side / 2); ctx.rotate(-Math.PI / 2);
-  ctx.textAlign = "center"; ctx.font = "700 11.5px 'Times New Roman', serif";
+  ctx.textAlign = "center"; ctx.font = `${axWeight}${s.axisLabelSize}px ${ff}`;
   if (typeof drawSciText === "function") drawSciText(ctx, "k_{y} (Å^{-1})", 0, 0);
   else ctx.fillText("ky (Å⁻¹)", 0, 0);
   ctx.restore();
@@ -1952,7 +2254,10 @@ function _trDrawPanelC_SpinTexture(ctx, rx, ry, rw, rh, an) {
 }
 
 // --- Panel D (Bottom-Right): Exact 2D First Brillouin Zone, k-Path & Berry Curvature Ω_z(k) ---
-function _trDrawPanelD_FBZAndBerry(ctx, rx, ry, rw, rh, an) {
+function _trDrawPanelD_FBZAndBerry(ctx, rx, ry, rw, rh, an, st) {
+  const s = st || _trGetPlotStyle();
+  const ff = s.fontFamily;
+  const axWeight = s.boldAxes ? "700 " : "";
   const padL = 56, padR = 54, padT = 36, padB = 46;
   const availW = rw - padL - padR, availH = rh - padT - padB;
   const side = Math.min(availW, availH);
@@ -1961,15 +2266,27 @@ function _trDrawPanelD_FBZAndBerry(ctx, rx, ry, rw, rh, an) {
   const fbz = an.fbz;
   const showBerry = document.getElementById("tr-show-berry")?.checked !== false;
 
-  let kLim = 1.0;
-  fbz.fbzPoly.forEach(v => { kLim = Math.max(kLim, Math.abs(v[0]), Math.abs(v[1])); });
-  kLim = Math.max(kLim * 1.28, Math.max(fbz.b1Len, fbz.b2Len) * 0.72);
+  // Auto-fit strictly to the actual First Brillouin Zone polygon radius (handles primitive cells AND large supercells!)
+  let fbzMaxR = 0.05;
+  fbz.fbzPoly.forEach(v => { fbzMaxR = Math.max(fbzMaxR, Math.abs(v[0]), Math.abs(v[1])); });
+  const baseKLim = fbzMaxR > 0.06 ? (fbzMaxR * 1.24) : Math.max(0.25, Math.max(fbz.b1Len, fbz.b2Len) * 0.65);
+  const zoomD = TOPO_RASHBA_STATE.zoom.D || 1.0;
+  const kLim = baseKLim / zoomD;
 
   const kxToX = (kx) => x0 + ((kx + kLim) / (2 * kLim)) * side;
   const kyToY = (ky) => y0 + ((kLim - ky) / (2 * kLim)) * side;
 
   ctx.save();
   ctx.beginPath(); ctx.rect(x0, y0, side, side); ctx.clip();
+
+  // Optional faint Cartesian grid inside Panel D when gridMode === "normal"
+  if (s.gridMode === "normal") {
+    ctx.strokeStyle = "#e2e8f0"; ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(x0, kyToY(0)); ctx.lineTo(x0 + side, kyToY(0));
+    ctx.moveTo(kxToX(0), y0); ctx.lineTo(kxToX(0), y0 + side);
+    ctx.stroke();
+  }
 
   // Ultra-High-Resolution Smooth Berry Curvature Ω_z(k) Pixel Buffer clipped strictly inside the Wigner-Seitz FBZ polygon!
   if (showBerry && fbz.fbzPoly.length >= 3 && an.pBroken && fbz.isHex && fbz.cornersK.length === 6) {
@@ -1998,6 +2315,8 @@ function _trDrawPanelD_FBZAndBerry(ctx, rx, ry, rw, rh, an) {
     const mK = an.deltaK * 0.5, mK2 = mK * mK;
     const mKp = an.deltaKp * 0.5, mKp2 = mKp * mKp;
     const invGrid = 2.0 * kLim / gridN;
+    const cmap = s.cmap || "rdbu";
+    const drawIso = s.isoContours !== false;
 
     for (let iy = 0; iy < gridN; iy++) {
       const ky = kLim - (iy + 0.5) * invGrid;
@@ -2015,24 +2334,12 @@ function _trDrawPanelD_FBZAndBerry(ctx, rx, ry, rw, rh, an) {
           om += c.tau * (2.0 * hv2 * m) / (denom * Math.sqrt(denom));
         }
         const v = Math.max(-1, Math.min(1, om / omScale));
-        // Smooth perceptual gamma so weak tails glow softly without sharp contour banding
-        const av = Math.pow(Math.abs(v), 0.78);
-        let r = 255, g = 255, b = 255;
-        if (v > 0) {
-          // Pure white -> vivid crimson red (#dc2626) -> deep ruby at peak
-          r = Math.round(255 - (255 - 216) * av);
-          g = Math.round(255 - (255 - 32) * av);
-          b = Math.round(255 - (255 - 38) * av);
-        } else if (v < 0) {
-          // Pure white -> vivid royal blue (#2563eb) -> deep sapphire at peak
-          r = Math.round(255 - (255 - 30) * av);
-          g = Math.round(255 - (255 - 92) * av);
-          b = Math.round(255 - (255 - 232) * av);
-        }
-        // Subtle crisp iso-contour lines at 25%, 50%, 75% of peak |Omega_z|
-        const absLin = Math.abs(v);
-        if (Math.abs(absLin - 0.25) < 0.012 || Math.abs(absLin - 0.50) < 0.014 || Math.abs(absLin - 0.75) < 0.015) {
-          r = Math.round(r * 0.90); g = Math.round(g * 0.90); b = Math.round(b * 0.90);
+        let [r, g, b] = _trColorMapRGB(v, cmap, true);
+        if (drawIso) {
+          const absLin = Math.abs(v);
+          if (Math.abs(absLin - 0.25) < 0.012 || Math.abs(absLin - 0.50) < 0.014 || Math.abs(absLin - 0.75) < 0.015) {
+            r = Math.round(r * 0.90); g = Math.round(g * 0.90); b = Math.round(b * 0.90);
+          }
         }
         const idx = rowOff + ix * 4;
         data[idx] = r; data[idx + 1] = g; data[idx + 2] = b; data[idx + 3] = 255;
@@ -2044,7 +2351,6 @@ function _trDrawPanelD_FBZAndBerry(ctx, rx, ry, rw, rh, an) {
     ctx.drawImage(off, x0, y0, side, side);
     ctx.restore();
   } else if (fbz.fbzPoly.length >= 3) {
-    // Clean soft slate FBZ interior
     ctx.fillStyle = "#f8fafc";
     ctx.beginPath();
     fbz.fbzPoly.forEach((v, i) => {
@@ -2056,7 +2362,7 @@ function _trDrawPanelD_FBZAndBerry(ctx, rx, ry, rw, rh, an) {
 
   // Exact Wigner-Seitz First Brillouin Zone Boundary
   if (fbz.fbzPoly.length >= 3) {
-    ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 2.0;
+    ctx.strokeStyle = s.inkColor; ctx.lineWidth = Math.max(1.5, s.borderWidth * 1.25);
     ctx.beginPath();
     fbz.fbzPoly.forEach((v, i) => {
       const px = kxToX(v[0]), py = kyToY(v[1]);
@@ -2066,35 +2372,36 @@ function _trDrawPanelD_FBZAndBerry(ctx, rx, ry, rw, rh, an) {
   }
 
   // Reciprocal Basis Vectors b1, b2 (scaled nicely to 0.42 so they stay crisp inside frame)
-  const drawBasisVec = (vec, lbl, col) => {
-    const x1 = kxToX(0), y1 = kyToY(0);
-    const x2 = kxToX(vec[0] * 0.42), y2 = kyToY(vec[1] * 0.42);
-    ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 1.4;
-    ctx.setLineDash([3, 2]);
-    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-    ctx.setLineDash([]);
-    const ang = Math.atan2(y2 - y1, x2 - x1);
-    ctx.beginPath();
-    ctx.moveTo(x2, y2);
-    ctx.lineTo(x2 - 6 * Math.cos(ang - 0.4), y2 - 6 * Math.sin(ang - 0.4));
-    ctx.lineTo(x2 - 6 * Math.cos(ang + 0.4), y2 - 6 * Math.sin(ang + 0.4));
-    ctx.closePath(); ctx.fill();
-    ctx.font = "italic 700 11px 'Times New Roman', serif";
-    ctx.textAlign = "left";
-    ctx.fillText(lbl, x2 + 4, y2 - 2);
-  };
-  drawBasisVec(fbz.b1, "b₁", "#475569");
-  drawBasisVec(fbz.b2, "b₂", "#475569");
+  if (s.showBasis !== false) {
+    const drawBasisVec = (vec, lbl, col) => {
+      const x1 = kxToX(0), y1 = kyToY(0);
+      const x2 = kxToX(vec[0] * 0.42), y2 = kyToY(vec[1] * 0.42);
+      ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 1.4;
+      ctx.setLineDash([3, 2]);
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      ctx.setLineDash([]);
+      const ang = Math.atan2(y2 - y1, x2 - x1);
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - 6 * Math.cos(ang - 0.4), y2 - 6 * Math.sin(ang - 0.4));
+      ctx.lineTo(x2 - 6 * Math.cos(ang + 0.4), y2 - 6 * Math.sin(ang + 0.4));
+      ctx.closePath(); ctx.fill();
+      ctx.font = `italic 700 ${Math.max(10, s.tickSize)}px ${ff}`;
+      ctx.textAlign = "left";
+      ctx.fillText(lbl, x2 + 4, y2 - 2);
+    };
+    drawBasisVec(fbz.b1, "b₁", "#475569");
+    drawBasisVec(fbz.b2, "b₂", "#475569");
+  }
 
   // Highlighted DFT k-Path inside the FBZ!
-  if (fbz.kPath2D.length >= 2) {
-    ctx.strokeStyle = "#0f766e"; ctx.lineWidth = 2.6;
+  if (s.showKPath !== false && fbz.kPath2D.length >= 2) {
+    ctx.strokeStyle = "#0f766e"; ctx.lineWidth = Math.max(2.0, s.lineWidth * 1.2);
     ctx.beginPath();
     let prev = null;
-    fbz.kPath2D.forEach((pt, i) => {
+    fbz.kPath2D.forEach((pt) => {
       const px = kxToX(pt[0]), py = kyToY(pt[1]);
-      // Break line on periodic wrap jump
-      if (!prev || Math.hypot(pt[0] - prev[0], pt[1] - prev[1]) > kLim * 0.45) ctx.moveTo(px, py);
+      if (!prev || Math.hypot(pt[0] - prev[0], pt[1] - prev[1]) > baseKLim * 0.45) ctx.moveTo(px, py);
       else ctx.lineTo(px, py);
       prev = pt;
     });
@@ -2104,9 +2411,9 @@ function _trDrawPanelD_FBZAndBerry(ctx, rx, ry, rw, rh, an) {
   // Canonical High-Symmetry Points + Active Center k0 Star
   fbz.hsPts.forEach(p => {
     const px = kxToX(p.xy[0]), py = kyToY(p.xy[1]);
-    ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 1.6;
+    ctx.fillStyle = "#ffffff"; ctx.strokeStyle = s.inkColor; ctx.lineWidth = 1.6;
     ctx.beginPath(); ctx.arc(px, py, 3.6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = "#0f172a"; ctx.font = "700 11.5px 'Times New Roman', serif";
+    ctx.fillStyle = s.inkColor; ctx.font = `700 ${Math.max(10.5, s.tickSize + 0.5)}px ${ff}`;
     if (p.label === "Γ") {
       ctx.textAlign = "right"; ctx.textBaseline = "top";
       ctx.fillText("Γ", px - 8, py + 7);
@@ -2126,18 +2433,18 @@ function _trDrawPanelD_FBZAndBerry(ctx, rx, ry, rw, rh, an) {
   ctx.restore();
 
   const ticks = [-kLim * 0.7, 0, kLim * 0.7];
-  _trDrawAxesBox(ctx, x0, y0, side, side, ticks.map(kxToX), ticks.map(kyToY));
+  _trDrawAxesBox(ctx, x0, y0, side, side, ticks.map(kxToX), ticks.map(kyToY), s);
 
   // Berry Curvature Colorbar (if active)
   if (showBerry && an.pBroken && fbz.isHex) {
     const cbX = x0 + side + 10, cbW = 10, cbY = y0 + 14, cbH = side - 28;
     for (let i = 0; i < cbH; i++) {
       const v = 1 - 2 * (i / Math.max(1, cbH - 1));
-      ctx.fillStyle = _trDivergingColor(v);
+      ctx.fillStyle = _trDivergingColor(v, s.cmap);
       ctx.fillRect(cbX, cbY + i, cbW, 1.5);
     }
     ctx.strokeStyle = "#334155"; ctx.lineWidth = 0.8; ctx.strokeRect(cbX, cbY, cbW, cbH);
-    ctx.fillStyle = "#0f172a"; ctx.font = "700 9.5px 'Times New Roman', serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillStyle = s.inkColor; ctx.font = `700 ${Math.max(8.5, s.tickSize - 1)}px ${ff}`; ctx.textAlign = "left"; ctx.textBaseline = "middle";
     ctx.fillText(`+${an.omegaPeakK.toFixed(0)}`, cbX + cbW + 3, cbY + 2);
     ctx.fillText("0", cbX + cbW + 3, cbY + cbH * 0.5);
     ctx.fillText(`−${an.omegaPeakK.toFixed(0)}`, cbX + cbW + 3, cbY + cbH - 2);
@@ -2145,19 +2452,22 @@ function _trDrawPanelD_FBZAndBerry(ctx, rx, ry, rw, rh, an) {
     else ctx.fillText("Ωz (Å²)", cbX - 4, cbY - 8);
   }
 
-  ctx.fillStyle = "#0f172a"; ctx.font = "700 13px 'Times New Roman', serif"; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
-  if (typeof drawSciText === "function") drawSciText(ctx, "(d) First Brillouin Zone, k-Path & Berry Curvature Ω_{z}(k)", rx + rw / 2, ry + 22);
-  else ctx.fillText(`(d) First Brillouin Zone, k-Path & Berry Curvature Ωz(k)`, rx + rw / 2, ry + 22);
+  const pfxD = s.panelLetters ? "(d) " : "";
+  ctx.fillStyle = s.inkColor; ctx.font = `${axWeight}${s.titleSize}px ${ff}`; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  if (typeof drawSciText === "function") drawSciText(ctx, `${pfxD}First Brillouin Zone, k-Path & Berry Curvature Ω_{z}(k)`, rx + rw / 2, ry + 22);
+  else ctx.fillText(`${pfxD}First Brillouin Zone, k-Path & Berry Curvature Ωz(k)`, rx + rw / 2, ry + 22);
 
-  ctx.fillStyle = "#0f172a"; ctx.font = "10.5px 'Times New Roman', serif"; ctx.textAlign = "center"; ctx.textBaseline = "top";
-  ticks.forEach(v => ctx.fillText(Math.abs(v) < 1e-4 ? "0" : v.toFixed(2), kxToX(v), y0 + side + 5));
-  ctx.font = "700 11.5px 'Times New Roman', serif";
-  if (typeof drawSciText === "function") drawSciText(ctx, "k_{x} (Å^{-1})", x0 + side / 2, y0 + side + 29);
-  else ctx.fillText("kx (Å⁻¹)", x0 + side / 2, y0 + side + 21);
-  ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.font = "10.5px 'Times New Roman', serif";
-  ticks.forEach(v => ctx.fillText(Math.abs(v) < 1e-4 ? "0" : v.toFixed(2), x0 - 6, kyToY(v)));
+  const decD = kLim < 0.25 ? 3 : 2;
+  const tickPad = s.tickDir === "out" ? (s.tickLength + 4) : 5;
+  ctx.fillStyle = s.inkColor; ctx.font = `${Math.max(9, s.tickSize - 0.5)}px ${ff}`; ctx.textAlign = "center"; ctx.textBaseline = "top";
+  ticks.forEach(v => ctx.fillText(Math.abs(v) < 1e-4 ? "0" : v.toFixed(decD), kxToX(v), y0 + side + tickPad));
+  ctx.font = `${axWeight}${s.axisLabelSize}px ${ff}`;
+  if (typeof drawSciText === "function") drawSciText(ctx, "k_{x} (Å^{-1})", x0 + side / 2, y0 + side + tickPad + s.tickSize + 13);
+  else ctx.fillText("kx (Å⁻¹)", x0 + side / 2, y0 + side + tickPad + s.tickSize + 5);
+  ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.font = `${Math.max(9, s.tickSize - 0.5)}px ${ff}`;
+  ticks.forEach(v => ctx.fillText(Math.abs(v) < 1e-4 ? "0" : v.toFixed(decD), x0 - tickPad, kyToY(v)));
   ctx.save(); ctx.translate(rx + 15, y0 + side / 2); ctx.rotate(-Math.PI / 2);
-  ctx.textAlign = "center"; ctx.font = "700 11.5px 'Times New Roman', serif";
+  ctx.textAlign = "center"; ctx.font = `${axWeight}${s.axisLabelSize}px ${ff}`;
   if (typeof drawSciText === "function") drawSciText(ctx, "k_{y} (Å^{-1})", 0, 0);
   else ctx.fillText("ky (Å⁻¹)", 0, 0);
   ctx.restore();
@@ -2262,7 +2572,7 @@ function _trBuildTableFBZBerry(an) {
   const fbz = an.fbz;
   const rows = [];
   if (an.pBroken && fbz.isHex && fbz.cornersK.length === 6) {
-    let kLim = 1.0;
+    let kLim = 0.05;
     fbz.fbzPoly.forEach(v => { kLim = Math.max(kLim, Math.abs(v[0]), Math.abs(v[1])); });
     const nG = 41;
     const hv2 = an.hbarVF * an.hbarVF;
