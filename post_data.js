@@ -69,8 +69,32 @@ window.POST_DATA_STATE = {
   customPairs: [],      // [{ aIdx, bIdx, label }] — custom 3D bond atom pairs
   lastResult: null,
   hoverInfo: null,
+  zoom: 1.0,
+  wheelZoomEnabled: false,
   dragBound: false
 };
+
+function syncPostDataZoomUI() {
+  const z = POST_DATA_STATE.zoom || 1.0;
+  const badge = document.getElementById("pd-zoom-badge");
+  if (badge) badge.textContent = `${Math.round(z * 100)}%`;
+}
+window.syncPostDataZoomUI = syncPostDataZoomUI;
+
+function stepPostDataZoom(dir) {
+  const f = dir > 0 ? 1.2 : (1 / 1.2);
+  POST_DATA_STATE.zoom = Math.max(0.4, Math.min(5.0, Number(((POST_DATA_STATE.zoom || 1.0) * f).toFixed(3))));
+  syncPostDataZoomUI();
+  renderPostDataTab();
+}
+window.stepPostDataZoom = stepPostDataZoom;
+
+function resetPostDataZoom() {
+  POST_DATA_STATE.zoom = 1.0;
+  syncPostDataZoomUI();
+  renderPostDataTab();
+}
+window.resetPostDataZoom = resetPostDataZoom;
 
 // ---------------- Math & Crystallography Helpers ----------------
 
@@ -1359,7 +1383,7 @@ function drawPostDataCanvas(res) {
   let xMin = res.xMin, xMax = res.xMax;
   if (Math.abs(xMax - xMin) < 1e-9) { xMin -= 1; xMax += 1; }
   const xPad = (xMax - xMin) * 0.06;
-  const xLo = xMin - xPad, xHi = xMax + xPad;
+  let xLo = xMin - xPad, xHi = xMax + xPad;
 
   let yMin = Infinity, yMax = -Infinity;
   visibleSeries.forEach(sd => {
@@ -1374,8 +1398,16 @@ function drawPostDataCanvas(res) {
   if (!isFinite(yMin) || !isFinite(yMax)) { yMin = -0.05; yMax = 0.05; }
   if (Math.abs(yMax - yMin) < 1e-6) { yMin -= 0.02; yMax += 0.02; }
   const ySpan = yMax - yMin;
-  const yLo = yMin - ySpan * 0.10;
-  const yHi = yMax + ySpan * 0.14;
+  let yLo = yMin - ySpan * 0.10;
+  let yHi = yMax + ySpan * 0.14;
+
+  const pdZoom = POST_DATA_STATE.zoom || 1.0;
+  if (Math.abs(pdZoom - 1.0) > 1e-3) {
+    const xMid = 0.5 * (xLo + xHi), xHalf = 0.5 * (xHi - xLo) / pdZoom;
+    const yMid = 0.5 * (yLo + yHi), yHalf = 0.5 * (yHi - yLo) / pdZoom;
+    xLo = xMid - xHalf; xHi = xMid + xHalf;
+    yLo = yMid - yHalf; yHi = yMid + yHalf;
+  }
 
   const toX = x => px + ((x - xLo) / (xHi - xLo)) * pw;
   const toY = y => py + ph - ((y - yLo) / (yHi - yLo)) * ph;
@@ -1611,10 +1643,7 @@ function drawPostDataLayerSchematic(ctx, res, sx, sy, sw, sh, st, customPackArg)
   if (!refLay || !refLay.layers.length) return;
 
   ctx.save();
-  // Subtle panel divider & header
-  ctx.strokeStyle = "#e2e8f0";
-  ctx.lineWidth = 1.0;
-  ctx.beginPath(); ctx.moveTo(sx - 4, sy + 10); ctx.lineTo(sx - 4, sy + sh - 10); ctx.stroke();
+  // Clean publication header (no harsh vertical divider line between plot & schematic)
 
   const fmtFormulaSci = (f) => String(f || "Ref").replace(/([A-Za-z\)])(\d+)/g, "$1_{$2}");
   ctx.fillStyle = st.inkColor || "#0f172a";
@@ -2017,15 +2046,26 @@ function initPostDataTab() {
         dataItems: []
       };
     }
-    canvas.title = "Hover over the plot for exact values • Right-click either sub-panel to Copy HD Image (400–600 DPI) or Copy Data (TSV)";
+    canvas.title = "Hover for exact values • Ctrl+Scroll to zoom • Double-click to reset zoom • Right-click either sub-panel to Copy HD Image or TSV";
     canvas.addEventListener("contextmenu", ev => {
       if (typeof showCastepPlotContextMenu === "function") {
         ev.preventDefault();
         showCastepPlotContextMenu("post-data-main-canvas", ev.clientX, ev.clientY);
       }
     });
+    canvas.addEventListener("wheel", ev => {
+      if (!POST_DATA_STATE.lastResult || !ev.ctrlKey) return;
+      ev.preventDefault();
+      stepPostDataZoom(ev.deltaY < 0 ? 1 : -1);
+    }, { passive: false });
+    canvas.addEventListener("dblclick", () => {
+      if (!POST_DATA_STATE.lastResult) return;
+      resetPostDataZoom();
+    });
   }
 
+  syncPostDataZoomUI();
+  if (typeof syncPostPlotFormatUI === "function") syncPostPlotFormatUI();
   renderPostDataTab();
 }
 window.initPostDataTab = initPostDataTab;
