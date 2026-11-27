@@ -16746,12 +16746,40 @@ function analyzeCarrierFromBands(bandsObj, latInfo, opts) {
     const gapEv = (vbmB >= 0 && cbmB >= 0 && !crossesFermi) ? Math.max(0, cbmE - vbmE) : 0.0;
     const isMetallic = crossesFermi || gapEv < 0.02;
 
-    // Collect primary + degenerate bands within 15 meV at VBM (hh / lh) & CBM
+    // Collect primary + degenerate bands within 18 meV at VBM/CBM (semiconductors)
+    // OR true metallic Electron Pockets (e-) & Hole Pockets (h+) + pocket-referenced Fermi crossings (metals/semimetals)
     const eBranches = [];
     const hBranches = [];
     const eDegBands = [];
     const hDegBands = [];
     const fermiCrossings = [];
+    let eIsFermiPocket = false;
+    let hIsFermiPocket = false;
+    let eFermiDepthEv = 0.0;
+    let hFermiDepthEv = 0.0;
+
+    const pushUniqueBranch = (arr, br) => {
+      const dup = arr.some(x =>
+        x.bandIdx === br.bandIdx &&
+        x.dirLabel === br.dirLabel &&
+        Math.abs(x.mStar - br.mStar) / Math.max(1e-4, br.mStar) < 0.005
+      );
+      if (!dup) arr.push(br);
+    };
+
+    const collectEquivalentExtrema = (b, refK, refE, isMin, tolEv = 0.015) => {
+      const ks = [refK];
+      for (let k = 0; k < kpoints.length; k++) {
+        if (Math.abs(k - refK) <= 3) continue;
+        const ev = kpoints[k].e?.[sIdx]?.[b];
+        if (ev === undefined || Math.abs(ev - refE) >= tolEv) continue;
+        const prev = k > 0 ? kpoints[k - 1].e[sIdx][b] : (isMin ? 1e9 : -1e9);
+        const next = k + 1 < kpoints.length ? kpoints[k + 1].e[sIdx][b] : (isMin ? 1e9 : -1e9);
+        const isExt = isMin ? (ev <= prev + 1e-5 && ev <= next + 1e-5) : (ev >= prev - 1e-5 && ev >= next - 1e-5);
+        if (isExt && !ks.some(kk => trNorm(trSub(kCarts[kk], kCarts[k])) < 0.05)) ks.push(k);
+      }
+      return ks;
+    };
 
     if (!isMetallic && cbmB >= 0 && vbmB >= 0) {
       for (let b = 0; b < nb; b++) {
@@ -16763,47 +16791,20 @@ function analyzeCarrierFromBands(bandsObj, latInfo, opts) {
       if (!eDegBands.includes(cbmB)) eDegBands.unshift(cbmB);
       if (!hDegBands.includes(vbmB)) hDegBands.unshift(vbmB);
 
-      // Fit CBM branches (and check secondary equivalent extrema within 10 meV at different k-points)
-      const cbmKs = [cbmK];
-      for (let k = 0; k < kpoints.length; k++) {
-        if (Math.abs(k - cbmK) > 3 && Math.abs((kpoints[k].e?.[sIdx]?.[cbmB] ?? 1e9) - cbmE) < 0.012) {
-          // Only add distinct high-symmetry/local min
-          const prev = k > 0 ? kpoints[k - 1].e[sIdx][cbmB] : 1e9;
-          const next = k + 1 < kpoints.length ? kpoints[k + 1].e[sIdx][cbmB] : 1e9;
-          if (kpoints[k].e[sIdx][cbmB] <= prev + 1e-5 && kpoints[k].e[sIdx][cbmB] <= next + 1e-5) {
-            if (!cbmKs.some(kk => trNorm(trSub(kCarts[kk], kCarts[k])) < 0.05)) cbmKs.push(k);
-          }
-        }
-      }
-      const pushUniqueBranch = (arr, br) => {
-        const dup = arr.some(x =>
-          x.bandIdx === br.bandIdx &&
-          x.dirLabel === br.dirLabel &&
-          Math.abs(x.mStar - br.mStar) / Math.max(1e-4, br.mStar) < 0.005
-        );
-        if (!dup) arr.push(br);
-      };
+      const cbmKs = collectEquivalentExtrema(cbmB, cbmK, cbmE, true, 0.012);
       eDegBands.slice(0, 3).forEach((b, bi) => {
         cbmKs.slice(0, 2).forEach(kk => {
           const brs = fitBandExtremumBranches(kpoints, kCarts, segs, latInfo, sIdx, b, kk, "e", opts);
           brs.forEach(br => {
             br.subBandRole = eDegBands.length > 1 ? `CB${bi + 1}` : "CBM";
+            br.isFermiPocket = false;
+            br.fermiDepthEv = 0;
             pushUniqueBranch(eBranches, br);
           });
         });
       });
 
-      const vbmKs = [vbmK];
-      for (let k = 0; k < kpoints.length; k++) {
-        if (Math.abs(k - vbmK) > 3 && Math.abs((kpoints[k].e?.[sIdx]?.[vbmB] ?? -1e9) - vbmE) < 0.012) {
-          const prev = k > 0 ? kpoints[k - 1].e[sIdx][vbmB] : -1e9;
-          const next = k + 1 < kpoints.length ? kpoints[k + 1].e[sIdx][vbmB] : -1e9;
-          if (kpoints[k].e[sIdx][vbmB] >= prev - 1e-5 && kpoints[k].e[sIdx][vbmB] >= next - 1e-5) {
-            if (!vbmKs.some(kk => trNorm(trSub(kCarts[kk], kCarts[k])) < 0.05)) vbmKs.push(k);
-          }
-        }
-      }
-      // Fit degenerate VBM bands and label heavy-hole (hh) vs light-hole (lh)
+      const vbmKs = collectEquivalentExtrema(vbmB, vbmK, vbmE, false, 0.012);
       const bandAvgMass = [];
       hDegBands.slice(0, 3).forEach(b => {
         const tmp = [];
@@ -16820,11 +16821,148 @@ function analyzeCarrierFromBands(bandsObj, latInfo, opts) {
         const role = bandAvgMass.length >= 2 ? (idx === 0 ? "VBM (hh)" : (idx === 1 ? "VBM (lh)" : `VB${idx + 1}`)) : "VBM";
         item.brs.forEach(br => {
           br.subBandRole = role;
+          br.isFermiPocket = false;
+          br.fermiDepthEv = 0;
           hBranches.push(br);
         });
       });
     } else {
-      // Metallic / Half-Metallic channel: extract Fermi crossings v_F and cyclotron/Fermi effective mass m*_F
+      // METALLIC / SEMIMETALLIC / HALF-METALLIC CHANNEL:
+      // 1) Classify every band touching or crossing E_F into genuine Electron Pockets (e-) and Hole Pockets (h+)
+      const bandExtStats = [];
+      const ePocketBandSet = new Set();
+      const hPocketBandSet = new Set();
+      const ePocketCands = [];
+      const hPocketCands = [];
+
+      for (let b = 0; b < nb; b++) {
+        let bMin = 1e9, bMax = -1e9, minK = 0, maxK = 0;
+        for (let k = 0; k < kpoints.length; k++) {
+          const ev = kpoints[k].e?.[sIdx]?.[b];
+          if (ev === undefined) continue;
+          if (ev < bMin) { bMin = ev; minK = k; }
+          if (ev > bMax) { bMax = ev; maxK = k; }
+        }
+        bandExtStats[b] = { b, bMin, bMax, minK, maxK };
+        if (bMin <= 0.12 && bMax >= -0.12) {
+          const bw = Math.max(0.05, bMax - bMin);
+          const occFrac = Math.max(0, -bMin) / bw;
+          const unoccFrac = Math.max(0, bMax) / bw;
+          // Genuine electron pocket: shallow minimum near EF (-0.06..+0.12 eV) OR occupied fraction <= 72%
+          if ((bMin >= -0.06 && bMin <= 0.12 && bMax > bMin + 0.02) || (bMin < -0.06 && bMax > 0.01 && occFrac <= 0.72)) {
+            ePocketBandSet.add(b);
+            ePocketCands.push({ b, k0: minK, e0: bMin, depth: Math.max(0, -bMin), crosses: bMin < 0 && bMax > 0 });
+          }
+          // Genuine hole pocket: shallow maximum near EF (-0.12..+0.06 eV) OR unoccupied fraction <= 72%
+          if ((bMax >= -0.12 && bMax <= 0.06 && bMin < bMax - 0.02) || (bMax > 0.06 && bMin < -0.01 && unoccFrac <= 0.72)) {
+            hPocketBandSet.add(b);
+            hPocketCands.push({ b, k0: maxK, e0: bMax, depth: Math.max(0, bMax), crosses: bMin < 0 && bMax > 0 });
+          }
+        }
+      }
+
+      // Prioritize actively Fermi-crossing pockets first, then closest pocket edge to E_F
+      ePocketCands.sort((a, b) => (b.crosses - a.crosses) || (Math.abs(a.e0) - Math.abs(b.e0)));
+      hPocketCands.sort((a, b) => (b.crosses - a.crosses) || (Math.abs(a.e0) - Math.abs(b.e0)));
+
+      // Fit metallic Electron Pocket branches (up to 3 bands within 0.25 eV of primary pocket)
+      if (ePocketCands.length) {
+        const refE = ePocketCands[0].e0;
+        const chosenE = ePocketCands.filter((c, i) => i === 0 || (c.crosses && Math.abs(c.e0 - refE) <= 0.25) || Math.abs(c.e0 - refE) <= 0.04).slice(0, 3);
+        chosenE.forEach((cand, ci) => {
+          const ks = collectEquivalentExtrema(cand.b, cand.k0, cand.e0, true, 0.018);
+          ks.slice(0, 2).forEach(kk => {
+            const brs = fitBandExtremumBranches(kpoints, kCarts, segs, latInfo, sIdx, cand.b, kk, "e", opts);
+            brs.forEach(br => {
+              const dftEdgeE = kpoints[br.k0].e[sIdx][br.bandIdx];
+              br.subBandRole = chosenE.length > 1 ? `e-Pkt${ci + 1}` : "e-Pocket";
+              br.isFermiPocket = true;
+              br.dftEdgeE = dftEdgeE;
+              br.fermiDepthEv = Math.max(0, -dftEdgeE);
+              pushUniqueBranch(eBranches, br);
+            });
+          });
+        });
+      }
+      if (eBranches.length) {
+        eIsFermiPocket = true;
+        // Representative pocket edge & Fermi depth (exact DFT eigenvalue at deepest active crossing pocket)
+        const bestE = eBranches.reduce((a, b) => ((b.dftEdgeE ?? b.e0) < (a.dftEdgeE ?? a.e0) ? b : a), eBranches[0]);
+        const exactE = bestE.dftEdgeE ?? bestE.e0;
+        cbmE = exactE; cbmK = bestE.k0; cbmB = bestE.bandIdx;
+        eFermiDepthEv = Math.max(0, -exactE);
+      } else {
+        // Unipolar p-type metal fallback: fit nearest unoccupied conduction band minimum above E_F
+        const aboveCands = bandExtStats.filter(s => s.bMin > 0.02 && s.bMin < 3.0).sort((a, b) => a.bMin - b.bMin);
+        if (aboveCands.length) {
+          const c = aboveCands[0];
+          const ks = collectEquivalentExtrema(c.b, c.minK, c.bMin, true, 0.015);
+          ks.slice(0, 2).forEach(kk => {
+            fitBandExtremumBranches(kpoints, kCarts, segs, latInfo, sIdx, c.b, kk, "e", opts).forEach(br => {
+              br.subBandRole = `CB (+${c.bMin.toFixed(2)}eV)`;
+              br.isFermiPocket = false;
+              br.fermiDepthEv = 0;
+              pushUniqueBranch(eBranches, br);
+            });
+          });
+          if (eBranches.length) { cbmE = c.bMin; cbmK = c.minK; cbmB = c.b; }
+        }
+      }
+
+      // Fit metallic Hole Pocket branches (up to 3 bands within 0.25 eV of primary pocket)
+      if (hPocketCands.length) {
+        const refH = hPocketCands[0].e0;
+        const chosenH = hPocketCands.filter((c, i) => i === 0 || (c.crosses && Math.abs(c.e0 - refH) <= 0.25) || Math.abs(c.e0 - refH) <= 0.04).slice(0, 3);
+        const hGrouped = [];
+        chosenH.forEach((cand) => {
+          const tmp = [];
+          const ks = collectEquivalentExtrema(cand.b, cand.k0, cand.e0, false, 0.018);
+          ks.slice(0, 2).forEach(kk => {
+            fitBandExtremumBranches(kpoints, kCarts, segs, latInfo, sIdx, cand.b, kk, "h", opts).forEach(br => pushUniqueBranch(tmp, br));
+          });
+          if (tmp.length) {
+            const avgM = tmp.reduce((acc, r) => acc + r.mStar, 0) / tmp.length;
+            hGrouped.push({ cand, avgM, brs: tmp });
+          }
+        });
+        hGrouped.sort((a, b) => b.avgM - a.avgM);
+        hGrouped.forEach((item, idx) => {
+          const role = hGrouped.length >= 2 ? (idx === 0 ? "h-Pkt (hh)" : (idx === 1 ? "h-Pkt (lh)" : `h-Pkt${idx + 1}`)) : "h-Pocket";
+          item.brs.forEach(br => {
+            const dftEdgeE = kpoints[br.k0].e[sIdx][br.bandIdx];
+            br.subBandRole = role;
+            br.isFermiPocket = true;
+            br.dftEdgeE = dftEdgeE;
+            br.fermiDepthEv = Math.max(0, dftEdgeE);
+            hBranches.push(br);
+          });
+        });
+      }
+      if (hBranches.length) {
+        hIsFermiPocket = true;
+        const bestH = hBranches.reduce((a, b) => ((b.dftEdgeE ?? b.e0) > (a.dftEdgeE ?? a.e0) ? b : a), hBranches[0]);
+        const exactH = bestH.dftEdgeE ?? bestH.e0;
+        vbmE = exactH; vbmK = bestH.k0; vbmB = bestH.bandIdx;
+        hFermiDepthEv = Math.max(0, exactH);
+      } else {
+        // Unipolar n-type metal fallback: fit nearest occupied valence band maximum below E_F
+        const belowCands = bandExtStats.filter(s => s.bMax < -0.02 && s.bMax > -3.0).sort((a, b) => b.bMax - a.bMax);
+        if (belowCands.length) {
+          const c = belowCands[0];
+          const ks = collectEquivalentExtrema(c.b, c.maxK, c.bMax, false, 0.015);
+          ks.slice(0, 2).forEach(kk => {
+            fitBandExtremumBranches(kpoints, kCarts, segs, latInfo, sIdx, c.b, kk, "h", opts).forEach(br => {
+              br.subBandRole = `VB (${c.bMax.toFixed(2)}eV)`;
+              br.isFermiPocket = false;
+              br.fermiDepthEv = 0;
+              pushUniqueBranch(hBranches, br);
+            });
+          });
+          if (hBranches.length) { vbmE = c.bMax; vbmK = c.maxK; vbmB = c.b; }
+        }
+      }
+
+      // 2) Exact pocket-referenced Fermi Crossings: v_F, local curvature m*_curv, and pocket cyclotron mass m*_cyc = ħ² q_F / |dE/dk|
       segs.forEach(sg => {
         for (let b = 0; b < nb; b++) {
           for (let k = sg.start; k < sg.end; k++) {
@@ -16835,24 +16973,59 @@ function analyzeCarrierFromBands(bandsObj, latInfo, opts) {
               const frac = Math.abs(e2 - e1) > 1e-9 ? (-e1) / (e2 - e1) : 0.5;
               const dk = trNorm(trSub(kCarts[k + 1], kCarts[k]));
               if (dk < 1e-6) continue;
-              const dEdk = Math.abs(e2 - e1) / dk; // eV·Å
-              const vF_ms = (dEdk * TR_CONST.E_CHG * 1e-10) / TR_CONST.HBAR_J; // m/s
               const kCross = [
                 kCarts[k][0] + frac * (kCarts[k + 1][0] - kCarts[k][0]),
                 kCarts[k][1] + frac * (kCarts[k + 1][1] - kCarts[k][1]),
                 kCarts[k][2] + frac * (kCarts[k + 1][2] - kCarts[k][2])
               ];
-              const kF = Math.max(0.05, trNorm(kCross));
-              // Also estimate local curvature around crossing
-              let mStarF = (TR_CONST.HBAR2_OVER_M0 * kF) / Math.max(1e-4, dEdk);
+
+              // Local 5-point quadratic around crossing for accurate v_F and curvature sign d2E/dk2
+              const iLo = Math.max(sg.start, k - 2);
+              const iHi = Math.min(sg.end, k + 3);
+              const qLoc = [], eLoc = [];
+              for (let j = iLo; j <= iHi; j++) {
+                qLoc.push(trDot(trSub(kCarts[j], kCross), sg.dir));
+                eLoc.push(kpoints[j].e[sIdx][b]);
+              }
+              const qFit = qLoc.length >= 3 ? fitGeneralQuadratic(qLoc, eLoc) : null;
+              const dEdk = qFit ? Math.max(1e-4, Math.abs(qFit.c1)) : Math.max(1e-4, Math.abs(e2 - e1) / dk);
+              const d2Edk2Loc = qFit ? qFit.d2Edk2 : 0;
+              const vF_ms = (dEdk * TR_CONST.E_CHG * 1e-10) / TR_CONST.HBAR_J;
+
+              // Determine true carrier character ("e" vs "h") & enclosing pocket center along this segment
+              const isEBand = ePocketBandSet.has(b);
+              const isHBand = hPocketBandSet.has(b);
+              // Find nearest local minimum (for e) and local maximum (for h) along sg enclosing this crossing
+              let segMinK = sg.start, segMinE = 1e9, segMaxK = sg.start, segMaxE = -1e9;
+              for (let j = sg.start; j <= sg.end; j++) {
+                const ev = kpoints[j].e[sIdx][b];
+                if (ev < segMinE) { segMinE = ev; segMinK = j; }
+                if (ev > segMaxE) { segMaxE = ev; segMaxK = j; }
+              }
+              const qToMin = trNorm(trSub(kCross, kCarts[segMinK]));
+              const qToMax = trNorm(trSub(kCross, kCarts[segMaxK]));
+              let cType = "e";
+              if (isEBand && !isHBand) cType = "e";
+              else if (isHBand && !isEBand) cType = "h";
+              else if (Math.abs(d2Edk2Loc) > 0.05) cType = d2Edk2Loc > 0 ? "e" : "h";
+              else cType = (qToMin <= qToMax) ? "e" : "h";
+
+              // Pocket-centered radius q_F (relative to its own pocket extremum, NOT Gamma!)
+              const pocketCenterIdx = cType === "e" ? segMinK : segMaxK;
+              const qF = Math.max(0.015, cType === "e" ? qToMin : qToMax);
+              let mStarF = (TR_CONST.HBAR2_OVER_M0 * qF) / dEdk;
               mStarF = Math.max(0.02, Math.min(50, mStarF));
+              const mCurvF = Math.abs(d2Edk2Loc) > 0.05 ? Math.max(0.02, Math.min(50, Math.abs(TR_CONST.HBAR2_OVER_M0 / d2Edk2Loc))) : mStarF;
+
               const endA = labelFractionalKPoint(kpoints[sg.start].k, latInfo);
               const endB = labelFractionalKPoint(kpoints[sg.end].k, latInfo);
               fermiCrossings.push({
                 spinIdx: sIdx, bandIdx: b, kIdx: k,
+                carrierType: cType,
+                pocketLabel: labelFractionalKPoint(kpoints[pocketCenterIdx].k, latInfo),
                 dirLabel: `${endA} → ${endB}`,
-                dEdk, vF_ms, kF, mStarF,
-                carrierSign: (e2 > e1 ? 1 : -1)
+                dEdk, d2Edk2Loc, vF_ms, qF, mStarF, mCurvF,
+                carrierSign: cType === "e" ? 1 : -1
               });
             }
           }
@@ -16920,6 +17093,7 @@ function analyzeCarrierFromBands(bandsObj, latInfo, opts) {
       cbmLabel: cbmB >= 0 ? labelFractionalKPoint(kpoints[cbmK].k, latInfo) : "—",
       isDirect: !isMetallic && vbmB >= 0 && cbmB >= 0 && trNorm(trSub(kCarts[vbmK], kCarts[cbmK])) < 0.04,
       eBranches, hBranches, fermiCrossings,
+      eIsFermiPocket, hIsFermiPocket, eFermiDepthEv, hFermiDepthEv,
       eSummary: summarizeMass(eBranches, is2D, opts.gvE),
       hSummary: summarizeMass(hBranches, is2D, opts.gvH)
     };
@@ -17094,7 +17268,7 @@ function computeDosEffectiveMasses(dosBands, bandRes, latInfo, opts) {
 
 function computeCarrierScatteringAt(mCond, mGeo, alphaKane, dim, T, nConcSI, params, carrierType) {
   // dim = 2 or 3
-  // nConcSI: m^-2 (2D) or m^-3 (3D)
+  // nConcSI: m^-2 (2D) or m^-3 (3D) (ignored if params.useFermiPocketEta is true — computed directly from DFT Fermi depth ΔE_F!)
   const is2D = dim === 2;
   const kBT_J = TR_CONST.KB_J * T;
   const kBT_eV = TR_CONST.KB_EV * T;
@@ -17103,19 +17277,95 @@ function computeCarrierScatteringAt(mCond, mGeo, alphaKane, dim, T, nConcSI, par
   const E1_eV = carrierType === "e" ? params.E1e : params.E1h;
   const E1_J = Math.max(0.1, E1_eV) * TR_CONST.E_CHG;
 
-  // 1) Acoustic Deformation Potential (Takagi 2D / Bardeen-Shockley 3D)
+  // 0) Exact Chemical Potential η = (E_F - E_edge) / (k_B T) & Active Carrier Density nActive_SI
+  // Supports BOTH:
+  //   - Metallic / Semimetallic Fermi pockets (direct DFT ΔE_F -> exact Fermi-Dirac density n(ΔE_F, T))
+  //   - Doped / Gated Semiconductors & Manual Doping (n -> exact inverse Fermi-Dirac η)
+  const gSpin = params.gSpin || 2;
+  const mDosEff_kg = (params.mDosForDoping || mGeo) * TR_CONST.M0_KG;
+  const Nc_SI = is2D
+    ? (gSpin * mDosEff_kg * kBT_J) / (2 * Math.PI * TR_CONST.HBAR_J * TR_CONST.HBAR_J)
+    : gSpin * Math.pow((mDosEff_kg * kBT_J) / (2 * Math.PI * TR_CONST.HBAR_J * TR_CONST.HBAR_J), 1.5);
+
+  const evalF12 = (et) => {
+    if (et < -20) return Math.exp(et);
+    if (et > 45) return (4 / (3 * Math.sqrt(Math.PI))) * Math.pow(et, 1.5) * (1 + (Math.PI * Math.PI) / (8 * et * et));
+    const xmax = Math.max(28, et + 22);
+    const Nq = 84;
+    const dx = xmax / Nq;
+    let sum = 0;
+    for (let i = 1; i <= Nq; i++) {
+      const x = (i - 0.5) * dx;
+      const z = x - et;
+      const f = z > 50 ? 0 : (z < -50 ? 1 : 1 / (1 + Math.exp(z)));
+      sum += Math.sqrt(x) * f;
+    }
+    return (2 / Math.sqrt(Math.PI)) * sum * dx;
+  };
+
+  let eta = 0;
+  let nActive_SI = nConcSI;
+  if (params.useFermiPocketEta && isFinite(params.fermiDepthEv)) {
+    // Intrinsic metallic / semimetallic Fermi pocket: E_F lies ΔE_F inside the pocket!
+    eta = Math.max(-15, params.fermiDepthEv / Math.max(1e-6, kBT_eV));
+    if (is2D) {
+      const lnTerm = eta > 40 ? eta : Math.log1p(Math.exp(eta));
+      nActive_SI = Math.max(1e10, Nc_SI * lnTerm);
+    } else {
+      nActive_SI = Math.max(1e16, Nc_SI * evalF12(eta));
+    }
+  } else {
+    const ratioN = Math.max(1e-12, nConcSI / Math.max(1e-30, Nc_SI));
+    if (is2D) {
+      eta = ratioN > 40 ? ratioN : Math.log(Math.max(1e-30, Math.expm1(ratioN)));
+    } else if (ratioN < 0.05) {
+      eta = Math.log(ratioN);
+    } else {
+      let lo = -30, hi = Math.max(10, Math.pow(0.75 * Math.sqrt(Math.PI) * ratioN, 2 / 3) + 6);
+      for (let it = 0; it < 28; it++) {
+        const mid = 0.5 * (lo + hi);
+        if (evalF12(mid) < ratioN) lo = mid; else hi = mid;
+      }
+      eta = 0.5 * (lo + hi);
+    }
+  }
+
+  // 1) Acoustic Deformation Potential (Exact General Fermi-Dirac 2D & 3D: seamless Semiconductor <-> Semimetal <-> Metal!)
   let muADP_SI = 0;
   let tauADP_s = 0;
   if (is2D) {
     const C2d_Nm = Math.max(1.0, params.C2d); // N/m = J/m^2
-    // mu_2D = e * ħ^3 * C2D / (kB*T * m_c * m_d * E1^2)
+    // In 2D parabolic bands g_2D(E) is energy-independent, so τ_2D = ħ³ C_2D / (kB T m_d E1²) is EXACT in both non-degenerate & metallic limits!
     tauADP_s = (Math.pow(TR_CONST.HBAR_J, 3) * C2d_Nm) / (kBT_J * mD_kg * E1_J * E1_J);
     muADP_SI = (TR_CONST.E_CHG * tauADP_s) / mC_kg;
   } else {
     const C3d_Pa = Math.max(1.0, params.C3d) * 1e9; // GPa -> Pa
-    // mu_3D = 2*sqrt(2*pi) * e * ħ^4 * C3D / (3 * (kB*T)^(3/2) * m_c * m_d^(3/2) * E1^2)
-    tauADP_s = (2 * Math.sqrt(2 * Math.PI) * Math.pow(TR_CONST.HBAR_J, 4) * C3d_Pa) /
-               (3 * Math.pow(kBT_J, 1.5) * Math.pow(mD_kg, 1.5) * E1_J * E1_J);
+    // Exact 3D Boltzmann-Fermi-Dirac acoustic phonon integral:
+    //   η -> -∞ (semiconductor): reproduces exact Bardeen-Shockley 2*sqrt(2*pi)/3 * T^(-3/2)
+    //   η -> +∞ (3D metal):      reproduces exact Bloch-Grüneisen high-T π / (sqrt(2*ΔE_F) * T)
+    const tau0_3d = (Math.PI * Math.pow(TR_CONST.HBAR_J, 4) * C3d_Pa) /
+                    (Math.SQRT2 * Math.pow(mD_kg, 1.5) * kBT_J * E1_J * E1_J);
+    let fdRatio3D = 4 / (3 * Math.sqrt(Math.PI));
+    if (eta > 25) {
+      fdRatio3D = 1 / Math.sqrt(eta);
+    } else if (eta > -10) {
+      const xmax = Math.max(28, eta + 22);
+      const Nq = 120;
+      const dx = xmax / Nq;
+      let num = 0, den = 0;
+      for (let i = 1; i <= Nq; i++) {
+        const x = (i - 0.5) * dx;
+        const z = x - eta;
+        if (Math.abs(z) < 42) {
+          const f = 1 / (1 + Math.exp(z));
+          const w = f * (1 - f);
+          num += x * w;
+          den += Math.pow(x, 1.5) * w;
+        }
+      }
+      if (den > 1e-24 && num > 1e-24) fdRatio3D = num / den;
+    }
+    tauADP_s = (tau0_3d / Math.sqrt(kBT_J)) * fdRatio3D;
     muADP_SI = (TR_CONST.E_CHG * tauADP_s) / mC_kg;
   }
 
@@ -17133,7 +17383,6 @@ function computeCarrierScatteringAt(mCond, mGeo, alphaKane, dim, T, nConcSI, par
     if (alphaF > 1e-6 && xLO < 60) {
       const expM1 = Math.expm1(xLO);
       const polMassRatio = 1 / (1 + alphaF / 6);
-      // Low-Pines finite-T polar mobility relaxation time
       tauPOP_s = (expM1 / (2 * alphaF * wLO_rad)) * (polMassRatio * polMassRatio) * (3 * Math.sqrt(Math.PI) / (4 * Math.sqrt(Math.max(0.15, xLO))));
       muPOP_SI = (TR_CONST.E_CHG * tauPOP_s) / mC_kg;
     }
@@ -17144,14 +17393,14 @@ function computeCarrierScatteringAt(mCond, mGeo, alphaKane, dim, T, nConcSI, par
   let muIMP_SI = Infinity;
   if (params.useIMP && params.Ni_cm > 0) {
     const tEff_m = Math.max(3.35e-10, (params.slabThicknessA || 6.0) * 1e-10);
-    // Convert Ni to 3D volume density (m^-3)
     const Ni_m3 = is2D ? (params.Ni_cm * 1e4 / tEff_m) : (params.Ni_cm * 1e6);
-    const nScr_m3 = Math.max(1e20, is2D ? (nConcSI / tEff_m) : nConcSI, Ni_m3);
+    const nScr_m3 = Math.max(1e20, is2D ? (nActive_SI / tEff_m) : nActive_SI, Ni_m3);
     const epsR = Math.max(1.0, params.eps0);
-    const bBH = (24 * mC_kg * TR_CONST.EPS0_SI * epsR * kBT_J * kBT_J) /
+    const eEff_J = Math.max(kBT_J, eta > 1 ? (eta * kBT_J) : kBT_J);
+    const bBH = (24 * mC_kg * TR_CONST.EPS0_SI * epsR * eEff_J * eEff_J) /
                 (TR_CONST.HBAR_J * TR_CONST.HBAR_J * TR_CONST.E_CHG * TR_CONST.E_CHG * nScr_m3);
     const fBH = Math.max(0.05, Math.log(1 + bBH) - bBH / (1 + bBH));
-    tauIMP_s = (128 * Math.sqrt(2 * Math.PI) * Math.pow(TR_CONST.EPS0_SI * epsR, 2) * Math.pow(kBT_J, 1.5) * Math.sqrt(mC_kg)) /
+    tauIMP_s = (128 * Math.sqrt(2 * Math.PI) * Math.pow(TR_CONST.EPS0_SI * epsR, 2) * Math.pow(eEff_J, 1.5) * Math.sqrt(mC_kg)) /
                (Math.PI * Math.pow(TR_CONST.E_CHG, 4) * Ni_m3 * fBH);
     muIMP_SI = (TR_CONST.E_CHG * tauIMP_s) / mC_kg;
   }
@@ -17162,54 +17411,7 @@ function computeCarrierScatteringAt(mCond, mGeo, alphaKane, dim, T, nConcSI, par
                     (isFinite(tauIMP_s) && tauIMP_s > 0 ? 1 / tauIMP_s : 0);
   const tauTot_s = invTauTot > 0 ? 1 / invTauTot : tauADP_s;
 
-  // Non-parabolic Drude effective mass enhancement at given carrier density nConcSI & T
-  // Solve chemical potential eta = (mu - E_edge) / kBT using Fermi-Dirac integral (exact for 2D, Joyce-Dixon/bisection for 3D)
-  const gSpin = params.gSpin || 2;
-  const mDosEff_kg = (params.mDosForDoping || mGeo) * TR_CONST.M0_KG;
-  const Nc_SI = is2D
-    ? (gSpin * mDosEff_kg * kBT_J) / (2 * Math.PI * TR_CONST.HBAR_J * TR_CONST.HBAR_J)
-    : gSpin * Math.pow((mDosEff_kg * kBT_J) / (2 * Math.PI * TR_CONST.HBAR_J * TR_CONST.HBAR_J), 1.5);
-
-  const ratioN = Math.max(1e-12, nConcSI / Math.max(1e-30, Nc_SI));
-  let eta = 0; // (E_F - E_edge) / kBT
-  if (is2D) {
-    // Exact analytical 2D Fermi-Dirac inverse: ln(1 + e^eta) = n / Nc_2D  =>  eta = ln(e^(n/Nc) - 1)
-    eta = ratioN > 40 ? ratioN : Math.log(Math.max(1e-30, Math.expm1(ratioN)));
-  } else {
-    // 3D Joyce-Dixon / numerical bisection of F_{1/2}(eta) = (2/sqrt(pi)) * int_0^inf sqrt(x)/(1+e^(x-eta)) dx
-    if (ratioN < 0.05) {
-      eta = Math.log(ratioN);
-    } else {
-      // High-accuracy Aymerich-Humet / Bednarczyk inverse of F_{1/2}
-      let lo = -30, hi = Math.max(10, Math.pow(0.75 * Math.sqrt(Math.PI) * ratioN, 2 / 3) + 6);
-      const evalF12 = (et) => {
-        // 32-point Gauss-Laguerre-like stretched quadrature on [0, max(35, et+25)]
-        const xmax = Math.max(28, et + 22);
-        const Nq = 80;
-        const dx = xmax / Nq;
-        let sum = 0;
-        for (let i = 1; i <= Nq; i++) {
-          const x = (i - 0.5) * dx;
-          const z = x - et;
-          const f = z > 50 ? 0 : (z < -50 ? 1 : 1 / (1 + Math.exp(z)));
-          sum += Math.sqrt(x) * f;
-        }
-        return (2 / Math.sqrt(Math.PI)) * sum * dx;
-      };
-      for (let it = 0; it < 28; it++) {
-        const mid = 0.5 * (lo + hi);
-        if (evalF12(mid) < ratioN) lo = mid; else hi = mid;
-      }
-      eta = 0.5 * (lo + hi);
-    }
-  }
-
   // Compute exact Kane-Boltzmann Drude Effective Mass m*_Drude(n, T)
-  // From Boltzmann-Drude: 1 / m*_Drude = < v_g^2 (-df0/dE) > / < f0 >
-  // For Kane dispersion E(1 + alpha*E) = ħ²k²/(2*m0*):
-  //   v_g^2(E) = (2/m0*) * E*(1 + alpha*E) / (1 + 2*alpha*E)^2
-  //   g(E) ∝ (E*(1+alpha*E))^(d/2 - 1) * (1 + 2*alpha*E)
-  // Notice how clean the exact ratio is! At alpha = 0, m*_Drude === mCond identically!
   let mDrude = mCond;
   const alphaK = Math.max(0, alphaKane || 0);
   if (alphaK > 1e-4) {
@@ -17222,7 +17424,6 @@ function computeCarrierScatteringAt(mCond, mGeo, alphaKane, dim, T, nConcSI, par
       const E = (i - 0.5) * dE;
       let f0, df0dE;
       if (isBoltz) {
-        // Factor out e^eta identically so very low doping never underflows!
         f0 = Math.exp(-E / kBT_eV);
         df0dE = f0 / kBT_eV;
       } else {
@@ -17252,16 +17453,16 @@ function computeCarrierScatteringAt(mCond, mGeo, alphaKane, dim, T, nConcSI, par
   const muPOP_cm2Vs = isFinite(muPOP_SI) ? muPOP_SI * 1e4 : null;
   const muIMP_cm2Vs = isFinite(muIMP_SI) ? muIMP_SI * 1e4 : null;
 
-  // Drude Plasma Frequency ħω_p (eV), Damping γ_D (eV), Conductivity σ_0, Mean Free Path
+  // Drude Plasma Frequency ħω_p (eV), Damping γ_D (eV), Conductivity σ_0, Mean Free Path, Generalized Einstein D
   const tEff_m = Math.max(3.35e-10, (params.slabThicknessA || 6.0) * 1e-10);
-  const n3D_m3 = is2D ? (nConcSI / tEff_m) : nConcSI;
+  const n3D_m3 = is2D ? (nActive_SI / tEff_m) : nActive_SI;
   const wp_rad = Math.sqrt(Math.max(0, (n3D_m3 * TR_CONST.E_CHG * TR_CONST.E_CHG) / (TR_CONST.EPS0_SI * mDrude_kg)));
   const wp_eV = (TR_CONST.HBAR_J * wp_rad) / TR_CONST.E_CHG;
   const tauTot_fs = tauTot_s * 1e15;
   const gammaD_eV = tauTot_fs > 1e-9 ? TR_CONST.HBAR_EV_FS / tauTot_fs : 0;
   const sigma3D_Sm = (n3D_m3 * TR_CONST.E_CHG * TR_CONST.E_CHG * tauTot_s) / mDrude_kg;
   const sigma3D_Scm = sigma3D_Sm * 1e-2;
-  const sigma2D_S = is2D ? (nConcSI * TR_CONST.E_CHG * TR_CONST.E_CHG * tauTot_s) / mDrude_kg : sigma3D_Sm * tEff_m;
+  const sigma2D_S = is2D ? (nActive_SI * TR_CONST.E_CHG * TR_CONST.E_CHG * tauTot_s) / mDrude_kg : sigma3D_Sm * tEff_m;
   const sheetR_ohm = sigma2D_S > 1e-30 ? 1 / sigma2D_S : Infinity;
 
   const vTh_ms = Math.sqrt((dim * kBT_J) / mDrude_kg);
@@ -17269,12 +17470,24 @@ function computeCarrierScatteringAt(mCond, mGeo, alphaKane, dim, T, nConcSI, par
   const vF_ms = eta > 0 ? Math.sqrt((2 * Math.max(0, eF_shift_eV) * TR_CONST.E_CHG) / mDrude_kg) : vTh_ms;
   const vRms_ms = Math.max(vTh_ms, vF_ms);
   const mfp_nm = vRms_ms * tauTot_s * 1e9;
-  const diff_cm2s = (kBT_eV) * muTot_cm2Vs; // Einstein D = (kBT/e)*mu
+  // Generalized degenerate Einstein diffusivity D = mu * (n / (e * dn/dmu))
+  let einsteinScale_eV = kBT_eV;
+  if (eta > 0.2) {
+    if (is2D) {
+      const lnTerm = eta > 40 ? eta : Math.log1p(Math.exp(eta));
+      einsteinScale_eV = kBT_eV * (1 + Math.exp(-eta)) * lnTerm;
+    } else {
+      einsteinScale_eV = kBT_eV * Math.sqrt(1 + Math.pow((2 / 3) * eta, 2));
+    }
+  }
+  const diff_cm2s = einsteinScale_eV * muTot_cm2Vs;
 
   return {
     T, dim, is2D, mCond, mGeo, mDrude,
     massEnhancement: mDrude / Math.max(1e-9, mCond),
     eta, eF_shift_eV,
+    nActive_SI,
+    nActive_cm: is2D ? nActive_SI * 1e-4 : nActive_SI * 1e-6,
     Nc_SI,
     Nc_cm: is2D ? Nc_SI * 1e-4 : Nc_SI * 1e-6,
     tauADP_fs: tauADP_s * 1e15,
@@ -17286,7 +17499,7 @@ function computeCarrierScatteringAt(mCond, mGeo, alphaKane, dim, T, nConcSI, par
     wp_eV, wp_THz: wp_rad / (2 * Math.PI * 1e12),
     gammaD_eV, gammaD_meV: gammaD_eV * 1000,
     sigma3D_Scm, sigma2D_mS: sigma2D_S * 1e3, sheetR_ohm,
-    vTh_cms: vTh_ms * 100, vRms_cms: vRms_ms * 100,
+    vTh_cms: vTh_ms * 100, vF_cms: vF_ms * 100, vRms_cms: vRms_ms * 100,
     mfp_nm, diff_cm2s
   };
 }
@@ -17353,6 +17566,7 @@ function getCastepTransportInputs(job) {
     usePOP: chk("castep-tr-use-pop", false),
     useIMP: chk("castep-tr-use-imp", false),
     Ni_cm: Math.pow(10, num("castep-tr-ni-exp", 11)), // 10^exp (cm^-2 in 2D or cm^-3 in 3D)
+    carrierMode: str("castep-tr-carrier-mode", "auto_pocket"), // "auto_pocket" (exact DFT Fermi pockets on metals) | "manual"
     nExp: num("castep-tr-n-exp", 12.0),               // Electron doping 10^x
     pExp: num("castep-tr-p-exp", 12.0),               // Hole doping 10^x
     optGammaEv: num("castep-tr-opt-gamma", 0.05),     // For optical Drude inversion
@@ -17399,67 +17613,131 @@ function computeFullCastepTransport(job) {
   let mhDosDirect = dosRes?.hDosFit?.mDos || null;
   let mhAlphaK = act?.hSummary?.alphaKane || 0;
 
-  // For metallic systems: derive effective mass from Fermi crossings + .ome_bin plasma frequency!
-  let metalDrude = null;
+  // For metallic systems: extract SEPARATE electron & hole Fermi-crossing diagnostics + two-band Drude transport!
+  const eCrossings = (act?.fermiCrossings || []).filter(r => r.carrierType === "e");
+  const hCrossings = (act?.fermiCrossings || []).filter(r => r.carrierType === "h");
+  const harmMeanM = (arr) => arr.length ? (arr.length / arr.reduce((a, r) => a + 1 / r.mStarF, 0)) : null;
+  const rmsVF = (arr) => arr.length ? Math.sqrt(arr.reduce((a, r) => a + r.vF_ms * r.vF_ms, 0) / arr.length) : null;
+
+  let avgMFe = harmMeanM(eCrossings);
+  let avgMFh = harmMeanM(hCrossings);
+  let avgVFe_ms = rmsVF(eCrossings);
+  let avgVFh_ms = rmsVF(hCrossings);
+
   if (isMetallic) {
     const fc = act?.fermiCrossings || [];
-    const avgMF = fc.length ? (fc.length / fc.reduce((a, r) => a + 1 / r.mStarF, 0)) : 1.0;
-    const avgVF = fc.length ? Math.sqrt(fc.reduce((a, r) => a + r.vF_ms * r.vF_ms, 0) / fc.length) : 5e5;
-    let wp_ome = 0;
-    if (job.optical_tensor?.plasma_ev_tensor) {
-      const t = job.optical_tensor.plasma_ev_tensor;
-      wp_ome = Math.sqrt(Math.max(0, (t[0] + t[1] + t[2]) / 3));
-    }
-    if (!meCond) { meCond = avgMF; meGeo = avgMF; meDosBand = avgMF; }
-    if (!mhCond) { mhCond = avgMF; mhGeo = avgMF; mhDosBand = avgMF; }
-    const gEf_SI = (dosRes?.dosAtEf || 1.0) / (TR_CONST.E_CHG * latInfo.volA3 * 1e-30);
-    // Estimate free-carrier Drude density n_eff from .ome_bin wp if available
-    const nEff_m3 = wp_ome > 0.05
-      ? (TR_CONST.EPS0_SI * avgMF * TR_CONST.M0_KG * Math.pow((wp_ome * TR_CONST.E_CHG) / TR_CONST.HBAR_J, 2)) / (TR_CONST.E_CHG * TR_CONST.E_CHG)
-      : (gEf_SI * TR_CONST.KB_J * opts.T * 10);
-    metalDrude = {
-      avgMF, avgVF_cms: avgVF * 100, nCrossings: fc.length,
-      wp_ome_eV: wp_ome,
-      dosAtEf_cell: dosRes?.dosAtEf || 0,
-      nEff_cm3: nEff_m3 * 1e-6,
-      tauOpt_fs: TR_CONST.HBAR_EV_FS / Math.max(0.005, opts.optGammaEv)
-    };
+    const avgMF = harmMeanM(fc) || 1.0;
+    // ONLY fall back to carrier-specific cyclotron mass if pocket extremum wasn't fitted (NEVER overwrite fitted pocket masses!)
+    if (!meCond) { meCond = avgMFe || avgMF; meGeo = meCond; meDosBand = meCond; }
+    if (!mhCond) { mhCond = avgMFh || avgMF; mhGeo = mhCond; mhDosBand = mhCond; }
   }
 
   const baseParams = {
     ...opts, gSpin,
     slabThicknessA: latInfo.slabThicknessA
   };
+  const useAutoPocketE = Boolean(isMetallic && opts.carrierMode !== "manual" && act?.eIsFermiPocket);
+  const useAutoPocketH = Boolean(isMetallic && opts.carrierMode !== "manual" && act?.hIsFermiPocket);
+  const eParams = {
+    ...baseParams,
+    mDosForDoping: meDosDirect || meDosBand,
+    useFermiPocketEta: useAutoPocketE,
+    fermiDepthEv: useAutoPocketE ? (act?.eFermiDepthEv || 0) : 0
+  };
+  const hParams = {
+    ...baseParams,
+    mDosForDoping: mhDosDirect || mhDosBand,
+    useFermiPocketEta: useAutoPocketH,
+    fermiDepthEv: useAutoPocketH ? (act?.hFermiDepthEv || 0) : 0
+  };
 
-  // Compute primary Electron & Hole Transport + Drude at temperature T and doping n, p
-  const eTrans = meCond ? computeCarrierScatteringAt(
-    meCond, meGeo, meAlphaK, dim, opts.T, nConc_SI,
-    { ...baseParams, mDosForDoping: meDosDirect || meDosBand }, "e"
-  ) : null;
+  // Compute primary Electron & Hole Transport + Drude at temperature T and active carrier density
+  const eTrans = meCond ? computeCarrierScatteringAt(meCond, meGeo, meAlphaK, dim, opts.T, nConc_SI, eParams, "e") : null;
+  const hTrans = mhCond ? computeCarrierScatteringAt(mhCond, mhGeo, mhAlphaK, dim, opts.T, pConc_SI, hParams, "h") : null;
 
-  const hTrans = mhCond ? computeCarrierScatteringAt(
-    mhCond, mhGeo, mhAlphaK, dim, opts.T, pConc_SI,
-    { ...baseParams, mDosForDoping: mhDosDirect || mhDosBand }, "h"
-  ) : null;
+  const activeNConc_cm = eTrans ? eTrans.nActive_cm : nConc_cm;
+  const activePConc_cm = hTrans ? hTrans.nActive_cm : pConc_cm;
 
-  // Directional ADP Mobilities along EVERY fitted band branch!
-  const attachBranchMobilities = (branches, mGeoRef, carrierType) => {
+  // Two-Band Metallic / Semimetallic Drude & Hall Summary
+  let metalDrude = null;
+  if (isMetallic) {
+    const fc = act?.fermiCrossings || [];
+    const avgMF = harmMeanM(fc) || (meCond && mhCond ? 2 / (1 / meCond + 1 / mhCond) : (meCond || mhCond || 1.0));
+    const avgVF = rmsVF(fc) || (eTrans?.vRms_cms ? eTrans.vRms_cms / 100 : 5e5);
+    let wp_ome = 0;
+    if (job.optical_tensor?.plasma_ev_tensor) {
+      const t = job.optical_tensor.plasma_ev_tensor;
+      wp_ome = Math.sqrt(Math.max(0, (t[0] + t[1] + t[2]) / 3));
+    }
+    // Only sum genuinely active Fermi-crossing pockets into intrinsic metallic totals (unless manual doping mode)
+    const eActiveInMetal = Boolean(eTrans && (act?.eIsFermiPocket || opts.carrierMode === "manual"));
+    const hActiveInMetal = Boolean(hTrans && (act?.hIsFermiPocket || opts.carrierMode === "manual"));
+    const ne_cm = eActiveInMetal ? eTrans.nActive_cm : 0;
+    const nh_cm = hActiveInMetal ? hTrans.nActive_cm : 0;
+    const muE = eActiveInMetal ? eTrans.muTot_cm2Vs : 0;
+    const muH = hActiveInMetal ? hTrans.muTot_cm2Vs : 0;
+    const sigmaE_Scm = eActiveInMetal ? eTrans.sigma3D_Scm : 0;
+    const sigmaH_Scm = hActiveInMetal ? hTrans.sigma3D_Scm : 0;
+    const sigmaTot_Scm = sigmaE_Scm + sigmaH_Scm;
+    const sigma2D_tot_mS = (eActiveInMetal ? eTrans.sigma2D_mS : 0) + (hActiveInMetal ? hTrans.sigma2D_mS : 0);
+    const sheetR_tot_ohm = sigma2D_tot_mS > 1e-12 ? (1000 / sigma2D_tot_mS) : Infinity;
+    const rhoTot_uOhmCm = sigmaTot_Scm > 1e-12 ? (1e6 / sigmaTot_Scm) : Infinity;
+    const wpTot_eV = Math.sqrt(
+      (eActiveInMetal ? eTrans.wp_eV * eTrans.wp_eV : 0) +
+      (hActiveInMetal ? hTrans.wp_eV * hTrans.wp_eV : 0)
+    );
+    // Two-band Hall coefficient R_H = (p*mu_h^2 - n*mu_e^2) / (e * (p*mu_h + n*mu_e)^2)  [cm^2/C in 2D, cm^3/C in 3D]
+    const denomH = nh_cm * muH + ne_cm * muE;
+    const hallRH = denomH > 1e-12 ? ((nh_cm * muH * muH - ne_cm * muE * muE) / (TR_CONST.E_CHG * denomH * denomH)) : 0;
+    let dominantType = "Compensated Semimetal";
+    if (eActiveInMetal && !hActiveInMetal) dominantType = "n-Type Metal (e⁻ Pocket)";
+    else if (hActiveInMetal && !eActiveInMetal) dominantType = "p-Type Metal (h⁺ Pocket)";
+    else if (hallRH > 0) dominantType = "Ambipolar • p-Dominated (R_H > 0)";
+    else if (hallRH < 0) dominantType = "Ambipolar • n-Dominated (R_H < 0)";
+
+    const muRatio = (eTrans && hTrans && hTrans.muTot_cm2Vs > 1e-9) ? (eTrans.muTot_cm2Vs / hTrans.muTot_cm2Vs) : null;
+
+    metalDrude = {
+      avgMF, avgMFe: avgMFe || meCond, avgMFh: avgMFh || mhCond,
+      avgVF_cms: avgVF * 100,
+      avgVFe_cms: (avgVFe_ms ? avgVFe_ms * 100 : (eTrans?.vRms_cms || 0)),
+      avgVFh_cms: (avgVFh_ms ? avgVFh_ms * 100 : (hTrans?.vRms_cms || 0)),
+      nCrossings: fc.length, nECrossings: eCrossings.length, nHCrossings: hCrossings.length,
+      eIsFermiPocket: Boolean(act?.eIsFermiPocket),
+      hIsFermiPocket: Boolean(act?.hIsFermiPocket),
+      eFermiDepthMeV: (act?.eFermiDepthEv || 0) * 1000,
+      hFermiDepthMeV: (act?.hFermiDepthEv || 0) * 1000,
+      eActiveInMetal, hActiveInMetal,
+      ne_cm, nh_cm,
+      sigmaE_Scm, sigmaH_Scm, sigmaTot_Scm,
+      sigma2D_tot_mS, sheetR_tot_ohm, rhoTot_uOhmCm,
+      hallRH, dominantType, muRatio,
+      wpTot_eV, wp_ome_eV: wp_ome,
+      dosAtEf_cell: dosRes?.dosAtEf || 0,
+      tauOpt_fs: TR_CONST.HBAR_EV_FS / Math.max(0.005, opts.optGammaEv)
+    };
+  }
+
+  // Directional ADP & Matthiessen Mobilities along EVERY fitted band branch (Semiconductor AND Metallic pockets!)
+  const attachBranchMobilities = (branches, mGeoRef, carrierType, cParams) => {
     if (!branches || !branches.length || !mGeoRef) return;
     branches.forEach(br => {
+      const usePkt = Boolean(isMetallic && opts.carrierMode !== "manual" && br.isFermiPocket);
       const sc = computeCarrierScatteringAt(
         br.mStar, mGeoRef, br.alphaKane, dim, opts.T,
         carrierType === "e" ? nConc_SI : pConc_SI,
-        { ...baseParams, mDosForDoping: mGeoRef }, carrierType
+        { ...cParams, mDosForDoping: mGeoRef, useFermiPocketEta: usePkt, fermiDepthEv: usePkt ? (br.fermiDepthEv || 0) : 0 },
+        carrierType
       );
       br.muADP_cm2Vs = sc.muADP_cm2Vs;
       br.muTot_cm2Vs = sc.muTot_cm2Vs;
       br.tauTot_fs = sc.tauTot_fs;
-      br.vTh_cms = sc.vTh_cms;
+      br.vTh_cms = sc.vRms_cms;
     });
   };
   if (act) {
-    attachBranchMobilities(act.eBranches, meGeo, "e");
-    attachBranchMobilities(act.hBranches, mhGeo, "h");
+    attachBranchMobilities(act.eBranches, meGeo, "e", eParams);
+    attachBranchMobilities(act.hBranches, mhGeo, "h", hParams);
   }
 
   // Intrinsic Semiconductor Metrics (ni, E_Fi, Wannier-Mott Exciton)
@@ -17486,14 +17764,14 @@ function computeFullCastepTransport(job) {
     const tEff_m = Math.max(3.35e-10, latInfo.slabThicknessA * 1e-10);
     const sigma_Sm = opts.expSigmaScm * 100;
     if (eTrans) {
-      const n3D = is2D ? (nConc_SI / tEff_m) : nConc_SI;
+      const n3D = is2D ? (eTrans.nActive_SI / tEff_m) : eTrans.nActive_SI;
       const tauE_s = (sigma_Sm * eTrans.mDrude * TR_CONST.M0_KG) / (n3D * TR_CONST.E_CHG * TR_CONST.E_CHG);
       invExp.tauE_fs = tauE_s * 1e15;
       invExp.gammaE_meV = (TR_CONST.HBAR_EV_FS / Math.max(1e-6, invExp.tauE_fs)) * 1000;
       invExp.muE_cm2Vs = (sigma_Sm / (n3D * TR_CONST.E_CHG)) * 1e4;
     }
     if (hTrans) {
-      const p3D = is2D ? (pConc_SI / tEff_m) : pConc_SI;
+      const p3D = is2D ? (hTrans.nActive_SI / tEff_m) : hTrans.nActive_SI;
       const tauH_s = (sigma_Sm * hTrans.mDrude * TR_CONST.M0_KG) / (p3D * TR_CONST.E_CHG * TR_CONST.E_CHG);
       invExp.tauH_fs = tauH_s * 1e15;
       invExp.gammaH_meV = (TR_CONST.HBAR_EV_FS / Math.max(1e-6, invExp.tauH_fs)) * 1000;
@@ -17504,10 +17782,12 @@ function computeFullCastepTransport(job) {
   // Sweep 1: Temperature Sweep (100 K -> 600 K)
   const tempSweep = [];
   for (let T = 100; T <= 600; T += 25) {
-    const eT = meCond ? computeCarrierScatteringAt(meCond, meGeo, meAlphaK, dim, T, nConc_SI, { ...baseParams, mDosForDoping: meDosDirect || meDosBand }, "e") : null;
-    const hT = mhCond ? computeCarrierScatteringAt(mhCond, mhGeo, mhAlphaK, dim, T, pConc_SI, { ...baseParams, mDosForDoping: mhDosDirect || mhDosBand }, "h") : null;
+    const eT = meCond ? computeCarrierScatteringAt(meCond, meGeo, meAlphaK, dim, T, nConc_SI, eParams, "e") : null;
+    const hT = mhCond ? computeCarrierScatteringAt(mhCond, mhGeo, mhAlphaK, dim, T, pConc_SI, hParams, "h") : null;
     const niT = (eT && hT && !isMetallic) ? Math.sqrt(eT.Nc_cm * hT.Nc_cm) * Math.exp(-gapEv / (2 * TR_CONST.KB_EV * T)) : 0;
-    tempSweep.push({ T, e: eT, h: hT, ni_cm: niT });
+    const sE = (eT && (!isMetallic || metalDrude?.eActiveInMetal)) ? eT.sigma3D_Scm : 0;
+    const sH = (hT && (!isMetallic || metalDrude?.hActiveInMetal)) ? hT.sigma3D_Scm : 0;
+    tempSweep.push({ T, e: eT, h: hT, ni_cm: niT, sigmaE_Scm: sE, sigmaH_Scm: sH, sigmaTot_Scm: sE + sH });
   }
 
   // Sweep 2: Doping Sweep (10^10 -> 10^14 cm^-2 for 2D, 10^15 -> 10^21 cm^-3 for 3D)
@@ -17519,8 +17799,8 @@ function computeFullCastepTransport(job) {
     const ex = expMin + (expMax - expMin) * (i / nSteps);
     const c_cm = Math.pow(10, ex);
     const c_SI = is2D ? c_cm * 1e4 : c_cm * 1e6;
-    const eD = meCond ? computeCarrierScatteringAt(meCond, meGeo, meAlphaK, dim, opts.T, c_SI, { ...baseParams, mDosForDoping: meDosDirect || meDosBand }, "e") : null;
-    const hD = mhCond ? computeCarrierScatteringAt(mhCond, mhGeo, mhAlphaK, dim, opts.T, c_SI, { ...baseParams, mDosForDoping: mhDosDirect || mhDosBand }, "h") : null;
+    const eD = meCond ? computeCarrierScatteringAt(meCond, meGeo, meAlphaK, dim, opts.T, c_SI, { ...baseParams, mDosForDoping: meDosDirect || meDosBand, useFermiPocketEta: false }, "e") : null;
+    const hD = mhCond ? computeCarrierScatteringAt(mhCond, mhGeo, mhAlphaK, dim, opts.T, c_SI, { ...baseParams, mDosForDoping: mhDosDirect || mhDosBand, useFermiPocketEta: false }, "h") : null;
     dopingSweep.push({ exp: ex, conc_cm: c_cm, e: eD, h: hD });
   }
 
@@ -17558,7 +17838,7 @@ function computeFullCastepTransport(job) {
     eTrans, hTrans, intrinsic, metalDrude,
     tauFromOptGamma_fs, invExp,
     tempSweep, dopingSweep, drudeOptSpectra,
-    nConc_cm, pConc_cm
+    nConc_cm: activeNConc_cm, pConc_cm: activePConc_cm
   };
 }
 window.computeFullCastepTransport = computeFullCastepTransport;
@@ -17775,11 +18055,13 @@ function drawTransportBandFitCanvas(res) {
       return;
     }
 
-    // Build shifted energy ΔE = E(k) - E_edge (meV for crisp reading!)
+    // Build shifted energy ΔE = E(k) - refE (meV for crisp reading!)
+    // For metallic Fermi pockets, reference directly to E_F = 0 so the Fermi level slices across the parabola!
     const isE = carrierType === "e";
-    const edgeName = isE ? "CBM" : "VBM";
-    const refE = isE ? act.cbmE : act.vbmE;
-    let qMin = 0, qMax = 0, yMin = 0, yMax = 0;
+    const isPocketPlot = Boolean(res.isMetallic && branches[0]?.isFermiPocket);
+    const edgeName = isPocketPlot ? "F" : (isE ? "CBM" : "VBM");
+    const refE = isPocketPlot ? 0.0 : (isE ? (branches[0]?.e0 ?? act.cbmE) : (branches[0]?.e0 ?? act.vbmE));
+    let qMin = 0, qMax = 0, yMin = isPocketPlot ? 0 : 0, yMax = isPocketPlot ? 0 : 0;
     const plotted = branches.slice(0, 4).map((br, idx) => {
       // Mirror second one-sided branch to negative q when 2 one-sided branches share same vertex!
       const signQ = (!br.isInterior && idx === 1) ? -1 : 1;
@@ -17803,8 +18085,8 @@ function drawTransportBandFitCanvas(res) {
     const qPad = (qMax - qMin) * 0.08;
     qMin -= qPad; qMax += qPad;
     const ySpan = Math.max(10, yMax - yMin);
-    if (isE) { yMin = Math.min(-ySpan * 0.08, yMin); yMax = yMax + ySpan * 0.28; }
-    else { yMax = Math.max(ySpan * 0.12, yMax); yMin = yMin - ySpan * 0.28; }
+    if (isE) { yMin = Math.min(yMin - ySpan * 0.08, isPocketPlot ? yMin - ySpan * 0.10 : -ySpan * 0.08); yMax = yMax + ySpan * 0.30; }
+    else { yMax = Math.max(yMax + ySpan * 0.10, isPocketPlot ? yMax + ySpan * 0.12 : ySpan * 0.12); yMin = yMin - ySpan * 0.30; }
 
     const toX = q => px + ((q - qMin) / (qMax - qMin)) * pw;
     const toY = y => py + ph - ((y - yMin) / (yMax - yMin)) * ph;
@@ -17823,7 +18105,7 @@ function drawTransportBandFitCanvas(res) {
     // Optional subtle grid
     drawPubGridLines(ctx, px, py, pw, ph, st, xTicks, yTicks);
 
-    // Zero axes (k = k0 vertical dashed, ΔE = 0 horizontal dashed)
+    // Zero axes (k = k0 vertical dashed, ΔE = 0 or E_F = 0 horizontal dashed)
     ctx.save();
     ctx.strokeStyle = "#94a3b8";
     ctx.lineWidth = 1.0;
@@ -17834,7 +18116,16 @@ function drawTransportBandFitCanvas(res) {
     }
     const yz = toY(0);
     if (yz > py && yz < py + ph) {
+      ctx.strokeStyle = isPocketPlot ? "#059669" : "#94a3b8";
+      ctx.lineWidth = isPocketPlot ? 1.45 : 1.0;
       ctx.beginPath(); ctx.moveTo(px, yz); ctx.lineTo(px + pw, yz); ctx.stroke();
+      if (isPocketPlot) {
+        ctx.setLineDash([]);
+        ctx.fillStyle = "#047857";
+        ctx.font = `700 ${Math.max(9.5, st.legendSize - 1)}px ${st.fontFamily}`;
+        ctx.textAlign = "right";
+        drawSciText(ctx, "E_{F} = 0", px + pw - 6, yz - 4);
+      }
     }
     ctx.restore();
 
@@ -17913,7 +18204,7 @@ function drawTransportBandFitCanvas(res) {
     ctx.save();
     ctx.translate(px - yLabelOff, py + ph / 2);
     ctx.rotate(-Math.PI / 2);
-    drawSciText(ctx, isE ? "E − E_{CBM} (meV)" : "E − E_{VBM} (meV)", 0, 0);
+    drawSciText(ctx, isPocketPlot ? "E − E_{F} (meV)" : (isE ? "E − E_{CBM} (meV)" : "E − E_{VBM} (meV)"), 0, 0);
     ctx.restore();
 
     // Compact legend box inside panel (top-left for e-, bottom-left for h+)
@@ -17940,8 +18231,14 @@ function drawTransportBandFitCanvas(res) {
     ctx.restore();
   };
 
-  drawBranchPanel(x0L, padT, panelW, panelH, act.eBranches, `Conduction Band Edge (e^{−}, m*_{c} = ${res.meCond ? res.meCond.toFixed(3) : "—"} m_{0})`, "e", 0);
-  drawBranchPanel(x0R, padT, panelW, panelH, act.hBranches, `Valence Band Edge (h^{+}, m*_{c} = ${res.mhCond ? res.mhCond.toFixed(3) : "—"} m_{0})`, "h", 1);
+  const eTitlePrefix = res.isMetallic
+    ? (act.eIsFermiPocket ? "Electron Fermi Pocket (e^{−}" : "Nearest CB Edge (e^{−}")
+    : "Conduction Band Edge (e^{−}";
+  const hTitlePrefix = res.isMetallic
+    ? (act.hIsFermiPocket ? "Hole Fermi Pocket (h^{+}" : "Nearest VB Edge (h^{+}")
+    : "Valence Band Edge (h^{+}";
+  drawBranchPanel(x0L, padT, panelW, panelH, act.eBranches, `${eTitlePrefix}, m*_{c} = ${res.meCond ? res.meCond.toFixed(3) : "—"} m_{0})`, "e", 0);
+  drawBranchPanel(x0R, padT, panelW, panelH, act.hBranches, `${hTitlePrefix}, m*_{c} = ${res.mhCond ? res.mhCond.toFixed(3) : "—"} m_{0})`, "h", 1);
 }
 
 function drawTransportDrudeCanvas(res) {
@@ -18177,7 +18474,9 @@ function drawTransportDrudeCanvas(res) {
     const vLines = [];
     if (d && d.gridE.length) {
       const dftPts = d.gridE.map((E, i) => [E, d.gridG[i]]);
-      dosSeries.push({ label: "DFT Total DOS g(E)", color: "#0f172a", width: 1.8, fill: "rgba(15,23,42,0.08)", pts: dftPts });
+      const dosLbl = res.isMetallic ? `DFT DOS g(E) [g(E_{F})=${(d.dosAtEf || 0).toFixed(2)}]` : "DFT Total DOS g(E)";
+      dosSeries.push({ label: dosLbl, color: "#0f172a", width: 1.8, fill: "rgba(15,23,42,0.08)", pts: dftPts });
+      if (res.isMetallic) vLines.push({ x: 0, color: "#059669" });
       if (d.eDosFit) {
         const f = d.eDosFit;
         const modelPts = [];
@@ -18304,18 +18603,41 @@ function drawTransportDrudeCanvas(res) {
         { label: "Hole μ_{h}(T)", color: "#dc2626", width: 2.2, pts: res.tempSweep.map(r => [r.T, r.h?.muTot_cm2Vs]) }
       ]
     });
-    drawXYPanel(x0R, padT, panelW, panelH, {
-      title: `Intrinsic Carrier Density n_{i}(T) (Arrhenius)`,
-      xLabel: "Temperature T (K)",
-      yLabel: res.is2D ? "n_{i} (cm^{−2})" : "n_{i} (cm^{−3})",
-      exportYUnit: res.is2D ? "cm^{−2}" : "cm^{−3}",
-      logY: true, fmtX: v => v.toFixed(0), legLeft: true, legW: 175,
-      vLines: [{ x: res.opts.T, color: "#059669" }],
-      emptyMsg: "Intrinsic n_{i}(T) applies to gapped semiconductors (E_{g} > 0.02 eV).",
-      series: res.isMetallic ? [] : [
-        { label: `n_{i}(T) [E_{g} = ${res.gapEv.toFixed(2)} eV]`, color: "#7c3aed", width: 2.2, pts: res.tempSweep.filter(r => r.ni_cm > 1e-28).map(r => [r.T, r.ni_cm]) }
-      ]
-    });
+    if (res.isMetallic) {
+      const condSeries = [];
+      if (res.tempSweep.some(r => r.sigmaTot_Scm > 0)) {
+        condSeries.push({ label: "Total σ_{tot}(T) = σ_{e} + σ_{h}", color: "#0f172a", width: 2.3, pts: res.tempSweep.filter(r => r.sigmaTot_Scm > 0).map(r => [r.T, r.sigmaTot_Scm]) });
+      }
+      if (res.metalDrude?.eActiveInMetal && res.tempSweep.some(r => r.sigmaE_Scm > 0)) {
+        condSeries.push({ label: "Electron σ_{e}(T)", color: "#2563eb", dash: [5, 3], width: 1.8, pts: res.tempSweep.filter(r => r.sigmaE_Scm > 0).map(r => [r.T, r.sigmaE_Scm]) });
+      }
+      if (res.metalDrude?.hActiveInMetal && res.tempSweep.some(r => r.sigmaH_Scm > 0)) {
+        condSeries.push({ label: "Hole σ_{h}(T)", color: "#dc2626", dash: [5, 3], width: 1.8, pts: res.tempSweep.filter(r => r.sigmaH_Scm > 0).map(r => [r.T, r.sigmaH_Scm]) });
+      }
+      drawXYPanel(x0R, padT, panelW, panelH, {
+        title: `Two-Band Metallic Conductivity σ(T)`,
+        xLabel: "Temperature T (K)",
+        yLabel: "DC Conductivity σ (S / cm)",
+        exportYUnit: "S/cm",
+        logY: true, fmtX: v => v.toFixed(0), legW: 190,
+        vLines: [{ x: res.opts.T, color: "#059669" }],
+        emptyMsg: "No active metallic Fermi-pocket conductivity in this spin channel.",
+        series: condSeries
+      });
+    } else {
+      drawXYPanel(x0R, padT, panelW, panelH, {
+        title: `Intrinsic Carrier Density n_{i}(T) (Arrhenius)`,
+        xLabel: "Temperature T (K)",
+        yLabel: res.is2D ? "n_{i} (cm^{−2})" : "n_{i} (cm^{−3})",
+        exportYUnit: res.is2D ? "cm^{−2}" : "cm^{−3}",
+        logY: true, fmtX: v => v.toFixed(0), legLeft: true, legW: 175,
+        vLines: [{ x: res.opts.T, color: "#059669" }],
+        emptyMsg: "Intrinsic n_{i}(T) applies to gapped semiconductors (E_{g} > 0.02 eV).",
+        series: [
+          { label: `n_{i}(T) [E_{g} = ${res.gapEv.toFixed(2)} eV]`, color: "#7c3aed", width: 2.2, pts: res.tempSweep.filter(r => r.ni_cm > 1e-28).map(r => [r.T, r.ni_cm]) }
+        ]
+      });
+    }
   }
 }
 
@@ -18369,15 +18691,15 @@ function renderCastepTransportPane() {
       cardsEl.innerHTML = "";
     } else {
       const uConc = res.is2D ? "cm<sup>−2</sup>" : "cm<sup>−3</sup>";
-      const makeCarrierCard = (title, accent, tr, mBandCond, mBandDos, mDosDirect, alphaK, dopCm, invTau, invMu) => {
+      const makeCarrierCard = (title, accent, tr, mBandCond, mBandDos, mDosDirect, alphaK, dopCm, invTau, invMu, pocketNote = "") => {
         if (!tr) {
           return `<div class="castep-mulliken-sp-card" style="border-top:3px solid ${accent};"><div style="font-weight:800; color:${accent};">${title}</div><div style="font-size:11.5px; color:#64748b; margin-top:6px;">No carrier band edge detected.</div></div>`;
         }
         return `
           <div class="castep-mulliken-sp-card" style="border-top:3px solid ${accent};">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:4px; flex-wrap:wrap;">
               <strong style="font-size:12.5px; color:${accent};">${title}</strong>
-              <span class="badge badge-blue" style="font-size:10px;">T = ${res.opts.T} K • ${fmtSciHtml(dopCm, 1)} ${uConc}</span>
+              <span class="badge badge-blue" style="font-size:10px;">${pocketNote ? escapeHtml(pocketNote) + " • " : ""}${fmtSciHtml(dopCm, 1)} ${uConc}</span>
             </div>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 10px; font-size:11.5px; color:#1e293b;">
               <div>Cond. Mass m*<sub>c</sub>: <strong>${mBandCond ? mBandCond.toFixed(4) : "—"} m<sub>0</sub></strong></div>
@@ -18392,7 +18714,7 @@ function renderCastepTransportPane() {
               <div>DC Conductivity σ<sub>0</sub>: <strong>${fmtSciHtml(tr.sigma3D_Scm, 2)} S/cm</strong></div>
               <div>Mean Free Path ℓ: <strong>${tr.mfp_nm.toFixed(2)} nm</strong></div>
               <div>Diffusion D: <strong>${fmtSciHtml(tr.diff_cm2s, 2)} cm²/s</strong></div>
-              <div>Thermal v<sub>th</sub>: <strong>${fmtSciHtml(tr.vTh_cms, 2)} cm/s</strong></div>
+              <div>${tr.eta > 0.5 ? "Fermi v<sub>F</sub>" : "Thermal v<sub>th</sub>"}: <strong>${fmtSciHtml(tr.eta > 0.5 ? tr.vF_cms : tr.vTh_cms, 2)} cm/s</strong></div>
               <div>Non-Parabolic α<sub>K</sub>: <strong>${(alphaK || 0).toFixed(3)} eV<sup>−1</sup></strong></div>
               ${invTau ? `<div style="grid-column:1/-1; padding-top:4px; border-top:1px dashed #cbd5e1; color:#0369a1;"><strong>From σ<sub>exp</sub>:</strong> τ<sub>Drude</sub> = <strong>${invTau.toFixed(2)} fs</strong> • μ<sub>exp</sub> = <strong>${fmtSciHtml(invMu, 2)} cm²/V·s</strong></div>` : ""}
             </div>
@@ -18421,23 +18743,37 @@ function renderCastepTransportPane() {
           </div>
         </div>` : `
         <div class="castep-mulliken-sp-card" style="border-top:3px solid #b45309;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-            <strong style="font-size:12.5px; color:#b45309;">⚡ Metallic / Half-Metallic Drude Diagnostics</strong>
-            <span class="badge badge-blue" style="font-size:10px;">${res.metalDrude?.nCrossings || 0} Fermi crossings</span>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:4px; flex-wrap:wrap;">
+            <strong style="font-size:12.5px; color:#b45309;">⚡ Two-Band Metallic Drude &amp; Hall</strong>
+            <span class="badge badge-blue" style="font-size:10px;">${res.metalDrude?.nECrossings || 0}e⁻ / ${res.metalDrude?.nHCrossings || 0}h⁺ crossings</span>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 10px; font-size:11.5px; color:#1e293b;">
-            <div>Fermi Mass m*<sub>F</sub>: <strong>${(res.metalDrude?.avgMF || 1).toFixed(3)} m<sub>0</sub></strong></div>
-            <div>Fermi Velocity v<sub>F</sub>: <strong>${fmtSciHtml(res.metalDrude?.avgVF_cms || 0, 2)} cm/s</strong></div>
-            <div>DOS g(E<sub>F</sub>): <strong>${(res.metalDrude?.dosAtEf_cell || 0).toFixed(2)} st/eV·cell</strong></div>
+            <div style="grid-column:1/-1; font-size:11px; color:#92400e;"><strong>Transport:</strong> ${escapeHtml(res.metalDrude?.dominantType || "Metallic").replace(/R_H/g, "R<sub>H</sub>")}</div>
+            <div>Total σ<sub>tot</sub>: <strong style="color:#047857;">${fmtSciHtml(res.metalDrude?.sigmaTot_Scm || 0, 2)} S/cm</strong></div>
+            <div>${res.is2D ? "Sheet R<sub>s</sub>" : "Resistivity ρ<sub>tot</sub>"}: <strong>${res.is2D ? (fmtSciHtml(res.metalDrude?.sheetR_tot_ohm, 1) + " Ω/□") : (fmtSciHtml(res.metalDrude?.rhoTot_uOhmCm, 2) + " μΩ·cm")}</strong></div>
+            <div>Hall R<sub>H</sub>: <strong style="color:${(res.metalDrude?.hallRH || 0) >= 0 ? "#b91c1c" : "#1d4ed8"};">${res.metalDrude?.hallRH ? ((res.metalDrude.hallRH > 0 ? "+" : "") + fmtSciHtml(res.metalDrude.hallRH, 2)) : "—"} ${res.is2D ? "cm²/C" : "cm³/C"}</strong></div>
+            <div>Ratio μ<sub>e</sub> / μ<sub>h</sub>: <strong>${res.metalDrude?.muRatio ? res.metalDrude.muRatio.toFixed(2) + "×" : "—"}</strong></div>
+            <div>v<sub>F</sub> (e⁻ / h⁺): <strong>${fmtSciHtml(res.metalDrude?.avgVFe_cms || 0, 1)} / ${fmtSciHtml(res.metalDrude?.avgVFh_cms || 0, 1)}</strong></div>
+            <div>m*<sub>cyc</sub> (e⁻ / h⁺): <strong>${res.metalDrude?.avgMFe ? res.metalDrude.avgMFe.toFixed(2) : "—"} / ${res.metalDrude?.avgMFh ? res.metalDrude.avgMFh.toFixed(2) : "—"} m<sub>0</sub></strong></div>
+            <div>2-Band ħω<sub>p</sub>: <strong>${(res.metalDrude?.wpTot_eV || 0).toFixed(3)} eV</strong></div>
             <div>.ome_bin ħω<sub>p</sub>: <strong>${(res.metalDrude?.wp_ome_eV || 0).toFixed(3)} eV</strong></div>
+            <div>DOS g(E<sub>F</sub>): <strong>${(res.metalDrude?.dosAtEf_cell || 0).toFixed(2)} st/eV·cell</strong></div>
             <div>Optical γ<sub>D</sub> → τ<sub>opt</sub>: <strong>${res.tauFromOptGamma_fs.toFixed(2)} fs</strong></div>
-            <div>Est. Free n<sub>eff</sub>: <strong>${fmtSciHtml(res.metalDrude?.nEff_cm3 || 0, 2)} cm<sup>−3</sup></strong></div>
           </div>
         </div>`;
 
+      const eTitle = res.isMetallic
+        ? (res.metalDrude?.eIsFermiPocket ? "🔵 Electron (e⁻) — Fermi Pocket & Drude" : "🔵 Electron (e⁻) — Nearest CB (Above EF)")
+        : "🔵 Electron (e⁻) — CBM & Drude";
+      const hTitle = res.isMetallic
+        ? (res.metalDrude?.hIsFermiPocket ? "🔴 Hole (h⁺) — Fermi Pocket & Drude" : "🔴 Hole (h⁺) — Nearest VB (Below EF)")
+        : "🔴 Hole (h⁺) — VBM & Drude";
+      const ePktNote = res.isMetallic && res.metalDrude?.eIsFermiPocket ? `ΔEF=${res.metalDrude.eFermiDepthMeV.toFixed(0)}meV` : `T=${res.opts.T}K`;
+      const hPktNote = res.isMetallic && res.metalDrude?.hIsFermiPocket ? `ΔEF=${res.metalDrude.hFermiDepthMeV.toFixed(0)}meV` : `T=${res.opts.T}K`;
+
       cardsEl.innerHTML =
-        makeCarrierCard("🔵 Electron (e⁻) — CBM & Drude", "#1d4ed8", res.eTrans, res.meCond, res.meDosBand, res.meDosDirect, res.meAlphaK, res.nConc_cm, res.invExp?.tauE_fs, res.invExp?.muE_cm2Vs) +
-        makeCarrierCard("🔴 Hole (h⁺) — VBM & Drude", "#b91c1c", res.hTrans, res.mhCond, res.mhDosBand, res.mhDosDirect, res.mhAlphaK, res.pConc_cm, res.invExp?.tauH_fs, res.invExp?.muH_cm2Vs) +
+        makeCarrierCard(eTitle, "#1d4ed8", res.eTrans, res.meCond, res.meDosBand, res.meDosDirect, res.meAlphaK, res.nConc_cm, res.invExp?.tauE_fs, res.invExp?.muE_cm2Vs, ePktNote) +
+        makeCarrierCard(hTitle, "#b91c1c", res.hTrans, res.mhCond, res.mhDosBand, res.mhDosDirect, res.mhAlphaK, res.pConc_cm, res.invExp?.tauH_fs, res.invExp?.muH_cm2Vs, hPktNote) +
         exCard;
     }
   }
@@ -18535,6 +18871,16 @@ function buildTransportExportTables() {
       ["Exciton_Reduced_Mass_muEx", Number(res.intrinsic.muEx.toFixed(4)), "", "m0"],
       ["Exciton_Binding_Energy_Eb", Number(res.intrinsic.eb_meV.toFixed(2)), "", "meV"],
       ["Exciton_Bohr_Radius_aB", Number(res.intrinsic.aB_ang.toFixed(3)), "", "Angstrom"]
+    );
+  } else if (res.metalDrude) {
+    summaryRows.push(
+      ["Active_Fermi_Pocket_Density", Number(res.metalDrude.ne_cm.toExponential(4)), Number(res.metalDrude.nh_cm.toExponential(4)), uConc],
+      ["Fermi_Pocket_Depth_dEF", Number(res.metalDrude.eFermiDepthMeV.toFixed(2)), Number(res.metalDrude.hFermiDepthMeV.toFixed(2)), "meV"],
+      ["Fermi_Velocity_vF", Number(res.metalDrude.avgVFe_cms.toExponential(4)), Number(res.metalDrude.avgVFh_cms.toExponential(4)), "cm/s"],
+      ["Cyclotron_Mass_mStarF", res.metalDrude.avgMFe ? Number(res.metalDrude.avgMFe.toFixed(4)) : "", res.metalDrude.avgMFh ? Number(res.metalDrude.avgMFh.toFixed(4)) : "", "m0"],
+      ["Total_TwoBand_Conductivity", Number(res.metalDrude.sigmaTot_Scm.toExponential(4)), res.metalDrude.dominantType, "S/cm"],
+      ["TwoBand_Hall_RH", Number(res.metalDrude.hallRH.toExponential(4)), "", res.is2D ? "cm2/C" : "cm3/C"],
+      ["TwoBand_Plasma_hwp", Number(res.metalDrude.wpTot_eV.toFixed(5)), Number(res.metalDrude.wp_ome_eV.toFixed(5)), "eV (2-band / .ome_bin)"]
     );
   }
 
