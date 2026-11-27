@@ -106,6 +106,18 @@ function _pdMinImageDist(a1, a2, vecs) {
 
 // ---------------- Smart Filename -> X Parameter Parser (LCP-Aware) ----------------
 
+const POST_DATA_EXT_RE = /\.(cif|cell|xsd|castep|msi|car|vasp|xyz|extxyz)$/i;
+const POST_DATA_VASP_NAME_RE = /^(poscar|contcar)([._-].*)?$/i;
+
+function _pdIsSupportedStructureFile(filename) {
+  const base = String(filename || "").replace(/^.*[\\/]/, "").trim();
+  return POST_DATA_EXT_RE.test(base) || POST_DATA_VASP_NAME_RE.test(base);
+}
+
+function _pdStripStructureExt(name) {
+  return String(name || "").replace(POST_DATA_EXT_RE, "").trim();
+}
+
 function _pdLongestCommonPrefix(strs) {
   if (!strs || strs.length < 2) return "";
   let pref = strs[0];
@@ -118,20 +130,27 @@ function _pdLongestCommonPrefix(strs) {
     if (!pref) break;
   }
   // Never cut inside a signed number token (e.g. if all files start with "E-0.")
-  pref = pref.replace(/[+-]?\d*\.?\d*$/, (m, off) => {
-    // Only trim trailing digits if there is a separator right before them or if stripping them leaves a number suffix
+  pref = pref.replace(/[+-]?\d*\.?\d*$/, (m) => {
     if (!m) return "";
-    // Check if any string has the exact length of pref (like "J1+4" in ["J1+4", "J1+4 -1", "J1+4 +1"])!
     if (strs.some(s => s === pref)) return m;
     return "";
   });
   return pref;
 }
 
-function _pdInferBatchXValues(filenames) {
-  const stems = filenames.map(fn => String(fn || "").replace(/\.cif$/i, "").replace(/^.*[\\/]/, "").trim());
+function _pdInferBatchXValues(filenames, relPaths = null, parsedItems = null) {
+  const baseStems = filenames.map(fn => _pdStripStructureExt(String(fn || "").replace(/^.*[\\/]/, "")));
+  // If multiple files share identical basenames (e.g. E_-0.5/Band-DOS.cell, E_0/Band-DOS.cell), use relative paths!
+  const uniqueBases = new Set(baseStems.map(s => s.toLowerCase()));
+  const useRel = Array.isArray(relPaths) && relPaths.length === filenames.length &&
+    uniqueBases.size < filenames.length && relPaths.some(p => /[\\/]/.test(String(p || "")));
+  const stems = useRel
+    ? relPaths.map(p => _pdStripStructureExt(String(p || "").replace(/\\/g, "/")))
+    : baseStems;
+
   const lcp = _pdLongestCommonPrefix(stems);
   const out = [];
+  let parsedNumericCount = 0;
 
   for (let i = 0; i < stems.length; i++) {
     const stem = stems[i];
@@ -140,23 +159,401 @@ function _pdInferBatchXValues(filenames) {
 
     if (!suf || /^(pristine|zero|ref|orig|initial|0+|none|no[\s_-]*e|ef0)$/i.test(suf)) {
       val = 0.0;
+      parsedNumericCount++;
     } else {
-      // Look for explicit signed/decimal number in suffix (supports -0.5, +10, E=-0.2, 0.4V, -2p5)
-      const cleaned = suf.replace(/^[_\-\s=:,]+(?=[+-]?\d)/, (m) => (m.endsWith("-") ? "-" : ""));
+      const cleaned = suf.replace(/^[_\-\s=:,/]+(?=[+-]?\d)/, (m) => (m.endsWith("-") ? "-" : ""));
       const mAll = cleaned.match(/[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g);
       if (mAll && mAll.length) {
-        // Prefer the last number token in the suffix (or first if followed by unit)
         val = parseFloat(mAll[mAll.length - 1]);
+        parsedNumericCount++;
       } else {
-        // Fallback: try full stem last signed number
         const mStem = stem.match(/[+-]?\d+(?:\.\d+)?/g);
-        if (mStem && mStem.length) val = parseFloat(mStem[mStem.length - 1]);
+        if (mStem && mStem.length) {
+          val = parseFloat(mStem[mStem.length - 1]);
+          parsedNumericCount++;
+        }
       }
     }
-    out.push(isFinite(val) ? val : i);
+    out.push(isFinite(val) ? val : null);
   }
-  return out;
+
+  // Fallback / enrichment: if CASTEP .cell / .castep files have varying embedded EXTERNAL_EFIELD values
+  // and filename parsing couldn't distinguish them, use the exact embedded E-field component!
+  if (Array.isArray(parsedItems) && parsedItems.length === filenames.length) {
+    const eVals = parsedItems.map(p => (p?.crystal && isFinite(p.crystal.efieldVal)) ? p.crystal.efieldVal : null);
+    const nonNullE = eVals.filter(v => v !== null);
+    const uniqueOut = new Set(out.filter(v => v !== null).map(v => Number(v).toFixed(6)));
+    const uniqueE = new Set(nonNullE.map(v => Number(v).toFixed(6)));
+    if (nonNullE.length === filenames.length && uniqueE.size > 1 && uniqueOut.size < Math.min(2, filenames.length)) {
+      return eVals.map(v => Number(v.toFixed(6)));
+    }
+    for (let i = 0; i < out.length; i++) {
+      if (out[i] === null && eVals[i] !== null) out[i] = Number(eVals[i].toFixed(6));
+    }
+  }
+
+  return out.map((v, idx) => (isFinite(v) && v !== null) ? v : idx);
 }
+
+// ---------------- Multi-Format Crystal Structure Parsers ----------------
+// Supports: *.cif, CASTEP *.cell, Materials Studio *.xsd (with full SpaceGroup symmetry expansion),
+// CASTEP *.castep (Final Configuration), Materials Studio *.msi & *.car, VASP POSCAR/CONTCAR, *.xyz
+
+function _pdInvert3x3(m) {
+  const a = m[0][0], b = m[0][1], c = m[0][2];
+  const d = m[1][0], e = m[1][1], f = m[1][2];
+  const g = m[2][0], h = m[2][1], k = m[2][2];
+  const det = a*(e*k - f*h) - b*(d*k - f*g) + c*(d*h - e*g);
+  if (Math.abs(det) < 1e-12) return [[1,0,0],[0,1,0],[0,0,1]];
+  const inv = 1 / det;
+  return [
+    [(e*k - f*h)*inv, (c*h - b*k)*inv, (b*f - c*e)*inv],
+    [(f*g - d*k)*inv, (a*k - c*g)*inv, (c*d - a*f)*inv],
+    [(d*h - e*g)*inv, (b*g - a*h)*inv, (a*e - b*d)*inv]
+  ];
+}
+
+function _pdCartToFrac(x, y, z, vecs) {
+  // vecs rows are a, b, c -> cart = [u,v,w] * vecs => [u,v,w] = cart * inv(vecs)
+  const inv = _pdInvert3x3(vecs);
+  return [
+    x * inv[0][0] + y * inv[1][0] + z * inv[2][0],
+    x * inv[0][1] + y * inv[1][1] + z * inv[2][1],
+    x * inv[0][2] + y * inv[1][2] + z * inv[2][2]
+  ];
+}
+
+function _pdVectorsToParams(vecs) {
+  if (typeof castepVectorsToParams === "function") return castepVectorsToParams(vecs);
+  const a = _pdNorm(vecs[0]), b = _pdNorm(vecs[1]), c = _pdNorm(vecs[2]);
+  const clamp = v => Math.max(-1, Math.min(1, v));
+  const rad2deg = 180 / Math.PI;
+  const alpha = Math.acos(clamp(_pdDot(vecs[1], vecs[2]) / Math.max(1e-12, b * c))) * rad2deg;
+  const beta  = Math.acos(clamp(_pdDot(vecs[0], vecs[2]) / Math.max(1e-12, a * c))) * rad2deg;
+  const gamma = Math.acos(clamp(_pdDot(vecs[0], vecs[1]) / Math.max(1e-12, a * b))) * rad2deg;
+  return { a, b, c, alpha, beta, gamma };
+}
+
+function _pdParamsToVectors(a, b, c, alpha, beta, gamma) {
+  if (typeof castepParamsToVectors === "function") return castepParamsToVectors(a, b, c, alpha, beta, gamma);
+  const d2r = Math.PI / 180;
+  const al = alpha * d2r, be = beta * d2r, ga = gamma * d2r;
+  const cosA = Math.cos(al), cosB = Math.cos(be), cosG = Math.cos(ga), sinG = Math.sin(ga) || 1;
+  const cx = c * cosB;
+  const cy = c * (cosA - cosB * cosG) / sinG;
+  const cz = Math.sqrt(Math.max(1e-12, c * c - cx * cx - cy * cy));
+  return [[a, 0, 0], [b * cosG, b * sinG, 0], [cx, cy, cz]];
+}
+
+function _pdCleanElement(raw) {
+  if (typeof castepCleanElement === "function") return castepCleanElement(raw);
+  const m = String(raw || "").trim().match(/^([A-Z][a-z]?)/);
+  return m ? m[1] : "X";
+}
+
+function _pdComputeFormula(atoms) {
+  if (typeof castepComputeFormula === "function") return castepComputeFormula(atoms);
+  const counts = {};
+  (atoms || []).forEach(a => { const e = a.element || "X"; counts[e] = (counts[e] || 0) + 1; });
+  return Object.entries(counts).map(([e, n]) => n > 1 ? `${e}${n}` : e).join("") || "Unknown";
+}
+
+function _pdNormalizeCrystal(raw, formatTag, filename, extra = {}) {
+  if (!raw || !Array.isArray(raw.atoms) || raw.atoms.length < 2) return null;
+  const vecs = raw.vectors || (raw.a ? _pdParamsToVectors(raw.a, raw.b, raw.c, raw.alpha || 90, raw.beta || 90, raw.gamma || 90) : null);
+  if (!vecs || vecs.length !== 3) return null;
+  const lat = raw.lattice || (isFinite(raw.a) ? { a: raw.a, b: raw.b, c: raw.c, alpha: raw.alpha, beta: raw.beta, gamma: raw.gamma } : _pdVectorsToParams(vecs));
+  const vol = Math.abs(_pdDot(vecs[0], _pdCross(vecs[1], vecs[2])));
+  const elCount = {};
+  const atoms = raw.atoms.map(at => {
+    const el = _pdCleanElement(at.element || at.label || "X");
+    elCount[el] = (elCount[el] || 0) + 1;
+    return {
+      element: el,
+      label: at.label || `${el}${elCount[el]}`,
+      x: Number(at.x),
+      y: Number(at.y),
+      z: Number(at.z)
+    };
+  }).filter(a => isFinite(a.x) && isFinite(a.y) && isFinite(a.z));
+  if (atoms.length < 2) return null;
+  const formula = (raw.formula && raw.formula !== "Unknown") ? raw.formula : _pdComputeFormula(atoms);
+  return {
+    filename,
+    format: formatTag,
+    formula,
+    a: lat.a, b: lat.b, c: lat.c,
+    alpha: lat.alpha, beta: lat.beta, gamma: lat.gamma,
+    volume: vol,
+    vectors: vecs,
+    natoms: atoms.length,
+    atoms,
+    efieldVal: isFinite(extra.efieldVal) ? extra.efieldVal : null
+  };
+}
+
+function _pdExpandXsdSymmetry(xsdText, baseAtoms) {
+  // Materials Studio .xsd stores asymmetric atoms inside <IdentityMapping> and 3x4 affine fractional ops in <SpaceGroup Operators="..."/>
+  const sgMatch = String(xsdText || "").match(/<SpaceGroup\b([^>]+)>/i);
+  if (!sgMatch) return baseAtoms;
+  const opsM = sgMatch[1].match(/Operators="([^"]+)"/i);
+  if (!opsM || !opsM[1]) return baseAtoms;
+  const opStrs = opsM[1].split(":").map(s => s.trim()).filter(Boolean);
+  if (opStrs.length <= 1) return baseAtoms;
+
+  const ops = opStrs.map(s => s.split(",").map(Number)).filter(arr => arr.length === 12 && arr.every(isFinite));
+  if (ops.length <= 1) return baseAtoms;
+
+  const expanded = [];
+  const elCounter = {};
+  const distMod1 = (a, b) => {
+    let d = Math.abs(_pdMod1(a) - _pdMod1(b));
+    return d > 0.5 ? 1 - d : d;
+  };
+
+  baseAtoms.forEach(at => {
+    const u0 = _pdMod1(at.x), v0 = _pdMod1(at.y), w0 = _pdMod1(at.z);
+    ops.forEach((op, oi) => {
+      const u = _pdMod1(op[0]*u0 + op[1]*v0 + op[2]*w0 + op[3]);
+      const v = _pdMod1(op[4]*u0 + op[5]*v0 + op[6]*w0 + op[7]);
+      const w = _pdMod1(op[8]*u0 + op[9]*v0 + op[10]*w0 + op[11]);
+      const exists = expanded.some(ex =>
+        ex.element === at.element &&
+        distMod1(ex.x, u) < 1.5e-3 &&
+        distMod1(ex.y, v) < 1.5e-3 &&
+        distMod1(ex.z, w) < 1.5e-3
+      );
+      if (!exists) {
+        elCounter[at.element] = (elCounter[at.element] || 0) + 1;
+        expanded.push({
+          ...at,
+          label: (oi === 0 && at.label) ? at.label : `${at.element}${elCounter[at.element]}`,
+          x: u, y: v, z: w
+        });
+      }
+    });
+  });
+  return expanded.length >= baseAtoms.length ? expanded : baseAtoms;
+}
+
+function _pdExtractCastepCellEfield(cellText) {
+  const m = String(cellText || "").match(/%BLOCK\s+EXTERNAL_EFIELD\s*\n([\s\S]*?)%ENDBLOCK\s+EXTERNAL_EFIELD/i);
+  if (!m) return null;
+  const rows = m[1].split(/\r?\n/).map(l => l.trim()).filter(l => l && !l.startsWith("#") && !l.startsWith("!"));
+  for (const r of rows) {
+    const nums = r.split(/\s+/).map(Number).filter(isFinite);
+    if (nums.length >= 3) {
+      // Pick dominant component (typically Ez along stacking axis c)
+      let best = nums[2];
+      if (Math.abs(nums[0]) > Math.abs(best)) best = nums[0];
+      if (Math.abs(nums[1]) > Math.abs(best)) best = nums[1];
+      return Math.abs(best) < 1e-9 ? 0 : best;
+    }
+  }
+  return null;
+}
+
+function _pdParseCastepOutputCrystal(castepText, filename) {
+  const txt = String(castepText || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  // Find LAST Real Lattice(A) block (captures final optimized cell in GeomOpt!)
+  const latMatches = [...txt.matchAll(/Real Lattice\(A\)[^\n]*\n([^\n]+)\n([^\n]+)\n([^\n]+)/gi)];
+  if (!latMatches.length) return null;
+  const lastLat = latMatches[latMatches.length - 1];
+  const vecs = [1, 2, 3].map(idx => {
+    const nums = lastLat[idx].trim().split(/\s+/).map(Number).filter(isFinite);
+    return nums.length >= 3 ? [nums[0], nums[1], nums[2]] : null;
+  });
+  if (vecs.some(v => !v)) return null;
+
+  // Find LAST Cell Contents fractional coordinates table (Final Configuration if GeomOpt!)
+  const cellMatches = [...txt.matchAll(/Element\s+Atom\s+Fractional coordinates of atoms[\s\S]*?x-+x\n([\s\S]*?)x{20,}/gi)];
+  if (!cellMatches.length) return null;
+  const lastAtomsBlock = cellMatches[cellMatches.length - 1][1];
+  const atoms = [];
+  lastAtomsBlock.split("\n").forEach(line => {
+    const m = line.match(/x\s+([A-Za-z]{1,2})\s+(\d+)\s+([+-]?\d+\.\d+)\s+([+-]?\d+\.\d+)\s+([+-]?\d+\.\d+)\s+x/);
+    if (m) {
+      atoms.push({
+        element: _pdCleanElement(m[1]),
+        label: `${_pdCleanElement(m[1])}${m[2]}`,
+        x: parseFloat(m[3]),
+        y: parseFloat(m[4]),
+        z: parseFloat(m[5])
+      });
+    }
+  });
+  if (atoms.length < 2) return null;
+  return _pdNormalizeCrystal({ vectors: vecs, atoms }, "CASTEP", filename);
+}
+
+function _pdParseMsiCrystal(msiText, filename) {
+  // Materials Studio .msi text format: (A D A3 (x y z)), (A D B3 ...), (A D C3 ...), and Atom objects with ACL & XYZ
+  const txt = String(msiText || "");
+  const getVec = (tag) => {
+    const m = txt.match(new RegExp(`\\(A\\s+D\\s+${tag}\\s+\\(\\s*([+-]?[\\d.eE+-]+)\\s+([+-]?[\\d.eE+-]+)\\s+([+-]?[\\d.eE+-]+)\\s*\\)\\s*\\)`, "i"));
+    return m ? [parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3])] : null;
+  };
+  const vA = getVec("A3"), vB = getVec("B3"), vC = getVec("C3");
+  if (!vA || !vB || !vC) return null;
+  const vecs = [vA, vB, vC];
+  const atoms = [];
+  const atomBlocks = txt.split(/\(\d+\s+Atom\b/i).slice(1);
+  atomBlocks.forEach((blk, idx) => {
+    const aclM = blk.match(/\(A\s+C\s+ACL\s+"([^"]+)"\)/i);
+    const xyzM = blk.match(/\(A\s+D\s+XYZ\s+\(\s*([+-]?[\d.eE+-]+)\s+([+-]?[\d.eE+-]+)\s+([+-]?[\d.eE+-]+)\s*\)\)/i);
+    if (!aclM || !xyzM) return;
+    const aclParts = aclM[1].trim().split(/\s+/);
+    const el = _pdCleanElement(aclParts[aclParts.length - 1]);
+    const lblM = blk.match(/\(A\s+C\s+Label\s+"([^"]+)"\)/i);
+    const frac = _pdCartToFrac(parseFloat(xyzM[1]), parseFloat(xyzM[2]), parseFloat(xyzM[3]), vecs);
+    atoms.push({ element: el, label: lblM ? lblM[1] : `${el}${idx + 1}`, x: frac[0], y: frac[1], z: frac[2] });
+  });
+  return _pdNormalizeCrystal({ vectors: vecs, atoms }, "MSI", filename);
+}
+
+function _pdParseCarCrystal(carText, filename) {
+  // Materials Studio .car format: PBC a b c alpha beta gamma ... followed by atom lines (name x y z ... element)
+  const lines = String(carText || "").replace(/\r\n/g, "\n").split("\n");
+  let vecs = null;
+  const atoms = [];
+  for (const raw of lines) {
+    const l = raw.trim();
+    if (!l || l.startsWith("!") || l.startsWith("BIOSYM") || l.startsWith("PBC=ON") || l.startsWith("end")) continue;
+    if (/^PBC\s+/i.test(l)) {
+      const nums = l.replace(/^PBC\s+/i, "").split(/\s+/).map(Number).filter(isFinite);
+      if (nums.length >= 6) vecs = _pdParamsToVectors(nums[0], nums[1], nums[2], nums[3], nums[4], nums[5]);
+      continue;
+    }
+    const p = l.split(/\s+/);
+    if (p.length >= 8 && isFinite(Number(p[1])) && isFinite(Number(p[2])) && isFinite(Number(p[3]))) {
+      const el = _pdCleanElement(p[7]);
+      const cx = parseFloat(p[1]), cy = parseFloat(p[2]), cz = parseFloat(p[3]);
+      atoms.push({ element: el, label: p[0], cx, cy, cz });
+    }
+  }
+  if (!vecs || atoms.length < 2) return null;
+  const fracAtoms = atoms.map(a => {
+    const f = _pdCartToFrac(a.cx, a.cy, a.cz, vecs);
+    return { element: a.element, label: a.label, x: f[0], y: f[1], z: f[2] };
+  });
+  return _pdNormalizeCrystal({ vectors: vecs, atoms: fracAtoms }, "CAR", filename);
+}
+
+function _pdParsePoscarCrystal(posText, filename) {
+  const lines = String(posText || "").replace(/\r\n/g, "\n").split("\n").map(l => l.trim());
+  if (lines.length < 8) return null;
+  const scale = parseFloat(lines[1]);
+  if (!isFinite(scale) || scale === 0) return null;
+  const vecs = [2, 3, 4].map(i => lines[i].split(/\s+/).slice(0, 3).map(v => parseFloat(v) * Math.abs(scale)));
+  if (vecs.some(r => r.length < 3 || r.some(v => !isFinite(v)))) return null;
+  if (scale < 0) {
+    const vol = Math.abs(_pdDot(vecs[0], _pdCross(vecs[1], vecs[2])));
+    const fac = Math.cbrt(Math.abs(scale) / Math.max(1e-12, vol));
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) vecs[i][j] *= fac;
+  }
+  let idx = 5;
+  let symbols = [];
+  const tok5 = lines[idx].split(/\s+/).filter(Boolean);
+  if (tok5.every(t => /^[A-Za-z]{1,2}$/.test(t))) {
+    symbols = tok5.map(_pdCleanElement);
+    idx++;
+  }
+  const counts = (lines[idx] || "").split(/\s+/).map(Number).filter(n => Number.isInteger(n) && n > 0);
+  if (!counts.length) return null;
+  idx++;
+  if (!symbols.length) symbols = counts.map((_, k) => `X${k + 1}`);
+  if (/^s/i.test(lines[idx] || "")) idx++; // Selective dynamics
+  const coordMode = (lines[idx] || "Direct").trim().toLowerCase();
+  const isCart = coordMode.startsWith("c") || coordMode.startsWith("k");
+  idx++;
+  const atoms = [];
+  for (let s = 0; s < counts.length; s++) {
+    const el = symbols[s] || "X";
+    for (let k = 0; k < counts[s] && idx < lines.length; k++, idx++) {
+      const p = (lines[idx] || "").split(/\s+/).map(Number);
+      if (p.length < 3 || !isFinite(p[0])) continue;
+      let f = [p[0], p[1], p[2]];
+      if (isCart) f = _pdCartToFrac(p[0] * Math.abs(scale), p[1] * Math.abs(scale), p[2] * Math.abs(scale), vecs);
+      atoms.push({ element: el, label: `${el}${k + 1}`, x: f[0], y: f[1], z: f[2] });
+    }
+  }
+  return _pdNormalizeCrystal({ vectors: vecs, atoms }, "VASP", filename);
+}
+
+function _pdParseXyzCrystal(xyzText, filename) {
+  const lines = String(xyzText || "").replace(/\r\n/g, "\n").split("\n").map(l => l.trim()).filter(Boolean);
+  if (lines.length < 4) return null;
+  const nAtoms = parseInt(lines[0], 10);
+  if (!isFinite(nAtoms) || nAtoms < 2) return null;
+  const comment = lines[1] || "";
+  let vecs = null;
+  const latM = comment.match(/Lattice="([^"]+)"/i);
+  if (latM) {
+    const n = latM[1].trim().split(/\s+/).map(Number).filter(isFinite);
+    if (n.length >= 9) vecs = [[n[0], n[1], n[2]], [n[3], n[4], n[5]], [n[6], n[7], n[8]]];
+  }
+  const cartAtoms = [];
+  for (let i = 2; i < Math.min(lines.length, 2 + nAtoms); i++) {
+    const p = lines[i].split(/\s+/);
+    if (p.length >= 4 && isFinite(Number(p[1]))) {
+      cartAtoms.push({ element: _pdCleanElement(p[0]), cx: parseFloat(p[1]), cy: parseFloat(p[2]), cz: parseFloat(p[3]) });
+    }
+  }
+  if (cartAtoms.length < 2) return null;
+  if (!vecs) {
+    // Non-periodic XYZ fallback: wrap inside generous orthogonal box
+    const xs = cartAtoms.map(a => a.cx), ys = cartAtoms.map(a => a.cy), zs = cartAtoms.map(a => a.cz);
+    const pad = 12.0;
+    vecs = [
+      [Math.max(10, Math.max(...xs) - Math.min(...xs) + pad), 0, 0],
+      [0, Math.max(10, Math.max(...ys) - Math.min(...ys) + pad), 0],
+      [0, 0, Math.max(12, Math.max(...zs) - Math.min(...zs) + pad)]
+    ];
+  }
+  const atoms = cartAtoms.map((a, i) => {
+    const f = _pdCartToFrac(a.cx, a.cy, a.cz, vecs);
+    return { element: a.element, label: `${a.element}${i + 1}`, x: f[0], y: f[1], z: f[2] };
+  });
+  return _pdNormalizeCrystal({ vectors: vecs, atoms }, "XYZ", filename);
+}
+
+function parsePostDataStructureFile(text, filename) {
+  const base = String(filename || "").replace(/^.*[\\/]/, "").trim();
+  const low = base.toLowerCase();
+  if (low.endsWith(".cif")) {
+    if (typeof parseCifFullCrystal !== "function") return null;
+    const c = parseCifFullCrystal(text, base);
+    return _pdNormalizeCrystal(c, "CIF", base);
+  }
+  if (low.endsWith(".cell")) {
+    const ef = _pdExtractCastepCellEfield(text);
+    const parsed = (typeof parseCastepCellText === "function") ? parseCastepCellText(text, base) : null;
+    return _pdNormalizeCrystal(parsed, "CELL", base, { efieldVal: ef });
+  }
+  if (low.endsWith(".xsd")) {
+    const parsed = (typeof parseMaterialsStudioXsd === "function") ? parseMaterialsStudioXsd(text, base) : null;
+    if (!parsed || !parsed.atoms?.length) return null;
+    const fullAtoms = _pdExpandXsdSymmetry(text, parsed.atoms);
+    return _pdNormalizeCrystal({ ...parsed, atoms: fullAtoms, formula: _pdComputeFormula(fullAtoms) }, "XSD", base);
+  }
+  if (low.endsWith(".castep")) {
+    return _pdParseCastepOutputCrystal(text, base);
+  }
+  if (low.endsWith(".msi")) {
+    return _pdParseMsiCrystal(text, base);
+  }
+  if (low.endsWith(".car")) {
+    return _pdParseCarCrystal(text, base);
+  }
+  if (low.endsWith(".vasp") || POST_DATA_VASP_NAME_RE.test(base)) {
+    return _pdParsePoscarCrystal(text, base);
+  }
+  if (low.endsWith(".xyz") || low.endsWith(".extxyz")) {
+    return _pdParseXyzCrystal(text, base);
+  }
+  return null;
+}
+window.parsePostDataStructureFile = parsePostDataStructureFile;
 
 // ---------------- PBC Slab Unwrapping & Atomic Layer Clustering ----------------
 
@@ -542,10 +939,10 @@ function drawPostDataCanvas(res) {
     ctx.fillStyle = "#334155";
     ctx.font = "700 15px Inter, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("Load Multiple Optimized CIF Structures to Analyze Interlayer & Atomic Distances", width / 2, height / 2 - 14);
+    ctx.fillText("Load Multiple Optimized Crystal Structures to Analyze Interlayer & Atomic Distances", width / 2, height / 2 - 14);
     ctx.fillStyle = "#64748b";
     ctx.font = "12.5px Inter, sans-serif";
-    ctx.fillText("Drag & drop *.cif files (e.g. J1+4 -10.cif ... J1+4.cif ... J1+4 +10.cif) or click '📂 Select CIF Files' / '📁 Load Folder' above.", width / 2, height / 2 + 12);
+    ctx.fillText("Drop or select *.cif, CASTEP *.cell / *.castep, Materials Studio *.xsd / *.msi / *.car, POSCAR, or *.xyz files above.", width / 2, height / 2 + 12);
     canvas._subPanelRects = [];
     canvas._plotMeta = null;
     ctx.restore();
@@ -1060,9 +1457,9 @@ function initPostDataTab() {
       });
     });
     dropZone.addEventListener("drop", async e => {
-      const files = Array.from(e.dataTransfer?.files || []).filter(f => /\.cif$/i.test(f.name));
-      if (files.length) await loadPostDataCifFiles(files, false);
-      else if (typeof showToast === "function") showToast("Please drop *.cif crystal structure files.", "warning");
+      const files = Array.from(e.dataTransfer?.files || []).filter(f => _pdIsSupportedStructureFile(f.name));
+      if (files.length) await loadPostDataStructureFiles(files, false, false);
+      else if (typeof showToast === "function") showToast("Please drop supported structure files (*.cif, *.cell, *.xsd, *.castep, *.msi, *.car, POSCAR, *.xyz).", "warning");
     });
   }
 
@@ -1129,56 +1526,95 @@ function initPostDataTab() {
 }
 window.initPostDataTab = initPostDataTab;
 
-async function handlePostDataCifUpload(event, append = false) {
-  const files = Array.from(event?.target?.files || []).filter(f => /\.cif$/i.test(f.name));
+async function handlePostDataCifUpload(event, append = false, isFolder = false) {
+  const allFiles = Array.from(event?.target?.files || []);
+  const files = allFiles.filter(f => _pdIsSupportedStructureFile(f.name));
   if (event?.target) event.target.value = "";
   if (!files.length) {
-    if (typeof showToast === "function") showToast("No *.cif files found in selection.", "warning");
+    if (typeof showToast === "function") showToast("No supported structure files (*.cif, *.cell, *.xsd, *.castep, *.msi, *.car, POSCAR, *.xyz) found.", "warning");
     return;
   }
-  await loadPostDataCifFiles(files, append);
+  await loadPostDataStructureFiles(files, append, isFolder);
 }
 window.handlePostDataCifUpload = handlePostDataCifUpload;
 
-async function loadPostDataCifFiles(files, append = false) {
+function _pdFilterFolderFiles(files) {
+  // When loading a Materials Studio / CASTEP project folder:
+  // 1) Skip auxiliary non-geometry CASTEP files (_BandStr, _DOS, _Optics, _Efield, _Phonon) if main files exist.
+  const mainFiles = files.filter(f => !/_(bandstr|dos|optics|efield|phonon)\.(cell|castep)$/i.test(f.name));
+  const pool = mainFiles.length ? mainFiles : files;
+
+  // 2) Deduplicate same-folder same-stem multi-format copies by relaxed-structure priority:
+  //    .cif > .xsd > .castep (Final Config) > .cell > .msi > .car > POSCAR/.vasp > .xyz
+  const prio = (name) => {
+    const low = name.toLowerCase();
+    if (low.endsWith(".cif")) return 1;
+    if (low.endsWith(".xsd")) return 2;
+    if (low.endsWith(".castep")) return 3;
+    if (low.endsWith(".cell")) return 4;
+    if (low.endsWith(".msi")) return 5;
+    if (low.endsWith(".car")) return 6;
+    if (low.endsWith(".vasp") || POST_DATA_VASP_NAME_RE.test(low)) return 7;
+    return 8;
+  };
+  const byDirStem = new Map();
+  pool.forEach(f => {
+    const rel = String(f.webkitRelativePath || f.name).replace(/\\/g, "/");
+    const dir = rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "";
+    const stem = _pdStripStructureExt(f.name).toLowerCase();
+    const key = `${dir.toLowerCase()}::${stem}`;
+    const prev = byDirStem.get(key);
+    if (!prev || prio(f.name) < prio(prev.name)) byDirStem.set(key, f);
+  });
+  return Array.from(byDirStem.values());
+}
+
+async function loadPostDataStructureFiles(files, append = false, isFolder = false) {
   if (!files || !files.length) return;
-  if (typeof parseCifFullCrystal !== "function") {
-    if (typeof showToast === "function") showToast("CIF parser engine not loaded yet.", "error");
-    return;
-  }
+  const candidateFiles = isFolder ? _pdFilterFolderFiles(files) : files;
+
   const parsedBatch = [];
-  for (const f of files) {
+  for (const f of candidateFiles) {
     try {
       const txt = await f.text();
-      const crys = parseCifFullCrystal(txt, f.name);
+      const crys = parsePostDataStructureFile(txt, f.name);
       if (crys && crys.atoms && crys.atoms.length >= 2) {
-        parsedBatch.push({ filename: f.name, crystal: crys, rawText: txt });
+        parsedBatch.push({
+          filename: f.name,
+          relPath: f.webkitRelativePath || f.name,
+          format: crys.format || "CIF",
+          crystal: crys,
+          rawText: txt
+        });
       }
     } catch (err) {
-      console.warn("Failed to parse CIF:", f.name, err);
+      console.warn("Failed to parse structure file:", f.name, err);
     }
   }
   if (!parsedBatch.length) {
-    if (typeof showToast === "function") showToast("Could not parse atomic coordinates from selected CIF files.", "error");
+    if (typeof showToast === "function") showToast("Could not parse atomic coordinates from selected structure files.", "error");
     return;
   }
 
   const baseList = append ? [...POST_DATA_STATE.items] : [];
   const allNames = [...baseList.map(it => it.filename), ...parsedBatch.map(p => p.filename)];
-  const inferredAll = _pdInferBatchXValues(allNames);
+  const allRelPaths = [...baseList.map(it => it.relPath || it.filename), ...parsedBatch.map(p => p.relPath)];
+  const allItemsRef = [...baseList, ...parsedBatch];
+  const inferredAll = _pdInferBatchXValues(allNames, allRelPaths, allItemsRef);
 
   if (!append) {
     POST_DATA_STATE.items = [];
     POST_DATA_STATE.hiddenSeries.clear();
     POST_DATA_STATE.customPairs = [];
   }
-  // Re-infer cleanly on newly added items (preserving manual edits on existing items when appending)
   const startIdx = baseList.length;
   parsedBatch.forEach((p, idx) => {
     const xAuto = inferredAll[startIdx + idx];
     POST_DATA_STATE.items.push({
       id: `pd_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
       filename: p.filename,
+      relPath: p.relPath,
+      format: p.format,
       xRaw: xAuto,
       xVal: xAuto,
       enabled: true,
@@ -1187,14 +1623,15 @@ async function loadPostDataCifFiles(files, append = false) {
     });
   });
 
-  // Sort by xVal ascending
   POST_DATA_STATE.items.sort((a, b) => a.xVal - b.xVal);
   renderPostDataTab();
   if (typeof showToast === "function") {
-    showToast(`Loaded ${parsedBatch.length} CIF structure(s) — auto-detected X values & atomic layers!`, "success");
+    const fmts = [...new Set(parsedBatch.map(p => p.format))].join("/");
+    showToast(`Loaded ${parsedBatch.length} structure(s) [${fmts}] — auto-detected X values & atomic layers!`, "success");
   }
 }
-window.loadPostDataCifFiles = loadPostDataCifFiles;
+window.loadPostDataStructureFiles = loadPostDataStructureFiles;
+window.loadPostDataCifFiles = loadPostDataStructureFiles;
 
 function clearPostDataCifs() {
   POST_DATA_STATE.items = [];
@@ -1202,7 +1639,7 @@ function clearPostDataCifs() {
   POST_DATA_STATE.customPairs = [];
   POST_DATA_STATE.lastResult = null;
   renderPostDataTab();
-  if (typeof showToast === "function") showToast("Cleared all loaded CIF structures.", "info");
+  if (typeof showToast === "function") showToast("Cleared all loaded crystal structures.", "info");
 }
 window.clearPostDataCifs = clearPostDataCifs;
 
@@ -1325,12 +1762,13 @@ function renderPostDataTab() {
   const strip = document.getElementById("post-data-summary-strip");
   if (strip) {
     if (!res) {
-      strip.innerHTML = `<span>Upload multiple optimized <code>*.cif</code> structures (e.g., across Electric Fields, Strains, or Pressures) to automatically cluster atomic layers, track interlayer spacings <strong>d<sub>1</sub>, d<sub>2</sub>, …, d<sub>n</sub></strong> &amp; 3D bond distances, and generate publication-ready figures &amp; tables.</span>`;
+      strip.innerHTML = `<span>Upload multiple optimized crystal structures (<code>*.cif</code>, <code>*.cell</code>, Materials Studio <code>*.xsd</code> / <code>*.msi</code> / <code>*.car</code>, <code>*.castep</code>, <code>POSCAR</code>, <code>*.xyz</code>) to automatically cluster atomic layers, track interlayer spacings <strong>d<sub>1</sub>, d<sub>2</sub>, …, d<sub>n</sub></strong> &amp; 3D bond distances, and generate publication-ready figures &amp; tables.</span>`;
     } else {
       const topMover = [...res.seriesStats].sort((a, b) => b.maxAbsDel - a.maxAbsDel)[0];
+      const fmts = [...new Set(POST_DATA_STATE.items.filter(i => i.enabled).map(i => i.format || "CIF"))].join("/");
       strip.innerHTML = `
         <span><strong>System:</strong> ${escapeHtml(res.refItem.crystal.formula)} (${res.refItem.crystal.natoms} atoms/cell)</span>
-        <span style="color:#0369a1;"><strong>Structures:</strong> ${res.rows.length} CIFs (X ∈ [${res.xMin}, ${res.xMax}])</span>
+        <span style="color:#0369a1;"><strong>Structures:</strong> ${res.rows.length} (${escapeHtml(fmts)} • X ∈ [${res.xMin}, ${res.xMax}])</span>
         <span style="color:#0f766e;"><strong>Ref (X<sub>0</sub>):</strong> ${escapeHtml(res.refItem.filename)} (X = ${res.refItem.xPlot})</span>
         <span style="color:#4f46e5;"><strong>Layers:</strong> ${res.refLayers.layers.length} (${res.refLayers.layers.map(l => l.elLabel).join("–")}) • D<sub>tot</sub> = ${res.refLayers.totalThicknessA.toFixed(3)} Å</span>
         ${topMover ? `<span style="color:#b45309;"><strong>Max Shift:</strong> ${escapeHtml(topMover.shortLabel)} (${escapeHtml(topMover.pairName)}) |Δ|<sub>max</sub> = ${topMover.maxAbsDel.toFixed(4)} Å</span>` : ""}
@@ -1361,11 +1799,11 @@ function renderPostDataTab() {
   const thead = document.getElementById("post-data-table-head");
   const tbody = document.getElementById("post-data-table-body");
   const cntBadge = document.getElementById("post-data-rows-count");
-  if (cntBadge) cntBadge.textContent = `${POST_DATA_STATE.items.length} CIFs`;
+  if (cntBadge) cntBadge.textContent = `${POST_DATA_STATE.items.length} structures`;
   if (thead && tbody) {
     if (!res) {
-      thead.innerHTML = `<tr><th>Use</th><th>CIF File</th><th>X Value</th><th>Interlayer Distances (Å)</th></tr>`;
-      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:18px; color:#64748b;">No CIF files loaded yet. Drop or select multiple <code>*.cif</code> files above.</td></tr>`;
+      thead.innerHTML = `<tr><th>On</th><th>Structure File</th><th>X Value</th><th>Interlayer Distances (Å)</th></tr>`;
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:18px; color:#64748b;">No structure files loaded yet. Drop or select <code>*.cif</code>, <code>*.cell</code>, <code>*.xsd</code>, <code>*.castep</code>, <code>*.msi</code>, <code>*.car</code>, or <code>POSCAR</code> files above.</td></tr>`;
     } else {
       const mMode = res.opts.metricMode;
       const unitLbl = mMode === "pct" ? "%" : "Å";
@@ -1375,7 +1813,7 @@ function renderPostDataTab() {
 
       thead.innerHTML = `<tr>
         <th style="width:32px; text-align:center;">On</th>
-        <th>CIF Structure</th>
+        <th>Structure File</th>
         <th style="width:94px;">X Value</th>
         ${res.seriesStats.map(sd => `<th style="color:${sd.color};">${prefix}${escapeHtml(sd.shortLabel)}<br/><span style="font-size:9.5px; font-weight:600; color:#64748b;">${escapeHtml(sd.pairName)} (${unitLbl})</span></th>`).join("")}
         <th>D<sub>tot</sub> (Å)</th>
@@ -1383,8 +1821,21 @@ function renderPostDataTab() {
         <th style="width:30px;"></th>
       </tr>`;
 
+      const fmtBadgeStyle = {
+        CIF: "background:#e0f2fe; color:#0369a1;",
+        CELL: "background:#fef3c7; color:#b45309;",
+        XSD: "background:#ede9fe; color:#6d28d9;",
+        CASTEP: "background:#dcfce7; color:#15803d;",
+        MSI: "background:#fae8ff; color:#a21caf;",
+        CAR: "background:#fce7f3; color:#be185d;",
+        VASP: "background:#e2e8f0; color:#334155;",
+        XYZ: "background:#f1f5f9; color:#475569;"
+      };
+
       tbody.innerHTML = allItemsSorted.map(it => {
         const r = rowById.get(it.id);
+        const fmt = it.format || "CIF";
+        const fmtTag = `<span class="pd-fmt-badge" style="${fmtBadgeStyle[fmt] || "background:#f1f5f9; color:#334155;"}">${escapeHtml(fmt)}</span>`;
         const refTag = r?.isRef ? `<span class="badge badge-blue" style="font-size:9px; margin-left:4px;">Ref</span>` : "";
         const rowBg = r?.isRef ? "background:#eff6ff; font-weight:700;" : (!it.enabled ? "opacity:0.45; background:#f8fafc;" : "");
         const cells = res.seriesStats.map(sd => {
@@ -1396,12 +1847,12 @@ function renderPostDataTab() {
         }).join("");
         return `<tr style="${rowBg}">
           <td style="text-align:center;"><input type="checkbox" ${it.enabled ? "checked" : ""} onchange="togglePostDataItemEnabled('${escapeHtml(it.id)}', this.checked)" /></td>
-          <td style="font-weight:700; white-space:nowrap;">${escapeHtml(it.filename)}${refTag}</td>
-          <td><input type="number" step="0.1" value="${it.xVal}" class="castep-input-sm" style="width:76px; font-family:monospace;" onchange="updatePostDataItemX('${escapeHtml(it.id)}', this.value)" title="Edit parameter X value for this CIF" /></td>
+          <td style="font-weight:700; white-space:nowrap;">${fmtTag}${escapeHtml(it.filename)}${refTag}</td>
+          <td><input type="number" step="0.1" value="${it.xVal}" class="castep-input-sm" style="width:76px; font-family:monospace;" onchange="updatePostDataItemX('${escapeHtml(it.id)}', this.value)" title="Edit parameter X value for this structure" /></td>
           ${cells}
           <td style="font-family:monospace;">${r && isFinite(r.totalThicknessA) ? r.totalThicknessA.toFixed(4) : "—"}</td>
           <td style="font-family:monospace; font-size:10.5px; color:#475569;">${it.crystal.a.toFixed(3)} / ${it.crystal.c.toFixed(2)}</td>
-          <td><button type="button" class="castep-preset-chip" style="padding:1px 6px; color:#dc2626;" onclick="removePostDataItem('${escapeHtml(it.id)}')" title="Remove CIF">×</button></td>
+          <td><button type="button" class="castep-preset-chip" style="padding:1px 6px; color:#dc2626;" onclick="removePostDataItem('${escapeHtml(it.id)}')" title="Remove structure">×</button></td>
         </tr>`;
       }).join("");
     }
