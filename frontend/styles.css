@@ -14892,3 +14892,118 @@ textarea.dft-ed-code-surface::placeholder {
 .pd-data-table tbody tr:hover {
   background: #f8fafc;
 }
+
+/* ============================================================================
+   v171 Post-Data Processing Sub-Tab Bar & Rashba / Spin Texture / Topology UI
+   ============================================================================ */
+.pd-subtab-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  margin-bottom: 12px;
+  background: #f1f5f9;
+  border: 1px solid #dbe4f0;
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+.pd-subtab-btn {
+  border: 1px solid transparent;
+  background: transparent;
+  color: #475569;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 7px 14px;
+  border-radius: 7px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+.pd-subtab-btn:hover {
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.7);
+}
+.pd-subtab-btn.active {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+}
+.pd-subtab-pill {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #ede9fe;
+  color: #6d28d9;
+  border: 1px solid #c4b5fd;
+}
+.tr-dropzone {
+  border-color: #c4b5fd !important;
+  background: linear-gradient(135deg, #faf5ff 0%, #f8fafc 100%) !important;
+}
+.tr-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+@media (max-width: 1120px) {
+  .tr-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .tr-kpi-grid { grid-template-columns: 1fr; }
+}
+.tr-kpi-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-top: 3px solid #6d28d9;
+  border-radius: 10px;
+  padding: 10px 12px;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.tr-kpi-hd {
+  font-size: 11px;
+  font-weight: 800;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.tr-kpi-main {
+  font-size: 16.5px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+.tr-kpi-main .tr-unit {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+}
+.tr-kpi-grid-rows {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px 8px;
+  font-size: 11.5px;
+  color: #334155;
+}
+.tr-kpi-note {
+  margin-top: auto;
+  padding-top: 4px;
+  border-top: 1px dashed #e2e8f0;
+  font-size: 10.5px;
+  color: #64748b;
+  line-height: 1.35;
+}
+.tr-tables-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 12px;
+}
+@media (max-width: 960px) {
+  .tr-tables-grid { grid-template-columns: 1fr; }
+}
