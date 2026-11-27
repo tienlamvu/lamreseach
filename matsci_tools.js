@@ -8484,6 +8484,8 @@ function getPlotRendererForCanvas(canvasId) {
     case "castep-energy-chart-canvas":
     case "castep-conv-chart-canvas": return typeof renderCastepConvergencePlots === "function" ? renderCastepConvergencePlots : null;
     case "castep-3d-canvas": return typeof renderCastep3DScene === "function" ? renderCastep3DScene : null;
+    case "post-data-main-canvas": return typeof renderPostDataTab === "function" ? renderPostDataTab : null;
+    case "tr-main-canvas": return typeof renderTopoRashbaAll === "function" ? renderTopoRashbaAll : null;
     default: return null;
   }
 }
@@ -9207,6 +9209,11 @@ const CASTEP_PLOT_CTX_SPECS = {
       { label: "🔥 Copy Stoner Free-Energy E(m) Curve (TSV)", plotKey: "stoner", subPart: "energy" },
       { label: "📊 Copy Stoner Criterion I·D(E) Table (TSV)", plotKey: "stoner", subPart: "dos" }
     ]
+  },
+  "tr-main-canvas": {
+    label: "Rashba, Spin Texture & Brillouin Zone",
+    pngName: "Rashba_Spin_Topology_Full.png",
+    dataItems: []
   }
 };
 
