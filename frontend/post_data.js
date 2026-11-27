@@ -721,6 +721,7 @@ function readPostDataOptions() {
     viewAxis: str("pd-schematic-view", "a"),           // "a" | "b" | "110"
     xAxisLabel: str("pd-xlabel-input", "Electric Field E (V/Å)"),
     showPairLegend: chk("pd-show-pair-legend", false),
+    legendOutside: chk("pd-legend-outside", true),
     showZeroLines: chk("pd-show-zero-lines", true),
     showD0OnSchematic: chk("pd-show-d0-schematic", false)
   };
@@ -1218,12 +1219,58 @@ function _pdDarkenHex(hex, factor = 0.55) {
   return `rgb(${r},${g},${b})`;
 }
 
+// Helper: Interval-pack active custom layer pairs into minimum non-overlapping horizontal lanes
+function _pdPackCustomLayerLanes(customSeries) {
+  const active = (customSeries || []).filter(s => !POST_DATA_STATE.hiddenSeries.has(s.id));
+  // Shorter spans first (inner lanes closest to crystal), longer spans outer -> clean architectural nesting!
+  const sorted = [...active].sort((a, b) => ((a.idxB - a.idxA) - (b.idxB - b.idxA)) || (a.idxA - b.idxA));
+  const laneEnds = []; // each lane holds array of [idxA, idxB] intervals already placed
+  const placed = [];
+  sorted.forEach(sd => {
+    let assigned = -1;
+    for (let li = 0; li < laneEnds.length; li++) {
+      const overlaps = laneEnds[li].some(([a, b]) => !(sd.idxB <= a - 0.5 || sd.idxA >= b + 0.5));
+      if (!overlaps) {
+        assigned = li;
+        laneEnds[li].push([sd.idxA, sd.idxB]);
+        break;
+      }
+    }
+    if (assigned === -1) {
+      assigned = laneEnds.length;
+      laneEnds.push([[sd.idxA, sd.idxB]]);
+    }
+    placed.push({ sd, lane: assigned });
+  });
+  return { placed, nLanes: laneEnds.length };
+}
+
 function drawPostDataCanvas(res) {
   const canvas = document.getElementById("post-data-main-canvas");
   if (!canvas) return;
   const parentW = canvas.parentElement ? (canvas.parentElement.clientWidth - 24) : 960;
-  const width = Math.max(580, Math.min(1260, Math.floor(parentW)));
-  const height = 470;
+  const width = Math.max(660, Math.min(1300, Math.floor(parentW)));
+
+  const st = (typeof getCastepPlotStyle === "function") ? getCastepPlotStyle() : {
+    fontFamily: "'Times New Roman', Georgia, serif",
+    inkColor: "#0f172a", titleSize: 15, axisLabelSize: 14, tickSize: 12, legendSize: 11.5,
+    lineWidth: 1.8, tickDir: "out", tickLength: 5, boldAxisLabels: true
+  };
+
+  // Pre-compute legend dimensions & custom bracket lanes so canvas height & split adapt cleanly!
+  const visibleSeries = (res && res.seriesStats)
+    ? res.seriesStats.filter(sd => !POST_DATA_STATE.hiddenSeries.has(sd.id))
+    : [];
+  const metric = res ? res.opts.metricMode : "delta";
+  const isBond = res ? (res.opts.measureMode === "bonds") : false;
+  const fitMode = res ? (res.opts.fitMode || "connect") : "connect";
+  const isParamFit = /^poly[1-4]$/.test(fitMode) || fitMode === "smooth";
+  const legendOutside = res ? (res.opts.legendOutside !== false) : true;
+  const legFontPx = Math.max(10.5, Math.min(11.8, st.legendSize || 11.2));
+  const rowH = visibleSeries.length > 10 ? 16.5 : 18.0;
+  const legH = visibleSeries.length ? (visibleSeries.length * rowH + 12) : 0;
+
+  const height = Math.max(470, Math.min(620, legH + 108));
   const dpr = (typeof getCastepCanvasDpr === "function") ? getCastepCanvasDpr(width, height) : Math.min(3, window.devicePixelRatio || 2);
   if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
     canvas.width = Math.round(width * dpr);
@@ -1252,32 +1299,39 @@ function drawPostDataCanvas(res) {
     return;
   }
 
-  const st = (typeof getCastepPlotStyle === "function") ? getCastepPlotStyle() : {
-    fontFamily: "'Times New Roman', Georgia, serif",
-    inkColor: "#0f172a", titleSize: 15, axisLabelSize: 14, tickSize: 12, legendSize: 11.5,
-    lineWidth: 1.8, tickDir: "out", tickLength: 5, boldAxisLabels: true
-  };
+  // Measure exact legend text width upfront
+  ctx.font = `600 ${legFontPx}px ${st.fontFamily}`;
+  const legendLabels = visibleSeries.map(sd => {
+    const base = (res.opts.showPairLegend || isBond || sd.kind === "custom_layer") ? sd.fullLabel : sd.shortLabel;
+    if (isParamFit && sd.curveFit && isFinite(sd.curveFit.r2)) {
+      return `${base} (R²=${sd.curveFit.r2.toFixed(3)})`;
+    }
+    return base;
+  });
+  const maxLegTxtW = legendLabels.length ? Math.max(...legendLabels.map(t => ctx.measureText(t).width)) : 0;
+  const legW = legendLabels.length ? Math.min(230, Math.max(76, Math.ceil(maxLegTxtW) + 42)) : 0;
 
-  // Split canvas: Left 62% = Publication Line+Marker Plot; Right 38% = Live Atomic Layer Side-View Schematic
-  const splitX = Math.round(width * 0.62);
+  // Balance split between Left Panel (Plot + Outside Legend) and Right Panel (Schematic + Nested Custom Brackets)
+  const customPack = _pdPackCustomLayerLanes((res.seriesStats || []).filter(s => s.kind === "custom_layer"));
+  const baseSplit = legendOutside
+    ? (customPack.nLanes >= 4 ? 0.61 : (legW > 145 ? 0.66 : 0.64))
+    : (customPack.nLanes >= 4 ? 0.57 : 0.62);
+  const splitX = Math.round(width * baseSplit);
+
   const padT = 36;
   const padB = 56;
   const padL = 74;
-  const padRPlot = 22;
+  const padRPlot = (legendOutside && visibleSeries.length) ? (legW + 26) : 22;
   const pw = Math.max(240, splitX - padL - padRPlot);
   const ph = height - padT - padB;
   const px = padL, py = padT;
 
-  const metric = res.opts.metricMode;
-  const isBond = res.opts.measureMode === "bonds";
   const sym = isBond ? "r" : "d";
   const yLabel = metric === "abs"
     ? (isBond ? "Bond Distance r (Å)" : "Interlayer Distance d (Å)")
     : (metric === "pct"
         ? (isBond ? "Relative Change Δr / r_{0} (%)" : "Relative Change Δd / d_{0} (%)")
         : (isBond ? "Bond Distance Change Δr (Å)" : "Interlayer Distance Change Δd (Å)"));
-
-  const visibleSeries = res.seriesStats.filter(sd => !POST_DATA_STATE.hiddenSeries.has(sd.id));
 
   canvas._subPanelRects = [
     {
@@ -1391,8 +1445,6 @@ function drawPostDataCanvas(res) {
   }
 
   // Draw curves (connect / monotone spline / poly1..poly4 fit / kernel smooth / scatter) + glossy 3D circular markers!
-  const fitMode = res.opts.fitMode || "connect";
-  const isParamFit = /^poly[1-4]$/.test(fitMode) || fitMode === "smooth";
   const markerR = res.rows.length > 28 ? 3.8 : (res.rows.length > 16 ? 4.7 : 5.4);
   const plottedScreenPts = [];
 
@@ -1494,46 +1546,41 @@ function drawPostDataCanvas(res) {
   else ctx.fillText(yLabel, 0, 0);
   ctx.restore();
 
-  // OriginPro-Style Bordered Legend Box (Smart Collision-Free Corner Placement!)
+  // OriginPro-Style Bordered Legend Box (Default: Clean Outside-Right of Axes; optional Inside Auto-Corner!)
   if (visibleSeries.length) {
     ctx.save();
-    ctx.font = `600 ${Math.max(10.5, st.legendSize)}px ${st.fontFamily}`;
-    const labels = visibleSeries.map(sd => {
-      const base = (res.opts.showPairLegend || isBond || sd.kind === "custom_layer") ? sd.fullLabel : sd.shortLabel;
-      if (isParamFit && sd.curveFit && isFinite(sd.curveFit.r2)) {
-        return `${base} (R²=${sd.curveFit.r2.toFixed(3)})`;
-      }
-      return base;
-    });
-    const maxTxtW = Math.max(...labels.map(t => ctx.measureText(t).width));
-    const legW = Math.min(pw * 0.56, maxTxtW + 44);
-    const rowH = 17.5;
-    const legH = visibleSeries.length * rowH + 10;
+    ctx.font = `600 ${legFontPx}px ${st.fontFamily}`;
+    let legX, legY;
+    const drawLegW = legendOutside ? legW : Math.min(pw * 0.56, legW);
 
-    // Score the 4 corners (TR, TL, BR, BL) to dodge plotted data curves automatically!
-    const candidates = [
-      { x: px + pw - legW - 7, y: py + 7 },              // Top-Right (preferred when clear)
-      { x: px + 7, y: py + 7 },                          // Top-Left
-      { x: px + pw - legW - 7, y: py + ph - legH - 7 },  // Bottom-Right
-      { x: px + 7, y: py + ph - legH - 7 }               // Bottom-Left
-    ];
-    let bestCand = candidates[0], bestHits = Infinity;
-    candidates.forEach(c => {
-      let hits = 0;
-      for (let i = 0; i < plottedScreenPts.length; i++) {
-        const [sxP, syP] = plottedScreenPts[i];
-        if (sxP >= c.x - 6 && sxP <= c.x + legW + 6 && syP >= c.y - 6 && syP <= c.y + legH + 6) hits++;
-      }
-      if (hits < bestHits) { bestHits = hits; bestCand = c; }
-    });
-    const legX = bestCand.x;
-    const legY = bestCand.y;
+    if (legendOutside) {
+      legX = px + pw + 12;
+      legY = py + Math.max(0, Math.min(ph - legH, Math.round((ph - legH) * 0.08)));
+    } else {
+      const candidates = [
+        { x: px + pw - drawLegW - 7, y: py + 7 },
+        { x: px + 7, y: py + 7 },
+        { x: px + pw - drawLegW - 7, y: py + ph - legH - 7 },
+        { x: px + 7, y: py + ph - legH - 7 }
+      ];
+      let bestCand = candidates[0], bestHits = Infinity;
+      candidates.forEach(c => {
+        let hits = 0;
+        for (let i = 0; i < plottedScreenPts.length; i++) {
+          const [sxP, syP] = plottedScreenPts[i];
+          if (sxP >= c.x - 6 && sxP <= c.x + drawLegW + 6 && syP >= c.y - 6 && syP <= c.y + legH + 6) hits++;
+        }
+        if (hits < bestHits) { bestHits = hits; bestCand = c; }
+      });
+      legX = bestCand.x;
+      legY = bestCand.y;
+    }
 
-    ctx.fillStyle = "rgba(255, 255, 255, 0.94)";
-    ctx.strokeStyle = "#111827";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.96)";
+    ctx.strokeStyle = "#334155";
     ctx.lineWidth = 1.0;
-    ctx.fillRect(legX, legY, legW, legH);
-    ctx.strokeRect(legX, legY, legW, legH);
+    ctx.fillRect(legX, legY, drawLegW, legH);
+    ctx.strokeRect(legX, legY, drawLegW, legH);
     ctx.textAlign = "left";
     visibleSeries.forEach((sd, i) => {
       const ly = legY + 13 + i * rowH;
@@ -1542,9 +1589,9 @@ function drawPostDataCanvas(res) {
         ctx.lineWidth = isParamFit ? 2.0 : 1.6;
         ctx.beginPath(); ctx.moveTo(legX + 7, ly - 3); ctx.lineTo(legX + 31, ly - 3); ctx.stroke();
       }
-      _pdDrawGlossySphere(ctx, legX + 19, ly - 3, 4.3, sd.color, _pdDarkenHex(sd.color, 0.52));
+      _pdDrawGlossySphere(ctx, legX + 19, ly - 3, 4.2, sd.color, _pdDarkenHex(sd.color, 0.52));
       ctx.fillStyle = "#0f172a";
-      ctx.fillText(labels[i], legX + 36, ly + 1);
+      ctx.fillText(legendLabels[i], legX + 36, ly + 1);
     });
     ctx.restore();
   }
@@ -1553,12 +1600,12 @@ function drawPostDataCanvas(res) {
   canvas._plotMeta = { px, py, pw, ph, xLo, xHi, yLo, yHi, toX, toY };
 
   // ---------------- RIGHT PANEL: Live Side-View Atomic Layer Schematic ----------------
-  drawPostDataLayerSchematic(ctx, res, splitX + 8, 18, width - splitX - 18, height - 30, st);
+  drawPostDataLayerSchematic(ctx, res, splitX + 8, 18, width - splitX - 18, height - 30, st, customPack);
 
   ctx.restore();
 }
 
-function drawPostDataLayerSchematic(ctx, res, sx, sy, sw, sh, st) {
+function drawPostDataLayerSchematic(ctx, res, sx, sy, sw, sh, st, customPackArg) {
   const refLay = res.refLayers;
   const crystal = res.refItem.crystal;
   if (!refLay || !refLay.layers.length) return;
@@ -1635,10 +1682,12 @@ function drawPostDataLayerSchematic(ctx, res, sx, sy, sw, sh, st) {
     if (!dup) projAtoms.push(at);
   });
 
-  // Coordinate mapping inside schematic box (leave room on left for element labels + custom brackets, right for d1..dN)
-  const customLayerSeries = (res.seriesStats || []).filter(s => s.kind === "custom_layer");
-  const extraLeft = customLayerSeries.length ? (42 + Math.min(3, customLayerSeries.length - 1) * 26) : 0;
-  const boxL = sx + 54 + extraLeft;
+  // Coordinate mapping inside schematic box (exact room for element labels + interval-packed CAD dimension arrows!)
+  const customPack = customPackArg || _pdPackCustomLayerLanes((res.seriesStats || []).filter(s => s.kind === "custom_layer"));
+  const nLanes = customPack.nLanes;
+  const laneStep = nLanes <= 2 ? 25 : (nLanes <= 4 ? 22 : 19);
+  const extraLeft = nLanes === 0 ? 0 : (nLanes === 1 ? 52 : (14 + nLanes * laneStep));
+  const boxL = sx + 48 + extraLeft;
   const boxR = sx + sw - (res.opts.showD0OnSchematic ? 96 : 56);
   const boxT = sy + 56;
   const boxB = sy + sh - 26;
@@ -1734,49 +1783,125 @@ function drawPostDataLayerSchematic(ctx, res, sx, sy, sw, sh, st) {
     ctx.fillText(L.elLabel, planeX0 - 6, ly);
   });
 
-  // 5B) Draw Left-Side Brackets for Custom Non-Adjacent Layer Pairs (shorter inner, longer outer -> zero crossings!)
-  if (customLayerSeries.length) {
-    const orderedCustom = [...customLayerSeries].sort((a, b) => (a.idxB - a.idxA) - (b.idxB - b.idxA));
-    let lastLeftMidY = -1e9;
-    orderedCustom.forEach((csd, ci) => {
+  // 5B) Draw Left-Side CAD Dimension Arrows for Custom Non-Adjacent Layer Pairs (Interval-Packed, Zero Overlaps!)
+  if (customPack.placed.length) {
+    const useVerticalPills = nLanes >= 2;
+    customPack.placed.forEach(({ sd: csd, lane }) => {
       const layA = refLay.layers[csd.idxA];
       const layB = refLay.layers[csd.idxB];
       if (!layA || !layB) return;
       const yA = toSY(layA.meanH);
       const yB = toSY(layB.meanH);
       const yTop = Math.min(yA, yB), yBot = Math.max(yA, yB);
-      let yMid = 0.5 * (yTop + yBot);
-      if (Math.abs(yMid - lastLeftMidY) < 18) yMid = lastLeftMidY + (yMid >= lastLeftMidY ? 18 : -18);
-      lastLeftMidY = yMid;
+      const yMid = 0.5 * (yTop + yBot);
+      const spanPx = Math.max(4, yBot - yTop);
+      const col = csd.color;
 
-      const isHidden = POST_DATA_STATE.hiddenSeries.has(csd.id);
-      const col = isHidden ? "#cbd5e1" : csd.color;
-      const bx = planeX0 - 32 - Math.min(3, ci) * 26;
-      const tickW = 7;
+      if (!useVerticalPills) {
+        // Single custom pair (e.g. MoSSe Se-S): crisp horizontal bracket + upright label cleanly to the left!
+        const bx = planeX0 - 30;
+        const tickW = 7;
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(bx + tickW, yTop);
+        ctx.lineTo(bx, yTop);
+        ctx.lineTo(bx, yBot);
+        ctx.lineTo(bx + tickW, yBot);
+        ctx.moveTo(bx, yMid);
+        ctx.lineTo(bx - 4, yMid);
+        ctx.stroke();
 
-      ctx.strokeStyle = col;
-      ctx.lineWidth = 1.65;
-      ctx.beginPath();
-      ctx.moveTo(bx + tickW, yTop);
-      ctx.lineTo(bx, yTop);
-      ctx.lineTo(bx, yBot);
-      ctx.lineTo(bx + tickW, yBot);
-      ctx.moveTo(bx, yMid);
-      ctx.lineTo(bx - 4, yMid);
-      ctx.stroke();
+        ctx.font = `700 11.5px ${st.fontFamily}`;
+        ctx.textAlign = "right";
+        ctx.fillStyle = col;
+        const lbl = csd.pairName + (res.opts.showD0OnSchematic ? ` (${csd.refVal.toFixed(2)})` : "");
+        ctx.fillText(lbl, bx - 6, yMid + 4);
+      } else {
+        // Multiple custom pairs: crisp CAD vertical double-arrow lines spaced laneStep px apart
+        // with rotated white-pill labels centered DIRECTLY ON their own dimension spine -> 0 collisions!
+        const bx = Math.round(planeX0 - 34 - lane * laneStep) + 0.5;
 
-      ctx.font = `700 11px ${st.fontFamily}`;
-      ctx.textAlign = "right";
-      const lbl = csd.pairName + (res.opts.showD0OnSchematic ? ` (${csd.refVal.toFixed(2)})` : "");
-      // Crisp white halo behind label so nested brackets never obscure text
-      ctx.save();
-      ctx.lineJoin = "round";
-      ctx.lineWidth = 3.6;
-      ctx.strokeStyle = "rgba(255,255,255,0.95)";
-      ctx.strokeText(lbl, bx - 6, yMid + 4);
-      ctx.fillStyle = isHidden ? "#94a3b8" : csd.color;
-      ctx.fillText(lbl, bx - 6, yMid + 4);
-      ctx.restore();
+        // Subtle thin horizontal guide ticks linking endpoint to layer plane
+        ctx.save();
+        ctx.strokeStyle = col;
+        ctx.globalAlpha = 0.30;
+        ctx.lineWidth = 0.85;
+        ctx.setLineDash([2, 2]);
+        ctx.beginPath();
+        ctx.moveTo(bx + 4, yTop); ctx.lineTo(planeX0 - 24, yTop);
+        ctx.moveTo(bx + 4, yBot); ctx.lineTo(planeX0 - 24, yBot);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+
+        // Crisp vertical dimension shaft + short end caps + tiny solid arrowheads
+        ctx.strokeStyle = col;
+        ctx.fillStyle = col;
+        ctx.lineWidth = 1.45;
+        ctx.beginPath();
+        ctx.moveTo(bx - 4, yTop); ctx.lineTo(bx + 4, yTop);
+        ctx.moveTo(bx - 4, yBot); ctx.lineTo(bx + 4, yBot);
+        ctx.moveTo(bx, yTop + 1); ctx.lineTo(bx, yBot - 1);
+        ctx.stroke();
+
+        if (spanPx >= 18) {
+          const ah = 4.5, aw = 2.6;
+          // Top upward arrowhead
+          ctx.beginPath();
+          ctx.moveTo(bx, yTop + 0.5);
+          ctx.lineTo(bx - aw, yTop + ah + 0.5);
+          ctx.lineTo(bx + aw, yTop + ah + 0.5);
+          ctx.closePath();
+          ctx.fill();
+          // Bottom downward arrowhead
+          ctx.beginPath();
+          ctx.moveTo(bx, yBot - 0.5);
+          ctx.lineTo(bx - aw, yBot - ah - 0.5);
+          ctx.lineTo(bx + aw, yBot - ah - 0.5);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        // Choose label that comfortably fits inside spanPx along the vertical spine
+        ctx.save();
+        ctx.font = `700 10px Inter, sans-serif`;
+        const fullLbl = `${csd.shortLabel} (${csd.pairName})`;
+        const shortLbl = csd.shortLabel;
+        const fullW = ctx.measureText(fullLbl).width;
+        const shortW = ctx.measureText(shortLbl).width;
+        const useLbl = (spanPx >= fullW + 18) ? fullLbl : shortLbl;
+        const txtW = (useLbl === fullLbl) ? fullW : shortW;
+        const pillW = txtW + 8;
+        const pillH = 13;
+
+        // Draw rotated pill centered directly on (bx, yMid)
+        ctx.translate(bx, yMid);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 0.9;
+        const rx = -pillW / 2, ry = -pillH / 2, r = 3;
+        ctx.beginPath();
+        ctx.moveTo(rx + r, ry);
+        ctx.lineTo(rx + pillW - r, ry);
+        ctx.quadraticCurveTo(rx + pillW, ry, rx + pillW, ry + r);
+        ctx.lineTo(rx + pillW, ry + pillH - r);
+        ctx.quadraticCurveTo(rx + pillW, ry + pillH, rx + pillW - r, ry + pillH);
+        ctx.lineTo(rx + r, ry + pillH);
+        ctx.quadraticCurveTo(rx, ry + pillH, rx, ry + pillH - r);
+        ctx.lineTo(rx, ry + r);
+        ctx.quadraticCurveTo(rx, ry, rx + r, ry);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = col;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(useLbl, 0, 0.5);
+        ctx.restore();
+      }
     });
   }
 
@@ -2042,6 +2167,7 @@ function resetPostDataSettings() {
   setV("pd-schematic-view", "a");
   setV("pd-xlabel-input", "Electric Field E (V/Å)");
   setV("pd-show-pair-legend", false);
+  setV("pd-legend-outside", true);
   setV("pd-show-zero-lines", true);
   setV("pd-show-d0-schematic", false);
   POST_DATA_STATE.hiddenSeries.clear();
