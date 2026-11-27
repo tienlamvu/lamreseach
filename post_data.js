@@ -1279,15 +1279,6 @@ function drawPostDataCanvas(res) {
 
   const visibleSeries = res.seriesStats.filter(sd => !POST_DATA_STATE.hiddenSeries.has(sd.id));
 
-  // Build exact export series for right-click individual copy
-  const exactSeriesList = visibleSeries.map(sd => ({
-    label: res.opts.showPairLegend ? sd.fullLabel : sd.shortLabel,
-    pts: res.rows.map(r => [
-      r.xPlot,
-      metric === "abs" ? r.absVals[sd.id] : (metric === "pct" ? r.pctVals[sd.id] : r.deltaVals[sd.id])
-    ])
-  }));
-
   canvas._subPanelRects = [
     {
       key: "post_data_plot",
@@ -1295,12 +1286,7 @@ function drawPostDataCanvas(res) {
       x: 0, y: 0, w: splitX, h: height,
       plotKey: "post_data",
       pngName: `PostData_${isBond ? "Bond" : "Interlayer"}_Distances_Plot.png`,
-      exactSeries: {
-        title: isBond ? "Atomic Bond Distances vs. Parameter" : "Interlayer Distances vs. Parameter",
-        xLabel: res.opts.xAxisLabel,
-        yUnit: metric === "pct" ? "%" : "Å",
-        series: exactSeriesList
-      }
+      buildExactTable: () => buildPostDataPlotClipboardTable(res)
     },
     {
       key: "post_data_schematic",
@@ -2416,29 +2402,151 @@ function buildPostDataExportTables() {
     ];
   });
 
+  // Also build dense Fitted Curve sheet when a Fit / Spline / Smooth curve is active!
+  const fitMode = res.opts.fitMode || "connect";
+  const hasFitCurve = fitMode !== "connect" && fitMode !== "scatter";
+  let fitSheet = null;
+  if (hasFitCurve) {
+    const visibleAll = sIds.filter(sd => sd.curveFit && sd.curveFit.pts && sd.curveFit.pts.length >= 2);
+    if (visibleAll.length) {
+      const unitLbl = res.opts.metricMode === "pct" ? "%" : "Å";
+      const fitLbl = visibleAll[0].curveFit.label || fitMode;
+      const nFit = visibleAll[0].curveFit.pts.length;
+      const fitHeaders = [
+        `X_fit (${xCol})`,
+        ...visibleAll.map(s => {
+          const r2Str = isFinite(s.curveFit.r2) ? ` | R2=${s.curveFit.r2.toFixed(4)}` : "";
+          return `${s.shortLabel}_${s.pairName}_Fit_${fitLbl} (${unitLbl}${r2Str})`;
+        })
+      ];
+      const fitRows = [];
+      for (let i = 0; i < nFit; i++) {
+        const xVal = visibleAll[0].curveFit.pts[i][0];
+        fitRows.push([
+          Number(xVal.toFixed(6)),
+          ...visibleAll.map(s => {
+            const pt = s.curveFit.pts[i];
+            return (pt && isFinite(pt[1])) ? Number(pt[1].toFixed(6)) : "";
+          })
+        ]);
+      }
+      fitSheet = { name: `Fitted_Curves_${fitLbl.replace(/\s+/g, "")}`, headers: fitHeaders, rows: fitRows };
+    }
+  }
+
   const seed = String(res.refItem.crystal.formula || "Crystal").replace(/[^A-Za-z0-9_-]/g, "_");
   return {
     seed,
     deltaSheet: { name: "Delta_d_vs_X", headers: deltaHeaders, rows: deltaRows },
     absSheet: { name: "Absolute_d_vs_X", headers: absHeaders, rows: absRows },
     pctSheet: { name: "Relative_Pct_vs_X", headers: pctHeaders, rows: pctRows },
-    summarySheet: { name: "Layer_Slopes_Summary", headers: summaryHeaders, rows: summaryRows }
+    summarySheet: { name: "Layer_Slopes_Summary", headers: summaryHeaders, rows: summaryRows },
+    fitSheet
   };
 }
 window.buildPostDataExportTables = buildPostDataExportTables;
 
+function buildPostDataPlotClipboardTable(res) {
+  if (!res || !res.rows || !res.rows.length) return null;
+  const metric = res.opts.metricMode || "delta";
+  const fitMode = res.opts.fitMode || "connect";
+  const isBond = res.opts.measureMode === "bonds";
+  const unit = metric === "pct" ? "%" : "Å";
+  const metricTag = metric === "abs" ? "d" : (metric === "pct" ? "Δd/d0" : "Δd");
+  const visible = res.seriesStats.filter(sd => !POST_DATA_STATE.hiddenSeries.has(sd.id));
+  if (!visible.length) return null;
+
+  const hasFit = fitMode !== "connect" && fitMode !== "scatter" &&
+    visible.some(sd => sd.curveFit && sd.curveFit.pts && sd.curveFit.pts.length >= 2);
+  const xLabel = res.opts.xAxisLabel || "X";
+  const seriesName = (sd) => (res.opts.showPairLegend || isBond || sd.kind === "custom_layer") ? sd.fullLabel : `${sd.shortLabel} (${sd.pairName})`;
+
+  const rawHeaders = [
+    xLabel,
+    ...visible.map(sd => `${seriesName(sd)} [${metricTag}, ${unit}]`)
+  ];
+
+  if (!hasFit) {
+    const rows = res.rows.map(r => [
+      Number(r.xPlot.toFixed(6)),
+      ...visible.map(sd => {
+        const v = metric === "abs" ? r.absVals[sd.id] : (metric === "pct" ? r.pctVals[sd.id] : r.deltaVals[sd.id]);
+        return isFinite(v) ? Number(v.toFixed(6)) : "";
+      })
+    ]);
+    return {
+      title: isBond ? "Bond Distances vs. Parameter" : "Interlayer Distances vs. Parameter",
+      headers: rawHeaders,
+      rows
+    };
+  }
+
+  // Side-by-side OriginPro-ready table: Raw DFT Scatter Data (left) + Dense Smooth Fitted Curves (right)!
+  const fitRef = visible.find(sd => sd.curveFit && sd.curveFit.pts && sd.curveFit.pts.length >= 2);
+  const fitLabel = fitRef?.curveFit?.label || fitMode;
+  const nFit = fitRef ? fitRef.curveFit.pts.length : 0;
+  const nRows = Math.max(res.rows.length, nFit);
+
+  const fitHeaders = [
+    `X_fit (${fitLabel})`,
+    ...visible.map(sd => {
+      const cf = sd.curveFit || {};
+      const eqNote = (cf.eqText && cf.eqText !== "Point-to-point") ? ` | ${cf.eqText}` : "";
+      const r2Note = isFinite(cf.r2) ? ` (R²=${cf.r2.toFixed(4)})` : "";
+      return `${sd.shortLabel} Fit [${fitLabel}${r2Note}${eqNote}]`;
+    })
+  ];
+
+  const headers = [...rawHeaders, ...fitHeaders];
+  const rows = [];
+  for (let i = 0; i < nRows; i++) {
+    const r = res.rows[i];
+    const leftCols = r
+      ? [
+          Number(r.xPlot.toFixed(6)),
+          ...visible.map(sd => {
+            const v = metric === "abs" ? r.absVals[sd.id] : (metric === "pct" ? r.pctVals[sd.id] : r.deltaVals[sd.id]);
+            return isFinite(v) ? Number(v.toFixed(6)) : "";
+          })
+        ]
+      : new Array(rawHeaders.length).fill("");
+
+    const rightCols = (i < nFit && fitRef)
+      ? [
+          Number(fitRef.curveFit.pts[i][0].toFixed(6)),
+          ...visible.map(sd => {
+            const pt = sd.curveFit?.pts?.[i];
+            return (pt && isFinite(pt[1])) ? Number(pt[1].toFixed(6)) : "";
+          })
+        ]
+      : new Array(fitHeaders.length).fill("");
+
+    rows.push([...leftCols, ...rightCols]);
+  }
+
+  return {
+    title: `${isBond ? "Bond" : "Interlayer"} Plot Data + ${fitLabel} Curves`,
+    headers,
+    rows
+  };
+}
+window.buildPostDataPlotClipboardTable = buildPostDataPlotClipboardTable;
+
 async function copyPostDataTSV() {
-  const pkg = buildPostDataExportTables();
   const res = POST_DATA_STATE.lastResult;
-  if (!pkg || !res) {
+  if (!res) {
     if (typeof showToast === "function") showToast("No Post-Data results to copy.", "warning");
     return;
   }
-  const sheet = res.opts.metricMode === "abs" ? pkg.absSheet : (res.opts.metricMode === "pct" ? pkg.pctSheet : pkg.deltaSheet);
-  const tsv = [sheet.headers.join("\t"), ...sheet.rows.map(r => r.join("\t"))].join("\n");
+  const tbl = buildPostDataPlotClipboardTable(res);
+  if (!tbl || !tbl.rows.length) {
+    if (typeof showToast === "function") showToast("No Post-Data results to copy.", "warning");
+    return;
+  }
+  const tsv = [tbl.headers.join("\t"), ...tbl.rows.map(r => r.join("\t"))].join("\n");
   try {
     await navigator.clipboard.writeText(tsv);
-    if (typeof showToast === "function") showToast(`Copied ${sheet.name} (${sheet.rows.length} rows) as TSV — paste directly into OriginPro / Excel!`, "success");
+    if (typeof showToast === "function") showToast(`Copied ${tbl.title} (${tbl.rows.length} rows × ${tbl.headers.length} cols, TSV) — paste directly into OriginPro / Excel!`, "success");
   } catch (_) {
     if (typeof showToast === "function") showToast("Clipboard blocked — use CSV or Excel export instead.", "warning");
   }
@@ -2452,13 +2560,17 @@ function exportPostDataCSV() {
     if (typeof showToast === "function") showToast("No Post-Data results to export.", "warning");
     return;
   }
+  const fitActive = res.opts.fitMode && res.opts.fitMode !== "connect" && res.opts.fitMode !== "scatter";
+  const plotTbl = fitActive ? buildPostDataPlotClipboardTable(res) : null;
   const sheet = res.opts.metricMode === "abs" ? pkg.absSheet : (res.opts.metricMode === "pct" ? pkg.pctSheet : pkg.deltaSheet);
+  const headers = plotTbl ? plotTbl.headers : sheet.headers;
+  const rows = plotTbl ? plotTbl.rows : sheet.rows;
   const csv = (typeof buildCsvString === "function")
-    ? buildCsvString(sheet.headers, sheet.rows)
-    : [sheet.headers.join(","), ...sheet.rows.map(r => r.join(","))].join("\n");
-  const fname = `${pkg.seed}_${sheet.name}.csv`;
+    ? buildCsvString(headers, rows)
+    : [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+  const fname = `${pkg.seed}_${sheet.name}${fitActive ? "_" + res.opts.fitMode : ""}.csv`;
   triggerBlobDownload(new Blob([csv], { type: "text/csv;charset=utf-8" }), fname);
-  if (typeof showToast === "function") showToast(`Exported ${fname} (${sheet.rows.length} rows)!`, "success");
+  if (typeof showToast === "function") showToast(`Exported ${fname} (${rows.length} rows × ${headers.length} cols)!`, "success");
 }
 window.exportPostDataCSV = exportPostDataCSV;
 
@@ -2469,6 +2581,7 @@ function exportPostDataXLSX() {
     return;
   }
   const sheets = [pkg.deltaSheet, pkg.absSheet, pkg.pctSheet, pkg.summarySheet];
+  if (pkg.fitSheet) sheets.push(pkg.fitSheet);
   const blob = buildXlsxBlob(sheets);
   const fname = `${pkg.seed}_PostData_Interlayer_Distances.xlsx`;
   triggerBlobDownload(blob, fname);
