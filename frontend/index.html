@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=169_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=169_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=170_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=170_v116_vesta_viewer'" />
   <!-- Publication Math Typography: STIX Two Text (MathType / Times) + KaTeX 0.16.11 (Word/LaTeX Equation Engine) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -2318,8 +2318,8 @@
                       <option value="vbm_auto" selected>🎯 Zero: VBM / E_F</option>
                       <option value="raw_fermi">⚡ Zero: Raw E_F</option>
                     </select>
-                    <label class="castep-chk-lbl" title="Show Spin-Up (α) states"><input type="checkbox" id="castep-show-spin-up" checked onchange="renderCastepElectronicPlots()" /> ↑(α)</label>
-                    <label class="castep-chk-lbl" title="Show Spin-Down (β) states"><input type="checkbox" id="castep-show-spin-dn" checked onchange="renderCastepElectronicPlots()" /> ↓(β)</label>
+                    <label class="castep-chk-lbl" title="Show Spin-Up (α) states (Red)"><input type="checkbox" id="castep-show-spin-up" checked onchange="renderCastepElectronicPlots()" /> <span style="color:#dc2626; font-weight:700;">↑(α)</span></label>
+                    <label class="castep-chk-lbl" title="Show Spin-Down (β) states (Blue)"><input type="checkbox" id="castep-show-spin-dn" checked onchange="renderCastepElectronicPlots()" /> <span style="color:#2563eb; font-weight:700;">↓(β)</span></label>
                   </span>
                   <span class="castep-ctrl-grp" style="margin-left:auto;">
                     <input type="file" id="castep-pdos-file-upload" multiple accept=".pdos_bin,.bands,.xcd,.procar,PROCAR" style="display:none;" onchange="handleCastepPdosFilesUpload(event)" />
@@ -2342,15 +2342,21 @@
                       </span>
                     </div>
                     <div class="castep-elec-card-row" id="castep-fatband-row">
-                      <select id="castep-fatband-mode" class="castep-input" style="font-weight:700; max-width:176px;" onchange="if(window.CASTEP_FATBAND_STATE) CASTEP_FATBAND_STATE.hiddenChannels.clear(); renderCastepElectronicPlots()" title="Overlay orbital/element projection circles (Fat-Bands) on Band Structure">
+                      <select id="castep-fatband-mode" class="castep-input" style="font-weight:700; max-width:168px;" onchange="if(window.CASTEP_FATBAND_STATE) CASTEP_FATBAND_STATE.hiddenChannels.clear(); renderCastepElectronicPlots()" title="Overlay orbital/element projection circles (Fat-Bands) on Band Structure">
                         <option value="off" selected>Standard Bands (Off)</option>
                         <option value="suborbital">🎯 Sub-Orbital (s, px,y, dz²)</option>
                         <option value="orbital_l">⚛️ Orbital Shell (s, p, d, f)</option>
                         <option value="element">🧬 Element-Resolved</option>
                         <option value="element_orbital">🔬 Element + Orbital</option>
                       </select>
-                      <select id="castep-fatband-el" class="castep-input" style="max-width:98px;" onchange="if(window.CASTEP_FATBAND_STATE) CASTEP_FATBAND_STATE.hiddenChannels.clear(); renderCastepElectronicPlots()" title="Filter Fat-Band projection by element">
+                      <select id="castep-fatband-el" class="castep-input" style="max-width:92px;" onchange="if(window.CASTEP_FATBAND_STATE) CASTEP_FATBAND_STATE.hiddenChannels.clear(); renderCastepElectronicPlots()" title="Filter Fat-Band projection by element">
                         <option value="all">All Elements</option>
+                      </select>
+                      <select id="castep-band-spin-mode" class="castep-input" style="max-width:116px; font-weight:700;" onchange="renderCastepElectronicPlots()" title="Collinear Spin-Resolved Band Display: Overlay (↑ Red / ↓ Blue), Split Panels (↑ | ↓), Spin Up Only, or Spin Down Only">
+                        <option value="overlay" selected>Overlay (↑ / ↓)</option>
+                        <option value="split">Split (↑ | ↓)</option>
+                        <option value="up">↑ Spin Up Only</option>
+                        <option value="down">↓ Spin Down Only</option>
                       </select>
                       <span id="castep-fatband-style-row" class="castep-ctrl-grp" style="display:none;">
                         <select id="castep-fatband-style" class="castep-input" style="max-width:86px;" onchange="renderCastepElectronicPlots()" title="Fat-Band marker style">
@@ -6659,11 +6665,11 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=169_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=169_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=169_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=169_v116_vesta_viewer'"></script>
-  <script src="post_data.js?v=169_v116_vesta_viewer" onerror="this.src='/static/post_data.js?v=169_v116_vesta_viewer'"></script>
-  <script src="dft_theory.js?v=169_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=169_v116_vesta_viewer'"></script>
-  <script src="app.js?v=169_v116_vesta_viewer" onerror="this.src='/static/app.js?v=169_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=170_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=170_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=170_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=170_v116_vesta_viewer'"></script>
+  <script src="post_data.js?v=170_v116_vesta_viewer" onerror="this.src='/static/post_data.js?v=170_v116_vesta_viewer'"></script>
+  <script src="dft_theory.js?v=170_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=170_v116_vesta_viewer'"></script>
+  <script src="app.js?v=170_v116_vesta_viewer" onerror="this.src='/static/app.js?v=170_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
