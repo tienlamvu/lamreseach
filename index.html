@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=170_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=170_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=171_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=171_v116_vesta_viewer'" />
   <!-- Publication Math Typography: STIX Two Text (MathType / Times) + KaTeX 0.16.11 (Word/LaTeX Equation Engine) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -3494,6 +3494,18 @@
       <!-- TAB: POST-DATA PROCESSING (MULTI-STRUCTURE INTERLAYER & BONDS)   -->
       <!-- ================================================================ -->
       <section id="tab-post-data" class="tab-pane">
+        <!-- Post-Data Processing Sub-Tab Navigation Bar (Tool 1: Interlayer Distances | Tool 2: Rashba, Spin Texture & Topology) -->
+        <div class="pd-subtab-bar">
+          <button type="button" id="pd-subtab-btn-distances" class="pd-subtab-btn active" onclick="switchPostDataSubTab('distances')">
+            📐 1. Interlayer &amp; Bond Distances
+          </button>
+          <button type="button" id="pd-subtab-btn-rashba" class="pd-subtab-btn" onclick="switchPostDataSubTab('rashba')">
+            🌀 2. Rashba, Spin Texture &amp; Topology <span class="pd-subtab-pill">SOC / Collinear</span>
+          </button>
+        </div>
+
+        <!-- ========== SUB-TAB 1: MULTI-STRUCTURE INTERLAYER & BOND DISTANCES ========== -->
+        <div id="pd-subpane-distances">
         <!-- Multi-Structure Dropzone & Batch Loader Card -->
         <div class="card" style="padding:14px 16px; margin-bottom:12px;">
           <div id="pd-cif-dropzone" class="pd-dropzone">
@@ -3724,6 +3736,158 @@
             </table>
           </div>
         </div>
+        </div><!-- /#pd-subpane-distances -->
+
+        <!-- ========== SUB-TAB 2: RASHBA SPLITTING, SPIN TEXTURE, FBZ & TOPOLOGY ========== -->
+        <div id="pd-subpane-rashba" style="display:none;">
+          <!-- Upload & Import Card -->
+          <div class="card" style="padding:14px 16px; margin-bottom:12px;">
+            <div id="tr-dropzone" class="pd-dropzone tr-dropzone">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;">
+                <div style="display:flex; align-items:center; gap:12px; min-width:260px; flex:1;">
+                  <div style="width:42px; height:42px; border-radius:10px; background:linear-gradient(135deg,#6d28d9,#dc2626); color:#fff; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; box-shadow:0 3px 10px rgba(109,40,217,0.24);">🌀</div>
+                  <div>
+                    <div style="font-size:15px; font-weight:800; color:#0f172a;">Rashba Splitting, 2D Spin Texture, First Brillouin Zone &amp; Topology Analyzer</div>
+                    <div style="font-size:12px; color:#475569; margin-top:2px; line-height:1.45;">
+                      Drop CASTEP <strong>Non-Collinear SOC</strong> or <strong>Collinear</strong> outputs (or import directly from Data Analysis) to quantify α<sub>R</sub>, E<sub>R</sub>, k<sub>R</sub>, 2D spin texture, exact FBZ &amp; Berry curvature Ω<sub>z</sub>(k).
+                      <span class="pd-fmt-strip">
+                        <span class="pd-fmt-pill">*_BandStr.bands</span>
+                        <span class="pd-fmt-pill">.castep</span>
+                        <span class="pd-fmt-pill">.param</span>
+                        <span class="pd-fmt-pill">.cell</span>
+                        <span class="pd-fmt-pill">Spin .dat/.csv</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div class="pd-upload-btn-group">
+                  <label class="btn btn-primary btn-sm pd-action-btn" style="background:#6d28d9; border-color:#6d28d9;" title="Select CASTEP *_BandStr.bands, *.castep, *.param, *.cell (and optional spin-texture table)">
+                    📂 Select SOC / Band Files
+                    <input type="file" id="tr-files-input" accept=".bands,.castep,.param,.cell,.dat,.csv,.tsv" multiple style="display:none;" onchange="handleTopoRashbaFileUpload(event)" />
+                  </label>
+                  <label class="btn btn-outline btn-sm pd-action-btn" title="Select a CASTEP Non-Collinear SOC or Collinear Energy folder">
+                    📁 Load Folder
+                    <input type="file" id="tr-folder-input" webkitdirectory directory multiple style="display:none;" onchange="handleTopoRashbaFileUpload(event)" />
+                  </label>
+                  <button type="button" class="btn btn-outline btn-sm pd-action-btn" style="border-color:#0f766e; color:#0f766e;" onclick="importActiveCastepJobToTopoRashba()" title="Pull the currently open CASTEP job from the Data Analysis tab">🔗 Import Active Job</button>
+                  <button type="button" class="btn btn-outline btn-sm pd-action-btn" style="color:#dc2626; border-color:#fecaca;" onclick="clearTopoRashbaData()">🗑️ Clear</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Calculation Regime & Symmetry Summary Strip -->
+            <div id="tr-summary-strip" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:10px; padding:7px 12px; border-radius:8px; background:#f8fafc; border:1px solid #dbe4f0; font-size:12px; color:#334155;">
+              <span>Load CASTEP <strong>Non-Collinear SOC</strong> (<code>*_BandStr.bands</code> + <code>*.castep</code> + <code>*.param</code> + <code>*.cell</code>) or <strong>Collinear</strong> files, or click <strong>🔗 Import Active Job</strong>.</span>
+            </div>
+          </div>
+
+          <!-- Sleek 2-Row Analysis & Export Toolbar -->
+          <div class="castep-plot-toolbar pd-toolbar" style="margin-bottom:10px;">
+            <div class="castep-tb-row">
+              <span class="castep-ctrl-grp">
+                <label class="castep-field-lbl" for="tr-band-pair">Band Pair:</label>
+                <select id="tr-band-pair" class="castep-input" style="font-weight:700; max-width:190px;" onchange="renderTopoRashbaAll()">
+                  <option value="vbm" selected>VBM Doublet (Top Valence)</option>
+                  <option value="cbm">CBM Doublet (Bottom Conduction)</option>
+                  <option value="vbm2">VBM−1 Doublet</option>
+                  <option value="cbm2">CBM+1 Doublet</option>
+                </select>
+              </span>
+              <span class="castep-ctrl-grp">
+                <label class="castep-field-lbl" for="tr-kcenter-select">Center k₀:</label>
+                <select id="tr-kcenter-select" class="castep-input" style="font-weight:700; max-width:175px;" onchange="renderTopoRashbaAll()">
+                  <option value="auto" selected>Auto (Γ / Band Extremum)</option>
+                </select>
+              </span>
+              <span class="castep-ctrl-grp" title="Momentum fitting half-window |k − k₀| around the high-symmetry center (Å⁻¹)">
+                <label class="castep-field-lbl" for="tr-dk-window">Δk (Å⁻¹):</label>
+                <input type="number" id="tr-dk-window" class="castep-input-sm" value="0.22" min="0.04" max="1.0" step="0.02" style="width:56px;" onchange="renderTopoRashbaAll()" />
+              </span>
+              <span class="castep-ctrl-grp">
+                <label class="castep-field-lbl" for="tr-spin-model">Spin Model:</label>
+                <select id="tr-spin-model" class="castep-input" style="max-width:175px;" onchange="renderTopoRashbaAll()">
+                  <option value="auto" selected>Auto (From Symmetry)</option>
+                  <option value="rashba">Bychkov-Rashba (C₃ᵥ/Cₙᵥ)</option>
+                  <option value="rashba_dresselhaus">Rashba + Dresselhaus (C₂ᵥ)</option>
+                  <option value="weyl_radial">Chiral Radial / Weyl</option>
+                  <option value="zeeman_valley">Valley Zeeman-Ising (K/K′)</option>
+                </select>
+              </span>
+              <div class="castep-tb-actions">
+                <button type="button" class="btn btn-outline btn-sm pd-tb-btn" onclick="resetTopoRashbaSettings()" title="Reset Rashba, Spin Texture &amp; Topology settings to defaults">↺ Reset</button>
+              </div>
+            </div>
+
+            <div class="castep-tb-row">
+              <span class="castep-ctrl-grp" title="Dresselhaus-to-Rashba ratio β_D / α_R (set 1.0 in Rashba+Dresselhaus mode for Persistent Spin Helix)">
+                <label class="castep-field-lbl" for="tr-dresselhaus-ratio">β<sub>D</sub>/α<sub>R</sub>:</label>
+                <input type="number" id="tr-dresselhaus-ratio" class="castep-input-sm" value="0.0" min="-2.0" max="2.0" step="0.2" style="width:52px;" onchange="renderTopoRashbaAll()" />
+              </span>
+              <span class="castep-ctrl-grp" title="Iso-energy contour slice ΔE relative to E(k₀) for 2D Spin Texture (eV)">
+                <label class="castep-field-lbl" for="tr-ecut-ev">ΔE Cut (eV):</label>
+                <input type="number" id="tr-ecut-ev" class="castep-input-sm" value="0.08" min="0.01" max="1.5" step="0.02" style="width:56px;" onchange="renderTopoRashbaAll()" />
+              </span>
+              <label class="castep-chk-lbl" title="Overlay massive-Dirac Berry Curvature Ω_z(k) inside the First Brillouin Zone">
+                <input type="checkbox" id="tr-show-berry" checked onchange="renderTopoRashbaAll()" /> Berry Curvature Ω<sub>z</sub>(k)
+              </label>
+              <div class="castep-tb-actions">
+                <button type="button" class="btn btn-teal btn-sm pd-tb-btn" onclick="copyTopoRashbaHD()" title="Copy 2×2 High-DPI figure to clipboard (right-click any single panel to copy individually)">📋 Copy HD</button>
+                <button type="button" class="btn btn-outline btn-sm pd-tb-btn" onclick="copyTopoRashbaTSV()" title="Copy Rashba dispersion &amp; ΔE(k) fit TSV">📋 TSV</button>
+                <button type="button" class="btn btn-outline btn-sm pd-tb-btn" onclick="exportTopoRashbaPNG()" title="Save Hi-DPI PNG image">📷 PNG</button>
+                <button type="button" class="btn btn-outline btn-sm pd-tb-btn" onclick="exportTopoRashbaCSV()" title="Export Rashba dispersion CSV">📊 CSV</button>
+                <button type="button" class="btn btn-outline btn-sm pd-tb-btn" style="border-color:#0f766e; color:#0f766e;" onclick="exportTopoRashbaXLSX()" title="Export 4-tab Excel workbook (Summary, Dispersion, Spin Texture, High-Sym Splittings)">📗 Excel</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4-Card Rashba, Spin Texture, Valley & Topology KPI Grid -->
+          <div id="tr-kpi-grid" class="tr-kpi-grid" style="display:none;"></div>
+
+          <!-- 2x2 Publication Canvas Card -->
+          <div class="card" style="padding:12px 14px; margin-bottom:14px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:8px;">
+              <div style="font-size:13px; font-weight:800; color:#0f172a;">
+                🌀 Rashba Dispersion, Spin Splitting ΔE(k), 2D Spin Texture &amp; First Brillouin Zone
+                <span style="font-size:11px; font-weight:600; color:#64748b; margin-left:6px;">💡 Right-click any of the 4 panels to copy its HD image or numerical data individually</span>
+              </div>
+            </div>
+            <div style="width:100%; overflow-x:auto; text-align:center;">
+              <canvas id="tr-main-canvas" style="display:block; margin:0 auto; border:1px solid #e2e8f0; border-radius:8px; background:#ffffff; cursor:crosshair;"></canvas>
+            </div>
+            <div id="tr-plot-readout" class="pd-plot-readout-bar">Hover over any of the 4 panels to inspect exact Rashba energy, spin expectation ⟨S⟩, or Berry curvature Ω<sub>z</sub>(k).</div>
+          </div>
+
+          <!-- Bottom 2-Column Quantitative Tables -->
+          <div class="tr-tables-grid">
+            <div class="card" style="padding:14px 16px;">
+              <div style="font-size:13.5px; font-weight:800; color:#0f172a; margin-bottom:8px;">📍 High-Symmetry k-Point SOC &amp; Valley Splittings</div>
+              <div style="overflow-x:auto; max-height:300px; border:1px solid #e2e8f0; border-radius:8px;">
+                <table class="data-table pd-data-table" style="width:100%; font-size:12px; border-collapse:collapse;">
+                  <thead style="position:sticky; top:0; background:#f8fafc;">
+                    <tr><th>Point</th><th>k (frac)</th><th>VBM (eV)</th><th>CBM (eV)</th><th>ΔE<sub>v</sub> (meV)</th><th>ΔE<sub>c</sub> (meV)</th><th>Gap (eV)</th></tr>
+                  </thead>
+                  <tbody id="tr-hs-tbody">
+                    <tr><td colspan="7" style="text-align:center; padding:14px; color:#64748b;">No band structure loaded yet.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="card" style="padding:14px 16px;">
+              <div style="font-size:13.5px; font-weight:800; color:#0f172a; margin-bottom:8px;">🧲 Real-Space Atomic Spin Vectors (CASTEP Mulliken)</div>
+              <div style="overflow-x:auto; max-height:300px; border:1px solid #e2e8f0; border-radius:8px;">
+                <table class="data-table pd-data-table" style="width:100%; font-size:12px; border-collapse:collapse;">
+                  <thead style="position:sticky; top:0; background:#f8fafc;">
+                    <tr><th>Atom</th><th>Charge (e)</th><th>|S| (ℏ/2)</th><th>S<sub>x</sub></th><th>S<sub>y</sub></th><th>S<sub>z</sub></th></tr>
+                  </thead>
+                  <tbody id="tr-atomic-spin-tbody">
+                    <tr><td colspan="6" style="text-align:center; padding:14px; color:#64748b;">Include <code>*.castep</code> to display atomic spin vectors.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div><!-- /#pd-subpane-rashba -->
       </section>
 
       <!-- ================================================================ -->
@@ -6665,11 +6829,12 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=170_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=170_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=170_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=170_v116_vesta_viewer'"></script>
-  <script src="post_data.js?v=170_v116_vesta_viewer" onerror="this.src='/static/post_data.js?v=170_v116_vesta_viewer'"></script>
-  <script src="dft_theory.js?v=170_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=170_v116_vesta_viewer'"></script>
-  <script src="app.js?v=170_v116_vesta_viewer" onerror="this.src='/static/app.js?v=170_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=171_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=171_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=171_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=171_v116_vesta_viewer'"></script>
+  <script src="post_data.js?v=171_v116_vesta_viewer" onerror="this.src='/static/post_data.js?v=171_v116_vesta_viewer'"></script>
+  <script src="topo_rashba.js?v=171_v116_vesta_viewer" onerror="this.src='/static/topo_rashba.js?v=171_v116_vesta_viewer'"></script>
+  <script src="dft_theory.js?v=171_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=171_v116_vesta_viewer'"></script>
+  <script src="app.js?v=171_v116_vesta_viewer" onerror="this.src='/static/app.js?v=171_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
