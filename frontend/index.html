@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=162_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=162_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=163_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=163_v116_vesta_viewer'" />
   <!-- Publication Math Typography: STIX Two Text (MathType / Times) + KaTeX 0.16.11 (Word/LaTeX Equation Engine) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -3445,140 +3445,148 @@
       </section>
 
       <!-- ================================================================ -->
-      <!-- TAB: POST-DATA PROCESSING (MULTI-CIF INTERLAYER & BOND ANALYZER) -->
+      <!-- TAB: POST-DATA PROCESSING (MULTI-STRUCTURE INTERLAYER & BONDS)   -->
       <!-- ================================================================ -->
       <section id="tab-post-data" class="tab-pane">
-        <!-- Multi-CIF Dropzone & Batch Loader Card -->
+        <!-- Multi-Structure Dropzone & Batch Loader Card -->
         <div class="card" style="padding:14px 16px; margin-bottom:12px;">
           <div id="pd-cif-dropzone" class="pd-dropzone">
             <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;">
               <div style="display:flex; align-items:center; gap:12px; min-width:260px; flex:1;">
                 <div style="width:42px; height:42px; border-radius:10px; background:linear-gradient(135deg,#0f766e,#1d4ed8); color:#fff; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; box-shadow:0 3px 10px rgba(15,118,110,0.22);">📐</div>
                 <div>
-                  <div style="font-size:15px; font-weight:800; color:#0f172a;">Multi-CIF Interlayer &amp; Atomic Distance Post-Processor</div>
-                  <div style="font-size:12px; color:#475569; margin-top:2px;">
-                    Drop or select multiple optimized <code>*.cif</code> structures (e.g., across Electric Fields <code>E</code>, Strains, or Pressures). Automatically unwraps periodic slabs, clusters atomic layers <strong>d<sub>1</sub>, d<sub>2</sub>, …, d<sub>n</sub></strong>, plots Δd<sub>i</sub> vs. parameter, and renders a live side-view crystal schematic.
+                  <div style="font-size:15px; font-weight:800; color:#0f172a;">Multi-Structure Interlayer &amp; Atomic Distance Post-Processor</div>
+                  <div style="font-size:12px; color:#475569; margin-top:2px; line-height:1.45;">
+                    Drop or select multiple optimized crystal structures across Electric Fields <code>E</code>, Strains, or Pressures.
+                    <span class="pd-fmt-strip">
+                      <span class="pd-fmt-pill">.cif</span>
+                      <span class="pd-fmt-pill">.cell</span>
+                      <span class="pd-fmt-pill">.xsd</span>
+                      <span class="pd-fmt-pill">.castep</span>
+                      <span class="pd-fmt-pill">.msi</span>
+                      <span class="pd-fmt-pill">.car</span>
+                      <span class="pd-fmt-pill">POSCAR</span>
+                      <span class="pd-fmt-pill">.xyz</span>
+                    </span>
                   </div>
                 </div>
               </div>
-              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                <label class="btn btn-primary btn-sm" style="cursor:pointer; margin:0; display:inline-flex; align-items:center; gap:5px;">
-                  📂 Select CIF Files
-                  <input type="file" id="pd-cif-files-input" accept=".cif" multiple style="display:none;" onchange="handlePostDataCifUpload(event, false)" />
+              <div class="pd-upload-btn-group">
+                <label class="btn btn-primary btn-sm pd-action-btn" title="Select multiple *.cif, *.cell, *.xsd, *.castep, *.msi, *.car, POSCAR, or *.xyz files">
+                  📂 Select Files
+                  <input type="file" id="pd-cif-files-input" accept=".cif,.cell,.xsd,.castep,.msi,.car,.vasp,.xyz,.extxyz" multiple style="display:none;" onchange="handlePostDataCifUpload(event, false, false)" />
                 </label>
-                <label class="btn btn-outline btn-sm" style="cursor:pointer; margin:0; display:inline-flex; align-items:center; gap:5px;">
+                <label class="btn btn-outline btn-sm pd-action-btn" title="Load a folder or Materials Studio / CASTEP project directory (auto-picks relaxed structures)">
                   📁 Load Folder
-                  <input type="file" id="pd-cif-folder-input" webkitdirectory directory multiple style="display:none;" onchange="handlePostDataCifUpload(event, false)" />
+                  <input type="file" id="pd-cif-folder-input" webkitdirectory directory multiple style="display:none;" onchange="handlePostDataCifUpload(event, false, true)" />
                 </label>
-                <label class="btn btn-outline btn-sm" style="cursor:pointer; margin:0; display:inline-flex; align-items:center; gap:5px;" title="Append additional CIF files to the current dataset">
-                  ➕ Append CIFs
-                  <input type="file" id="pd-cif-append-input" accept=".cif" multiple style="display:none;" onchange="handlePostDataCifUpload(event, true)" />
+                <label class="btn btn-outline btn-sm pd-action-btn" title="Append additional crystal structure files to the current dataset">
+                  ➕ Append
+                  <input type="file" id="pd-cif-append-input" accept=".cif,.cell,.xsd,.castep,.msi,.car,.vasp,.xyz,.extxyz" multiple style="display:none;" onchange="handlePostDataCifUpload(event, true, false)" />
                 </label>
-                <button type="button" class="btn btn-outline btn-sm" style="color:#dc2626; border-color:#fecaca;" onclick="clearPostDataCifs()">🗑️ Clear</button>
+                <button type="button" class="btn btn-outline btn-sm pd-action-btn" style="color:#dc2626; border-color:#fecaca;" onclick="clearPostDataCifs()">🗑️ Clear</button>
               </div>
             </div>
           </div>
 
           <!-- Top KPI Summary Strip -->
           <div id="post-data-summary-strip" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:10px; padding:8px 12px; border-radius:8px; background:#f8fafc; border:1px solid #dbe4f0; font-size:12px; color:#334155;">
-            <span>Upload multiple optimized <code>*.cif</code> structures to automatically analyze atomic layer spacings <strong>d<sub>1</sub>, d<sub>2</sub>, …, d<sub>n</sub></strong>.</span>
+            <span>Upload multiple optimized crystal structures (<code>*.cif</code>, <code>*.cell</code>, Materials Studio <code>*.xsd</code> / <code>*.msi</code> / <code>*.car</code>, <code>*.castep</code>, <code>POSCAR</code>) to automatically analyze atomic layer spacings <strong>d<sub>1</sub>, d<sub>2</sub>, …, d<sub>n</sub></strong>.</span>
           </div>
         </div>
 
-        <!-- Master Analysis Settings & Export Toolbar -->
-        <div class="castep-plot-toolbar" style="margin-bottom:10px;">
-          <!-- Row 1: Core Measurement & Layer Clustering Controls -->
-          <div class="castep-toolbar-row" style="justify-content:space-between; width:100%; gap:6px;">
-            <div style="display:flex; align-items:center; gap:7px; flex-wrap:wrap;">
-              <label style="font-size:11.5px; font-weight:700; color:#334155; display:inline-flex; align-items:center; gap:4px;">
-                Measure:
-                <select id="pd-measure-mode" class="castep-select-sm" style="max-width:165px;" onchange="renderPostDataTab()">
-                  <option value="interlayer" selected>Interlayer (d₁, d₂, …)</option>
-                  <option value="bonds">3D Bonds (r₁, r₂, …)</option>
-                </select>
-              </label>
-              <label style="font-size:11.5px; font-weight:700; color:#334155; display:inline-flex; align-items:center; gap:4px;">
-                Metric:
-                <select id="pd-metric-mode" class="castep-select-sm" style="max-width:148px;" onchange="renderPostDataTab()">
-                  <option value="delta" selected>Δd = d − d(ref) (Å)</option>
-                  <option value="abs">Absolute d (Å)</option>
-                  <option value="pct">Relative Δd/d₀ (%)</option>
-                </select>
-              </label>
-              <label style="font-size:11.5px; font-weight:700; color:#334155; display:inline-flex; align-items:center; gap:4px;">
-                Axis:
-                <select id="pd-stack-axis" class="castep-select-sm" onchange="renderPostDataTab()">
-                  <option value="c" selected>c (z)</option>
-                  <option value="b">b (y)</option>
-                  <option value="a">a (x)</option>
-                </select>
-              </label>
-              <label style="font-size:11.5px; font-weight:700; color:#334155; display:inline-flex; align-items:center; gap:4px;">
-                Order:
-                <select id="pd-layer-order" class="castep-select-sm" onchange="renderPostDataTab()">
-                  <option value="top_down" selected>Top → Bottom</option>
-                  <option value="bottom_up">Bottom → Top</option>
-                </select>
-              </label>
-              <label style="font-size:11.5px; font-weight:700; color:#334155; display:inline-flex; align-items:center; gap:4px;" title="Maximum vertical offset (Å) to group atoms into the same atomic plane">
-                Δz Tol:
-                <input type="number" id="pd-layer-tol" class="castep-input-sm" value="0.15" min="0.01" max="2.0" step="0.05" style="width:54px;" onchange="renderPostDataTab()" />
-              </label>
-              <label style="font-size:11.5px; font-weight:700; color:#334155; display:inline-flex; align-items:center; gap:4px;">
-                Ref:
-                <select id="pd-ref-select" class="castep-select-sm" style="max-width:150px;" onchange="renderPostDataTab()">
-                  <option value="auto" selected>Auto (X ≈ 0)</option>
-                </select>
-              </label>
+        <!-- Master Analysis Settings & Export Toolbar (Sleek 2-Row Aligned Grid) -->
+        <div class="castep-plot-toolbar pd-toolbar" style="margin-bottom:10px;">
+          <!-- Row 1: Core Measurement Controls + Right-Aligned Reset Button -->
+          <div class="castep-tb-row">
+            <span class="castep-ctrl-grp">
+              <label class="castep-field-lbl" for="pd-measure-mode">Measure:</label>
+              <select id="pd-measure-mode" class="castep-input" onchange="renderPostDataTab()">
+                <option value="interlayer" selected>Interlayer (d₁, d₂, …)</option>
+                <option value="bonds">3D Bonds (r₁, r₂, …)</option>
+              </select>
+            </span>
+            <span class="castep-ctrl-grp">
+              <label class="castep-field-lbl" for="pd-metric-mode">Metric:</label>
+              <select id="pd-metric-mode" class="castep-input" onchange="renderPostDataTab()">
+                <option value="delta" selected>Δd = d − d(ref) (Å)</option>
+                <option value="abs">Absolute d (Å)</option>
+                <option value="pct">Relative Δd/d₀ (%)</option>
+              </select>
+            </span>
+            <span class="castep-ctrl-grp">
+              <label class="castep-field-lbl" for="pd-stack-axis">Axis:</label>
+              <select id="pd-stack-axis" class="castep-input" onchange="renderPostDataTab()">
+                <option value="c" selected>c (z)</option>
+                <option value="b">b (y)</option>
+                <option value="a">a (x)</option>
+              </select>
+            </span>
+            <span class="castep-ctrl-grp">
+              <label class="castep-field-lbl" for="pd-layer-order">Order:</label>
+              <select id="pd-layer-order" class="castep-input" onchange="renderPostDataTab()">
+                <option value="top_down" selected>Top → Bottom</option>
+                <option value="bottom_up">Bottom → Top</option>
+              </select>
+            </span>
+            <span class="castep-ctrl-grp" title="Maximum vertical offset (Å) to group atoms into the same atomic plane">
+              <label class="castep-field-lbl" for="pd-layer-tol">Δz Tol:</label>
+              <input type="number" id="pd-layer-tol" class="castep-input-sm" value="0.15" min="0.01" max="2.0" step="0.05" style="width:54px;" onchange="renderPostDataTab()" />
+            </span>
+            <span class="castep-ctrl-grp">
+              <label class="castep-field-lbl" for="pd-ref-select">Ref:</label>
+              <select id="pd-ref-select" class="castep-input" style="max-width:155px;" onchange="renderPostDataTab()">
+                <option value="auto" selected>Auto (X ≈ 0)</option>
+              </select>
+            </span>
+            <div class="castep-tb-actions">
+              <button type="button" id="pd-reset-btn" class="btn btn-outline btn-sm pd-tb-btn" onclick="resetPostDataSettings()" title="Restore default measurement, axis, legend, and X-value settings">↺ Reset</button>
             </div>
-            <button type="button" id="pd-reset-btn" class="castep-preset-chip" style="border-color:#cbd5e1; background:#f8fafc; color:#334155; font-weight:700; margin-left:auto;" onclick="resetPostDataSettings()" title="Restore default measurement, axis, legend, and X-value settings">↺ Reset</button>
           </div>
 
-          <!-- Row 2: Axis Formatting, Schematic View & Export Actions -->
-          <div class="castep-toolbar-row" style="justify-content:space-between; width:100%; margin-top:4px; padding-top:6px; border-top:1px dashed #e2e8f0;">
-            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              <label style="font-size:11.5px; font-weight:700; color:#334155; display:inline-flex; align-items:center; gap:4px;">
-                X Label:
-                <input type="text" id="pd-xlabel-input" class="castep-input-sm" value="Electric Field E (V/Å)" style="width:162px;" oninput="renderPostDataTab()" />
-              </label>
-              <label style="font-size:11.5px; font-weight:700; color:#334155; display:inline-flex; align-items:center; gap:4px;" title="Multiply parsed filename X values by this unit conversion factor (e.g. 0.1 to convert ±10 -> ±1.0 V/Å)">
-                X Scale:
-                <input type="number" id="pd-x-scale" class="castep-input-sm" value="1.0" step="0.05" style="width:62px;" onchange="renderPostDataTab()" />
-              </label>
-              <label style="font-size:11.5px; font-weight:700; color:#334155; display:inline-flex; align-items:center; gap:4px;">
-                Side View:
-                <select id="pd-schematic-view" class="castep-select-sm" onchange="renderPostDataTab()">
-                  <option value="a" selected>Along a</option>
-                  <option value="b">Along b</option>
-                  <option value="110">Along [110]</option>
-                </select>
-              </label>
-              <label style="font-size:11.5px; font-weight:600; color:#334155; display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
-                <input type="checkbox" id="pd-show-pair-legend" onchange="renderPostDataTab()" /> Pairs in Legend
-              </label>
-              <label style="font-size:11.5px; font-weight:600; color:#334155; display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
-                <input type="checkbox" id="pd-show-zero-lines" checked onchange="renderPostDataTab()" /> Zero Guides
-              </label>
-              <label style="font-size:11.5px; font-weight:600; color:#334155; display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
-                <input type="checkbox" id="pd-show-d0-schematic" onchange="renderPostDataTab()" /> Show d₀ on Schematic
-              </label>
-            </div>
-            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-              <button type="button" class="btn btn-primary btn-sm" style="padding:4px 10px; font-size:11.5px;" onclick="copyPostDataHD()">📋 Copy HD</button>
-              <button type="button" class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11.5px;" onclick="copyPostDataTSV()">📋 Copy Data (TSV)</button>
-              <button type="button" class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11.5px;" onclick="exportPostDataPNG()">📷 PNG</button>
-              <button type="button" class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11.5px;" onclick="exportPostDataCSV()">📊 CSV</button>
-              <button type="button" class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11.5px; border-color:#0f766e; color:#0f766e;" onclick="exportPostDataXLSX()">📗 Excel (.xlsx)</button>
+          <!-- Row 2: Axis Formatting, Schematic View & Right-Aligned Export Actions -->
+          <div class="castep-tb-row">
+            <span class="castep-ctrl-grp">
+              <label class="castep-field-lbl" for="pd-xlabel-input">X Label:</label>
+              <input type="text" id="pd-xlabel-input" class="castep-input" value="Electric Field E (V/Å)" style="width:150px;" oninput="renderPostDataTab()" />
+            </span>
+            <span class="castep-ctrl-grp" title="Multiply parsed X values by this unit scale factor (e.g. 0.1 to convert ±10 -> ±1.0 V/Å)">
+              <label class="castep-field-lbl" for="pd-x-scale">X Scale:</label>
+              <input type="number" id="pd-x-scale" class="castep-input-sm" value="1.0" step="0.05" style="width:52px;" onchange="renderPostDataTab()" />
+            </span>
+            <span class="castep-ctrl-grp">
+              <label class="castep-field-lbl" for="pd-schematic-view">View:</label>
+              <select id="pd-schematic-view" class="castep-input" onchange="renderPostDataTab()">
+                <option value="a" selected>Along a</option>
+                <option value="b">Along b</option>
+                <option value="110">Along [110]</option>
+              </select>
+            </span>
+            <label class="castep-chk-lbl" title="Show atomic pair names (e.g. N–Si) inside plot legend">
+              <input type="checkbox" id="pd-show-pair-legend" onchange="renderPostDataTab()" /> Pairs
+            </label>
+            <label class="castep-chk-lbl" title="Show dashed zero reference guidelines">
+              <input type="checkbox" id="pd-show-zero-lines" checked onchange="renderPostDataTab()" /> Zero
+            </label>
+            <label class="castep-chk-lbl" title="Display equilibrium d₀ spacing values on side-view schematic">
+              <input type="checkbox" id="pd-show-d0-schematic" onchange="renderPostDataTab()" /> d₀
+            </label>
+            <div class="castep-tb-actions">
+              <button type="button" class="btn btn-teal btn-sm pd-tb-btn" onclick="copyPostDataHD()" title="Copy publication-quality figure (400–600 DPI PNG) to clipboard">📋 Copy HD</button>
+              <button type="button" class="btn btn-outline btn-sm pd-tb-btn" onclick="copyPostDataTSV()" title="Copy measured table as TSV for OriginPro / Excel">📋 TSV</button>
+              <button type="button" class="btn btn-outline btn-sm pd-tb-btn" onclick="exportPostDataPNG()" title="Save Hi-DPI PNG image">📷 PNG</button>
+              <button type="button" class="btn btn-outline btn-sm pd-tb-btn" onclick="exportPostDataCSV()" title="Export active metric table as CSV">📊 CSV</button>
+              <button type="button" class="btn btn-outline btn-sm pd-tb-btn" style="border-color:#0f766e; color:#0f766e;" onclick="exportPostDataXLSX()" title="Export 4-sheet Excel workbook (Δd, Absolute d, Relative %, Linear Slopes)">📗 Excel</button>
             </div>
           </div>
 
           <!-- Row 2B: Custom Atom-Pair Bond Adder (Shown only in 3D Bond Distances mode) -->
-          <div id="pd-custom-bond-row" class="castep-toolbar-row" style="display:none; width:100%; margin-top:4px; padding-top:6px; border-top:1px dashed #e2e8f0; gap:8px;">
-            <span style="font-size:11.5px; font-weight:700; color:#0f766e;">Custom Atom Pair:</span>
-            <select id="pd-custom-atom-a" class="castep-select-sm"></select>
+          <div id="pd-custom-bond-row" class="castep-tb-row" style="display:none;">
+            <span class="castep-field-lbl" style="color:#0f766e;">Custom Atom Pair:</span>
+            <select id="pd-custom-atom-a" class="castep-input"></select>
             <span style="font-weight:700; color:#64748b;">—</span>
-            <select id="pd-custom-atom-b" class="castep-select-sm"></select>
-            <button type="button" class="btn btn-outline btn-sm" style="padding:3px 10px; font-size:11.5px;" onclick="addPostDataCustomBondPair()">➕ Track Bond Pair</button>
+            <select id="pd-custom-atom-b" class="castep-input"></select>
+            <button type="button" class="btn btn-outline btn-sm pd-tb-btn" onclick="addPostDataCustomBondPair()">➕ Track Bond Pair</button>
           </div>
         </div>
 
@@ -6584,11 +6592,11 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=162_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=162_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=162_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=162_v116_vesta_viewer'"></script>
-  <script src="post_data.js?v=162_v116_vesta_viewer" onerror="this.src='/static/post_data.js?v=162_v116_vesta_viewer'"></script>
-  <script src="dft_theory.js?v=162_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=162_v116_vesta_viewer'"></script>
-  <script src="app.js?v=162_v116_vesta_viewer" onerror="this.src='/static/app.js?v=162_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=163_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=163_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=163_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=163_v116_vesta_viewer'"></script>
+  <script src="post_data.js?v=163_v116_vesta_viewer" onerror="this.src='/static/post_data.js?v=163_v116_vesta_viewer'"></script>
+  <script src="dft_theory.js?v=163_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=163_v116_vesta_viewer'"></script>
+  <script src="app.js?v=163_v116_vesta_viewer" onerror="this.src='/static/app.js?v=163_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
