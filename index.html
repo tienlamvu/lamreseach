@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=160_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=160_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=161_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=161_v116_vesta_viewer'" />
   <!-- Publication Math Typography: STIX Two Text (MathType / Times) + KaTeX 0.16.11 (Word/LaTeX Equation Engine) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -2166,9 +2166,12 @@
                     <input type="number" id="castep-opt-scissors" class="castep-input-sm" value="0.00" step="0.10" min="-2.0" max="6.0" style="width:58px;" title="Rigid conduction-band scissors shift Δ (eV)" onchange="renderCastepOpticalPlots()" />
                   </span>
 
-                  <button type="button" id="castep-opt-more-btn" class="btn btn-outline btn-sm" style="font-weight:700; margin-left:auto;" onclick="toggleCastepOptMorePanel()" title="Advanced Optical Parameters: Drude plasma frequency, Drude damping, Absorption formula &amp; Visible band">
-                    ⚙️ More...
-                  </button>
+                  <span class="castep-ctrl-grp" style="margin-left:auto;">
+                    <button type="button" id="castep-opt-more-btn" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="toggleCastepOptMorePanel()" title="Advanced Optical Parameters: Drude plasma frequency, Drude damping, Absorption formula &amp; Visible band">
+                      ⚙️ More...
+                    </button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="resetCastepOpticalSettings()" title="Reset all Optical Properties settings &amp; zoom back to initial defaults">↺ Reset</button>
+                  </span>
                 </div>
 
                 <!-- Row 1B: Collapsible Advanced Optical Options (Materials Studio More... dialog) -->
@@ -2312,6 +2315,7 @@
                   <span class="castep-ctrl-grp" style="margin-left:auto;">
                     <label class="castep-field-lbl">σ (eV):</label>
                     <input type="number" id="castep-dos-sigma" class="castep-input-sm" value="0.12" step="0.02" min="0.02" max="0.6" style="width:58px;" title="Gaussian DOS smearing width σ (eV)" onchange="renderCastepElectronicPlots()" />
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="resetCastepElectronicSettings()" title="Reset all Band &amp; PDOS settings back to initial defaults">↺ Reset</button>
                   </span>
                 </div>
 
@@ -2443,6 +2447,7 @@
                       <option value="3d_oxide">3D Oxide / Perovskite</option>
                     </select>
                     <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="toggleCastepStrainCalcPanel()" title="Fit exact Elastic Modulus C and Deformation Potential E₁ from strained CASTEP calculations">📐 Strain C/E<sub>1</sub></button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="resetCastepTransportSettings()" title="Reset all m* &amp; Drude parameters back to initial job defaults">↺ Reset</button>
                   </div>
                 </div>
 
@@ -2758,6 +2763,7 @@
                     <input type="file" id="castep-st-file-upload" multiple accept=".pdos_bin,.bands,.castep,.xcd" style="display:none;" onchange="handleCastepStonerFilesUpload(event)" />
                     <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="document.getElementById('castep-st-file-upload').click()" title="Load CASTEP *.pdos_bin, *_DOS.bands, *.castep, or *.xcd files">📥 Load DOS/PDOS</button>
                     <button type="button" class="btn btn-outline btn-sm" style="font-weight:700; color:#7c3aed;" onclick="openDftTheoryLecture('lec10')" title="Read DFT Theory Lecture 10: Exchange Splitting, Spin Polarization &amp; Stoner Magnetism">🎓 Theory L10</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="resetCastepStonerSettings()" title="Reset all Stoner Magnetism &amp; Spin Polarization settings back to initial defaults">↺ Reset</button>
                   </div>
                 </div>
               </div>
@@ -2900,6 +2906,7 @@
                     <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="toggleChdiffInMain3DViewer()" title="Overlay 3D Charge Density Difference isosurfaces directly in the 3D Structure Builder tab">
                       🧱 3D Isosurface
                     </button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="resetCastepChdiffSettings()" title="Reset all Charge Density Difference settings &amp; zoom back to initial defaults">↺ Reset</button>
                   </div>
                 </div>
 
@@ -3079,6 +3086,8 @@
                       <option value="2">2</option>
                     </select>
                   </span>
+
+                  <button type="button" class="btn btn-outline btn-sm" style="font-weight:700; margin-left:auto;" onclick="resetCastepSpinMatrixSettings()" title="Reset Orbital Spin Matrix settings back to initial defaults">↺ Reset</button>
                 </div>
 
                 <!-- Clickable Element Quick-Selector Pills -->
@@ -3143,6 +3152,7 @@
                     <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="toggleSpinsInMain3DViewer()" title="Overlay 3D magnetic spin arrows (↑ red / ↓ blue) on atoms in 3D Structure Viewer">
                       🧲 3D Spin Arrows
                     </button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="resetCastepMullikenSettings()" title="Reset Mulliken Magnetism &amp; Bond chart filters back to initial defaults">↺ Reset</button>
                   </div>
                 </div>
 
@@ -6369,10 +6379,10 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=160_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=160_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=160_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=160_v116_vesta_viewer'"></script>
-  <script src="dft_theory.js?v=160_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=160_v116_vesta_viewer'"></script>
-  <script src="app.js?v=160_v116_vesta_viewer" onerror="this.src='/static/app.js?v=160_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=161_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=161_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=161_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=161_v116_vesta_viewer'"></script>
+  <script src="dft_theory.js?v=161_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=161_v116_vesta_viewer'"></script>
+  <script src="app.js?v=161_v116_vesta_viewer" onerror="this.src='/static/app.js?v=161_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
