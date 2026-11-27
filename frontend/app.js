@@ -320,33 +320,55 @@ function toggleMobileHorizontalStrip() {
 }
 
 // ============================================================================
-// Unified Permanent URL Routing for Every Menu Tab & Every Crystal Structure (v150)
+// Unified Permanent Grouped URL Routing for Every Menu Tab & Crystal Structure (v180)
 // ============================================================================
+
+const TAB_GROUP_MAP = {
+  "structures": "computation",
+  "castep": "computation",
+  "post-data": "computation",
+  "dft-theory": "theory-tools",
+  "toolkit": "theory-tools",
+  "literature": "research",
+  "manuscript": "research",
+  "weekly-report": "research",
+  "news": "updates",
+  "calendar": "updates"
+};
 
 const TAB_URL_SLUGS = {
   "dashboard": "dashboard",
-  "dft-theory": "dft-theory",
-  "news": "news",
-  "literature": "references",
-  "calendar": "calendar",
-  "structures": "structures",
-  "castep": "data-analysis",
-  "post-data": "post-data-processing",
-  "weekly-report": "weekly-report",
-  "manuscript": "journal-plagiarism",
-  "toolkit": "periodic-table",
+  "structures": "computation/structures",
+  "castep": "computation/data-analysis",
+  "post-data": "computation/post-data-processing",
+  "dft-theory": "theory-tools/dft-theory",
+  "toolkit": "theory-tools/periodic-table",
+  "literature": "research/references",
+  "manuscript": "research/journal-plagiarism",
+  "weekly-report": "research/weekly-report",
+  "news": "updates/news",
+  "calendar": "updates/calendar",
   "cv": "academic-cv",
   "profile": "profile"
 };
+window.TAB_URL_SLUGS = TAB_URL_SLUGS;
 
 const TAB_SLUG_TO_ID = (() => {
   const map = {};
   Object.entries(TAB_URL_SLUGS).forEach(([tabId, slug]) => {
     map[tabId.toLowerCase()] = tabId;
     map[slug.toLowerCase()] = tabId;
+    const leaf = slug.split("/").pop();
+    if (leaf) map[leaf.toLowerCase()] = tabId;
   });
   Object.assign(map, {
     "home": "dashboard",
+    // Group-level defaults
+    "computation": "castep",
+    "theory-tools": "dft-theory",
+    "research": "literature",
+    "updates": "news",
+    // Legacy & shorthand aliases (100% backward-compatible!)
     "dft": "dft-theory",
     "theory": "dft-theory",
     "refs": "literature",
@@ -355,10 +377,12 @@ const TAB_SLUG_TO_ID = (() => {
     "crystals": "structures",
     "crystal": "structures",
     "crystal-structures": "structures",
+    "computation/crystal-structures": "structures",
     "analysis": "castep",
     "data": "castep",
     "postdata": "post-data",
     "post-processing": "post-data",
+    "computation/post-processing": "post-data",
     "cif-batch": "post-data",
     "report": "weekly-report",
     "journal": "manuscript",
@@ -368,16 +392,29 @@ const TAB_SLUG_TO_ID = (() => {
   return map;
 })();
 
+function formatCleanQueryString(urlObj) {
+  return urlObj.searchParams.toString().replace(/%2F/gi, "/");
+}
+window.formatCleanQueryString = formatCleanQueryString;
+
 function resolveTabIdFromSlug(raw) {
-  const key = String(raw || "").trim().toLowerCase();
-  return TAB_SLUG_TO_ID[key] || null;
+  const key = String(raw || "").trim().replace(/^\/+|\/+$/g, "").toLowerCase();
+  if (!key) return null;
+  if (TAB_SLUG_TO_ID[key]) return TAB_SLUG_TO_ID[key];
+  const parts = key.split("/");
+  if (parts.length > 1) {
+    const tail = parts[parts.length - 1];
+    if (TAB_SLUG_TO_ID[tail]) return TAB_SLUG_TO_ID[tail];
+  }
+  return null;
 }
 window.resolveTabIdFromSlug = resolveTabIdFromSlug;
 
 function getTabShareUrl(tabId) {
   const slug = TAB_URL_SLUGS[tabId] || tabId || "dashboard";
   const base = `${window.location.origin}${window.location.pathname}`;
-  return `${base}?tab=${encodeURIComponent(slug)}`;
+  const cleanSlug = encodeURIComponent(slug).replace(/%2F/gi, "/");
+  return `${base}?tab=${cleanSlug}`;
 }
 window.getTabShareUrl = getTabShareUrl;
 
@@ -396,7 +433,8 @@ function getStructureShareUrl(sOrId) {
   }
   const sid = s ? getStructureCanonicalId(s) : String(sOrId || "").trim();
   const base = `${window.location.origin}${window.location.pathname}`;
-  return `${base}?tab=structures&structure=${encodeURIComponent(sid)}`;
+  const slug = TAB_URL_SLUGS.structures || "computation/structures";
+  return `${base}?tab=${slug}&structure=${encodeURIComponent(sid)}`;
 }
 window.getStructureShareUrl = getStructureShareUrl;
 
@@ -454,6 +492,7 @@ function updatePageDocumentTitle(tabId, itemLabel = "") {
     "calendar": "Calendar",
     "structures": "Crystal Structures",
     "castep": "Data Analysis",
+    "post-data": "Post-Data Processing",
     "weekly-report": "Weekly Report",
     "manuscript": "Journal & Plagiarism",
     "toolkit": "Periodic Table & Toolkit",
@@ -476,7 +515,8 @@ function syncUrlWithTab(tabId, opts = {}) {
     }
     if (tabId !== "news") urlObj.searchParams.delete("article");
     const keepHash = (tabId === "dft-theory" && (window.location.hash || "").startsWith("#dft-sec-")) ? window.location.hash : "";
-    const nextUrl = `${urlObj.pathname}?${urlObj.searchParams.toString()}${keepHash}`;
+    const qs = formatCleanQueryString(urlObj);
+    const nextUrl = `${urlObj.pathname}?${qs}${keepHash}`;
     const curUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
     if (nextUrl !== curUrl) {
       if (opts.replace) {
@@ -495,13 +535,14 @@ function syncUrlWithStructure(s, opts = {}) {
   try {
     const sid = getStructureCanonicalId(s);
     const urlObj = new URL(window.location.href);
-    urlObj.searchParams.set("tab", "structures");
+    urlObj.searchParams.set("tab", TAB_URL_SLUGS.structures || "computation/structures");
     urlObj.searchParams.set("structure", sid);
     urlObj.searchParams.delete("struct");
     urlObj.searchParams.delete("cd");
     urlObj.searchParams.delete("lecture");
     urlObj.searchParams.delete("article");
-    const nextUrl = `${urlObj.pathname}?${urlObj.searchParams.toString()}`;
+    const qs = formatCleanQueryString(urlObj);
+    const nextUrl = `${urlObj.pathname}?${qs}`;
     const curUrl = `${window.location.pathname}${window.location.search}`;
     if (nextUrl !== curUrl) {
       if (opts.replace) {
@@ -522,7 +563,7 @@ function clearStructureUrlParam(opts = {}) {
     urlObj.searchParams.delete("structure");
     urlObj.searchParams.delete("struct");
     urlObj.searchParams.delete("cd");
-    const qs = urlObj.searchParams.toString();
+    const qs = formatCleanQueryString(urlObj);
     const nextUrl = `${urlObj.pathname}${qs ? "?" + qs : ""}`;
     if (opts.replace) {
       window.history.replaceState({ tabId: "structures" }, "", nextUrl);
@@ -600,8 +641,8 @@ function resolveInitialTabFromUrl() {
       if (resolved) return resolved;
     }
     const rawHash = (window.location.hash || "").replace(/^#/, "");
-    const hashTab = rawHash.split("?")[0].split("/")[0];
-    const resolvedHash = resolveTabIdFromSlug(hashTab);
+    const hashRoute = rawHash.split("?")[0];
+    const resolvedHash = resolveTabIdFromSlug(hashRoute) || resolveTabIdFromSlug(hashRoute.split("/")[0]);
     if (resolvedHash) return resolvedHash;
   } catch (_) {}
   return null;
@@ -677,20 +718,80 @@ window.addEventListener("popstate", () => {
   handleAppRouteFromUrl({ fromPopstate: true });
 });
 
+function closeAllNavDropdowns() {
+  document.querySelectorAll(".nav-dropdown.open").forEach(dd => {
+    dd.classList.remove("open");
+    const btn = dd.querySelector(".nav-group-btn");
+    if (btn) btn.setAttribute("aria-expanded", "false");
+  });
+}
+window.closeAllNavDropdowns = closeAllNavDropdowns;
+
+function toggleNavDropdown(groupBtn, evt) {
+  if (evt) {
+    evt.preventDefault();
+    evt.stopPropagation();
+  }
+  const dd = groupBtn?.closest(".nav-dropdown");
+  if (!dd) return;
+  dd.classList.remove("just-selected");
+  const willOpen = !dd.classList.contains("open");
+  closeAllNavDropdowns();
+  if (willOpen) {
+    dd.classList.add("open");
+    groupBtn.setAttribute("aria-expanded", "true");
+  }
+}
+window.toggleNavDropdown = toggleNavDropdown;
+
+function handleNavTabClick(evt, tabId, el) {
+  // Allow Ctrl/Cmd/Shift/middle-click to open clean permanent URL in a new browser tab!
+  if (evt && (evt.metaKey || evt.ctrlKey || evt.shiftKey || evt.altKey || evt.button === 1)) {
+    return true;
+  }
+  if (evt) evt.preventDefault();
+  const parentDd = el?.closest(".nav-dropdown");
+  closeAllNavDropdowns();
+  if (parentDd) {
+    parentDd.classList.add("just-selected");
+    parentDd.addEventListener("mouseleave", () => parentDd.classList.remove("just-selected"), { once: true });
+  }
+  // Collapse expanded mobile strip after selection
+  const navWrap = document.querySelector(".header-nav-wrapper");
+  if (navWrap && navWrap.classList.contains("mobile-expanded")) {
+    toggleMobileHorizontalStrip();
+  }
+  switchTab(tabId, el);
+  return false;
+}
+window.handleNavTabClick = handleNavTabClick;
+
+document.addEventListener("click", (ev) => {
+  if (!ev.target.closest(".nav-dropdown")) closeAllNavDropdowns();
+});
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape") closeAllNavDropdowns();
+});
+
 function switchTab(tabId, btnEl, opts = {}) {
   document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
-  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".nav-btn, .nav-drop-item").forEach(b => b.classList.remove("active"));
 
   const target = document.getElementById(`tab-${tabId}`);
   if (target) target.classList.add("active");
-  const activeBtn = btnEl || document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
-  if (activeBtn) {
-    activeBtn.classList.add("active");
-    if (activeBtn.scrollIntoView) {
-      try {
-        activeBtn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-      } catch (e) {}
+
+  // Highlight active standalone nav button OR active dropdown sub-item + its parent group tab!
+  const matchedItem = btnEl || document.querySelector(`#main-horizontal-nav [data-tab="${tabId}"]`);
+  if (matchedItem) {
+    matchedItem.classList.add("active");
+    const parentDd = matchedItem.closest(".nav-dropdown");
+    if (parentDd) {
+      const parentBtn = parentDd.querySelector(".nav-group-btn");
+      if (parentBtn) parentBtn.classList.add("active");
     }
+  } else if (TAB_GROUP_MAP[tabId]) {
+    const parentBtn = document.querySelector(`.nav-group-btn[data-group="${TAB_GROUP_MAP[tabId]}"]`);
+    if (parentBtn) parentBtn.classList.add("active");
   }
 
   // Update mobile dropdown & active pill indicator
@@ -738,7 +839,7 @@ window.toggleMobileHorizontalStrip = toggleMobileHorizontalStrip;
 window.updateMobileNavPill = updateMobileNavPill;
 
 function switchTabByName(tabId, opts = {}) {
-  const matchedBtn = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
+  const matchedBtn = document.querySelector(`#main-horizontal-nav [data-tab="${tabId}"]`);
   switchTab(tabId, matchedBtn, opts);
 }
 
@@ -32312,12 +32413,13 @@ function openNewsJournalModal(articleId) {
   }
 
   NEWS_STATE.currentJournalArticleId = article.id;
-  const canonicalUrl = `${window.location.origin}${window.location.pathname}#news?id=${encodeURIComponent(article.id)}`;
+  const newsSlug = (typeof TAB_URL_SLUGS !== "undefined" && TAB_URL_SLUGS.news) ? TAB_URL_SLUGS.news : "updates/news";
+  const canonicalUrl = `${window.location.origin}${window.location.pathname}?tab=${newsSlug}&article=${encodeURIComponent(article.id)}`;
 
   try {
-    const articleHash = `#news?id=${encodeURIComponent(article.id)}`;
-    if (window.location.hash !== articleHash) {
-      history.replaceState(null, "", articleHash);
+    const nextPath = `${window.location.pathname}?tab=${newsSlug}&article=${encodeURIComponent(article.id)}`;
+    if (`${window.location.pathname}${window.location.search}` !== nextPath) {
+      history.replaceState({ tabId: "news", articleId: article.id }, "", nextPath);
     }
   } catch (e) {}
 
@@ -32733,10 +32835,9 @@ function closeNewsFullArticleView() {
 
   NEWS_STATE.currentJournalArticleId = null;
   try {
-    history.replaceState(null, "", "#news");
-  } catch (e) {
-    window.location.hash = "#news";
-  }
+    const newsSlug = (typeof TAB_URL_SLUGS !== "undefined" && TAB_URL_SLUGS.news) ? TAB_URL_SLUGS.news : "updates/news";
+    history.replaceState({ tabId: "news" }, "", `${window.location.pathname}?tab=${newsSlug}`);
+  } catch (e) {}
 
   // Scroll back to top of news tab
   const newsPane = document.getElementById("tab-news");
@@ -32888,7 +32989,8 @@ function copyNewsCitation() {
   const volArts = articles.filter(x => getArticleVolume(x) === vol);
   const num = getArticleNumber(a, volArts);
   const year = getArticleYear(a);
-  const canonicalUrl = `${window.location.origin}${window.location.pathname}#news?id=${encodeURIComponent(a.id)}`;
+  const newsSlug = (typeof TAB_URL_SLUGS !== "undefined" && TAB_URL_SLUGS.news) ? TAB_URL_SLUGS.news : "updates/news";
+  const canonicalUrl = `${window.location.origin}${window.location.pathname}?tab=${newsSlug}&article=${encodeURIComponent(a.id)}`;
   const citation = `${a.authors || "Vu Tien Lam"} (${year}). ${a.title}. Computational Materials Research, ${vol}, Article ${num}. ${canonicalUrl}`;
 
   navigator.clipboard.writeText(citation).then(() => {
@@ -32901,7 +33003,8 @@ function copyNewsCitation() {
 function copyNewsShareLink(articleId = null) {
   const targetId = articleId || NEWS_STATE.currentJournalArticleId;
   if (!targetId) return;
-  const url = `${window.location.origin}${window.location.pathname}#news?id=${encodeURIComponent(targetId)}`;
+  const newsSlug = (typeof TAB_URL_SLUGS !== "undefined" && TAB_URL_SLUGS.news) ? TAB_URL_SLUGS.news : "updates/news";
+  const url = `${window.location.origin}${window.location.pathname}?tab=${newsSlug}&article=${encodeURIComponent(targetId)}`;
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(url).then(() => {
       showToast("🔗 Direct article link copied to clipboard!", "success");

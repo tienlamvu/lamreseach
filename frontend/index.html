@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=179_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=179_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=180_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=180_v116_vesta_viewer'" />
   <!-- Publication Math Typography: STIX Two Text (MathType / Times) + KaTeX 0.16.11 (Word/LaTeX Equation Engine) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -76,16 +76,24 @@
         </div>
         <select id="mobile-tab-select" class="mobile-tab-native-select" onchange="switchTab(this.value)" aria-label="Select Navigation Tab">
           <option value="dashboard">📊 Dashboard</option>
-          <option value="dft-theory">🎓 DFT Theory</option>
-          <option value="news">📰 News &amp; Articles</option>
-          <option value="literature">📚 References (Literature)</option>
-          <option value="calendar">📅 Calendar &amp; Google Calendar</option>
-          <option value="structures">💎 Crystal Structures (*.cif)</option>
-          <option value="castep">📊 Data Analysis</option>
-          <option value="post-data">📐 Post-Data Processing</option>
-          <option value="weekly-report" class="admin-only">📽️ Weekly Report (PPTX)</option>
-          <option value="manuscript">🎯 Journal Finder &amp; Plagiarism</option>
-          <option value="toolkit">⚛️ Periodic Table &amp; Calc</option>
+          <optgroup label="🔬 Computation">
+            <option value="structures">💎 Crystal Structures (*.cif)</option>
+            <option value="castep">📊 Data Analysis</option>
+            <option value="post-data">📐 Post-Data Processing</option>
+          </optgroup>
+          <optgroup label="🎓 Theory &amp; Tools">
+            <option value="dft-theory">🎓 DFT Theory</option>
+            <option value="toolkit">⚛️ Periodic Table &amp; Calc</option>
+          </optgroup>
+          <optgroup label="📚 Research &amp; Writing">
+            <option value="literature">📚 References (Literature)</option>
+            <option value="manuscript">🎯 Journal &amp; Plagiarism</option>
+            <option value="weekly-report" class="admin-only">📽️ Weekly Report (PPTX)</option>
+          </optgroup>
+          <optgroup label="📰 News &amp; Schedule">
+            <option value="news">📰 News &amp; Articles</option>
+            <option value="calendar">📅 Calendar &amp; Google Calendar</option>
+          </optgroup>
           <option value="cv">📜 Academic CV</option>
         </select>
       </div>
@@ -97,45 +105,124 @@
       </button>
     </div>
 
-    <!-- Horizontal Navigation Tabs Row -->
+    <!-- Horizontal Grouped Dropdown Navigation Bar (v180 — Clean 6 Top-Level Menus) -->
     <div class="header-nav-wrapper">
-      <nav class="horizontal-tabs" id="main-horizontal-nav">
-        <button class="nav-btn active" data-tab="dashboard" onclick="switchTab('dashboard', this)">
+      <nav class="horizontal-tabs" id="main-horizontal-nav" aria-label="Main Navigation">
+        <!-- 1. Dashboard -->
+        <a class="nav-btn active" data-tab="dashboard" href="?tab=dashboard" onclick="return handleNavTabClick(event, 'dashboard', this)">
           <span class="nav-icon">📊</span> Dashboard
-        </button>
-        <button class="nav-btn" data-tab="dft-theory" onclick="switchTab('dft-theory', this)">
-          <span class="nav-icon">🎓</span> DFT Theory
-        </button>
-        <button class="nav-btn" data-tab="news" onclick="switchTab('news', this)">
-          <span class="nav-icon">📰</span> News
-        </button>
-        <button class="nav-btn" data-tab="literature" onclick="switchTab('literature', this)">
-          <span class="nav-icon">📚</span> References
-        </button>
-        <button class="nav-btn" data-tab="calendar" onclick="switchTab('calendar', this)">
-          <span class="nav-icon">📅</span> Calendar
-        </button>
-        <button class="nav-btn" data-tab="structures" onclick="switchTab('structures', this)">
-          <span class="nav-icon">💎</span> Crystal Structures
-        </button>
-        <button class="nav-btn" data-tab="castep" onclick="switchTab('castep', this)">
-          <span class="nav-icon">📊</span> Data Analysis
-        </button>
-        <button class="nav-btn" data-tab="post-data" onclick="switchTab('post-data', this)">
-          <span class="nav-icon">📐</span> Post-Data Processing
-        </button>
-        <button class="nav-btn admin-only" data-tab="weekly-report" onclick="switchTab('weekly-report', this)">
-          <span class="nav-icon">📽️</span> Weekly Report
-        </button>
-        <button class="nav-btn" data-tab="manuscript" onclick="switchTab('manuscript', this)">
-          <span class="nav-icon">🎯</span> Journal &amp; Plagiarism
-        </button>
-        <button class="nav-btn" data-tab="toolkit" onclick="switchTab('toolkit', this)">
-          <span class="nav-icon">⚛️</span> Periodic Table
-        </button>
-        <button class="nav-btn" data-tab="cv" onclick="switchTab('cv', this)">
+        </a>
+
+        <!-- 2. Computation Dropdown -->
+        <div class="nav-dropdown" data-group="computation">
+          <button type="button" class="nav-btn nav-group-btn" data-group="computation" aria-haspopup="true" aria-expanded="false" onclick="toggleNavDropdown(this, event)">
+            <span class="nav-icon">🔬</span> Computation <span class="nav-caret">▾</span>
+          </button>
+          <div class="nav-dropdown-menu" role="menu">
+            <a class="nav-drop-item" role="menuitem" data-tab="structures" href="?tab=computation/structures" onclick="return handleNavTabClick(event, 'structures', this)">
+              <span class="nav-drop-icon">💎</span>
+              <span class="nav-drop-text">
+                <span class="nav-drop-title">Crystal Structures</span>
+                <span class="nav-drop-desc">3D CIF / POSCAR Library &amp; Viewer</span>
+              </span>
+            </a>
+            <a class="nav-drop-item" role="menuitem" data-tab="castep" href="?tab=computation/data-analysis" onclick="return handleNavTabClick(event, 'castep', this)">
+              <span class="nav-drop-icon">📊</span>
+              <span class="nav-drop-text">
+                <span class="nav-drop-title">Data Analysis</span>
+                <span class="nav-drop-desc">CASTEP Band, PDOS, Potential, Optics, Δρ</span>
+              </span>
+            </a>
+            <a class="nav-drop-item" role="menuitem" data-tab="post-data" href="?tab=computation/post-data-processing" onclick="return handleNavTabClick(event, 'post-data', this)">
+              <span class="nav-drop-icon">📐</span>
+              <span class="nav-drop-text">
+                <span class="nav-drop-title">Post-Data Processing</span>
+                <span class="nav-drop-desc">Interlayer Distances, Rashba &amp; Spin Texture</span>
+              </span>
+            </a>
+          </div>
+        </div>
+
+        <!-- 3. Theory & Tools Dropdown -->
+        <div class="nav-dropdown" data-group="theory-tools">
+          <button type="button" class="nav-btn nav-group-btn" data-group="theory-tools" aria-haspopup="true" aria-expanded="false" onclick="toggleNavDropdown(this, event)">
+            <span class="nav-icon">🎓</span> Theory &amp; Tools <span class="nav-caret">▾</span>
+          </button>
+          <div class="nav-dropdown-menu" role="menu">
+            <a class="nav-drop-item" role="menuitem" data-tab="dft-theory" href="?tab=theory-tools/dft-theory" onclick="return handleNavTabClick(event, 'dft-theory', this)">
+              <span class="nav-drop-icon">🎓</span>
+              <span class="nav-drop-text">
+                <span class="nav-drop-title">DFT Theory</span>
+                <span class="nav-drop-desc">Interactive First-Principles Lectures</span>
+              </span>
+            </a>
+            <a class="nav-drop-item" role="menuitem" data-tab="toolkit" href="?tab=theory-tools/periodic-table" onclick="return handleNavTabClick(event, 'toolkit', this)">
+              <span class="nav-drop-icon">⚛️</span>
+              <span class="nav-drop-text">
+                <span class="nav-drop-title">Periodic Table &amp; Calc</span>
+                <span class="nav-drop-desc">Interactive Elements &amp; Unit Converters</span>
+              </span>
+            </a>
+          </div>
+        </div>
+
+        <!-- 4. Research & Writing Dropdown -->
+        <div class="nav-dropdown" data-group="research">
+          <button type="button" class="nav-btn nav-group-btn" data-group="research" aria-haspopup="true" aria-expanded="false" onclick="toggleNavDropdown(this, event)">
+            <span class="nav-icon">📚</span> Research &amp; Writing <span class="nav-caret">▾</span>
+          </button>
+          <div class="nav-dropdown-menu" role="menu">
+            <a class="nav-drop-item" role="menuitem" data-tab="literature" href="?tab=research/references" onclick="return handleNavTabClick(event, 'literature', this)">
+              <span class="nav-drop-icon">📚</span>
+              <span class="nav-drop-text">
+                <span class="nav-drop-title">References</span>
+                <span class="nav-drop-desc">DOI Literature &amp; Citation Library</span>
+              </span>
+            </a>
+            <a class="nav-drop-item" role="menuitem" data-tab="manuscript" href="?tab=research/journal-plagiarism" onclick="return handleNavTabClick(event, 'manuscript', this)">
+              <span class="nav-drop-icon">🎯</span>
+              <span class="nav-drop-text">
+                <span class="nav-drop-title">Journal &amp; Plagiarism</span>
+                <span class="nav-drop-desc">Journal Finder &amp; Manuscript Checker</span>
+              </span>
+            </a>
+            <a class="nav-drop-item admin-only" role="menuitem" data-tab="weekly-report" href="?tab=research/weekly-report" onclick="return handleNavTabClick(event, 'weekly-report', this)">
+              <span class="nav-drop-icon">📽️</span>
+              <span class="nav-drop-text">
+                <span class="nav-drop-title">Weekly Report</span>
+                <span class="nav-drop-desc">PPTX Progress Slide Deck Generator</span>
+              </span>
+            </a>
+          </div>
+        </div>
+
+        <!-- 5. News & Schedule Dropdown -->
+        <div class="nav-dropdown nav-dropdown-right" data-group="updates">
+          <button type="button" class="nav-btn nav-group-btn" data-group="updates" aria-haspopup="true" aria-expanded="false" onclick="toggleNavDropdown(this, event)">
+            <span class="nav-icon">📰</span> News &amp; Schedule <span class="nav-caret">▾</span>
+          </button>
+          <div class="nav-dropdown-menu" role="menu">
+            <a class="nav-drop-item" role="menuitem" data-tab="news" href="?tab=updates/news" onclick="return handleNavTabClick(event, 'news', this)">
+              <span class="nav-drop-icon">📰</span>
+              <span class="nav-drop-text">
+                <span class="nav-drop-title">News &amp; Articles</span>
+                <span class="nav-drop-desc">Research Highlights &amp; Publications</span>
+              </span>
+            </a>
+            <a class="nav-drop-item" role="menuitem" data-tab="calendar" href="?tab=updates/calendar" onclick="return handleNavTabClick(event, 'calendar', this)">
+              <span class="nav-drop-icon">📅</span>
+              <span class="nav-drop-text">
+                <span class="nav-drop-title">Calendar</span>
+                <span class="nav-drop-desc">Research Schedule &amp; Google Calendar</span>
+              </span>
+            </a>
+          </div>
+        </div>
+
+        <!-- 6. Academic CV -->
+        <a class="nav-btn" data-tab="cv" href="?tab=academic-cv" onclick="return handleNavTabClick(event, 'cv', this)">
           <span class="nav-icon">📜</span> Academic CV
-        </button>
+        </a>
       </nav>
     </div>
   </header>
@@ -7241,13 +7328,13 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=179_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=179_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=179_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=179_v116_vesta_viewer'"></script>
-  <script src="post_data.js?v=179_v116_vesta_viewer" onerror="this.src='/static/post_data.js?v=179_v116_vesta_viewer'"></script>
-  <script src="topo_rashba.js?v=179_v116_vesta_viewer" onerror="this.src='/static/topo_rashba.js?v=179_v116_vesta_viewer'"></script>
-  <script src="potential_polar.js?v=179_v116_vesta_viewer" onerror="this.src='/static/potential_polar.js?v=179_v116_vesta_viewer'"></script>
-  <script src="dft_theory.js?v=179_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=179_v116_vesta_viewer'"></script>
-  <script src="app.js?v=179_v116_vesta_viewer" onerror="this.src='/static/app.js?v=179_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=180_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=180_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=180_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=180_v116_vesta_viewer'"></script>
+  <script src="post_data.js?v=180_v116_vesta_viewer" onerror="this.src='/static/post_data.js?v=180_v116_vesta_viewer'"></script>
+  <script src="topo_rashba.js?v=180_v116_vesta_viewer" onerror="this.src='/static/topo_rashba.js?v=180_v116_vesta_viewer'"></script>
+  <script src="potential_polar.js?v=180_v116_vesta_viewer" onerror="this.src='/static/potential_polar.js?v=180_v116_vesta_viewer'"></script>
+  <script src="dft_theory.js?v=180_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=180_v116_vesta_viewer'"></script>
+  <script src="app.js?v=180_v116_vesta_viewer" onerror="this.src='/static/app.js?v=180_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">

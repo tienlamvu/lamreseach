@@ -1522,7 +1522,8 @@
   function getDftLectureShareUrl(lecId, sectionId = "") {
     const id = String(lecId || _activeLectureId || "lec1").trim();
     const base = `${window.location.origin}${window.location.pathname}`;
-    const url = `${base}?tab=dft-theory&lecture=${encodeURIComponent(id)}`;
+    const slug = (typeof TAB_URL_SLUGS !== "undefined" && TAB_URL_SLUGS["dft-theory"]) ? TAB_URL_SLUGS["dft-theory"] : "theory-tools/dft-theory";
+    const url = `${base}?tab=${slug}&lecture=${encodeURIComponent(id)}`;
     return sectionId ? `${url}#${encodeURIComponent(sectionId)}` : url;
   }
   window.getDftLectureShareUrl = getDftLectureShareUrl;
@@ -1578,12 +1579,14 @@
       const tabEl = document.getElementById("tab-dft-theory");
       if (!tabEl || !tabEl.classList.contains("active")) return;
       const urlObj = new URL(window.location.href);
-      urlObj.searchParams.set("tab", "dft-theory");
+      const slug = (typeof TAB_URL_SLUGS !== "undefined" && TAB_URL_SLUGS["dft-theory"]) ? TAB_URL_SLUGS["dft-theory"] : "theory-tools/dft-theory";
+      urlObj.searchParams.set("tab", slug);
       urlObj.searchParams.set("lecture", lecId);
       urlObj.searchParams.delete("article");
       urlObj.searchParams.delete("structure");
       const newHash = sectionId ? `#${encodeURIComponent(sectionId)}` : "";
-      const nextUrl = `${urlObj.pathname}?${urlObj.searchParams.toString()}${newHash}`;
+      const qs = (typeof formatCleanQueryString === "function") ? formatCleanQueryString(urlObj) : urlObj.searchParams.toString().replace(/%2F/gi, "/");
+      const nextUrl = `${urlObj.pathname}?${qs}${newHash}`;
       window.history.replaceState({ tabId: "dft-theory", dftLectureId: lecId }, "", nextUrl);
     } catch (_) {}
   }
@@ -1594,7 +1597,7 @@
       const urlObj = new URL(window.location.href);
       if (!urlObj.searchParams.has("lecture") && !(window.location.hash || "").startsWith("#dft-sec-")) return;
       urlObj.searchParams.delete("lecture");
-      const qs = urlObj.searchParams.toString();
+      const qs = (typeof formatCleanQueryString === "function") ? formatCleanQueryString(urlObj) : urlObj.searchParams.toString().replace(/%2F/gi, "/");
       const keepHash = (window.location.hash || "").startsWith("#dft-sec-") ? "" : window.location.hash;
       window.history.replaceState({}, "", `${urlObj.pathname}${qs ? "?" + qs : ""}${keepHash}`);
     } catch (_) {}
