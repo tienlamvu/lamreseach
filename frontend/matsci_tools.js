@@ -5733,11 +5733,19 @@ async function handleCastepPdosFilesUpload(event) {
     CASTEP_STUDIO_STATE.activeJobId = job.id;
   }
   let pdosBuf = null, pdosName = "";
+  let bandPdosBuf = null, bandPdosName = "";
+  let procarText = null, procarName = "";
   for (const f of files) {
     const low = f.name.toLowerCase();
-    if (low.endsWith(".pdos_bin")) {
+    if (low.endsWith("_bandstr.pdos_bin")) {
+      bandPdosBuf = await f.arrayBuffer();
+      bandPdosName = f.name;
+    } else if (low.endsWith(".pdos_bin")) {
       pdosBuf = await f.arrayBuffer();
       pdosName = f.name;
+    } else if (low === "procar" || low.endsWith(".procar") || low.startsWith("procar")) {
+      procarText = await f.text();
+      procarName = f.name;
     } else if (low.endsWith("_bandstr.bands")) {
       job.bandstr_bands = parseCastepBandsTextClient(await f.text());
     } else if (low.endsWith(".bands")) {
@@ -5749,14 +5757,27 @@ async function handleCastepPdosFilesUpload(event) {
       else job.dos_xcd = parseCastepXcdXmlClient(txt, false);
     }
   }
+  const spOrder = extractSpeciesOrderFromJobText(job);
   if (pdosBuf) {
     const refBands = job.dos_bands || job.bandstr_bands;
     if (refBands) {
-      const spOrder = extractSpeciesOrderFromJobText(job);
       job.pdos_bin_data = parseCastepPdosBinArrayBuffer(pdosBuf, refBands, spOrder, pdosName);
     } else if (typeof showToast === "function") {
       showToast("Tip: Please select both *.pdos_bin AND *_DOS.bands together so eigenvalues match exact orbital weights!", "warning");
     }
+  }
+  if (procarText && typeof parseVaspProcarClient === "function") {
+    const parsedProcar = parseVaspProcarClient(procarText, procarName);
+    if (parsedProcar) {
+      job.band_orb_proj = parsedProcar;
+      const modeSel = document.getElementById("castep-fatband-mode");
+      if (modeSel && modeSel.value === "off") modeSel.value = "suborbital";
+    }
+  } else if ((bandPdosBuf || pdosBuf) && (job.bandstr_bands || job.dos_bands) && typeof parseCastepFatBandFromPdosBinClient === "function") {
+    const useBuf = bandPdosBuf || pdosBuf;
+    const useName = bandPdosBuf ? bandPdosName : pdosName;
+    const fb = parseCastepFatBandFromPdosBinClient(useBuf, useName, job.bandstr_bands, job.dos_bands, spOrder, job.cell_text || "");
+    if (fb) job.band_orb_proj = fb;
   }
   job.has_band_dos = true;
   populateCastepPdosTargetSelect(job);
@@ -6162,8 +6183,24 @@ function renderCastepElectronicPlots() {
     eGrid, pdosCurves, isSpinDos, pdosSourceLabel
   };
 
+  // Sync Orbital-Resolved Fat-Band controls & build overlay if active and data exists!
+  const fbUi = (typeof syncCastepFatBandUI === "function") ? syncCastepFatBandUI(job) : { hasData: false, isOn: false, activeMode: "off" };
+  let fatBandOverlay = null;
+  if (fbUi.isOn && typeof buildCastepFatBandOverlay === "function") {
+    const fbShift = job.bandstr_bands ? (align.bandRawShift || 0.0) : (align.dosRawShift || 0.0);
+    fatBandOverlay = buildCastepFatBandOverlay(job, {
+      mode: fbUi.activeMode,
+      elFilter: document.getElementById("castep-fatband-el")?.value || "all",
+      style: document.getElementById("castep-fatband-style")?.value || "rings",
+      sizeScale: parseFloat(document.getElementById("castep-fatband-size")?.value) || 1.0,
+      energyShift: fbShift,
+      emin, emax, showUp, showDn
+    });
+  }
+  if (window.CASTEP_FATBAND_STATE) CASTEP_FATBAND_STATE.lastOverlay = fatBandOverlay;
+
   // Honest empty state
-  if (!bandSeries.length && !pdosCurves.length) {
+  if (!bandSeries.length && !pdosCurves.length && !fatBandOverlay) {
     const stripEmpty = document.getElementById("castep-electronic-summary-strip");
     if (stripEmpty) {
       stripEmpty.innerHTML = `<span><strong>Status:</strong> No Band Structure, DOS, or *.pdos_bin files found in the active calculation.</span>`;
@@ -6202,7 +6239,6 @@ function renderCastepElectronicPlots() {
   const padL = Math.round(62 + extraL);
   const padR = 22;
   const plotH = height - padT - padB;
-  canvas._elecPlotGeom = { padT, padB, plotH };
   const eToY = (e) => padT + plotH * (1 - (e - emin) / ((emax - emin) || 1));
 
   let bandX0 = padL, bandW = width - padL - padR;
@@ -6220,6 +6256,7 @@ function renderCastepElectronicPlots() {
       { key: "pdos", label: "PDOS / DOS", x: splitX, y: 0, w: width - splitX, h: height, plotKey: "electronic", dataSubPart: "pdos", pngName: "CASTEP_PDOS.png" }
     ];
   }
+  canvas._elecPlotGeom = { padT, padB, plotH, bandX0, bandW, emin, emax };
 
   const stepE = (emax - emin) <= 8 ? 1 : 2;
   const eTicksList = [];
@@ -6250,24 +6287,28 @@ function renderCastepElectronicPlots() {
       ctx.setLineDash([]);
     }
 
-    bandSeries.forEach((ser, sIdx) => {
-      const isBeta = sIdx === 1 || /beta|dn|down/i.test(ser.name);
-      if (!isBeta && !showUp) return;
-      if (isBeta && !showDn) return;
-      ctx.strokeStyle = isBeta ? "#dc2626" : "#2563eb";
-      ctx.lineWidth = isBeta ? Math.max(1.0, st.lineWidth * 0.85) : st.lineWidth;
-      if (isBeta) ctx.setLineDash([4, 3]); else ctx.setLineDash([]);
-      (ser.segments || []).forEach(seg => {
-        if (!seg.length) return;
-        ctx.beginPath();
-        seg.forEach((pt, i) => {
-          const px = bandX0 + pt[0] * bandW;
-          const py = eToY(pt[1]);
-          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    if (fatBandOverlay && typeof drawCastepFatBandOverlay === "function") {
+      drawCastepFatBandOverlay(ctx, fatBandOverlay, { bandX0, padT, bandW, plotH, emin, emax, eToY }, st);
+    } else {
+      bandSeries.forEach((ser, sIdx) => {
+        const isBeta = sIdx === 1 || /beta|dn|down/i.test(ser.name);
+        if (!isBeta && !showUp) return;
+        if (isBeta && !showDn) return;
+        ctx.strokeStyle = isBeta ? "#dc2626" : "#2563eb";
+        ctx.lineWidth = isBeta ? Math.max(1.0, st.lineWidth * 0.85) : st.lineWidth;
+        if (isBeta) ctx.setLineDash([4, 3]); else ctx.setLineDash([]);
+        (ser.segments || []).forEach(seg => {
+          if (!seg.length) return;
+          ctx.beginPath();
+          seg.forEach((pt, i) => {
+            const px = bandX0 + pt[0] * bandW;
+            const py = eToY(pt[1]);
+            if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          });
+          ctx.stroke();
         });
-        ctx.stroke();
       });
-    });
+    }
     ctx.restore();
 
     // Crisp unified publication frame + ticks drawn ON TOP of curves
@@ -6279,7 +6320,10 @@ function renderCastepElectronicPlots() {
     });
 
     ctx.fillStyle = st.inkColor; ctx.font = castepPlotFont("title"); ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
-    ctx.fillText(`Band Structure${bandSeries.length >= 2 ? " (— α Up / ┄ β Down)" : ""}`, bandX0 + bandW / 2, padT - 11);
+    const bandTitleTxt = fatBandOverlay
+      ? `Orbital-Resolved Band Structure${fatBandOverlay.elFilter !== "all" ? ` (${fatBandOverlay.elFilter})` : ""}`
+      : `Band Structure${bandSeries.length >= 2 ? " (— α Up / ┄ β Down)" : ""}`;
+    ctx.fillText(bandTitleTxt, bandX0 + bandW / 2, padT - 11);
 
     ctx.textAlign = "center"; ctx.textBaseline = "top";
     bandTicks.forEach(t => {
@@ -6542,6 +6586,10 @@ function renderCastepElectronicPlots() {
   canvas._singlePanelExactTable = null;
   canvas._singlePanelExactSeries = null;
   const buildBandExactTable = () => {
+    if (fatBandOverlay && typeof buildCastepFatBandExactTable === "function") {
+      const fbTbl = buildCastepFatBandExactTable(fatBandOverlay, bandTicks);
+      if (fbTbl && fbTbl.rows && fbTbl.rows.length) return fbTbl;
+    }
     const tickLbl = (xN) => {
       for (const t of (bandTicks || [])) {
         if (Math.abs(t.pos - xN) < 0.004) return t.label === "G" ? "Γ" : t.label;
@@ -6717,7 +6765,12 @@ function initCastepElectronicCanvasHover() {
     const padT = g.padT, plotH = g.plotH || ((rect.height || 520) - g.padT - g.padB);
     const eCursor = emax - ((my - padT) / plotH) * (emax - emin);
     if (my >= padT && my <= padT + plotH) {
-      readout.innerHTML = `Cursor Energy: <strong>E − E<sub>F</sub> = ${eCursor.toFixed(3)} eV</strong> (${eCursor > 0 ? "Conduction Band" : "Valence Band"}) • X = ${Math.round(mx)} px`;
+      const fbHtml = (typeof lookupCastepFatBandHoverHtml === "function") ? lookupCastepFatBandHoverHtml(canvas, mx, my) : null;
+      if (fbHtml) {
+        readout.innerHTML = fbHtml;
+      } else {
+        readout.innerHTML = `Cursor Energy: <strong>E − E<sub>F</sub> = ${eCursor.toFixed(3)} eV</strong> (${eCursor > 0 ? "Conduction Band" : "Valence Band"}) • X = ${Math.round(mx)} px`;
+      }
     }
   });
 }
@@ -7307,7 +7360,7 @@ function clearCastepJobParsedCache(job) {
     "band_xcd", "pdos_xcd", "dos_xcd", "conv_xcd", "ener_xcd", "optical_xcds", "optical_xcd",
     "bandstr_bands", "dos_bands", "optics_bands", "optics_bands_file", "optics_castep_text",
     "optics_castep_file", "optics_cell_file", "ome_bin_file", "optical_tensor",
-    "pdos_bin_data", "chdiff_data", "_mullikenCache", "_optSpecCache",
+    "pdos_bin_data", "band_orb_proj", "chdiff_data", "_mullikenCache", "_optSpecCache",
     "totalEnergyEv", "bandGapEv"
   ];
   cacheFields.forEach(k => { delete job[k]; });
@@ -7968,13 +8021,27 @@ async function hydrateCastepJobFromFileMap(job, opts = {}) {
       }
     }
   }
+  const bandPdosBinE = findEntry(l => l.endsWith("_bandstr.pdos_bin"));
   const pdosBinE = findEntry(l => l.endsWith("_dos.pdos_bin")) || findEntry(l => l.endsWith(".pdos_bin"));
+  const procarE = findEntry(l => l === "procar" || l.endsWith(".procar"));
+  let _cachedPdosBuf = null;
   if (pdosBinE && !job.pdos_bin_data) {
     const refBands = job.dos_bands || job.bandstr_bands;
     if (refBands) {
       const spOrder = extractSpeciesOrderFromJobText(job);
-      const buf = await readFromFileOrHandle(pdosBinE[1], true);
-      if (buf) job.pdos_bin_data = parseCastepPdosBinArrayBuffer(buf, refBands, spOrder, pdosBinE[0]);
+      _cachedPdosBuf = await readFromFileOrHandle(pdosBinE[1], true);
+      if (_cachedPdosBuf) job.pdos_bin_data = parseCastepPdosBinArrayBuffer(_cachedPdosBuf, refBands, spOrder, pdosBinE[0]);
+    }
+  }
+  if (!job.band_orb_proj) {
+    if (procarE && typeof parseVaspProcarClient === "function") {
+      const pTxt = await readFromFileOrHandle(procarE[1], false);
+      if (pTxt) job.band_orb_proj = parseVaspProcarClient(pTxt, procarE[0]);
+    } else if ((bandPdosBinE || pdosBinE) && (job.bandstr_bands || job.dos_bands) && typeof parseCastepFatBandFromPdosBinClient === "function") {
+      const spOrder = extractSpeciesOrderFromJobText(job);
+      const useE = bandPdosBinE || pdosBinE;
+      const buf = (useE === pdosBinE && _cachedPdosBuf) ? _cachedPdosBuf : await readFromFileOrHandle(useE[1], true);
+      if (buf) job.band_orb_proj = parseCastepFatBandFromPdosBinClient(buf, useE[0], job.bandstr_bands, job.dos_bands, spOrder, job.cell_text || "");
     }
   }
 
@@ -21271,6 +21338,11 @@ function resetCastepElectronicSettings() {
   _setCastepInputVal("castep-pdos-mode", "element_orbital");
   _setCastepInputVal("castep-pdos-spin-layout", "mirror");
   _setCastepInputVal("castep-elec-zero-ref", "vbm_auto");
+  _setCastepInputVal("castep-fatband-mode", "off");
+  _setCastepInputVal("castep-fatband-el", "all");
+  _setCastepInputVal("castep-fatband-style", "rings");
+  _setCastepInputVal("castep-fatband-size", "1.0");
+  if (window.CASTEP_FATBAND_STATE?.hiddenChannels) CASTEP_FATBAND_STATE.hiddenChannels.clear();
   [
     "castep-show-dos-total", "castep-show-dos-s", "castep-show-dos-p",
     "castep-show-dos-d", "castep-show-dos-f", "castep-show-spin-up", "castep-show-spin-dn"
@@ -21428,4 +21500,970 @@ function resetCastepMullikenSettings() {
   if (typeof showToast === "function") showToast("Reset Mulliken Magnetism & Bond settings to initial defaults.", "info");
 }
 window.resetCastepMullikenSettings = resetCastepMullikenSettings;
+
+
+// ============================================================================
+// 14. Orbital-Resolved Band Structure ("Fat-Band") Engine (v167)
+// Supports:
+//  - Exact CASTEP *_BandStr.pdos_bin (1-to-1 k-path LCAO orbital weights)
+//  - Exact VASP PROCAR (LORBIT=10 / LORBIT=11 s, px, py, pz, d sub-orbitals)
+//  - Symmetry-Unfolded FBZ CASTEP *_DOS.pdos_bin -> *_BandStr.bands projection
+// Graceful fallback: stays cleanly Off when a calculation has no orbital weights.
+// ============================================================================
+
+window.CASTEP_FATBAND_STATE = {
+  hiddenChannels: new Set(),
+  lastOverlay: null
+};
+
+const CASTEP_FATBAND_SUB_PALETTE = {
+  "s":          "#ef4444", // crimson red (matches reference S)
+  "px,py":      "#16a34a", // vivid green (matches reference Px,y)
+  "pz":         "#2563eb", // royal blue (matches reference Pz)
+  "dz2":        "#d97706", // warm amber/orange
+  "dx2-y2,dxy": "#9333ea", // royal purple
+  "dxz,dyz":    "#0891b2", // teal cyan
+  "f":          "#db2777"  // magenta
+};
+
+const CASTEP_FATBAND_L_PALETTE = {
+  "s": "#ef4444",
+  "p": "#16a34a",
+  "d": "#2563eb",
+  "f": "#9333ea"
+};
+
+const CASTEP_FATBAND_EL_PALETTE = [
+  "#2563eb", "#ef4444", "#16a34a", "#9333ea", "#d97706",
+  "#0891b2", "#db2777", "#4f46e5", "#059669", "#ea580c"
+];
+
+function _fbSubLabel(sub) {
+  switch (sub) {
+    case "s": return "s";
+    case "px,py": return "p_{x,y}";
+    case "pz": return "p_{z}";
+    case "dz2": return "d_{z²}";
+    case "dxz,dyz": return "d_{xz,yz}";
+    case "dx2-y2,dxy": return "d_{x²-y²,xy}";
+    case "f": return "f";
+    default: return sub;
+  }
+}
+
+function _fbPlainLabel(lbl) {
+  return String(lbl || "")
+    .replace(/_\{([^}]+)\}/g, "$1")
+    .replace(/\^\{([^}]+)\}/g, "$1")
+    .replace(/\^2/g, "²");
+}
+
+function _fbHtmlLabel(lbl) {
+  return escapeHtml(String(lbl || ""))
+    .replace(/_\{([^}]+)\}/g, "<sub>$1</sub>")
+    .replace(/\^\{([^}]+)\}/g, "<sup>$1</sup>")
+    .replace(/\^2/g, "<sup>2</sup>");
+}
+
+function _fbComputeKPathPositions(kvecs, vecsBohr) {
+  const nk = kvecs ? kvecs.length : 0;
+  if (nk <= 1) return nk === 1 ? [0] : [];
+
+  // Reciprocal basis rows B = 2*pi * inv(A)^T (if lattice provided, else identity)
+  let B = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+  if (vecsBohr && vecsBohr.length === 3) {
+    const a = vecsBohr[0], b = vecsBohr[1], c = vecsBohr[2];
+    const cross = (u, v) => [u[1]*v[2] - u[2]*v[1], u[2]*v[0] - u[0]*v[2], u[0]*v[1] - u[1]*v[0]];
+    const dot = (u, v) => u[0]*v[0] + u[1]*v[1] + u[2]*v[2];
+    const bc = cross(b, c), ca = cross(c, a), ab = cross(a, b);
+    const vol = dot(a, bc);
+    if (Math.abs(vol) > 1e-9) {
+      const f = (2 * Math.PI) / vol;
+      B = [
+        [bc[0]*f, bc[1]*f, bc[2]*f],
+        [ca[0]*f, ca[1]*f, ca[2]*f],
+        [ab[0]*f, ab[1]*f, ab[2]*f]
+      ];
+    }
+  }
+  const toCart = (k) => [
+    k[0]*B[0][0] + k[1]*B[1][0] + k[2]*B[2][0],
+    k[0]*B[0][1] + k[1]*B[1][1] + k[2]*B[2][1],
+    k[0]*B[0][2] + k[1]*B[1][2] + k[2]*B[2][2]
+  ];
+  const steps = [];
+  for (let i = 1; i < nk; i++) {
+    const c0 = toCart(kvecs[i - 1]), c1 = toCart(kvecs[i]);
+    steps.push(Math.hypot(c1[0] - c0[0], c1[1] - c0[1], c1[2] - c0[2]));
+  }
+  const posSteps = steps.filter(s => s > 1e-6).sort((x, y) => x - y);
+  const medStep = posSteps.length ? posSteps[Math.floor(posSteps.length / 2)] : 1.0;
+  const dists = [0];
+  let acc = 0;
+  for (let i = 0; i < steps.length; i++) {
+    // Discontinuity jump between disconnected BZ segments -> don't add bogus horizontal stretch
+    acc += (steps[i] > medStep * 4.5) ? 0 : steps[i];
+    dists.push(acc);
+  }
+  const total = dists[dists.length - 1] || 1.0;
+  return dists.map(d => d / total);
+}
+
+// ---------------- Client-Side CASTEP *.pdos_bin -> Band Projection Parser ----------------
+function parseCastepFatBandFromPdosBinClient(arrayBuffer, filename, bandstrBands, dosBands, speciesOrder, cellText) {
+  if (!arrayBuffer || arrayBuffer.byteLength < 120) return null;
+  const bs = bandstrBands || dosBands;
+  if (!bs || !Array.isArray(bs.kpoints) || !bs.kpoints.length) return null;
+  try {
+    const dv = new DataView(arrayBuffer);
+    const totalLen = arrayBuffer.byteLength;
+    const r0Be = dv.getInt32(0, false);
+    const le = !(r0Be === 8 && dv.getInt32(12, false) === 8);
+    let pos = 0;
+    const readRec = () => {
+      if (pos + 4 > totalLen) return null;
+      const rl = dv.getInt32(pos, le);
+      if (rl < 0 || pos + 4 + rl + 4 > totalLen) return null;
+      const start = pos + 4;
+      pos += 4 + rl + 4;
+      return { start, len: rl };
+    };
+    const _v = readRec(), _h = readRec();
+    const nkR = readRec(), nsR = readRec(), norbR = readRec(), neigR = readRec();
+    if (!nkR || !nsR || !norbR || !neigR) return null;
+    const nk = dv.getInt32(nkR.start, le);
+    const ns = dv.getInt32(nsR.start, le);
+    const norb = dv.getInt32(norbR.start, le);
+    if (nk <= 0 || ns <= 0 || norb <= 0 || norb > 10000) return null;
+
+    const spR = readRec(), ionR = readRec(), amR = readRec();
+    if (!spR || !ionR || !amR) return null;
+
+    const lNames = ["s", "p", "d", "f"];
+    const mMap = {
+      0: ["s"],
+      1: ["px,py", "px,py", "pz"],
+      2: ["dz2", "dxz,dyz", "dxz,dyz", "dx2-y2,dxy", "dx2-y2,dxy"],
+      3: ["f", "f", "f", "f", "f", "f", "f"]
+    };
+    const seen = {};
+    const chanOrder = [];
+    const chanIdxMap = {};
+    const orbToChan = new Int32Array(norb);
+    const spList = Array.isArray(speciesOrder) ? speciesOrder : [];
+
+    for (let o = 0; o < norb; o++) {
+      const spIdx = dv.getInt32(spR.start + o * 4, le);
+      const ion = dv.getInt32(ionR.start + o * 4, le);
+      const am = dv.getInt32(amR.start + o * 4, le);
+      const el = (spIdx >= 1 && spIdx <= spList.length) ? spList[spIdx - 1] : `Sp${spIdx}`;
+      const lCh = lNames[am] || "s";
+      const mKey = `${el}|${ion}|${am}`;
+      const mCnt = seen[mKey] || 0;
+      seen[mKey] = mCnt + 1;
+      const mList = mMap[am] || ["s"];
+      const sub = mList[mCnt % mList.length];
+      const cKey = `${el}|${sub}`;
+      if (chanIdxMap[cKey] === undefined) {
+        chanIdxMap[cKey] = chanOrder.length;
+        chanOrder.push({ key: cKey, element: el, l: lCh, sub });
+      }
+      orbToChan[o] = chanIdxMap[cKey];
+    }
+    const nCh = chanOrder.length;
+
+    // Read per-(k, spin, band) channel-summed normalized weights from pdos_bin
+    const pdosK = [];
+    for (let ik = 0; ik < nk; ik++) {
+      const kr = readRec();
+      if (!kr || kr.len < 28) break;
+      const kIdx = dv.getInt32(kr.start, le);
+      const kx = dv.getFloat64(kr.start + 4, le);
+      const ky = dv.getFloat64(kr.start + 12, le);
+      const kz = dv.getFloat64(kr.start + 20, le);
+      const bySpin = Array.from({ length: ns }, () => []);
+      for (let is = 0; is < ns; is++) {
+        const sR = readRec(), nbR = readRec();
+        if (!sR || !nbR) break;
+        const sIdx = Math.max(0, Math.min(ns - 1, dv.getInt32(sR.start, le) - 1));
+        const nb = dv.getInt32(nbR.start, le);
+        const bandW = new Array(nb);
+        for (let b = 0; b < nb; b++) {
+          const wb = readRec();
+          if (!wb || wb.len < norb * 8) break;
+          const acc = new Float32Array(nCh);
+          let sumW = 0;
+          for (let o = 0; o < norb; o++) {
+            const wv = dv.getFloat64(wb.start + o * 8, le);
+            if (wv > 0) { acc[orbToChan[o]] += wv; sumW += wv; }
+          }
+          if (sumW > 1e-9) {
+            const inv = 1.0 / sumW;
+            for (let c = 0; c < nCh; c++) acc[c] *= inv;
+          }
+          bandW[b] = acc;
+        }
+        bySpin[sIdx] = bandW;
+      }
+      pdosK.push({ kIdx, k: [kx, ky, kz], bySpin });
+    }
+    if (!pdosK.length) return null;
+
+    // Detect exact BandStr.pdos_bin match vs FBZ-unfolded DOS.pdos_bin match!
+    const bsKpts = bs.kpoints || [];
+    const bsNk = bsKpts.length;
+    let exactMatchCount = 0;
+    if (pdosK.length === bsNk) {
+      for (let i = 0; i < bsNk; i++) {
+        const a = bsKpts[i].k || [0, 0, 0], b = pdosK[i].k;
+        if (Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]) < 0.015) exactMatchCount++;
+      }
+    }
+    const isExactBandStr = (exactMatchCount >= Math.max(2, Math.floor(bsNk * 0.85)));
+
+    // Build unfolded FBZ k-point lookup if mapping DOS.pdos_bin onto BandStr.bands
+    const dosKpts = dosBands?.kpoints || [];
+    let fbzList = [];
+    if (!isExactBandStr) {
+      const hexMats = [
+        [[1,0,0],[0,1,0],[0,0,1]], [[0,-1,0],[1,-1,0],[0,0,1]], [[-1,1,0],[-1,0,0],[0,0,1]],
+        [[-1,0,0],[0,-1,0],[0,0,1]], [[0,1,0],[-1,1,0],[0,0,1]], [[1,-1,0],[1,0,0],[0,0,1]],
+        [[0,1,0],[1,0,0],[0,0,1]], [[-1,1,0],[0,1,0],[0,0,1]], [[1,0,0],[1,-1,0],[0,0,1]],
+        [[0,-1,0],[-1,0,0],[0,0,1]], [[1,-1,0],[0,-1,0],[0,0,1]], [[-1,0,0],[-1,1,0],[0,0,1]]
+      ];
+      const orthMats = [
+        [[1,0,0],[0,-1,0],[0,0,1]], [[-1,0,0],[0,1,0],[0,0,1]], [[0,1,0],[-1,0,0],[0,0,1]], [[0,-1,0],[1,0,0],[0,0,1]]
+      ];
+      // Choose hexagonal vs orthorhombic symmetry ops from cell gamma angle (default hex + orth safe for 2D/3D)
+      let ops = [];
+      const baseMats = hexMats.concat(orthMats);
+      for (const sgn of [1, -1]) {
+        for (const m of baseMats) {
+          ops.push([[sgn*m[0][0], sgn*m[0][1], sgn*m[0][2]], [sgn*m[1][0], sgn*m[1][1], sgn*m[1][2]], [sgn*m[2][0], sgn*m[2][1], sgn*m[2][2]]]);
+        }
+      }
+      const mod1 = v => ((v % 1) + 1) % 1;
+      for (let i = 0; i < pdosK.length; i++) {
+        const dk = pdosK[i].k;
+        const dkEnergies = (dosKpts[pdosK[i].kIdx - 1] || dosKpts[i])?.e || null;
+        const seenK = new Set();
+        for (let oi = 0; oi < ops.length; oi++) {
+          const m = ops[oi];
+          const u = mod1(m[0][0]*dk[0] + m[0][1]*dk[1] + m[0][2]*dk[2]);
+          const v = mod1(m[1][0]*dk[0] + m[1][1]*dk[1] + m[1][2]*dk[2]);
+          const w = mod1(m[2][0]*dk[0] + m[2][1]*dk[1] + m[2][2]*dk[2]);
+          const key = `${Math.round(u*1e4)},${Math.round(v*1e4)},${Math.round(w*1e4)}`;
+          if (seenK.has(key)) continue;
+          seenK.add(key);
+          fbzList.push({ u, v, w, pIdx: i, eBySpin: dkEnergies });
+        }
+      }
+    }
+
+    const kDistFrac = (a, b) => {
+      let d0 = Math.abs((((a[0] - b[0]) % 1) + 1.5) % 1 - 0.5);
+      let d1 = Math.abs((((a[1] - b[1]) % 1) + 1.5) % 1 - 0.5);
+      let d2 = Math.abs((((a[2] - b[2]) % 1) + 1.5) % 1 - 0.5);
+      return Math.sqrt(d0*d0 + d1*d1 + d2*d2);
+    };
+
+    // Pre-compute top-3 nearest FBZ DOS k-points for every BandStr k-point
+    const kMatches = new Array(bsNk);
+    for (let ik = 0; ik < bsNk; ik++) {
+      if (isExactBandStr) {
+        kMatches[ik] = [{ pIdx: ik, dist: 0, eBySpin: null }];
+      } else {
+        const bk = bsKpts[ik].k || [0, 0, 0];
+        let top = [];
+        for (let fi = 0; fi < fbzList.length; fi++) {
+          const f = fbzList[fi];
+          const d = kDistFrac(bk, [f.u, f.v, f.w]);
+          if (top.length < 3 || d < top[top.length - 1].dist) {
+            // Avoid duplicate pIdx in top-3
+            const ex = top.find(t => t.pIdx === f.pIdx);
+            if (ex) { if (d < ex.dist) ex.dist = d; }
+            else top.push({ pIdx: f.pIdx, dist: d, eBySpin: f.eBySpin });
+            top.sort((x, y) => x.dist - y.dist);
+            if (top.length > 3) top.pop();
+          }
+        }
+        kMatches[ik] = top;
+      }
+    }
+
+    const bsNs = Math.min(bs.ns || 1, ns);
+    const bandsOut = [];
+    const eMinKeep = -20.0, eMaxKeep = 15.0;
+
+    for (let s = 0; s < bsNs; s++) {
+      const nb = (bsKpts[0]?.e?.[s] || []).length;
+      for (let b = 0; b < nb; b++) {
+        const eArr = new Array(bsNk);
+        let anyInWin = false;
+        for (let ik = 0; ik < bsNk; ik++) {
+          const ev = bsKpts[ik]?.e?.[s]?.[b];
+          eArr[ik] = Number.isFinite(ev) ? Number(ev.toFixed(5)) : 0;
+          if (Number.isFinite(ev) && ev >= eMinKeep && ev <= eMaxKeep) anyInWin = true;
+        }
+        if (!anyInWin) continue;
+
+        const wMat = Array.from({ length: nCh }, () => new Array(bsNk).fill(0));
+        for (let ik = 0; ik < bsNk; ik++) {
+          const ev = eArr[ik];
+          const matches = kMatches[ik];
+          if (isExactBandStr) {
+            const bw = pdosK[ik]?.bySpin?.[s]?.[b];
+            if (bw) for (let c = 0; c < nCh; c++) wMat[c][ik] = Math.round(bw[c] * 1000);
+          } else {
+            const acc = new Float64Array(nCh);
+            let wSum = 0;
+            for (let mi = 0; mi < matches.length; mi++) {
+              const m = matches[mi];
+              const spinW = pdosK[m.pIdx]?.bySpin?.[s];
+              if (!spinW || !spinW.length) continue;
+              const deList = m.eBySpin?.[s];
+              // Match exact band index if energy aligns, else search nearest energy band within +-2
+              let bestB = Math.min(b, spinW.length - 1);
+              let bestDe = (deList && bestB < deList.length) ? Math.abs(deList[bestB] - ev) : 0;
+              if (deList && bestDe > 0.25) {
+                for (let jb = Math.max(0, b - 3); jb <= Math.min(spinW.length - 1, b + 3); jb++) {
+                  if (jb < deList.length) {
+                    const dd = Math.abs(deList[jb] - ev);
+                    if (dd < bestDe) { bestDe = dd; bestB = jb; }
+                  }
+                }
+              }
+              const kW = m.dist < 0.004 ? 100.0 : Math.exp(-Math.pow(m.dist / 0.055, 2));
+              const eW = Math.exp(-Math.pow(bestDe / 0.45, 2));
+              const totK = kW * eW;
+              const bw = spinW[bestB];
+              if (bw && totK > 1e-6) {
+                for (let c = 0; c < nCh; c++) acc[c] += totK * bw[c];
+                wSum += totK;
+              }
+            }
+            if (wSum > 1e-9) {
+              for (let c = 0; c < nCh; c++) wMat[c][ik] = Math.round((acc[c] / wSum) * 1000);
+            }
+          }
+        }
+        bandsOut.push({ spin: s, band: b, e: eArr, w: wMat });
+      }
+    }
+
+    const kVecs = bsKpts.map(kp => kp.k || [0, 0, 0]);
+    const kPos = _fbComputeKPathPositions(kVecs, bs.vecs_bohr);
+    const elements = [...new Set(chanOrder.map(c => c.element))];
+
+    return {
+      source_kind: isExactBandStr ? "exact_bandstr" : "fbz_dos_pdos",
+      source_file: filename || "pdos_bin",
+      elements,
+      channels: chanOrder,
+      nk: bsNk,
+      ns: bsNs,
+      k_pos: kPos,
+      k_vecs: kVecs,
+      bands: bandsOut
+    };
+  } catch (err) {
+    console.warn("parseCastepFatBandFromPdosBinClient failed:", err);
+    return null;
+  }
+}
+window.parseCastepFatBandFromPdosBinClient = parseCastepFatBandFromPdosBinClient;
+
+// ---------------- Client-Side VASP PROCAR Parser (LORBIT=10 / LORBIT=11) ----------------
+function parseVaspProcarClient(procarText, filename = "PROCAR", atomElements = null) {
+  const txt = String(procarText || "").replace(/\r\n/g, "\n");
+  if (!/k-points/i.test(txt) || !/band\s+\d+/i.test(txt)) return null;
+  try {
+    const lines = txt.split("\n");
+    const hdrM = txt.match(/#\s*of\s*k-points:\s*(\d+)\s+#\s*of\s*bands:\s*(\d+)\s+#\s*of\s*ions:\s*(\d+)/i);
+    if (!hdrM) return null;
+    const nk = parseInt(hdrM[1], 10);
+    const nb = parseInt(hdrM[2], 10);
+    const nIons = parseInt(hdrM[3], 10);
+    if (!nk || !nb || !nIons) return null;
+
+    // Infer element per ion (from active structure or generic Ion1..N)
+    const ionEls = [];
+    const stAtoms = atomElements || (CASTEP_STUDIO_STATE.structure?.atoms || []).map(a => a.element);
+    for (let i = 0; i < nIons; i++) {
+      ionEls.push((stAtoms && stAtoms.length === nIons) ? stAtoms[i] : "Atom");
+    }
+
+    let orbCols = null;
+    let curSpin = -1, curK = -1, curBand = -1;
+    const spinBlocks = [];
+    const kVecsBySpin = [];
+
+    for (let li = 0; li < lines.length; li++) {
+      const l = lines[li].trim();
+      if (!l) continue;
+      if (/^#\s*of\s*k-points:/i.test(l)) {
+        curSpin++;
+        spinBlocks[curSpin] = Array.from({ length: nk }, () => new Array(nb).fill(null));
+        kVecsBySpin[curSpin] = new Array(nk).fill([0, 0, 0]);
+        continue;
+      }
+      const km = l.match(/^k-point\s+(\d+)\s*:\s*([+-]?\d*\.?\d+)\s+([+-]?\d*\.?\d+)\s+([+-]?\d*\.?\d+)/i);
+      if (km && curSpin >= 0) {
+        curK = parseInt(km[1], 10) - 1;
+        if (curK >= 0 && curK < nk) {
+          kVecsBySpin[curSpin][curK] = [parseFloat(km[2]), parseFloat(km[3]), parseFloat(km[4])];
+        }
+        continue;
+      }
+      const bm = l.match(/^band\s+(\d+)\s+#\s*energy\s+([+-]?\d*\.?\d+)/i);
+      if (bm && curSpin >= 0 && curK >= 0) {
+        curBand = parseInt(bm[1], 10) - 1;
+        if (curBand >= 0 && curBand < nb) {
+          spinBlocks[curSpin][curK][curBand] = { e: parseFloat(bm[2]), ionWeights: {} };
+        }
+        continue;
+      }
+      if (/^ion\s+s\s+/i.test(l)) {
+        orbCols = l.split(/\s+/).slice(1).filter(t => t.toLowerCase() !== "tot");
+        continue;
+      }
+      if (orbCols && curSpin >= 0 && curK >= 0 && curBand >= 0 && /^\d+\s+/.test(l)) {
+        const parts = l.split(/\s+/);
+        const ionIdx = parseInt(parts[0], 10) - 1;
+        if (ionIdx >= 0 && ionIdx < nIons) {
+          const el = ionEls[ionIdx];
+          const entry = spinBlocks[curSpin][curK][curBand];
+          if (entry) {
+            for (let ci = 0; ci < orbCols.length && ci + 1 < parts.length; ci++) {
+              const wv = parseFloat(parts[ci + 1]);
+              if (!isFinite(wv) || wv <= 0) continue;
+              const col = orbCols[ci].toLowerCase();
+              let sub = "s";
+              if (col === "s") sub = "s";
+              else if (col === "p" || col === "px" || col === "py") sub = col === "p" ? "px,py" : "px,py";
+              else if (col === "pz") sub = "pz";
+              else if (col === "dz2") sub = "dz2";
+              else if (col === "dxz" || col === "dyz") sub = "dxz,dyz";
+              else if (col === "dxy" || col === "dx2" || col === "dx2-y2" || col === "x2-y2" || col === "d") sub = "dx2-y2,dxy";
+              else if (col.startsWith("f")) sub = "f";
+              const key = `${el}|${sub}`;
+              entry.ionWeights[key] = (entry.ionWeights[key] || 0) + wv;
+            }
+          }
+        }
+      }
+    }
+
+    const ns = spinBlocks.length;
+    if (!ns) return null;
+    const chanMap = {};
+    const channels = [];
+    for (let s = 0; s < ns; s++) {
+      for (let ik = 0; ik < nk; ik++) {
+        for (let b = 0; b < nb; b++) {
+          const ent = spinBlocks[s][ik][b];
+          if (!ent) continue;
+          Object.keys(ent.ionWeights).forEach(key => {
+            if (chanMap[key] === undefined) {
+              const [el, sub] = key.split("|");
+              const l = sub === "s" ? "s" : (sub.startsWith("p") ? "p" : (sub.startsWith("d") ? "d" : "f"));
+              chanMap[key] = channels.length;
+              channels.push({ key, element: el, l, sub });
+            }
+          });
+        }
+      }
+    }
+    const nCh = channels.length;
+    if (!nCh) return null;
+
+    const bandsOut = [];
+    for (let s = 0; s < ns; s++) {
+      for (let b = 0; b < nb; b++) {
+        const eArr = new Array(nk).fill(0);
+        const wMat = Array.from({ length: nCh }, () => new Array(nk).fill(0));
+        for (let ik = 0; ik < nk; ik++) {
+          const ent = spinBlocks[s][ik][b];
+          if (!ent) continue;
+          eArr[ik] = Number(ent.e.toFixed(5));
+          let tot = 0;
+          Object.values(ent.ionWeights).forEach(v => { tot += v; });
+          if (tot > 1e-9) {
+            Object.entries(ent.ionWeights).forEach(([k, v]) => {
+              wMat[chanMap[k]][ik] = Math.round((v / tot) * 1000);
+            });
+          }
+        }
+        bandsOut.push({ spin: s, band: b, e: eArr, w: wMat });
+      }
+    }
+
+    const kVecs = kVecsBySpin[0];
+    const kPos = _fbComputeKPathPositions(kVecs, null);
+    return {
+      source_kind: "exact_procar",
+      source_file: filename,
+      elements: [...new Set(channels.map(c => c.element))],
+      channels,
+      nk, ns,
+      k_pos: kPos,
+      k_vecs: kVecs,
+      bands: bandsOut
+    };
+  } catch (err) {
+    console.warn("parseVaspProcarClient failed:", err);
+    return null;
+  }
+}
+window.parseVaspProcarClient = parseVaspProcarClient;
+
+// ---------------- Fat-Band Overlay Builder, UI Sync & Canvas Renderer ----------------
+
+function syncCastepFatBandUI(job) {
+  const modeSel = document.getElementById("castep-fatband-mode");
+  const elSel = document.getElementById("castep-fatband-el");
+  const styleSel = document.getElementById("castep-fatband-style");
+  const sizeInp = document.getElementById("castep-fatband-size");
+  const badge = document.getElementById("castep-fatband-status-badge");
+  const chipsRow = document.getElementById("castep-fatband-chips");
+
+  const proj = job?.band_orb_proj || null;
+  const hasData = Boolean(proj && Array.isArray(proj.bands) && proj.bands.length && Array.isArray(proj.channels) && proj.channels.length);
+
+  if (modeSel) {
+    modeSel.disabled = !hasData;
+    if (!hasData && modeSel.value !== "off") modeSel.value = "off";
+  }
+  const activeMode = hasData ? (modeSel?.value || "off") : "off";
+  const isOn = hasData && activeMode !== "off";
+
+  if (elSel) {
+    elSel.disabled = !isOn || activeMode === "element";
+    if (hasData) {
+      const prev = elSel.value || "all";
+      const sig = `${job.id}_${(proj.elements || []).join(",")}`;
+      if (elSel.dataset.jobSig !== sig) {
+        const opts = [`<option value="all">All Elements</option>`];
+        (proj.elements || []).forEach(el => {
+          opts.push(`<option value="${escapeHtml(el)}">${escapeHtml(el)} only</option>`);
+        });
+        elSel.innerHTML = opts.join("");
+        elSel.value = (prev === "all" || (proj.elements || []).includes(prev)) ? prev : "all";
+        elSel.dataset.jobSig = sig;
+      }
+    } else {
+      elSel.innerHTML = `<option value="all">All Elements</option>`;
+      elSel.dataset.jobSig = "";
+    }
+  }
+  if (styleSel) styleSel.disabled = !isOn;
+  if (sizeInp) sizeInp.disabled = !isOn;
+
+  if (badge) {
+    if (!hasData) {
+      badge.textContent = "No orbital data";
+      badge.style.background = "#f1f5f9";
+      badge.style.color = "#64748b";
+      badge.style.borderColor = "#cbd5e1";
+      badge.title = "No *_BandStr.pdos_bin, *_DOS.pdos_bin, or PROCAR projection weights found for this job.";
+    } else if (proj.source_kind === "exact_bandstr" || proj.source_kind === "exact_procar") {
+      badge.textContent = `Exact (${proj.source_file})`;
+      badge.style.background = "#dcfce7";
+      badge.style.color = "#15803d";
+      badge.style.borderColor = "#86efac";
+      badge.title = `Exact k-path orbital projections loaded directly from ${proj.source_file}.`;
+    } else {
+      badge.textContent = `FBZ-Mapped (${proj.source_file})`;
+      badge.style.background = "#e0f2fe";
+      badge.style.color = "#0369a1";
+      badge.style.borderColor = "#7dd3fc";
+      badge.title = `Symmetry-unfolded Brillouin-zone orbital projections mapped from ${proj.source_file} onto the band-structure k-path.`;
+    }
+  }
+  if (chipsRow && !isOn) {
+    chipsRow.style.display = "none";
+    chipsRow.innerHTML = "";
+  }
+  return { hasData, isOn, activeMode };
+}
+window.syncCastepFatBandUI = syncCastepFatBandUI;
+
+function toggleCastepFatBandChannel(chKey) {
+  if (CASTEP_FATBAND_STATE.hiddenChannels.has(chKey)) CASTEP_FATBAND_STATE.hiddenChannels.delete(chKey);
+  else CASTEP_FATBAND_STATE.hiddenChannels.add(chKey);
+  if (typeof renderCastepElectronicPlots === "function") renderCastepElectronicPlots();
+}
+window.toggleCastepFatBandChannel = toggleCastepFatBandChannel;
+
+function buildCastepFatBandOverlay(job, opts) {
+  const proj = job?.band_orb_proj;
+  if (!proj || !proj.bands?.length || !proj.channels?.length) return null;
+  const mode = opts.mode || "off";
+  if (mode === "off") return null;
+
+  const elFilter = opts.elFilter || "all";
+  const energyShift = opts.energyShift || 0.0;
+  const emin = opts.emin, emax = opts.emax;
+  const showUp = opts.showUp !== false;
+  const showDn = opts.showDn !== false;
+  const srcChs = proj.channels;
+
+  // Map source channels -> aggregated display groups
+  const groups = [];
+  const grpIdxMap = {};
+  const addGrp = (key, label, color) => {
+    if (grpIdxMap[key] === undefined) {
+      grpIdxMap[key] = groups.length;
+      groups.push({ key, label, color, srcIndices: [], maxWeight: 0 });
+    }
+    return grpIdxMap[key];
+  };
+
+  const elColorMap = {};
+  (proj.elements || []).forEach((el, i) => {
+    elColorMap[el] = CASTEP_FATBAND_EL_PALETTE[i % CASTEP_FATBAND_EL_PALETTE.length];
+  });
+
+  if (mode === "element") {
+    srcChs.forEach((ch, ci) => {
+      const gi = addGrp(ch.element, ch.element, elColorMap[ch.element] || "#2563eb");
+      groups[gi].srcIndices.push(ci);
+    });
+  } else if (mode === "orbital_l") {
+    const orderL = ["s", "p", "d", "f"];
+    orderL.forEach(l => {
+      srcChs.forEach((ch, ci) => {
+        if (elFilter !== "all" && ch.element !== elFilter) return;
+        if (ch.l !== l) return;
+        const lbl = elFilter === "all" ? l : `${elFilter} ${l}`;
+        const gi = addGrp(l, lbl, CASTEP_FATBAND_L_PALETTE[l] || "#2563eb");
+        groups[gi].srcIndices.push(ci);
+      });
+    });
+  } else if (mode === "suborbital") {
+    const orderSub = ["s", "px,py", "pz", "dz2", "dx2-y2,dxy", "dxz,dyz", "f"];
+    orderSub.forEach(sub => {
+      srcChs.forEach((ch, ci) => {
+        if (elFilter !== "all" && ch.element !== elFilter) return;
+        if (ch.sub !== sub) return;
+        const subDisp = _fbSubLabel(sub);
+        const lbl = elFilter === "all" ? subDisp : `${elFilter} ${subDisp}`;
+        const gi = addGrp(sub, lbl, CASTEP_FATBAND_SUB_PALETTE[sub] || "#2563eb");
+        groups[gi].srcIndices.push(ci);
+      });
+    });
+  } else if (mode === "element_orbital") {
+    let colorIdx = 0;
+    const orderL = ["d", "p", "s", "f"];
+    (proj.elements || []).forEach(el => {
+      if (elFilter !== "all" && el !== elFilter) return;
+      orderL.forEach(l => {
+        const matches = [];
+        srcChs.forEach((ch, ci) => { if (ch.element === el && ch.l === l) matches.push(ci); });
+        if (matches.length) {
+          const gi = addGrp(`${el}|${l}`, `${el}-${l}`, CASTEP_FATBAND_EL_PALETTE[colorIdx++ % CASTEP_FATBAND_EL_PALETTE.length]);
+          groups[gi].srcIndices.push(...matches);
+        }
+      });
+    });
+  }
+
+  if (!groups.length) return null;
+
+  // Build visible-window band entries with summed group weights [0..1]
+  const activeBands = [];
+  const kPos = proj.k_pos || [];
+  const nk = proj.nk || kPos.length;
+
+  proj.bands.forEach(b => {
+    const isBeta = b.spin === 1;
+    if (!isBeta && !showUp) return;
+    if (isBeta && !showDn) return;
+    const eShifted = b.e.map(v => v + energyShift);
+    let inWin = false;
+    for (let ik = 0; ik < eShifted.length; ik++) {
+      if (eShifted[ik] >= emin - 0.5 && eShifted[ik] <= emax + 0.5) { inWin = true; break; }
+    }
+    if (!inWin) return;
+
+    const gW = groups.map(g => {
+      const arr = new Float32Array(nk);
+      for (let ik = 0; ik < nk; ik++) {
+        let sum = 0;
+        for (let si = 0; si < g.srcIndices.length; si++) {
+          const wPermille = b.w[g.srcIndices[si]]?.[ik] || 0;
+          sum += wPermille * 0.001;
+        }
+        if (sum > 1.0) sum = 1.0;
+        arr[ik] = sum;
+        if (eShifted[ik] >= emin && eShifted[ik] <= emax && sum > g.maxWeight) g.maxWeight = sum;
+      }
+      return arr;
+    });
+    activeBands.push({ spin: b.spin, band: b.band, e: eShifted, gW });
+  });
+
+  // Prune negligible channels (< 2.5% max weight in visible energy window)
+  const keptIdx = [];
+  groups.forEach((g, i) => { if (g.maxWeight >= 0.025) keptIdx.push(i); });
+  if (!keptIdx.length) return null;
+
+  const finalGroups = keptIdx.map(i => groups[i]);
+  const finalBands = activeBands.map(ab => ({
+    spin: ab.spin,
+    band: ab.band,
+    e: ab.e,
+    gW: keptIdx.map(i => ab.gW[i])
+  }));
+
+  // Render interactive channel toggle chips right below toolbar
+  const chipsRow = document.getElementById("castep-fatband-chips");
+  if (chipsRow) {
+    chipsRow.style.display = "flex";
+    chipsRow.innerHTML = `<span style="font-size:11px; font-weight:700; color:#475569; margin-right:3px;">Fat-Band Orbitals:</span>` +
+      finalGroups.map(g => {
+        const off = CASTEP_FATBAND_STATE.hiddenChannels.has(g.key);
+        const disp = _fbHtmlLabel(g.label);
+        return `<button type="button" class="castep-preset-chip" onclick="toggleCastepFatBandChannel('${escapeHtml(g.key)}')" style="border-color:${off ? "#cbd5e1" : g.color}; color:${off ? "#94a3b8" : g.color}; background:${off ? "#f8fafc" : "#ffffff"}; font-weight:700; opacity:${off ? 0.55 : 1};" title="Click to show/hide ${_fbPlainLabel(g.label)} (max weight ${(g.maxWeight * 100).toFixed(0)}%)">
+          <span style="display:inline-block; width:8px; height:8px; border-radius:50%; border:2px solid ${g.color}; margin-right:4px; vertical-align:middle;"></span>${disp}
+        </button>`;
+      }).join("");
+  }
+
+  return {
+    mode,
+    elFilter,
+    style: opts.style || "rings",
+    sizeScale: Math.max(0.4, Math.min(2.5, Number(opts.sizeScale) || 1.0)),
+    sourceKind: proj.source_kind,
+    sourceFile: proj.source_file,
+    kPos,
+    kVecs: proj.k_vecs || [],
+    nk,
+    ns: proj.ns || 1,
+    groups: finalGroups,
+    bands: finalBands
+  };
+}
+window.buildCastepFatBandOverlay = buildCastepFatBandOverlay;
+
+function drawCastepFatBandOverlay(ctx, overlay, geom, st) {
+  if (!overlay || !overlay.bands?.length) return;
+  const { bandX0, padT, bandW, plotH, emin, emax, eToY } = geom;
+  const isRings = overlay.style !== "filled";
+  const sizeScale = overlay.sizeScale || 1.0;
+  const kPos = overlay.kPos;
+  const nk = overlay.nk;
+  const kStepPx = bandW / Math.max(12, nk - 1);
+  const baseMax = Math.max(4.4, Math.min(6.4, kStepPx * 0.58));
+  const rMin = 1.05 * sizeScale;
+  const rMax = baseMax * sizeScale;
+  const groups = overlay.groups;
+  const visibleGrpIndices = [];
+  groups.forEach((g, gi) => { if (!CASTEP_FATBAND_STATE.hiddenChannels.has(g.key)) visibleGrpIndices.push(gi); });
+
+  // 1) Draw thin background Total Band Structure curves (matches light pink reference lines in Open Rings mode!)
+  const totalColor = isRings ? "#f0a3a8" : "#94a3b8";
+  overlay.bands.forEach(b => {
+    const isBeta = b.spin === 1;
+    ctx.strokeStyle = isBeta ? (isRings ? "#c7a3f0" : "#64748b") : totalColor;
+    ctx.lineWidth = Math.max(0.85, (st.lineWidth || 1.5) * 0.55);
+    if (isBeta) ctx.setLineDash([4, 3]); else ctx.setLineDash([]);
+    ctx.beginPath();
+    let started = false;
+    for (let ik = 0; ik < nk; ik++) {
+      const ev = b.e[ik];
+      if (!Number.isFinite(ev)) { started = false; continue; }
+      const px = bandX0 + kPos[ik] * bandW;
+      const py = eToY(ev);
+      if (!started) { ctx.moveTo(px, py); started = true; } else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  });
+  ctx.setLineDash([]);
+
+  // 2) Draw Orbital-Weighted Circles at every (k, E) point (sorted largest-first so smaller rings stay crisp inside!)
+  const screenPts = [];
+  const stride = nk > 95 ? 2 : 1; // keep dense paths ultra-clean without crowding circles
+  overlay.bands.forEach(b => {
+    for (let ik = 0; ik < nk; ik += stride) {
+      const ev = b.e[ik];
+      if (ev < emin - 0.15 || ev > emax + 0.15) continue;
+      const px = bandX0 + kPos[ik] * bandW;
+      const py = eToY(ev);
+      screenPts.push([px, py]);
+
+      // Collect weighted circles for this (k, band)
+      const hits = [];
+      for (let vi = 0; vi < visibleGrpIndices.length; vi++) {
+        const gi = visibleGrpIndices[vi];
+        const w = b.gW[gi][ik];
+        if (w >= 0.05) {
+          const r = rMin + (rMax - rMin) * Math.pow(w, 0.72);
+          hits.push({ gi, r, color: groups[gi].color });
+        }
+      }
+      if (!hits.length) continue;
+      hits.sort((a, b2) => b2.r - a.r); // Largest ring first -> inner rings drawn on top!
+      for (let hi = 0; hi < hits.length; hi++) {
+        const h = hits[hi];
+        ctx.beginPath();
+        ctx.arc(px, py, h.r, 0, Math.PI * 2);
+        if (isRings) {
+          ctx.strokeStyle = h.color;
+          ctx.lineWidth = Math.max(1.05, Math.min(1.65, h.r * 0.28));
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = h.color + "66";
+          ctx.fill();
+          ctx.strokeStyle = h.color;
+          ctx.lineWidth = 0.85;
+          ctx.stroke();
+        }
+      }
+    }
+  });
+
+  // 3) Draw crisp Publication Legend Box (Total — + colored circles ○) in cleanest open space (corners + mid-gap)
+  if (visibleGrpIndices.length) {
+    ctx.save();
+    const legFont = castepPlotFont("legend", 0.94, "bold");
+    ctx.font = legFont;
+    const entries = [{ isTotal: true, label: "Total", color: totalColor }].concat(
+      visibleGrpIndices.map(gi => ({ isTotal: false, label: groups[gi].label, color: groups[gi].color }))
+    );
+    const maxTxtW = Math.max(...entries.map(e => ctx.measureText(_fbPlainLabel(e.label)).width));
+    const legW = Math.min(bandW * 0.44, Math.max(76, maxTxtW * 0.92 + 34));
+    const rowH = Math.max(15, Math.round((st.legendSize || 11) * 1.42));
+    const legH = entries.length * rowH + 10;
+
+    // Score candidate placements: Bottom-Right (reference), Top-Right, Mid-Right (band gap!), Bottom-Left, Top-Left, Mid-Left
+    const midY = Math.max(padT + 8, Math.min(padT + plotH - legH - 8, eToY(Math.max(emin + 0.5, Math.min(emax - 0.5, 0.7))) - legH / 2));
+    const cands = [
+      { x: bandX0 + bandW - legW - 6, y: padT + plotH - legH - 6 },
+      { x: bandX0 + bandW - legW - 6, y: padT + 6 },
+      { x: bandX0 + bandW - legW - 6, y: midY },
+      { x: bandX0 + 6, y: padT + plotH - legH - 6 },
+      { x: bandX0 + 6, y: padT + 6 },
+      { x: bandX0 + 6, y: midY }
+    ];
+    let bestC = cands[0], bestHits = Infinity;
+    cands.forEach(c => {
+      let cnt = 0;
+      for (let i = 0; i < screenPts.length; i++) {
+        const [sx, sy] = screenPts[i];
+        if (sx >= c.x - 5 && sx <= c.x + legW + 5 && sy >= c.y - 5 && sy <= c.y + legH + 5) cnt++;
+      }
+      if (cnt < bestHits) { bestHits = cnt; bestC = c; }
+    });
+
+    ctx.fillStyle = "rgba(255, 255, 255, 0.93)";
+    ctx.strokeStyle = "#334155";
+    ctx.lineWidth = 0.9;
+    ctx.fillRect(bestC.x, bestC.y, legW, legH);
+    ctx.strokeRect(bestC.x, bestC.y, legW, legH);
+
+    entries.forEach((ent, idx) => {
+      const ly = bestC.y + 12 + idx * rowH;
+      const symX = bestC.x + legW - 14;
+      if (ent.isTotal) {
+        ctx.strokeStyle = ent.color;
+        ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.moveTo(symX - 8, ly - 3); ctx.lineTo(symX + 7, ly - 3); ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.arc(symX, ly - 3, 4.6, 0, Math.PI * 2);
+        if (isRings) {
+          ctx.strokeStyle = ent.color;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = ent.color + "77";
+          ctx.fill();
+          ctx.strokeStyle = ent.color;
+          ctx.lineWidth = 1.0;
+          ctx.stroke();
+        }
+      }
+      ctx.fillStyle = "#0f172a";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "alphabetic";
+      if (typeof drawSciText === "function") drawSciText(ctx, ent.label, bestC.x + 8, ly);
+      else ctx.fillText(_fbPlainLabel(ent.label), bestC.x + 8, ly);
+    });
+    ctx.restore();
+  }
+}
+window.drawCastepFatBandOverlay = drawCastepFatBandOverlay;
+
+function lookupCastepFatBandHoverHtml(canvas, mx, my) {
+  const ov = CASTEP_FATBAND_STATE.lastOverlay;
+  const g = canvas?._elecPlotGeom;
+  if (!ov || !g || !ov.bands?.length) return null;
+  if (mx < g.bandX0 || mx > g.bandX0 + g.bandW || my < g.padT || my > g.padT + g.plotH) return null;
+
+  const kNorm = (mx - g.bandX0) / Math.max(1, g.bandW);
+  const eCursor = g.emax - ((my - g.padT) / Math.max(1, g.plotH)) * (g.emax - g.emin);
+
+  // Find closest k index
+  let bestIk = 0, bestKd = Infinity;
+  for (let ik = 0; ik < ov.nk; ik++) {
+    const d = Math.abs(ov.kPos[ik] - kNorm);
+    if (d < bestKd) { bestKd = d; bestIk = ik; }
+  }
+  // Find closest band at bestIk
+  let bestBand = null, bestEd = Infinity;
+  ov.bands.forEach(b => {
+    const d = Math.abs(b.e[bestIk] - eCursor);
+    if (d < bestEd) { bestEd = d; bestBand = b; }
+  });
+  if (!bestBand || bestEd > (g.emax - g.emin) * 0.09) return null;
+
+  const kv = ov.kVecs?.[bestIk] || [0, 0, 0];
+  const contribs = ov.groups.map((grp, gi) => ({
+    label: grp.label, color: grp.color, pct: (bestBand.gW[gi][bestIk] || 0) * 100
+  })).filter(c => c.pct >= 1.5).sort((a, b) => b.pct - a.pct);
+
+  const spinStr = ov.ns >= 2 ? (bestBand.spin === 1 ? " ↓(β)" : " ↑(α)") : "";
+  const chips = contribs.slice(0, 5).map(c => {
+    const disp = _fbHtmlLabel(c.label);
+    return `<span style="color:${c.color}; font-weight:700;">${disp}: ${c.pct.toFixed(1)}%</span>`;
+  }).join(" • ");
+
+  return `<strong>Band #${bestBand.band + 1}${spinStr}</strong> @ k=(${kv[0].toFixed(2)}, ${kv[1].toFixed(2)}, ${kv[2].toFixed(2)}) • <strong>E − E<sub>ref</sub> = ${bestBand.e[bestIk].toFixed(3)} eV</strong> &nbsp;|&nbsp; ${chips || "No orbital weight"}`;
+}
+window.lookupCastepFatBandHoverHtml = lookupCastepFatBandHoverHtml;
+
+function buildCastepFatBandExactTable(ov, bandTicks) {
+  if (!ov || !ov.bands?.length) return null;
+  const tickLbl = (xN) => {
+    for (const t of (bandTicks || [])) {
+      if (Math.abs(t.pos - xN) < 0.006) return t.label === "G" ? "Γ" : t.label;
+    }
+    return "";
+  };
+  const visIdx = [];
+  ov.groups.forEach((g, i) => { if (!CASTEP_FATBAND_STATE.hiddenChannels.has(g.key)) visIdx.push(i); });
+  const headers = [
+    "Spin", "Band", "k_Index", "k_Path_Norm", "HighSym", "Energy_eV",
+    ...visIdx.map(i => `w(${_fbPlainLabel(ov.groups[i].label)})`)
+  ];
+  const rows = [];
+  ov.bands.forEach(b => {
+    const spinTag = ov.ns >= 2 ? (b.spin === 1 ? "Down" : "Up") : "Total";
+    for (let ik = 0; ik < ov.nk; ik++) {
+      const kp = ov.kPos[ik] || 0;
+      rows.push([
+        spinTag, b.band + 1, ik + 1, Number(kp.toFixed(5)), tickLbl(kp), Number(b.e[ik].toFixed(5)),
+        ...visIdx.map(gi => Number((b.gW[gi][ik] || 0).toFixed(4)))
+      ]);
+    }
+  });
+  return {
+    title: `Orbital-Resolved Fat-Band Structure (${ov.mode})`,
+    headers,
+    rows
+  };
+}
+window.buildCastepFatBandExactTable = buildCastepFatBandExactTable;
 
