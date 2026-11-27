@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=163_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=163_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=164_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=164_v116_vesta_viewer'" />
   <!-- Publication Math Typography: STIX Two Text (MathType / Times) + KaTeX 0.16.11 (Word/LaTeX Equation Engine) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -3544,15 +3544,28 @@
             </div>
           </div>
 
-          <!-- Row 2: Axis Formatting, Schematic View & Right-Aligned Export Actions -->
+          <!-- Row 2: Curve Fit Mode, Axis Formatting, Schematic View & Right-Aligned Export Actions -->
           <div class="castep-tb-row">
+            <span class="castep-ctrl-grp" title="Choose point-to-point line, smooth spline interpolation, polynomial regression (Linear..Quartic), or kernel smoothing">
+              <label class="castep-field-lbl" for="pd-fit-mode">Curve:</label>
+              <select id="pd-fit-mode" class="castep-input" style="max-width:136px;" onchange="renderPostDataTab()">
+                <option value="connect" selected>Connect Points</option>
+                <option value="spline">Smooth Spline</option>
+                <option value="poly1">Linear Fit (Deg 1)</option>
+                <option value="poly2">Quadratic Fit (Deg 2)</option>
+                <option value="poly3">Cubic Fit (Deg 3)</option>
+                <option value="poly4">Quartic Fit (Deg 4)</option>
+                <option value="smooth">LOESS Smooth</option>
+                <option value="scatter">Scatter Only</option>
+              </select>
+            </span>
             <span class="castep-ctrl-grp">
               <label class="castep-field-lbl" for="pd-xlabel-input">X Label:</label>
-              <input type="text" id="pd-xlabel-input" class="castep-input" value="Electric Field E (V/Å)" style="width:150px;" oninput="renderPostDataTab()" />
+              <input type="text" id="pd-xlabel-input" class="castep-input" value="Electric Field E (V/Å)" style="width:128px;" oninput="renderPostDataTab()" />
             </span>
             <span class="castep-ctrl-grp" title="Multiply parsed X values by this unit scale factor (e.g. 0.1 to convert ±10 -> ±1.0 V/Å)">
-              <label class="castep-field-lbl" for="pd-x-scale">X Scale:</label>
-              <input type="number" id="pd-x-scale" class="castep-input-sm" value="1.0" step="0.05" style="width:52px;" onchange="renderPostDataTab()" />
+              <label class="castep-field-lbl" for="pd-x-scale">Scale:</label>
+              <input type="number" id="pd-x-scale" class="castep-input-sm" value="1.0" step="0.05" style="width:48px;" onchange="renderPostDataTab()" />
             </span>
             <span class="castep-ctrl-grp">
               <label class="castep-field-lbl" for="pd-schematic-view">View:</label>
@@ -3576,8 +3589,18 @@
               <button type="button" class="btn btn-outline btn-sm pd-tb-btn" onclick="copyPostDataTSV()" title="Copy measured table as TSV for OriginPro / Excel">📋 TSV</button>
               <button type="button" class="btn btn-outline btn-sm pd-tb-btn" onclick="exportPostDataPNG()" title="Save Hi-DPI PNG image">📷 PNG</button>
               <button type="button" class="btn btn-outline btn-sm pd-tb-btn" onclick="exportPostDataCSV()" title="Export active metric table as CSV">📊 CSV</button>
-              <button type="button" class="btn btn-outline btn-sm pd-tb-btn" style="border-color:#0f766e; color:#0f766e;" onclick="exportPostDataXLSX()" title="Export 4-sheet Excel workbook (Δd, Absolute d, Relative %, Linear Slopes)">📗 Excel</button>
+              <button type="button" class="btn btn-outline btn-sm pd-tb-btn" style="border-color:#0f766e; color:#0f766e;" onclick="exportPostDataXLSX()" title="Export 4-sheet Excel workbook (Δd, Absolute d, Relative %, Fit Summary)">📗 Excel</button>
             </div>
+          </div>
+
+          <!-- Row 2A: Custom Any-Two-Layer Distance Adder (Shown in Interlayer mode with >= 3 layers) -->
+          <div id="pd-custom-layer-row" class="castep-tb-row" style="display:none;">
+            <span class="castep-field-lbl" style="color:#0f766e;">Add Any 2-Layer Distance:</span>
+            <select id="pd-custom-layer-a" class="castep-input" style="max-width:170px;"></select>
+            <span style="font-weight:700; color:#64748b;">↔</span>
+            <select id="pd-custom-layer-b" class="castep-input" style="max-width:170px;"></select>
+            <button type="button" id="pd-add-layer-pair-btn" class="btn btn-outline btn-sm pd-tb-btn" style="border-color:#0f766e; color:#0f766e;" onclick="addPostDataCustomLayerPair()">➕ Add Layer Pair</button>
+            <button type="button" id="pd-outer-layer-btn" class="btn btn-outline btn-sm pd-tb-btn" style="border-color:#1d4ed8; color:#1d4ed8;" onclick="addPostDataOuterLayerPair()" title="Quickly add total outer layer-to-layer thickness (L1 ↔ Ln)">➕ Outer (L1–Ln)</button>
           </div>
 
           <!-- Row 2B: Custom Atom-Pair Bond Adder (Shown only in 3D Bond Distances mode) -->
@@ -3630,7 +3653,7 @@
 
         <div class="card" style="padding:14px 16px;">
           <div style="font-size:14px; font-weight:800; color:#0f172a; margin-bottom:8px;">
-            🧭 Atomic Layer Definitions &amp; Linear Field Sensitivity Summary (dd<sub>i</sub> / dX)
+            🧭 Atomic Layer Definitions, Linear Sensitivity &amp; Active Curve Fit Summary
           </div>
           <div style="overflow-x:auto; border:1px solid #e2e8f0; border-radius:8px;">
             <table class="data-table pd-data-table" style="width:100%; font-size:12px; border-collapse:collapse;">
@@ -3641,12 +3664,13 @@
                   <th>Ref d₀ (Å)</th>
                   <th>Min Δd (Å)</th>
                   <th>Max Δd (Å)</th>
-                  <th>Linear Slope dd/dX (Å / unit X)</th>
-                  <th>Linearity R²</th>
+                  <th>Linear Slope dd/dX</th>
+                  <th>Active Fit Model / Equation</th>
+                  <th>R²</th>
                 </tr>
               </thead>
               <tbody id="post-data-summary-tbody">
-                <tr><td colspan="7" style="text-align:center; padding:14px; color:#64748b;">Load CIF structures to inspect atomic layer definitions and linear response slopes.</td></tr>
+                <tr><td colspan="8" style="text-align:center; padding:14px; color:#64748b;">Load crystal structures to inspect atomic layer definitions, linear slopes, and curve fits.</td></tr>
               </tbody>
             </table>
           </div>
@@ -6592,11 +6616,11 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=163_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=163_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=163_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=163_v116_vesta_viewer'"></script>
-  <script src="post_data.js?v=163_v116_vesta_viewer" onerror="this.src='/static/post_data.js?v=163_v116_vesta_viewer'"></script>
-  <script src="dft_theory.js?v=163_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=163_v116_vesta_viewer'"></script>
-  <script src="app.js?v=163_v116_vesta_viewer" onerror="this.src='/static/app.js?v=163_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=164_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=164_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=164_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=164_v116_vesta_viewer'"></script>
+  <script src="post_data.js?v=164_v116_vesta_viewer" onerror="this.src='/static/post_data.js?v=164_v116_vesta_viewer'"></script>
+  <script src="dft_theory.js?v=164_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=164_v116_vesta_viewer'"></script>
+  <script src="app.js?v=164_v116_vesta_viewer" onerror="this.src='/static/app.js?v=164_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
