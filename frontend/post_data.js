@@ -65,7 +65,8 @@ const POST_DATA_COV_RAD = {
 window.POST_DATA_STATE = {
   items: [],            // [{ id, filename, xRaw, xVal, enabled, crystal, rawText }]
   hiddenSeries: new Set(),
-  customPairs: [],      // [{ aIdx, bIdx, label }]
+  customLayerPairs: [], // [{ idxA, idxB }] — any two atomic layers (e.g. L1-L3 Se-S)
+  customPairs: [],      // [{ aIdx, bIdx, label }] — custom 3D bond atom pairs
   lastResult: null,
   hoverInfo: null,
   dragBound: false
@@ -711,6 +712,7 @@ function readPostDataOptions() {
   return {
     measureMode: str("pd-measure-mode", "interlayer"), // "interlayer" | "bonds"
     metricMode: str("pd-metric-mode", "delta"),        // "delta" | "abs" | "pct"
+    fitMode: str("pd-fit-mode", "connect"),            // "connect" | "spline" | "poly1" | "poly2" | "poly3" | "poly4" | "smooth" | "scatter"
     axis: str("pd-stack-axis", "c"),                   // "c" | "b" | "a"
     order: str("pd-layer-order", "top_down"),          // "top_down" | "bottom_up"
     layerTolA: Math.max(0.01, Math.min(2.0, num("pd-layer-tol", 0.15))),
@@ -741,6 +743,261 @@ function _pdLinearFit(xs, ys) {
   return { slope, intercept, r2 };
 }
 
+// ---------------- Curve Fitting & Smooth Interpolation Engine (v164) ----------------
+// Supports: Monotone Cubic Spline (PCHIP), Polynomial OLS (Deg 1..4), Gaussian Kernel Smooth
+
+function _pdSolveLinearSystem(A, b) {
+  const n = b.length;
+  const M = A.map((row, i) => [...row, b[i]]);
+  for (let col = 0; col < n; col++) {
+    let piv = col;
+    for (let r = col + 1; r < n; r++) {
+      if (Math.abs(M[r][col]) > Math.abs(M[piv][col])) piv = r;
+    }
+    if (Math.abs(M[piv][col]) < 1e-14) return null;
+    if (piv !== col) { const tmp = M[col]; M[col] = M[piv]; M[piv] = tmp; }
+    const diag = M[col][col];
+    for (let c = col; c <= n; c++) M[col][c] /= diag;
+    for (let r = 0; r < n; r++) {
+      if (r === col) continue;
+      const f = M[r][col];
+      for (let c = col; c <= n; c++) M[r][c] -= f * M[col][c];
+    }
+  }
+  return M.map(row => row[n]);
+}
+
+function _pdPolyFit(xs, ys, deg) {
+  const n = xs.length;
+  const d = Math.max(1, Math.min(deg, n - 1));
+  if (n < 2) return { degree: 0, coeffs: [ys[0] || 0], r2: 1, evalAt: () => ys[0] || 0, eqText: "const" };
+
+  // Center & normalize X -> u = (x - mx) / sx for numerical stability!
+  let mx = 0;
+  for (let i = 0; i < n; i++) mx += xs[i];
+  mx /= n;
+  let sx = 0;
+  for (let i = 0; i < n; i++) sx += (xs[i] - mx) * (xs[i] - mx);
+  sx = Math.sqrt(sx / n) || 1.0;
+
+  const us = xs.map(x => (x - mx) / sx);
+  const m = d + 1;
+  const A = Array.from({ length: m }, () => new Array(m).fill(0));
+  const b = new Array(m).fill(0);
+  for (let i = 0; i < n; i++) {
+    const p = [1];
+    for (let k = 1; k <= 2 * d; k++) p.push(p[k - 1] * us[i]);
+    for (let r = 0; r < m; r++) {
+      b[r] += p[r] * ys[i];
+      for (let c = 0; c < m; c++) A[r][c] += p[r + c];
+    }
+  }
+  // Tiny ridge regularization only if near-singular
+  for (let r = 0; r < m; r++) A[r][r] += 1e-12;
+  const uCoeffs = _pdSolveLinearSystem(A, b);
+  if (!uCoeffs) {
+    const lf = _pdLinearFit(xs, ys);
+    return {
+      degree: 1,
+      coeffs: [lf.intercept, lf.slope],
+      r2: lf.r2,
+      evalAt: x => lf.intercept + lf.slope * x,
+      eqText: _pdFormatPolyEquation([lf.intercept, lf.slope])
+    };
+  }
+
+  // Convert u-basis polynomial sum_k uCoeffs[k] * ((x - mx)/sx)^k back to exact x-basis coeffs[0..d]
+  const xCoeffs = new Array(m).fill(0);
+  const binom = (nn, kk) => {
+    let res = 1;
+    for (let j = 1; j <= kk; j++) res = res * (nn - j + 1) / j;
+    return res;
+  };
+  for (let k = 0; k <= d; k++) {
+    const ck = uCoeffs[k] / Math.pow(sx, k);
+    for (let j = 0; j <= k; j++) {
+      xCoeffs[j] += ck * binom(k, j) * Math.pow(-mx, k - j);
+    }
+  }
+
+  const evalAt = (x) => {
+    let val = 0;
+    for (let k = d; k >= 0; k--) val = val * x + xCoeffs[k];
+    return val;
+  };
+
+  let my = 0;
+  for (let i = 0; i < n; i++) my += ys[i];
+  my /= n;
+  let ssRes = 0, ssTot = 0;
+  for (let i = 0; i < n; i++) {
+    const e = ys[i] - evalAt(xs[i]);
+    ssRes += e * e;
+    ssTot += (ys[i] - my) * (ys[i] - my);
+  }
+  const r2 = ssTot > 1e-18 ? Math.max(0, Math.min(1, 1 - ssRes / ssTot)) : 1;
+  return { degree: d, coeffs: xCoeffs, r2, evalAt, eqText: _pdFormatPolyEquation(xCoeffs) };
+}
+
+function _pdFormatPolyEquation(coeffs) {
+  if (!coeffs || !coeffs.length) return "—";
+  const sup = ["", "", "²", "³", "⁴"];
+  const fmtNum = (v) => {
+    const av = Math.abs(v);
+    if (av >= 10) return av.toFixed(2);
+    if (av >= 0.1) return av.toFixed(3);
+    if (av >= 0.001) return av.toFixed(4);
+    return av.toExponential(2);
+  };
+  const terms = [];
+  for (let k = coeffs.length - 1; k >= 0; k--) {
+    const c = coeffs[k];
+    if (!isFinite(c) || (Math.abs(c) < 1e-9 && coeffs.length > 1 && k > 0)) continue;
+    const sign = c < 0 ? "−" : (terms.length ? "+" : "");
+    const xPart = k === 0 ? "" : (k === 1 ? "x" : `x${sup[k] || "^" + k}`);
+    terms.push(`${terms.length ? " " : ""}${sign}${terms.length ? " " : ""}${fmtNum(c)}${xPart}`);
+  }
+  return terms.length ? `y = ${terms.join("")}` : "y = 0";
+}
+
+function _pdBuildPchipCurve(xs, ys, nSamples = 220) {
+  // Fritsch-Carlson Monotone Piecewise Cubic Hermite Interpolation (zero overshoot!)
+  const n = xs.length;
+  if (n < 2) return xs.map((x, i) => [x, ys[i]]);
+  if (n === 2) return [[xs[0], ys[0]], [xs[1], ys[1]]];
+
+  // Collapse any duplicate X points by averaging Y so spline denominators are strictly positive
+  const ux = [], uy = [];
+  for (let i = 0; i < n; i++) {
+    if (ux.length && Math.abs(xs[i] - ux[ux.length - 1]) < 1e-9) {
+      uy[uy.length - 1] = 0.5 * (uy[uy.length - 1] + ys[i]);
+    } else {
+      ux.push(xs[i]); uy.push(ys[i]);
+    }
+  }
+  const m = ux.length;
+  if (m < 2) return ux.map((x, i) => [x, uy[i]]);
+  if (m === 2) return [[ux[0], uy[0]], [ux[1], uy[1]]];
+
+  const h = [], delta = [];
+  for (let i = 0; i < m - 1; i++) {
+    h.push(ux[i + 1] - ux[i]);
+    delta.push((uy[i + 1] - uy[i]) / h[i]);
+  }
+  const d = new Array(m).fill(0);
+  // Interior slopes (weighted harmonic mean when slopes share sign)
+  for (let i = 1; i < m - 1; i++) {
+    if (delta[i - 1] * delta[i] > 0) {
+      const w1 = 2 * h[i] + h[i - 1];
+      const w2 = h[i] + 2 * h[i - 1];
+      d[i] = (w1 + w2) / (w1 / delta[i - 1] + w2 / delta[i]);
+    } else {
+      d[i] = 0;
+    }
+  }
+  // Endpoint slopes (non-centered 3-point shape-preserving)
+  const endSlope = (h0, h1, del0, del1) => {
+    let s = ((2 * h0 + h1) * del0 - h0 * del1) / (h0 + h1);
+    if (s * del0 <= 0) return 0;
+    if (del0 * del1 <= 0 && Math.abs(s) > Math.abs(3 * del0)) return 3 * del0;
+    return s;
+  };
+  d[0] = endSlope(h[0], h[1], delta[0], delta[1]);
+  d[m - 1] = endSlope(h[m - 2], h[m - 3], delta[m - 2], delta[m - 3]);
+
+  const pts = [];
+  const x0 = ux[0], x1 = ux[m - 1];
+  const steps = Math.max(80, nSamples);
+  let seg = 0;
+  for (let s = 0; s <= steps; s++) {
+    const x = x0 + (x1 - x0) * (s / steps);
+    while (seg < m - 2 && x > ux[seg + 1]) seg++;
+    const hi = h[seg];
+    const t = Math.max(0, Math.min(1, (x - ux[seg]) / hi));
+    const t2 = t * t, t3 = t2 * t;
+    const h00 = 2 * t3 - 3 * t2 + 1;
+    const h10 = t3 - 2 * t2 + t;
+    const h01 = -2 * t3 + 3 * t2;
+    const h11 = t3 - t2;
+    const y = h00 * uy[seg] + h10 * hi * d[seg] + h01 * uy[seg + 1] + h11 * hi * d[seg + 1];
+    pts.push([x, y]);
+  }
+  return pts;
+}
+
+function _pdBuildKernelSmoothCurve(xs, ys, nSamples = 200) {
+  const n = xs.length;
+  if (n < 2) return xs.map((x, i) => [x, ys[i]]);
+  const x0 = xs[0], x1 = xs[n - 1];
+  const span = Math.max(1e-9, x1 - x0);
+  // Adaptive Gaussian local-linear (LOESS-like) smooth with bandwidth 0.16 * span
+  const bw = Math.max(span * 0.16, span / Math.max(2, n - 1) * 1.35);
+  const evalAt = (xq) => {
+    let sw = 0, swx = 0, swy = 0, swxx = 0, swxy = 0;
+    for (let i = 0; i < n; i++) {
+      const dx = xs[i] - xq;
+      const u = dx / bw;
+      const w = Math.exp(-0.5 * u * u);
+      sw += w; swx += w * dx; swy += w * ys[i];
+      swxx += w * dx * dx; swxy += w * dx * ys[i];
+    }
+    const det = sw * swxx - swx * swx;
+    if (Math.abs(det) > 1e-14) return (swxx * swy - swx * swxy) / det;
+    return sw > 1e-14 ? swy / sw : 0;
+  };
+  let my = 0;
+  for (let i = 0; i < n; i++) my += ys[i];
+  my /= n;
+  let ssRes = 0, ssTot = 0;
+  for (let i = 0; i < n; i++) {
+    const e = ys[i] - evalAt(xs[i]);
+    ssRes += e * e; ssTot += (ys[i] - my) * (ys[i] - my);
+  }
+  const r2 = ssTot > 1e-18 ? Math.max(0, Math.min(1, 1 - ssRes / ssTot)) : 1;
+  const pts = [];
+  for (let s = 0; s <= nSamples; s++) {
+    const x = x0 + span * (s / nSamples);
+    pts.push([x, evalAt(x)]);
+  }
+  return { pts, r2, evalAt };
+}
+
+function _pdComputeSeriesCurveFit(xs, ys, fitMode) {
+  if (!xs.length) return { mode: fitMode, pts: [], r2: NaN, eqText: "—", label: "—" };
+  if (fitMode === "scatter") {
+    return { mode: "scatter", pts: [], r2: NaN, eqText: "Scatter only", label: "Scatter" };
+  }
+  if (fitMode === "connect" || xs.length < 2) {
+    return { mode: "connect", pts: xs.map((x, i) => [x, ys[i]]), r2: NaN, eqText: "Point-to-point", label: "Connect" };
+  }
+  if (fitMode === "spline") {
+    return { mode: "spline", pts: _pdBuildPchipCurve(xs, ys, 220), r2: 1.0, eqText: "Monotone Cubic Spline (PCHIP)", label: "Spline" };
+  }
+  if (fitMode === "smooth") {
+    const sm = _pdBuildKernelSmoothCurve(xs, ys, 200);
+    return { mode: "smooth", pts: sm.pts, r2: sm.r2, eqText: `Local Linear Smooth (R² = ${sm.r2.toFixed(4)})`, label: "Smooth" };
+  }
+  const degMap = { poly1: 1, poly2: 2, poly3: 3, poly4: 4 };
+  const deg = degMap[fitMode] || 1;
+  const pf = _pdPolyFit(xs, ys, deg);
+  const x0 = xs[0], x1 = xs[xs.length - 1];
+  const pts = [];
+  const N = 220;
+  for (let s = 0; s <= N; s++) {
+    const x = x0 + (x1 - x0) * (s / N);
+    pts.push([x, pf.evalAt(x)]);
+  }
+  return {
+    mode: fitMode,
+    degree: pf.degree,
+    coeffs: pf.coeffs,
+    pts,
+    r2: pf.r2,
+    eqText: pf.eqText,
+    label: `Poly ${pf.degree}`
+  };
+}
+
 function computePostDataAnalysis() {
   const opts = readPostDataOptions();
   const activeItems = (POST_DATA_STATE.items || [])
@@ -767,14 +1024,49 @@ function computePostDataAnalysis() {
     seriesDefs = refLayers.spacings.map((sp, idx) => ({
       id: sp.id,
       shortLabel: `d${idx + 1}`,
+      sciLabel: `d_{${idx + 1}}`,
       pairName: sp.pairName,
       fullLabel: `d${idx + 1} (${sp.pairName})`,
       color: POST_DATA_PALETTE[idx % POST_DATA_PALETTE.length],
       refVal: sp.distA,
       kind: "interlayer",
+      isCustom: false,
+      idxA: idx,
+      idxB: idx + 1,
       fromLayer: sp.fromLayer.layerIndex,
       toLayer: sp.toLayer.layerIndex
     }));
+
+    // Append user-selected Custom Any-Two-Layer Distances (e.g. Se–S across L1–L3, or N–P across L1–L7)!
+    const nLay = refLayers.layers.length;
+    const seenCustom = new Set();
+    (POST_DATA_STATE.customLayerPairs || []).forEach(cp => {
+      const a = Math.min(cp.idxA, cp.idxB);
+      const b = Math.max(cp.idxA, cp.idxB);
+      if (a < 0 || b >= nLay || a >= b) return;
+      const key = `${a}_${b}`;
+      if (seenCustom.has(key)) return;
+      seenCustom.add(key);
+      const layA = refLayers.layers[a];
+      const layB = refLayers.layers[b];
+      const pairName = `${layA.elLabel}–${layB.elLabel}`;
+      const cIdx = seriesDefs.length;
+      seriesDefs.push({
+        id: `L${a + 1}_${b + 1}`,
+        shortLabel: `d${a + 1}-${b + 1}`,
+        sciLabel: `d_{${a + 1}-${b + 1}}`,
+        pairName,
+        fullLabel: `d${a + 1}-${b + 1} (${pairName})`,
+        color: POST_DATA_PALETTE[cIdx % POST_DATA_PALETTE.length],
+        refVal: Math.abs(layA.meanH - layB.meanH),
+        kind: "custom_layer",
+        isCustom: true,
+        idxA: a,
+        idxB: b,
+        fromLayer: layA.layerIndex,
+        toLayer: layB.layerIndex
+      });
+    });
   } else {
     const autoPairs = detectReferenceBondPairs(refItem.crystal);
     const merged = [...autoPairs];
@@ -794,21 +1086,23 @@ function computePostDataAnalysis() {
     seriesDefs = merged.map((p, idx) => ({
       id: `b${idx + 1}`,
       shortLabel: `r${idx + 1}`,
+      sciLabel: `r_{${idx + 1}}`,
       pairName: p.label,
       fullLabel: `r${idx + 1} (${p.label})`,
       color: POST_DATA_PALETTE[idx % POST_DATA_PALETTE.length],
       refVal: p.refDistA,
       kind: "bond",
+      isCustom: idx >= autoPairs.length,
       aIdx: p.aIdx,
       bIdx: p.bIdx
     }));
   }
 
-  // Evaluate EVERY CIF structure cleanly!
+  // Evaluate EVERY structure cleanly!
   const refElSeq = refLayers.layers.map(l => l.elLabel).join("-");
   const rows = activeItems.map(it => {
     const lay = unwrapAndClusterCrystalLayers(it.crystal, opts.axis, opts.layerTolA, reverseOrder);
-    // Check if an individual CIF is inverted along stacking axis compared to reference (mirror element order)
+    // Check if an individual structure is inverted along stacking axis compared to reference (mirror element order)
     let useLay = lay;
     if (lay && lay.layers.length === refLayers.layers.length) {
       const elSeq = lay.layers.map(l => l.elLabel).join("-");
@@ -825,6 +1119,10 @@ function computePostDataAnalysis() {
       let v = NaN;
       if (sd.kind === "interlayer") {
         if (useLay && useLay.spacings[idx]) v = useLay.spacings[idx].distA;
+      } else if (sd.kind === "custom_layer") {
+        if (useLay && useLay.layers[sd.idxA] && useLay.layers[sd.idxB]) {
+          v = Math.abs(useLay.layers[sd.idxA].meanH - useLay.layers[sd.idxB].meanH);
+        }
       } else {
         const aA = it.crystal.atoms[sd.aIdx], aB = it.crystal.atoms[sd.bIdx];
         if (aA && aB) v = _pdMinImageDist(aA, aB, it.crystal.vectors);
@@ -852,13 +1150,17 @@ function computePostDataAnalysis() {
     };
   });
 
-  // Compute statistical summary & linear response slope dd_i / dX for each series
+  // Compute statistical summary, linear response slope dd_i/dX, AND active curve fit for each series!
   const seriesStats = seriesDefs.map(sd => {
     const valid = rows.filter(r => isFinite(r.absVals[sd.id]));
     const xs = valid.map(r => r.xPlot);
     const ysAbs = valid.map(r => r.absVals[sd.id]);
     const ysDel = valid.map(r => r.deltaVals[sd.id]);
-    const fit = _pdLinearFit(xs, ysDel);
+    const ysPlot = valid.map(r =>
+      opts.metricMode === "abs" ? r.absVals[sd.id] : (opts.metricMode === "pct" ? r.pctVals[sd.id] : r.deltaVals[sd.id])
+    );
+    const linFit = _pdLinearFit(xs, ysDel);
+    const curveFit = _pdComputeSeriesCurveFit(xs, ysPlot, opts.fitMode);
     const minDel = ysDel.length ? Math.min(...ysDel) : 0;
     const maxDel = ysDel.length ? Math.max(...ysDel) : 0;
     const maxAbsDel = ysDel.length ? Math.max(...ysDel.map(Math.abs)) : 0;
@@ -868,8 +1170,9 @@ function computePostDataAnalysis() {
       minAbs: ysAbs.length ? Math.min(...ysAbs) : NaN,
       maxAbs: ysAbs.length ? Math.max(...ysAbs) : NaN,
       minDel, maxDel, maxAbsDel,
-      slope: fit.slope,
-      r2: fit.r2
+      slope: linFit.slope,
+      r2: linFit.r2,
+      curveFit
     };
   });
 
@@ -1101,28 +1404,44 @@ function drawPostDataCanvas(res) {
     ctx.setLineDash([]);
   }
 
-  // Draw curves + glossy 3D circular markers (OriginPro reference style!)
+  // Draw curves (connect / monotone spline / poly1..poly4 fit / kernel smooth / scatter) + glossy 3D circular markers!
+  const fitMode = res.opts.fitMode || "connect";
+  const isParamFit = /^poly[1-4]$/.test(fitMode) || fitMode === "smooth";
   const markerR = res.rows.length > 28 ? 3.8 : (res.rows.length > 16 ? 4.7 : 5.4);
+  const plottedScreenPts = [];
+
   visibleSeries.forEach(sd => {
     const darkStroke = _pdDarkenHex(sd.color, 0.52);
-    // Solid connecting line
-    ctx.strokeStyle = sd.color;
-    ctx.lineWidth = Math.max(1.4, st.lineWidth || 1.6);
-    ctx.beginPath();
-    let started = false;
-    res.rows.forEach(r => {
-      const v = metric === "abs" ? r.absVals[sd.id] : (metric === "pct" ? r.pctVals[sd.id] : r.deltaVals[sd.id]);
-      if (!isFinite(v)) { started = false; return; }
-      const cx = toX(r.xPlot), cy = toY(v);
-      if (!started) { ctx.moveTo(cx, cy); started = true; } else ctx.lineTo(cx, cy);
-    });
-    ctx.stroke();
 
-    // Glossy 3D circular markers
+    // 1) Draw connecting / smooth / fitted line curve (skipped in scatter-only mode)
+    if (fitMode !== "scatter") {
+      const curvePts = sd.curveFit && sd.curveFit.pts && sd.curveFit.pts.length >= 2
+        ? sd.curveFit.pts
+        : res.rows
+            .map(r => [r.xPlot, metric === "abs" ? r.absVals[sd.id] : (metric === "pct" ? r.pctVals[sd.id] : r.deltaVals[sd.id])])
+            .filter(p => isFinite(p[0]) && isFinite(p[1]));
+
+      if (curvePts.length >= 2) {
+        ctx.strokeStyle = sd.color;
+        ctx.lineWidth = isParamFit ? Math.max(2.0, (st.lineWidth || 1.6) + 0.35) : Math.max(1.4, st.lineWidth || 1.6);
+        ctx.beginPath();
+        let started = false;
+        curvePts.forEach(([xv, yv]) => {
+          if (!isFinite(xv) || !isFinite(yv)) { started = false; return; }
+          const cx = toX(xv), cy = toY(yv);
+          if (!started) { ctx.moveTo(cx, cy); started = true; } else ctx.lineTo(cx, cy);
+        });
+        ctx.stroke();
+      }
+    }
+
+    // 2) Draw glossy 3D circular markers at exact DFT data points
     res.rows.forEach(r => {
       const v = metric === "abs" ? r.absVals[sd.id] : (metric === "pct" ? r.pctVals[sd.id] : r.deltaVals[sd.id]);
       if (!isFinite(v)) return;
-      _pdDrawGlossySphere(ctx, toX(r.xPlot), toY(v), markerR, sd.color, darkStroke);
+      const sxp = toX(r.xPlot), syp = toY(v);
+      plottedScreenPts.push([sxp, syp]);
+      _pdDrawGlossySphere(ctx, sxp, syp, markerR, sd.color, darkStroke);
     });
   });
 
@@ -1189,18 +1508,42 @@ function drawPostDataCanvas(res) {
   else ctx.fillText(yLabel, 0, 0);
   ctx.restore();
 
-  // OriginPro-Style Bordered Legend Box (top-right inside plot)
+  // OriginPro-Style Bordered Legend Box (Smart Collision-Free Corner Placement!)
   if (visibleSeries.length) {
     ctx.save();
     ctx.font = `600 ${Math.max(10.5, st.legendSize)}px ${st.fontFamily}`;
-    const labels = visibleSeries.map(sd => (res.opts.showPairLegend || isBond) ? sd.fullLabel : sd.shortLabel);
+    const labels = visibleSeries.map(sd => {
+      const base = (res.opts.showPairLegend || isBond || sd.kind === "custom_layer") ? sd.fullLabel : sd.shortLabel;
+      if (isParamFit && sd.curveFit && isFinite(sd.curveFit.r2)) {
+        return `${base} (R²=${sd.curveFit.r2.toFixed(3)})`;
+      }
+      return base;
+    });
     const maxTxtW = Math.max(...labels.map(t => ctx.measureText(t).width));
-    const legW = Math.min(pw * 0.48, maxTxtW + 44);
+    const legW = Math.min(pw * 0.56, maxTxtW + 44);
     const rowH = 17.5;
     const legH = visibleSeries.length * rowH + 10;
-    const legX = px + pw - legW - 7;
-    const legY = py + 7;
-    ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+
+    // Score the 4 corners (TR, TL, BR, BL) to dodge plotted data curves automatically!
+    const candidates = [
+      { x: px + pw - legW - 7, y: py + 7 },              // Top-Right (preferred when clear)
+      { x: px + 7, y: py + 7 },                          // Top-Left
+      { x: px + pw - legW - 7, y: py + ph - legH - 7 },  // Bottom-Right
+      { x: px + 7, y: py + ph - legH - 7 }               // Bottom-Left
+    ];
+    let bestCand = candidates[0], bestHits = Infinity;
+    candidates.forEach(c => {
+      let hits = 0;
+      for (let i = 0; i < plottedScreenPts.length; i++) {
+        const [sxP, syP] = plottedScreenPts[i];
+        if (sxP >= c.x - 6 && sxP <= c.x + legW + 6 && syP >= c.y - 6 && syP <= c.y + legH + 6) hits++;
+      }
+      if (hits < bestHits) { bestHits = hits; bestCand = c; }
+    });
+    const legX = bestCand.x;
+    const legY = bestCand.y;
+
+    ctx.fillStyle = "rgba(255, 255, 255, 0.94)";
     ctx.strokeStyle = "#111827";
     ctx.lineWidth = 1.0;
     ctx.fillRect(legX, legY, legW, legH);
@@ -1208,9 +1551,11 @@ function drawPostDataCanvas(res) {
     ctx.textAlign = "left";
     visibleSeries.forEach((sd, i) => {
       const ly = legY + 13 + i * rowH;
-      ctx.strokeStyle = sd.color;
-      ctx.lineWidth = 1.6;
-      ctx.beginPath(); ctx.moveTo(legX + 7, ly - 3); ctx.lineTo(legX + 31, ly - 3); ctx.stroke();
+      if (fitMode !== "scatter") {
+        ctx.strokeStyle = sd.color;
+        ctx.lineWidth = isParamFit ? 2.0 : 1.6;
+        ctx.beginPath(); ctx.moveTo(legX + 7, ly - 3); ctx.lineTo(legX + 31, ly - 3); ctx.stroke();
+      }
       _pdDrawGlossySphere(ctx, legX + 19, ly - 3, 4.3, sd.color, _pdDarkenHex(sd.color, 0.52));
       ctx.fillStyle = "#0f172a";
       ctx.fillText(labels[i], legX + 36, ly + 1);
@@ -1304,8 +1649,10 @@ function drawPostDataLayerSchematic(ctx, res, sx, sy, sw, sh, st) {
     if (!dup) projAtoms.push(at);
   });
 
-  // Coordinate mapping inside schematic box (leave room on left for element labels & right for d1..dN)
-  const boxL = sx + 54;
+  // Coordinate mapping inside schematic box (leave room on left for element labels + custom brackets, right for d1..dN)
+  const customLayerSeries = (res.seriesStats || []).filter(s => s.kind === "custom_layer");
+  const extraLeft = customLayerSeries.length ? (42 + Math.min(3, customLayerSeries.length - 1) * 26) : 0;
+  const boxL = sx + 54 + extraLeft;
   const boxR = sx + sw - (res.opts.showD0OnSchematic ? 96 : 56);
   const boxT = sy + 56;
   const boxB = sy + sh - 26;
@@ -1400,6 +1747,52 @@ function drawPostDataLayerSchematic(ctx, res, sx, sy, sw, sh, st) {
     lastLblY = ly;
     ctx.fillText(L.elLabel, planeX0 - 6, ly);
   });
+
+  // 5B) Draw Left-Side Brackets for Custom Non-Adjacent Layer Pairs (shorter inner, longer outer -> zero crossings!)
+  if (customLayerSeries.length) {
+    const orderedCustom = [...customLayerSeries].sort((a, b) => (a.idxB - a.idxA) - (b.idxB - b.idxA));
+    let lastLeftMidY = -1e9;
+    orderedCustom.forEach((csd, ci) => {
+      const layA = refLay.layers[csd.idxA];
+      const layB = refLay.layers[csd.idxB];
+      if (!layA || !layB) return;
+      const yA = toSY(layA.meanH);
+      const yB = toSY(layB.meanH);
+      const yTop = Math.min(yA, yB), yBot = Math.max(yA, yB);
+      let yMid = 0.5 * (yTop + yBot);
+      if (Math.abs(yMid - lastLeftMidY) < 18) yMid = lastLeftMidY + (yMid >= lastLeftMidY ? 18 : -18);
+      lastLeftMidY = yMid;
+
+      const isHidden = POST_DATA_STATE.hiddenSeries.has(csd.id);
+      const col = isHidden ? "#cbd5e1" : csd.color;
+      const bx = planeX0 - 32 - Math.min(3, ci) * 26;
+      const tickW = 7;
+
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 1.65;
+      ctx.beginPath();
+      ctx.moveTo(bx + tickW, yTop);
+      ctx.lineTo(bx, yTop);
+      ctx.lineTo(bx, yBot);
+      ctx.lineTo(bx + tickW, yBot);
+      ctx.moveTo(bx, yMid);
+      ctx.lineTo(bx - 4, yMid);
+      ctx.stroke();
+
+      ctx.font = `700 11px ${st.fontFamily}`;
+      ctx.textAlign = "right";
+      const lbl = csd.pairName + (res.opts.showD0OnSchematic ? ` (${csd.refVal.toFixed(2)})` : "");
+      // Crisp white halo behind label so nested brackets never obscure text
+      ctx.save();
+      ctx.lineJoin = "round";
+      ctx.lineWidth = 3.6;
+      ctx.strokeStyle = "rgba(255,255,255,0.95)";
+      ctx.strokeText(lbl, bx - 6, yMid + 4);
+      ctx.fillStyle = isHidden ? "#94a3b8" : csd.color;
+      ctx.fillText(lbl, bx - 6, yMid + 4);
+      ctx.restore();
+    });
+  }
 
   // 6) Draw crisp Right-Side Interlayer Spacing Labels d₁, d₂, ..., dₙ (color-coded to match the plot!)
   let lastDY = -1e9;
@@ -1605,6 +1998,7 @@ async function loadPostDataStructureFiles(files, append = false, isFolder = fals
   if (!append) {
     POST_DATA_STATE.items = [];
     POST_DATA_STATE.hiddenSeries.clear();
+    POST_DATA_STATE.customLayerPairs = [];
     POST_DATA_STATE.customPairs = [];
   }
   const startIdx = baseList.length;
@@ -1636,6 +2030,7 @@ window.loadPostDataCifFiles = loadPostDataStructureFiles;
 function clearPostDataCifs() {
   POST_DATA_STATE.items = [];
   POST_DATA_STATE.hiddenSeries.clear();
+  POST_DATA_STATE.customLayerPairs = [];
   POST_DATA_STATE.customPairs = [];
   POST_DATA_STATE.lastResult = null;
   renderPostDataTab();
@@ -1652,6 +2047,7 @@ function resetPostDataSettings() {
   };
   setV("pd-measure-mode", "interlayer");
   setV("pd-metric-mode", "delta");
+  setV("pd-fit-mode", "connect");
   setV("pd-stack-axis", "c");
   setV("pd-layer-order", "top_down");
   setV("pd-layer-tol", "0.15");
@@ -1663,11 +2059,68 @@ function resetPostDataSettings() {
   setV("pd-show-zero-lines", true);
   setV("pd-show-d0-schematic", false);
   POST_DATA_STATE.hiddenSeries.clear();
+  POST_DATA_STATE.customLayerPairs = [];
   POST_DATA_STATE.items.forEach(it => { it.enabled = true; it.xVal = it.xRaw; });
   renderPostDataTab();
   if (typeof showToast === "function") showToast("Reset Post-Data Processing settings to initial defaults.", "info");
 }
 window.resetPostDataSettings = resetPostDataSettings;
+
+function addPostDataCustomLayerPair() {
+  const aEl = document.getElementById("pd-custom-layer-a");
+  const bEl = document.getElementById("pd-custom-layer-b");
+  const res = POST_DATA_STATE.lastResult;
+  if (!aEl || !bEl || !res || !res.refLayers) return;
+  const rawA = parseInt(aEl.value, 10), rawB = parseInt(bEl.value, 10);
+  if (!isFinite(rawA) || !isFinite(rawB) || rawA === rawB) {
+    if (typeof showToast === "function") showToast("Select two distinct atomic layers to track their interlayer spacing.", "warning");
+    return;
+  }
+  const idxA = Math.min(rawA, rawB), idxB = Math.max(rawA, rawB);
+  if (idxB - idxA === 1) {
+    if (typeof showToast === "function") showToast(`Adjacent layers L${idxA + 1}–L${idxB + 1} are already tracked as d${idxA + 1}!`, "info");
+    return;
+  }
+  if (POST_DATA_STATE.customLayerPairs.some(p => p.idxA === idxA && p.idxB === idxB)) {
+    if (typeof showToast === "function") showToast(`Layer pair L${idxA + 1}–L${idxB + 1} is already added.`, "info");
+    return;
+  }
+  POST_DATA_STATE.customLayerPairs.push({ idxA, idxB });
+  const layA = res.refLayers.layers[idxA], layB = res.refLayers.layers[idxB];
+  renderPostDataTab();
+  if (typeof showToast === "function") {
+    showToast(`Added custom layer distance d${idxA + 1}-${idxB + 1} (${layA?.elLabel || "L" + (idxA + 1)}–${layB?.elLabel || "L" + (idxB + 1)})!`, "success");
+  }
+}
+window.addPostDataCustomLayerPair = addPostDataCustomLayerPair;
+
+function addPostDataOuterLayerPair() {
+  const res = POST_DATA_STATE.lastResult;
+  if (!res || !res.refLayers || res.refLayers.layers.length < 3) {
+    if (typeof showToast === "function") showToast("Requires a structure with at least 3 atomic layers.", "warning");
+    return;
+  }
+  const idxA = 0, idxB = res.refLayers.layers.length - 1;
+  if (POST_DATA_STATE.customLayerPairs.some(p => p.idxA === idxA && p.idxB === idxB)) {
+    if (typeof showToast === "function") showToast("Outer slab pair (L1–Ln) is already added.", "info");
+    return;
+  }
+  POST_DATA_STATE.customLayerPairs.push({ idxA, idxB });
+  const layA = res.refLayers.layers[idxA], layB = res.refLayers.layers[idxB];
+  renderPostDataTab();
+  if (typeof showToast === "function") {
+    showToast(`Added outer layer distance d1-${idxB + 1} (${layA.elLabel}–${layB.elLabel})!`, "success");
+  }
+}
+window.addPostDataOuterLayerPair = addPostDataOuterLayerPair;
+
+function removePostDataCustomLayerPair(idxA, idxB, ev) {
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  POST_DATA_STATE.customLayerPairs = POST_DATA_STATE.customLayerPairs.filter(p => !(p.idxA === idxA && p.idxB === idxB));
+  POST_DATA_STATE.hiddenSeries.delete(`L${idxA + 1}_${idxB + 1}`);
+  renderPostDataTab();
+}
+window.removePostDataCustomLayerPair = removePostDataCustomLayerPair;
 
 function togglePostDataSeries(seriesId) {
   if (POST_DATA_STATE.hiddenSeries.has(seriesId)) POST_DATA_STATE.hiddenSeries.delete(seriesId);
@@ -1738,7 +2191,34 @@ function renderPostDataTab() {
   const res = computePostDataAnalysis();
   POST_DATA_STATE.lastResult = res;
 
-  // Toggle custom bond pair bar when in Bond Distances mode
+  // Toggle Custom Layer-Pair Bar (in Interlayer mode with >= 3 layers) & Custom Bond Bar (in Bonds mode)
+  const customLayerWrap = document.getElementById("pd-custom-layer-row");
+  if (customLayerWrap) {
+    const showLay = res && res.opts.measureMode === "interlayer" && res.refLayers && res.refLayers.layers.length >= 3;
+    customLayerWrap.style.display = showLay ? "flex" : "none";
+    if (showLay) {
+      const aSel = document.getElementById("pd-custom-layer-a");
+      const bSel = document.getElementById("pd-custom-layer-b");
+      const sig = `${res.refItem.id}_${res.refLayers.layers.map(l => l.elLabel).join("-")}_${res.opts.order}`;
+      if (aSel && bSel && aSel.dataset.layerSig !== sig) {
+        const layOpts = res.refLayers.layers.map((L, idx) =>
+          `<option value="${idx}">L${idx + 1}: ${escapeHtml(L.elLabel)} (${L.meanH.toFixed(2)} Å)</option>`
+        ).join("");
+        aSel.innerHTML = layOpts;
+        bSel.innerHTML = layOpts;
+        aSel.selectedIndex = 0;
+        bSel.selectedIndex = res.refLayers.layers.length - 1;
+        aSel.dataset.layerSig = sig;
+      }
+      const outerBtn = document.getElementById("pd-outer-layer-btn");
+      if (outerBtn) {
+        const lFirst = res.refLayers.layers[0];
+        const lLast = res.refLayers.layers[res.refLayers.layers.length - 1];
+        outerBtn.textContent = `➕ ${lFirst.elLabel}–${lLast.elLabel} (L1–L${res.refLayers.layers.length})`;
+      }
+    }
+  }
+
   const customBondWrap = document.getElementById("pd-custom-bond-row");
   if (customBondWrap) {
     const showBond = res && res.opts.measureMode === "bonds";
@@ -1756,6 +2236,12 @@ function renderPostDataTab() {
         aSel.dataset.refId = res.refItem.id;
       }
     }
+  }
+
+  // Reset hover readout text cleanly when metric/dataset changes so units never go stale
+  const readoutEl = document.getElementById("post-data-plot-readout");
+  if (readoutEl) {
+    readoutEl.textContent = res ? "Hover over the plot to inspect exact values per structure." : "Load crystal structures to begin analysis.";
   }
 
   // 1) Top KPI Summary Strip
@@ -1776,7 +2262,7 @@ function renderPostDataTab() {
     }
   }
 
-  // 2) Series Toggle Chips (Quick Show/Hide d1..dN)
+  // 2) Series Toggle Chips (Quick Show/Hide d1..dN + Removable Custom Layer Pairs!)
   const chipsEl = document.getElementById("post-data-series-chips");
   if (chipsEl) {
     if (!res || !res.seriesStats.length) {
@@ -1785,8 +2271,11 @@ function renderPostDataTab() {
       chipsEl.innerHTML = `<span style="font-size:11px; font-weight:700; color:#475569; margin-right:4px;">Curves:</span>` +
         res.seriesStats.map(sd => {
           const off = POST_DATA_STATE.hiddenSeries.has(sd.id);
+          const rmSpan = sd.kind === "custom_layer"
+            ? `<span onclick="removePostDataCustomLayerPair(${sd.idxA}, ${sd.idxB}, event)" title="Remove custom layer pair" style="margin-left:5px; padding:0 3px; border-radius:3px; color:#dc2626; font-weight:900;">×</span>`
+            : "";
           return `<button type="button" class="castep-preset-chip" onclick="togglePostDataSeries('${escapeHtml(sd.id)}')" style="border-color:${off ? "#cbd5e1" : sd.color}; color:${off ? "#94a3b8" : sd.color}; background:${off ? "#f8fafc" : "#ffffff"}; font-weight:700; opacity:${off ? 0.55 : 1};" title="Click to toggle ${escapeHtml(sd.fullLabel)} (d₀ = ${sd.refVal.toFixed(4)} Å)">
-            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${sd.color}; margin-right:4px;"></span>${escapeHtml(sd.shortLabel)} (${escapeHtml(sd.pairName)})
+            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${sd.color}; margin-right:4px;"></span>${escapeHtml(sd.shortLabel)} (${escapeHtml(sd.pairName)})${rmSpan}
           </button>`;
         }).join("");
     }
@@ -1858,21 +2347,30 @@ function renderPostDataTab() {
     }
   }
 
-  // 5) Render Table 2: Atomic Layer Definitions & Linear Sensitivity Summary (dd_i / dX)
+  // 5) Render Table 2: Atomic Layer Definitions, Linear Slope & Active Curve Fit Summary
   const sumTbody = document.getElementById("post-data-summary-tbody");
   if (sumTbody) {
     if (!res || !res.seriesStats.length) {
-      sumTbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:14px; color:#64748b;">Load CIF structures to inspect atomic layer definitions and linear response slopes.</td></tr>`;
+      sumTbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:14px; color:#64748b;">Load crystal structures to inspect atomic layer definitions, linear slopes, and curve fits.</td></tr>`;
     } else {
-      sumTbody.innerHTML = res.seriesStats.map(sd => `<tr>
-        <td style="font-weight:800; color:${sd.color};"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${sd.color}; margin-right:5px;"></span>${escapeHtml(sd.shortLabel)}</td>
-        <td style="font-weight:700;">${escapeHtml(sd.pairName)}</td>
-        <td style="font-family:monospace; font-weight:700;">${isFinite(sd.refVal) ? sd.refVal.toFixed(4) : "—"}</td>
-        <td style="font-family:monospace;">${sd.minDel >= 0 ? "+" : ""}${sd.minDel.toFixed(4)}</td>
-        <td style="font-family:monospace;">${sd.maxDel >= 0 ? "+" : ""}${sd.maxDel.toFixed(4)}</td>
-        <td style="font-family:monospace; font-weight:700; color:#0369a1;">${sd.slope >= 0 ? "+" : ""}${sd.slope.toFixed(5)}</td>
-        <td style="font-family:monospace; color:${sd.r2 >= 0.98 ? "#047857" : "#64748b"};">${sd.r2.toFixed(4)}</td>
-      </tr>`).join("");
+      const activeFit = res.opts.fitMode || "connect";
+      const useCurveR2 = /^poly[1-4]$/.test(activeFit) || activeFit === "smooth";
+      sumTbody.innerHTML = res.seriesStats.map(sd => {
+        const cf = sd.curveFit || {};
+        const r2Disp = (useCurveR2 && isFinite(cf.r2)) ? cf.r2 : sd.r2;
+        const eqDisp = cf.eqText || "Point-to-point";
+        const customBadge = sd.kind === "custom_layer" ? ` <span class="pd-fmt-badge" style="background:#fef3c7; color:#b45309; margin-left:4px;">Custom</span>` : "";
+        return `<tr>
+          <td style="font-weight:800; color:${sd.color}; white-space:nowrap;"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${sd.color}; margin-right:5px;"></span>${escapeHtml(sd.shortLabel)}${customBadge}</td>
+          <td style="font-weight:700; white-space:nowrap;">${escapeHtml(sd.pairName)}</td>
+          <td style="font-family:monospace; font-weight:700;">${isFinite(sd.refVal) ? sd.refVal.toFixed(4) : "—"}</td>
+          <td style="font-family:monospace;">${sd.minDel >= 0 ? "+" : ""}${sd.minDel.toFixed(4)}</td>
+          <td style="font-family:monospace;">${sd.maxDel >= 0 ? "+" : ""}${sd.maxDel.toFixed(4)}</td>
+          <td style="font-family:monospace; font-weight:700; color:#0369a1;">${sd.slope >= 0 ? "+" : ""}${sd.slope.toFixed(5)}</td>
+          <td style="font-family:monospace; font-size:11px; color:#334155;">${escapeHtml(eqDisp)}</td>
+          <td style="font-family:monospace; font-weight:700; color:${r2Disp >= 0.98 ? "#047857" : "#64748b"};">${isFinite(r2Disp) ? r2Disp.toFixed(4) : "—"}</td>
+        </tr>`;
+      }).join("");
     }
   }
 }
@@ -1907,12 +2405,16 @@ function buildPostDataExportTables() {
     ...sIds.map(s => isFinite(r.pctVals[s.id]) ? Number(r.pctVals[s.id].toFixed(4)) : "")
   ]);
 
-  const summaryHeaders = ["Series", "Atomic_Pair", "Ref_d0_A", "Min_Delta_A", "Max_Delta_A", "Linear_Slope_A_per_X", "Linear_R2"];
-  const summaryRows = sIds.map(s => [
-    s.shortLabel, s.pairName,
-    Number(s.refVal.toFixed(6)), Number(s.minDel.toFixed(6)), Number(s.maxDel.toFixed(6)),
-    Number(s.slope.toFixed(6)), Number(s.r2.toFixed(5))
-  ]);
+  const summaryHeaders = ["Series", "Atomic_Pair", "Ref_d0_A", "Min_Delta_A", "Max_Delta_A", "Linear_Slope_A_per_X", "Active_Fit_Model", "Fit_R2"];
+  const summaryRows = sIds.map(s => {
+    const cf = s.curveFit || {};
+    const r2Val = isFinite(cf.r2) ? cf.r2 : s.r2;
+    return [
+      s.shortLabel, s.pairName,
+      Number(s.refVal.toFixed(6)), Number(s.minDel.toFixed(6)), Number(s.maxDel.toFixed(6)),
+      Number(s.slope.toFixed(6)), cf.eqText || "Point-to-point", Number((isFinite(r2Val) ? r2Val : 0).toFixed(5))
+    ];
+  });
 
   const seed = String(res.refItem.crystal.formula || "Crystal").replace(/[^A-Za-z0-9_-]/g, "_");
   return {
