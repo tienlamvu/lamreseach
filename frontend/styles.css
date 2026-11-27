@@ -14669,3 +14669,36 @@ textarea.dft-ed-code-surface::placeholder {
   border-color: #2563eb;
   color: #1d4ed8;
 }
+
+/* Post-Data Processing Tab: Multi-CIF Dropzone & Data Tables (v162) */
+.pd-dropzone {
+  border: 2px dashed #cbd5e1;
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, #fdfcf9, #f8fafc);
+  transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+}
+.pd-dropzone:hover {
+  border-color: #0f766e;
+  background: #f0fdfa;
+}
+.pd-dropzone.pd-drop-active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+.pd-data-table th,
+.pd-data-table td {
+  padding: 6px 9px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+  vertical-align: middle;
+}
+.pd-data-table th {
+  font-weight: 800;
+  color: #1e293b;
+  white-space: nowrap;
+}
+.pd-data-table tbody tr:hover {
+  background: #f8fafc;
+}
