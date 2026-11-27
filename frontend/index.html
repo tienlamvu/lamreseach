@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=167_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=167_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=168_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=168_v116_vesta_viewer'" />
   <!-- Publication Math Typography: STIX Two Text (MathType / Times) + KaTeX 0.16.11 (Word/LaTeX Equation Engine) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -2291,129 +2291,131 @@
             <!-- PANE 2: ELECTRONIC BAND STRUCTURE & DOS / PDOS ANALYZER      -->
             <!-- ============================================================ -->
             <div id="castep-pane-electronic" class="castep-stage-pane">
-              <div class="castep-plot-toolbar">
-                <!-- Row 1: Layout, Energy Window & Smearing -->
-                <div class="castep-tb-row">
+              <div class="castep-plot-toolbar castep-elec-deck">
+                <!-- Row 1: Unified Global View Bar (Layout, Energy Window, Zero Ref, Spin, Import, Zoom & Single Reset) -->
+                <div class="castep-tb-row castep-elec-topbar">
                   <span class="castep-ctrl-grp">
-                    <label class="castep-field-lbl">Layout:</label>
-                    <select id="castep-elec-layout" class="castep-input" style="font-weight:700;" onchange="renderCastepElectronicPlots()">
-                      <option value="joint">📊 Band + DOS / PDOS (Side-by-Side)</option>
-                      <option value="band">📈 Band Structure Only</option>
+                    <select id="castep-elec-layout" class="castep-input" style="font-weight:700;" onchange="renderCastepElectronicPlots()" title="Choose Side-by-Side, Band Structure Only, or DOS / PDOS Only">
+                      <option value="joint">📊 Band + PDOS</option>
+                      <option value="band">📈 Band Only</option>
                       <option value="dos">🌊 DOS / PDOS Only</option>
                     </select>
                   </span>
+                  <span class="castep-elec-sep"></span>
                   <span class="castep-ctrl-grp">
-                    <label class="castep-field-lbl">E<sub>min</sub>:</label>
-                    <input type="number" id="castep-elec-emin" class="castep-input-sm" value="-5.0" step="0.5" style="width:64px;" onchange="renderCastepElectronicPlots()" />
+                    <label class="castep-field-lbl" for="castep-elec-emin">E:</label>
+                    <input type="number" id="castep-elec-emin" class="castep-input-sm" value="-5.0" step="0.5" style="width:52px;" title="Minimum Energy E - EF (eV)" onchange="renderCastepElectronicPlots()" />
+                    <span style="font-size:11px; color:#94a3b8; font-weight:700;">–</span>
+                    <input type="number" id="castep-elec-emax" class="castep-input-sm" value="5.0" step="0.5" style="width:52px;" title="Maximum Energy E - EF (eV)" onchange="renderCastepElectronicPlots()" />
+                    <button type="button" class="castep-preset-chip" onclick="setCastepElecWindow(-3,3)">±3</button>
+                    <button type="button" class="castep-preset-chip" onclick="setCastepElecWindow(-5,5)">±5</button>
+                    <button type="button" class="castep-preset-chip" onclick="setCastepElecWindow(-8,8)">±8</button>
+                    <button type="button" class="castep-preset-chip" onclick="setCastepElecWindow(-15,10)">-15..10</button>
                   </span>
+                  <span class="castep-elec-sep"></span>
                   <span class="castep-ctrl-grp">
-                    <label class="castep-field-lbl">E<sub>max</sub>:</label>
-                    <input type="number" id="castep-elec-emax" class="castep-input-sm" value="5.0" step="0.5" style="width:64px;" onchange="renderCastepElectronicPlots()" />
-                  </span>
-                  <span class="castep-ctrl-grp">
-                    <button type="button" class="castep-preset-chip" onclick="setCastepElecWindow(-3,3)">[-3,+3]</button>
-                    <button type="button" class="castep-preset-chip" onclick="setCastepElecWindow(-5,5)">[-5,+5]</button>
-                    <button type="button" class="castep-preset-chip" onclick="setCastepElecWindow(-8,8)">[-8,+8]</button>
-                    <button type="button" class="castep-preset-chip" onclick="setCastepElecWindow(-15,10)">[-15,+10]</button>
-                  </span>
-                  <span class="castep-ctrl-grp" style="margin-left:auto;">
-                    <label class="castep-field-lbl">σ (eV):</label>
-                    <input type="number" id="castep-dos-sigma" class="castep-input-sm" value="0.12" step="0.02" min="0.02" max="0.6" style="width:58px;" title="Gaussian DOS smearing width σ (eV)" onchange="renderCastepElectronicPlots()" />
-                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="resetCastepElectronicSettings()" title="Reset all Band &amp; PDOS settings back to initial defaults">↺ Reset</button>
-                  </span>
-                </div>
-
-                <!-- Row 2: PDOS Mode, Target, Spin, Zero Ref, Load & Zoom -->
-                <div class="castep-tb-row">
-                  <span class="castep-ctrl-grp">
-                    <label class="castep-field-lbl">PDOS:</label>
-                    <select id="castep-pdos-mode" class="castep-input" style="font-weight:700;" onchange="onCastepPdosModeChange()">
-                      <option value="element_orbital">🔬 Element + Orbital</option>
-                      <option value="orbital">⚛️ Orbital (s, p, d, f)</option>
-                      <option value="element">🧬 Element-Resolved</option>
-                      <option value="atom">📍 Atomic-Resolved</option>
+                    <select id="castep-elec-zero-ref" class="castep-input" style="font-weight:700;" onchange="renderCastepElectronicPlots()" title="Synchronize Band Structure and PDOS zero energy reference">
+                      <option value="vbm_auto" selected>🎯 Zero: VBM / E_F</option>
+                      <option value="raw_fermi">⚡ Zero: Raw E_F</option>
                     </select>
+                    <label class="castep-chk-lbl" title="Show Spin-Up (α) states"><input type="checkbox" id="castep-show-spin-up" checked onchange="renderCastepElectronicPlots()" /> ↑(α)</label>
+                    <label class="castep-chk-lbl" title="Show Spin-Down (β) states"><input type="checkbox" id="castep-show-spin-dn" checked onchange="renderCastepElectronicPlots()" /> ↓(β)</label>
                   </span>
-                  <select id="castep-pdos-target-select" class="castep-input" style="max-width:140px;" onchange="renderCastepElectronicPlots()" title="Filter PDOS by specific Element or individual Atom">
-                    <option value="all">All Species</option>
-                  </select>
-                  <select id="castep-pdos-spin-layout" class="castep-input" onchange="renderCastepElectronicPlots()" title="Collinear Spin-Polarized PDOS Display">
-                    <option value="mirror">↕️ Spin Mirror (+α/−β)</option>
-                    <option value="sum">➕ Total (α + β)</option>
-                  </select>
-                  <select id="castep-elec-zero-ref" class="castep-input" style="font-weight:700;" onchange="renderCastepElectronicPlots()" title="Synchronize Band Structure and PDOS zero energy reference">
-                    <option value="vbm_auto" selected>🎯 Zero: VBM / Fermi</option>
-                    <option value="raw_fermi">⚡ Zero: Raw Fermi</option>
-                  </select>
                   <span class="castep-ctrl-grp" style="margin-left:auto;">
                     <input type="file" id="castep-pdos-file-upload" multiple accept=".pdos_bin,.bands,.xcd,.procar,PROCAR" style="display:none;" onchange="handleCastepPdosFilesUpload(event)" />
-                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="document.getElementById('castep-pdos-file-upload').click()" title="Load CASTEP *.pdos_bin, *_BandStr.pdos_bin, *.bands, *.xcd, or VASP PROCAR">📥 .pdos_bin/.bands/PROCAR</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="document.getElementById('castep-pdos-file-upload').click()" title="Import CASTEP *.pdos_bin, *_BandStr.pdos_bin, *.bands, *.xcd, or VASP PROCAR">📥 Import</button>
                     <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('electronic', 1.25)" title="Zoom In Energy Window">🔍＋</button>
                     <button type="button" class="castep-preset-chip" onclick="zoomCastepPlot('electronic', 0.80)" title="Zoom Out Energy Window">🔍－</button>
-                    <button type="button" class="castep-preset-chip" onclick="resetCastepPlotZoom('electronic')" title="Reset Zoom">⊡ Reset</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="resetCastepElectronicSettings()" title="Reset all Band &amp; PDOS settings and zoom to initial defaults">↺ Reset</button>
                   </span>
                 </div>
 
-                <!-- Row 2B: Orbital-Resolved Band Structure (Fat-Band) Controls -->
-                <div class="castep-tb-row" id="castep-fatband-row">
-                  <span class="castep-ctrl-grp">
-                    <label class="castep-field-lbl" for="castep-fatband-mode" title="Overlay orbital/element projection circles (Fat-Bands) on Band Structure when *.pdos_bin or PROCAR data is available">Orbital Bands:</label>
-                    <select id="castep-fatband-mode" class="castep-input" style="font-weight:700;" onchange="if(window.CASTEP_FATBAND_STATE) CASTEP_FATBAND_STATE.hiddenChannels.clear(); renderCastepElectronicPlots()">
-                      <option value="off" selected>Standard Bands (Off)</option>
-                      <option value="suborbital">🎯 Sub-Orbital (s, px,y, pz, d…)</option>
-                      <option value="orbital_l">⚛️ Orbital Shell (s, p, d, f)</option>
-                      <option value="element">🧬 Element-Resolved</option>
-                      <option value="element_orbital">🔬 Element + Orbital</option>
-                    </select>
-                  </span>
-                  <span class="castep-ctrl-grp">
-                    <label class="castep-field-lbl" for="castep-fatband-el">Target:</label>
-                    <select id="castep-fatband-el" class="castep-input" style="max-width:124px;" onchange="if(window.CASTEP_FATBAND_STATE) CASTEP_FATBAND_STATE.hiddenChannels.clear(); renderCastepElectronicPlots()">
-                      <option value="all">All Elements</option>
-                    </select>
-                  </span>
-                  <span class="castep-ctrl-grp">
-                    <label class="castep-field-lbl" for="castep-fatband-style">Style:</label>
-                    <select id="castep-fatband-style" class="castep-input" onchange="renderCastepElectronicPlots()">
-                      <option value="rings" selected>○ Open Rings</option>
-                      <option value="filled">● Filled Bubbles</option>
-                    </select>
-                  </span>
-                  <span class="castep-ctrl-grp" title="Scale circle radius multiplier for orbital weights">
-                    <label class="castep-field-lbl" for="castep-fatband-size">Size:</label>
-                    <input type="number" id="castep-fatband-size" class="castep-input-sm" value="1.0" min="0.4" max="2.5" step="0.2" style="width:48px;" onchange="renderCastepElectronicPlots()" />
-                  </span>
-                  <span id="castep-fatband-status-badge" style="margin-left:auto; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; border:1px solid #cbd5e1; background:#f1f5f9; color:#64748b; white-space:nowrap;">No orbital data</span>
+                <!-- Row 2: Two Clean Side-by-Side Control Cards Aligned Directly Over Band Structure | DOS / PDOS -->
+                <div id="castep-elec-cards-grid" class="castep-elec-split" data-layout="joint">
+                  <!-- Left Card: Band Structure & Fat-Bands -->
+                  <div id="castep-elec-band-card" class="castep-elec-card castep-elec-card-band">
+                    <div class="castep-elec-card-hd">
+                      <span class="castep-elec-card-title">📈 Band Structure</span>
+                      <span id="castep-fatband-status-badge" class="castep-elec-badge">No orbital data</span>
+                    </div>
+                    <div class="castep-elec-card-row" id="castep-fatband-row">
+                      <select id="castep-fatband-mode" class="castep-input" style="font-weight:700; max-width:176px;" onchange="if(window.CASTEP_FATBAND_STATE) CASTEP_FATBAND_STATE.hiddenChannels.clear(); renderCastepElectronicPlots()" title="Overlay orbital/element projection circles (Fat-Bands) on Band Structure">
+                        <option value="off" selected>Standard Bands (Off)</option>
+                        <option value="suborbital">🎯 Sub-Orbital (s, px,y, dz²)</option>
+                        <option value="orbital_l">⚛️ Orbital Shell (s, p, d, f)</option>
+                        <option value="element">🧬 Element-Resolved</option>
+                        <option value="element_orbital">🔬 Element + Orbital</option>
+                      </select>
+                      <select id="castep-fatband-el" class="castep-input" style="max-width:98px;" onchange="if(window.CASTEP_FATBAND_STATE) CASTEP_FATBAND_STATE.hiddenChannels.clear(); renderCastepElectronicPlots()" title="Filter Fat-Band projection by element">
+                        <option value="all">All Elements</option>
+                      </select>
+                      <span id="castep-fatband-style-row" class="castep-ctrl-grp" style="display:none;">
+                        <select id="castep-fatband-style" class="castep-input" style="max-width:86px;" onchange="renderCastepElectronicPlots()" title="Fat-Band marker style">
+                          <option value="rings" selected>○ Rings</option>
+                          <option value="filled">● Bubbles</option>
+                        </select>
+                        <input type="number" id="castep-fatband-size" class="castep-input-sm" value="1.0" min="0.4" max="2.5" step="0.2" style="width:44px;" title="Circle radius scale multiplier" onchange="renderCastepElectronicPlots()" />
+                      </span>
+                    </div>
+                    <div id="castep-fatband-chips" class="castep-elec-chips" style="display:none;"></div>
+                  </div>
+
+                  <!-- Right Card: DOS & Orbital-Resolved PDOS -->
+                  <div id="castep-elec-dos-card" class="castep-elec-card castep-elec-card-dos">
+                    <div class="castep-elec-card-hd">
+                      <span class="castep-elec-card-title">🌊 DOS / PDOS</span>
+                      <span class="castep-ctrl-grp" style="gap:5px; margin-left:auto;">
+                        <label class="castep-chk-lbl" title="Show Total DOS"><input type="checkbox" id="castep-show-dos-total" checked onchange="renderCastepElectronicPlots()" /> Tot</label>
+                        <label class="castep-chk-lbl" title="Include s-shell"><input type="checkbox" id="castep-show-dos-s" checked onchange="renderCastepElectronicPlots()" /> <span style="color:#ef4444; font-weight:700;">s</span></label>
+                        <label class="castep-chk-lbl" title="Include p-shell"><input type="checkbox" id="castep-show-dos-p" checked onchange="renderCastepElectronicPlots()" /> <span style="color:#16a34a; font-weight:700;">p</span></label>
+                        <label class="castep-chk-lbl" title="Include d-shell"><input type="checkbox" id="castep-show-dos-d" checked onchange="renderCastepElectronicPlots()" /> <span style="color:#2563eb; font-weight:700;">d</span></label>
+                        <label class="castep-chk-lbl" title="Include f-shell"><input type="checkbox" id="castep-show-dos-f" checked onchange="renderCastepElectronicPlots()" /> <span style="color:#9333ea; font-weight:700;">f</span></label>
+                        <span class="castep-elec-sep"></span>
+                        <label class="castep-field-lbl" for="castep-dos-sigma" title="Gaussian DOS smearing width σ (eV)">σ:</label>
+                        <input type="number" id="castep-dos-sigma" class="castep-input-sm" value="0.12" step="0.02" min="0.02" max="0.6" style="width:50px;" title="Gaussian DOS smearing width σ (eV)" onchange="renderCastepElectronicPlots()" />
+                      </span>
+                    </div>
+                    <div class="castep-elec-card-row">
+                      <select id="castep-pdos-mode" class="castep-input" style="font-weight:700; max-width:186px;" onchange="onCastepPdosModeChange()" title="Choose Orbital-Resolved, Sub-Orbital, Element, or Atomic PDOS breakdown">
+                        <option value="element_orbital">🔬 El + Orbital (s, p, d)</option>
+                        <option value="element_suborbital">🎯 El + Sub-Orbital (dz², pz)</option>
+                        <option value="suborbital">🌈 Sub-Orbital (s, px,y, dz²)</option>
+                        <option value="m_orbital">📐 Full m-Orbital (px, py, dxy)</option>
+                        <option value="orbital">⚛️ Orbital Shell (s, p, d, f)</option>
+                        <option value="element">🧬 Element-Resolved</option>
+                        <option value="atom">📍 Atomic-Resolved</option>
+                      </select>
+                      <select id="castep-pdos-target-select" class="castep-input" style="max-width:104px;" onchange="if(window.CASTEP_PDOS_STATE) CASTEP_PDOS_STATE.hiddenCurves.clear(); renderCastepElectronicPlots()" title="Filter PDOS by specific Element or individual Atom">
+                        <option value="all">All Species</option>
+                      </select>
+                      <select id="castep-pdos-spin-layout" class="castep-input" style="max-width:96px;" onchange="renderCastepElectronicPlots()" title="Collinear Spin-Polarized PDOS Display">
+                        <option value="mirror">↕ Mirror</option>
+                        <option value="sum">➕ α + β</option>
+                      </select>
+                    </div>
+                    <div id="castep-pdos-chips" class="castep-elec-chips" style="display:none;"></div>
+                  </div>
                 </div>
 
-                <!-- Interactive Fat-Band Orbital Toggle Chips (Shown only when Fat-Band mode is active) -->
-                <div id="castep-fatband-chips" class="castep-tb-row" style="display:none; gap:5px; padding-top:4px;"></div>
-
-                <!-- Row 3: Active Channels & Full Figure / Data Actions -->
-                <div class="castep-tb-row">
-                  <span class="castep-ctrl-grp" style="gap:6px;">
-                    <span class="castep-field-lbl">Channels:</span>
-                    <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-dos-total" checked onchange="renderCastepElectronicPlots()" /> Total</label>
-                    <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-dos-s" checked onchange="renderCastepElectronicPlots()" /> <span style="color:#2563eb;">● s</span></label>
-                    <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-dos-p" checked onchange="renderCastepElectronicPlots()" /> <span style="color:#16a34a;">● p</span></label>
-                    <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-dos-d" checked onchange="renderCastepElectronicPlots()" /> <span style="color:#dc2626;">● d</span></label>
-                    <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-dos-f" checked onchange="renderCastepElectronicPlots()" /> <span style="color:#9333ea;">● f</span></label>
-                    <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-spin-up" checked onchange="renderCastepElectronicPlots()" /> ↑(α)</label>
-                    <label class="castep-chk-lbl"><input type="checkbox" id="castep-show-spin-dn" checked onchange="renderCastepElectronicPlots()" /> ↓(β)</label>
-                  </span>
-                  <div class="castep-tb-actions">
-                    <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="copyCastepCanvasHD('castep-electronic-canvas', 'Band & PDOS (Full)')" title="Copy FULL Band &amp; PDOS Image (400–600 DPI) to Clipboard — right-click Band or PDOS half to copy separately">📋 Copy HD</button>
-                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="copyCastepPlotData('electronic', 'full')" title="Copy FULL Band &amp; PDOS numerical data (TSV → Excel / OriginPro; right-click to copy Band or PDOS separately)">📋 Copy Data</button>
+                <!-- Row 3: Slim Export Bar + Quick Analysis Links -->
+                <div class="castep-tb-row castep-elec-footer">
+                  <div class="castep-ctrl-grp" style="gap:4px; flex-wrap:wrap;">
+                    <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="copyCastepCanvasHD('castep-electronic-canvas', 'Band & PDOS (Full)')" title="Copy FULL Band &amp; PDOS Image (400–600 DPI) — right-click Band or PDOS half to copy separately">📋 Copy HD</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="copyCastepPlotData('electronic', 'full')" title="Copy FULL Band &amp; PDOS numerical data (TSV → Excel / OriginPro)">📋 Copy Data</button>
                     <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepCanvasPNG('castep-electronic-canvas', 'CASTEP_Band_PDOS.png')">📷 PNG</button>
                     <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepElectronicCSV('pdos')" title="Export all displayed PDOS columns to CSV">📊 PDOS CSV</button>
                     <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepElectronicCSV('band')" title="Export Band Structure k-path and every band column to CSV">📈 Band CSV</button>
                     <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="exportCastepElectronicXLSX()" title="Export multi-tab Excel workbook (PDOS, Band Spin Up/Down, High-Symmetry k-Points)">📗 Excel</button>
                   </div>
+                  <div class="castep-tb-actions">
+                    <button type="button" class="castep-preset-chip" style="font-weight:700; color:#1d4ed8; border-color:#93c5fd; background:#f8fbff;" onclick="switchCastepStagePane('transport')" title="Analyze Carrier Effective Mass (m*e, m*h), Mobility &amp; Drude Relaxation Time">⚡ m* &amp; Drude →</button>
+                    <button type="button" class="castep-preset-chip" style="font-weight:700; color:#b45309; border-color:#fcd34d; background:#fffbeb;" onclick="switchCastepStagePane('stoner')" title="Calculate Exchange Splitting (Δex), Spin Polarization P(EF), Magnetic Moment &amp; Stoner Criterion">🧭 Stoner &amp; P(E<sub>F</sub>) →</button>
+                  </div>
                 </div>
               </div>
 
-              <!-- Band Gap & Electronic Summary Strip -->
-              <div id="castep-electronic-summary-strip" class="castep-elec-summary-strip"></div>
+              <!-- Compact Single-Row Electronic Summary Strip -->
+              <div id="castep-electronic-summary-strip" class="castep-elec-summary-strip castep-elec-summary-slim"></div>
 
               <!-- High-DPI Electronic Plot Canvas -->
               <div class="castep-plot-canvas-card">
@@ -6654,11 +6656,11 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=167_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=167_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=167_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=167_v116_vesta_viewer'"></script>
-  <script src="post_data.js?v=167_v116_vesta_viewer" onerror="this.src='/static/post_data.js?v=167_v116_vesta_viewer'"></script>
-  <script src="dft_theory.js?v=167_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=167_v116_vesta_viewer'"></script>
-  <script src="app.js?v=167_v116_vesta_viewer" onerror="this.src='/static/app.js?v=167_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=168_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=168_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=168_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=168_v116_vesta_viewer'"></script>
+  <script src="post_data.js?v=168_v116_vesta_viewer" onerror="this.src='/static/post_data.js?v=168_v116_vesta_viewer'"></script>
+  <script src="dft_theory.js?v=168_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=168_v116_vesta_viewer'"></script>
+  <script src="app.js?v=168_v116_vesta_viewer" onerror="this.src='/static/app.js?v=168_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
