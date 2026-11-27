@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=161_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=161_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=162_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=162_v116_vesta_viewer'" />
   <!-- Publication Math Typography: STIX Two Text (MathType / Times) + KaTeX 0.16.11 (Word/LaTeX Equation Engine) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -82,6 +82,7 @@
           <option value="calendar">📅 Calendar &amp; Google Calendar</option>
           <option value="structures">💎 Crystal Structures (*.cif)</option>
           <option value="castep">📊 Data Analysis</option>
+          <option value="post-data">📐 Post-Data Processing</option>
           <option value="weekly-report" class="admin-only">📽️ Weekly Report (PPTX)</option>
           <option value="manuscript">🎯 Journal Finder &amp; Plagiarism</option>
           <option value="toolkit">⚛️ Periodic Table &amp; Calc</option>
@@ -119,6 +120,9 @@
         </button>
         <button class="nav-btn" data-tab="castep" onclick="switchTab('castep', this)">
           <span class="nav-icon">📊</span> Data Analysis
+        </button>
+        <button class="nav-btn" data-tab="post-data" onclick="switchTab('post-data', this)">
+          <span class="nav-icon">📐</span> Post-Data Processing
         </button>
         <button class="nav-btn admin-only" data-tab="weekly-report" onclick="switchTab('weekly-report', this)">
           <span class="nav-icon">📽️</span> Weekly Report
@@ -3441,6 +3445,207 @@
       </section>
 
       <!-- ================================================================ -->
+      <!-- TAB: POST-DATA PROCESSING (MULTI-CIF INTERLAYER & BOND ANALYZER) -->
+      <!-- ================================================================ -->
+      <section id="tab-post-data" class="tab-pane">
+        <!-- Multi-CIF Dropzone & Batch Loader Card -->
+        <div class="card" style="padding:14px 16px; margin-bottom:12px;">
+          <div id="pd-cif-dropzone" class="pd-dropzone">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;">
+              <div style="display:flex; align-items:center; gap:12px; min-width:260px; flex:1;">
+                <div style="width:42px; height:42px; border-radius:10px; background:linear-gradient(135deg,#0f766e,#1d4ed8); color:#fff; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; box-shadow:0 3px 10px rgba(15,118,110,0.22);">📐</div>
+                <div>
+                  <div style="font-size:15px; font-weight:800; color:#0f172a;">Multi-CIF Interlayer &amp; Atomic Distance Post-Processor</div>
+                  <div style="font-size:12px; color:#475569; margin-top:2px;">
+                    Drop or select multiple optimized <code>*.cif</code> structures (e.g., across Electric Fields <code>E</code>, Strains, or Pressures). Automatically unwraps periodic slabs, clusters atomic layers <strong>d<sub>1</sub>, d<sub>2</sub>, …, d<sub>n</sub></strong>, plots Δd<sub>i</sub> vs. parameter, and renders a live side-view crystal schematic.
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <label class="btn btn-primary btn-sm" style="cursor:pointer; margin:0; display:inline-flex; align-items:center; gap:5px;">
+                  📂 Select CIF Files
+                  <input type="file" id="pd-cif-files-input" accept=".cif" multiple style="display:none;" onchange="handlePostDataCifUpload(event, false)" />
+                </label>
+                <label class="btn btn-outline btn-sm" style="cursor:pointer; margin:0; display:inline-flex; align-items:center; gap:5px;">
+                  📁 Load Folder
+                  <input type="file" id="pd-cif-folder-input" webkitdirectory directory multiple style="display:none;" onchange="handlePostDataCifUpload(event, false)" />
+                </label>
+                <label class="btn btn-outline btn-sm" style="cursor:pointer; margin:0; display:inline-flex; align-items:center; gap:5px;" title="Append additional CIF files to the current dataset">
+                  ➕ Append CIFs
+                  <input type="file" id="pd-cif-append-input" accept=".cif" multiple style="display:none;" onchange="handlePostDataCifUpload(event, true)" />
+                </label>
+                <button type="button" class="btn btn-outline btn-sm" style="color:#dc2626; border-color:#fecaca;" onclick="clearPostDataCifs()">🗑️ Clear</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top KPI Summary Strip -->
+          <div id="post-data-summary-strip" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:10px; padding:8px 12px; border-radius:8px; background:#f8fafc; border:1px solid #dbe4f0; font-size:12px; color:#334155;">
+            <span>Upload multiple optimized <code>*.cif</code> structures to automatically analyze atomic layer spacings <strong>d<sub>1</sub>, d<sub>2</sub>, …, d<sub>n</sub></strong>.</span>
+          </div>
+        </div>
+
+        <!-- Master Analysis Settings & Export Toolbar -->
+        <div class="castep-plot-toolbar" style="margin-bottom:10px;">
+          <!-- Row 1: Core Measurement & Layer Clustering Controls -->
+          <div class="castep-toolbar-row" style="justify-content:space-between; width:100%; gap:6px;">
+            <div style="display:flex; align-items:center; gap:7px; flex-wrap:wrap;">
+              <label style="font-size:11.5px; font-weight:700; color:#334155; display:inline-flex; align-items:center; gap:4px;">
+                Measure:
+                <select id="pd-measure-mode" class="castep-select-sm" style="max-width:165px;" onchange="renderPostDataTab()">
+                  <option value="interlayer" selected>Interlayer (d₁, d₂, …)</option>
+                  <option value="bonds">3D Bonds (r₁, r₂, …)</option>
+                </select>
+              </label>
+              <label style="font-size:11.5px; font-weight:700; color:#334155; display:inline-flex; align-items:center; gap:4px;">
+                Metric:
+                <select id="pd-metric-mode" class="castep-select-sm" style="max-width:148px;" onchange="renderPostDataTab()">
+                  <option value="delta" selected>Δd = d − d(ref) (Å)</option>
+                  <option value="abs">Absolute d (Å)</option>
+                  <option value="pct">Relative Δd/d₀ (%)</option>
+                </select>
+              </label>
+              <label style="font-size:11.5px; font-weight:700; color:#334155; display:inline-flex; align-items:center; gap:4px;">
+                Axis:
+                <select id="pd-stack-axis" class="castep-select-sm" onchange="renderPostDataTab()">
+                  <option value="c" selected>c (z)</option>
+                  <option value="b">b (y)</option>
+                  <option value="a">a (x)</option>
+                </select>
+              </label>
+              <label style="font-size:11.5px; font-weight:700; color:#334155; display:inline-flex; align-items:center; gap:4px;">
+                Order:
+                <select id="pd-layer-order" class="castep-select-sm" onchange="renderPostDataTab()">
+                  <option value="top_down" selected>Top → Bottom</option>
+                  <option value="bottom_up">Bottom → Top</option>
+                </select>
+              </label>
+              <label style="font-size:11.5px; font-weight:700; color:#334155; display:inline-flex; align-items:center; gap:4px;" title="Maximum vertical offset (Å) to group atoms into the same atomic plane">
+                Δz Tol:
+                <input type="number" id="pd-layer-tol" class="castep-input-sm" value="0.15" min="0.01" max="2.0" step="0.05" style="width:54px;" onchange="renderPostDataTab()" />
+              </label>
+              <label style="font-size:11.5px; font-weight:700; color:#334155; display:inline-flex; align-items:center; gap:4px;">
+                Ref:
+                <select id="pd-ref-select" class="castep-select-sm" style="max-width:150px;" onchange="renderPostDataTab()">
+                  <option value="auto" selected>Auto (X ≈ 0)</option>
+                </select>
+              </label>
+            </div>
+            <button type="button" id="pd-reset-btn" class="castep-preset-chip" style="border-color:#cbd5e1; background:#f8fafc; color:#334155; font-weight:700; margin-left:auto;" onclick="resetPostDataSettings()" title="Restore default measurement, axis, legend, and X-value settings">↺ Reset</button>
+          </div>
+
+          <!-- Row 2: Axis Formatting, Schematic View & Export Actions -->
+          <div class="castep-toolbar-row" style="justify-content:space-between; width:100%; margin-top:4px; padding-top:6px; border-top:1px dashed #e2e8f0;">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <label style="font-size:11.5px; font-weight:700; color:#334155; display:inline-flex; align-items:center; gap:4px;">
+                X Label:
+                <input type="text" id="pd-xlabel-input" class="castep-input-sm" value="Electric Field E (V/Å)" style="width:162px;" oninput="renderPostDataTab()" />
+              </label>
+              <label style="font-size:11.5px; font-weight:700; color:#334155; display:inline-flex; align-items:center; gap:4px;" title="Multiply parsed filename X values by this unit conversion factor (e.g. 0.1 to convert ±10 -> ±1.0 V/Å)">
+                X Scale:
+                <input type="number" id="pd-x-scale" class="castep-input-sm" value="1.0" step="0.05" style="width:62px;" onchange="renderPostDataTab()" />
+              </label>
+              <label style="font-size:11.5px; font-weight:700; color:#334155; display:inline-flex; align-items:center; gap:4px;">
+                Side View:
+                <select id="pd-schematic-view" class="castep-select-sm" onchange="renderPostDataTab()">
+                  <option value="a" selected>Along a</option>
+                  <option value="b">Along b</option>
+                  <option value="110">Along [110]</option>
+                </select>
+              </label>
+              <label style="font-size:11.5px; font-weight:600; color:#334155; display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
+                <input type="checkbox" id="pd-show-pair-legend" onchange="renderPostDataTab()" /> Pairs in Legend
+              </label>
+              <label style="font-size:11.5px; font-weight:600; color:#334155; display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
+                <input type="checkbox" id="pd-show-zero-lines" checked onchange="renderPostDataTab()" /> Zero Guides
+              </label>
+              <label style="font-size:11.5px; font-weight:600; color:#334155; display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
+                <input type="checkbox" id="pd-show-d0-schematic" onchange="renderPostDataTab()" /> Show d₀ on Schematic
+              </label>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-primary btn-sm" style="padding:4px 10px; font-size:11.5px;" onclick="copyPostDataHD()">📋 Copy HD</button>
+              <button type="button" class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11.5px;" onclick="copyPostDataTSV()">📋 Copy Data (TSV)</button>
+              <button type="button" class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11.5px;" onclick="exportPostDataPNG()">📷 PNG</button>
+              <button type="button" class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11.5px;" onclick="exportPostDataCSV()">📊 CSV</button>
+              <button type="button" class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11.5px; border-color:#0f766e; color:#0f766e;" onclick="exportPostDataXLSX()">📗 Excel (.xlsx)</button>
+            </div>
+          </div>
+
+          <!-- Row 2B: Custom Atom-Pair Bond Adder (Shown only in 3D Bond Distances mode) -->
+          <div id="pd-custom-bond-row" class="castep-toolbar-row" style="display:none; width:100%; margin-top:4px; padding-top:6px; border-top:1px dashed #e2e8f0; gap:8px;">
+            <span style="font-size:11.5px; font-weight:700; color:#0f766e;">Custom Atom Pair:</span>
+            <select id="pd-custom-atom-a" class="castep-select-sm"></select>
+            <span style="font-weight:700; color:#64748b;">—</span>
+            <select id="pd-custom-atom-b" class="castep-select-sm"></select>
+            <button type="button" class="btn btn-outline btn-sm" style="padding:3px 10px; font-size:11.5px;" onclick="addPostDataCustomBondPair()">➕ Track Bond Pair</button>
+          </div>
+        </div>
+
+        <!-- Interactive Curve Show/Hide Toggle Chips -->
+        <div id="post-data-series-chips" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:10px;"></div>
+
+        <!-- Publication Dual Canvas Card (Left: OriginPro Δd vs X Plot | Right: Live Atomic Layer Schematic) -->
+        <div class="card" style="padding:12px 14px; margin-bottom:14px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:8px;">
+            <div style="font-size:13px; font-weight:800; color:#0f172a;">
+              📈 Interlayer Distance Evolution &amp; Side-View Atomic Layer Schematic
+              <span style="font-size:11px; font-weight:600; color:#64748b; margin-left:6px;">💡 Right-click either sub-panel to copy HD image or data individually</span>
+            </div>
+            <div id="post-data-plot-readout" style="font-size:11.5px; color:#475569;">Hover over the plot to inspect exact values per CIF structure.</div>
+          </div>
+          <div style="width:100%; overflow-x:auto; text-align:center;">
+            <canvas id="post-data-main-canvas" style="display:block; margin:0 auto; border:1px solid #e2e8f0; border-radius:8px; background:#ffffff; cursor:crosshair;"></canvas>
+          </div>
+        </div>
+
+        <!-- Data Tables Grid: Measured Dataset (Editable X) + Atomic Layer Linear Sensitivity Summary -->
+        <div class="card" style="padding:14px 16px; margin-bottom:14px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+            <div>
+              <span style="font-size:14px; font-weight:800; color:#0f172a;">📋 Measured Interlayer / Bond Distance Table</span>
+              <span id="post-data-rows-count" class="badge badge-blue" style="margin-left:8px;">0 CIFs</span>
+            </div>
+            <div style="font-size:11.5px; color:#64748b;">Edit any <strong>X Value</strong> inline or uncheck a row to exclude it from the plot &amp; linear fit.</div>
+          </div>
+          <div style="overflow-x:auto; max-height:380px; border:1px solid #e2e8f0; border-radius:8px;">
+            <table class="data-table pd-data-table" style="width:100%; font-size:12px; border-collapse:collapse;">
+              <thead id="post-data-table-head" style="position:sticky; top:0; z-index:2; background:#f8fafc;">
+                <tr><th>On</th><th>CIF Structure</th><th>X Value</th><th>Interlayer Distances (Å)</th></tr>
+              </thead>
+              <tbody id="post-data-table-body">
+                <tr><td colspan="4" style="text-align:center; padding:18px; color:#64748b;">No CIF files loaded yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" style="padding:14px 16px;">
+          <div style="font-size:14px; font-weight:800; color:#0f172a; margin-bottom:8px;">
+            🧭 Atomic Layer Definitions &amp; Linear Field Sensitivity Summary (dd<sub>i</sub> / dX)
+          </div>
+          <div style="overflow-x:auto; border:1px solid #e2e8f0; border-radius:8px;">
+            <table class="data-table pd-data-table" style="width:100%; font-size:12px; border-collapse:collapse;">
+              <thead style="background:#f8fafc;">
+                <tr>
+                  <th>Series</th>
+                  <th>Atomic Layer / Bond Pair</th>
+                  <th>Ref d₀ (Å)</th>
+                  <th>Min Δd (Å)</th>
+                  <th>Max Δd (Å)</th>
+                  <th>Linear Slope dd/dX (Å / unit X)</th>
+                  <th>Linearity R²</th>
+                </tr>
+              </thead>
+              <tbody id="post-data-summary-tbody">
+                <tr><td colspan="7" style="text-align:center; padding:14px; color:#64748b;">Load CIF structures to inspect atomic layer definitions and linear response slopes.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================ -->
       <!-- TAB 5: WEEKLY REPORT & POWERPOINT (.PPTX) EXPORT                 -->
       <!-- ================================================================ -->
       <section id="tab-weekly-report" class="tab-pane">
@@ -6379,10 +6584,11 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=161_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=161_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=161_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=161_v116_vesta_viewer'"></script>
-  <script src="dft_theory.js?v=161_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=161_v116_vesta_viewer'"></script>
-  <script src="app.js?v=161_v116_vesta_viewer" onerror="this.src='/static/app.js?v=161_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=162_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=162_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=162_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=162_v116_vesta_viewer'"></script>
+  <script src="post_data.js?v=162_v116_vesta_viewer" onerror="this.src='/static/post_data.js?v=162_v116_vesta_viewer'"></script>
+  <script src="dft_theory.js?v=162_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=162_v116_vesta_viewer'"></script>
+  <script src="app.js?v=162_v116_vesta_viewer" onerror="this.src='/static/app.js?v=162_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
