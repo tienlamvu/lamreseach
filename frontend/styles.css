@@ -15166,3 +15166,120 @@ textarea.dft-ed-code-surface::placeholder {
 @media (max-width: 960px) {
   .tr-tables-grid { grid-template-columns: 1fr; }
 }
+/* Post-Data Processing Canvas Zoom & Live Plot Format Controls (v173) */
+.pd-canvas-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.pd-zoom-ctrl {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 3px 6px;
+}
+.pd-zoom-select {
+  height: 24px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #1e293b;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0 5px;
+  cursor: pointer;
+}
+.pd-zoom-slider {
+  width: 72px;
+  accent-color: #6d28d9;
+  cursor: pointer;
+}
+.pd-zoom-pill {
+  min-width: 38px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: #4c1d95;
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+.pd-zoom-btn {
+  height: 24px;
+  padding: 0 7px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #334155;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.14s, border-color 0.14s;
+}
+.pd-zoom-btn:hover {
+  background: #eef2ff;
+  border-color: #818cf8;
+  color: #1e1b4b;
+}
+.pd-zoom-fmt-btn {
+  background: #f0fdfa;
+  border-color: #5eead4;
+  color: #0f766e;
+}
+.pd-zoom-fmt-btn:hover {
+  background: #ccfbf1;
+  border-color: #14b8a6;
+}
+.pd-zoom-wheel-lbl {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+  margin: 0 2px;
+  user-select: none;
+}
+.pd-fmt-details > summary {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+.pd-fmt-details > summary::-webkit-details-marker {
+  display: none;
+}
+.pd-fmt-summary .pd-fmt-chevron {
+  font-size: 12px;
+  color: #64748b;
+  transition: transform 0.16s ease;
+}
+.pd-fmt-details:not([open]) .pd-fmt-summary {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.pd-fmt-details:not([open]) .pd-fmt-chevron {
+  transform: rotate(-90deg);
+}
+.pd-fmt-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 6px;
+}
+@keyframes pdCardPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(109, 40, 217, 0.55); border-color: #7c3aed; }
+  60%  { box-shadow: 0 0 0 7px rgba(109, 40, 217, 0); border-color: #7c3aed; }
+  100% { box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04); border-color: #e2e8f0; }
+}
+.pd-card-flash {
+  animation: pdCardPulse 1.3s ease-out;
+}
