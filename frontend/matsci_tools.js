@@ -6216,6 +6216,17 @@ function renderCastepElectronicPlots() {
     eGrid, pdosCurves, isSpinDos, pdosSourceLabel
   };
 
+  // Sync Band Spin-Resolved control (enabled only for collinear spin-polarized jobs)
+  const isCollinearBand = (bandSeries.length >= 2) || (job.band_orb_proj?.ns >= 2) || (job.bandstr_bands?.ns >= 2);
+  const bandSpinSel = document.getElementById("castep-band-spin-mode");
+  if (bandSpinSel) {
+    bandSpinSel.disabled = !isCollinearBand;
+    if (!isCollinearBand && bandSpinSel.value !== "overlay") bandSpinSel.value = "overlay";
+  }
+  const bandSpinMode = isCollinearBand ? (bandSpinSel?.value || "overlay") : "overlay";
+  const bandShowUp = showUp && bandSpinMode !== "down";
+  const bandShowDn = isCollinearBand && showDn && bandSpinMode !== "up";
+
   // Sync Orbital-Resolved Fat-Band controls & build overlay if active and data exists!
   const fbUi = (typeof syncCastepFatBandUI === "function") ? syncCastepFatBandUI(job) : { hasData: false, isOn: false, activeMode: "off" };
   let fatBandOverlay = null;
@@ -6227,7 +6238,7 @@ function renderCastepElectronicPlots() {
       style: document.getElementById("castep-fatband-style")?.value || "rings",
       sizeScale: parseFloat(document.getElementById("castep-fatband-size")?.value) || 1.0,
       energyShift: fbShift,
-      emin, emax, showUp, showDn
+      emin, emax, showUp: bandShowUp, showDn: bandShowDn
     });
   }
   if (window.CASTEP_FATBAND_STATE) CASTEP_FATBAND_STATE.lastOverlay = fatBandOverlay;
@@ -6273,104 +6284,190 @@ function renderCastepElectronicPlots() {
   let bandX0 = padL, bandW = width - padL - padR;
   let dosX0 = padL, dosW = width - padL - padR;
   const outTickExtra = st.tickDir === "out" ? (st.tickLength || 5) + 2 : 0;
+  const useSplitBand = isCollinearBand && bandSpinMode === "split" && bandShowUp && bandShowDn && (layout === "joint" || layout === "band");
+  const bandPanels = [];
   canvas._subPanelRects = [];
   if (layout === "joint") {
-    const gapBetween = Math.round(30 + Math.max(0, (st.tickSize - 12) * 1.8) + outTickExtra * 2);
-    bandW = Math.round((width - padL - padR - gapBetween) * 0.56);
-    dosX0 = bandX0 + bandW + gapBetween;
-    dosW = width - dosX0 - padR;
-    const splitX = Math.round((bandX0 + bandW + dosX0) * 0.5);
-    canvas._subPanelRects = [
-      { key: "band", label: "Band Structure", x: 0, y: 0, w: splitX, h: height, plotKey: "electronic", dataSubPart: "band", pngName: "CASTEP_Band_Structure.png" },
-      { key: "pdos", label: "PDOS / DOS", x: splitX, y: 0, w: width - splitX, h: height, plotKey: "electronic", dataSubPart: "pdos", pngName: "CASTEP_PDOS.png" }
-    ];
+    if (useSplitBand) {
+      const gapSpin = Math.round(14 + outTickExtra * 2);
+      const gapDos = Math.round(24 + Math.max(0, (st.tickSize - 12) * 1.4) + outTickExtra * 2);
+      const avail = width - padL - padR - gapSpin - gapDos;
+      const subW = Math.max(120, Math.floor(avail * 0.335));
+      const xUp = padL;
+      const xDn = xUp + subW + gapSpin;
+      dosX0 = xDn + subW + gapDos;
+      dosW = Math.max(120, width - dosX0 - padR);
+      bandPanels.push(
+        { bandX0: xUp, bandW: subW, spinFilter: 0, showUp: true, showDn: false, showYAxis: true, showLegend: false, legendIncludeBothSpins: false, titleSuffix: "Spin ↑ (α)", titleColor: "#dc2626", key: "band_up", label: "Band Structure — Spin ↑ (α)", pngName: "CASTEP_Band_SpinUp.png" },
+        { bandX0: xDn, bandW: subW, spinFilter: 1, showUp: false, showDn: true, showYAxis: false, showLegend: true, legendIncludeBothSpins: true, titleSuffix: "Spin ↓ (β)", titleColor: "#2563eb", key: "band_dn", label: "Band Structure — Spin ↓ (β)", pngName: "CASTEP_Band_SpinDown.png" }
+      );
+      const split1 = Math.round(xUp + subW + gapSpin * 0.5);
+      const split2 = Math.round(xDn + subW + gapDos * 0.5);
+      canvas._subPanelRects = [
+        { key: "band_up", label: "Band Structure (Spin ↑)", x: 0, y: 0, w: split1, h: height, plotKey: "electronic", dataSubPart: "band", pngName: "CASTEP_Band_SpinUp.png", spinFilter: 0 },
+        { key: "band_dn", label: "Band Structure (Spin ↓)", x: split1, y: 0, w: split2 - split1, h: height, plotKey: "electronic", dataSubPart: "band", pngName: "CASTEP_Band_SpinDown.png", spinFilter: 1 },
+        { key: "pdos", label: "PDOS / DOS", x: split2, y: 0, w: width - split2, h: height, plotKey: "electronic", dataSubPart: "pdos", pngName: "CASTEP_PDOS.png" }
+      ];
+    } else {
+      const gapBetween = Math.round(30 + Math.max(0, (st.tickSize - 12) * 1.8) + outTickExtra * 2);
+      bandW = Math.round((width - padL - padR - gapBetween) * 0.56);
+      dosX0 = bandX0 + bandW + gapBetween;
+      dosW = width - dosX0 - padR;
+      const sf = (bandShowUp && !bandShowDn) ? 0 : ((!bandShowUp && bandShowDn) ? 1 : null);
+      bandPanels.push({
+        bandX0, bandW, spinFilter: sf, showUp: bandShowUp, showDn: bandShowDn, showYAxis: true, showLegend: true, legendIncludeBothSpins: false,
+        titleSuffix: sf === 0 ? "Spin ↑ (α)" : (sf === 1 ? "Spin ↓ (β)" : ""),
+        titleColor: sf === 0 ? "#dc2626" : (sf === 1 ? "#2563eb" : st.inkColor),
+        key: "band", label: "Band Structure", pngName: "CASTEP_Band_Structure.png"
+      });
+      const splitX = Math.round((bandX0 + bandW + dosX0) * 0.5);
+      canvas._subPanelRects = [
+        { key: "band", label: "Band Structure", x: 0, y: 0, w: splitX, h: height, plotKey: "electronic", dataSubPart: "band", pngName: "CASTEP_Band_Structure.png", spinFilter: sf },
+        { key: "pdos", label: "PDOS / DOS", x: splitX, y: 0, w: width - splitX, h: height, plotKey: "electronic", dataSubPart: "pdos", pngName: "CASTEP_PDOS.png" }
+      ];
+    }
+  } else if (layout === "band") {
+    if (useSplitBand) {
+      const gapSpin = Math.round(18 + outTickExtra * 2);
+      const subW = Math.floor((width - padL - padR - gapSpin) / 2);
+      const xUp = padL;
+      const xDn = xUp + subW + gapSpin;
+      const wDn = width - xDn - padR;
+      bandPanels.push(
+        { bandX0: xUp, bandW: subW, spinFilter: 0, showUp: true, showDn: false, showYAxis: true, showLegend: false, legendIncludeBothSpins: false, titleSuffix: "Spin ↑ (α)", titleColor: "#dc2626", key: "band_up", label: "Band Structure — Spin ↑ (α)", pngName: "CASTEP_Band_SpinUp.png" },
+        { bandX0: xDn, bandW: wDn, spinFilter: 1, showUp: false, showDn: true, showYAxis: false, showLegend: true, legendIncludeBothSpins: true, titleSuffix: "Spin ↓ (β)", titleColor: "#2563eb", key: "band_dn", label: "Band Structure — Spin ↓ (β)", pngName: "CASTEP_Band_SpinDown.png" }
+      );
+      const split1 = Math.round(xUp + subW + gapSpin * 0.5);
+      canvas._subPanelRects = [
+        { key: "band_up", label: "Band Structure (Spin ↑)", x: 0, y: 0, w: split1, h: height, plotKey: "electronic", dataSubPart: "band", pngName: "CASTEP_Band_SpinUp.png", spinFilter: 0 },
+        { key: "band_dn", label: "Band Structure (Spin ↓)", x: split1, y: 0, w: width - split1, h: height, plotKey: "electronic", dataSubPart: "band", pngName: "CASTEP_Band_SpinDown.png", spinFilter: 1 }
+      ];
+    } else {
+      const sf = (bandShowUp && !bandShowDn) ? 0 : ((!bandShowUp && bandShowDn) ? 1 : null);
+      bandPanels.push({
+        bandX0, bandW, spinFilter: sf, showUp: bandShowUp, showDn: bandShowDn, showYAxis: true, showLegend: true, legendIncludeBothSpins: false,
+        titleSuffix: sf === 0 ? "Spin ↑ (α)" : (sf === 1 ? "Spin ↓ (β)" : ""),
+        titleColor: sf === 0 ? "#dc2626" : (sf === 1 ? "#2563eb" : st.inkColor),
+        key: "band", label: "Band Structure", pngName: "CASTEP_Band_Structure.png"
+      });
+    }
   }
   canvas._elecPlotGeom = { padT, padB, plotH, bandX0, bandW, emin, emax };
+  canvas._bandPanelGeoms = bandPanels.map(bp => ({
+    padT, padB, plotH, bandX0: bp.bandX0, bandW: bp.bandW, emin, emax, spinFilter: bp.spinFilter
+  }));
 
   const stepE = (emax - emin) <= 8 ? 1 : 2;
   const eTicksList = [];
   for (let e = Math.ceil(emin); e <= Math.floor(emax); e += stepE) eTicksList.push(e);
   const yTickPxList = eTicksList.map(e => eToY(e));
 
-  // --- PANEL 1: Electronic Band Structure ---
+  // --- PANEL 1: Electronic Band Structure (Single Overlay OR Split Spin ↑ | Spin ↓ Panels) ---
   if (layout === "joint" || layout === "band") {
-    const kTickPxList = bandTicks.map(t => bandX0 + t.pos * bandW);
-    ctx.save();
-    ctx.beginPath(); ctx.rect(bandX0, padT, bandW, plotH); ctx.clip();
+    const showBandTot = document.getElementById("castep-show-band-total")?.checked !== false;
+    bandPanels.forEach(bp => {
+      const bx0 = bp.bandX0, bw = bp.bandW;
+      const kTickPxList = bandTicks.map(t => bx0 + t.pos * bw);
+      ctx.save();
+      ctx.beginPath(); ctx.rect(bx0, padT, bw, plotH); ctx.clip();
 
-    drawPubGridLines(ctx, bandX0, padT, bandW, plotH, st, [], yTickPxList);
+      drawPubGridLines(ctx, bx0, padT, bw, plotH, st, [], yTickPxList);
 
-    // High-symmetry vertical reference lines (always subtle black/gray dashed-or-thin)
-    bandTicks.forEach(t => {
-      const tx = Math.round(bandX0 + t.pos * bandW) + 0.5;
-      if (tx <= bandX0 + 2 || tx >= bandX0 + bandW - 2) return;
-      ctx.beginPath(); ctx.moveTo(tx, padT); ctx.lineTo(tx, padT + plotH);
-      ctx.strokeStyle = "rgba(0, 0, 0, 0.30)"; ctx.lineWidth = Math.max(0.8, st.borderWidth * 0.55); ctx.stroke();
-    });
-
-    // Fermi level E - E_F = 0 reference line
-    if (emin <= 0 && emax >= 0) {
-      const yF = Math.round(eToY(0)) + 0.5;
-      ctx.beginPath(); ctx.moveTo(bandX0, yF); ctx.lineTo(bandX0 + bandW, yF);
-      ctx.setLineDash([5, 4]); ctx.strokeStyle = st.inkColor; ctx.lineWidth = Math.max(1.1, st.borderWidth * 0.72); ctx.stroke();
-      ctx.setLineDash([]);
-    }
-
-    if (fatBandOverlay && typeof drawCastepFatBandOverlay === "function") {
-      drawCastepFatBandOverlay(ctx, fatBandOverlay, { bandX0, padT, bandW, plotH, emin, emax, eToY }, st);
-    } else if (document.getElementById("castep-show-band-total")?.checked !== false) {
-      bandSeries.forEach((ser, sIdx) => {
-        const isBeta = sIdx === 1 || /beta|dn|down/i.test(ser.name);
-        if (!isBeta && !showUp) return;
-        if (isBeta && !showDn) return;
-        ctx.strokeStyle = isBeta ? "#dc2626" : "#2563eb";
-        ctx.lineWidth = isBeta ? Math.max(1.0, st.lineWidth * 0.85) : st.lineWidth;
-        if (isBeta) ctx.setLineDash([4, 3]); else ctx.setLineDash([]);
-        (ser.segments || []).forEach(seg => {
-          if (!seg.length) return;
-          ctx.beginPath();
-          seg.forEach((pt, i) => {
-            const px = bandX0 + pt[0] * bandW;
-            const py = eToY(pt[1]);
-            if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-          });
-          ctx.stroke();
-        });
+      // High-symmetry vertical reference lines
+      bandTicks.forEach(t => {
+        const tx = Math.round(bx0 + t.pos * bw) + 0.5;
+        if (tx <= bx0 + 2 || tx >= bx0 + bw - 2) return;
+        ctx.beginPath(); ctx.moveTo(tx, padT); ctx.lineTo(tx, padT + plotH);
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.30)"; ctx.lineWidth = Math.max(0.8, st.borderWidth * 0.55); ctx.stroke();
       });
-    }
-    ctx.restore();
 
-    // Crisp unified publication frame + ticks drawn ON TOP of curves
-    drawPubAxisBox(ctx, bandX0, padT, bandW, plotH, st, {
-      xTicks: kTickPxList,
-      yTicks: yTickPxList,
-      mirrorTop: true,
-      mirrorRight: true
+      // Fermi level E - E_F = 0 reference line
+      if (emin <= 0 && emax >= 0) {
+        const yF = Math.round(eToY(0)) + 0.5;
+        ctx.beginPath(); ctx.moveTo(bx0, yF); ctx.lineTo(bx0 + bw, yF);
+        ctx.setLineDash([5, 4]); ctx.strokeStyle = st.inkColor; ctx.lineWidth = Math.max(1.1, st.borderWidth * 0.72); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      if (fatBandOverlay && typeof drawCastepFatBandOverlay === "function") {
+        drawCastepFatBandOverlay(ctx, fatBandOverlay, {
+          bandX0: bx0, padT, bandW: bw, plotH, emin, emax, eToY,
+          spinFilter: bp.spinFilter,
+          showLegend: bp.showLegend,
+          legendIncludeBothSpins: bp.legendIncludeBothSpins
+        }, st);
+      } else if (showBandTot) {
+        const stdPts = [];
+        ctx.setLineDash([]); // Solid lines for BOTH Spin ↑ (Red) and Spin ↓ (Blue) — NO dashed lines!
+        bandSeries.forEach((ser, sIdx) => {
+          const isBeta = isCollinearBand && (sIdx === 1 || /beta|dn|down/i.test(ser.name));
+          if (!isBeta && !bp.showUp) return;
+          if (isBeta && !bp.showDn) return;
+          ctx.strokeStyle = isCollinearBand ? (isBeta ? "#2563eb" : "#dc2626") : "#2563eb";
+          ctx.lineWidth = st.lineWidth;
+          (ser.segments || []).forEach(seg => {
+            if (!seg.length) return;
+            ctx.beginPath();
+            seg.forEach((pt, i) => {
+              const px = bx0 + pt[0] * bw;
+              const py = eToY(pt[1]);
+              if (pt[1] >= emin && pt[1] <= emax && i % 2 === 0) stdPts.push([px, py]);
+              if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+            });
+            ctx.stroke();
+          });
+        });
+        if (isCollinearBand && bp.showLegend && !useSplitBand && typeof drawCastepBandSpinLegend === "function") {
+          drawCastepBandSpinLegend(ctx, { bandX0: bx0, padT, bandW: bw, plotH, emin, emax, eToY }, st, bp.showUp, bp.showDn, stdPts);
+        }
+      }
+      ctx.restore();
+
+      // Crisp unified publication frame + ticks drawn ON TOP of curves
+      drawPubAxisBox(ctx, bx0, padT, bw, plotH, st, {
+        xTicks: kTickPxList,
+        yTicks: yTickPxList,
+        mirrorTop: true,
+        mirrorRight: true
+      });
+
+      ctx.font = castepPlotFont("title", useSplitBand && layout === "joint" ? 0.92 : 1.0);
+      ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+      let bandTitleTxt = "";
+      if (useSplitBand) {
+        const elTag = fatBandOverlay && fatBandOverlay.elFilter !== "all" ? ` (${fatBandOverlay.elFilter})` : "";
+        bandTitleTxt = fatBandOverlay ? `${bp.titleSuffix}${elTag}` : `Band — ${bp.titleSuffix}`;
+        ctx.fillStyle = bp.titleColor || st.inkColor;
+      } else {
+        const elTag = fatBandOverlay && fatBandOverlay.elFilter !== "all" ? ` (${fatBandOverlay.elFilter})` : "";
+        const spTag = bp.titleSuffix ? ` — ${bp.titleSuffix}` : "";
+        bandTitleTxt = fatBandOverlay
+          ? `Orbital-Resolved Band Structure${elTag}${spTag}`
+          : `Band Structure${spTag}`;
+        ctx.fillStyle = bp.titleSuffix ? (bp.titleColor || st.inkColor) : st.inkColor;
+      }
+      ctx.fillText(bandTitleTxt, bx0 + bw / 2, padT - 11);
+
+      ctx.textAlign = "center"; ctx.textBaseline = "top";
+      bandTicks.forEach(t => {
+        const tx = bx0 + t.pos * bw;
+        ctx.font = castepPlotFont("tick", 1.0, st.boldAxes ? "bold" : ""); ctx.fillStyle = st.inkColor;
+        ctx.fillText(t.label === "G" ? "Γ" : t.label, tx, padT + plotH + 7 + outTickExtra);
+      });
+
+      if (bp.showYAxis) {
+        ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.font = castepPlotFont("tick");
+        eTicksList.forEach(e => {
+          ctx.fillStyle = st.inkColor;
+          ctx.fillText(formatPubMinus(e), bx0 - 8 - outTickExtra, eToY(e));
+        });
+        ctx.save();
+        ctx.translate(18, padT + plotH / 2); ctx.rotate(-Math.PI / 2);
+        ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = castepPlotFont("axis"); ctx.fillStyle = st.inkColor;
+        drawSciText(ctx, "Energy E \u2212 E_{F} (eV)", 0, 0);
+        ctx.restore();
+      }
     });
-
-    ctx.fillStyle = st.inkColor; ctx.font = castepPlotFont("title"); ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
-    const bandTitleTxt = fatBandOverlay
-      ? `Orbital-Resolved Band Structure${fatBandOverlay.elFilter !== "all" ? ` (${fatBandOverlay.elFilter})` : ""}`
-      : `Band Structure${bandSeries.length >= 2 ? " (— α Up / ┄ β Down)" : ""}`;
-    ctx.fillText(bandTitleTxt, bandX0 + bandW / 2, padT - 11);
-
-    ctx.textAlign = "center"; ctx.textBaseline = "top";
-    bandTicks.forEach(t => {
-      const tx = bandX0 + t.pos * bandW;
-      ctx.font = castepPlotFont("tick", 1.0, st.boldAxes ? "bold" : ""); ctx.fillStyle = st.inkColor;
-      ctx.fillText(t.label === "G" ? "Γ" : t.label, tx, padT + plotH + 7 + outTickExtra);
-    });
-
-    ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.font = castepPlotFont("tick");
-    eTicksList.forEach(e => {
-      ctx.fillStyle = st.inkColor;
-      ctx.fillText(formatPubMinus(e), bandX0 - 8 - outTickExtra, eToY(e));
-    });
-    ctx.save();
-    ctx.translate(18, padT + plotH / 2); ctx.rotate(-Math.PI / 2);
-    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = castepPlotFont("axis"); ctx.fillStyle = st.inkColor;
-    drawSciText(ctx, "Energy E \u2212 E_{F} (eV)", 0, 0);
-    ctx.restore();
   }
 
   // --- PANEL 2: Atomic / Orbital-Resolved Collinear PDOS ---
@@ -6463,9 +6560,9 @@ function renderCastepElectronicPlots() {
       });
 
       if (useMirror) {
-        ctx.fillStyle = "#dc2626"; ctx.font = castepPlotFont("legend", 0.95, "bold"); ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+        ctx.fillStyle = "#2563eb"; ctx.font = castepPlotFont("legend", 0.95, "bold"); ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
         ctx.fillText("← Spin ↓ (β)", dosX0 + 8, padT + 16);
-        ctx.fillStyle = "#2563eb"; ctx.textAlign = "right";
+        ctx.fillStyle = "#dc2626"; ctx.textAlign = "right";
         ctx.fillText("Spin ↑ (α) →", dosX0 + dosW - 8, padT + 16);
       }
     } else {
@@ -6524,9 +6621,9 @@ function renderCastepElectronicPlots() {
       });
 
       if (useMirror) {
-        ctx.fillStyle = "#2563eb"; ctx.font = castepPlotFont("legend", 1.0, "bold"); ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+        ctx.fillStyle = "#dc2626"; ctx.font = castepPlotFont("legend", 1.0, "bold"); ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
         ctx.fillText("Spin ↑ (+α)", dosX0 + 10, padT + 18);
-        ctx.fillStyle = "#dc2626";
+        ctx.fillStyle = "#2563eb";
         ctx.fillText("Spin ↓ (\u2212β)", dosX0 + 10, padT + plotH - 9);
       }
     }
@@ -6625,9 +6722,9 @@ function renderCastepElectronicPlots() {
   // ---- Record EXACTLY the plotted curves of each panel for "Copy This Sub-Plot Data (TSV)" ----
   canvas._singlePanelExactTable = null;
   canvas._singlePanelExactSeries = null;
-  const buildBandExactTable = () => {
+  const buildBandExactTable = (spinFilter = null) => {
     if (fatBandOverlay && typeof buildCastepFatBandExactTable === "function") {
-      const fbTbl = buildCastepFatBandExactTable(fatBandOverlay, bandTicks);
+      const fbTbl = buildCastepFatBandExactTable(fatBandOverlay, bandTicks, spinFilter);
       if (fbTbl && fbTbl.rows && fbTbl.rows.length) return fbTbl;
     }
     const tickLbl = (xN) => {
@@ -6638,9 +6735,11 @@ function renderCastepElectronicPlots() {
     };
     const cols = [];
     bandSeries.forEach((ser, sIdx) => {
-      const isBeta = sIdx === 1 || /beta|dn|down/i.test(ser.name);
-      if (!isBeta && !showUp) return;
-      if (isBeta && !showDn) return;
+      const isBeta = isCollinearBand && (sIdx === 1 || /beta|dn|down/i.test(ser.name));
+      if (spinFilter === 0 && isBeta) return;
+      if (spinFilter === 1 && !isBeta) return;
+      if (!isBeta && !bandShowUp) return;
+      if (isBeta && !bandShowDn) return;
       const spinTag = bandSeries.length >= 2 ? (isBeta ? "Spin↓ " : "Spin↑ ") : "";
       (ser.segments || []).forEach((seg, bIdx) => {
         if (!seg || !seg.length) return;
@@ -6786,11 +6885,14 @@ function renderCastepElectronicPlots() {
       rows: exportEGrid.map((e, i) => [formatPlottedNum(e), ...specs.map(s => formatPlottedNum(s.get(i)))])
     };
   };
-  if (layout === "joint" && canvas._subPanelRects.length >= 2) {
-    canvas._subPanelRects[0].buildExactTable = buildBandExactTable;
-    canvas._subPanelRects[1].buildExactTable = buildPdosExactTable;
+  if (canvas._subPanelRects.length >= 2) {
+    canvas._subPanelRects.forEach(r => {
+      if (r.dataSubPart === "pdos") r.buildExactTable = buildPdosExactTable;
+      else r.buildExactTable = () => buildBandExactTable(r.spinFilter !== undefined ? r.spinFilter : null);
+    });
   } else if (layout === "band") {
-    canvas._singlePanelExactTable = buildBandExactTable;
+    const sf = bandPanels[0]?.spinFilter !== undefined ? bandPanels[0].spinFilter : null;
+    canvas._singlePanelExactTable = () => buildBandExactTable(sf);
   } else if (layout === "dos") {
     canvas._singlePanelExactTable = buildPdosExactTable;
   }
@@ -21428,6 +21530,7 @@ function resetCastepElectronicSettings() {
   _setCastepInputVal("castep-elec-zero-ref", "vbm_auto");
   _setCastepInputVal("castep-fatband-mode", "off");
   _setCastepInputVal("castep-fatband-el", "all");
+  _setCastepInputVal("castep-band-spin-mode", "overlay");
   _setCastepInputVal("castep-fatband-style", "rings");
   _setCastepInputVal("castep-fatband-size", "1.0");
   if (window.CASTEP_FATBAND_STATE) {
@@ -22333,14 +22436,18 @@ function buildCastepFatBandOverlay(job, opts) {
   const bandTotChk = document.getElementById("castep-show-band-total");
   const showBandTotal = bandTotChk ? bandTotChk.checked : (CASTEP_FATBAND_STATE.showTotal !== false);
   CASTEP_FATBAND_STATE.showTotal = showBandTotal;
+  const isSpinProj = (proj.ns || 1) >= 2;
 
   // Render interactive channel toggle chips right below toolbar (Total first, then s, p, d, f!)
   const chipsRow = document.getElementById("castep-fatband-chips");
   if (chipsRow) {
     chipsRow.style.display = "flex";
-    const totCol = (opts.style !== "filled") ? "#e11d48" : "#475569";
-    const totChip = `<button type="button" class="castep-preset-chip" onclick="toggleCastepBandTotal()" style="border-color:${showBandTotal ? totCol : "#cbd5e1"}; color:${showBandTotal ? totCol : "#94a3b8"}; background:${showBandTotal ? "#ffffff" : "#f8fafc"}; font-weight:700; opacity:${showBandTotal ? 1 : 0.52}; height:21px; padding:0 6px; font-size:10.5px;" title="Click to show/hide the background Total Band Structure curves">
-      <span style="display:inline-block; width:10px; height:2px; background:${showBandTotal ? totCol : "#cbd5e1"}; margin-right:4px; vertical-align:middle;"></span>Total
+    const totSwatch = isSpinProj && showUp && showDn
+      ? `<span style="display:inline-flex; flex-direction:column; gap:2px; margin-right:4px; vertical-align:middle;"><span style="display:block; width:10px; height:2px; background:${showBandTotal ? "#dc2626" : "#cbd5e1"};"></span><span style="display:block; width:10px; height:2px; background:${showBandTotal ? "#2563eb" : "#cbd5e1"};"></span></span>`
+      : `<span style="display:inline-block; width:10px; height:2px; background:${showBandTotal ? (isSpinProj ? (showUp ? "#dc2626" : "#2563eb") : ((opts.style !== "filled") ? "#e11d48" : "#475569")) : "#cbd5e1"}; margin-right:4px; vertical-align:middle;"></span>`;
+    const totBorder = isSpinProj ? (showUp && !showDn ? "#dc2626" : (!showUp && showDn ? "#2563eb" : "#334155")) : ((opts.style !== "filled") ? "#e11d48" : "#475569");
+    const totChip = `<button type="button" class="castep-preset-chip" onclick="toggleCastepBandTotal()" style="border-color:${showBandTotal ? totBorder : "#cbd5e1"}; color:${showBandTotal ? totBorder : "#94a3b8"}; background:${showBandTotal ? "#ffffff" : "#f8fafc"}; font-weight:700; opacity:${showBandTotal ? 1 : 0.52}; height:21px; padding:0 6px; font-size:10.5px;" title="Click to show/hide the background Total Band Structure curves (Spin ↑ Red, Spin ↓ Blue)">
+      ${totSwatch}Total
     </button>`;
     const quickCtrl = finalGroups.length > 4
       ? `<span style="display:inline-flex; gap:3px; margin-left:2px;">
@@ -22363,6 +22470,8 @@ function buildCastepFatBandOverlay(job, opts) {
     mode,
     elFilter,
     showTotal: showBandTotal,
+    showUp,
+    showDn: isSpinProj && showDn,
     style: opts.style || "rings",
     sizeScale: Math.max(0.4, Math.min(2.5, Number(opts.sizeScale) || 1.0)),
     sourceKind: proj.source_kind,
@@ -22377,30 +22486,95 @@ function buildCastepFatBandOverlay(job, opts) {
 }
 window.buildCastepFatBandOverlay = buildCastepFatBandOverlay;
 
+function drawCastepBandSpinLegend(ctx, geom, st, showUp, showDn, screenPts) {
+  if (!showUp && !showDn) return;
+  const { bandX0, padT, bandW, plotH, emin, emax, eToY } = geom;
+  ctx.save();
+  const legFont = castepPlotFont("legend", 0.94, "bold");
+  ctx.font = legFont;
+  const entries = [];
+  if (showUp) entries.push({ label: "Spin ↑ (α)", color: "#dc2626" });
+  if (showDn) entries.push({ label: "Spin ↓ (β)", color: "#2563eb" });
+  const maxTxtW = Math.max(...entries.map(e => ctx.measureText(e.label).width));
+  const legW = Math.min(bandW * 0.48, Math.max(82, maxTxtW + 34));
+  const rowH = Math.max(15, Math.round((st.legendSize || 11) * 1.42));
+  const legH = entries.length * rowH + 10;
+
+  const midY = Math.max(padT + 8, Math.min(padT + plotH - legH - 8, eToY(Math.max(emin + 0.5, Math.min(emax - 0.5, 0.7))) - legH / 2));
+  const cands = [
+    { x: bandX0 + bandW - legW - 6, y: padT + 6 },
+    { x: bandX0 + bandW - legW - 6, y: padT + plotH - legH - 6 },
+    { x: bandX0 + bandW - legW - 6, y: midY },
+    { x: bandX0 + 6, y: padT + 6 },
+    { x: bandX0 + 6, y: padT + plotH - legH - 6 },
+    { x: bandX0 + 6, y: midY }
+  ];
+  let bestC = cands[0], bestHits = Infinity;
+  const pts = screenPts || [];
+  cands.forEach(c => {
+    let cnt = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const [sx, sy] = pts[i];
+      if (sx >= c.x - 5 && sx <= c.x + legW + 5 && sy >= c.y - 5 && sy <= c.y + legH + 5) cnt++;
+    }
+    if (cnt < bestHits) { bestHits = cnt; bestC = c; }
+  });
+
+  ctx.fillStyle = "rgba(255, 255, 255, 0.93)";
+  ctx.strokeStyle = "#334155";
+  ctx.lineWidth = 0.9;
+  ctx.fillRect(bestC.x, bestC.y, legW, legH);
+  ctx.strokeRect(bestC.x, bestC.y, legW, legH);
+
+  entries.forEach((ent, idx) => {
+    const ly = bestC.y + 12 + idx * rowH;
+    ctx.strokeStyle = ent.color;
+    ctx.lineWidth = Math.max(1.8, st.lineWidth || 1.6);
+    ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(bestC.x + 8, ly - 3); ctx.lineTo(bestC.x + 24, ly - 3); ctx.stroke();
+    ctx.fillStyle = "#0f172a";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(ent.label, bestC.x + 29, ly);
+  });
+  ctx.restore();
+}
+window.drawCastepBandSpinLegend = drawCastepBandSpinLegend;
+
 function drawCastepFatBandOverlay(ctx, overlay, geom, st) {
   if (!overlay || !overlay.bands?.length) return;
   const { bandX0, padT, bandW, plotH, emin, emax, eToY } = geom;
+  const spinFilter = (geom.spinFilter === 0 || geom.spinFilter === 1) ? geom.spinFilter : null;
+  const showLegend = geom.showLegend !== false;
   const isRings = overlay.style !== "filled";
+  const isSpin = (overlay.ns || 1) >= 2;
   const sizeScale = overlay.sizeScale || 1.0;
   const kPos = overlay.kPos;
   const nk = overlay.nk;
   const kStepPx = bandW / Math.max(12, nk - 1);
-  const baseMax = Math.max(4.4, Math.min(6.4, kStepPx * 0.58));
+  const baseMax = Math.max(4.0, Math.min(6.4, kStepPx * 0.58));
   const rMin = 1.05 * sizeScale;
   const rMax = baseMax * sizeScale;
   const groups = overlay.groups;
   const visibleGrpIndices = [];
   groups.forEach((g, gi) => { if (!CASTEP_FATBAND_STATE.hiddenChannels.has(g.key)) visibleGrpIndices.push(gi); });
 
-  // 1) Draw thin background Total Band Structure curves (if Total toggle is ON)
-  const totalColor = isRings ? "#f0a3a8" : "#94a3b8";
+  const panelBands = spinFilter === null
+    ? overlay.bands
+    : overlay.bands.filter(b => b.spin === spinFilter);
+
+  // 1) Draw solid background Total Band Structure curves (Spin ↑ = Solid RED, Spin ↓ = Solid BLUE, NO dashed lines!)
+  const upTotalColor = isSpin ? (isRings ? "#ef4444" : "#dc2626") : (isRings ? "#f0a3a8" : "#94a3b8");
+  const dnTotalColor = isRings ? "#3b82f6" : "#2563eb";
   const showTotalLine = overlay.showTotal !== false;
+  let drewUp = false, drewDn = false;
   if (showTotalLine) {
-    overlay.bands.forEach(b => {
-      const isBeta = b.spin === 1;
-      ctx.strokeStyle = isBeta ? (isRings ? "#c7a3f0" : "#64748b") : totalColor;
-      ctx.lineWidth = Math.max(0.85, (st.lineWidth || 1.5) * 0.55);
-      if (isBeta) ctx.setLineDash([4, 3]); else ctx.setLineDash([]);
+    ctx.setLineDash([]);
+    panelBands.forEach(b => {
+      const isBeta = isSpin && b.spin === 1;
+      if (isBeta) drewDn = true; else drewUp = true;
+      ctx.strokeStyle = isBeta ? dnTotalColor : upTotalColor;
+      ctx.lineWidth = Math.max(1.0, (st.lineWidth || 1.5) * (isSpin ? 0.72 : 0.55));
       ctx.beginPath();
       let started = false;
       for (let ik = 0; ik < nk; ik++) {
@@ -22412,13 +22586,12 @@ function drawCastepFatBandOverlay(ctx, overlay, geom, st) {
       }
       ctx.stroke();
     });
-    ctx.setLineDash([]);
   }
 
   // 2) Draw Orbital-Weighted Circles at every (k, E) point (sorted largest-first so smaller rings stay crisp inside!)
   const screenPts = [];
   const stride = nk > 95 ? 2 : 1; // keep dense paths ultra-clean without crowding circles
-  overlay.bands.forEach(b => {
+  panelBands.forEach(b => {
     for (let ik = 0; ik < nk; ik += stride) {
       const ev = b.e[ik];
       if (ev < emin - 0.15 || ev > emax + 0.15) continue;
@@ -22457,17 +22630,29 @@ function drawCastepFatBandOverlay(ctx, overlay, geom, st) {
     }
   });
 
-  // 3) Draw crisp Publication Legend Box (Total — + colored circles ○ in unified Total, s, p, d, f order)
-  if (visibleGrpIndices.length || showTotalLine) {
+  // 3) Draw crisp Publication Legend Box (Total ↑ Red, Total ↓ Blue + colored circles ○ in unified Total, s, p, d, f order)
+  if (showLegend && (visibleGrpIndices.length || showTotalLine)) {
     ctx.save();
-    const legFont = castepPlotFont("legend", 0.94, "bold");
+    const legFont = castepPlotFont("legend", bandW < 280 ? 0.84 : 0.94, "bold");
     ctx.font = legFont;
-    const entries = (showTotalLine ? [{ isTotal: true, label: "Total", color: totalColor }] : []).concat(
+    const totalEntries = [];
+    if (showTotalLine) {
+      if (isSpin) {
+        const showUpEntry = geom.legendIncludeBothSpins ? (overlay.showUp !== false) : (spinFilter === 0 || (spinFilter === null && drewUp));
+        const showDnEntry = geom.legendIncludeBothSpins ? (overlay.showDn !== false) : (spinFilter === 1 || (spinFilter === null && drewDn));
+        if (showUpEntry) totalEntries.push({ isTotal: true, label: "Total ↑", color: upTotalColor });
+        if (showDnEntry) totalEntries.push({ isTotal: true, label: "Total ↓", color: dnTotalColor });
+      } else {
+        totalEntries.push({ isTotal: true, label: "Total", color: upTotalColor });
+      }
+    }
+    const entries = totalEntries.concat(
       visibleGrpIndices.map(gi => ({ isTotal: false, label: groups[gi].label, color: groups[gi].color }))
     );
+    if (!entries.length) { ctx.restore(); return; }
     const maxTxtW = Math.max(...entries.map(e => ctx.measureText(_fbPlainLabel(e.label)).width));
-    const legW = Math.min(bandW * 0.44, Math.max(76, maxTxtW * 0.92 + 34));
-    const rowH = Math.max(15, Math.round((st.legendSize || 11) * 1.42));
+    const legW = Math.min(bandW * 0.48, Math.max(76, maxTxtW * 0.92 + 34));
+    const rowH = Math.max(14, Math.round((st.legendSize || 11) * (bandW < 280 ? 1.32 : 1.42)));
     const legH = entries.length * rowH + 10;
 
     // Score candidate placements: Bottom-Right (reference), Top-Right, Mid-Right (band gap!), Bottom-Left, Top-Left, Mid-Left
@@ -22501,11 +22686,12 @@ function drawCastepFatBandOverlay(ctx, overlay, geom, st) {
       const symX = bestC.x + legW - 14;
       if (ent.isTotal) {
         ctx.strokeStyle = ent.color;
-        ctx.lineWidth = 1.6;
+        ctx.lineWidth = 1.8;
+        ctx.setLineDash([]);
         ctx.beginPath(); ctx.moveTo(symX - 8, ly - 3); ctx.lineTo(symX + 7, ly - 3); ctx.stroke();
       } else {
         ctx.beginPath();
-        ctx.arc(symX, ly - 3, 4.6, 0, Math.PI * 2);
+        ctx.arc(symX, ly - 3, 4.4, 0, Math.PI * 2);
         if (isRings) {
           ctx.strokeStyle = ent.color;
           ctx.lineWidth = 1.5;
@@ -22531,9 +22717,12 @@ window.drawCastepFatBandOverlay = drawCastepFatBandOverlay;
 
 function lookupCastepFatBandHoverHtml(canvas, mx, my) {
   const ov = CASTEP_FATBAND_STATE.lastOverlay;
-  const g = canvas?._elecPlotGeom;
-  if (!ov || !g || !ov.bands?.length) return null;
-  if (mx < g.bandX0 || mx > g.bandX0 + g.bandW || my < g.padT || my > g.padT + g.plotH) return null;
+  if (!ov || !ov.bands?.length) return null;
+  const panels = Array.isArray(canvas?._bandPanelGeoms) && canvas._bandPanelGeoms.length
+    ? canvas._bandPanelGeoms
+    : (canvas?._elecPlotGeom ? [{ ...canvas._elecPlotGeom, spinFilter: null }] : []);
+  const g = panels.find(p => mx >= p.bandX0 && mx <= p.bandX0 + p.bandW && my >= p.padT && my <= p.padT + p.plotH);
+  if (!g) return null;
 
   const kNorm = (mx - g.bandX0) / Math.max(1, g.bandW);
   const eCursor = g.emax - ((my - g.padT) / Math.max(1, g.plotH)) * (g.emax - g.emin);
@@ -22544,9 +22733,10 @@ function lookupCastepFatBandHoverHtml(canvas, mx, my) {
     const d = Math.abs(ov.kPos[ik] - kNorm);
     if (d < bestKd) { bestKd = d; bestIk = ik; }
   }
-  // Find closest band at bestIk
+  // Find closest band at bestIk (respecting panel spinFilter in Split ↑|↓ mode!)
   let bestBand = null, bestEd = Infinity;
   ov.bands.forEach(b => {
+    if ((g.spinFilter === 0 || g.spinFilter === 1) && b.spin !== g.spinFilter) return;
     const d = Math.abs(b.e[bestIk] - eCursor);
     if (d < bestEd) { bestEd = d; bestBand = b; }
   });
@@ -22557,7 +22747,9 @@ function lookupCastepFatBandHoverHtml(canvas, mx, my) {
     label: grp.label, color: grp.color, pct: (bestBand.gW[gi][bestIk] || 0) * 100
   })).filter(c => c.pct >= 1.5).sort((a, b) => b.pct - a.pct);
 
-  const spinStr = ov.ns >= 2 ? (bestBand.spin === 1 ? " ↓(β)" : " ↑(α)") : "";
+  const spinStr = ov.ns >= 2
+    ? (bestBand.spin === 1 ? ` <span style="color:#2563eb;">↓(β)</span>` : ` <span style="color:#dc2626;">↑(α)</span>`)
+    : "";
   const chips = contribs.slice(0, 5).map(c => {
     const disp = _fbHtmlLabel(c.label);
     return `<span style="color:${c.color}; font-weight:700;">${disp}: ${c.pct.toFixed(1)}%</span>`;
@@ -22567,7 +22759,7 @@ function lookupCastepFatBandHoverHtml(canvas, mx, my) {
 }
 window.lookupCastepFatBandHoverHtml = lookupCastepFatBandHoverHtml;
 
-function buildCastepFatBandExactTable(ov, bandTicks) {
+function buildCastepFatBandExactTable(ov, bandTicks, spinFilter = null) {
   if (!ov || !ov.bands?.length) return null;
   const tickLbl = (xN) => {
     for (const t of (bandTicks || [])) {
@@ -22583,6 +22775,7 @@ function buildCastepFatBandExactTable(ov, bandTicks) {
   ];
   const rows = [];
   ov.bands.forEach(b => {
+    if ((spinFilter === 0 || spinFilter === 1) && b.spin !== spinFilter) return;
     const spinTag = ov.ns >= 2 ? (b.spin === 1 ? "Down" : "Up") : "Total";
     for (let ik = 0; ik < ov.nk; ik++) {
       const kp = ov.kPos[ik] || 0;
@@ -22592,8 +22785,9 @@ function buildCastepFatBandExactTable(ov, bandTicks) {
       ]);
     }
   });
+  const spinSuffix = spinFilter === 0 ? ", Spin ↑" : (spinFilter === 1 ? ", Spin ↓" : "");
   return {
-    title: `Orbital-Resolved Fat-Band Structure (${ov.mode})`,
+    title: `Orbital-Resolved Fat-Band Structure (${ov.mode}${spinSuffix})`,
     headers,
     rows
   };
