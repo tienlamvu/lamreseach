@@ -850,6 +850,12 @@ function syncCastepPlotStyleUI() {
 window.syncCastepPlotStyleUI = syncCastepPlotStyleUI;
 
 function toggleCastepPlotStyleBar(forceState) {
+  // If user is currently inside Post-Data Processing tab, open & highlight the local Plot Format card instead of hidden Data Analysis bar
+  const postTab = document.getElementById("tab-post-data-processing") || document.getElementById("tab-post-data");
+  if (postTab && postTab.classList.contains("active") && typeof focusPostPlotFormatCard === "function") {
+    focusPostPlotFormatCard();
+    return;
+  }
   const bar = document.getElementById("castep-plot-style-bar");
   const btn = document.getElementById("castep-plot-style-toggle-btn");
   if (!bar) return;
@@ -871,6 +877,9 @@ function rerenderAllActiveCastepPlots() {
   if (typeof renderCastepTransportPane === "function") renderCastepTransportPane();
   if (typeof renderCastepStonerPane === "function") renderCastepStonerPane();
   if (typeof renderCastepConvergencePlots === "function") renderCastepConvergencePlots();
+  if (typeof renderPostDataTab === "function") renderPostDataTab();
+  if (typeof renderTopoRashbaAll === "function") renderTopoRashbaAll();
+  if (typeof syncPostPlotFormatUI === "function") syncPostPlotFormatUI();
 }
 window.rerenderAllActiveCastepPlots = rerenderAllActiveCastepPlots;
 
