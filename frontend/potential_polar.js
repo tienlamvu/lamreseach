@@ -22,25 +22,51 @@ const PP_VDW_RADII = {
   Nb: 2.05, Mo: 2.10, W: 2.10, Pt: 1.75, Au: 1.66, Al: 1.84, Bi: 2.07
 };
 
+// VESTA / CPK High-Contrast Palette (distinct colors for Si vs N, P vs Mo, S vs Se!)
 const PP_CPK = {
   H:  { fill: "#f8fafc", stroke: "#64748b", r: 0.55 },
   B:  { fill: "#f472b6", stroke: "#9d174d", r: 0.85 },
   C:  { fill: "#4b5563", stroke: "#111827", r: 0.80 },
-  N:  { fill: "#60a5fa", stroke: "#1d4ed8", r: 0.78 },
+  N:  { fill: "#3b82f6", stroke: "#1e40af", r: 0.78 },
   O:  { fill: "#ef4444", stroke: "#991b1b", r: 0.76 },
-  Al: { fill: "#94a3b8", stroke: "#475569", r: 1.05 },
-  Si: { fill: "#3b82f6", stroke: "#1e3a8a", r: 1.02 },
-  P:  { fill: "#a855f7", stroke: "#6b21a8", r: 0.98 },
+  F:  { fill: "#2dd4bf", stroke: "#0f766e", r: 0.74 },
+  Al: { fill: "#94a3b8", stroke: "#475569", r: 1.04 },
+  Si: { fill: "#e6b86a", stroke: "#8f5b14", r: 1.02 },
+  P:  { fill: "#fb923c", stroke: "#9a3412", r: 0.96 },
   S:  { fill: "#facc15", stroke: "#a16207", r: 0.96 },
-  Se: { fill: "#84cc16", stroke: "#3f6212", r: 1.04 },
-  Te: { fill: "#d97706", stroke: "#78350f", r: 1.12 },
-  Mo: { fill: "#8b3d8b", stroke: "#4a1d4a", r: 1.24 },
-  W:  { fill: "#38bdf8", stroke: "#075985", r: 1.24 },
-  Mn: { fill: "#a78bfa", stroke: "#5b21b6", r: 1.15 },
-  V:  { fill: "#94a3b8", stroke: "#334155", r: 1.15 },
-  Cr: { fill: "#60a5fa", stroke: "#1e40af", r: 1.14 },
-  Ti: { fill: "#9ca3af", stroke: "#374151", r: 1.18 },
-  Nb: { fill: "#22d3ee", stroke: "#0e7490", r: 1.22 }
+  Cl: { fill: "#22c55e", stroke: "#166534", r: 0.96 },
+  Se: { fill: "#84cc16", stroke: "#3f6212", r: 1.02 },
+  Te: { fill: "#d97706", stroke: "#78350f", r: 1.10 },
+  Ti: { fill: "#9ca3af", stroke: "#374151", r: 1.15 },
+  V:  { fill: "#64748b", stroke: "#334155", r: 1.14 },
+  Cr: { fill: "#60a5fa", stroke: "#1e40af", r: 1.12 },
+  Mn: { fill: "#a855f7", stroke: "#581c87", r: 1.14 },
+  Fe: { fill: "#ea580c", stroke: "#7c2d12", r: 1.12 },
+  Co: { fill: "#ec4899", stroke: "#831843", r: 1.10 },
+  Ni: { fill: "#10b981", stroke: "#065f46", r: 1.08 },
+  Cu: { fill: "#c2410c", stroke: "#7c2d12", r: 1.10 },
+  Zn: { fill: "#6366f1", stroke: "#312e81", r: 1.08 },
+  Ga: { fill: "#c084fc", stroke: "#6b21a8", r: 1.08 },
+  Ge: { fill: "#14b8a6", stroke: "#115e59", r: 1.08 },
+  As: { fill: "#a78bfa", stroke: "#4c1d95", r: 1.04 },
+  Nb: { fill: "#22d3ee", stroke: "#0e7490", r: 1.18 },
+  Mo: { fill: "#7c3aed", stroke: "#4c1d95", r: 1.20 },
+  In: { fill: "#a8a29e", stroke: "#44403c", r: 1.18 },
+  Sn: { fill: "#64748b", stroke: "#1e293b", r: 1.16 },
+  Sb: { fill: "#8b5cf6", stroke: "#4c1d95", r: 1.14 },
+  W:  { fill: "#0ea5e9", stroke: "#075985", r: 1.22 },
+  Pt: { fill: "#cbd5e1", stroke: "#475569", r: 1.18 },
+  Au: { fill: "#eab308", stroke: "#854d0e", r: 1.18 },
+  Bi: { fill: "#9333ea", stroke: "#581c87", r: 1.20 }
+};
+
+// Covalent radii (Å, Cordero et al. Dalton Trans. 2008) for exact real-3D crystallographic bonding
+const PP_COV_RADII = {
+  H: 0.31, B: 0.84, C: 0.76, N: 0.71, O: 0.66, F: 0.57,
+  Al: 1.21, Si: 1.11, P: 1.07, S: 1.05, Cl: 1.02, Ga: 1.22, Ge: 1.20, As: 1.19, Se: 1.20, Br: 1.20,
+  In: 1.42, Sn: 1.39, Sb: 1.39, Te: 1.38, I: 1.39,
+  Ti: 1.60, V: 1.53, Cr: 1.39, Mn: 1.39, Fe: 1.32, Co: 1.26, Ni: 1.24, Cu: 1.32, Zn: 1.22,
+  Nb: 1.64, Mo: 1.54, W: 1.62, Pt: 1.36, Au: 1.36, Bi: 1.48
 };
 
 window.CASTEP_POT_POL_STATE = {
@@ -1087,17 +1113,47 @@ function computeCastepPotPolAnalysis() {
 // ============================================================================
 
 function _ppDrawGlossyAtom(ctx, x, y, r, fillHex, strokeHex) {
-  const grad = ctx.createRadialGradient(x - r * 0.32, y - r * 0.32, r * 0.12, x, y, r);
-  grad.addColorStop(0, "#ffffff");
-  grad.addColorStop(0.28, fillHex);
-  grad.addColorStop(1, strokeHex);
+  const grad = ctx.createRadialGradient(x - r * 0.34, y - r * 0.34, r * 0.08, x, y, r);
+  grad.addColorStop(0.0, "#ffffff");
+  grad.addColorStop(0.24, fillHex);
+  grad.addColorStop(0.86, fillHex);
+  grad.addColorStop(1.0, strokeHex);
   ctx.fillStyle = grad;
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = strokeHex;
-  ctx.lineWidth = 0.7;
+  ctx.lineWidth = Math.max(0.65, r * 0.11);
   ctx.stroke();
+}
+
+function _ppDrawVestaBond(ctx, x1, y1, x2, y2, colA, colB, lw) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.hypot(dx, dy);
+  if (len < 1.5) return;
+  const xm = 0.5 * (x1 + x2), ym = 0.5 * (y1 + y2);
+  ctx.save();
+  ctx.lineCap = "round";
+  // Crisp subtle dark contour for depth separation
+  ctx.strokeStyle = "rgba(15, 23, 42, 0.32)";
+  ctx.lineWidth = lw + 1.15;
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  // Bicolor cylindrical halves
+  ctx.lineWidth = lw;
+  ctx.strokeStyle = colA;
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(xm, ym); ctx.stroke();
+  ctx.strokeStyle = colB;
+  ctx.beginPath(); ctx.moveTo(xm, ym); ctx.lineTo(x2, y2); ctx.stroke();
+  // Subtle cylindrical specular highlight along top edge
+  const nx = -dy / len, ny = dx / len;
+  const off = lw * 0.22;
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.42)";
+  ctx.lineWidth = Math.max(0.7, lw * 0.26);
+  ctx.beginPath();
+  ctx.moveTo(x1 + nx * off, y1 + ny * off);
+  ctx.lineTo(x2 + nx * off, y2 + ny * off);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function _ppDrawDoubleArrowV(ctx, x, y1, y2, color, label, fontSpec, labelRight = true) {
@@ -1106,7 +1162,6 @@ function _ppDrawDoubleArrowV(ctx, x, y1, y2, color, label, fontSpec, labelRight 
   ctx.save();
   ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1.6;
   ctx.beginPath(); ctx.moveTo(x, top + 4); ctx.lineTo(x, bot - 4); ctx.stroke();
-  // Arrowheads
   const ah = 5.5, aw = 3.2;
   ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x - aw, top + ah); ctx.lineTo(x + aw, top + ah); ctx.closePath(); ctx.fill();
   ctx.beginPath(); ctx.moveTo(x, bot); ctx.lineTo(x - aw, bot - ah); ctx.lineTo(x + aw, bot - ah); ctx.closePath(); ctx.fill();
@@ -1121,73 +1176,217 @@ function _ppDrawDoubleArrowV(ctx, x, y1, y2, color, label, fontSpec, labelRight 
 }
 
 function _ppDrawSlabInset(ctx, xBox, yBox, wBox, hBox, an, st) {
-  const layers = an.crys.layers || [];
-  if (layers.length < 2) return;
+  const atoms = an.crys?.atoms || [];
+  const vecs = an.crys?.vecs;
+  if (atoms.length < 2 || !vecs || vecs.length !== 3) return;
   ctx.save();
-  // Draw clean side-view schematic of slab layers aligned horizontally/vertically + E_in arrow!
-  const nL = layers.length;
-  // Compact vertical 3-unit-cell side-view motif inside top-center / left-vacuum empty zone (just like Fig. e!)
-  const cx = xBox + wBox * 0.5, cy = yBox + hBox * 0.5;
-  const maxSpanW = wBox * 0.62;
-  const zMin = layers[0].meanZA, zMax = layers[nL - 1].meanZA;
-  const zSpan = Math.max(0.5, zMax - zMin);
 
-  // Horizontal coordinates mapped across the slab thickness (left = layer 0, right = layer n-1)
-  const colX = layers.map(L => cx - maxSpanW * 0.5 + ((L.meanZA - zMin) / zSpan) * maxSpanW);
-  const nRows = 2;
-  const rowPitch = Math.min(28, (hBox * 0.52) / nRows);
-  const yStart = cy - rowPitch * 0.5;
+  // 1) Exact VESTA [100] (a-axis) orthographic side-view basis:
+  //    eZ = c / |c| (horizontal screen X, synchronized with V(z) & Flip z!)
+  //    eV = unit projection of a perpendicular to eZ (viewing depth axis, into screen)
+  //    eY = eZ × eV (vertical screen Y, in-plane periodic axis)
+  const norm = (v) => Math.hypot(v[0], v[1], v[2]) || 1;
+  const dot = (a, b) => a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+  const cross = (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+  const scale = (v, s) => [v[0]*s, v[1]*s, v[2]*s];
+  const add = (a, b) => [a[0]+b[0], a[1]+b[1], a[2]+b[2]];
+  const sub = (a, b) => [a[0]-b[0], a[1]-b[1], a[2]-b[2]];
 
-  // Draw bonds between adjacent layers
-  for (let r = 0; r < nRows; r++) {
-    const ryBase = yStart + r * rowPitch;
-    for (let li = 0; li < nL - 1; li++) {
-      const cA = PP_CPK[layers[li].els[0]] || { fill: "#64748b", stroke: "#334155", r: 0.95 };
-      const cB = PP_CPK[layers[li + 1].els[0]] || { fill: "#64748b", stroke: "#334155", r: 0.95 };
-      const x1 = colX[li], x2 = colX[li + 1];
-      const y1 = ryBase + (li % 2 === 0 ? -rowPitch * 0.32 : rowPitch * 0.12);
-      const y2 = ryBase + ((li + 1) % 2 === 0 ? -rowPitch * 0.32 : rowPitch * 0.12);
-      const xm = 0.5 * (x1 + x2), ym = 0.5 * (y1 + y2);
-      ctx.lineWidth = 2.6; ctx.lineCap = "round";
-      ctx.strokeStyle = cA.fill; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(xm, ym); ctx.stroke();
-      ctx.strokeStyle = cB.fill; ctx.beginPath(); ctx.moveTo(xm, ym); ctx.lineTo(x2, y2); ctx.stroke();
-      // Diagonal cross-bond strictly between adjacent rows (no dangling stub!)
-      if (r + 1 < nRows) {
-        const yAlt = y1 + rowPitch;
-        const ym2 = 0.5 * (yAlt + y2);
-        ctx.strokeStyle = cA.fill; ctx.beginPath(); ctx.moveTo(x1, yAlt); ctx.lineTo(xm, ym2); ctx.stroke();
-        ctx.strokeStyle = cB.fill; ctx.beginPath(); ctx.moveTo(xm, ym2); ctx.lineTo(x2, y2); ctx.stroke();
+  const aVec = vecs[0], bVec = vecs[1], cVec = vecs[2];
+  const eZ = scale(cVec, 1 / norm(cVec));
+  const aPerp = sub(aVec, scale(eZ, dot(aVec, eZ)));
+  const eV = scale(aPerp, 1 / norm(aPerp));
+  const eY = cross(eZ, eV);
+  const eYUnit = scale(eY, 1 / norm(eY));
+
+  // Unwrapped slab Cartesian coordinates for base cell atoms (u, v in [0, 1), wSlab contiguous!)
+  const mod1 = (x) => ((x % 1) + 1) % 1;
+  const baseAtoms = atoms.map(at => {
+    const u = mod1(at.u), v = mod1(at.v), w = at.wSlab;
+    const r = [
+      u * aVec[0] + v * bVec[0] + w * cVec[0],
+      u * aVec[1] + v * bVec[1] + w * cVec[1],
+      u * aVec[2] + v * bVec[2] + w * cVec[2]
+    ];
+    return { el: at.el, r, zA: at.zSlabA };
+  });
+
+  // 2) Replicate into a clean 3D neighborhood around the center to form a crisp ~6 Å vertical ribbon
+  //    (2 primitive repeats for small cells a<4.8 Å; 1 supercell repeat for large cells a>=4.8 Å)
+  const bProjY = Math.abs(dot(bVec, eYUnit)) || norm(bVec);
+  const targetHeightA = bProjY < 4.5 ? Math.min(7.4, bProjY * 2.15) : Math.min(7.8, bProjY * 1.12);
+  const repA = [-1, 0, 1];
+  const repB = bProjY < 4.5 ? [-1, 0, 1, 2] : [-1, 0, 1];
+
+  const raw3D = [];
+  for (const ia of repA) {
+    for (const ib of repB) {
+      const shift = add(scale(aVec, ia), scale(bVec, ib));
+      for (const ba of baseAtoms) {
+        const r = add(ba.r, shift);
+        raw3D.push({
+          el: ba.el,
+          r,
+          xA: dot(r, eZ),
+          yA: dot(r, eYUnit),
+          depthA: dot(r, eV)
+        });
       }
     }
   }
-  // Draw glossy spheres
-  for (let r = 0; r < nRows; r++) {
-    const ryBase = yStart + r * rowPitch;
-    for (let li = 0; li < nL; li++) {
-      const el = layers[li].els[0];
-      const cpk = PP_CPK[el] || { fill: "#94a3b8", stroke: "#334155", r: 0.95 };
-      const px = colX[li];
-      const py = ryBase + (li % 2 === 0 ? -rowPitch * 0.32 : rowPitch * 0.12);
-      _ppDrawGlossyAtom(ctx, px, py, 6.5 * cpk.r, cpk.fill, cpk.stroke);
-      if (r === 0) {
-        ctx.fillStyle = "#334155";
-        ctx.font = `700 9.5px ${st.fontFamily}`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "bottom";
-        ctx.fillText(el, px, py - 8.5 * cpk.r);
+
+  // Center Y window around the middle of the unit cell so the motif is balanced & complete
+  const baseYs = baseAtoms.map(ba => dot(ba.r, eYUnit));
+  const yCenterA = 0.5 * (Math.min(...baseYs) + Math.max(...baseYs)) + (bProjY < 4.5 ? 0.5 * bProjY : 0);
+  const yMinCut = yCenterA - 0.5 * targetHeightA;
+  const yMaxCut = yCenterA + 0.5 * targetHeightA;
+
+  // Keep atoms strictly within the clean vertical ribbon [yMinCut, yMaxCut] and within 1 front depth slice
+  const inRibbon = raw3D.filter(p => p.yA >= yMinCut - 0.15 && p.yA <= yMaxCut + 0.15);
+  if (inRibbon.length < 2) { ctx.restore(); return; }
+
+  // 3) Compute REAL 3D covalent bonds between atoms in the ribbon:
+  //    Use 1.18× covalent sum for heteronuclear/non-metal bonds, and tighter 0.98× sum for metal-metal pairs
+  //    so 2D TMDs/MA2Z4 (e.g. Mo-Mo at 3.17 Å) NEVER draw false metal-metal sticks while real bulk metals still bond!
+  const metalSet = new Set(["Ti","V","Cr","Mn","Fe","Co","Ni","Cu","Zn","Nb","Mo","W","Pt","Au","Al","Ga","In","Sn","Bi"]);
+  const realBonds3D = [];
+  for (let i = 0; i < inRibbon.length; i++) {
+    const a = inRibbon[i];
+    const rA = PP_COV_RADII[a.el] || 1.25;
+    const mA = metalSet.has(a.el);
+    for (let j = i + 1; j < inRibbon.length; j++) {
+      const b = inRibbon[j];
+      const d = Math.hypot(a.r[0] - b.r[0], a.r[1] - b.r[1], a.r[2] - b.r[2]);
+      const rB = PP_COV_RADII[b.el] || 1.25;
+      const factor = (mA && metalSet.has(b.el)) ? 0.98 : 1.18;
+      if (d >= 0.65 && d <= factor * (rA + rB)) {
+        realBonds3D.push([i, j, 0.5 * (a.depthA + b.depthA)]);
       }
     }
   }
 
-  // Built-in Electric Field E_in arrow underneath the inset!
+  // 4) Collapse exact collinear viewing-depth duplicates (atoms sitting directly behind each other along a-axis!)
+  //    so orthographic projection stays razor-clean like VESTA!
+  const visibleMap = new Array(inRibbon.length).fill(-1);
+  const visAtoms = [];
+  // Sort indices front-to-back (largest depthA first) so we keep the front-most atom at each (xA, yA) column
+  const idxByFront = inRibbon.map((_, i) => i).sort((i, j) => inRibbon[j].depthA - inRibbon[i].depthA);
+  for (const idx of idxByFront) {
+    const p = inRibbon[idx];
+    let matched = -1;
+    for (let vi = 0; vi < visAtoms.length; vi++) {
+      const q = visAtoms[vi];
+      if (q.el === p.el && Math.hypot(q.xA - p.xA, q.yA - p.yA) < 0.28) {
+        matched = vi;
+        break;
+      }
+    }
+    if (matched === -1) {
+      visibleMap[idx] = visAtoms.length;
+      visAtoms.push({ el: p.el, xA: p.xA, yA: p.yA, depthA: p.depthA });
+    } else {
+      visibleMap[idx] = matched;
+    }
+  }
+
+  // Deduplicate projected bonds between visible atoms
+  const bondSeen = new Set();
+  const visBonds = [];
+  for (const [i, j, zDepth] of realBonds3D) {
+    const vi = visibleMap[i], vj = visibleMap[j];
+    if (vi < 0 || vj < 0 || vi === vj) continue;
+    const key = vi < vj ? `${vi}_${vj}` : `${vj}_${vi}`;
+    if (bondSeen.has(key)) continue;
+    bondSeen.add(key);
+    // Avoid ultra-short degenerate projected bonds when two bonded atoms overlap almost head-on
+    const pa = visAtoms[vi], pb = visAtoms[vj];
+    if (Math.hypot(pa.xA - pb.xA, pa.yA - pb.yA) < 0.35) continue;
+    visBonds.push({ i: vi, j: vj, depthA: zDepth });
+  }
+
+  // Respect Flip z checkbox so crystal orientation ALWAYS matches the V(z) curve!
+  const flipX = !!an.opts?.flipZ;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  visAtoms.forEach(p => {
+    const px = flipX ? -p.xA : p.xA;
+    p.pxA = px;
+    if (px < minX) minX = px;
+    if (px > maxX) maxX = px;
+    if (p.yA < minY) minY = p.yA;
+    if (p.yA > maxY) maxY = p.yA;
+  });
+  const spanX = Math.max(1.2, maxX - minX);
+  const spanY = Math.max(1.2, maxY - minY);
+
+  // 5) Reserve clean top element-legend strip (16px) & bottom E_in arrow strip (28px), isotropic 1:1 Å-to-px scale!
+  const legendH = 16;
+  const arrowH = 28;
+  const availW = Math.max(40, wBox - 18);
+  const availH = Math.max(40, hBox - legendH - arrowH - 8);
+  const pxPerAng = Math.min(availW / (spanX + 1.5), availH / (spanY + 1.5));
+
+  const cx = xBox + wBox * 0.5;
+  const cy = yBox + legendH + 4 + availH * 0.5;
+  const midX = 0.5 * (minX + maxX);
+  const midY = 0.5 * (minY + maxY);
+
+  visAtoms.forEach(p => {
+    p.sx = cx + (p.pxA - midX) * pxPerAng;
+    p.sy = cy - (p.yA - midY) * pxPerAng;
+    const cpk = PP_CPK[p.el] || { fill: "#94a3b8", stroke: "#334155", r: 0.95 };
+    p.cpk = cpk;
+    p.rPx = Math.max(3.6, Math.min(7.8, pxPerAng * (0.26 + 0.16 * cpk.r)));
+  });
+
+  // 6) Crisp clean element color legend row ABOVE the structure (ZERO colliding labels on spheres!)
+  const uniqueEls = [];
+  visAtoms.slice().sort((a, b) => a.sx - b.sx).forEach(p => {
+    if (!uniqueEls.includes(p.el)) uniqueEls.push(p.el);
+  });
+  const legFont = `700 9.5px ${st.fontFamily || "Arial, sans-serif"}`;
+  ctx.font = legFont;
+  const itemW = uniqueEls.map(el => 12 + ctx.measureText(el).width + 6);
+  const totalLegW = itemW.reduce((s, v) => s + v, 0) - 6;
+  let lx = cx - totalLegW * 0.5;
+  const ly = yBox + 8;
+  uniqueEls.forEach((el, idx) => {
+    const cpk = PP_CPK[el] || { fill: "#94a3b8", stroke: "#334155", r: 0.9 };
+    _ppDrawGlossyAtom(ctx, lx + 4, ly, 3.8, cpk.fill, cpk.stroke);
+    ctx.fillStyle = "#1e293b";
+    ctx.font = legFont;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(el, lx + 10, ly + 0.5);
+    lx += itemW[idx];
+  });
+
+  // 7) Draw real 3D bonds + spheres sorted cleanly back-to-front by depthA!
+  const bondLw = Math.max(1.8, Math.min(3.4, pxPerAng * 0.17));
+  const drawables = [];
+  visBonds.forEach(b => drawables.push({ kind: "bond", depth: b.depthA - 0.05, b }));
+  visAtoms.forEach(a => drawables.push({ kind: "atom", depth: a.depthA, a }));
+  drawables.sort((u, v) => u.depth - v.depth);
+
+  for (const item of drawables) {
+    if (item.kind === "bond") {
+      const pa = visAtoms[item.b.i], pb = visAtoms[item.b.j];
+      _ppDrawVestaBond(ctx, pa.sx, pa.sy, pb.sx, pb.sy, pa.cpk.fill, pb.cpk.fill, bondLw);
+    } else {
+      const a = item.a;
+      _ppDrawGlossyAtom(ctx, a.sx, a.sy, a.rPx, a.cpk.fill, a.cpk.stroke);
+    }
+  }
+
+  // 8) Built-in Electric Field E_in arrow cleanly centered underneath the crystal structure!
   const dPhi = an.pot ? an.pot.deltaPhiEv : (an.berrySummary ? an.berrySummary.dPhiEquivEv : 0);
   if (Math.abs(dPhi) > 0.01) {
-    const ay = yStart + nRows * rowPitch + 12;
-    const xL = colX[0], xR = colX[nL - 1];
-    // Arrow points from higher electron potential (lower electrostatic φ) toward lower electron potential (higher φ) -> dipole field direction
+    const structBotY = Math.max(...visAtoms.map(p => p.sy + p.rPx));
+    const ay = Math.min(yBox + hBox - 16, structBotY + 11);
+    const halfArr = Math.max(24, Math.min(wBox * 0.36, spanX * pxPerAng * 0.46));
+    const xL = cx - halfArr, xR = cx + halfArr;
     const goRight = dPhi > 0;
     const ax1 = goRight ? xL : xR, ax2 = goRight ? xR : xL;
-    ctx.strokeStyle = "#0f172a"; ctx.fillStyle = "#0f172a"; ctx.lineWidth = 2.0;
+    ctx.strokeStyle = "#0f172a"; ctx.fillStyle = "#0f172a"; ctx.lineWidth = 1.9;
     ctx.beginPath(); ctx.moveTo(ax1, ay); ctx.lineTo(ax2, ay); ctx.stroke();
     const dir = goRight ? 1 : -1;
     ctx.beginPath();
@@ -1195,10 +1394,10 @@ function _ppDrawSlabInset(ctx, xBox, yBox, wBox, hBox, an, st) {
     ctx.lineTo(ax2 - dir * 6.5, ay - 3.6);
     ctx.lineTo(ax2 - dir * 6.5, ay + 3.6);
     ctx.closePath(); ctx.fill();
-    ctx.font = `italic 700 11.5px ${st.fontFamily}`;
+    ctx.font = `italic 700 11.5px ${st.fontFamily || '"Times New Roman", serif'}`;
     ctx.textAlign = "center"; ctx.textBaseline = "top";
-    if (typeof drawSciText === "function") drawSciText(ctx, "E_{in}", 0.5 * (ax1 + ax2), ay + 12);
-    else ctx.fillText("E_in", 0.5 * (ax1 + ax2), ay + 4);
+    if (typeof drawSciText === "function") drawSciText(ctx, "E_{in}", cx, ay + 12);
+    else ctx.fillText("E_in", cx, ay + 4);
   }
   ctx.restore();
 }
@@ -1326,12 +1525,13 @@ function _ppDrawPotentialPanel(ctx, rx, ry, rw, rh, an, st) {
     }
   }
 
-  // Optional Glossy Atomic Slab Schematic + Built-in Field E_in Arrow Inset inside Left Vacuum Space!
+  // Optional Real 3D VESTA-Grade Atomic Slab Inset + Built-in Field E_in Arrow inside Left Vacuum Space!
   if (an.opts.showInset && an.crys.layers.length >= 2) {
-    const insetW = Math.min(130, w * 0.30);
-    const insetH = Math.min(132, h * 0.44);
-    const ix = x0 + 14;
-    const iy = y0 + h * 0.44;
+    const vacLeftPx = Math.max(102, toX(useAng ? pot.uSlabL * pot.cLen : pot.uSlabL) - x0 - 18);
+    const insetW = Math.min(152, Math.max(102, Math.min(w * 0.33, vacLeftPx)));
+    const insetH = Math.min(154, h * 0.47);
+    const ix = x0 + 6;
+    const iy = y0 + h * 0.42;
     _ppDrawSlabInset(ctx, ix, iy, insetW, insetH, an, st);
   }
   ctx.restore();
