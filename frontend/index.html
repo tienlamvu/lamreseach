@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=172_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=172_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=173_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=173_v116_vesta_viewer'" />
   <!-- Publication Math Typography: STIX Two Text (MathType / Times) + KaTeX 0.16.11 (Word/LaTeX Equation Engine) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -3658,7 +3658,93 @@
                 </div>
               </div>
 
-              <!-- Card 4: Export & Copy -->
+              <!-- Card 4: Plot Format & DPI (Collapsible) -->
+              <div id="pd-format-card" class="pd-side-card">
+                <details id="pd-format-details" class="pd-fmt-details">
+                  <summary class="pd-side-hd pd-fmt-summary">
+                    <span>🎨 Plot Format &amp; DPI</span>
+                    <span class="pd-fmt-chevron">▾</span>
+                  </summary>
+                  <div class="pd-fmt-body">
+                    <div class="pd-side-field">
+                      <label class="castep-field-lbl" for="pd-fmt-preset">Style Preset</label>
+                      <select id="pd-fmt-preset" class="castep-input" onchange="applyPostPlotStylePreset(this.value)">
+                        <option value="journal_tnr" selected>PRB / Journal (Times)</option>
+                        <option value="acs_arial">ACS / Nature (Arial)</option>
+                        <option value="origin_grid">OriginPro (+ Grid)</option>
+                        <option value="presentation">Presentation (Large)</option>
+                        <option value="custom">Custom</option>
+                      </select>
+                    </div>
+                    <div class="pd-side-field">
+                      <label class="castep-field-lbl" for="pd-fmt-font">Font Family</label>
+                      <select id="pd-fmt-font" class="castep-input" onchange="updatePostPlotFormatFromUI('pd')">
+                        <option value='&quot;Times New Roman&quot;, Times, Georgia, serif'>Times New Roman</option>
+                        <option value="Arial, Helvetica, sans-serif">Arial / Helvetica</option>
+                        <option value="Georgia, serif">Georgia Serif</option>
+                        <option value="'Inter', system-ui, sans-serif">Inter Clean Sans</option>
+                        <option value="'Calibri', 'Segoe UI', sans-serif">Calibri / Segoe</option>
+                      </select>
+                    </div>
+                    <div class="pd-side-grid-2">
+                      <div class="pd-side-field">
+                        <label class="castep-field-lbl" for="pd-fmt-title-size">Title (px)</label>
+                        <input type="number" id="pd-fmt-title-size" class="castep-input-sm" value="14" min="10" max="22" step="0.5" onchange="updatePostPlotFormatFromUI('pd')" />
+                      </div>
+                      <div class="pd-side-field">
+                        <label class="castep-field-lbl" for="pd-fmt-axis-size">Axis (px)</label>
+                        <input type="number" id="pd-fmt-axis-size" class="castep-input-sm" value="13" min="9" max="20" step="0.5" onchange="updatePostPlotFormatFromUI('pd')" />
+                      </div>
+                    </div>
+                    <div class="pd-side-grid-2">
+                      <div class="pd-side-field">
+                        <label class="castep-field-lbl" for="pd-fmt-tick-size">Ticks (px)</label>
+                        <input type="number" id="pd-fmt-tick-size" class="castep-input-sm" value="12" min="8" max="18" step="0.5" onchange="updatePostPlotFormatFromUI('pd')" />
+                      </div>
+                      <div class="pd-side-field">
+                        <label class="castep-field-lbl" for="pd-fmt-line-w">Line W (px)</label>
+                        <input type="number" id="pd-fmt-line-w" class="castep-input-sm" value="1.8" min="0.8" max="4.0" step="0.2" onchange="updatePostPlotFormatFromUI('pd')" />
+                      </div>
+                    </div>
+                    <div class="pd-side-grid-2">
+                      <div class="pd-side-field">
+                        <label class="castep-field-lbl" for="pd-fmt-border-w">Frame W</label>
+                        <input type="number" id="pd-fmt-border-w" class="castep-input-sm" value="1.8" min="0.8" max="3.5" step="0.2" onchange="updatePostPlotFormatFromUI('pd')" />
+                      </div>
+                      <div class="pd-side-field">
+                        <label class="castep-field-lbl" for="pd-fmt-tick-dir">Ticks Dir</label>
+                        <select id="pd-fmt-tick-dir" class="castep-input" onchange="updatePostPlotFormatFromUI('pd')">
+                          <option value="in" selected>Inward</option>
+                          <option value="out">Outward</option>
+                          <option value="none">None</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="pd-side-grid-2">
+                      <div class="pd-side-field">
+                        <label class="castep-field-lbl" for="pd-fmt-grid">Grid</label>
+                        <select id="pd-fmt-grid" class="castep-input" onchange="updatePostPlotFormatFromUI('pd')">
+                          <option value="off">Off</option>
+                          <option value="subtle" selected>Subtle</option>
+                          <option value="normal">Solid</option>
+                        </select>
+                      </div>
+                      <div class="pd-side-field">
+                        <label class="castep-field-lbl" for="pd-fmt-dpi">Export DPI</label>
+                        <select id="pd-fmt-dpi" class="castep-input" onchange="updatePostPlotFormatFromUI('pd')">
+                          <option value="3">300 DPI</option>
+                          <option value="4" selected>400 DPI</option>
+                          <option value="5">500 DPI</option>
+                          <option value="6">600 DPI</option>
+                        </select>
+                      </div>
+                    </div>
+                    <label class="castep-chk-lbl" style="margin-top:3px;"><input type="checkbox" id="pd-fmt-bold-axes" checked onchange="updatePostPlotFormatFromUI('pd')" /> Bold Titles &amp; Axis Labels</label>
+                  </div>
+                </details>
+              </div>
+
+              <!-- Card 5: Export & Copy -->
               <div class="pd-side-card">
                 <div class="pd-side-hd"><span>💾 Export &amp; Copy</span></div>
                 <button type="button" class="btn btn-teal btn-sm pd-tb-btn" style="width:100%; justify-content:center; margin-bottom:5px;" onclick="copyPostDataHD()" title="Copy publication-quality figure (400–600 DPI PNG)">📋 Copy HD Image</button>
@@ -3682,10 +3768,17 @@
 
               <!-- Publication Dual Canvas Card -->
               <div class="card" style="padding:12px 14px; margin-bottom:14px;">
-                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:8px;">
+                <div class="pd-canvas-toolbar">
                   <div style="font-size:13px; font-weight:800; color:#0f172a;">
                     📈 Interlayer Distance Evolution &amp; Side-View Atomic Layer Schematic
-                    <span style="font-size:11px; font-weight:600; color:#64748b; margin-left:6px;">💡 Right-click either sub-panel to copy HD image or data (incl. fit curves) individually</span>
+                    <span style="font-size:11px; font-weight:600; color:#64748b; margin-left:6px;">💡 Right-click to Copy HD/TSV • Ctrl+Scroll to zoom</span>
+                  </div>
+                  <div class="pd-zoom-ctrl">
+                    <button type="button" class="pd-zoom-btn" onclick="stepPostDataZoom(-1)" title="Zoom Out">🔍−</button>
+                    <span id="pd-zoom-badge" class="pd-zoom-pill">100%</span>
+                    <button type="button" class="pd-zoom-btn" onclick="stepPostDataZoom(1)" title="Zoom In">🔍+</button>
+                    <button type="button" class="pd-zoom-btn" onclick="resetPostDataZoom()" title="Reset Zoom (100%)">⟲</button>
+                    <button type="button" class="pd-zoom-btn pd-zoom-fmt-btn" onclick="focusPostPlotFormatCard('pd')" title="Customize Plot Font, Size, Ticks &amp; DPI">🎨 Format</button>
                   </div>
                 </div>
                 <div style="width:100%; overflow-x:auto; text-align:center;">
@@ -3841,7 +3934,121 @@
                 </label>
               </div>
 
-              <!-- Card 4: Export & Copy -->
+              <!-- Card 4: Plot Format, Colormap & DPI -->
+              <div id="tr-format-card" class="pd-side-card">
+                <details id="tr-format-details" class="pd-fmt-details" open>
+                  <summary class="pd-side-hd pd-fmt-summary">
+                    <span>🎨 Plot Format &amp; DPI</span>
+                    <span class="pd-fmt-chevron">▾</span>
+                  </summary>
+                  <div class="pd-fmt-body">
+                    <div class="pd-side-field">
+                      <label class="castep-field-lbl" for="tr-fmt-preset">Style Preset</label>
+                      <select id="tr-fmt-preset" class="castep-input" onchange="applyPostPlotStylePreset(this.value)">
+                        <option value="journal_tnr" selected>PRB / Journal (Times)</option>
+                        <option value="acs_arial">ACS / Nature (Arial)</option>
+                        <option value="origin_grid">OriginPro (+ Grid)</option>
+                        <option value="presentation">Presentation (Large)</option>
+                        <option value="custom">Custom</option>
+                      </select>
+                    </div>
+                    <div class="pd-side-grid-2">
+                      <div class="pd-side-field">
+                        <label class="castep-field-lbl" for="tr-fmt-font">Font</label>
+                        <select id="tr-fmt-font" class="castep-input" onchange="updatePostPlotFormatFromUI('tr')">
+                          <option value='&quot;Times New Roman&quot;, Times, Georgia, serif'>Times</option>
+                          <option value="Arial, Helvetica, sans-serif">Arial</option>
+                          <option value="Georgia, serif">Georgia</option>
+                          <option value="'Inter', system-ui, sans-serif">Inter</option>
+                          <option value="'Calibri', 'Segoe UI', sans-serif">Calibri</option>
+                        </select>
+                      </div>
+                      <div class="pd-side-field" title="Color palette for Spin Texture ⟨Sz⟩ &amp; Berry Curvature Ω_z(k)">
+                        <label class="castep-field-lbl" for="tr-fmt-cmap">Colormap</label>
+                        <select id="tr-fmt-cmap" class="castep-input" onchange="renderTopoRashbaAll()">
+                          <option value="rdbu" selected>RdBu Classic</option>
+                          <option value="seismic">Seismic Vivid</option>
+                          <option value="coolwarm">Coolwarm</option>
+                          <option value="puor">PuOr (CB-Safe)</option>
+                          <option value="piyg">PiYG (CB-Safe)</option>
+                          <option value="viridis">Viridis</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="pd-side-grid-2">
+                      <div class="pd-side-field">
+                        <label class="castep-field-lbl" for="tr-fmt-title-size">Title (px)</label>
+                        <input type="number" id="tr-fmt-title-size" class="castep-input-sm" value="14" min="10" max="22" step="0.5" onchange="updatePostPlotFormatFromUI('tr')" />
+                      </div>
+                      <div class="pd-side-field">
+                        <label class="castep-field-lbl" for="tr-fmt-axis-size">Axis (px)</label>
+                        <input type="number" id="tr-fmt-axis-size" class="castep-input-sm" value="13" min="9" max="20" step="0.5" onchange="updatePostPlotFormatFromUI('tr')" />
+                      </div>
+                    </div>
+                    <div class="pd-side-grid-2">
+                      <div class="pd-side-field">
+                        <label class="castep-field-lbl" for="tr-fmt-tick-size">Ticks (px)</label>
+                        <input type="number" id="tr-fmt-tick-size" class="castep-input-sm" value="12" min="8" max="18" step="0.5" onchange="updatePostPlotFormatFromUI('tr')" />
+                      </div>
+                      <div class="pd-side-field">
+                        <label class="castep-field-lbl" for="tr-fmt-line-w">Line W (px)</label>
+                        <input type="number" id="tr-fmt-line-w" class="castep-input-sm" value="1.8" min="0.8" max="4.0" step="0.2" onchange="updatePostPlotFormatFromUI('tr')" />
+                      </div>
+                    </div>
+                    <div class="pd-side-grid-2">
+                      <div class="pd-side-field">
+                        <label class="castep-field-lbl" for="tr-fmt-border-w">Frame W</label>
+                        <input type="number" id="tr-fmt-border-w" class="castep-input-sm" value="1.8" min="0.8" max="3.5" step="0.2" onchange="updatePostPlotFormatFromUI('tr')" />
+                      </div>
+                      <div class="pd-side-field">
+                        <label class="castep-field-lbl" for="tr-fmt-tick-dir">Ticks Dir</label>
+                        <select id="tr-fmt-tick-dir" class="castep-input" onchange="updatePostPlotFormatFromUI('tr')">
+                          <option value="in" selected>Inward</option>
+                          <option value="out">Outward</option>
+                          <option value="none">None</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="pd-side-grid-2">
+                      <div class="pd-side-field">
+                        <label class="castep-field-lbl" for="tr-fmt-grid">Grid</label>
+                        <select id="tr-fmt-grid" class="castep-input" onchange="updatePostPlotFormatFromUI('tr')">
+                          <option value="off">Off</option>
+                          <option value="subtle" selected>Subtle</option>
+                          <option value="normal">Solid</option>
+                        </select>
+                      </div>
+                      <div class="pd-side-field">
+                        <label class="castep-field-lbl" for="tr-fmt-height">Fig Height</label>
+                        <select id="tr-fmt-height" class="castep-input" onchange="renderTopoRashbaAll()">
+                          <option value="680">Compact (680)</option>
+                          <option value="780" selected>Standard (780)</option>
+                          <option value="900">Tall (900)</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="pd-side-field">
+                      <label class="castep-field-lbl" for="tr-fmt-dpi">Export DPI Quality</label>
+                      <select id="tr-fmt-dpi" class="castep-input" onchange="updatePostPlotFormatFromUI('tr')">
+                        <option value="3">300 DPI (Fast)</option>
+                        <option value="4" selected>400 DPI (Journal HD)</option>
+                        <option value="5">500 DPI (Ultra HD)</option>
+                        <option value="6">600 DPI (Nature / Print)</option>
+                      </select>
+                    </div>
+                    <div class="pd-side-chk-grid">
+                      <label class="castep-chk-lbl" title="Show (a), (b), (c), (d) subfigure labels"><input type="checkbox" id="tr-fmt-panel-letters" checked onchange="renderTopoRashbaAll()" /> (a)–(d) Labels</label>
+                      <label class="castep-chk-lbl" title="Show legend and Rashba fit callout boxes"><input type="checkbox" id="tr-fmt-show-legends" checked onchange="renderTopoRashbaAll()" /> Legends</label>
+                      <label class="castep-chk-lbl" title="Show subtle iso-curvature contour lines inside BZ"><input type="checkbox" id="tr-fmt-iso-contours" checked onchange="renderTopoRashbaAll()" /> Contours</label>
+                      <label class="castep-chk-lbl" title="Show reciprocal basis vectors b₁, b₂ in BZ"><input type="checkbox" id="tr-fmt-show-basis" checked onchange="renderTopoRashbaAll()" /> b₁, b₂ Vecs</label>
+                      <label class="castep-chk-lbl" title="Show DFT high-symmetry k-path in BZ"><input type="checkbox" id="tr-fmt-show-kpath" checked onchange="renderTopoRashbaAll()" /> DFT k-Path</label>
+                      <label class="castep-chk-lbl" title="Bold figure titles &amp; axis labels"><input type="checkbox" id="tr-fmt-bold-axes" checked onchange="updatePostPlotFormatFromUI('tr')" /> Bold Axes</label>
+                    </div>
+                  </div>
+                </details>
+              </div>
+
+              <!-- Card 5: Export & Copy -->
               <div class="pd-side-card">
                 <div class="pd-side-hd"><span>💾 Export &amp; Copy</span></div>
                 <button type="button" class="btn btn-teal btn-sm pd-tb-btn" style="width:100%; justify-content:center; margin-bottom:5px;" onclick="copyTopoRashbaHD()" title="Copy full 2×2 High-DPI figure to clipboard (or right-click any single panel)">📋 Copy Full HD Image</button>
@@ -3866,10 +4073,27 @@
 
               <!-- 2x2 Publication Canvas Card -->
               <div class="card" style="padding:12px 14px; margin-bottom:14px;">
-                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:8px;">
-                  <div style="font-size:13px; font-weight:800; color:#0f172a;">
+                <div class="pd-canvas-toolbar">
+                  <div style="font-size:12.5px; font-weight:800; color:#0f172a;">
                     🌀 Rashba Dispersion, Spin Splitting ΔE(k), 2D Spin Texture &amp; First Brillouin Zone
-                    <span style="font-size:11px; font-weight:600; color:#64748b; margin-left:6px;">💡 Right-click any of the 4 panels to Copy HD Image (400–600 DPI), Copy Data (TSV), or Save PNG individually</span>
+                  </div>
+                  <div class="pd-zoom-ctrl">
+                    <select id="tr-zoom-target" class="pd-zoom-select" onchange="setTopoRashbaZoomTarget(this.value)" title="Select which panel(s) to zoom">
+                      <option value="all" selected>All 4 Panels</option>
+                      <option value="D">(d) Brillouin Zone</option>
+                      <option value="C">(c) Spin Texture</option>
+                      <option value="A">(a) Dispersion</option>
+                      <option value="B">(b) ΔE(k) Fit</option>
+                    </select>
+                    <button type="button" class="pd-zoom-btn" onclick="stepTopoRashbaZoom(-1)" title="Zoom Out">🔍−</button>
+                    <input type="range" id="tr-zoom-slider" class="pd-zoom-slider" min="0.35" max="4.0" step="0.05" value="1.0" oninput="setTopoRashbaZoomValue(this.value)" title="Drag to zoom smoothly" />
+                    <span id="tr-zoom-badge" class="pd-zoom-pill">100%</span>
+                    <button type="button" class="pd-zoom-btn" onclick="stepTopoRashbaZoom(1)" title="Zoom In">🔍+</button>
+                    <button type="button" class="pd-zoom-btn" onclick="resetTopoRashbaZoom('all')" title="Reset All Panel Zooms to 100%">⟲</button>
+                    <label class="pd-zoom-wheel-lbl" title="Enable direct mouse scroll wheel zooming over any panel (or hold Ctrl+Scroll anytime)">
+                      <input type="checkbox" id="tr-wheel-zoom-chk" onchange="toggleTopoRashbaWheelZoom(this.checked)" /> 🖱️ Wheel
+                    </label>
+                    <button type="button" class="pd-zoom-btn pd-zoom-fmt-btn" onclick="focusPostPlotFormatCard('tr')" title="Customize Plot Format, Colormap, Fonts &amp; DPI">🎨 Format</button>
                   </div>
                 </div>
                 <div style="width:100%; overflow-x:auto; text-align:center;">
@@ -6852,12 +7076,12 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=172_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=172_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=172_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=172_v116_vesta_viewer'"></script>
-  <script src="post_data.js?v=172_v116_vesta_viewer" onerror="this.src='/static/post_data.js?v=172_v116_vesta_viewer'"></script>
-  <script src="topo_rashba.js?v=172_v116_vesta_viewer" onerror="this.src='/static/topo_rashba.js?v=172_v116_vesta_viewer'"></script>
-  <script src="dft_theory.js?v=172_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=172_v116_vesta_viewer'"></script>
-  <script src="app.js?v=172_v116_vesta_viewer" onerror="this.src='/static/app.js?v=172_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=173_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=173_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=173_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=173_v116_vesta_viewer'"></script>
+  <script src="post_data.js?v=173_v116_vesta_viewer" onerror="this.src='/static/post_data.js?v=173_v116_vesta_viewer'"></script>
+  <script src="topo_rashba.js?v=173_v116_vesta_viewer" onerror="this.src='/static/topo_rashba.js?v=173_v116_vesta_viewer'"></script>
+  <script src="dft_theory.js?v=173_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=173_v116_vesta_viewer'"></script>
+  <script src="app.js?v=173_v116_vesta_viewer" onerror="this.src='/static/app.js?v=173_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
