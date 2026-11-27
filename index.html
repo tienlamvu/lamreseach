@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=174_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=174_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=175_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=175_v116_vesta_viewer'" />
   <!-- Publication Math Typography: STIX Two Text (MathType / Times) + KaTeX 0.16.11 (Word/LaTeX Equation Engine) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -3529,7 +3529,7 @@
                     <input type="file" id="pd-cif-append-input" accept=".cif,.cell,.xsd,.castep,.msi,.car,.vasp,.xyz,.extxyz" multiple style="display:none;" onchange="handlePostDataCifUpload(event, true, false)" />
                   </label>
                 </div>
-                <div class="pd-fmt-strip" style="margin-top:6px;">
+                <div id="pd-fmt-hints" class="pd-fmt-strip" style="margin-top:6px;">
                   <span class="pd-fmt-pill">.cif</span>
                   <span class="pd-fmt-pill">.cell</span>
                   <span class="pd-fmt-pill">.xsd</span>
@@ -3539,6 +3539,7 @@
                   <span class="pd-fmt-pill">POSCAR</span>
                   <span class="pd-fmt-pill">.xyz</span>
                 </div>
+                <div id="pd-active-workspace" class="pd-ws-box" style="display:none;"></div>
               </div>
 
               <!-- Card 2: Measurement & Layer Parameters -->
@@ -3859,13 +3860,14 @@
                   </label>
                   <button type="button" class="btn btn-outline btn-sm pd-action-btn" style="grid-column:1 / -1; border-color:#0f766e; color:#0f766e;" onclick="importActiveCastepJobToTopoRashba()" title="Pull the currently open CASTEP job from the Data Analysis tab">🔗 Import Active Job from Data Analysis</button>
                 </div>
-                <div class="pd-fmt-strip" style="margin-top:6px;">
+                <div id="tr-fmt-hints" class="pd-fmt-strip" style="margin-top:6px;">
                   <span class="pd-fmt-pill">*_BandStr.bands</span>
                   <span class="pd-fmt-pill">.castep</span>
                   <span class="pd-fmt-pill">.param</span>
                   <span class="pd-fmt-pill">.cell</span>
                   <span class="pd-fmt-pill">.dat/.csv</span>
                 </div>
+                <div id="tr-active-workspace" class="pd-ws-box" style="display:none;"></div>
               </div>
 
               <!-- Card 2: Rashba & SOC Band Setup -->
@@ -4074,7 +4076,7 @@
               <!-- 2x2 Publication Canvas Card -->
               <div class="card" style="padding:12px 14px; margin-bottom:14px;">
                 <div class="pd-canvas-toolbar">
-                  <div style="font-size:13px; font-weight:800; color:#0f172a; white-space:nowrap;">
+                  <div style="font-size:13px; font-weight:800; color:#0f172a; flex:1 1 200px; min-width:0;">
                     🌀 Rashba, Spin Texture &amp; Brillouin Zone
                   </div>
                   <div class="pd-zoom-ctrl">
@@ -7076,12 +7078,12 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=174_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=174_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=174_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=174_v116_vesta_viewer'"></script>
-  <script src="post_data.js?v=174_v116_vesta_viewer" onerror="this.src='/static/post_data.js?v=174_v116_vesta_viewer'"></script>
-  <script src="topo_rashba.js?v=174_v116_vesta_viewer" onerror="this.src='/static/topo_rashba.js?v=174_v116_vesta_viewer'"></script>
-  <script src="dft_theory.js?v=174_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=174_v116_vesta_viewer'"></script>
-  <script src="app.js?v=174_v116_vesta_viewer" onerror="this.src='/static/app.js?v=174_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=175_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=175_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=175_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=175_v116_vesta_viewer'"></script>
+  <script src="post_data.js?v=175_v116_vesta_viewer" onerror="this.src='/static/post_data.js?v=175_v116_vesta_viewer'"></script>
+  <script src="topo_rashba.js?v=175_v116_vesta_viewer" onerror="this.src='/static/topo_rashba.js?v=175_v116_vesta_viewer'"></script>
+  <script src="dft_theory.js?v=175_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=175_v116_vesta_viewer'"></script>
+  <script src="app.js?v=175_v116_vesta_viewer" onerror="this.src='/static/app.js?v=175_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">

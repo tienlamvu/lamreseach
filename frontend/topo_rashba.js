@@ -11,7 +11,9 @@ const TR_HBAR2_OVER_2M0 = 3.80998212; // eV * Å^2
 
 window.TOPO_RASHBA_STATE = {
   activeSubTab: "distances", // "distances" | "rashba"
-  dataset: null,             // parsed calculation bundle
+  bundles: [],               // multi-structure workspace bundles loaded from folder/files
+  activeBundleId: null,      // currently selected bundle ID
+  dataset: null,             // active parsed calculation bundle
   analysis: null,            // computed Rashba / Spin / FBZ / Topology package
   panelGeoms: [],            // interactive hover & right-click rects
   zoom: { A: 1.0, B: 1.0, C: 1.0, D: 1.0 },
@@ -416,6 +418,16 @@ function _trParseDirectSpinTable(text, filename) {
 
 // ---------------- File Upload & Import from Data Analysis ----------------
 
+function _trFmtFormulaHtml(formula) {
+  return _trEsc(formula || "Material").replace(/([A-Za-z\)])(\d+)/g, "$1<sub>$2</sub>");
+}
+
+function _trExtractDirPath(fileObj) {
+  const rel = String(fileObj?.webkitRelativePath || "").replace(/\\/g, "/").trim();
+  if (!rel || !rel.includes("/")) return "";
+  return rel.slice(0, rel.lastIndexOf("/"));
+}
+
 async function handleTopoRashbaFileUpload(event) {
   const files = Array.from(event.target?.files || []);
   if (!files.length) return;
@@ -425,73 +437,234 @@ async function handleTopoRashbaFileUpload(event) {
 window.handleTopoRashbaFileUpload = handleTopoRashbaFileUpload;
 
 async function loadTopoRashbaFileList(files) {
-  let bandStrFile = null, fallbackBandsFile = null;
-  let castepFile = null, paramFile = null, cellFile = null, spinTexFile = null;
-
+  // Group files by directory so uploading a parent project folder discovers ALL SOC/Collinear subfolders cleanly!
+  const dirGroups = new Map();
   for (const f of files) {
-    const low = f.name.toLowerCase();
-    if (low.endsWith("_bandstr.bands")) {
-      bandStrFile = f;
-    } else if (low.endsWith(".bands") && !low.endsWith("_dos.bands")) {
-      if (!fallbackBandsFile) fallbackBandsFile = f;
-    } else if (low.endsWith(".castep") && !low.endsWith("_bandstr.castep") && !low.endsWith("_dos.castep")) {
-      castepFile = f;
-    } else if (low.endsWith(".castep") && !castepFile) {
-      castepFile = f;
-    } else if (low.endsWith(".param") && !low.endsWith("_bandstr.param")) {
-      paramFile = f;
-    } else if (low.endsWith(".param") && !paramFile) {
-      paramFile = f;
-    } else if (low.endsWith(".cell") && !low.endsWith("_dos.cell")) {
-      if (!cellFile || low.endsWith("_bandstr.cell")) cellFile = f;
-    } else if (low.endsWith(".dat") || low.endsWith(".tsv") || low.endsWith(".csv") || low.includes("spin")) {
-      if (!spinTexFile) spinTexFile = f;
+    const dir = _trExtractDirPath(f);
+    if (!dirGroups.has(dir)) dirGroups.set(dir, []);
+    dirGroups.get(dir).push(f);
+  }
+
+  const parsedBundles = [];
+  let bIdx = 0;
+
+  for (const [dirPath, groupFiles] of dirGroups.entries()) {
+    // Find all distinct BandStr / .bands files in this directory
+    const bandFiles = [];
+    const seenBandKeys = new Set();
+    for (const f of groupFiles) {
+      const low = f.name.toLowerCase();
+      if (low.endsWith("_bandstr.bands")) {
+        const stem = f.name.replace(/_BandStr\.bands$/i, "").toLowerCase();
+        seenBandKeys.add(stem);
+        bandFiles.push({ file: f, stem, priority: 1 });
+      }
+    }
+    for (const f of groupFiles) {
+      const low = f.name.toLowerCase();
+      if (low.endsWith(".bands") && !low.endsWith("_bandstr.bands") && !low.endsWith("_dos.bands")) {
+        const stem = f.name.replace(/\.bands$/i, "").toLowerCase();
+        if (!seenBandKeys.has(stem)) {
+          seenBandKeys.add(stem);
+          bandFiles.push({ file: f, stem, priority: 2 });
+        }
+      }
+    }
+    if (!bandFiles.length) continue;
+
+    for (const bf of bandFiles) {
+      const useBands = bf.file;
+      const stemLow = bf.stem;
+      // Match companion .castep / .param / .cell / spin files in the same directory (prefer matching stem)
+      let castepFile = null, paramFile = null, cellFile = null, spinTexFile = null;
+      const pickBest = (cur, cand, preferStem) => {
+        if (!cur) return cand;
+        const cLow = cand.name.toLowerCase(), curLow = cur.name.toLowerCase();
+        const cMatch = cLow.startsWith(preferStem), curMatch = curLow.startsWith(preferStem);
+        if (cMatch && !curMatch) return cand;
+        return cur;
+      };
+      for (const f of groupFiles) {
+        const low = f.name.toLowerCase();
+        if (low.endsWith(".castep") && !low.endsWith("_bandstr.castep") && !low.endsWith("_dos.castep")) {
+          castepFile = pickBest(castepFile, f, stemLow);
+        } else if (low.endsWith(".castep") && !castepFile) {
+          castepFile = f;
+        } else if (low.endsWith(".param") && !low.endsWith("_bandstr.param")) {
+          paramFile = pickBest(paramFile, f, stemLow);
+        } else if (low.endsWith(".param") && !paramFile) {
+          paramFile = f;
+        } else if (low.endsWith(".cell") && !low.endsWith("_dos.cell")) {
+          if (low.endsWith("_bandstr.cell") && low.startsWith(stemLow)) cellFile = f;
+          else cellFile = pickBest(cellFile, f, stemLow);
+        } else if (low.endsWith(".dat") || low.endsWith(".tsv") || low.endsWith(".csv") || low.includes("spin")) {
+          spinTexFile = pickBest(spinTexFile, f, stemLow);
+        }
+      }
+
+      const [bandsTxt, castepTxt, paramTxt, cellTxt, spinTxt] = await Promise.all([
+        useBands.text(),
+        castepFile ? castepFile.text() : Promise.resolve(""),
+        paramFile ? paramFile.text() : Promise.resolve(""),
+        cellFile ? cellFile.text() : Promise.resolve(""),
+        spinTexFile ? spinTexFile.text() : Promise.resolve("")
+      ]);
+
+      const bands = _trParseCastepBands(bandsTxt, useBands.name);
+      if (!bands) continue;
+      const meta = _trParseCastepMeta(castepTxt, paramTxt, cellTxt);
+      if (bands.ns >= 2) { meta.isCollinear = true; meta.isNonCollinearSoc = false; }
+      const directSpin = spinTxt ? _trParseDirectSpinTable(spinTxt, spinTexFile.name) : null;
+
+      const seed = useBands.name.replace(/_BandStr\.bands$/i, "").replace(/\.bands$/i, "");
+      const fileEntries = [
+        { name: useBands.name, role: "bands", relPath: useBands.webkitRelativePath || useBands.name },
+        castepFile ? { name: castepFile.name, role: "castep", relPath: castepFile.webkitRelativePath || castepFile.name } : null,
+        paramFile ? { name: paramFile.name, role: "param", relPath: paramFile.webkitRelativePath || paramFile.name } : null,
+        cellFile ? { name: cellFile.name, role: "cell", relPath: cellFile.webkitRelativePath || cellFile.name } : null,
+        spinTexFile ? { name: spinTexFile.name, role: "spin", relPath: spinTexFile.webkitRelativePath || spinTexFile.name } : null
+      ].filter(Boolean);
+
+      parsedBundles.push({
+        id: `trb_${Date.now()}_${bIdx++}`,
+        seed,
+        material: meta.formula || seed,
+        dirPath: dirPath || "",
+        sourceType: dirPath ? "folder" : "files",
+        filesLoaded: fileEntries.map(x => x.name),
+        fileEntries,
+        bands,
+        meta,
+        directSpin
+      });
     }
   }
 
-  const useBands = bandStrFile || fallbackBandsFile;
-  if (!useBands) {
+  if (!parsedBundles.length) {
     if (typeof showToast === "function") {
       showToast("Please include a CASTEP *_BandStr.bands (or *.bands) file from your Non-Collinear SOC or Collinear calculation.", "warning");
     }
     return;
   }
 
-  const [bandsTxt, castepTxt, paramTxt, cellTxt, spinTxt] = await Promise.all([
-    useBands.text(),
-    castepFile ? castepFile.text() : Promise.resolve(""),
-    paramFile ? paramFile.text() : Promise.resolve(""),
-    cellFile ? cellFile.text() : Promise.resolve(""),
-    spinTexFile ? spinTexFile.text() : Promise.resolve("")
-  ]);
-
-  const bands = _trParseCastepBands(bandsTxt, useBands.name);
-  if (!bands) {
-    if (typeof showToast === "function") showToast(`Could not parse k-points/eigenvalues from ${useBands.name}.`, "error");
-    return;
-  }
-  const meta = _trParseCastepMeta(castepTxt, paramTxt, cellTxt);
-  if (bands.ns >= 2) { meta.isCollinear = true; meta.isNonCollinearSoc = false; }
-  const directSpin = spinTxt ? _trParseDirectSpinTable(spinTxt, spinTexFile.name) : null;
-
-  const seed = useBands.name.replace(/_BandStr\.bands$/i, "").replace(/\.bands$/i, "");
-  TOPO_RASHBA_STATE.dataset = {
-    seed,
-    material: meta.formula || seed,
-    filesLoaded: [useBands.name, castepFile?.name, paramFile?.name, cellFile?.name, spinTexFile?.name].filter(Boolean),
-    bands,
-    meta,
-    directSpin
-  };
+  // Sort multi-folder bundles cleanly by dirPath then seed
+  parsedBundles.sort((a, b) => (a.dirPath || a.seed).localeCompare(b.dirPath || b.seed, undefined, { numeric: true }));
+  TOPO_RASHBA_STATE.bundles = parsedBundles;
+  TOPO_RASHBA_STATE.activeBundleId = parsedBundles[0].id;
+  TOPO_RASHBA_STATE.dataset = parsedBundles[0];
 
   _trPopulateSelectorsFromDataset();
   renderTopoRashbaAll();
   if (typeof showToast === "function") {
-    const modeTag = meta.isNonCollinearSoc ? "Non-Collinear SOC" : (meta.isCollinear ? "Collinear Spin" : "Non-Spin");
-    showToast(`Loaded ${useBands.name} (${modeTag}, ${bands.nk} k-pts, ${bands.nb} bands)!`, "success");
+    const first = parsedBundles[0];
+    const modeTag = first.meta.isNonCollinearSoc ? "Non-Collinear SOC" : (first.meta.isCollinear ? "Collinear Spin" : "Non-Spin");
+    if (parsedBundles.length > 1) {
+      showToast(`Loaded ${parsedBundles.length} structures from folder — active: ${first.material} (${modeTag})!`, "success");
+    } else {
+      showToast(`Loaded ${first.filesLoaded[0]} (${modeTag}, ${first.bands.nk} k-pts, ${first.bands.nb} bands)!`, "success");
+    }
   }
 }
 window.loadTopoRashbaFileList = loadTopoRashbaFileList;
+
+function selectTopoRashbaBundle(bundleId) {
+  const found = (TOPO_RASHBA_STATE.bundles || []).find(b => b.id === bundleId);
+  if (!found) return;
+  TOPO_RASHBA_STATE.activeBundleId = found.id;
+  TOPO_RASHBA_STATE.dataset = found;
+  TOPO_RASHBA_STATE.zoom = { A: 1.0, B: 1.0, C: 1.0, D: 1.0 };
+  syncTopoRashbaZoomUI();
+  _trPopulateSelectorsFromDataset();
+  renderTopoRashbaAll();
+}
+window.selectTopoRashbaBundle = selectTopoRashbaBundle;
+
+function _trRenderActiveWorkspaceSidebar(analysis) {
+  const box = document.getElementById("tr-active-workspace");
+  const hints = document.getElementById("tr-fmt-hints");
+  if (!box) return;
+  const ds = TOPO_RASHBA_STATE.dataset;
+  if (!ds || !analysis) {
+    box.style.display = "none";
+    box.innerHTML = "";
+    if (hints) hints.style.display = "flex";
+    return;
+  }
+  if (hints) hints.style.display = "none";
+  box.style.display = "flex";
+
+  const regimeShort = analysis.meta.isNonCollinearSoc ? "SOC" : (analysis.isCol ? "Collinear" : "Non-Spin");
+  const regimeCls = analysis.meta.isNonCollinearSoc ? "pd-ws-badge-soc" : (analysis.isCol ? "pd-ws-badge-col" : "pd-ws-badge-ns");
+  const sgTxt = analysis.meta.sgNum ? `SG #${analysis.meta.sgNum} (${analysis.meta.sgName})` : analysis.fbz.latticeType;
+  const pathDisplay = ds.dirPath
+    ? ds.dirPath.replace(/\//g, " / ")
+    : (ds.sourceType === "import" ? `Data Analysis / ${ds.seed}` : `Local Files (${ds.filesLoaded.length})`);
+  const pathIcon = ds.sourceType === "import" ? "🔗" : (ds.dirPath ? "📁" : "📄");
+
+  const roleIcon = (role) => {
+    if (role === "bands") return "📈";
+    if (role === "castep") return "📋";
+    if (role === "param") return "⚙️";
+    if (role === "cell") return "🧊";
+    if (role === "spin") return "🧭";
+    return "📄";
+  };
+
+  const bundles = TOPO_RASHBA_STATE.bundles || [];
+  let switcherHtml = "";
+  if (bundles.length > 1) {
+    const itemsHtml = bundles.map(b => {
+      const isAct = b.id === TOPO_RASHBA_STATE.activeBundleId;
+      const tag = b.meta?.isNonCollinearSoc ? "SOC" : (b.bands?.ns >= 2 ? "Col" : "NS");
+      const subLbl = b.dirPath ? b.dirPath.split("/").slice(-1)[0] : b.seed;
+      const tip = b.dirPath ? `${b.dirPath}/${b.filesLoaded[0]}` : b.filesLoaded[0];
+      return `
+        <button type="button" class="pd-ws-item ${isAct ? "active" : ""}" onclick="selectTopoRashbaBundle('${_trEsc(b.id)}')" title="${_trEsc(tip)}">
+          <span class="pd-ws-item-main">
+            <span class="pd-ws-item-name">${_trFmtFormulaHtml(b.material)}</span>
+            <span class="pd-ws-item-sub">${_trEsc(subLbl)}</span>
+          </span>
+          <span class="pd-ws-item-tag">${tag}</span>
+        </button>`;
+    }).join("");
+    switcherHtml = `
+      <details class="pd-ws-list-det" open>
+        <summary class="pd-ws-list-sum">🗂️ Structures in Folder (${bundles.length}) <span>▾</span></summary>
+        <div class="pd-ws-list">${itemsHtml}</div>
+      </details>`;
+  }
+
+  const fileRows = (ds.fileEntries || ds.filesLoaded.map(n => ({ name: n, role: "file" }))).map(fe => `
+    <div class="pd-ws-file-row" title="${_trEsc(fe.relPath || fe.name)}">
+      <span>${roleIcon(fe.role)}</span>
+      <span class="pd-ws-file-name">${_trEsc(fe.name)}</span>
+    </div>`).join("");
+
+  box.innerHTML = `
+    <div class="pd-ws-head">
+      <div class="pd-ws-title-wrap" title="${_trEsc(ds.material)} (${_trEsc(ds.seed)})">
+        <span class="pd-ws-dot"></span>
+        <span class="pd-ws-title">${_trFmtFormulaHtml(ds.material)}</span>
+      </div>
+      <span class="pd-ws-badge ${regimeCls}">${regimeShort}</span>
+    </div>
+    <div class="pd-ws-seed-row">
+      <span title="${_trEsc(ds.seed)}"><strong>Seed:</strong> ${_trEsc(ds.seed)}</span>
+      <span>•</span>
+      <span>${_trEsc(sgTxt)}</span>
+    </div>
+    <div class="pd-ws-path" title="${_trEsc(pathDisplay)}">
+      <span class="pd-ws-path-ic">${pathIcon}</span>
+      <span class="pd-ws-path-txt">${_trEsc(pathDisplay)}</span>
+    </div>
+    <div class="pd-ws-meta">${ds.bands.nk} k-pts • ${ds.bands.nb} bands • ${ds.filesLoaded.length} file(s)</div>
+    ${switcherHtml}
+    <details class="pd-ws-list-det">
+      <summary class="pd-ws-list-sum">📄 Loaded Files (${ds.filesLoaded.length}) <span>▾</span></summary>
+      <div class="pd-ws-file-list">${fileRows}</div>
+    </details>
+  `;
+}
 
 function importActiveCastepJobToTopoRashba() {
   const job = (window.CASTEP_STUDIO_STATE?.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
@@ -529,14 +702,21 @@ function importActiveCastepJobToTopoRashba() {
     meta.formula = job.material || CASTEP_STUDIO_STATE.structure.formula;
   }
 
-  TOPO_RASHBA_STATE.dataset = {
+  const importedBundle = {
+    id: `trb_imp_${Date.now()}`,
     seed: job.seed || "CASTEP",
     material: meta.formula || job.material || job.seed || "Material",
-    filesLoaded: [bands.sourceFile, "(from Data Analysis)"],
+    dirPath: job.folder || job.relPath || `Data Analysis / ${job.name || job.seed || "Active Job"}`,
+    sourceType: "import",
+    filesLoaded: [bands.sourceFile],
+    fileEntries: [{ name: bands.sourceFile, role: "bands", relPath: bands.sourceFile }],
     bands,
     meta,
     directSpin: null
   };
+  TOPO_RASHBA_STATE.bundles = [importedBundle];
+  TOPO_RASHBA_STATE.activeBundleId = importedBundle.id;
+  TOPO_RASHBA_STATE.dataset = importedBundle;
   _trPopulateSelectorsFromDataset();
   renderTopoRashbaAll();
   if (typeof showToast === "function") showToast(`Imported active Data Analysis job: ${TOPO_RASHBA_STATE.dataset.material}`, "success");
@@ -544,6 +724,8 @@ function importActiveCastepJobToTopoRashba() {
 window.importActiveCastepJobToTopoRashba = importActiveCastepJobToTopoRashba;
 
 function clearTopoRashbaData() {
+  TOPO_RASHBA_STATE.bundles = [];
+  TOPO_RASHBA_STATE.activeBundleId = null;
   TOPO_RASHBA_STATE.dataset = null;
   TOPO_RASHBA_STATE.analysis = null;
   TOPO_RASHBA_STATE.panelGeoms = [];
@@ -1642,15 +1824,18 @@ function renderTopoRashbaAll() {
   const canvas = document.getElementById("tr-main-canvas");
 
   if (!analysis) {
+    _trRenderActiveWorkspaceSidebar(null);
     if (strip) {
       strip.innerHTML = `<span>Load CASTEP <strong>Non-Collinear SOC</strong> (<code>*_BandStr.bands</code> + <code>*.castep</code> + <code>*.param</code> + <code>*.cell</code>) or <strong>Collinear</strong> files, or click <strong>🔗 Import Active Job</strong> to analyze Rashba splitting, 2D spin texture, First Brillouin Zone &amp; topology.</span>`;
     }
     if (kpiBox) kpiBox.style.display = "none";
-    if (hsTbody) hsTbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:14px; color:#64748b;">No band structure loaded yet.</td></tr>`;
+    if (hsTbody) hsTbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:14px; color:#64748b;">No band structure loaded yet.</td></tr>`;
     if (spinTbody) spinTbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:14px; color:#64748b;">Load a CASTEP <code>*.castep</code> file with Mulliken spin analysis to inspect atomic spin vectors (S<sub>x</sub>, S<sub>y</sub>, S<sub>z</sub>).</td></tr>`;
     if (canvas) _trDrawEmptyCanvas(canvas);
     return;
   }
+
+  _trRenderActiveWorkspaceSidebar(analysis);
 
   // 1) Update Top Summary Strip
   if (strip) {
@@ -1658,12 +1843,11 @@ function renderTopoRashbaAll() {
     const sgStr = analysis.meta.sgNum ? `SG #${analysis.meta.sgNum} (${analysis.meta.sgName})` : analysis.fbz.latticeType;
     const efStr = analysis.meta.efield ? ` • E-field = (${analysis.meta.efield.map(v => v.toFixed(2)).join(", ")})` : "";
     strip.innerHTML = `
-      <span><strong>Material:</strong> ${_trEsc(analysis.material)}</span>
+      <span><strong>Material:</strong> ${_trFmtFormulaHtml(analysis.material)}</span>
       <span style="color:${regimeCol}; font-weight:700;">● ${_trEsc(analysis.regime)}</span>
       <span><strong>Symmetry:</strong> ${_trEsc(sgStr)}</span>
       <span><strong>E<sub>g</sub>:</strong> ${analysis.crossesFermi ? "Metallic (0 eV)" : `${analysis.globalGap.toFixed(3)} eV (${analysis.isDirectGap ? "Direct" : "Indirect"})`}</span>
       <span><strong>Zero:</strong> ${_trEsc(analysis.zeroRefLabel)}${_trEsc(efStr)}</span>
-      <span style="margin-left:auto; font-size:11px; color:#64748b;">Files: ${_trEsc(analysis.filesLoaded.join(", "))}</span>
     `;
   }
 

@@ -2326,6 +2326,84 @@ function addPostDataCustomBondPair() {
 }
 window.addPostDataCustomBondPair = addPostDataCustomBondPair;
 
+function _pdComputeCommonFolderPath(items) {
+  const dirs = (items || [])
+    .map(it => {
+      const rp = String(it.relPath || "").replace(/\\/g, "/").trim();
+      return rp.includes("/") ? rp.slice(0, rp.lastIndexOf("/")) : "";
+    })
+    .filter(Boolean);
+  if (!dirs.length) return "";
+  const segLists = dirs.map(d => d.split("/"));
+  const common = [];
+  const minLen = Math.min(...segLists.map(s => s.length));
+  for (let i = 0; i < minLen; i++) {
+    const token = segLists[0][i];
+    if (segLists.every(s => s[i] === token)) common.push(token);
+    else break;
+  }
+  return common.length ? common.join(" / ") : dirs[0].replace(/\//g, " / ");
+}
+
+function _pdRenderActiveWorkspaceSidebar(res) {
+  const box = document.getElementById("pd-active-workspace");
+  const hints = document.getElementById("pd-fmt-hints");
+  if (!box) return;
+  const items = POST_DATA_STATE.items || [];
+  if (!items.length || !res) {
+    box.style.display = "none";
+    box.innerHTML = "";
+    if (hints) hints.style.display = "flex";
+    return;
+  }
+  if (hints) hints.style.display = "none";
+  box.style.display = "flex";
+
+  const activeCount = items.filter(it => it.enabled).length;
+  const formulaHtml = escapeHtml(res.refItem.crystal.formula || "Crystal").replace(/([A-Za-z\)])(\d+)/g, "$1<sub>$2</sub>");
+  const folderPath = _pdComputeCommonFolderPath(items);
+  const pathDisplay = folderPath || `Local Files (${items.length})`;
+  const pathIcon = folderPath ? "📁" : "📄";
+  const fmts = [...new Set(items.map(it => it.format || "CIF"))].join("/");
+  const layerSummary = res.refLayers ? `${res.refLayers.layers.length} layers (${res.refLayers.layers.map(l => l.elLabel).join("–")})` : `${res.refItem.crystal.natoms} atoms`;
+
+  const rowsHtml = items.map(it => {
+    const isRef = res.refItem && res.refItem.id === it.id;
+    const xDisp = Number.isFinite(it.xVal) ? Number((it.xVal * (res.opts?.xScale || 1)).toPrecision(5)) : it.xVal;
+    const tip = it.relPath && it.relPath !== it.filename ? it.relPath : it.filename;
+    return `
+      <div class="pd-ws-struct-row ${isRef ? "is-ref" : ""} ${it.enabled ? "" : "is-off"}" title="${escapeHtml(tip)}">
+        <input type="checkbox" ${it.enabled ? "checked" : ""} onchange="togglePostDataItemEnabled('${escapeHtml(it.id)}', this.checked)" title="Include/exclude from plot" />
+        <span class="pd-ws-struct-name">${escapeHtml(it.filename)}</span>
+        ${isRef ? `<span class="pd-ws-ref-pill">Ref</span>` : ""}
+        <span class="pd-ws-x-pill">X=${xDisp}</span>
+        <button type="button" class="pd-ws-del-btn" onclick="removePostDataItem('${escapeHtml(it.id)}')" title="Remove structure">×</button>
+      </div>`;
+  }).join("");
+
+  box.innerHTML = `
+    <div class="pd-ws-head">
+      <div class="pd-ws-title-wrap" title="${escapeHtml(res.refItem.crystal.formula || "Crystal")}">
+        <span class="pd-ws-dot" style="background:#0d9488;"></span>
+        <span class="pd-ws-title">${formulaHtml}</span>
+      </div>
+      <span class="pd-ws-badge pd-ws-badge-teal">${activeCount}/${items.length} on</span>
+    </div>
+    <div class="pd-ws-seed-row">
+      <span title="${escapeHtml(res.refItem.filename)}"><strong>Ref:</strong> ${escapeHtml(res.refItem.filename)}</span>
+    </div>
+    <div class="pd-ws-path" title="${escapeHtml(pathDisplay)}">
+      <span class="pd-ws-path-ic">${pathIcon}</span>
+      <span class="pd-ws-path-txt">${escapeHtml(pathDisplay)}</span>
+    </div>
+    <div class="pd-ws-meta">${escapeHtml(layerSummary)} • ${escapeHtml(fmts)}</div>
+    <details class="pd-ws-list-det">
+      <summary class="pd-ws-list-sum">📦 Loaded Structures (${items.length}) <span>▾</span></summary>
+      <div class="pd-ws-list">${rowsHtml}</div>
+    </details>
+  `;
+}
+
 function renderPostDataTab() {
   // Populate Reference Structure selector cleanly before computing
   const refSel = document.getElementById("pd-ref-select");
@@ -2342,6 +2420,7 @@ function renderPostDataTab() {
 
   const res = computePostDataAnalysis();
   POST_DATA_STATE.lastResult = res;
+  _pdRenderActiveWorkspaceSidebar(res);
 
   // Toggle Custom Layer-Pair Bar (in Interlayer mode with >= 3 layers) & Custom Bond Bar (in Bonds mode)
   const customLayerWrap = document.getElementById("pd-custom-layer-row");
