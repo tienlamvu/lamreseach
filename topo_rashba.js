@@ -66,9 +66,20 @@ function initTopoRashbaTab() {
           rd.innerHTML = "Hover over any of the 4 panels (Rashba Dispersion, ΔE(k) Splitting, 2D Spin Texture, or First Brillouin Zone) to inspect exact numerical values.";
         }
       });
-      if (typeof attachCastepCanvasContextMenu === "function") {
-        attachCastepCanvasContextMenu("tr-main-canvas", "topo_rashba", "Rashba_Spin_Topology.png");
+      if (typeof CASTEP_PLOT_CTX_SPECS !== "undefined" && !CASTEP_PLOT_CTX_SPECS["tr-main-canvas"]) {
+        CASTEP_PLOT_CTX_SPECS["tr-main-canvas"] = {
+          label: "Rashba, Spin Texture & Brillouin Zone",
+          pngName: "Rashba_Spin_Topology_Full.png",
+          dataItems: []
+        };
       }
+      canvas.title = "Hover over any panel for exact values • Right-click any sub-panel to Copy HD Image (400–600 DPI) or Copy Numerical Data (TSV)";
+      canvas.addEventListener("contextmenu", (ev) => {
+        if (typeof showCastepPlotContextMenu === "function") {
+          ev.preventDefault();
+          showCastepPlotContextMenu("tr-main-canvas", ev.clientX, ev.clientY);
+        }
+      });
     }
   }
 }
@@ -514,6 +525,7 @@ function resetTopoRashbaSettings() {
   setVal("tr-spin-model", "auto");
   setVal("tr-dresselhaus-ratio", "0.0");
   setVal("tr-ecut-ev", "0.08");
+  setVal("tr-bz-res", "360");
   setVal("tr-show-berry", true);
   renderTopoRashbaAll();
   if (typeof showToast === "function") showToast("Reset Rashba, Spin Texture & Topology settings to defaults.", "info");
@@ -609,15 +621,19 @@ function _trBuildReciprocalAndFBZ(vecsA, kpoints) {
   }
 
   // Fold any fractional k-point into the nearest Wigner-Seitz FBZ image in 2D Cartesian
-  const fold2D = (kFrac) => {
+  // (using a tiny first-quadrant tie-breaker + continuity bias so boundary points never jump to opposite edges!)
+  const fold2D = (kFrac, prevXY = null) => {
     const c0 = _trKFracToCart(kFrac, B);
-    let best = [c0[0], c0[1]], bestD2 = c0[0]*c0[0] + c0[1]*c0[1];
+    let best = [c0[0], c0[1]], bestScore = Infinity;
     for (let h = -2; h <= 2; h++) {
       for (let k = -2; k <= 2; k++) {
         const px = c0[0] + h * b1[0] + k * b2[0];
         const py = c0[1] + h * b1[1] + k * b2[1];
         const d2 = px * px + py * py;
-        if (d2 < bestD2 - 1e-7) { bestD2 = d2; best = [px, py]; }
+        // Prefer Wigner-Seitz interior; on exact boundary ties, prefer continuity with prevXY or +x/+y wedge
+        const contTie = prevXY ? 1e-4 * ((px - prevXY[0]) ** 2 + (py - prevXY[1]) ** 2) : (-1e-5 * (px * 1.1 + py * 0.7));
+        const score = d2 + contTie;
+        if (score < bestScore) { bestScore = score; best = [px, py]; }
       }
     }
     return best;
@@ -661,7 +677,13 @@ function _trBuildReciprocalAndFBZ(vecsA, kpoints) {
   };
 
   const kCartList = kpoints.map(kp => _trKFracToCart(kp.k, B));
-  const kPath2D = kpoints.map(kp => fold2D(kp.k));
+  const kPath2D = [];
+  let prevFolded = null;
+  for (let i = 0; i < kpoints.length; i++) {
+    const xy = fold2D(kpoints[i].k, prevFolded);
+    kPath2D.push(xy);
+    prevFolded = xy;
+  }
   const pathHS = [];
   for (let i = 0; i < kpoints.length; i++) {
     const hit = labelKFrac(kpoints[i].k);
@@ -1564,7 +1586,7 @@ function _trDrawMainCanvas(canvas, an) {
     { key: "rashba_disp", label: "Rashba / SOC Dispersion", x: 0, y: 0, w: halfW, h: halfH, pngName: `${an.seed}_Rashba_Dispersion.png`, buildExactTable: () => _trBuildTableDispersion(an) },
     { key: "rashba_split", label: "Spin Splitting ΔE(k) Fit", x: halfW, y: 0, w: width - halfW, h: halfH, pngName: `${an.seed}_Spin_Splitting_dE.png`, buildExactTable: () => _trBuildTableSplitting(an) },
     { key: "spin_tex", label: "2D Spin Texture", x: 0, y: halfH, w: halfW, h: height - halfH, pngName: `${an.seed}_Spin_Texture.png`, buildExactTable: () => _trBuildTableSpinTexture(an) },
-    { key: "fbz_berry", label: "Brillouin Zone & Berry Ω_z", x: halfW, y: halfH, w: width - halfW, h: height - halfH, pngName: `${an.seed}_FBZ_Berry.png`, buildExactTable: () => _trBuildTableHighSym(an) }
+    { key: "fbz_berry", label: "Brillouin Zone & Berry Ω_z", x: halfW, y: halfH, w: width - halfW, h: height - halfH, pngName: `${an.seed}_FBZ_Berry.png`, buildExactTable: () => _trBuildTableFBZBerry(an) }
   ];
 
   ctx.restore();
@@ -1902,7 +1924,8 @@ function _trDrawPanelC_SpinTexture(ctx, rx, ry, rw, rh, an) {
   ctx.fillText("+1", cbX + cbW + 3, cbY + 2);
   ctx.fillText("0", cbX + cbW + 3, cbY + cbH * 0.5);
   ctx.fillText("−1", cbX + cbW + 3, cbY + cbH - 2);
-  ctx.fillText("⟨S_z⟩", cbX - 2, cbY - 8);
+  if (typeof drawSciText === "function") drawSciText(ctx, "⟨S_{z}⟩", cbX - 2, cbY - 7);
+  else ctx.fillText("⟨Sz⟩", cbX - 2, cbY - 8);
 
   // Title & Badge
   ctx.fillStyle = "#0f172a"; ctx.font = "700 13px 'Times New Roman', serif"; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
@@ -1948,7 +1971,7 @@ function _trDrawPanelD_FBZAndBerry(ctx, rx, ry, rw, rh, an) {
   ctx.save();
   ctx.beginPath(); ctx.rect(x0, y0, side, side); ctx.clip();
 
-  // Optional Berry Curvature Ω_z(k) Heatmap clipped strictly inside the Wigner-Seitz FBZ polygon!
+  // Ultra-High-Resolution Smooth Berry Curvature Ω_z(k) Pixel Buffer clipped strictly inside the Wigner-Seitz FBZ polygon!
   if (showBerry && fbz.fbzPoly.length >= 3 && an.pBroken && fbz.isHex && fbz.cornersK.length === 6) {
     ctx.save();
     ctx.beginPath();
@@ -1959,28 +1982,66 @@ function _trDrawPanelD_FBZAndBerry(ctx, rx, ry, rw, rh, an) {
     ctx.closePath();
     ctx.clip();
 
-    const gridN = 64;
-    const cellW = side / gridN + 1;
+    const userRes = parseInt(document.getElementById("tr-bz-res")?.value || "360", 10) || 360;
+    const isHiDpiExport = Number(window._castepRenderDprOverride || 0) >= 3;
+    const gridN = isHiDpiExport ? Math.max(userRes, 520) : Math.max(120, Math.min(540, userRes));
+    const off = document.createElement("canvas");
+    off.width = gridN;
+    off.height = gridN;
+    const octx = off.getContext("2d");
+    const img = octx.createImageData(gridN, gridN);
+    const data = img.data;
+
     const omScale = Math.max(1e-3, an.omegaPeakK);
-    for (let ix = 0; ix < gridN; ix++) {
-      const kx = -kLim + ((ix + 0.5) / gridN) * 2 * kLim;
-      for (let iy = 0; iy < gridN; iy++) {
-        const ky = kLim - ((iy + 0.5) / gridN) * 2 * kLim;
+    const corners = fbz.cornersK;
+    const hv2 = an.hbarVF * an.hbarVF;
+    const mK = an.deltaK * 0.5, mK2 = mK * mK;
+    const mKp = an.deltaKp * 0.5, mKp2 = mKp * mKp;
+    const invGrid = 2.0 * kLim / gridN;
+
+    for (let iy = 0; iy < gridN; iy++) {
+      const ky = kLim - (iy + 0.5) * invGrid;
+      const rowOff = iy * gridN * 4;
+      for (let ix = 0; ix < gridN; ix++) {
+        const kx = -kLim + (ix + 0.5) * invGrid;
         let om = 0;
-        for (const c of fbz.cornersK) {
-          const q2 = (kx - c.xy[0]) ** 2 + (ky - c.xy[1]) ** 2;
-          const del = c.tau > 0 ? an.deltaK : an.deltaKp;
-          const m = del * 0.5;
-          const hv = an.hbarVF;
-          om += c.tau * (2 * hv * hv * m) / Math.pow(m * m + hv * hv * q2, 1.5);
+        for (let ci = 0; ci < 6; ci++) {
+          const c = corners[ci];
+          const dx = kx - c.xy[0], dy = ky - c.xy[1];
+          const q2 = dx * dx + dy * dy;
+          const m = c.tau > 0 ? mK : mKp;
+          const m2 = c.tau > 0 ? mK2 : mKp2;
+          const denom = m2 + hv2 * q2;
+          om += c.tau * (2.0 * hv2 * m) / (denom * Math.sqrt(denom));
         }
-        const norm = Math.max(-1, Math.min(1, om / omScale));
-        if (Math.abs(norm) > 0.03) {
-          ctx.fillStyle = _trDivergingColor(norm);
-          ctx.fillRect(x0 + (ix / gridN) * side, y0 + (iy / gridN) * side, cellW, cellW);
+        const v = Math.max(-1, Math.min(1, om / omScale));
+        // Smooth perceptual gamma so weak tails glow softly without sharp contour banding
+        const av = Math.pow(Math.abs(v), 0.78);
+        let r = 255, g = 255, b = 255;
+        if (v > 0) {
+          // Pure white -> vivid crimson red (#dc2626) -> deep ruby at peak
+          r = Math.round(255 - (255 - 216) * av);
+          g = Math.round(255 - (255 - 32) * av);
+          b = Math.round(255 - (255 - 38) * av);
+        } else if (v < 0) {
+          // Pure white -> vivid royal blue (#2563eb) -> deep sapphire at peak
+          r = Math.round(255 - (255 - 30) * av);
+          g = Math.round(255 - (255 - 92) * av);
+          b = Math.round(255 - (255 - 232) * av);
         }
+        // Subtle crisp iso-contour lines at 25%, 50%, 75% of peak |Omega_z|
+        const absLin = Math.abs(v);
+        if (Math.abs(absLin - 0.25) < 0.012 || Math.abs(absLin - 0.50) < 0.014 || Math.abs(absLin - 0.75) < 0.015) {
+          r = Math.round(r * 0.90); g = Math.round(g * 0.90); b = Math.round(b * 0.90);
+        }
+        const idx = rowOff + ix * 4;
+        data[idx] = r; data[idx + 1] = g; data[idx + 2] = b; data[idx + 3] = 255;
       }
     }
+    octx.putImageData(img, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(off, x0, y0, side, side);
     ctx.restore();
   } else if (fbz.fbzPoly.length >= 3) {
     // Clean soft slate FBZ interior
@@ -2080,11 +2141,13 @@ function _trDrawPanelD_FBZAndBerry(ctx, rx, ry, rw, rh, an) {
     ctx.fillText(`+${an.omegaPeakK.toFixed(0)}`, cbX + cbW + 3, cbY + 2);
     ctx.fillText("0", cbX + cbW + 3, cbY + cbH * 0.5);
     ctx.fillText(`−${an.omegaPeakK.toFixed(0)}`, cbX + cbW + 3, cbY + cbH - 2);
-    ctx.fillText("Ω_z(Å²)", cbX - 4, cbY - 8);
+    if (typeof drawSciText === "function") drawSciText(ctx, "Ω_{z} (Å^{2})", cbX - 4, cbY - 7);
+    else ctx.fillText("Ωz (Å²)", cbX - 4, cbY - 8);
   }
 
   ctx.fillStyle = "#0f172a"; ctx.font = "700 13px 'Times New Roman', serif"; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
-  ctx.fillText(`(d) First Brillouin Zone, k-Path & Berry Curvature Ω_z(k)`, rx + rw / 2, ry + 22);
+  if (typeof drawSciText === "function") drawSciText(ctx, "(d) First Brillouin Zone, k-Path & Berry Curvature Ω_{z}(k)", rx + rw / 2, ry + 22);
+  else ctx.fillText(`(d) First Brillouin Zone, k-Path & Berry Curvature Ωz(k)`, rx + rw / 2, ry + 22);
 
   ctx.fillStyle = "#0f172a"; ctx.font = "10.5px 'Times New Roman', serif"; ctx.textAlign = "center"; ctx.textBaseline = "top";
   ticks.forEach(v => ctx.fillText(Math.abs(v) < 1e-4 ? "0" : v.toFixed(2), kxToX(v), y0 + side + 5));
@@ -2193,6 +2256,51 @@ function _trBuildTableHighSym(an) {
       Number(h.dEvMeV.toFixed(3)), Number(h.dEcMeV.toFixed(3)), Number(h.localGapEv.toFixed(4))
     ])
   };
+}
+
+function _trBuildTableFBZBerry(an) {
+  const fbz = an.fbz;
+  const rows = [];
+  if (an.pBroken && fbz.isHex && fbz.cornersK.length === 6) {
+    let kLim = 1.0;
+    fbz.fbzPoly.forEach(v => { kLim = Math.max(kLim, Math.abs(v[0]), Math.abs(v[1])); });
+    const nG = 41;
+    const hv2 = an.hbarVF * an.hbarVF;
+    const mK = an.deltaK * 0.5, mK2 = mK * mK;
+    const mKp = an.deltaKp * 0.5, mKp2 = mKp * mKp;
+    const ptInPoly = (x, y, poly) => {
+      let inside = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const xi = poly[i][0], yi = poly[i][1], xj = poly[j][0], yj = poly[j][1];
+        if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / ((yj - yi) || 1e-12) + xi)) inside = !inside;
+      }
+      return inside;
+    };
+    for (let iy = 0; iy < nG; iy++) {
+      const ky = -kLim + (iy / (nG - 1)) * 2 * kLim;
+      for (let ix = 0; ix < nG; ix++) {
+        const kx = -kLim + (ix / (nG - 1)) * 2 * kLim;
+        if (!ptInPoly(kx, ky, fbz.fbzPoly)) continue;
+        let om = 0;
+        for (const c of fbz.cornersK) {
+          const q2 = (kx - c.xy[0]) ** 2 + (ky - c.xy[1]) ** 2;
+          const m = c.tau > 0 ? mK : mKp;
+          const m2 = c.tau > 0 ? mK2 : mKp2;
+          const d = m2 + hv2 * q2;
+          om += c.tau * (2 * hv2 * m) / (d * Math.sqrt(d));
+        }
+        rows.push([Number(kx.toFixed(5)), Number(ky.toFixed(5)), Number(om.toFixed(4))]);
+      }
+    }
+    if (rows.length) {
+      return {
+        title: `First Brillouin Zone Berry Curvature Ω_z(kx, ky) (${an.material})`,
+        headers: ["kx_A-1", "ky_A-1", "Berry_Omega_z_A2"],
+        rows
+      };
+    }
+  }
+  return _trBuildTableHighSym(an);
 }
 
 function copyTopoRashbaHD() {
