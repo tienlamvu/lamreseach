@@ -14751,6 +14751,20 @@ textarea.dft-ed-code-surface::placeholder {
   letter-spacing: 0.3px;
   vertical-align: middle;
 }
+.pd-plot-readout-bar {
+  margin-top: 8px;
+  padding: 7px 12px;
+  min-height: 32px;
+  border-radius: 7px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: #334155;
+  text-align: left;
+  word-break: break-word;
+  box-sizing: border-box;
+}
 .pd-data-table th,
 .pd-data-table td {
   padding: 6px 9px;
