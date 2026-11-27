@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=158_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=158_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=159_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=159_v116_vesta_viewer'" />
   <!-- Publication Math Typography: STIX Two Text (MathType / Times) + KaTeX 0.16.11 (Word/LaTeX Equation Engine) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -2690,13 +2690,14 @@
                     </select>
                   </span>
                   <span class="castep-ctrl-grp">
-                    <label class="castep-field-lbl" title="Peak search energy window relative to EF (eV)">Peak Win:</label>
-                    <input type="number" id="castep-st-pkmin" class="castep-input-sm" value="-3.0" step="0.5" style="width:54px;" onchange="renderCastepStonerPane()" />
+                    <label class="castep-field-lbl" title="Near-EF search window relative to Fermi level (eV). Stoner exchange splitting is primarily governed by states near EF (recommended: ±1.0 to ±1.5 eV).">Near-E<sub>F</sub> Win:</label>
+                    <input type="number" id="castep-st-pkmin" class="castep-input-sm" value="-1.5" step="0.5" style="width:54px;" onchange="renderCastepStonerPane()" />
                     <span style="font-size:11px; color:#64748b;">to</span>
-                    <input type="number" id="castep-st-pkmax" class="castep-input-sm" value="3.0" step="0.5" style="width:54px;" onchange="renderCastepStonerPane()" />
+                    <input type="number" id="castep-st-pkmax" class="castep-input-sm" value="1.5" step="0.5" style="width:54px;" onchange="renderCastepStonerPane()" />
+                    <button type="button" class="castep-preset-chip" onclick="setCastepStonerPeakWindow(-1.0,1.0)">±1</button>
                     <button type="button" class="castep-preset-chip" onclick="setCastepStonerPeakWindow(-1.5,1.5)">±1.5</button>
-                    <button type="button" class="castep-preset-chip" onclick="setCastepStonerPeakWindow(-3,3)">±3</button>
-                    <button type="button" class="castep-preset-chip" onclick="setCastepStonerPeakWindow(-5,5)">±5</button>
+                    <button type="button" class="castep-preset-chip" onclick="setCastepStonerPeakWindow(-2.5,2.5)">±2.5</button>
+                    <button type="button" class="castep-preset-chip" onclick="setCastepStonerPeakWindow(-4.0,4.0)">±4</button>
                   </span>
                   <span class="castep-ctrl-grp" style="margin-left:auto;">
                     <label class="castep-field-lbl" title="Gaussian broadening σ (eV)">σ (eV):</label>
@@ -6361,10 +6362,10 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=158_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=158_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=158_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=158_v116_vesta_viewer'"></script>
-  <script src="dft_theory.js?v=158_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=158_v116_vesta_viewer'"></script>
-  <script src="app.js?v=158_v116_vesta_viewer" onerror="this.src='/static/app.js?v=158_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=159_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=159_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=159_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=159_v116_vesta_viewer'"></script>
+  <script src="dft_theory.js?v=159_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=159_v116_vesta_viewer'"></script>
+  <script src="app.js?v=159_v116_vesta_viewer" onerror="this.src='/static/app.js?v=159_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
