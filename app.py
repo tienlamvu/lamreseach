@@ -4881,6 +4881,11 @@ def serve_post_data_js():
     return FileResponse(str(FRONTEND_DIR / "post_data.js"))
 
 
+@app.get("/topo_rashba.js")
+def serve_topo_rashba_js():
+    return FileResponse(str(FRONTEND_DIR / "topo_rashba.js"))
+
+
 @app.get("/index.html")
 def serve_index_html():
     return FileResponse(str(FRONTEND_DIR / "index.html"))
