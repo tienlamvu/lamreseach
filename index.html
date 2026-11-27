@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=176_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=176_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=177_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=177_v116_vesta_viewer'" />
   <!-- Publication Math Typography: STIX Two Text (MathType / Times) + KaTeX 0.16.11 (Word/LaTeX Equation Engine) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -2966,21 +2966,29 @@
                     </select>
                   </span>
                   <div class="castep-tb-actions">
-                    <label class="btn btn-primary btn-sm" style="cursor:pointer; font-weight:700; margin:0; background:#6d28d9; border-color:#6d28d9;" title="Load Materials Studio *Potential Profile.xcd, CASTEP *.pot_fmt / *.castep (Berry Polarization), or 2-col CSV">
-                      📂 Load .xcd / .pot_fmt / .castep
-                      <input type="file" id="castep-pot-file-input" accept=".xcd,.pot_fmt,.epot_fmt,.castep,.csv,.dat,.tsv,.txt" multiple style="display:none;" onchange="handleCastepPotentialFileUpload(event)" />
+                    <label class="btn btn-primary btn-sm" style="cursor:pointer; font-weight:700; margin:0; background:#6d28d9; border-color:#6d28d9;" title="Load raw CASTEP binary *.cst_esp, Materials Studio *Potential Profile.xcd, *.pot_fmt, *.castep (Berry Polarization), *.bands, or CSV">
+                      📂 .cst_esp / .xcd / .castep
+                      <input type="file" id="castep-pot-file-input" accept=".cst_esp,.xcd,.pot_fmt,.epot_fmt,.castep,.bands,.csv,.dat,.tsv,.txt" multiple style="display:none;" onchange="handleCastepPotentialFileUpload(event)" />
                     </label>
                     <button type="button" class="btn btn-outline btn-sm" onclick="resetCastepPotentialSettings()" title="Reset Potential &amp; Polarization display settings">↺ Reset</button>
                   </div>
                 </div>
 
-                <!-- Row 2: Slab Centering, Flip, Shift, Inset, Thickness & Color -->
+                <!-- Row 2: Slab Centering, Flip, Axis, Shift, Inset, Thickness & Color -->
                 <div class="castep-tb-row">
                   <span class="castep-ctrl-grp">
                     <label class="castep-chk-lbl" title="Automatically unwrap &amp; center the atomic slab in [0, c] so vacuum plateaus sit cleanly on Left and Right"><input type="checkbox" id="castep-pot-autocenter" checked onchange="renderCastepPotentialPane()" /> Auto-Center Slab</label>
                     <label class="castep-chk-lbl" title="Mirror slab along z-axis (z → c − z)"><input type="checkbox" id="castep-pot-flipz" onchange="renderCastepPotentialPane()" /> Flip z</label>
                     <label class="castep-chk-lbl" title="Draw atomic slab side-view schematic &amp; built-in electric field E_in arrow inside plot"><input type="checkbox" id="castep-pot-inset" checked onchange="renderCastepPotentialPane()" /> Crystal Inset &amp; E<sub>in</sub></label>
                     <label class="castep-chk-lbl" title="Show Fermi level E_F and left/right vacuum level guidelines"><input type="checkbox" id="castep-pot-guides" checked onchange="renderCastepPotentialPane()" /> E<sub>F</sub> &amp; V<sub>vac</sub> Guides</label>
+                  </span>
+                  <span class="castep-ctrl-grp" title="Crystallographic averaging axis for 3D *.cst_esp / *.pot_fmt grids">
+                    <label class="castep-field-lbl" for="castep-pot-axis">Axis:</label>
+                    <select id="castep-pot-axis" class="castep-input-sm" style="width:44px; font-weight:700;" onchange="onCastepPotentialAxisChange()">
+                      <option value="c" selected>c</option>
+                      <option value="a">a</option>
+                      <option value="b">b</option>
+                    </select>
                   </span>
                   <span class="castep-ctrl-grp" title="Manual circular phase shift along z (%)">
                     <label class="castep-field-lbl" for="castep-pot-shift">Shift Δz (%):</label>
@@ -7231,13 +7239,13 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=176_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=176_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=176_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=176_v116_vesta_viewer'"></script>
-  <script src="post_data.js?v=176_v116_vesta_viewer" onerror="this.src='/static/post_data.js?v=176_v116_vesta_viewer'"></script>
-  <script src="topo_rashba.js?v=176_v116_vesta_viewer" onerror="this.src='/static/topo_rashba.js?v=176_v116_vesta_viewer'"></script>
-  <script src="potential_polar.js?v=176_v116_vesta_viewer" onerror="this.src='/static/potential_polar.js?v=176_v116_vesta_viewer'"></script>
-  <script src="dft_theory.js?v=176_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=176_v116_vesta_viewer'"></script>
-  <script src="app.js?v=176_v116_vesta_viewer" onerror="this.src='/static/app.js?v=176_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=177_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=177_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=177_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=177_v116_vesta_viewer'"></script>
+  <script src="post_data.js?v=177_v116_vesta_viewer" onerror="this.src='/static/post_data.js?v=177_v116_vesta_viewer'"></script>
+  <script src="topo_rashba.js?v=177_v116_vesta_viewer" onerror="this.src='/static/topo_rashba.js?v=177_v116_vesta_viewer'"></script>
+  <script src="potential_polar.js?v=177_v116_vesta_viewer" onerror="this.src='/static/potential_polar.js?v=177_v116_vesta_viewer'"></script>
+  <script src="dft_theory.js?v=177_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=177_v116_vesta_viewer'"></script>
+  <script src="app.js?v=177_v116_vesta_viewer" onerror="this.src='/static/app.js?v=177_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">

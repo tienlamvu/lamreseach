@@ -2015,23 +2015,31 @@ def _normalize_castep_seed(filename: str):
     lower = name.lower()
     for ext in (
         ".cell", ".param", ".castep", ".geom", ".bands", ".xcd", ".xsd", ".cif",
-        ".chdiff", ".charg_frm", ".den_fmt", ".cube", ".pdos_bin", ".xyz", ".bib", ".ome_bin",
-        ".pdos_bin", ".castep_bin", ".cst_esp", ".check", ".kptaux", ".trjaux", ".xgd"
+        ".chdiff", ".charg_frm", ".den_fmt", ".pot_fmt", ".epot_fmt", ".cube", ".pdos_bin",
+        ".xyz", ".bib", ".ome_bin", ".cst_ome", ".castep_bin", ".cst_esp", ".3ed",
+        ".check", ".kptaux", ".trjaux", ".xgd"
     ):
         if lower.endswith(ext):
             name = name[:-len(ext)]
             break
     # Strip trailing copy counters like " (2)", " (3)"
     name = re.sub(r"\s*\(\d+\)\s*$", "", name).strip()
-    # Strip Materials Studio chart & sub-calculation suffixes
-    for suf in (
-        " Optical Properties", " Partial Density of States", " Density of States",
-        " Band Structure", " Convergence", " Energies", " Potential", " PDOS", " DOS",
+    # Strip Materials Studio chart & sub-calculation suffixes (LONGEST FIRST!)
+    suffixes = (
+        " Partial Density of States", " Electrostatic Potential", " Optical Properties",
+        " Density of States", " Potential Profile", " Density Difference",
+        " Electron Density", " Charge Density", " Band Structure", " Spin Density",
+        " Convergence", " Energies", " Potential", " PDOS", " DOS",
         "_BandStr", "_DOS", "_Optics", "_Efield", "_Phonon", "_ELF", "_MagRes"
-    ):
-        if name.lower().endswith(suf.lower()) and len(name) > len(suf):
-            name = name[:-len(suf)].strip()
-            break
+    )
+    changed = True
+    while changed:
+        changed = False
+        for suf in suffixes:
+            if name.lower().endswith(suf.lower()) and len(name) > len(suf):
+                name = name[:-len(suf)].strip()
+                changed = True
+                break
     return name or filename
 
 
@@ -3082,6 +3090,138 @@ def _parse_chdiff_binary_backend(filepath: str, cell_vol_a3: float = 1.0, c_len_
         return None
 
 
+def _parse_cst_esp_binary_backend(filepath: str, axis_pref: str = "c"):
+    """Parse CASTEP native binary *.cst_esp (3D fine FFT electrostatic potential) into exact planar-averaged V(z)/V(x)/V(y) profiles (eV)."""
+    import struct
+    if not filepath or not os.path.exists(filepath):
+        return None
+    HA_EV = 27.211386245988
+    try:
+        sz = os.path.getsize(filepath)
+        if sz < 36:
+            return None
+        with open(filepath, "rb") as f:
+            head = f.read(32)
+            endian = None
+            nspins = 1
+            nx = ny = nz = 0
+            start_pos = 0
+            for en in (">", "<"):
+                r0 = struct.unpack(en + "i", head[0:4])[0]
+                if r0 == 4 and len(head) >= 32:
+                    sp = struct.unpack(en + "i", head[4:8])[0]
+                    r0e = struct.unpack(en + "i", head[8:12])[0]
+                    r1 = struct.unpack(en + "i", head[12:16])[0]
+                    if r0e == 4 and 1 <= sp <= 4 and r1 == 12:
+                        a, b, c = struct.unpack(en + "3i", head[16:28])
+                        r1e = struct.unpack(en + "i", head[28:32])[0]
+                        if r1e == 12 and 2 <= a <= 2048 and 2 <= b <= 2048 and 2 <= c <= 2048:
+                            endian, nspins, nx, ny, nz, start_pos = en, sp, a, b, c, 32
+                            break
+                elif r0 == 12 and len(head) >= 20:
+                    a, b, c = struct.unpack(en + "3i", head[4:16])
+                    r0e = struct.unpack(en + "i", head[16:20])[0]
+                    if r0e == 12 and 2 <= a <= 2048 and 2 <= b <= 2048 and 2 <= c <= 2048:
+                        endian, nspins, nx, ny, nz, start_pos = en, 1, a, b, c, 20
+                        break
+            if not endian:
+                return None
+
+            f.seek(start_pos)
+            n_cols = nx * ny
+            sum_z0 = [0.0] * nz
+            sum_z1 = [0.0] * nz if nspins >= 2 else None
+            sum_x = [0.0] * nx
+            sum_y = [0.0] * ny
+            cnt0 = cnt1 = 0
+            fmt_c = endian + f"{2 * nz}d"
+            fmt_r = endian + f"{nz}d"
+            rec_idx = 0
+            max_recs = nspins * n_cols
+            pos = start_pos
+            while pos + 12 <= sz and rec_idx < max_recs:
+                b4 = f.read(4)
+                if len(b4) < 4:
+                    break
+                rlen = struct.unpack(endian + "i", b4)[0]
+                if rlen < 8 or pos + 8 + rlen > sz:
+                    break
+                payload = f.read(rlen)
+                f.read(4)
+                ix, iy = struct.unpack(endian + "2i", payload[:8])
+                spin_idx = rec_idx // n_cols
+                if 1 <= ix <= nx and 1 <= iy <= ny:
+                    if rlen == 8 + 16 * nz:
+                        vals = struct.unpack(fmt_c, payload[8:])[0::2]
+                    elif rlen == 8 + 8 * nz:
+                        vals = struct.unpack(fmt_r, payload[8:])
+                    else:
+                        vals = None
+                    if vals is not None:
+                        target_z = sum_z1 if (spin_idx == 1 and sum_z1 is not None) else sum_z0
+                        csum = 0.0
+                        for iz, v in enumerate(vals):
+                            target_z[iz] += v
+                            csum += v
+                        if spin_idx == 0:
+                            sum_x[ix - 1] += csum
+                            sum_y[iy - 1] += csum
+                            cnt0 += 1
+                        elif spin_idx == 1:
+                            sum_x[ix - 1] += csum
+                            sum_y[iy - 1] += csum
+                            cnt1 += 1
+                pos += 8 + rlen
+                rec_idx += 1
+
+        if cnt0 < 4:
+            return None
+
+        def _build_axis_prof(raw_ev, n_g):
+            sm = [(raw_ev[(i - 1) % n_g] + raw_ev[i] + raw_ev[(i + 1) % n_g]) / 3.0 for i in range(n_g)]
+            x_raw = [round(i / n_g, 6) for i in range(n_g)] + [1.0]
+            v_raw = [round(v, 6) for v in sm] + [round(sm[0], 6)]
+            return {"xRaw": x_raw, "vRawEv": v_raw}
+
+        z_up = [(v / cnt0) * HA_EV for v in sum_z0]
+        if sum_z1 is not None and cnt1 >= 4:
+            z_dn = [(v / cnt1) * HA_EV for v in sum_z1]
+            z_avg = [0.5 * (a + b) for a, b in zip(z_up, z_dn)]
+            sp_fac = 2
+        else:
+            z_avg = z_up
+            sp_fac = 1
+        x_avg = [(v / (sp_fac * ny * nz)) * HA_EV for v in sum_x]
+        y_avg = [(v / (sp_fac * nx * nz)) * HA_EV for v in sum_y]
+
+        axes = {
+            "a": _build_axis_prof(x_avg, nx),
+            "b": _build_axis_prof(y_avg, ny),
+            "c": _build_axis_prof(z_avg, nz),
+        }
+        chosen_ax = axis_pref if axis_pref in axes else "c"
+        chosen = axes[chosen_ax]
+        fname = os.path.basename(filepath)
+        return {
+            "sourceFile": fname,
+            "sourceFormat": f"CASTEP .cst_esp ({nx}×{ny}×{nz}{', Spin-Pol' if nspins >= 2 else ''})",
+            "axis": chosen_ax,
+            "grid": [nx, ny, nz],
+            "nspins": nspins,
+            "isFractional": True,
+            "xRaw": chosen["xRaw"],
+            "vRawEv": chosen["vRawEv"],
+            "axes": axes,
+            "fermiEv": None,
+            "vacSingleEv": None,
+            "vacTopEv": None,
+            "vacBotEv": None,
+            "titleText": f"CASTEP Raw Electrostatic Potential ({nx}×{ny}×{nz} FFT grid)",
+        }
+    except Exception:
+        return None
+
+
 _OPTICS_TENSOR_CACHE = {}
 
 
@@ -3482,7 +3622,8 @@ def api_castep_scan(root_path: Optional[str] = None, limit: int = 120):
     seen_job_keys = set()
     relevant_exts = (
         ".cell", ".param", ".castep", ".geom", ".bands", ".xcd", ".xsd", ".cif",
-        ".chdiff", ".charg_frm", ".den_fmt", ".cube", ".pdos_bin", ".ome_bin", ".cst_ome"
+        ".chdiff", ".charg_frm", ".den_fmt", ".pot_fmt", ".epot_fmt", ".cst_esp",
+        ".cube", ".pdos_bin", ".ome_bin", ".cst_ome"
     )
     skip_dirs = {".git", "node_modules", "__pycache__", "$recycle.bin", "system volume information"}
 
@@ -3695,7 +3836,10 @@ def api_castep_job_detail(folder: str, seed: Optional[str] = None):
     conv_xcd_f = _find_match(lambda l: l.endswith(".xcd") and "convergence" in l)
     ener_xcd_f = _find_match(lambda l: l.endswith(".xcd") and "energies" in l)
     pot_xcd_f = _find_match(lambda l: l.endswith(".xcd") and "potential" in l)
-    pot_xcd_text = _read(pot_xcd_f, 1000000) if pot_xcd_f else ""
+    pot_xcd_text_raw = _read(pot_xcd_f, 1000000) if pot_xcd_f else ""
+    pot_xcd_text = pot_xcd_text_raw if len(pot_xcd_text_raw.strip()) > 20 else ""
+    cst_esp_f = _find_match(lambda l: l.endswith(".cst_esp"))
+    potential_data = _parse_cst_esp_binary_backend(os.path.join(folder, cst_esp_f)) if cst_esp_f else None
 
     band_xcd = _parse_xcd_file_backend(_read(band_xcd_f, 2500000), is_band=True)
     dos_xcd = _parse_xcd_file_backend(_read(dos_xcd_f, 2000000))
@@ -3833,7 +3977,8 @@ def api_castep_job_detail(folder: str, seed: Optional[str] = None):
         "conv_xcd": conv_xcd,
         "ener_xcd": ener_xcd,
         "potential_xcd_text": pot_xcd_text,
-        "potential_xcd_file": pot_xcd_f or "",
+        "potential_xcd_file": (pot_xcd_f if pot_xcd_text else (cst_esp_f or "")),
+        "potential_data": potential_data,
         "band_xcd": band_xcd,
         "dos_xcd": dos_xcd,
         "pdos_xcd": pdos_xcd,

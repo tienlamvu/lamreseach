@@ -378,6 +378,7 @@ const CASTEP_STUDIO_STATE = {
     hirshfeldCharges: []
   }
 };
+window.CASTEP_STUDIO_STATE = CASTEP_STUDIO_STATE;
 
 // Standard catalytic molecules internal Cartesian offsets (in Angstroms, relative to anchor atom at [0,0,0])
 const CASTEP_ADSORBATE_MOLECULES = {
@@ -2468,6 +2469,7 @@ async function loadCastepJobIntoStudio(jobId) {
   if (window.CASTEP_POT_POL_STATE) {
     CASTEP_POT_POL_STATE.overridePotential = null;
     CASTEP_POT_POL_STATE.overridePolarCastep = null;
+    CASTEP_POT_POL_STATE.overrideBands = null;
     CASTEP_POT_POL_STATE.overrideSourceName = "";
   }
   const activePane = CASTEP_STUDIO_STATE.activeStagePane || "builder";
@@ -2490,6 +2492,8 @@ async function loadCastepJobIntoStudio(jobId) {
     renderCastepElectronicPlots();
   } else if (activePane === "potential") {
     CASTEP_STUDIO_STATE._dirtyPanes.delete("potential");
+    await ensureJobPotentialHydrated(job);
+    if (loadSeq !== CASTEP_STUDIO_STATE._jobLoadSeq) return;
     if (typeof renderCastepPotentialPane === "function") renderCastepPotentialPane();
   } else if (activePane === "optics") {
     CASTEP_STUDIO_STATE._dirtyPanes.delete("optics");
@@ -2533,6 +2537,76 @@ async function ensureJobChdiffHydrated(job) {
   }
 }
 
+async function ensureJobPotentialHydrated(job, opts = {}) {
+  if (!job) return;
+  const forceCstEsp = !!opts.forceCstEsp;
+  const hasAnyPot = Boolean((job.potential_xcd && job.potential_xcd.xRaw) || (job.potential_data && job.potential_data.xRaw));
+  if (!forceCstEsp && hasAnyPot) return;
+  if (forceCstEsp && job.potential_data && job.potential_data.axes) return;
+  if (!job._fileMap) return;
+
+  const entries = Object.entries(job._fileMap);
+  const seedLow = (job.seed || "").toLowerCase();
+  const findEntry = (pred) => {
+    const exact = entries.find(([n]) => n.toLowerCase().startsWith(seedLow) && pred(n.toLowerCase()));
+    return exact || entries.find(([n]) => pred(n.toLowerCase())) || null;
+  };
+
+  // 1) Try non-empty Materials Studio *Potential*.xcd first (instant text parse) unless forceCstEsp
+  if (!forceCstEsp && !job._potentialXcdChecked) {
+    job._potentialXcdChecked = true;
+    const potXcdE = findEntry(l => l.endsWith(".xcd") && l.includes("potential"));
+    if (potXcdE && !job.potential_xcd) {
+      const t = await readFromFileOrHandle(potXcdE[1], false);
+      if (t && t.trim().length > 20 && typeof parseCastepPotentialXcdText === "function") {
+        const parsed = parseCastepPotentialXcdText(t, potXcdE[0]);
+        if (parsed) {
+          job.potential_xcd_text = t;
+          job.potential_xcd_file = potXcdE[0];
+          job.potential_xcd = parsed;
+        }
+      }
+    }
+  }
+
+  // 2) Native CASTEP binary *.cst_esp (exact 3D fine FFT electrostatic potential written directly by CASTEP!)
+  if ((!job.potential_xcd || forceCstEsp) && !job.potential_data && !job._cstEspChecked) {
+    job._cstEspChecked = true;
+    const espE = findEntry(l => l.endsWith(".cst_esp"));
+    if (espE && typeof parseCastepCstEspArrayBuffer === "function") {
+      const buf = await readFromFileOrHandle(espE[1], true);
+      if (buf) {
+        const parsedEsp = parseCastepCstEspArrayBuffer(buf, espE[0], "c");
+        if (parsedEsp) {
+          job.potential_data = parsedEsp;
+          if (!job.potential_xcd) {
+            job.potential_xcd = parsedEsp;
+            job.potential_xcd_file = espE[0];
+          }
+        }
+      }
+    }
+  }
+
+  // 3) Formatted text *.pot_fmt / *.epot_fmt fallback
+  if (!job.potential_xcd && !job.potential_data && !job._potFmtChecked) {
+    job._potFmtChecked = true;
+    const potFmtE = findEntry(l => l.endsWith(".pot_fmt") || l.endsWith(".epot_fmt"));
+    if (potFmtE && typeof parseCastepPotFmtText === "function") {
+      const t = await readFromFileOrHandle(potFmtE[1], false);
+      if (t) {
+        const parsedFmt = parseCastepPotFmtText(t, potFmtE[0], "c");
+        if (parsedFmt) {
+          job.potential_data = parsedFmt;
+          job.potential_xcd = parsedFmt;
+          job.potential_xcd_file = potFmtE[0];
+        }
+      }
+    }
+  }
+}
+window.ensureJobPotentialHydrated = ensureJobPotentialHydrated;
+
 async function switchCastepStagePane(paneId, btnEl) {
   CASTEP_STUDIO_STATE.activeStagePane = paneId;
   document.querySelectorAll(".castep-stage-tab").forEach(b => b.classList.remove("active"));
@@ -2545,6 +2619,8 @@ async function switchCastepStagePane(paneId, btnEl) {
   const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
   if (paneId === "chdiff" && job) {
     await ensureJobChdiffHydrated(job);
+  } else if (paneId === "potential" && job) {
+    await ensureJobPotentialHydrated(job);
   } else if (paneId === "optics" && job) {
     await ensureJobOpticalTensorHydrated(job);
     populateCastepOpticalFileSelect(job);
@@ -7486,8 +7562,9 @@ function normalizeCastepSeedClient(filename) {
   const low = name.toLowerCase();
   const exts = [
     ".cell", ".param", ".castep", ".geom", ".bands", ".xcd", ".xsd", ".cif",
-    ".chdiff", ".charg_frm", ".den_fmt", ".cube", ".xyz", ".bib", ".ome_bin",
-    ".pdos_bin", ".castep_bin", ".cst_esp", ".check", ".kptaux", ".trjaux", ".xgd", ".csv", ".txt", ".dat"
+    ".chdiff", ".charg_frm", ".den_fmt", ".pot_fmt", ".epot_fmt", ".cube", ".xyz", ".bib",
+    ".ome_bin", ".cst_ome", ".pdos_bin", ".castep_bin", ".cst_esp", ".3ed", ".check",
+    ".kptaux", ".trjaux", ".xgd", ".csv", ".txt", ".dat"
   ];
   for (const ext of exts) {
     if (low.endsWith(ext)) {
@@ -7496,15 +7573,23 @@ function normalizeCastepSeedClient(filename) {
     }
   }
   name = name.replace(/\s*\(\d+\)\s*$/, "").trim();
+  // Strip Materials Studio chart & sub-calculation suffixes (LONGEST FIRST so " Potential Profile" matches before " Potential"!)
   const suffixes = [
-    " Optical Properties", " Partial Density of States", " Density of States",
-    " Band Structure", " Convergence", " Energies", " Potential", " PDOS", " DOS",
+    " Partial Density of States", " Electrostatic Potential", " Optical Properties",
+    " Density of States", " Potential Profile", " Density Difference",
+    " Electron Density", " Charge Density", " Band Structure", " Spin Density",
+    " Convergence", " Energies", " Potential", " PDOS", " DOS",
     "_BandStr", "_DOS", "_Optics", "_Efield", "_Phonon", "_ELF", "_MagRes"
   ];
-  for (const suf of suffixes) {
-    if (name.toLowerCase().endsWith(suf.toLowerCase()) && name.length > suf.length) {
-      name = name.slice(0, -suf.length).trim();
-      break;
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const suf of suffixes) {
+      if (name.toLowerCase().endsWith(suf.toLowerCase()) && name.length > suf.length) {
+        name = name.slice(0, -suf.length).trim();
+        changed = true;
+        break;
+      }
     }
   }
   return name || filename;
@@ -7531,6 +7616,8 @@ function clearCastepJobParsedCache(job) {
   const cacheFields = [
     "cell_text", "param_text", "castep_text", "geom_text", "status_text", "xsd_text", "cif_text",
     "band_xcd", "pdos_xcd", "dos_xcd", "conv_xcd", "ener_xcd", "optical_xcds", "optical_xcd",
+    "potential_xcd", "potential_xcd_text", "potential_xcd_file", "potential_data",
+    "_potentialXcdChecked", "_cstEspChecked", "_potFmtChecked", "_chdiffChecked",
     "bandstr_bands", "dos_bands", "optics_bands", "optics_bands_file", "optics_castep_text",
     "optics_castep_file", "optics_cell_file", "ome_bin_file", "optical_tensor",
     "pdos_bin_data", "band_orb_proj", "chdiff_data", "_mullikenCache", "_optSpecCache",
@@ -7858,7 +7945,7 @@ async function mountCastepLocalDirectory() {
 }
 window.mountCastepLocalDirectory = mountCastepLocalDirectory;
 
-const CASTEP_RELEVANT_EXT_RE = /\.(cell|param|castep|geom|bands|xcd|xsd|cif|chdiff|charg_frm|den_fmt|pot_fmt|epot_fmt|cube|pdos_bin|ome_bin|cst_ome|xyz|csv|dat)$/i;
+const CASTEP_RELEVANT_EXT_RE = /\.(cell|param|castep|geom|bands|xcd|xsd|cif|chdiff|charg_frm|den_fmt|pot_fmt|epot_fmt|cst_esp|cube|pdos_bin|ome_bin|cst_ome|xyz|csv|dat)$/i;
 const CASTEP_SKIP_DIRS = new Set([".git", "node_modules", "__pycache__", "$recycle.bin", "system volume information"]);
 
 function parseSbjTextClient(sbjText, filename, isArchived = false) {
@@ -8133,23 +8220,19 @@ async function hydrateCastepJobFromFileMap(job, opts = {}) {
     if (t) job.ener_xcd = parseCastepXcdXmlClient(t, false);
   }
   const potXcdE = findEntry(l => l.endsWith(".xcd") && l.includes("potential"));
-  if (potXcdE && !job.potential_xcd_text) {
+  if (potXcdE && !job.potential_xcd) {
     const t = await readFromFileOrHandle(potXcdE[1], false);
-    if (t && t.trim().length > 20) {
-      job.potential_xcd_text = t;
-      job.potential_xcd_file = potXcdE[0];
-      if (typeof parseCastepPotentialXcdText === "function") job.potential_xcd = parseCastepPotentialXcdText(t, potXcdE[0]);
-    }
-  }
-  if (!job.potential_xcd) {
-    const potFmtE = findEntry(l => l.endsWith(".pot_fmt") || l.endsWith(".epot_fmt"));
-    if (potFmtE) {
-      const t = await readFromFileOrHandle(potFmtE[1], false);
-      if (t && typeof parseCastepPotFmtText === "function") {
-        job.potential_xcd = parseCastepPotFmtText(t, potFmtE[0], "c");
-        job.potential_xcd_file = potFmtE[0];
+    if (t && t.trim().length > 20 && typeof parseCastepPotentialXcdText === "function") {
+      const parsed = parseCastepPotentialXcdText(t, potXcdE[0]);
+      if (parsed) {
+        job.potential_xcd_text = t;
+        job.potential_xcd_file = potXcdE[0];
+        job.potential_xcd = parsed;
       }
     }
+  }
+  if (!job.potential_xcd && !job.potential_data && (!opts.fastFirst || CASTEP_STUDIO_STATE.activeStagePane === "potential")) {
+    await ensureJobPotentialHydrated(job);
   }
 
   // 3) ALL Optical .xcd files (Absorption, Re/Im Epsilon, Refractive, Reflectivity, Conductivity, Loss)
@@ -8407,6 +8490,8 @@ async function ingestUploadedCastepFileGroup(files, folderLabel) {
   }
 
   if (firstJobId) {
+    renderCastepJobsList();
+    updateCastepKpiBar();
     await loadCastepJobIntoStudio(firstJobId);
     updateCastepConnectionPill(true, `Imported ${importedCount} calculation(s)`);
     if (typeof showToast === "function") {

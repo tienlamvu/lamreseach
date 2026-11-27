@@ -1,8 +1,9 @@
 // ============================================================================
-// CASTEP Electrostatic Potential Profile V(z) & Polarization Analytics Studio (v176)
-// Supports Materials Studio *Potential Profile.xcd, CASTEP *.pot_fmt / *.epot_fmt,
-// VASP LOCPOT, Gaussian *.cube, 2-col CSV/DAT, and CASTEP *.castep Berry-Phase
-// Polarisation, PBC Dipole Correction, Iterative Hirshfeld, Mulliken & Born Z*.
+// CASTEP Electrostatic Potential Profile V(z) & Polarization Analytics Studio (v177)
+// Supports raw CASTEP binary *.cst_esp (exact 3D FFT grid, spin-polarized or
+// non-spin-polarized), Materials Studio *Potential Profile.xcd, CASTEP *.pot_fmt /
+// *.epot_fmt, 2-col CSV/DAT, and CASTEP *.castep Berry-Phase Polarisation,
+// PBC Dipole Correction, Iterative Hirshfeld, Mulliken (spin/non-spin) & Born Z*.
 // ============================================================================
 
 const PP_EPS0_E_PER_V_ANG = 5.526349406e-3; // ε0 in e / (V·Å)
@@ -45,6 +46,7 @@ const PP_CPK = {
 window.CASTEP_POT_POL_STATE = {
   overridePotential: null,    // manually uploaded Potential file (overrides job's)
   overridePolarCastep: null,  // manually uploaded Polarization .castep text
+  overrideBands: null,        // manually uploaded .bands parsed object (for exact VBM/Ef)
   overrideSourceName: "",
   lastAnalysis: null,
   zoom: 1.0,
@@ -52,6 +54,11 @@ window.CASTEP_POT_POL_STATE = {
   panelGeoms: [],
   bound: false
 };
+
+function _ppGetStudioState() {
+  if (typeof CASTEP_STUDIO_STATE !== "undefined" && CASTEP_STUDIO_STATE) return CASTEP_STUDIO_STATE;
+  return window.CASTEP_STUDIO_STATE || null;
+}
 
 function _ppEsc(s) {
   return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -150,6 +157,176 @@ function parseCastepPotentialXcdText(xmlText, filename = "Potential Profile.xcd"
   };
 }
 window.parseCastepPotentialXcdText = parseCastepPotentialXcdText;
+
+function parseCastepCstEspArrayBuffer(arrayBuffer, filename = "Potential.cst_esp", axisPref = "c") {
+  if (!arrayBuffer || arrayBuffer.byteLength < 36) return null;
+  const dv = new DataView(arrayBuffer);
+  const totalBytes = arrayBuffer.byteLength;
+
+  // Detect Fortran unformatted record endianness & header layout:
+  // Standard CASTEP .cst_esp: rec0 = int32 nspins (len=4), rec1 = int32 nx,ny,nz (len=12)
+  // Legacy / headerless:      rec0 = int32 nx,ny,nz (len=12)
+  let littleEndian = false;
+  let nspins = 1;
+  let nx = 0, ny = 0, nz = 0;
+  let offset = 0;
+  let headerOk = false;
+
+  for (const le of [false, true]) {
+    const r0 = dv.getInt32(0, le);
+    if (r0 === 4 && totalBytes >= 36) {
+      const sp = dv.getInt32(4, le);
+      const r0e = dv.getInt32(8, le);
+      const r1 = dv.getInt32(12, le);
+      if (r0e === 4 && sp >= 1 && sp <= 4 && r1 === 12) {
+        const a = dv.getInt32(16, le), b = dv.getInt32(20, le), c = dv.getInt32(24, le);
+        const r1e = dv.getInt32(28, le);
+        if (r1e === 12 && a >= 2 && b >= 2 && c >= 2 && a <= 2048 && b <= 2048 && c <= 2048) {
+          littleEndian = le; nspins = sp; nx = a; ny = b; nz = c; offset = 32; headerOk = true;
+          break;
+        }
+      }
+    } else if (r0 === 12 && totalBytes >= 28) {
+      const a = dv.getInt32(4, le), b = dv.getInt32(8, le), c = dv.getInt32(12, le);
+      const r0e = dv.getInt32(16, le);
+      if (r0e === 12 && a >= 2 && b >= 2 && c >= 2 && a <= 2048 && b <= 2048 && c <= 2048) {
+        littleEndian = le; nspins = 1; nx = a; ny = b; nz = c; offset = 20; headerOk = true;
+        break;
+      }
+    }
+  }
+  if (!headerOk || nx <= 0 || ny <= 0 || nz <= 0) return null;
+
+  const nColsPerSpin = nx * ny;
+  const sumZUp = new Float64Array(nz);
+  const sumZDn = nspins >= 2 ? new Float64Array(nz) : null;
+  const sumX = new Float64Array(nx);
+  const sumY = new Float64Array(ny);
+  let cntSpin0 = 0, cntSpin1 = 0;
+
+  let recIdx = 0;
+  const maxRecs = nspins * nColsPerSpin;
+  while (offset + 12 <= totalBytes && recIdx < maxRecs) {
+    const rlen = dv.getInt32(offset, littleEndian);
+    if (rlen < 8 || offset + 8 + rlen > totalBytes) break;
+    const ix = dv.getInt32(offset + 4, littleEndian);
+    const iy = dv.getInt32(offset + 8, littleEndian);
+    const spinIdx = Math.floor(recIdx / nColsPerSpin);
+    const isComplex = (rlen === 8 + nz * 16);
+    const isReal = (rlen === 8 + nz * 8);
+
+    if ((isComplex || isReal) && ix >= 1 && ix <= nx && iy >= 1 && iy <= ny) {
+      const stride = isComplex ? 16 : 8;
+      let p = offset + 12;
+      let colSum = 0.0;
+      const targetZ = (spinIdx === 1 && sumZDn) ? sumZDn : sumZUp;
+      for (let iz = 0; iz < nz; iz++) {
+        const val = dv.getFloat64(p, littleEndian);
+        targetZ[iz] += val;
+        colSum += val;
+        p += stride;
+      }
+      if (spinIdx === 0) {
+        sumX[ix - 1] += colSum;
+        sumY[iy - 1] += colSum;
+        cntSpin0++;
+      } else if (spinIdx === 1) {
+        sumX[ix - 1] += colSum;
+        sumY[iy - 1] += colSum;
+        cntSpin1++;
+      }
+    }
+    offset += 8 + rlen;
+    recIdx++;
+  }
+  if (cntSpin0 < 4) return null;
+
+  const buildPeriodicProfile = (rawEvArr, nGrid) => {
+    // Exact Materials Studio Potential Profile 3-point periodic boxcar average (matches MS .xcd to < 3e-6 eV!)
+    const smooth = new Array(nGrid);
+    for (let i = 0; i < nGrid; i++) {
+      smooth[i] = (rawEvArr[(i - 1 + nGrid) % nGrid] + rawEvArr[i] + rawEvArr[(i + 1) % nGrid]) / 3.0;
+    }
+    const xRaw = new Array(nGrid + 1);
+    const vRawEv = new Array(nGrid + 1);
+    const vUnsmoothedEv = new Array(nGrid + 1);
+    for (let i = 0; i < nGrid; i++) {
+      xRaw[i] = i / nGrid;
+      vRawEv[i] = smooth[i];
+      vUnsmoothedEv[i] = rawEvArr[i];
+    }
+    xRaw[nGrid] = 1.0;
+    vRawEv[nGrid] = smooth[0];
+    vUnsmoothedEv[nGrid] = rawEvArr[0];
+    return { xRaw, vRawEv, vUnsmoothedEv };
+  };
+
+  const zUpEv = new Array(nz);
+  const zDnEv = (sumZDn && cntSpin1 >= 4) ? new Array(nz) : null;
+  const zAvgEv = new Array(nz);
+  for (let iz = 0; iz < nz; iz++) {
+    zUpEv[iz] = (sumZUp[iz] / cntSpin0) * PP_HA_TO_EV;
+    if (zDnEv) {
+      zDnEv[iz] = (sumZDn[iz] / cntSpin1) * PP_HA_TO_EV;
+      zAvgEv[iz] = 0.5 * (zUpEv[iz] + zDnEv[iz]);
+    } else {
+      zAvgEv[iz] = zUpEv[iz];
+    }
+  }
+  const spFactor = (zDnEv ? 2 : 1);
+  const xAvgEv = Array.from(sumX, v => (v / (spFactor * ny * nz)) * PP_HA_TO_EV);
+  const yAvgEv = Array.from(sumY, v => (v / (spFactor * nx * nz)) * PP_HA_TO_EV);
+
+  const axes = {
+    a: buildPeriodicProfile(xAvgEv, nx),
+    b: buildPeriodicProfile(yAvgEv, ny),
+    c: buildPeriodicProfile(zAvgEv, nz)
+  };
+  const chosenAxis = axes[axisPref] ? axisPref : "c";
+  const chosen = axes[chosenAxis];
+
+  return {
+    sourceFile: filename,
+    sourceFormat: `CASTEP .cst_esp (${nx}×${ny}×${nz}${nspins >= 2 ? ", Spin-Pol" : ""})`,
+    axis: chosenAxis,
+    grid: [nx, ny, nz],
+    nspins,
+    isFractional: true,
+    xRaw: chosen.xRaw,
+    vRawEv: chosen.vRawEv,
+    vUnsmoothedEv: chosen.vUnsmoothedEv,
+    axes,
+    fermiEv: null,
+    vacSingleEv: null,
+    vacTopEv: null,
+    vacBotEv: null,
+    titleText: `CASTEP Raw Electrostatic Potential (${nx}×${ny}×${nz} FFT grid, ${nspins === 2 ? "2 spin channels" : "1 spin channel"})`
+  };
+}
+window.parseCastepCstEspArrayBuffer = parseCastepCstEspArrayBuffer;
+
+function _ppExtractFermiRefFromBands(bandsObj) {
+  if (!bandsObj || !Number.isFinite(bandsObj.ef_ev) || !Array.isArray(bandsObj.kpoints) || !bandsObj.kpoints.length) return null;
+  const efAbs = bandsObj.ef_ev;
+  let vbmRel = -Infinity, cbmRel = Infinity;
+  for (const kp of bandsObj.kpoints) {
+    for (const sp of (kp.e || [])) {
+      for (const eRel of sp) {
+        if (eRel <= 0.05 && eRel > vbmRel) vbmRel = eRel;
+        if (eRel > 0.05 && eRel < cbmRel) cbmRel = eRel;
+      }
+    }
+  }
+  const hasGap = Number.isFinite(vbmRel) && Number.isFinite(cbmRel) && (cbmRel - vbmRel) > 0.08 && vbmRel < -0.02;
+  return {
+    efAbsEv: efAbs,
+    vbmAbsEv: Number.isFinite(vbmRel) ? (efAbs + vbmRel) : null,
+    cbmAbsEv: Number.isFinite(cbmRel) ? (efAbs + cbmRel) : null,
+    gapEv: hasGap ? (cbmRel - vbmRel) : 0,
+    refEv: hasGap ? (efAbs + vbmRel) : efAbs,
+    refLabel: hasGap ? "VBM" : "E_F"
+  };
+}
 
 function parseCastepPotFmtText(txt, filename = "Potential.pot_fmt", axisPref = "c") {
   if (!txt || txt.length < 30) return null;
@@ -380,12 +557,12 @@ function parseCastepPolarizationData(castepText, paramText = "") {
     if (out.cartCm2 || out.cartBohr || out.recipRows.length) out.hasBerry = true;
   }
 
-  // 4) Mulliken Atomic Charges (last table)
+  // 4) Mulliken Atomic Charges (last table — handles BOTH non-spin and spin-polarized "up:/dn:" tables!)
   const mulBlocks = [...txt.matchAll(/Atomic Populations \(Mulliken\)[\s\S]*?={10,}\r?\n([\s\S]*?)={10,}/gi)];
   if (mulBlocks.length) {
     const body = mulBlocks[mulBlocks.length - 1][1];
     for (const line of body.split(/\r?\n/)) {
-      const m = line.trim().match(/^([A-Za-z]{1,2})\s+(\d+)\s+([+-]?[\d.]+)\s+([+-]?[\d.]+)\s+([+-]?[\d.]+)\s+([+-]?[\d.]+)\s+([+-]?[\d.]+)\s+([+-]?[\d.]+)/);
+      const m = line.trim().match(/^([A-Za-z]{1,2})\s+(\d+)\s+(?:up:\s+)?([+-]?[\d.]+)\s+([+-]?[\d.]+)\s+([+-]?[\d.]+)\s+([+-]?[\d.]+)\s+([+-]?[\d.]+)\s+([+-]?[\d.]+)/i);
       if (m) {
         out.mullikenCharges.push({ el: m[1], ion: parseInt(m[2], 10), charge: parseFloat(m[8]) });
       }
@@ -439,7 +616,7 @@ window.parseCastepPolarizationData = parseCastepPolarizationData;
 // ============================================================================
 
 function _ppGetActiveJob() {
-  const st = window.CASTEP_STUDIO_STATE;
+  const st = _ppGetStudioState();
   if (!st || !Array.isArray(st.jobs)) return null;
   return st.jobs.find(j => j.id === st.activeJobId) || null;
 }
@@ -447,11 +624,11 @@ function _ppGetActiveJob() {
 function _ppExtractCrystalInfo(job, polar) {
   let vecs = polar?.cellVectors || null;
   let atoms = (polar?.atoms || []).map(a => ({ ...a }));
-  let formula = job?.material || job?.seed || "";
+  let formula = "";
   let vol = polar?.cellVolA3 || null;
 
   // Fallback to active CASTEP_STUDIO_STATE structure or job cell/xsd
-  const stStruct = window.CASTEP_STUDIO_STATE?.structure;
+  const stStruct = _ppGetStudioState()?.structure;
   if ((!vecs || !atoms.length) && stStruct && stStruct.vectors && stStruct.atoms?.length) {
     if (!vecs) vecs = stStruct.vectors;
     if (!atoms.length) {
@@ -463,7 +640,7 @@ function _ppExtractCrystalInfo(job, polar) {
         w: a.z ?? a.w ?? 0
       }));
     }
-    if (!formula && stStruct.formula) formula = stStruct.formula;
+    if (stStruct.formula) formula = stStruct.formula;
   }
   if (!vecs && job?.cell_text && typeof parseCastepCellText === "function") {
     const ps = parseCastepCellText(job.cell_text, job.seed);
@@ -473,6 +650,12 @@ function _ppExtractCrystalInfo(job, polar) {
     }
     if (!formula && ps?.formula) formula = ps.formula;
   }
+  if (!formula && atoms.length) {
+    const cnt = {};
+    atoms.forEach(a => { cnt[a.el] = (cnt[a.el] || 0) + 1; });
+    formula = Object.entries(cnt).map(([e, n]) => n > 1 ? `${e}${n}` : e).join("");
+  }
+  if (!formula) formula = job?.material || job?.seed || "Structure";
   if (!vecs) vecs = [[3.268, 0, 0], [-1.634, 2.830, 0], [0, 0, 18.752]];
 
   const cross = (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
@@ -611,24 +794,25 @@ function _ppProcessPotentialCurve(rawPot, crys, opts) {
   uSlabL = shifted[iL].u;
   uSlabR = shifted[iR].u;
 
-  // Flat plateau sampling windows safely inside the actual vacuum span (handles both wide & narrow vacuum slabs!)
-  const lStart = Math.min(0.06, Math.max(0.015, uSlabL * 0.25));
-  const lEnd = Math.max(lStart + 0.015, uSlabL - Math.min(0.04, uSlabL * 0.25));
+  // Outer vacuum plateau sampling windows (skipping ~1.2% dipole-step smoothing kink near periodic boundary 0/1,
+  // and sampling the outer vacuum band farthest from the slab electron tail!)
+  const lStart = Math.min(0.014, Math.max(0.008, uSlabL * 0.10));
+  const lEnd = Math.max(lStart + 0.018, Math.min(0.055, uSlabL * 0.38, uSlabL - Math.min(0.04, uSlabL * 0.25)));
   const rSpan = Math.max(0.02, 1.0 - uSlabR);
-  const rStart = Math.min(0.985, uSlabR + Math.min(0.04, rSpan * 0.25));
-  const rEnd = Math.max(rStart + 0.015, 1.0 - Math.min(0.06, rSpan * 0.25));
+  const rEnd = Math.max(0.986, 1.0 - Math.min(0.014, Math.max(0.008, rSpan * 0.10)));
+  const rStart = Math.min(rEnd - 0.018, Math.max(0.945, 1.0 - rSpan * 0.38, uSlabR + Math.min(0.04, rSpan * 0.25)));
 
   const leftVacPts = shifted.filter(p => p.u >= lStart && p.u <= lEnd);
   const rightVacPts = shifted.filter(p => p.u >= rStart && p.u <= rEnd);
 
-  const percentile = (arr, q = 0.75) => {
+  const percentile = (arr, q = 0.50) => {
     if (!arr.length) return null;
     const s = [...arr].sort((a, b) => a - b);
     const idx = Math.min(s.length - 1, Math.max(0, Math.round((s.length - 1) * q)));
     return s[idx];
   };
-  let vacLeftEv = percentile(leftVacPts.map(p => p.v), 0.78);
-  let vacRightEv = percentile(rightVacPts.map(p => p.v), 0.78);
+  let vacLeftEv = percentile(leftVacPts.map(p => p.v), 0.50);
+  let vacRightEv = percentile(rightVacPts.map(p => p.v), 0.50);
 
   // Respect exact XCD vacuum levels (asymmetric Top/Bottom OR symmetric single Vacuum level)
   if (Number.isFinite(rawPot.vacTopEv) && Number.isFinite(rawPot.vacBotEv) && Number.isFinite(vacLeftEv) && Number.isFinite(vacRightEv)) {
@@ -736,6 +920,7 @@ function computeCastepPotPolAnalysis() {
   // Read UI options
   const opts = {
     layout: document.getElementById("castep-pot-layout")?.value || "dual",
+    axis: document.getElementById("castep-pot-axis")?.value || "c",
     xUnit: document.getElementById("castep-pot-xunit")?.value || "angstrom",
     zeroRef: document.getElementById("castep-pot-zref")?.value || "raw",
     annotMode: document.getElementById("castep-pot-annot")?.value || "both",
@@ -754,12 +939,31 @@ function computeCastepPotPolAnalysis() {
   const crys = _ppExtractCrystalInfo(job, polar);
   const tEffA = opts.tEffInput > 0.5 ? opts.tEffInput : crys.tEffAutoA;
 
-  // Potential source priority: manual override -> job.potential_xcd -> job.potential_data
+  // Potential source priority: manual override -> job.potential_xcd -> job.potential_data (.cst_esp) -> non-empty job.potential_xcd_text
   let rawPot = st.overridePotential || null;
   if (!rawPot && job?.potential_xcd && job.potential_xcd.xRaw) rawPot = job.potential_xcd;
-  if (!rawPot && job?.potential_xcd_text) rawPot = parseCastepPotentialXcdText(job.potential_xcd_text, job.potential_xcd_file || "Potential Profile.xcd");
+  if (!rawPot && job?.potential_data && job.potential_data.xRaw) rawPot = job.potential_data;
+  if (!rawPot && job?.potential_xcd_text && job.potential_xcd_text.trim().length > 20) {
+    rawPot = parseCastepPotentialXcdText(job.potential_xcd_text, job.potential_xcd_file || "Potential Profile.xcd");
+  }
+  // If 3D .cst_esp multi-axis data is available and user selects axis a / b / c, switch seamlessly!
+  if (rawPot && rawPot.axes && rawPot.axes[opts.axis]) {
+    const axObj = rawPot.axes[opts.axis];
+    rawPot = { ...rawPot, axis: opts.axis, xRaw: axObj.xRaw, vRawEv: axObj.vRawEv };
+  } else if (opts.axis !== "c" && job?.potential_data?.axes?.[opts.axis]) {
+    const pd = job.potential_data;
+    const axObj = pd.axes[opts.axis];
+    rawPot = { ...pd, axis: opts.axis, xRaw: axObj.xRaw, vRawEv: axObj.vRawEv };
+  }
 
-  const pot = _ppProcessPotentialCurve(rawPot, crys, { ...opts, fallbackFermiEv: polar.fermiEv });
+  // Exact Materials Studio Work Function Reference Level (VBM for semiconductors, E_F for metals) from *.bands or *.castep!
+  const bandsRef = _ppExtractFermiRefFromBands(st.overrideBands || job?.dos_bands || job?.bandstr_bands || null);
+  const fallbackFermiEv = bandsRef ? bandsRef.refEv : polar.fermiEv;
+
+  const pot = _ppProcessPotentialCurve(rawPot, crys, { ...opts, fallbackFermiEv });
+  if (pot && bandsRef && !Number.isFinite(rawPot?.fermiEv)) {
+    pot.fermiRefLabel = bandsRef.refLabel;
+  }
 
   // Synthesize Berry-Phase Polarization across ALL scientific units
   let berrySummary = null;
@@ -839,13 +1043,14 @@ function computeCastepPotPolAnalysis() {
 
   // Scan ALL loaded jobs in workspace for Multi-Job Polarization / ΔΦ comparison table!
   const multiJobRows = [];
-  for (const j of (window.CASTEP_STUDIO_STATE?.jobs || [])) {
-    if (!j.castep_text && !j.potential_xcd && !j.potential_xcd_text) continue;
+  for (const j of (_ppGetStudioState()?.jobs || [])) {
+    if (!j.castep_text && !j.potential_xcd && !j.potential_data && !j.potential_xcd_text) continue;
     const jp = parseCastepPolarizationData(j.castep_text || "", j.param_text || "");
-    const jPotRaw = j.potential_xcd || (j.potential_xcd_text ? parseCastepPotentialXcdText(j.potential_xcd_text, j.potential_xcd_file || "Potential.xcd") : null);
+    const jPotRaw = j.potential_xcd || j.potential_data || (j.potential_xcd_text && j.potential_xcd_text.trim().length > 20 ? parseCastepPotentialXcdText(j.potential_xcd_text, j.potential_xcd_file || "Potential.xcd") : null);
     if (!jp.hasBerry && !jPotRaw) continue;
     const jc = _ppExtractCrystalInfo(j, jp);
-    const jPot = jPotRaw ? _ppProcessPotentialCurve(jPotRaw, jc, { autoCenter: true, flipZ: false, shiftPct: 0, zeroRef: "raw", fallbackFermiEv: jp.fermiEv }) : null;
+    const jBandsRef = _ppExtractFermiRefFromBands(j.dos_bands || j.bandstr_bands || null);
+    const jPot = jPotRaw ? _ppProcessPotentialCurve(jPotRaw, jc, { autoCenter: true, flipZ: false, shiftPct: 0, zeroRef: "raw", fallbackFermiEv: jBandsRef ? jBandsRef.refEv : jp.fermiEv }) : null;
     const pzCm2 = jp.hasBerry ? (jp.cartCm2 ? jp.cartCm2.total[2] : (jp.cartBohr ? jp.cartBohr.total[2] * PP_E_BOHR2_TO_CM2 : null)) : null;
     const pz_eA2 = pzCm2 !== null ? pzCm2 * PP_CM2_TO_E_PER_A2 : null;
     const muZ_eA = pz_eA2 !== null ? pz_eA2 * jc.vol : (jPot ? jPot.helmholtz.muEAng : null);
@@ -1012,7 +1217,7 @@ function _ppDrawPotentialPanel(ctx, rx, ry, rw, rh, an, st) {
     ctx.fillStyle = "#334155"; ctx.font = "700 13.5px Inter, sans-serif"; ctx.textAlign = "center";
     ctx.fillText("No Electrostatic Potential Profile Loaded", x0 + w / 2, y0 + h / 2 - 12);
     ctx.fillStyle = "#64748b"; ctx.font = "11.5px Inter, sans-serif";
-    ctx.fillText("Load a CASTEP *Potential Profile.xcd or *.pot_fmt file via the toolbar button above.", x0 + w / 2, y0 + h / 2 + 12);
+    ctx.fillText("Load a CASTEP *.cst_esp (raw binary), *Potential Profile.xcd, or *.pot_fmt file via the toolbar button above.", x0 + w / 2, y0 + h / 2 + 12);
     ctx.restore();
     return { id: "POT", x0, y0, w, h };
   }
@@ -1468,7 +1673,7 @@ function renderCastepPotentialPane() {
   // 1) Top Summary Strip
   const strip = document.getElementById("castep-pot-summary-strip");
   if (strip) {
-    const potTag = an.pot ? `<span style="color:#6d28d9; font-weight:700;">● Potential: ${_ppEsc(an.pot.sourceFile)}</span>` : `<span style="color:#64748b;">No Potential .xcd/.pot_fmt loaded</span>`;
+    const potTag = an.pot ? `<span style="color:#6d28d9; font-weight:700;">● Potential: ${_ppEsc(an.pot.sourceFile)} (${_ppEsc(an.pot.sourceFormat)})</span>` : `<span style="color:#64748b;">No *.cst_esp / Potential .xcd / .pot_fmt loaded</span>`;
     const polTag = an.berrySummary ? `<span style="color:#0f766e; font-weight:700;">● Berry Polarization: Active</span>` : `<span style="color:#64748b;">No Berry Phase table in .castep</span>`;
     const dipTag = an.polar.dipoleCorrMode && an.polar.dipoleCorrMode !== "None"
       ? `<span><strong>Dipole Corr:</strong> ${_ppEsc(an.polar.dipoleCorrMode)} (${_ppEsc(an.polar.dipoleCorrDir || "Z")}${an.polar.dipoleCorrEnergyEv !== null ? `, dE=${an.polar.dipoleCorrEnergyEv.toFixed(5)} eV` : ""})</span>`
@@ -1510,7 +1715,7 @@ function renderCastepPotentialPane() {
           <span>ΔV<sub>well</sub>: <strong>${wellTxt}</strong></span>
           <span>E<sub>F</sub>: <strong>${efTxt}</strong></span>
         </div>
-        <div class="tr-kpi-note">${pot ? `${_ppEsc(pot.sourceFormat)} • ${pot.pts.length} pts • ${pot.wells.length} atomic well(s)` : "Upload *Potential Profile.xcd or *.pot_fmt to resolve V(z)"}</div>
+        <div class="tr-kpi-note">${pot ? `${_ppEsc(pot.sourceFormat)} • ${pot.pts.length} pts • ${pot.wells.length} atomic well(s)${pot.fermiRefLabel ? ` • Ref: ${pot.fermiRefLabel}` : ""}` : "Upload *.cst_esp, *Potential Profile.xcd, or *.pot_fmt to resolve V(z)"}</div>
       </div>
 
       <div class="tr-kpi-card" style="border-top-color:#0d9488;">
@@ -1655,6 +1860,16 @@ function resetCastepPotentialZoom() {
 }
 window.resetCastepPotentialZoom = resetCastepPotentialZoom;
 
+async function onCastepPotentialAxisChange() {
+  const ax = document.getElementById("castep-pot-axis")?.value || "c";
+  const job = _ppGetActiveJob();
+  if (ax !== "c" && job && !job.potential_data && typeof ensureJobPotentialHydrated === "function") {
+    await ensureJobPotentialHydrated(job, { forceCstEsp: true });
+  }
+  renderCastepPotentialPane();
+}
+window.onCastepPotentialAxisChange = onCastepPotentialAxisChange;
+
 function resetCastepPotentialSettings() {
   const setV = (id, v) => {
     const el = document.getElementById(id);
@@ -1663,6 +1878,7 @@ function resetCastepPotentialSettings() {
     else el.value = String(v);
   };
   setV("castep-pot-layout", "dual");
+  setV("castep-pot-axis", "c");
   setV("castep-pot-xunit", "angstrom");
   setV("castep-pot-zref", "raw");
   setV("castep-pot-annot", "both");
@@ -1682,6 +1898,7 @@ window.resetCastepPotentialSettings = resetCastepPotentialSettings;
 function clearCastepPotentialOverrides() {
   CASTEP_POT_POL_STATE.overridePotential = null;
   CASTEP_POT_POL_STATE.overridePolarCastep = null;
+  CASTEP_POT_POL_STATE.overrideBands = null;
   CASTEP_POT_POL_STATE.overrideSourceName = "";
   renderCastepPotentialPane();
 }
@@ -1696,9 +1913,20 @@ async function handleCastepPotentialFileUpload(event) {
 window.handleCastepPotentialFileUpload = handleCastepPotentialFileUpload;
 
 async function loadCastepPotentialFilesList(files) {
-  let loadedPot = false, loadedCastep = false;
+  let loadedPot = false, loadedCastep = false, loadedBands = false;
+  const axisPref = document.getElementById("castep-pot-axis")?.value || "c";
   for (const f of files) {
     const low = f.name.toLowerCase();
+    if (low.endsWith(".cst_esp")) {
+      const buf = await f.arrayBuffer();
+      const parsed = parseCastepCstEspArrayBuffer(buf, f.name, axisPref);
+      if (parsed) {
+        CASTEP_POT_POL_STATE.overridePotential = parsed;
+        CASTEP_POT_POL_STATE.overrideSourceName = f.name;
+        loadedPot = true;
+      }
+      continue;
+    }
     const txt = await f.text();
     if (low.endsWith(".xcd")) {
       const parsed = parseCastepPotentialXcdText(txt, f.name);
@@ -1708,7 +1936,7 @@ async function loadCastepPotentialFilesList(files) {
         loadedPot = true;
       }
     } else if (low.endsWith(".pot_fmt") || low.endsWith(".epot_fmt")) {
-      const parsed = parseCastepPotFmtText(txt, f.name, "c");
+      const parsed = parseCastepPotFmtText(txt, f.name, axisPref);
       if (parsed) {
         CASTEP_POT_POL_STATE.overridePotential = parsed;
         CASTEP_POT_POL_STATE.overrideSourceName = f.name;
@@ -1718,6 +1946,12 @@ async function loadCastepPotentialFilesList(files) {
       CASTEP_POT_POL_STATE.overridePolarCastep = txt;
       if (!CASTEP_POT_POL_STATE.overrideSourceName) CASTEP_POT_POL_STATE.overrideSourceName = f.name;
       loadedCastep = true;
+    } else if (low.endsWith(".bands") && typeof parseCastepBandsTextClient === "function") {
+      const pb = parseCastepBandsTextClient(txt);
+      if (pb) {
+        CASTEP_POT_POL_STATE.overrideBands = pb;
+        loadedBands = true;
+      }
     } else if (low.endsWith(".csv") || low.endsWith(".dat") || low.endsWith(".tsv") || low.endsWith(".txt")) {
       const parsed = parseGenericPotentialTableText(txt, f.name);
       if (parsed) {
@@ -1729,11 +1963,15 @@ async function loadCastepPotentialFilesList(files) {
   }
   renderCastepPotentialPane();
   if (typeof showToast === "function") {
-    if (loadedPot || loadedCastep) {
-      const what = [loadedPot ? "Potential Profile V(z)" : "", loadedCastep ? "CASTEP Polarization/Charges" : ""].filter(Boolean).join(" + ");
+    if (loadedPot || loadedCastep || loadedBands) {
+      const what = [
+        loadedPot ? "Potential Profile V(z)" : "",
+        loadedCastep ? "CASTEP Polarization/Charges" : "",
+        loadedBands ? "VBM/E_F Reference" : ""
+      ].filter(Boolean).join(" + ");
       showToast(`Loaded ${what}!`, "success");
     } else {
-      showToast("No Potential (.xcd / .pot_fmt / .csv) or CASTEP (.castep) data recognized in selected files.", "warning");
+      showToast("No Potential (.cst_esp / .xcd / .pot_fmt / .csv) or CASTEP (.castep / .bands) data recognized in selected files.", "warning");
     }
   }
 }
