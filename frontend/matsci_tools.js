@@ -6318,7 +6318,7 @@ function renderCastepElectronicPlots() {
 
     if (fatBandOverlay && typeof drawCastepFatBandOverlay === "function") {
       drawCastepFatBandOverlay(ctx, fatBandOverlay, { bandX0, padT, bandW, plotH, emin, emax, eToY }, st);
-    } else {
+    } else if (document.getElementById("castep-show-band-total")?.checked !== false) {
       bandSeries.forEach((ser, sIdx) => {
         const isBeta = sIdx === 1 || /beta|dn|down/i.test(ser.name);
         if (!isBeta && !showUp) return;
@@ -21430,9 +21430,13 @@ function resetCastepElectronicSettings() {
   _setCastepInputVal("castep-fatband-el", "all");
   _setCastepInputVal("castep-fatband-style", "rings");
   _setCastepInputVal("castep-fatband-size", "1.0");
-  if (window.CASTEP_FATBAND_STATE?.hiddenChannels) CASTEP_FATBAND_STATE.hiddenChannels.clear();
+  if (window.CASTEP_FATBAND_STATE) {
+    CASTEP_FATBAND_STATE.hiddenChannels.clear();
+    CASTEP_FATBAND_STATE.showTotal = true;
+  }
   if (window.CASTEP_PDOS_STATE?.hiddenCurves) CASTEP_PDOS_STATE.hiddenCurves.clear();
   [
+    "castep-show-band-total",
     "castep-show-dos-total", "castep-show-dos-s", "castep-show-dos-p",
     "castep-show-dos-d", "castep-show-dos-f", "castep-show-spin-up", "castep-show-spin-dn"
   ].forEach(id => _setCastepInputVal(id, true));
@@ -21602,6 +21606,7 @@ window.resetCastepMullikenSettings = resetCastepMullikenSettings;
 
 window.CASTEP_FATBAND_STATE = {
   hiddenChannels: new Set(),
+  showTotal: true,
   lastOverlay: null
 };
 
@@ -22186,6 +22191,24 @@ function toggleCastepFatBandChannel(chKey) {
 }
 window.toggleCastepFatBandChannel = toggleCastepFatBandChannel;
 
+function toggleCastepBandTotal() {
+  const chk = document.getElementById("castep-show-band-total");
+  const next = chk ? !chk.checked : !CASTEP_FATBAND_STATE.showTotal;
+  if (chk) chk.checked = next;
+  CASTEP_FATBAND_STATE.showTotal = next;
+  if (typeof renderCastepElectronicPlots === "function") renderCastepElectronicPlots();
+}
+window.toggleCastepBandTotal = toggleCastepBandTotal;
+
+function setAllCastepFatBandVisible(showAll) {
+  CASTEP_FATBAND_STATE.hiddenChannels.clear();
+  if (!showAll) {
+    (CASTEP_FATBAND_STATE.lastOverlay?.groups || []).forEach(g => CASTEP_FATBAND_STATE.hiddenChannels.add(g.key));
+  }
+  if (typeof renderCastepElectronicPlots === "function") renderCastepElectronicPlots();
+}
+window.setAllCastepFatBandVisible = setAllCastepFatBandVisible;
+
 function buildCastepFatBandOverlay(job, opts) {
   const proj = job?.band_orb_proj;
   if (!proj || !proj.bands?.length || !proj.channels?.length) return null;
@@ -22245,7 +22268,7 @@ function buildCastepFatBandOverlay(job, opts) {
     });
   } else if (mode === "element_orbital") {
     let colorIdx = 0;
-    const orderL = ["d", "p", "s", "f"];
+    const orderL = ["s", "p", "d", "f"];
     (proj.elements || []).forEach(el => {
       if (elFilter !== "all" && el !== elFilter) return;
       orderL.forEach(l => {
@@ -22307,23 +22330,39 @@ function buildCastepFatBandOverlay(job, opts) {
     gW: keptIdx.map(i => ab.gW[i])
   }));
 
-  // Render interactive channel toggle chips right below toolbar
+  const bandTotChk = document.getElementById("castep-show-band-total");
+  const showBandTotal = bandTotChk ? bandTotChk.checked : (CASTEP_FATBAND_STATE.showTotal !== false);
+  CASTEP_FATBAND_STATE.showTotal = showBandTotal;
+
+  // Render interactive channel toggle chips right below toolbar (Total first, then s, p, d, f!)
   const chipsRow = document.getElementById("castep-fatband-chips");
   if (chipsRow) {
     chipsRow.style.display = "flex";
-    chipsRow.innerHTML = `<span style="font-size:11px; font-weight:700; color:#475569; margin-right:3px;">Fat-Band Orbitals:</span>` +
+    const totCol = (opts.style !== "filled") ? "#e11d48" : "#475569";
+    const totChip = `<button type="button" class="castep-preset-chip" onclick="toggleCastepBandTotal()" style="border-color:${showBandTotal ? totCol : "#cbd5e1"}; color:${showBandTotal ? totCol : "#94a3b8"}; background:${showBandTotal ? "#ffffff" : "#f8fafc"}; font-weight:700; opacity:${showBandTotal ? 1 : 0.52}; height:21px; padding:0 6px; font-size:10.5px;" title="Click to show/hide the background Total Band Structure curves">
+      <span style="display:inline-block; width:10px; height:2px; background:${showBandTotal ? totCol : "#cbd5e1"}; margin-right:4px; vertical-align:middle;"></span>Total
+    </button>`;
+    const quickCtrl = finalGroups.length > 4
+      ? `<span style="display:inline-flex; gap:3px; margin-left:2px;">
+           <button type="button" class="castep-preset-chip" style="font-size:10px; padding:0 5px; height:20px;" onclick="setAllCastepFatBandVisible(true)" title="Show all Fat-Band orbital rings">All</button>
+           <button type="button" class="castep-preset-chip" style="font-size:10px; padding:0 5px; height:20px;" onclick="setAllCastepFatBandVisible(false)" title="Hide all Fat-Band orbital rings">None</button>
+         </span>`
+      : "";
+    chipsRow.innerHTML = `<span style="font-size:10.5px; font-weight:700; color:#475569; margin-right:2px;">Bands:</span>` +
+      totChip +
       finalGroups.map(g => {
         const off = CASTEP_FATBAND_STATE.hiddenChannels.has(g.key);
         const disp = _fbHtmlLabel(g.label);
-        return `<button type="button" class="castep-preset-chip" onclick="toggleCastepFatBandChannel('${escapeHtml(g.key)}')" style="border-color:${off ? "#cbd5e1" : g.color}; color:${off ? "#94a3b8" : g.color}; background:${off ? "#f8fafc" : "#ffffff"}; font-weight:700; opacity:${off ? 0.55 : 1};" title="Click to show/hide ${_fbPlainLabel(g.label)} (max weight ${(g.maxWeight * 100).toFixed(0)}%)">
-          <span style="display:inline-block; width:8px; height:8px; border-radius:50%; border:2px solid ${g.color}; margin-right:4px; vertical-align:middle;"></span>${disp}
+        return `<button type="button" class="castep-preset-chip" onclick="toggleCastepFatBandChannel('${escapeHtml(g.key)}')" style="border-color:${off ? "#cbd5e1" : g.color}; color:${off ? "#94a3b8" : g.color}; background:${off ? "#f8fafc" : "#ffffff"}; font-weight:700; opacity:${off ? 0.52 : 1}; height:21px; padding:0 6px; font-size:10.5px;" title="Click to show/hide ${_fbPlainLabel(g.label)} (max weight ${(g.maxWeight * 100).toFixed(0)}%)">
+          <span style="display:inline-block; width:8px; height:8px; border-radius:50%; border:2px solid ${off ? "#cbd5e1" : g.color}; margin-right:4px; vertical-align:middle;"></span>${disp}
         </button>`;
-      }).join("");
+      }).join("") + quickCtrl;
   }
 
   return {
     mode,
     elFilter,
+    showTotal: showBandTotal,
     style: opts.style || "rings",
     sizeScale: Math.max(0.4, Math.min(2.5, Number(opts.sizeScale) || 1.0)),
     sourceKind: proj.source_kind,
@@ -22353,25 +22392,28 @@ function drawCastepFatBandOverlay(ctx, overlay, geom, st) {
   const visibleGrpIndices = [];
   groups.forEach((g, gi) => { if (!CASTEP_FATBAND_STATE.hiddenChannels.has(g.key)) visibleGrpIndices.push(gi); });
 
-  // 1) Draw thin background Total Band Structure curves (matches light pink reference lines in Open Rings mode!)
+  // 1) Draw thin background Total Band Structure curves (if Total toggle is ON)
   const totalColor = isRings ? "#f0a3a8" : "#94a3b8";
-  overlay.bands.forEach(b => {
-    const isBeta = b.spin === 1;
-    ctx.strokeStyle = isBeta ? (isRings ? "#c7a3f0" : "#64748b") : totalColor;
-    ctx.lineWidth = Math.max(0.85, (st.lineWidth || 1.5) * 0.55);
-    if (isBeta) ctx.setLineDash([4, 3]); else ctx.setLineDash([]);
-    ctx.beginPath();
-    let started = false;
-    for (let ik = 0; ik < nk; ik++) {
-      const ev = b.e[ik];
-      if (!Number.isFinite(ev)) { started = false; continue; }
-      const px = bandX0 + kPos[ik] * bandW;
-      const py = eToY(ev);
-      if (!started) { ctx.moveTo(px, py); started = true; } else ctx.lineTo(px, py);
-    }
-    ctx.stroke();
-  });
-  ctx.setLineDash([]);
+  const showTotalLine = overlay.showTotal !== false;
+  if (showTotalLine) {
+    overlay.bands.forEach(b => {
+      const isBeta = b.spin === 1;
+      ctx.strokeStyle = isBeta ? (isRings ? "#c7a3f0" : "#64748b") : totalColor;
+      ctx.lineWidth = Math.max(0.85, (st.lineWidth || 1.5) * 0.55);
+      if (isBeta) ctx.setLineDash([4, 3]); else ctx.setLineDash([]);
+      ctx.beginPath();
+      let started = false;
+      for (let ik = 0; ik < nk; ik++) {
+        const ev = b.e[ik];
+        if (!Number.isFinite(ev)) { started = false; continue; }
+        const px = bandX0 + kPos[ik] * bandW;
+        const py = eToY(ev);
+        if (!started) { ctx.moveTo(px, py); started = true; } else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+    });
+    ctx.setLineDash([]);
+  }
 
   // 2) Draw Orbital-Weighted Circles at every (k, E) point (sorted largest-first so smaller rings stay crisp inside!)
   const screenPts = [];
@@ -22415,12 +22457,12 @@ function drawCastepFatBandOverlay(ctx, overlay, geom, st) {
     }
   });
 
-  // 3) Draw crisp Publication Legend Box (Total — + colored circles ○) in cleanest open space (corners + mid-gap)
-  if (visibleGrpIndices.length) {
+  // 3) Draw crisp Publication Legend Box (Total — + colored circles ○ in unified Total, s, p, d, f order)
+  if (visibleGrpIndices.length || showTotalLine) {
     ctx.save();
     const legFont = castepPlotFont("legend", 0.94, "bold");
     ctx.font = legFont;
-    const entries = [{ isTotal: true, label: "Total", color: totalColor }].concat(
+    const entries = (showTotalLine ? [{ isTotal: true, label: "Total", color: totalColor }] : []).concat(
       visibleGrpIndices.map(gi => ({ isTotal: false, label: groups[gi].label, color: groups[gi].color }))
     );
     const maxTxtW = Math.max(...entries.map(e => ctx.measureText(_fbPlainLabel(e.label)).width));
@@ -22625,16 +22667,27 @@ function setAllCastepPdosCurvesVisible(showAll) {
 }
 window.setAllCastepPdosCurvesVisible = setAllCastepPdosCurvesVisible;
 
+function toggleCastepDosTotal() {
+  const chk = document.getElementById("castep-show-dos-total");
+  if (chk) chk.checked = !chk.checked;
+  if (typeof renderCastepElectronicPlots === "function") renderCastepElectronicPlots();
+}
+window.toggleCastepDosTotal = toggleCastepDosTotal;
+
 function renderCastepPdosCurveChips(allCurves) {
   const row = document.getElementById("castep-pdos-chips");
   if (!row) return;
   const nonTot = (allCurves || []).filter(c => !c.isTotal);
   CASTEP_PDOS_STATE.lastMeta = (allCurves || []).map(c => ({ key: c.key || c.label, label: c.label, color: c.color, isTotal: !!c.isTotal }));
-  if (!nonTot.length) {
+  const showDosTot = document.getElementById("castep-show-dos-total")?.checked !== false;
+  if (!nonTot.length && !(allCurves || []).length && showDosTot) {
     row.style.display = "none";
     row.innerHTML = "";
     return;
   }
+  const totChip = `<button type="button" class="castep-preset-chip" onclick="toggleCastepDosTotal()" style="border-color:${showDosTot ? "#0f172a" : "#cbd5e1"}; color:${showDosTot ? "#0f172a" : "#94a3b8"}; background:${showDosTot ? "#ffffff" : "#f8fafc"}; font-weight:700; opacity:${showDosTot ? 1 : 0.52}; height:21px; padding:0 6px; font-size:10.5px;" title="Click to show/hide Total DOS curve">
+    <span style="display:inline-block; width:10px; height:2px; background:${showDosTot ? "#0f172a" : "#cbd5e1"}; margin-right:4px; vertical-align:middle;"></span>Total
+  </button>`;
   row.style.display = "flex";
   const quickCtrl = nonTot.length > 4
     ? `<span style="display:inline-flex; gap:3px; margin-left:2px;">
@@ -22642,7 +22695,8 @@ function renderCastepPdosCurveChips(allCurves) {
          <button type="button" class="castep-preset-chip" style="font-size:10px; padding:0 5px; height:20px;" onclick="setAllCastepPdosCurvesVisible(false)" title="Hide all partial curves (keep Total)">None</button>
        </span>`
     : "";
-  row.innerHTML = `<span style="font-size:10.5px; font-weight:700; color:#475569; margin-right:2px;">Curves:</span>` +
+  row.innerHTML = `<span style="font-size:10.5px; font-weight:700; color:#475569; margin-right:2px;">DOS:</span>` +
+    totChip +
     nonTot.map(c => {
       const k = c.key || c.label;
       const off = CASTEP_PDOS_STATE.hiddenCurves.has(k);
@@ -22690,7 +22744,7 @@ function buildSubOrbitalPdosGroups(pb, eGrid, sigma, mode, targetVal, flags, ene
 
   if (mode === "element_suborbital") {
     const els = [...new Set(matched.map(c => c.element))];
-    const orderSub = ["dz2", "dx2-y2,dxy", "dxz,dyz", "px,py", "pz", "s", "f"];
+    const orderSub = ["s", "px,py", "pz", "dz2", "dx2-y2,dxy", "dxz,dyz", "f"];
     let cIdx = 0;
     els.forEach(el => {
       orderSub.forEach(sub => {
@@ -22710,7 +22764,7 @@ function buildSubOrbitalPdosGroups(pb, eGrid, sigma, mode, targetVal, flags, ene
 
   if (mode === "m_orbital") {
     const els = [...new Set(matched.map(c => c.element))];
-    const orderM = ["dz2", "dx2-y2", "dxy", "dxz", "dyz", "px", "py", "pz", "s", "f"];
+    const orderM = ["s", "px", "py", "pz", "dz2", "dx2-y2", "dxy", "dxz", "dyz", "f"];
     const multiEl = els.length > 1 && (!targetVal || targetVal === "all");
     let cIdx = 0;
     if (multiEl) {
