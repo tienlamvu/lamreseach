@@ -1670,16 +1670,16 @@ function renderCastepPotentialPane() {
   const teffEl = document.getElementById("castep-pot-teff");
   if (teffEl && !teffEl.value) teffEl.placeholder = `${an.crys.tEffAutoA.toFixed(2)} Å`;
 
-  // 1) Top Summary Strip
+  // 1) Top Compact Summary Strip
   const strip = document.getElementById("castep-pot-summary-strip");
   if (strip) {
-    const potTag = an.pot ? `<span style="color:#6d28d9; font-weight:700;">● Potential: ${_ppEsc(an.pot.sourceFile)} (${_ppEsc(an.pot.sourceFormat)})</span>` : `<span style="color:#64748b;">No *.cst_esp / Potential .xcd / .pot_fmt loaded</span>`;
-    const polTag = an.berrySummary ? `<span style="color:#0f766e; font-weight:700;">● Berry Polarization: Active</span>` : `<span style="color:#64748b;">No Berry Phase table in .castep</span>`;
+    const potTag = an.pot ? `<span style="color:#6d28d9; font-weight:700;">● ${_ppEsc(an.pot.sourceFile)} (${_ppEsc(an.pot.sourceFormat)})</span>` : `<span style="color:#64748b;">No *.cst_esp / .xcd loaded</span>`;
+    const polTag = an.berrySummary ? `<span style="color:#0f766e; font-weight:700;">● Berry Polarization: Active</span>` : `<span style="color:#64748b;">Berry Phase: Off</span>`;
     const dipTag = an.polar.dipoleCorrMode && an.polar.dipoleCorrMode !== "None"
       ? `<span><strong>Dipole Corr:</strong> ${_ppEsc(an.polar.dipoleCorrMode)} (${_ppEsc(an.polar.dipoleCorrDir || "Z")}${an.polar.dipoleCorrEnergyEv !== null ? `, dE=${an.polar.dipoleCorrEnergyEv.toFixed(5)} eV` : ""})</span>`
       : "";
     strip.innerHTML = `
-      <span><strong>System:</strong> ${_ppFmtFormulaHtml(an.crys.formula)} (c = ${an.crys.cLen.toFixed(3)} Å, A = ${an.crys.areaXY.toFixed(3)} Å², V = ${an.crys.vol.toFixed(2)} Å³)</span>
+      <span><strong>System:</strong> ${_ppFmtFormulaHtml(an.crys.formula)} (c=${an.crys.cLen.toFixed(3)} Å, A=${an.crys.areaXY.toFixed(2)} Å², V=${an.crys.vol.toFixed(1)} Å³)</span>
       ${potTag}
       ${polTag}
       ${dipTag}

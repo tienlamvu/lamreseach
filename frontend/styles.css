@@ -15604,3 +15604,67 @@ textarea.dft-ed-code-surface::placeholder {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
+
+/* ============================================================================
+   Potential & Polarization Compact 3-Row Balanced Toolbar & Summary Strip (v178)
+   ============================================================================ */
+.pot-toolbar {
+  padding: 7px 10px !important;
+  margin-bottom: 8px !important;
+  background: #f8fafc;
+  border: 1px solid #dbe4f0;
+  border-radius: 10px;
+}
+.pot-toolbar .pot-tb-row {
+  display: flex;
+  align-items: center;
+  gap: 6px 8px;
+  flex-wrap: nowrap;
+}
+.pot-toolbar .pot-tb-row + .pot-tb-row {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #e6edf5;
+}
+.pot-toolbar .pot-tb-actions {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+.pot-toolbar .pot-chk-grp {
+  gap: 10px !important;
+}
+.pot-toolbar .pot-sel-layout {
+  max-width: 158px;
+}
+.pot-toolbar .pot-sel-sm {
+  max-width: 112px;
+}
+.pot-toolbar .pot-tb-hint {
+  font-size: 10.5px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1 1 60px;
+}
+.pot-summary-strip {
+  padding: 6px 11px !important;
+  margin-bottom: 8px !important;
+  font-size: 11.5px !important;
+  gap: 5px 12px !important;
+  align-items: center;
+  line-height: 1.35;
+}
+@media (max-width: 1180px) {
+  .pot-toolbar .pot-tb-row {
+    flex-wrap: wrap;
+  }
+  .pot-toolbar .pot-tb-actions {
+    flex-wrap: wrap;
+  }
+}
