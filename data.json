@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-27T10:40:25.701Z",
+  "exported_at": "2026-11-27T10:40:29.115Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -6345,279 +6345,6 @@
       ],
       "picture": "https://lh3.googleusercontent.com/a/ACg8ocJ5aVyRlpWSljVC2OJusM1rb39s2jSKUTJqGBroVnc79VyzoEsF=s96-c"
     },
-    "lamvt@g.skku.edu": {
-      "email": "lamvt@g.skku.edu",
-      "name": "Jaewon Kim",
-      "affiliation": "Sungkyunkwan University (SKKU)",
-      "academicRole": "Researcher",
-      "status": "Active",
-      "authProvider": "Email + Google Linked",
-      "googleLinked": true,
-      "googleEmail": "lamvt@g.skku.edu",
-      "passwordPlainHint": "••••••••",
-      "passwordHash": "441d52fbb490008fa860a41b38fe03e0b7f6fb06b56336922f7d7a95562f51dd",
-      "groups": [
-        "grp_dft_team_gun1"
-      ],
-      "registeredAt": "2026-11-18 19:49",
-      "lastLoginAt": "2026-11-18 20:44",
-      "lastUpdatedAt": "2026-11-19 09:39",
-      "updatedAtMs": 1795048744333,
-      "workspace": {
-        "papers": [],
-        "structures": [],
-        "schedule": [
-          {
-            "title": "DFT Discussion",
-            "event_type": "Group Meeting / PI Meeting",
-            "instrument_or_location": "SKKU Cluster / Office",
-            "start_date": "2026-11-24",
-            "end_date": "2026-11-24",
-            "start_time": "10:00",
-            "end_time": "12:00",
-            "priority": "High",
-            "status": "Scheduled",
-            "participants": [
-              {
-                "type": "group",
-                "id": "grp_dft_team_gun1",
-                "label": "DFT Team",
-                "email": ""
-              }
-            ],
-            "participant_emails": [
-              "tlamvux@gmail.com",
-              "lamvt.sep@gmail.com",
-              "lamvt@g.skku.edu"
-            ],
-            "participant_groups": [
-              "grp_dft_team_gun1"
-            ],
-            "description": "",
-            "in_weekly_report": 1,
-            "visibility": "Private",
-            "allowed_users": [],
-            "allowed_groups": [],
-            "id": 1795002220516,
-            "_syncedEventId": 1795002220516,
-            "_isParticipantSync": true,
-            "_syncedFromEmail": "lamvt.skku@gmail.com",
-            "_syncedFromName": "Vu Tien Lam",
-            "owner_email": "lamvt@g.skku.edu"
-          }
-        ],
-        "expReportRows": [
-          {
-            "sample_id": "Mo2Si5N4P3",
-            "material": "VASP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "a=6.5943 Å, Vol=947.16 Å³"
-          },
-          {
-            "sample_id": "Mo2Si5N3P4",
-            "material": "VASP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "a=6.5943 Å, Vol=947.16 Å³"
-          },
-          {
-            "sample_id": "Mo2Si3N4P5",
-            "material": "VASP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "a=6.5943 Å, Vol=947.16 Å³"
-          },
-          {
-            "sample_id": "Mo2Si4N3P5",
-            "material": "VASP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "a=6.5943 Å, Vol=947.16 Å³"
-          },
-          {
-            "sample_id": "Mo2Si4N3P5",
-            "material": "VASP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "a=6.5943 Å, Vol=947.16 Å³"
-          },
-          {
-            "sample_id": "Mo2Si3N5P4",
-            "material": "VASP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "a=6.5943 Å, Vol=947.16 Å³"
-          },
-          {
-            "sample_id": "Mo2Si4N5P3",
-            "material": "VASP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "a=6.5943 Å, Vol=947.16 Å³"
-          },
-          {
-            "sample_id": "Mo2Si4N5P3",
-            "material": "VASP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "a=6.5943 Å, Vol=947.16 Å³"
-          },
-          {
-            "sample_id": "Mo2Si3N4P4",
-            "material": "VASP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "a=6.5943 Å, Vol=947.16 Å³"
-          },
-          {
-            "sample_id": "Mo2Si4N4P3",
-            "material": "VASP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "a=6.5943 Å, Vol=947.16 Å³"
-          },
-          {
-            "sample_id": "Mo2Si4N4P3",
-            "material": "VASP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "a=6.5943 Å, Vol=947.16 Å³"
-          },
-          {
-            "sample_id": "Mo2Si4N3P4",
-            "material": "VASP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "a=6.5943 Å, Vol=947.16 Å³"
-          },
-          {
-            "sample_id": "Mo2Si4N3P4",
-            "material": "VASP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "a=6.5943 Å, Vol=947.16 Å³"
-          },
-          {
-            "sample_id": "MoSi4N4P4",
-            "material": "VASP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "a=6.5943 Å, Vol=947.16 Å³"
-          },
-          {
-            "sample_id": "MoSi2N2P2",
-            "material": "CASTEP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "Full-relaxed"
-          },
-          {
-            "sample_id": "MoSi2N2P2",
-            "material": "CASTEP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "Full-relaxed"
-          },
-          {
-            "sample_id": "MoSi2N2P2",
-            "material": "CASTEP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "Full-relaxed"
-          },
-          {
-            "sample_id": "MoSi2N2P2",
-            "material": "CASTEP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "Full-relaxed"
-          },
-          {
-            "sample_id": "MoSi2N4",
-            "material": "CASTEP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "Full-relaxed"
-          },
-          {
-            "sample_id": "MoSi2P4",
-            "material": "CASTEP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "Full-relaxed"
-          },
-          {
-            "sample_id": "Te",
-            "material": "VASP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "Full-relaxed"
-          },
-          {
-            "sample_id": "MoSSe",
-            "material": "VASP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "Full-relaxed"
-          },
-          {
-            "sample_id": "Na0.5TiBi0.5O3",
-            "material": "VASP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "Non-relaxed"
-          },
-          {
-            "sample_id": "Na0.5TiBi0.5O3",
-            "material": "VASP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "Non-relaxed"
-          },
-          {
-            "sample_id": "Na0.5TiBi0.5O3",
-            "material": "VASP (PBE)",
-            "conditions": "Eg = 3.2 eV (Direct)",
-            "findings": "Non-relaxed"
-          }
-        ],
-        "litReportRows": [
-          {
-            "title": "Intraband Lifshitz transition and Stoner ferromagnetism in Janus PA₂As (A = Si, Ge, Sn, and Pb) monolayers",
-            "journal": "Physical Review B (2021) | DOI: 10.1103/physrevb.104.035409",
-            "material": "Perovskite / 2D Material",
-            "takeaway": ""
-          },
-          {
-            "title": "Charge doping and electric field tunable ferromagnetism and Curie temperature of the MnS\n                    <sub>2</sub>\n                    monolayer",
-            "journal": "Physical Chemistry Chemical Physics (2024) | DOI: 10.1039/d3cp04382g",
-            "material": "Perovskite / 2D Material",
-            "takeaway": "Two-dimensional ferromagnets with a long-range ferromagnetic ordering at finite temperature present a bright prospect fo"
-          },
-          {
-            "title": "Antisite defect qubits in monolayer transition metal dichalcogenides",
-            "journal": "Nature Communications (2022) | DOI: 10.1038/s41467-022-28133-x",
-            "material": "Perovskite / 2D Material",
-            "takeaway": "Good reference for antisite defects in TMDs."
-          },
-          {
-            "title": "Y-decorated MoS2 monolayer for promising hydrogen storage: A DFT study",
-            "journal": "International Journal of Hydrogen Energy (2022) | DOI: 10.1016/j.ijhydene.2022.01.236",
-            "material": "Perovskite / 2D Material",
-            "takeaway": ""
-          }
-        ]
-      },
-      "activityLog": [
-        {
-          "timestamp": "2026-11-18 20:44",
-          "category": "Session",
-          "action": "Signed In (Email & Password)",
-          "detail": "Authenticated as Jaewon Kim (lamvt@g.skku.edu)"
-        },
-        {
-          "timestamp": "2026-11-18 20:43",
-          "category": "Calendar",
-          "action": "Synced Event Invitation",
-          "detail": "DFT Discussion (2026-11-24) — assigned by Vu Tien Lam"
-        },
-        {
-          "timestamp": "2026-11-18 19:53",
-          "category": "Crystal Structures",
-          "action": "Added Structure",
-          "detail": "KNaFeSi4O10 — KNaFe(Si2O5)2 (P-1 (2))"
-        },
-        {
-          "timestamp": "2026-11-18 19:50",
-          "category": "Session",
-          "action": "Signed In (Email & Password)",
-          "detail": "Authenticated as Jaewon Kim (lamvt@g.skku.edu)"
-        },
-        {
-          "timestamp": "2026-11-18 19:49",
-          "category": "Account",
-          "action": "Created by Administrator",
-          "detail": "Administrator created personal account for Jaewon Kim (lamvt@g.skku.edu)."
-        }
-      ]
-    },
     "researcher.kim@skku.edu": {
       "email": "researcher.kim@skku.edu",
       "name": "Jaewon Kim",
@@ -6751,8 +6478,7 @@
       "color": "blue",
       "description": "User group created by Administrator",
       "members": [
-        "lamvt.sep@gmail.com",
-        "lamvt@g.skku.edu"
+        "lamvt.sep@gmail.com"
       ],
       "updatedAtMs": 1794998976113
     }
@@ -6770,7 +6496,8 @@
     "a@gmail.com",
     "alice@skku.edu",
     "jaewon@skku.edu",
-    "tlamvux@gmail.com"
+    "tlamvux@gmail.com",
+    "lamvt@g.skku.edu"
   ],
   "deleted_users_map": {
     "jhpark.matsci@skku.edu": 1795047536565,
@@ -6785,7 +6512,8 @@
     "a@gmail.com": 1795047536565,
     "alice@skku.edu": 1795047536565,
     "jaewon@skku.edu": 1795047536565,
-    "tlamvux@gmail.com": 1795776024030
+    "tlamvux@gmail.com": 1795776024030,
+    "lamvt@g.skku.edu": 1795776027078
   },
   "deleted_groups": [
     "grp_external_collab",
