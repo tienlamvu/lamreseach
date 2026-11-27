@@ -100,6 +100,10 @@ const TAB_TITLES = {
     "Computational Materials Data Analysis & Simulation Workbench",
     "Live Local Machine Job Manager, 3D Crystal/Slab/Adsorption Builder, Electronic Band Structure, DOS/PDOS & Convergence Analytics"
   ],
+  "post-data": [
+    "Post-Data Processing — Multi-CIF Interlayer & Atomic Distance Analyzer",
+    "Batch-measure interlayer spacings (d₁..dₙ) and 3D atomic bond evolution across Electric Fields, Strains, or Pressures"
+  ],
   "weekly-report": [
     "Weekly Group Meeting Report & PowerPoint (.pptx) Generator",
     "Compile weekly simulation achievements, DFT calculations & literature review into a 16:9 slide deck"
@@ -262,7 +266,7 @@ function confirmAction(message, itemDesc = "") {
   });
 }
 
-const TABS_ORDER = ["dashboard", "dft-theory", "news", "literature", "calendar", "structures", "castep", "weekly-report", "manuscript", "toolkit", "cv"];
+const TABS_ORDER = ["dashboard", "dft-theory", "news", "literature", "calendar", "structures", "castep", "post-data", "weekly-report", "manuscript", "toolkit", "cv"];
 
 const TAB_META = {
   "dashboard": ["📊", "Dashboard"],
@@ -272,6 +276,7 @@ const TAB_META = {
   "calendar": ["📅", "Calendar & GCal"],
   "structures": ["💎", "Crystal Structures"],
   "castep": ["📊", "Data Analysis"],
+  "post-data": ["📐", "Post-Data Processing"],
   "weekly-report": ["📽️", "Weekly Report"],
   "manuscript": ["🎯", "Journal Finder & Plag"],
   "toolkit": ["⚛️", "Periodic Table & Calc"],
@@ -326,6 +331,7 @@ const TAB_URL_SLUGS = {
   "calendar": "calendar",
   "structures": "structures",
   "castep": "data-analysis",
+  "post-data": "post-data-processing",
   "weekly-report": "weekly-report",
   "manuscript": "journal-plagiarism",
   "toolkit": "periodic-table",
@@ -351,6 +357,9 @@ const TAB_SLUG_TO_ID = (() => {
     "crystal-structures": "structures",
     "analysis": "castep",
     "data": "castep",
+    "postdata": "post-data",
+    "post-processing": "post-data",
+    "cif-batch": "post-data",
     "report": "weekly-report",
     "journal": "manuscript",
     "plagiarism": "manuscript",
@@ -706,6 +715,8 @@ function switchTab(tabId, btnEl, opts = {}) {
     renderStructuresList();
   } else if (tabId === "castep") {
     if (typeof initCastepStudioTab === "function") initCastepStudioTab();
+  } else if (tabId === "post-data") {
+    if (typeof initPostDataTab === "function") initPostDataTab();
   } else if (tabId === "toolkit") {
     if (typeof renderPeriodicTable === "function") renderPeriodicTable();
   } else if (tabId === "dft-theory") {
