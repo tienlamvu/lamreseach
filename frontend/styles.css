@@ -15544,3 +15544,63 @@ textarea.dft-ed-code-surface::placeholder {
   flex-shrink: 0;
 }
 .pd-ws-del-btn:hover { color: #dc2626; }
+/* Harmonious 2-Row 6x2 Data Analysis Sub-Tab Bar (v176) */
+.castep-stage-tabs.castep-stage-tabs-2row {
+  display: grid !important;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  gap: 5px !important;
+  padding: 8px 10px !important;
+  background: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  overflow: visible !important;
+}
+.castep-stage-tabs.castep-stage-tabs-2row .castep-stage-tab {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 6px 6px !important;
+  font-size: 11.4px !important;
+  font-weight: 700 !important;
+  color: #334155 !important;
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 7px !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  transition: background 0.14s, border-color 0.14s, color 0.14s, box-shadow 0.14s !important;
+}
+.castep-stage-tabs.castep-stage-tabs-2row .castep-stage-tab:hover {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+.castep-stage-tabs.castep-stage-tabs-2row .castep-stage-tab.active {
+  background: #eff6ff !important;
+  border-color: #3b82f6 !important;
+  color: #1d4ed8 !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.14) !important;
+}
+.castep-stage-tabs.castep-stage-tabs-2row .castep-stage-tab-fmt {
+  background: #f5f3ff !important;
+  border-color: #ddd6fe !important;
+  color: #5b21b6 !important;
+}
+.castep-stage-tabs.castep-stage-tabs-2row .castep-stage-tab-fmt:hover {
+  background: #ede9fe !important;
+  border-color: #c4b5fd !important;
+}
+@media (max-width: 1024px) {
+  .castep-stage-tabs.castep-stage-tabs-2row {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+@media (max-width: 600px) {
+  .castep-stage-tabs.castep-stage-tabs-2row {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}

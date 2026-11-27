@@ -3694,6 +3694,8 @@ def api_castep_job_detail(folder: str, seed: Optional[str] = None):
     dos_xcd_f = _find_match(lambda l: l.endswith(".xcd") and ("density of states" in l or " dos" in l or l == "dos.xcd") and "partial" not in l and "pdos" not in l)
     conv_xcd_f = _find_match(lambda l: l.endswith(".xcd") and "convergence" in l)
     ener_xcd_f = _find_match(lambda l: l.endswith(".xcd") and "energies" in l)
+    pot_xcd_f = _find_match(lambda l: l.endswith(".xcd") and "potential" in l)
+    pot_xcd_text = _read(pot_xcd_f, 1000000) if pot_xcd_f else ""
 
     band_xcd = _parse_xcd_file_backend(_read(band_xcd_f, 2500000), is_band=True)
     dos_xcd = _parse_xcd_file_backend(_read(dos_xcd_f, 2000000))
@@ -3830,6 +3832,8 @@ def api_castep_job_detail(folder: str, seed: Optional[str] = None):
         "cif_text": _read(cif_f, 250000) if cif_f else "",
         "conv_xcd": conv_xcd,
         "ener_xcd": ener_xcd,
+        "potential_xcd_text": pot_xcd_text,
+        "potential_xcd_file": pot_xcd_f or "",
         "band_xcd": band_xcd,
         "dos_xcd": dos_xcd,
         "pdos_xcd": pdos_xcd,
@@ -4884,6 +4888,11 @@ def serve_post_data_js():
 @app.get("/topo_rashba.js")
 def serve_topo_rashba_js():
     return FileResponse(str(FRONTEND_DIR / "topo_rashba.js"))
+
+
+@app.get("/potential_polar.js")
+def serve_potential_polar_js():
+    return FileResponse(str(FRONTEND_DIR / "potential_polar.js"))
 
 
 @app.get("/index.html")

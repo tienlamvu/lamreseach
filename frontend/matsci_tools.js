@@ -877,6 +877,7 @@ function rerenderAllActiveCastepPlots() {
   if (typeof renderCastepTransportPane === "function") renderCastepTransportPane();
   if (typeof renderCastepStonerPane === "function") renderCastepStonerPane();
   if (typeof renderCastepConvergencePlots === "function") renderCastepConvergencePlots();
+  if (typeof renderCastepPotentialPane === "function") renderCastepPotentialPane();
   if (typeof renderPostDataTab === "function") renderPostDataTab();
   if (typeof renderTopoRashbaAll === "function") renderTopoRashbaAll();
   if (typeof syncPostPlotFormatUI === "function") syncPostPlotFormatUI();
@@ -2463,7 +2464,12 @@ async function loadCastepJobIntoStudio(jobId) {
   updateCastepKpiBar();
 
   // 6) Mark all non-active panes dirty and render ONLY the currently visible tab immediately!
-  CASTEP_STUDIO_STATE._dirtyPanes = new Set(["builder", "electronic", "transport", "stoner", "optics", "chdiff", "mulliken", "convergence", "files", "atoms", "adsorb"]);
+  CASTEP_STUDIO_STATE._dirtyPanes = new Set(["builder", "electronic", "transport", "stoner", "optics", "potential", "chdiff", "mulliken", "convergence", "files", "atoms", "adsorb"]);
+  if (window.CASTEP_POT_POL_STATE) {
+    CASTEP_POT_POL_STATE.overridePotential = null;
+    CASTEP_POT_POL_STATE.overridePolarCastep = null;
+    CASTEP_POT_POL_STATE.overrideSourceName = "";
+  }
   const activePane = CASTEP_STUDIO_STATE.activeStagePane || "builder";
 
   if (activePane === "builder") {
@@ -2482,6 +2488,9 @@ async function loadCastepJobIntoStudio(jobId) {
   } else if (activePane === "electronic") {
     CASTEP_STUDIO_STATE._dirtyPanes.delete("electronic");
     renderCastepElectronicPlots();
+  } else if (activePane === "potential") {
+    CASTEP_STUDIO_STATE._dirtyPanes.delete("potential");
+    if (typeof renderCastepPotentialPane === "function") renderCastepPotentialPane();
   } else if (activePane === "optics") {
     CASTEP_STUDIO_STATE._dirtyPanes.delete("optics");
     renderCastepOpticalPlots();
@@ -2557,6 +2566,7 @@ async function switchCastepStagePane(paneId, btnEl) {
       }
     } else if (paneId === "gateway") renderMsGatewayTable();
     else if (paneId === "electronic") renderCastepElectronicPlots();
+    else if (paneId === "potential") { if (typeof renderCastepPotentialPane === "function") renderCastepPotentialPane(); }
     else if (paneId === "optics") renderCastepOpticalPlots();
     else if (paneId === "chdiff") renderCastepChdiffPlots();
     else if (paneId === "mulliken") renderCastepMullikenPane();
@@ -7848,7 +7858,7 @@ async function mountCastepLocalDirectory() {
 }
 window.mountCastepLocalDirectory = mountCastepLocalDirectory;
 
-const CASTEP_RELEVANT_EXT_RE = /\.(cell|param|castep|geom|bands|xcd|xsd|cif|chdiff|charg_frm|den_fmt|cube|pdos_bin|ome_bin|cst_ome|xyz|csv|dat)$/i;
+const CASTEP_RELEVANT_EXT_RE = /\.(cell|param|castep|geom|bands|xcd|xsd|cif|chdiff|charg_frm|den_fmt|pot_fmt|epot_fmt|cube|pdos_bin|ome_bin|cst_ome|xyz|csv|dat)$/i;
 const CASTEP_SKIP_DIRS = new Set([".git", "node_modules", "__pycache__", "$recycle.bin", "system volume information"]);
 
 function parseSbjTextClient(sbjText, filename, isArchived = false) {
@@ -8121,6 +8131,25 @@ async function hydrateCastepJobFromFileMap(job, opts = {}) {
   if (enerXcdE && !job.ener_xcd) {
     const t = await readFromFileOrHandle(enerXcdE[1], false);
     if (t) job.ener_xcd = parseCastepXcdXmlClient(t, false);
+  }
+  const potXcdE = findEntry(l => l.endsWith(".xcd") && l.includes("potential"));
+  if (potXcdE && !job.potential_xcd_text) {
+    const t = await readFromFileOrHandle(potXcdE[1], false);
+    if (t && t.trim().length > 20) {
+      job.potential_xcd_text = t;
+      job.potential_xcd_file = potXcdE[0];
+      if (typeof parseCastepPotentialXcdText === "function") job.potential_xcd = parseCastepPotentialXcdText(t, potXcdE[0]);
+    }
+  }
+  if (!job.potential_xcd) {
+    const potFmtE = findEntry(l => l.endsWith(".pot_fmt") || l.endsWith(".epot_fmt"));
+    if (potFmtE) {
+      const t = await readFromFileOrHandle(potFmtE[1], false);
+      if (t && typeof parseCastepPotFmtText === "function") {
+        job.potential_xcd = parseCastepPotFmtText(t, potFmtE[0], "c");
+        job.potential_xcd_file = potFmtE[0];
+      }
+    }
   }
 
   // 3) ALL Optical .xcd files (Absorption, Re/Im Epsilon, Refractive, Reflectivity, Conductivity, Loss)
@@ -8493,6 +8522,7 @@ function getPlotRendererForCanvas(canvasId) {
     case "castep-energy-chart-canvas":
     case "castep-conv-chart-canvas": return typeof renderCastepConvergencePlots === "function" ? renderCastepConvergencePlots : null;
     case "castep-3d-canvas": return typeof renderCastep3DScene === "function" ? renderCastep3DScene : null;
+    case "castep-potential-canvas": return typeof renderCastepPotentialPane === "function" ? renderCastepPotentialPane : null;
     case "post-data-main-canvas": return typeof renderPostDataTab === "function" ? renderPostDataTab : null;
     case "tr-main-canvas": return typeof renderTopoRashbaAll === "function" ? renderTopoRashbaAll : null;
     default: return null;
@@ -9218,6 +9248,11 @@ const CASTEP_PLOT_CTX_SPECS = {
       { label: "🔥 Copy Stoner Free-Energy E(m) Curve (TSV)", plotKey: "stoner", subPart: "energy" },
       { label: "📊 Copy Stoner Criterion I·D(E) Table (TSV)", plotKey: "stoner", subPart: "dos" }
     ]
+  },
+  "castep-potential-canvas": {
+    label: "Electrostatic Potential & Polarization",
+    pngName: "CASTEP_Potential_Polarization.png",
+    dataItems: []
   },
   "tr-main-canvas": {
     label: "Rashba, Spin Texture & Brillouin Zone",

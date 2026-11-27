@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=175_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=175_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=176_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=176_v116_vesta_viewer'" />
   <!-- Publication Math Typography: STIX Two Text (MathType / Times) + KaTeX 0.16.11 (Word/LaTeX Equation Engine) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -1235,8 +1235,9 @@
 
           <!-- RIGHT MAIN STAGE: Full-Page Multi-View Workbench (No Popups!) -->
           <div class="castep-main-stage">
-            <!-- Sub-Workspace Mode Tabs -->
-            <div class="castep-stage-tabs">
+            <!-- Sub-Workspace Mode Tabs (Harmonious 2-Row 6x2 Grid) -->
+            <div class="castep-stage-tabs castep-stage-tabs-2row">
+              <!-- Row 1: Structure & Electronic Properties -->
               <button type="button" class="castep-stage-tab active" data-pane="builder" onclick="switchCastepStagePane('builder', this)">
                 🧱 3D View
               </button>
@@ -1255,6 +1256,10 @@
               <button type="button" class="castep-stage-tab" data-pane="optics" onclick="switchCastepStagePane('optics', this)">
                 🌈 Optical
               </button>
+              <!-- Row 2: Potential, Polarization, Charge & Studio Tools -->
+              <button type="button" class="castep-stage-tab" data-pane="potential" onclick="switchCastepStagePane('potential', this)" title="Planar-Averaged Electrostatic Potential V(z), Work Function (Φ), Built-in Field (E_in), CASTEP Berry-Phase Polarization &amp; Dipole Moment Analyzer">
+                ⚡ Potential &amp; Polar.
+              </button>
               <button type="button" class="castep-stage-tab" data-pane="chdiff" onclick="switchCastepStagePane('chdiff', this)">
                 🔋 Charge Diff
               </button>
@@ -1262,12 +1267,12 @@
                 🧲 Mulliken &amp; Spin
               </button>
               <button type="button" class="castep-stage-tab" data-pane="convergence" onclick="switchCastepStagePane('convergence', this)">
-                ⚡ Conv.
+                📉 Conv.
               </button>
               <button type="button" class="castep-stage-tab" data-pane="files" onclick="switchCastepStagePane('files', this)">
                 📝 Files
               </button>
-              <button type="button" id="castep-plot-style-toggle-btn" class="castep-stage-tab" style="margin-left:auto; background:#f8fafc; border-color:#cbd5e1; color:#0f172a; font-weight:700;" onclick="toggleCastepPlotStyleBar()" title="Customize unified publication plot format (Font, Size, Border Width, Line Width, Ticks, Grid) across ALL CASTEP graphs">
+              <button type="button" id="castep-plot-style-toggle-btn" class="castep-stage-tab castep-stage-tab-fmt" onclick="toggleCastepPlotStyleBar()" title="Customize unified publication plot format (Font, Size, Border Width, Line Width, Ticks, Grid) across ALL CASTEP graphs">
                 🎨 Plot Format
               </button>
             </div>
@@ -2920,6 +2925,154 @@
             <!-- ============================================================ -->
             <!-- PANE 5: CASTEP CHARGE DENSITY DIFFERENCE (Δρ) ANALYZER       -->
             <!-- ============================================================ -->
+            <!-- ============================================================ -->
+            <!-- PANE 5A: ELECTROSTATIC POTENTIAL V(z) & POLARIZATION STUDIO  -->
+            <!-- ============================================================ -->
+            <div id="castep-pane-potential" class="castep-stage-pane">
+              <div class="castep-plot-toolbar">
+                <!-- Row 1: Layout, Axis, Reference, Annotation & File Loader -->
+                <div class="castep-tb-row">
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" for="castep-pot-layout">Layout:</label>
+                    <select id="castep-pot-layout" class="castep-input" style="font-weight:700;" onchange="renderCastepPotentialPane()">
+                      <option value="dual" selected>⚡ Dual (Potential V(z) + Polarization)</option>
+                      <option value="pot_only">📈 Potential Profile V(z) Only</option>
+                      <option value="pol_only">🧲 Polarization &amp; Dipole Only</option>
+                    </select>
+                  </span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" for="castep-pot-xunit">X-Axis:</label>
+                    <select id="castep-pot-xunit" class="castep-input" onchange="renderCastepPotentialPane()">
+                      <option value="angstrom" selected>Distance z (Å)</option>
+                      <option value="frac">Fractional z/c</option>
+                    </select>
+                  </span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" for="castep-pot-zref">Zero Ref:</label>
+                    <select id="castep-pot-zref" class="castep-input" onchange="renderCastepPotentialPane()">
+                      <option value="raw" selected>Raw CASTEP (eV)</option>
+                      <option value="fermi">Fermi Level (E_F = 0)</option>
+                      <option value="vac_avg">Avg Vacuum (V_vac = 0)</option>
+                      <option value="vac_left">Left Vacuum = 0</option>
+                    </select>
+                  </span>
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" for="castep-pot-annot">Annotate:</label>
+                    <select id="castep-pot-annot" class="castep-input" onchange="renderCastepPotentialPane()">
+                      <option value="both" selected>ΔV_well + ΔΦ (Both)</option>
+                      <option value="well">ΔV_well (Outer Wells)</option>
+                      <option value="vac">ΔΦ (Vacuum Step)</option>
+                      <option value="none">Clean Curve Only</option>
+                    </select>
+                  </span>
+                  <div class="castep-tb-actions">
+                    <label class="btn btn-primary btn-sm" style="cursor:pointer; font-weight:700; margin:0; background:#6d28d9; border-color:#6d28d9;" title="Load Materials Studio *Potential Profile.xcd, CASTEP *.pot_fmt / *.castep (Berry Polarization), or 2-col CSV">
+                      📂 Load .xcd / .pot_fmt / .castep
+                      <input type="file" id="castep-pot-file-input" accept=".xcd,.pot_fmt,.epot_fmt,.castep,.csv,.dat,.tsv,.txt" multiple style="display:none;" onchange="handleCastepPotentialFileUpload(event)" />
+                    </label>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="resetCastepPotentialSettings()" title="Reset Potential &amp; Polarization display settings">↺ Reset</button>
+                  </div>
+                </div>
+
+                <!-- Row 2: Slab Centering, Flip, Shift, Inset, Thickness & Color -->
+                <div class="castep-tb-row">
+                  <span class="castep-ctrl-grp">
+                    <label class="castep-chk-lbl" title="Automatically unwrap &amp; center the atomic slab in [0, c] so vacuum plateaus sit cleanly on Left and Right"><input type="checkbox" id="castep-pot-autocenter" checked onchange="renderCastepPotentialPane()" /> Auto-Center Slab</label>
+                    <label class="castep-chk-lbl" title="Mirror slab along z-axis (z → c − z)"><input type="checkbox" id="castep-pot-flipz" onchange="renderCastepPotentialPane()" /> Flip z</label>
+                    <label class="castep-chk-lbl" title="Draw atomic slab side-view schematic &amp; built-in electric field E_in arrow inside plot"><input type="checkbox" id="castep-pot-inset" checked onchange="renderCastepPotentialPane()" /> Crystal Inset &amp; E<sub>in</sub></label>
+                    <label class="castep-chk-lbl" title="Show Fermi level E_F and left/right vacuum level guidelines"><input type="checkbox" id="castep-pot-guides" checked onchange="renderCastepPotentialPane()" /> E<sub>F</sub> &amp; V<sub>vac</sub> Guides</label>
+                  </span>
+                  <span class="castep-ctrl-grp" title="Manual circular phase shift along z (%)">
+                    <label class="castep-field-lbl" for="castep-pot-shift">Shift Δz (%):</label>
+                    <input type="number" id="castep-pot-shift" class="castep-input-sm" value="0" min="-100" max="100" step="5" style="width:54px;" onchange="renderCastepPotentialPane()" />
+                  </span>
+                  <span class="castep-ctrl-grp" title="Effective 2D slab thickness t_eff (Å) for 3D slab polarization P_3D = P_2D / t_eff (leave empty for automatic vdW thickness)">
+                    <label class="castep-field-lbl" for="castep-pot-teff">t<sub>eff</sub> (Å):</label>
+                    <input type="number" id="castep-pot-teff" class="castep-input-sm" step="0.1" min="0.5" max="100" placeholder="Auto vdW" style="width:74px;" onchange="renderCastepPotentialPane()" />
+                  </span>
+                  <span class="castep-ctrl-grp" title="Potential V(z) curve color">
+                    <label class="castep-field-lbl" for="castep-pot-color">Color:</label>
+                    <input type="color" id="castep-pot-color" value="#7c5cb8" style="width:26px; height:22px; padding:0; border:1px solid #cbd5e1; border-radius:4px; cursor:pointer;" onchange="renderCastepPotentialPane()" />
+                  </span>
+                </div>
+
+                <!-- Row 3: Zoom & Publication Export Actions -->
+                <div class="castep-tb-row">
+                  <span class="castep-ctrl-grp">
+                    <button type="button" class="castep-preset-chip" onclick="zoomCastepPotentialPlot(1.25)" title="Zoom In along z">🔍＋</button>
+                    <button type="button" class="castep-preset-chip" onclick="zoomCastepPotentialPlot(0.80)" title="Zoom Out along z">🔍－</button>
+                    <button type="button" class="castep-preset-chip" onclick="resetCastepPotentialZoom()" title="Reset Zoom">⊡ Reset</button>
+                  </span>
+                  <span style="font-size:10.5px; color:#64748b;">💡 Right-click any sub-plot to Copy HD Image (400–600 DPI) or TSV Data • Ctrl+Scroll to zoom</span>
+                  <div class="castep-tb-actions">
+                    <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="copyCastepCanvasHD('castep-potential-canvas', 'Electrostatic Potential &amp; Polarization')" title="Copy HD Publication Figure (400–600 DPI)">📋 Copy HD</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700;" onclick="copyCastepPotentialTSV()" title="Copy V(z) / Polarization table as TSV">📋 Copy Data</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepCanvasPNG('castep-potential-canvas', 'CASTEP_Potential_Polarization.png')">📷 PNG</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportCastepPotentialCSV()">📊 CSV</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="font-weight:700; border-color:#0f766e; color:#0f766e;" onclick="exportCastepPotentialXLSX()">📗 Excel</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Active Potential & Polarization Summary Strip -->
+              <div id="castep-pot-summary-strip" class="castep-elec-summary-strip"></div>
+
+              <!-- 4 Scientific KPI Cards -->
+              <div id="castep-pot-kpi-grid" class="tr-kpi-grid" style="margin-bottom:10px;"></div>
+
+              <!-- High-DPI Publication Canvas Card -->
+              <div class="castep-plot-canvas-card" style="margin-bottom:12px;">
+                <canvas id="castep-potential-canvas" width="920" height="470"></canvas>
+                <div id="castep-pot-readout" class="castep-plot-readout">
+                  Hover over the Electrostatic Potential V(z) curve to read exact z (Å), V(z) (eV), and V − E<sub>F</sub> (eV). Right-click either sub-panel for 400–600 DPI Copy HD / TSV.
+                </div>
+              </div>
+
+              <!-- Quantitative Tables: Berry-Phase Polarization Tensor & Atomic Charge Dipoles -->
+              <div class="tr-tables-grid" style="margin-bottom:12px;">
+                <div class="card" style="padding:12px 14px;">
+                  <div style="font-size:13px; font-weight:800; color:#0f172a; margin-bottom:7px;">🧭 CASTEP Berry-Phase Polarization Tensor (Reciprocal &amp; Cartesian)</div>
+                  <div style="overflow-x:auto; border:1px solid #e2e8f0; border-radius:8px;">
+                    <table class="data-table pd-data-table" style="width:100%; border-collapse:collapse;">
+                      <thead style="background:#f8fafc;">
+                        <tr><th>Component</th><th>Basis</th><th>Ionic (C/m²)</th><th>Elec (C/m²)</th><th>Total (C/m²)</th><th>Quantum / e/Å²</th><th>P<sub>2D</sub> (pC/m)</th></tr>
+                      </thead>
+                      <tbody id="castep-pot-berry-tbody">
+                        <tr><td colspan="7" style="text-align:center; padding:12px; color:#64748b;">Load a CASTEP job to inspect Berry-phase polarization.</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div class="card" style="padding:12px 14px;">
+                  <div style="font-size:13px; font-weight:800; color:#0f172a; margin-bottom:7px;">⚛️ Atomic Layer Charges (Mulliken, Hirshfeld &amp; Born Z*)</div>
+                  <div style="overflow-x:auto; max-height:260px; border:1px solid #e2e8f0; border-radius:8px;">
+                    <table class="data-table pd-data-table" style="width:100%; border-collapse:collapse;">
+                      <thead style="position:sticky; top:0; background:#f8fafc;">
+                        <tr><th>Atom</th><th>z (Å)</th><th>Δz (Å)</th><th>Mulliken (e)</th><th>Hirshfeld (e)</th><th>q·Δz (e·Å)</th><th>Born Z*<sub>zz</sub></th></tr>
+                      </thead>
+                      <tbody id="castep-pot-charges-tbody">
+                        <tr><td colspan="7" style="text-align:center; padding:12px; color:#64748b;">Load a CASTEP job to inspect atomic charges.</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Optional Multi-Job Polarization & Electric-Field Sweep Comparison Table -->
+              <div id="castep-pot-multijob-card" class="card" style="display:none; padding:12px 14px;">
+                <div style="font-size:13px; font-weight:800; color:#0f172a; margin-bottom:7px;">📊 Workspace Multi-Job Polarization &amp; Dipole Sweep Comparison (Click any row to open)</div>
+                <div style="overflow-x:auto; max-height:260px; border:1px solid #e2e8f0; border-radius:8px;">
+                  <table class="data-table pd-data-table" style="width:100%; border-collapse:collapse;">
+                    <thead style="position:sticky; top:0; background:#f8fafc;">
+                      <tr><th>Calculation Job</th><th>E<sub>z</sub> (V/Å)</th><th>ΔΦ (eV)</th><th>P<sub>z</sub> (C/m²)</th><th>P<sub>z</sub> (e/Å²)</th><th>P<sub>2D,z</sub> (pC/m)</th><th>μ<sub>z</sub> (e·Å)</th><th>μ<sub>z</sub> (Debye)</th></tr>
+                    </thead>
+                    <tbody id="castep-pot-multijob-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
             <div id="castep-pane-chdiff" class="castep-stage-pane">
               <div class="castep-plot-toolbar">
                 <!-- Row 1: Data Source (.chdiff / .charg_frm), File Loaders & 3D Overlay -->
@@ -7078,12 +7231,13 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=175_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=175_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=175_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=175_v116_vesta_viewer'"></script>
-  <script src="post_data.js?v=175_v116_vesta_viewer" onerror="this.src='/static/post_data.js?v=175_v116_vesta_viewer'"></script>
-  <script src="topo_rashba.js?v=175_v116_vesta_viewer" onerror="this.src='/static/topo_rashba.js?v=175_v116_vesta_viewer'"></script>
-  <script src="dft_theory.js?v=175_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=175_v116_vesta_viewer'"></script>
-  <script src="app.js?v=175_v116_vesta_viewer" onerror="this.src='/static/app.js?v=175_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=176_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=176_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=176_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=176_v116_vesta_viewer'"></script>
+  <script src="post_data.js?v=176_v116_vesta_viewer" onerror="this.src='/static/post_data.js?v=176_v116_vesta_viewer'"></script>
+  <script src="topo_rashba.js?v=176_v116_vesta_viewer" onerror="this.src='/static/topo_rashba.js?v=176_v116_vesta_viewer'"></script>
+  <script src="potential_polar.js?v=176_v116_vesta_viewer" onerror="this.src='/static/potential_polar.js?v=176_v116_vesta_viewer'"></script>
+  <script src="dft_theory.js?v=176_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=176_v116_vesta_viewer'"></script>
+  <script src="app.js?v=176_v116_vesta_viewer" onerror="this.src='/static/app.js?v=176_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
