@@ -2310,12 +2310,20 @@ def _parse_pdos_bin_backend(pdos_path: str, bands_obj: dict, species_order: list
             2: ["Dzz", "Dzy", "Dzx", "Dxx-yy", "Dxy"],
             3: ["Fzzz", "Fzzx", "Fzzy", "Fz(xx-yy)", "Fxyz", "Fx(xx-3yy)", "Fy(3xx-yy)"],
         }
+        orb_m_canon = {
+            0: [("s", "s")],
+            1: [("px", "px,py"), ("py", "px,py"), ("pz", "pz")],
+            2: [("dz2", "dz2"), ("dyz", "dxz,dyz"), ("dxz", "dxz,dyz"), ("dx2-y2", "dx2-y2,dxy"), ("dxy", "dx2-y2,dxy")],
+            3: [("f", "f")] * 7,
+        }
         # Map each orbital index -> (channel_key: (species_symbol, ion_index, l_char))
-        # and also -> exact real-orbital (species_symbol, ion_index, m_label) for Spin Matrix
+        # and -> exact m-orbital channel (element, ion, l_char, m_id, sub) for Orbital-Resolved DOS
         orb_to_chan = []
+        orb_to_mchan = []
         orb_to_ml = []
         seen_ml = {}
         chan_meta = {}
+        mchan_meta = {}
         for o in range(norb):
             sp_idx = species_arr[o]
             el = species_order[sp_idx - 1] if (1 <= sp_idx <= len(species_order)) else f"Sp{sp_idx}"
@@ -2332,6 +2340,15 @@ def _parse_pdos_bin_backend(pdos_path: str, bands_obj: dict, species_order: list
             m_list = orb_m_names.get(am)
             m_lbl = m_list[m_cnt % len(m_list)] if m_list else f"L{am}_{m_cnt}"
             orb_to_ml.append((el, ion, m_lbl))
+            mc_list = orb_m_canon.get(am, [("s", "s")])
+            m_id, sub_id = mc_list[m_cnt % len(mc_list)]
+            mckey = f"{el}|{ion}|{m_id}"
+            orb_to_mchan.append(mckey)
+            if mckey not in mchan_meta:
+                mchan_meta[mckey] = {
+                    "element": el, "ion": ion, "atom": f"{el}{ion}",
+                    "orbital": l_ch, "m": m_id, "sub": sub_id,
+                }
 
         # Build fine energy histogram grid [-20.0, +15.0] eV (1400 bins, dE = 0.025 eV)
         e_min, e_max, n_bins = -20.0, 15.0, 1400
@@ -2342,8 +2359,22 @@ def _parse_pdos_bin_backend(pdos_path: str, bands_obj: dict, species_order: list
         orb_to_cidx = [key_to_cidx[ck] for ck in orb_to_chan]
         n_chans = len(chan_keys)
 
-        # Allocate bins[spin][chan][bin], total_bins[spin][bin], and m-resolved orbital occupations orb_occ[spin][o]
+        m_order = ["s", "px", "py", "pz", "dz2", "dxz", "dyz", "dx2-y2", "dxy", "f"]
+        mchan_keys = sorted(
+            mchan_meta.keys(),
+            key=lambda k: (
+                mchan_meta[k]["element"],
+                mchan_meta[k]["ion"],
+                m_order.index(mchan_meta[k]["m"]) if mchan_meta[k]["m"] in m_order else 99,
+            ),
+        )
+        mkey_to_cidx = {k: i for i, k in enumerate(mchan_keys)}
+        orb_to_mcidx = [mkey_to_cidx[mk] for mk in orb_to_mchan]
+        n_mchans = len(mchan_keys)
+
+        # Allocate bins[spin][chan][bin], m_bins[spin][mchan][bin], total_bins[spin][bin], and m-resolved orbital occupations
         bins = [[[0.0] * n_bins for _ in range(n_chans)] for _ in range(ns)]
+        m_bins = [[[0.0] * n_bins for _ in range(n_mchans)] for _ in range(ns)]
         total_bins = [[0.0] * n_bins for _ in range(ns)]
         orb_occ = [[0.0] * norb for _ in range(ns)]
 
@@ -2433,10 +2464,13 @@ def _parse_pdos_bin_backend(pdos_path: str, bands_obj: dict, species_order: list
                         if 0 <= b_idx < n_bins:
                             total_bins[s_idx][b_idx] += wt_eff
                             c_bins = bins[s_idx]
+                            mc_bins = m_bins[s_idx]
                             for o in range(norb):
                                 wv = w_vals[o]
                                 if wv > 1e-6:
-                                    c_bins[orb_to_cidx[o]][b_idx] += wt_eff * wv
+                                    w_add = wt_eff * wv
+                                    c_bins[orb_to_cidx[o]][b_idx] += w_add
+                                    mc_bins[orb_to_mcidx[o]][b_idx] += w_add
 
         # Sparse-encode non-zero bins per channel to keep JSON compact and fast
         channels_out = []
@@ -2452,6 +2486,22 @@ def _parse_pdos_bin_backend(pdos_path: str, bands_obj: dict, species_order: list
             if ns >= 2:
                 ch_entry["dn"] = [[i, round(v, 5)] for i, v in enumerate(bins[1][cidx]) if v > 1e-6]
             channels_out.append(ch_entry)
+
+        m_channels_out = []
+        for mcidx, mck in enumerate(mchan_keys):
+            meta = mchan_meta[mck]
+            m_entry = {
+                "element": meta["element"],
+                "ion": meta["ion"],
+                "atom": meta["atom"],
+                "orbital": meta["orbital"],
+                "m": meta["m"],
+                "sub": meta["sub"],
+                "up": [[i, round(v, 5)] for i, v in enumerate(m_bins[0][mcidx]) if v > 1e-6],
+            }
+            if ns >= 2:
+                m_entry["dn"] = [[i, round(v, 5)] for i, v in enumerate(m_bins[1][mcidx]) if v > 1e-6]
+            m_channels_out.append(m_entry)
 
         total_out = {
             "up": [[i, round(v, 5)] for i, v in enumerate(total_bins[0]) if v > 1e-6],
@@ -2527,6 +2577,7 @@ def _parse_pdos_bin_backend(pdos_path: str, bands_obj: dict, species_order: list
             "elements": species_order,
             "total_hist": total_out,
             "channels": channels_out,
+            "m_channels": m_channels_out,
             "orbital_populations": orbital_populations,
         }
     except Exception:
