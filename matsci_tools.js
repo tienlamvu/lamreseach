@@ -18852,34 +18852,42 @@ function refineParabolicPeakAt(eGrid, arr, idx) {
 }
 
 function findSpinSplitPartnerPeaks(eGrid, upArr, dnArr, winMin, winMax, momentSign = 0) {
+  const emptyRes = {
+    pkUp: { ePeak: 0, height: 0, idx: -1, found: false },
+    pkDn: { ePeak: 0, height: 0, idx: -1, found: false },
+    deltaEv: 0, signedShiftEv: 0, found: false, modeTag: "Non-Magnetic", overlapC0: 1.0
+  };
   const n = eGrid.length;
-  if (!n || !upArr || !dnArr) {
-    return { pkUp: { ePeak: 0, height: 0, idx: -1, found: false }, pkDn: { ePeak: 0, height: 0, idx: -1, found: false }, deltaEv: 0, signedShiftEv: 0, found: false };
-  }
+  if (!n || !upArr || !dnArr) return emptyRes;
+
   let i0 = 0, i1 = n - 1;
   for (let i = 0; i < n; i++) { if (eGrid[i] >= winMin) { i0 = i; break; } }
   for (let i = n - 1; i >= 0; i--) { if (eGrid[i] <= winMax) { i1 = i; break; } }
-  if (i1 <= i0 + 2) {
-    return { pkUp: { ePeak: 0, height: 0, idx: -1, found: false }, pkDn: { ePeak: 0, height: 0, idx: -1, found: false }, deltaEv: 0, signedShiftEv: 0, found: false };
-  }
+  if (i1 <= i0 + 2) return emptyRes;
 
   let maxD = 0, maxPos = 0, maxNeg = 0;
+  let dot0 = 0, nu0 = 0, nd0 = 0;
   const posArr = new Float64Array(n);
   const negArr = new Float64Array(n);
   for (let i = i0; i <= i1; i++) {
     const u = upArr[i], d = dnArr[i];
     if (u > maxD) maxD = u;
     if (d > maxD) maxD = d;
+    dot0 += u * d;
+    nu0 += u * u;
+    nd0 += d * d;
     const diff = u - d;
     if (diff > 0) { posArr[i] = diff; if (diff > maxPos) maxPos = diff; }
     else if (diff < 0) { negArr[i] = -diff; if (-diff > maxNeg) maxNeg = -diff; }
   }
+  const overlapC0 = dot0 / Math.sqrt(Math.max(1e-18, nu0 * nd0));
 
-  // Reject pure non-magnetic numerical noise (< 3% spin asymmetry across window)
-  if (maxD <= 1e-7 || Math.max(maxPos, maxNeg) < 0.03 * maxD || maxPos <= 1e-6 || maxNeg <= 1e-6) {
-    return { pkUp: { ePeak: 0, height: 0, idx: -1, found: false }, pkDn: { ePeak: 0, height: 0, idx: -1, found: false }, deltaEv: 0, signedShiftEv: 0, found: false };
+  // Reject pure non-magnetic numerical noise (< 2.5% spin asymmetry across near-EF window)
+  if (maxD <= 1e-7 || Math.max(maxPos, maxNeg) < 0.025 * maxD) {
+    return { ...emptyRes, overlapC0 };
   }
 
+  const xcRef = computeCrossCorrelationExchangeSplit(eGrid, upArr, dnArr, winMin, winMax);
   const dE = (eGrid[n - 1] - eGrid[0]) / Math.max(1, n - 1);
   const snapRad = Math.max(3, Math.round(0.30 / (dE || 0.025)));
 
@@ -18899,61 +18907,118 @@ function findSpinSplitPartnerPeaks(eGrid, upArr, dnArr, winMin, winMax, momentSi
     return refineParabolicPeakAt(eGrid, arr, bestI);
   };
 
-  const collectExcessPeaks = (excArr, arrRaw, maxExc) => {
+  // Stage A: Genuine spin-polarized split manifold near E_F
+  // Requires BOTH significant excess (>= 8% maxD) AND true local spin polarization purity (>= 18%)
+  // plus prominent parent DOS peak (>= 16% maxD) so tiny gap ripples or 4% ripples on bulk bands are rejected.
+  const collectPolarizedExcess = (excArr, arrRaw, maxExc) => {
     const out = [];
+    const minAbs = Math.max(0.08 * maxD, 0.18 * maxExc);
     for (let i = i0 + 1; i < i1; i++) {
       const v = excArr[i];
-      if (v >= 0.15 * maxExc && v >= excArr[i - 1] && v >= excArr[i + 1] && (v > excArr[i - 1] || v > excArr[i + 1])) {
+      if (v >= minAbs && v >= excArr[i - 1] && v >= excArr[i + 1] && (v > excArr[i - 1] || v > excArr[i + 1])) {
+        const locMax = Math.max(upArr[i], dnArr[i], 1e-9);
+        const purity = v / locMax;
+        if (purity < 0.18) continue;
         const snapped = snapToLocalMax(arrRaw, i);
-        out.push({ excVal: v, relExc: v / maxExc, ...snapped });
+        if (snapped.height < 0.16 * maxD) continue;
+        out.push({ excVal: v, relExc: v / Math.max(maxExc, 1e-9), purity, ...snapped });
       }
-    }
-    if (!out.length) {
-      let bestI = i0, bestV = 0;
-      for (let i = i0; i <= i1; i++) if (excArr[i] > bestV) { bestV = excArr[i]; bestI = i; }
-      if (bestV > 0) out.push({ excVal: bestV, relExc: 1.0, ...snapToLocalMax(arrRaw, bestI) });
     }
     return out;
   };
 
-  const upCands = collectExcessPeaks(posArr, upArr, maxPos);
-  const dnCands = collectExcessPeaks(negArr, dnArr, maxNeg);
+  const upCands = collectPolarizedExcess(posArr, upArr, maxPos);
+  const dnCands = collectPolarizedExcess(negArr, dnArr, maxNeg);
 
-  // Score physically consistent spin-split pairs:
-  // For M > 0, majority spin-up shifts DOWN relative to minority spin-down => E_dn >= E_up.
-  // For M < 0, spin-down is majority => E_up >= E_dn.
+  const winHalf = Math.max(0.75, 0.5 * (winMax - winMin));
+  const efScale = Math.min(1.20, 0.70 * winHalf);
+
   let bestPair = null, bestScore = -1;
-  const checkPairs = (enforceSign) => {
+  const isNearlyUnshifted = (overlapC0 >= 0.975 && Math.abs(xcRef.signedShiftEv) < 0.04);
+  const checkStageAPairs = (enforceSign) => {
     for (const u of upCands) {
       for (const d of dnCands) {
         const shift = d.ePeak - u.ePeak;
         const absSh = Math.abs(shift);
-        if (absSh < 0.015 || absSh > 4.2) continue;
+        if (absSh < 0.015 || absSh > 3.2) continue;
         if (enforceSign) {
           if (momentSign > 0.02 && shift < 0) continue;
           if (momentSign < -0.02 && shift > 0) continue;
         }
-        const avgAbsE = 0.5 * (Math.abs(u.ePeak) + Math.abs(d.ePeak));
-        const score = (u.relExc * d.relExc) / (1.0 + 0.35 * avgAbsE + 0.12 * absSh);
+        const hRatio = Math.min(u.height, d.height) / Math.max(u.height, d.height, 1e-9);
+        const excRatio = Math.min(u.excVal, d.excVal) / Math.max(u.excVal, d.excVal, 1e-9);
+        if (hRatio < 0.25 || excRatio < 0.18) continue;
+
+        const eMid = 0.5 * (u.ePeak + d.ePeak);
+        const efWt = Math.exp(-0.5 * (eMid / efScale) * (eMid / efScale));
+        const farPen = 1.0 / (1.0 + 0.45 * Math.max(Math.abs(u.ePeak), Math.abs(d.ePeak)) + 0.15 * absSh);
+        const score = (u.relExc * d.relExc) * Math.sqrt(u.purity * d.purity) * Math.sqrt(hRatio) * efWt * farPen;
         if (score > bestScore) { bestScore = score; bestPair = { u, d }; }
       }
     }
   };
-  checkPairs(true);
-  if (!bestPair) checkPairs(false);
-  if (!bestPair) {
-    const u0 = upCands.sort((a, b) => b.excVal - a.excVal)[0];
-    const d0 = dnCands.sort((a, b) => b.excVal - a.excVal)[0];
-    if (u0 && d0) bestPair = { u: u0, d: d0 };
+  if (!isNearlyUnshifted && upCands.length && dnCands.length) {
+    checkStageAPairs(true);
+    if (!bestPair) checkStageAPairs(false);
   }
-  if (!bestPair) {
-    return { pkUp: { ePeak: 0, height: 0, idx: -1, found: false }, pkDn: { ePeak: 0, height: 0, idx: -1, found: false }, deltaEv: 0, signedShiftEv: 0, found: false };
+  if (bestPair) {
+    const signedShiftEv = bestPair.d.ePeak - bestPair.u.ePeak;
+    return {
+      pkUp: bestPair.u, pkDn: bestPair.d,
+      deltaEv: Math.abs(signedShiftEv), signedShiftEv,
+      found: true, modeTag: "Spin-Split Manifold", overlapC0
+    };
   }
-  const signedShiftEv = bestPair.d.ePeak - bestPair.u.ePeak;
-  return { pkUp: bestPair.u, pkDn: bestPair.d, deltaEv: Math.abs(signedShiftEv), signedShiftEv, found: true };
+
+  // Stage B: Weak / Rigid-Band Nearly-Overlapping DOS near E_F
+  // Match the most prominent near-EF DOS peak of D_up to its exact same-feature partner in D_dn (never cross-band!).
+  const collectProminentPeaks = (arr) => {
+    const out = [];
+    for (let i = i0 + 1; i < i1; i++) {
+      const v = arr[i];
+      if (v >= 0.20 * maxD && v >= arr[i - 1] && v >= arr[i + 1] && (v > arr[i - 1] || v > arr[i + 1])) {
+        out.push(refineParabolicPeakAt(eGrid, arr, i));
+      }
+    }
+    return out;
+  };
+  const pku = collectProminentPeaks(upArr);
+  const pkd = collectProminentPeaks(dnArr);
+  let bestRigid = null, bestRigidSc = -1;
+  for (const u of pku) {
+    for (const d of pkd) {
+      const absSh = Math.abs(d.ePeak - u.ePeak);
+      if (absSh > 0.45) continue;
+      const hRatio = Math.min(u.height, d.height) / Math.max(u.height, d.height, 1e-9);
+      if (hRatio < 0.65) continue;
+      const eMid = 0.5 * (u.ePeak + d.ePeak);
+      const efWt = Math.exp(-0.5 * (eMid / 1.0) * (eMid / 1.0));
+      const prom = 0.5 * (u.height + d.height) / maxD;
+      const sc = efWt * prom * Math.pow(hRatio, 1.5) / (1.0 + 2.0 * absSh);
+      if (sc > bestRigidSc) { bestRigidSc = sc; bestRigid = { u, d }; }
+    }
+  }
+  if (bestRigid) {
+    const signedShiftEv = bestRigid.d.ePeak - bestRigid.u.ePeak;
+    return {
+      pkUp: bestRigid.u, pkDn: bestRigid.d,
+      deltaEv: Math.abs(signedShiftEv), signedShiftEv,
+      found: true, modeTag: "Near-EF Rigid Shift", overlapC0
+    };
+  }
+
+  // Stage C: Symmetric Lag-Normalized Cross-Correlation fallback
+  return {
+    pkUp: { ePeak: 0, height: 0, idx: -1, found: false },
+    pkDn: { ePeak: 0, height: 0, idx: -1, found: false },
+    deltaEv: xcRef.deltaEv, signedShiftEv: xcRef.signedShiftEv,
+    found: xcRef.deltaEv > 0.001, modeTag: "Near-EF Cross-Corr", overlapC0
+  };
 }
 
 function computeCrossCorrelationExchangeSplit(eGrid, upArr, dnArr, winMin, winMax) {
+  // True symmetric lag-normalized cosine cross-correlation in [winMin, winMax]:
+  // Compares D_up(E - Δ/2) with D_dn(E + Δ/2) updating BOTH norms per lag so edge peaks cannot bias the shift.
   const n = eGrid.length;
   if (n < 10 || !upArr || !dnArr) return { deltaEv: 0, signedShiftEv: 0, score: 0 };
   const dE = (eGrid[n - 1] - eGrid[0]) / (n - 1);
@@ -18964,22 +19029,25 @@ function computeCrossCorrelationExchangeSplit(eGrid, upArr, dnArr, winMin, winMa
   for (let i = n - 1; i >= 0; i--) { if (eGrid[i] <= winMax) { i1 = i; break; } }
   if (i1 - i0 < 6) return { deltaEv: 0, signedShiftEv: 0, score: 0 };
 
-  let normU = 0, normD = 0;
-  for (let i = i0; i <= i1; i++) { normU += upArr[i] * upArr[i]; normD += dnArr[i] * dnArr[i]; }
-  const denom = Math.sqrt(normU * normD);
-  if (denom < 1e-10) return { deltaEv: 0, signedShiftEv: 0, score: 0 };
-
-  // Shift lag s: compare D_up(E) with D_dn(E + s*dE) -> positive s means E_dn > E_up
-  const maxLag = Math.min(Math.floor(5.0 / dE), Math.floor((i1 - i0) * 0.75));
+  const maxLag = Math.min(Math.floor(3.5 / dE), Math.floor((i1 - i0) * 0.85));
   const scores = [];
   let bestIdx = 0, bestScore = -1;
   for (let lag = -maxLag; lag <= maxLag; lag++) {
-    let dot = 0;
+    const halfA = Math.trunc(lag / 2);
+    const halfB = lag - halfA;
+    let dot = 0, nu = 0, nd = 0;
     for (let i = i0; i <= i1; i++) {
-      const j = i + lag;
-      if (j >= 0 && j < n) dot += upArr[i] * dnArr[j];
+      const iu = i - halfA;
+      const idn = i + halfB;
+      if (iu >= 0 && iu < n && idn >= 0 && idn < n) {
+        const u = upArr[iu], d = dnArr[idn];
+        dot += u * d;
+        nu += u * u;
+        nd += d * d;
+      }
     }
-    const sc = dot / denom;
+    const denom = Math.sqrt(nu * nd);
+    const sc = denom > 1e-12 ? (dot / denom) : 0;
     scores.push({ lag, sc });
     if (sc > bestScore) { bestScore = sc; bestIdx = scores.length - 1; }
   }
@@ -18992,7 +19060,7 @@ function computeCrossCorrelationExchangeSplit(eGrid, upArr, dnArr, winMin, winMa
     }
   }
   const signedShiftEv = bestLag * dE;
-  return { deltaEv: Math.abs(signedShiftEv), signedShiftEv, score: bestScore };
+  return { deltaEv: Math.abs(signedShiftEv) < 5e-4 ? 0 : Math.abs(signedShiftEv), signedShiftEv, score: bestScore };
 }
 
 function computeBandCenterExchangeSplit(eGrid, upArr, dnArr, winMin, winMax) {
@@ -19052,9 +19120,9 @@ function readCastepStonerOptions(job) {
 
   let pkMin = parseFloat(document.getElementById("castep-st-pkmin")?.value);
   let pkMax = parseFloat(document.getElementById("castep-st-pkmax")?.value);
-  if (!isFinite(pkMin)) pkMin = -3.0;
-  if (!isFinite(pkMax)) pkMax = 3.0;
-  if (pkMax <= pkMin + 0.2) { pkMin = -3.0; pkMax = 3.0; }
+  if (!isFinite(pkMin)) pkMin = -1.5;
+  if (!isFinite(pkMax)) pkMax = 1.5;
+  if (pkMax <= pkMin + 0.2) { pkMin = -1.5; pkMax = 1.5; }
 
   const channelId = document.getElementById("castep-st-channel")?.value || "auto";
   const exMethod = document.getElementById("castep-st-ex-method")?.value || "partner";
@@ -19506,6 +19574,9 @@ function computeCastepStonerAnalysis(job) {
   const supercellWarning = (iIsManual && opts.fInfo.nAtoms >= 12 && zFu === 1)
     ? `Supercell notice: ${opts.fInfo.nAtoms} atoms with Z = 1 — verify Z (f.u./cell) when applying a per-f.u. reference I.`
     : "";
+  const highIWarning = (!iIsManual && hasStonerI && iUsedEv > 2.5)
+    ? `Physics notice: Auto I = ${iUsedEv.toFixed(2)} eV exceeds typical crystal Stoner integrals (0.4–1.6 eV). When |M_tot| is small or bands split non-rigidly, Δ_ex/|M_tot| can overestimate I — tighten Peak Win near E_F (±1.5 eV), check Cross-Corr Δ_ex, or apply a Janak Ref I.`
+    : "";
 
   // 7) Stoner Free-Energy Landscape E(m) - E0 = 0.5 * [1/D(E_F) - I] * m^2 + 0.25 * beta * m^4
   let alpha2 = null, beta4 = null, mRef = 1.0, mMaxPlot = 1.6, deltaEfmEv = 0.0;
@@ -19599,6 +19670,7 @@ function computeCastepStonerAnalysis(job) {
     hasStonerI,
     iIsManual,
     supercellWarning,
+    highIWarning,
     zFu,
     fInfo: opts.fInfo,
     eGrid,
@@ -19851,10 +19923,11 @@ function drawCastepStonerDosCanvas(res) {
         ctx.beginPath(); ctx.moveTo(xA, yArr); ctx.lineTo(xA + 6, yArr - 3.5); ctx.lineTo(xA + 6, yArr + 3.5); ctx.closePath(); ctx.fill();
         ctx.beginPath(); ctx.moveTo(xB, yArr); ctx.lineTo(xB - 6, yArr - 3.5); ctx.lineTo(xB - 6, yArr + 3.5); ctx.closePath(); ctx.fill();
       }
-      const midX = Math.max(px + 54, Math.min(px + pw - 54, 0.5 * (xA + xB)));
       const badgeTxt = `Δ_{ex} = ${res.deltaExEv.toFixed(2)} eV`;
       ctx.font = `700 ${Math.max(10, st.legendSize)}px ${st.fontFamily}`;
       const bw = Math.max(84, ctx.measureText(`Δex = ${res.deltaExEv.toFixed(2)} eV`).width + 12);
+      const maxBadgeCenter = px + pw - 126 - bw / 2;
+      const midX = Math.max(px + 8 + bw / 2, Math.min(maxBadgeCenter, 0.5 * (xA + xB)));
       ctx.fillStyle = "rgba(254, 249, 195, 0.96)";
       ctx.strokeStyle = "#ca8a04"; ctx.lineWidth = 1.0;
       ctx.fillRect(midX - bw / 2, yArr - 19, bw, 16);
@@ -20587,7 +20660,7 @@ function renderCastepStonerPane() {
             <div>E<sub>peak,↓</sub>: <strong style="color:#dc2626;">${res.activeChan.activePkDn.found ? res.activeChan.activePkDn.ePeak.toFixed(3) + " eV" : "—"}</strong></div>
             <div>Cross-Corr Δ<sub>ex</sub>: <strong>${res.activeChan.xcorr.deltaEv.toFixed(3)} eV</strong></div>
             <div>Band-Center Δ<sub>ex</sub>: <strong>${res.activeChan.cent.deltaEv.toFixed(3)} eV</strong></div>
-            <div style="grid-column:1/-1; font-size:10.5px; color:#64748b;">Window: [${res.opts.pkMin.toFixed(1)}, +${res.opts.pkMax.toFixed(1)}] eV • σ = ${res.opts.sigma.toFixed(2)} eV</div>
+            <div style="grid-column:1/-1; font-size:10.5px; color:#64748b;">Near-E<sub>F</sub> Win: [${res.opts.pkMin.toFixed(1)}, +${res.opts.pkMax.toFixed(1)}] eV • σ = ${res.opts.sigma.toFixed(2)} eV${res.activeChan.partner?.modeTag ? ` • ${escapeHtml(res.activeChan.partner.modeTag)} (C<sub>0</sub>=${(res.activeChan.partner.overlapC0 ?? 1).toFixed(2)})` : ""}</div>
           </div>
         </div>
 
@@ -20604,6 +20677,7 @@ function renderCastepStonerPane() {
             <div>Max I·D(E): <strong>${res.hasStonerI && res.maxStonerInWin !== null ? res.maxStonerInWin.toFixed(2) + " @ " + res.maxStonerE.toFixed(2) + " eV" : "—"}</strong></div>
             <div style="grid-column:1/-1; font-size:10.5px; font-weight:700; color:${res.stonerBadgeColor};">${escapeHtml(res.stonerVerdict).replace(/\(EF\)/g, "(E<sub>F</sub>)").replace(/M_tot/g, "M<sub>tot</sub>").replace(/Δ_ex/g, "Δ<sub>ex</sub>")}</div>
             ${res.supercellWarning ? `<div style="grid-column:1/-1; font-size:10px; color:#b45309;">⚠️ ${escapeHtml(res.supercellWarning)}</div>` : ""}
+            ${res.highIWarning ? `<div style="grid-column:1/-1; font-size:10px; color:#b45309; background:#fffbeb; border:1px solid #fde68a; border-radius:4px; padding:3px 6px;">⚠️ ${escapeHtml(res.highIWarning).replace(/E_F/g, "E<sub>F</sub>").replace(/M_tot/g, "M<sub>tot</sub>").replace(/Δ_ex/g, "Δ<sub>ex</sub>")}</div>` : ""}
           </div>
         </div>
       `;
