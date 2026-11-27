@@ -15160,8 +15160,14 @@ textarea.dft-ed-code-surface::placeholder {
 }
 .tr-tables-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.48fr) minmax(0, 1fr);
   gap: 12px;
+}
+.tr-tables-grid .pd-data-table th,
+.tr-tables-grid .pd-data-table td {
+  padding: 5px 6px;
+  font-size: 11px;
+  white-space: nowrap;
 }
 @media (max-width: 960px) {
   .tr-tables-grid { grid-template-columns: 1fr; }
