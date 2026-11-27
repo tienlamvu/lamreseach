@@ -2533,6 +2533,323 @@ def _parse_pdos_bin_backend(pdos_path: str, bands_obj: dict, species_order: list
         return None
 
 
+def _compute_kpath_positions_backend(kvecs: list, vecs_bohr=None):
+    import math
+    nk = len(kvecs or [])
+    if nk <= 1:
+        return [0.0] if nk == 1 else []
+    B = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+    if vecs_bohr and len(vecs_bohr) == 3:
+        a, b, c = vecs_bohr[0], vecs_bohr[1], vecs_bohr[2]
+        bc = [b[1]*c[2] - b[2]*c[1], b[2]*c[0] - b[0]*c[2], b[0]*c[1] - b[1]*c[0]]
+        ca = [c[1]*a[2] - c[2]*a[1], c[2]*a[0] - c[0]*a[2], c[0]*a[1] - c[1]*a[0]]
+        ab = [a[1]*b[2] - a[2]*b[1], a[2]*b[0] - a[0]*b[2], a[0]*b[1] - a[1]*b[0]]
+        vol = a[0]*bc[0] + a[1]*bc[1] + a[2]*bc[2]
+        if abs(vol) > 1e-9:
+            f = (2.0 * math.pi) / vol
+            B = [[x * f for x in bc], [x * f for x in ca], [x * f for x in ab]]
+    def to_cart(k):
+        return (
+            k[0]*B[0][0] + k[1]*B[1][0] + k[2]*B[2][0],
+            k[0]*B[0][1] + k[1]*B[1][1] + k[2]*B[2][1],
+            k[0]*B[0][2] + k[1]*B[1][2] + k[2]*B[2][2],
+        )
+    steps = []
+    for i in range(1, nk):
+        c0, c1 = to_cart(kvecs[i - 1]), to_cart(kvecs[i])
+        steps.append(math.sqrt((c1[0]-c0[0])**2 + (c1[1]-c0[1])**2 + (c1[2]-c0[2])**2))
+    pos_s = sorted(s for s in steps if s > 1e-6)
+    med = pos_s[len(pos_s) // 2] if pos_s else 1.0
+    dists = [0.0]
+    acc = 0.0
+    for s in steps:
+        acc += 0.0 if (s > med * 4.5) else s
+        dists.append(acc)
+    tot = dists[-1] or 1.0
+    return [round(d / tot, 6) for d in dists]
+
+
+def _build_band_orbital_projections_backend(
+    folder: str,
+    seed: str,
+    all_files: list,
+    bandstr_bands: Optional[dict],
+    dos_bands: Optional[dict],
+    species_order: list,
+):
+    """
+    Build compact orbital-resolved Fat-Band projection dataset for Band Structure plotting.
+    Priority:
+      1) Exact CASTEP *_BandStr.pdos_bin (1-to-1 k-path match)
+      2) Exact VASP PROCAR (if present)
+      3) Symmetry-unfolded FBZ CASTEP *_DOS.pdos_bin -> *_BandStr.bands projection
+    Returns None cleanly if no orbital projection weights exist.
+    """
+    import struct, math
+    if not folder or not all_files:
+        return None
+    bs = bandstr_bands or dos_bands
+    if not bs or not bs.get("kpoints"):
+        return None
+
+    low_map = {f.lower(): f for f in all_files}
+    seed_l = (seed or "").lower()
+    def _pick(pred):
+        cands = [f for l, f in low_map.items() if pred(l)]
+        if not cands:
+            return None
+        for f in cands:
+            if seed_l and f.lower().startswith(seed_l):
+                return f
+        return sorted(cands)[0]
+
+    pdos_f = _pick(lambda l: l.endswith("_bandstr.pdos_bin"))
+    if not pdos_f:
+        pdos_f = _pick(lambda l: l.endswith("_dos.pdos_bin")) or _pick(lambda l: l.endswith(".pdos_bin"))
+    if not pdos_f:
+        return None
+
+    pdos_path = os.path.join(folder, pdos_f)
+    if not os.path.exists(pdos_path):
+        return None
+
+    try:
+        with open(pdos_path, "rb") as f:
+            raw = f.read()
+        total_len = len(raw)
+        if total_len < 120:
+            return None
+        r0_be = struct.unpack_from(">i", raw, 0)[0]
+        endian = ">" if (r0_be == 8 and struct.unpack_from(">i", raw, 12)[0] == 8) else "<"
+        pos = 0
+        def read_rec():
+            nonlocal pos
+            if pos + 4 > total_len:
+                return None
+            rl = struct.unpack_from(f"{endian}i", raw, pos)[0]
+            if rl < 0 or pos + 4 + rl + 4 > total_len:
+                return None
+            body = raw[pos + 4: pos + 4 + rl]
+            pos += 4 + rl + 4
+            return body
+
+        _v = read_rec(); _h = read_rec()
+        nk_b = read_rec(); ns_b = read_rec(); norb_b = read_rec(); neig_b = read_rec()
+        if not (nk_b and ns_b and norb_b and neig_b):
+            return None
+        nk = struct.unpack(f"{endian}i", nk_b)[0]
+        ns = struct.unpack(f"{endian}i", ns_b)[0]
+        norb = struct.unpack(f"{endian}i", norb_b)[0]
+        if nk <= 0 or ns <= 0 or norb <= 0 or norb > 10000:
+            return None
+        sp_b = read_rec(); ion_b = read_rec(); am_b = read_rec()
+        if not (sp_b and ion_b and am_b):
+            return None
+        sp_arr = struct.unpack(f"{endian}{norb}i", sp_b)
+        ion_arr = struct.unpack(f"{endian}{norb}i", ion_b)
+        am_arr = struct.unpack(f"{endian}{norb}i", am_b)
+
+        l_names = {0: "s", 1: "p", 2: "d", 3: "f"}
+        m_sub = {
+            0: ["s"],
+            1: ["px,py", "px,py", "pz"],
+            2: ["dz2", "dxz,dyz", "dxz,dyz", "dx2-y2,dxy", "dx2-y2,dxy"],
+            3: ["f"] * 7,
+        }
+        seen_ml = {}
+        channels = []
+        chan_idx = {}
+        orb_to_c = []
+        for o in range(norb):
+            sp_i = sp_arr[o]
+            el = species_order[sp_i - 1] if (1 <= sp_i <= len(species_order)) else f"Sp{sp_i}"
+            am = am_arr[o]
+            l_ch = l_names.get(am, "s")
+            mk = (el, ion_arr[o], am)
+            mc = seen_ml.get(mk, 0)
+            seen_ml[mk] = mc + 1
+            ml_list = m_sub.get(am, ["s"])
+            sub = ml_list[mc % len(ml_list)]
+            ckey = f"{el}|{sub}"
+            if ckey not in chan_idx:
+                chan_idx[ckey] = len(channels)
+                channels.append({"key": ckey, "element": el, "l": l_ch, "sub": sub})
+            orb_to_c.append(chan_idx[ckey])
+
+        n_ch = len(channels)
+        orb_fmt = f"{endian}{norb}d"
+        pdos_k = []
+        for _ik in range(nk):
+            kr = read_rec()
+            if not kr or len(kr) < 28:
+                break
+            k_idx = struct.unpack_from(f"{endian}i", kr, 0)[0]
+            kx, ky, kz = struct.unpack_from(f"{endian}3d", kr, 4)
+            by_spin = [[] for _ in range(ns)]
+            for _is in range(ns):
+                sb = read_rec(); nbb = read_rec()
+                if not (sb and nbb):
+                    break
+                s_idx = max(0, min(ns - 1, struct.unpack(f"{endian}i", sb)[0] - 1))
+                nb = struct.unpack(f"{endian}i", nbb)[0]
+                b_list = []
+                for _b in range(nb):
+                    wb = read_rec()
+                    if not wb or len(wb) < norb * 8:
+                        break
+                    wvals = struct.unpack(orb_fmt, wb)
+                    acc = [0.0] * n_ch
+                    sw = 0.0
+                    for o in range(norb):
+                        wv = wvals[o]
+                        if wv > 0.0:
+                            acc[orb_to_c[o]] += wv
+                            sw += wv
+                    if sw > 1e-9:
+                        inv = 1.0 / sw
+                        acc = [x * inv for x in acc]
+                    b_list.append(acc)
+                by_spin[s_idx] = b_list
+            pdos_k.append((k_idx, (kx, ky, kz), by_spin))
+
+        if not pdos_k:
+            return None
+
+        bs_kpts = bs.get("kpoints") or []
+        bs_all_e = bs.get("_all_e_by_k")
+        bs_nk = len(bs_kpts)
+        bs_ns = min(bs.get("ns", 1), ns)
+
+        exact_hits = 0
+        if len(pdos_k) == bs_nk:
+            for i in range(bs_nk):
+                ak = bs_kpts[i].get("k", [0, 0, 0])
+                bk = pdos_k[i][1]
+                if abs(ak[0] - bk[0]) + abs(ak[1] - bk[1]) + abs(ak[2] - bk[2]) < 0.015:
+                    exact_hits += 1
+        is_exact = (exact_hits >= max(2, int(bs_nk * 0.85)))
+
+        dos_all_e = dos_bands.get("_all_e_by_k") if dos_bands else None
+        dos_kpts = dos_bands.get("kpoints", []) if dos_bands else []
+
+        # Build unfolded FBZ lookup for DOS.pdos_bin -> BandStr.bands projection
+        k_matches = []
+        if is_exact:
+            k_matches = [[(i, 0.0, None)] for i in range(bs_nk)]
+        else:
+            hex_mats = [
+                ((1,0,0),(0,1,0),(0,0,1)), ((0,-1,0),(1,-1,0),(0,0,1)), ((-1,1,0),(-1,0,0),(0,0,1)),
+                ((-1,0,0),(0,-1,0),(0,0,1)), ((0,1,0),(-1,1,0),(0,0,1)), ((1,-1,0),(1,0,0),(0,0,1)),
+                ((0,1,0),(1,0,0),(0,0,1)), ((-1,1,0),(0,1,0),(0,0,1)), ((1,0,0),(1,-1,0),(0,0,1)),
+                ((0,-1,0),(-1,0,0),(0,0,1)), ((1,-1,0),(0,-1,0),(0,0,1)), ((-1,0,0),(-1,1,0),(0,0,1)),
+                ((1,0,0),(0,-1,0),(0,0,1)), ((-1,0,0),(0,1,0),(0,0,1)), ((0,1,0),(-1,0,0),(0,0,1)), ((0,-1,0),(1,0,0),(0,0,1)),
+            ]
+            ops = [tuple(tuple(sgn * x for x in row) for row in m) for sgn in (1, -1) for m in hex_mats]
+            fbz = []
+            for p_i, (k_idx, dk, _bsw) in enumerate(pdos_k):
+                de_sp = None
+                if dos_all_e and 1 <= k_idx <= len(dos_all_e):
+                    de_sp = dos_all_e[k_idx - 1]
+                elif dos_kpts and 1 <= k_idx <= len(dos_kpts):
+                    de_sp = dos_kpts[k_idx - 1].get("e")
+                seen_k = set()
+                for m in ops:
+                    u = (m[0][0]*dk[0] + m[0][1]*dk[1] + m[0][2]*dk[2]) % 1.0
+                    v = (m[1][0]*dk[0] + m[1][1]*dk[1] + m[1][2]*dk[2]) % 1.0
+                    w = (m[2][0]*dk[0] + m[2][1]*dk[1] + m[2][2]*dk[2]) % 1.0
+                    key = (round(u * 1e4), round(v * 1e4), round(w * 1e4))
+                    if key in seen_k:
+                        continue
+                    seen_k.add(key)
+                    fbz.append((u, v, w, p_i, de_sp))
+
+            for ik in range(bs_nk):
+                ak = bs_kpts[ik].get("k", [0.0, 0.0, 0.0])
+                best_by_p = {}
+                for u, v, w, p_i, de_sp in fbz:
+                    d0 = abs((ak[0] - u + 0.5) % 1.0 - 0.5)
+                    d1 = abs((ak[1] - v + 0.5) % 1.0 - 0.5)
+                    d2 = abs((ak[2] - w + 0.5) % 1.0 - 0.5)
+                    dd = math.sqrt(d0*d0 + d1*d1 + d2*d2)
+                    prev = best_by_p.get(p_i)
+                    if prev is None or dd < prev[0]:
+                        best_by_p[p_i] = (dd, p_i, de_sp)
+                top3 = sorted(best_by_p.values(), key=lambda x: x[0])[:3]
+                k_matches.append([(p_i, dd, de_sp) for dd, p_i, de_sp in top3])
+
+        # Assemble compact per-band orbital weights for bands intersecting [-20, +15] eV
+        bands_out = []
+        for s in range(bs_ns):
+            if bs_all_e and len(bs_all_e) == bs_nk and s < len(bs_all_e[0]):
+                nb = len(bs_all_e[0][s])
+                get_e = lambda ik_v, b_v: bs_all_e[ik_v][s][b_v]
+            else:
+                nb = len((bs_kpts[0].get("e") or [[]])[s]) if s < len(bs_kpts[0].get("e") or []) else 0
+                get_e = lambda ik_v, b_v: bs_kpts[ik_v]["e"][s][b_v]
+            for b in range(nb):
+                e_arr = [round(float(get_e(ik, b)), 5) for ik in range(bs_nk)]
+                if not any(-20.0 <= ev <= 15.0 for ev in e_arr):
+                    continue
+                w_mat = [[0] * bs_nk for _ in range(n_ch)]
+                for ik in range(bs_nk):
+                    ev = e_arr[ik]
+                    if is_exact:
+                        sp_w = pdos_k[ik][2][s]
+                        if b < len(sp_w):
+                            bw = sp_w[b]
+                            for c in range(n_ch):
+                                w_mat[c][ik] = int(round(bw[c] * 1000.0))
+                    else:
+                        acc = [0.0] * n_ch
+                        w_sum = 0.0
+                        for p_i, dd, de_sp in k_matches[ik]:
+                            sp_w = pdos_k[p_i][2][s]
+                            if not sp_w:
+                                continue
+                            de_list = de_sp[s] if (de_sp and s < len(de_sp)) else None
+                            best_b = min(b, len(sp_w) - 1)
+                            best_de = abs(de_list[best_b] - ev) if (de_list and best_b < len(de_list)) else 0.0
+                            if de_list and best_de > 0.25:
+                                lo_b = max(0, b - 3)
+                                hi_b = min(len(sp_w) - 1, b + 3)
+                                for jb in range(lo_b, hi_b + 1):
+                                    if jb < len(de_list):
+                                        d_ev = abs(de_list[jb] - ev)
+                                        if d_ev < best_de:
+                                            best_de = d_ev
+                                            best_b = jb
+                            kw = 100.0 if dd < 0.004 else math.exp(-((dd / 0.055) ** 2))
+                            ew = math.exp(-((best_de / 0.45) ** 2))
+                            wt = kw * ew
+                            if wt > 1e-6:
+                                bw = sp_w[best_b]
+                                for c in range(n_ch):
+                                    acc[c] += wt * bw[c]
+                                w_sum += wt
+                        if w_sum > 1e-9:
+                            inv = 1000.0 / w_sum
+                            for c in range(n_ch):
+                                w_mat[c][ik] = int(round(acc[c] * inv))
+                bands_out.append({"spin": s, "band": b, "e": e_arr, "w": w_mat})
+
+        k_vecs = [kp.get("k", [0.0, 0.0, 0.0]) for kp in bs_kpts]
+        k_pos = _compute_kpath_positions_backend(k_vecs, bs.get("vecs_bohr"))
+        elements = list(dict.fromkeys(ch["element"] for ch in channels))
+        return {
+            "source_kind": "exact_bandstr" if is_exact else "fbz_dos_pdos",
+            "source_file": pdos_f,
+            "elements": elements,
+            "channels": channels,
+            "nk": bs_nk,
+            "ns": bs_ns,
+            "k_pos": k_pos,
+            "k_vecs": k_vecs,
+            "bands": bands_out,
+        }
+    except Exception:
+        return None
+
+
 def _summarize_volumetric_grid(raw_tuple, source_file: str, kind: str, cell_vol_a3: float, c_len_a: float):
     """
     Pure-Python (zero numpy dependency) conversion of a 3D CASTEP volumetric grid
@@ -3420,13 +3737,22 @@ def api_castep_job_detail(folder: str, seed: Optional[str] = None):
 
     pdos_bin_f = _find_match(lambda l: l.endswith("_dos.pdos_bin")) or _find_match(lambda l: l.endswith(".pdos_bin"))
     pdos_bin_data = None
+    band_orb_proj = None
+    sp_order_cached = None
     if pdos_bin_f:
-        sp_order = _extract_species_order_from_folder(folder, seed)
+        sp_order_cached = _extract_species_order_from_folder(folder, seed)
         ref_bands = dos_bands or bandstr_bands
         if ref_bands:
             ref_with_all = dict(ref_bands)
             ref_with_all["all_e_by_k"] = ref_bands.get("_all_e_by_k")
-            pdos_bin_data = _parse_pdos_bin_backend(os.path.join(folder, pdos_bin_f), ref_with_all, sp_order)
+            pdos_bin_data = _parse_pdos_bin_backend(os.path.join(folder, pdos_bin_f), ref_with_all, sp_order_cached)
+
+    if bandstr_bands or dos_bands:
+        if sp_order_cached is None:
+            sp_order_cached = _extract_species_order_from_folder(folder, seed)
+        band_orb_proj = _build_band_orbital_projections_backend(
+            folder, seed, all_files, bandstr_bands, dos_bands, sp_order_cached or []
+        )
 
     # Strip temporary _all_e_by_k before serializing JSON
     for _bo in (bandstr_bands, dos_bands, optics_bands):
@@ -3457,6 +3783,7 @@ def api_castep_job_detail(folder: str, seed: Optional[str] = None):
         "dos_xcd": dos_xcd,
         "pdos_xcd": pdos_xcd,
         "pdos_bin_data": pdos_bin_data,
+        "band_orb_proj": band_orb_proj,
         "optical_xcd": optical_xcd,
         "optical_xcds": optical_xcds,
         "optical_tensor": optical_tensor,
