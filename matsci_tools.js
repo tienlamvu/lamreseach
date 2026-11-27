@@ -21249,3 +21249,183 @@ function exportCastepStonerXLSX() {
 }
 window.exportCastepStonerXLSX = exportCastepStonerXLSX;
 
+
+// ============================================================================
+// 13. Unified Program Settings Reset Engine (All CASTEP Data Analysis Panes)
+// ============================================================================
+
+function _setCastepInputVal(id, val) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (el.type === "checkbox") el.checked = Boolean(val);
+  else el.value = String(val);
+}
+
+// 1) Band Structure & PDOS Settings Reset
+function resetCastepElectronicSettings() {
+  const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
+  _setCastepInputVal("castep-elec-layout", "joint");
+  _setCastepInputVal("castep-elec-emin", "-5.0");
+  _setCastepInputVal("castep-elec-emax", "5.0");
+  _setCastepInputVal("castep-dos-sigma", "0.12");
+  _setCastepInputVal("castep-pdos-mode", "element_orbital");
+  _setCastepInputVal("castep-pdos-spin-layout", "mirror");
+  _setCastepInputVal("castep-elec-zero-ref", "vbm_auto");
+  [
+    "castep-show-dos-total", "castep-show-dos-s", "castep-show-dos-p",
+    "castep-show-dos-d", "castep-show-dos-f", "castep-show-spin-up", "castep-show-spin-dn"
+  ].forEach(id => _setCastepInputVal(id, true));
+  if (typeof populateCastepPdosTargetSelect === "function") populateCastepPdosTargetSelect(job);
+  _setCastepInputVal("castep-pdos-target-select", "all");
+  if (typeof resetCastepPlotZoom === "function") resetCastepPlotZoom("electronic");
+  else if (typeof renderCastepElectronicPlots === "function") renderCastepElectronicPlots();
+  if (typeof showToast === "function") showToast("Reset Band & PDOS settings to initial defaults.", "info");
+}
+window.resetCastepElectronicSettings = resetCastepElectronicSettings;
+
+// 2) Carrier Effective Mass (m*) & Drude Settings Reset
+function resetCastepTransportSettings() {
+  _setCastepInputVal("castep-tr-dim", "auto");
+  _setCastepInputVal("castep-tr-spin", "auto");
+  _setCastepInputVal("castep-tr-fit-model", "auto");
+  _setCastepInputVal("castep-tr-fit-dk", "0.16");
+  _setCastepInputVal("castep-tr-fit-pts", "4");
+  _setCastepInputVal("castep-tr-dos-win", "0.40");
+  _setCastepInputVal("castep-tr-temp", "300");
+  _setCastepInputVal("castep-tr-c2d", "240");
+  _setCastepInputVal("castep-tr-c3d", "160");
+  _setCastepInputVal("castep-tr-e1e", "5.5");
+  _setCastepInputVal("castep-tr-e1h", "4.5");
+  _setCastepInputVal("castep-tr-eps0", "12.0");
+  _setCastepInputVal("castep-tr-eps-inf", "10.5");
+  _setCastepInputVal("castep-tr-wlo", "0.048");
+  _setCastepInputVal("castep-tr-use-pop", false);
+  _setCastepInputVal("castep-tr-use-imp", false);
+  _setCastepInputVal("castep-tr-ni-exp", "11.0");
+  _setCastepInputVal("castep-tr-gve", "0");
+  _setCastepInputVal("castep-tr-gvh", "0");
+  _setCastepInputVal("castep-tr-carrier-mode", "auto_pocket");
+  _setCastepInputVal("castep-tr-n-exp", "12.0");
+  _setCastepInputVal("castep-tr-p-exp", "12.0");
+  _setCastepInputVal("castep-tr-opt-gamma", "0.05");
+  _setCastepInputVal("castep-tr-exp-sigma", "0");
+  _setCastepInputVal("castep-tr-chart2-mode", "dos_temp");
+  const strainPanel = document.getElementById("castep-tr-strain-panel");
+  if (strainPanel) strainPanel.style.display = "none";
+  // Allow auto-detection of eps_inf / eps_0 from the active job's optical tensor on re-render
+  if (window._castepTransportCustomState) {
+    window._castepTransportCustomState.lastJobId = null;
+    window._castepTransportCustomState.userEditedEps = false;
+  }
+  if (typeof renderCastepTransportPane === "function") renderCastepTransportPane();
+  if (typeof showToast === "function") showToast("Reset m* & Drude settings to initial job defaults.", "info");
+}
+window.resetCastepTransportSettings = resetCastepTransportSettings;
+
+// 3) Stoner Magnetism & Spin Polarization Settings Reset
+function resetCastepStonerSettings() {
+  const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
+  const fInfo = typeof detectStonerFormulaUnitsZ === "function" ? detectStonerFormulaUnitsZ(job) : { zAuto: 1 };
+  _setCastepInputVal("castep-st-channel", "auto");
+  _setCastepInputVal("castep-st-ex-method", "partner");
+  _setCastepInputVal("castep-st-msource", "dos_integral");
+  _setCastepInputVal("castep-st-pkmin", "-1.5");
+  _setCastepInputVal("castep-st-pkmax", "1.5");
+  _setCastepInputVal("castep-st-sigma", "0.10");
+  _setCastepInputVal("castep-st-zfu", String(fInfo.zAuto || 1));
+  _setCastepInputVal("castep-st-dconv", "spin_avg");
+  _setCastepInputVal("castep-st-custom-dnm", "1.50");
+  _setCastepInputVal("castep-st-custom-i", "0");
+  _setCastepInputVal("castep-st-emin", "-4.0");
+  _setCastepInputVal("castep-st-emax", "4.0");
+  _setCastepInputVal("castep-st-chart1-right", "polarization");
+  _setCastepInputVal("castep-st-chart2-left", "energy");
+  if (window._castepStonerUiState) {
+    window._castepStonerUiState.userEditedZ = false;
+  }
+  if (typeof renderCastepStonerPane === "function") renderCastepStonerPane();
+  if (typeof showToast === "function") showToast("Reset Stoner Magnetism settings to initial defaults.", "info");
+}
+window.resetCastepStonerSettings = resetCastepStonerSettings;
+
+// 4) Optical Properties Settings Reset
+function resetCastepOpticalSettings() {
+  const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
+  if (job && typeof populateCastepOpticalFileSelect === "function") populateCastepOpticalFileSelect(job);
+  _setCastepInputVal("castep-opt-calc-mode", "unpolarized");
+  _setCastepInputVal("castep-opt-vx", "0.0");
+  _setCastepInputVal("castep-opt-vy", "0.0");
+  _setCastepInputVal("castep-opt-vz", "1.0");
+  _setCastepInputVal("castep-opt-smearing", "0.50");
+  _setCastepInputVal("castep-opt-scissors", "0.00");
+  _setCastepInputVal("castep-opt-use-drude", false);
+  _setCastepInputVal("castep-opt-plasma", "0.00");
+  _setCastepInputVal("castep-opt-drude-damp", "0.05");
+  _setCastepInputVal("castep-opt-alpha-conv", "ms_castep");
+  _setCastepInputVal("castep-opt-show-vis", true);
+  _setCastepInputVal("castep-opt-property", "multigrid");
+  _setCastepInputVal("castep-opt-xaxis", "ev");
+  _setCastepInputVal("castep-opt-emax", "15.0");
+  _setCastepInputVal("castep-opt-zoom-target", "active");
+  if (typeof onCastepOptCalcModeChange === "function") onCastepOptCalcModeChange();
+  if (typeof resetCastepPlotZoom === "function") resetCastepPlotZoom("optics_all");
+  else if (typeof renderCastepOpticalPlots === "function") renderCastepOpticalPlots();
+  if (typeof showToast === "function") showToast("Reset Optical Properties settings to initial defaults.", "info");
+}
+window.resetCastepOpticalSettings = resetCastepOpticalSettings;
+
+// 5) Charge Density Difference (Δρ) Settings Reset
+function resetCastepChdiffSettings() {
+  _setCastepInputVal("castep-chdiff-mode", "chdiff");
+  _setCastepInputVal("castep-chdiff-palette", "yellow-cyan");
+  _setCastepInputVal("castep-chdiff-layout", "tri");
+  _setCastepInputVal("castep-chdiff-plane", "xz");
+  _setCastepInputVal("castep-chdiff-slice-pos", "0.50");
+  const posLbl = document.getElementById("castep-chdiff-pos-lbl");
+  if (posLbl) posLbl.textContent = "0.50";
+  _setCastepInputVal("castep-chdiff-isoval", "0.018");
+  _setCastepInputVal("castep-chdiff-cloud-style", "clouds");
+  _setCastepInputVal("castep-chdiff-1d-unit", "ea3");
+  if (CASTEP_STUDIO_STATE.chdiffState) {
+    CASTEP_STUDIO_STATE.chdiffState.mode = "chdiff";
+    CASTEP_STUDIO_STATE.chdiffState.palette = "yellow-cyan";
+    CASTEP_STUDIO_STATE.chdiffState.slicePlane = "xz";
+    CASTEP_STUDIO_STATE.chdiffState.slicePos = 0.50;
+    CASTEP_STUDIO_STATE.chdiffState.isoval = 0.018;
+    CASTEP_STUDIO_STATE.chdiffState.cloudStyle = "clouds";
+  }
+  const diffBar = document.getElementById("castep-chdiff-diff-bar");
+  if (diffBar) diffBar.style.display = "none";
+  const refBtn = document.getElementById("castep-chdiff-ref-btn");
+  if (refBtn) refBtn.style.display = "none";
+  if (typeof resetCastepPlotZoom === "function") resetCastepPlotZoom("chdiff");
+  if (typeof renderCastepChdiffPlots === "function") renderCastepChdiffPlots();
+  if (typeof renderCastep3DScene === "function") renderCastep3DScene();
+  if (typeof showToast === "function") showToast("Reset Charge Density Difference settings to initial defaults.", "info");
+}
+window.resetCastepChdiffSettings = resetCastepChdiffSettings;
+
+// 6A) Orbital-Resolved Spin Matrix Settings Reset
+function resetCastepSpinMatrixSettings() {
+  _setCastepInputVal("castep-spinmat-element", "all_grid");
+  _setCastepInputVal("castep-spinmat-atom", "avg");
+  _setCastepInputVal("castep-spinmat-shell", "auto");
+  _setCastepInputVal("castep-spinmat-qty", "spin");
+  _setCastepInputVal("castep-spinmat-palette", "journal_green");
+  _setCastepInputVal("castep-spinmat-decimals", "3");
+  if (typeof onCastepSpinMatrixElementChange === "function") onCastepSpinMatrixElementChange();
+  else if (typeof renderCastepSpinMatrix === "function") renderCastepSpinMatrix();
+  if (typeof showToast === "function") showToast("Reset Orbital Spin Matrix settings to initial defaults.", "info");
+}
+window.resetCastepSpinMatrixSettings = resetCastepSpinMatrixSettings;
+
+// 6B) Mulliken Magnetism & Bond Charts Settings Reset
+function resetCastepMullikenSettings() {
+  _setCastepInputVal("castep-mulliken-chart-mode", "spin_atomic");
+  _setCastepInputVal("castep-mulliken-el-filter", "all");
+  _setCastepInputVal("castep-mulliken-bond-filter", "all");
+  if (typeof renderCastepMullikenPane === "function") renderCastepMullikenPane();
+  if (typeof showToast === "function") showToast("Reset Mulliken Magnetism & Bond settings to initial defaults.", "info");
+}
+window.resetCastepMullikenSettings = resetCastepMullikenSettings;
+
