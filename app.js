@@ -717,6 +717,7 @@ function switchTab(tabId, btnEl, opts = {}) {
     if (typeof initCastepStudioTab === "function") initCastepStudioTab();
   } else if (tabId === "post-data") {
     if (typeof initPostDataTab === "function") initPostDataTab();
+    if (typeof initTopoRashbaTab === "function") initTopoRashbaTab();
   } else if (tabId === "toolkit") {
     if (typeof renderPeriodicTable === "function") renderPeriodicTable();
   } else if (tabId === "dft-theory") {
