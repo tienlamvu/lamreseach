@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=159_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=159_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=160_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=160_v116_vesta_viewer'" />
   <!-- Publication Math Typography: STIX Two Text (MathType / Times) + KaTeX 0.16.11 (Word/LaTeX Equation Engine) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -2524,6 +2524,13 @@
                 <!-- Row 3: Drude Carrier Density (e- / h+), Optical/Exp Inversion & Bridge to Optical Tab -->
                 <div class="castep-tb-row">
                   <span class="castep-ctrl-grp">
+                    <label class="castep-field-lbl" title="For metals/semimetals: Auto extracts intrinsic electron & hole densities directly from DFT Fermi pockets; Manual uses log10(n)/log10(p) below">n,p Mode:</label>
+                    <select id="castep-tr-carrier-mode" class="castep-input" style="font-weight:700;" onchange="renderCastepTransportPane()">
+                      <option value="auto_pocket" selected>Auto (Fermi Pocket)</option>
+                      <option value="manual">Manual Doping</option>
+                    </select>
+                  </span>
+                  <span class="castep-ctrl-grp">
                     <label class="castep-field-lbl" title="log10 Electron Carrier Density n">log<sub>10</sub>(n):</label>
                     <input type="number" id="castep-tr-n-exp" class="castep-input-sm" value="12.0" step="0.5" min="8" max="22" style="width:54px;" onchange="renderCastepTransportPane()" />
                   </span>
@@ -2550,7 +2557,7 @@
               <!-- Section 1: Band-Edge Effective Mass Parabolic / Kane Fit Canvas -->
               <div class="castep-plot-toolbar" style="margin-top:8px; margin-bottom:6px;">
                 <div class="castep-tb-row">
-                  <strong style="font-size:12.5px; color:#0f172a;">📈 Band-Edge Effective Mass Fits (CBM e<sup>−</sup> &amp; VBM h<sup>+</sup>)</strong>
+                  <strong style="font-size:12.5px; color:#0f172a;">📈 Band-Edge / Fermi-Pocket Effective Mass Fits (e<sup>−</sup> &amp; h<sup>+</sup>)</strong>
                   <span style="font-size:10.5px; color:#64748b;">💡 Right-click either plot to copy individually</span>
                   <div class="castep-tb-actions">
                     <button type="button" class="btn btn-teal btn-sm" style="font-weight:700;" onclick="copyCastepCanvasHD('castep-transport-fit-canvas', 'Band-Edge Effective Mass Fits')" title="Copy FULL Band-Edge Effective Mass Fit Figure (400–600 DPI)">📋 Copy HD</button>
@@ -2575,7 +2582,7 @@
                       <option value="dos_temp" selected>📊 DOS Mass &amp; Drude τ(T)</option>
                       <option value="doping">🔋 Drude m*(n,p) &amp; ħωp</option>
                       <option value="drude_opt">🌈 Drude ε(ω) &amp; σ₁(ω)</option>
-                      <option value="mobility_t">⚡ Mobility μ(T) &amp; nᵢ(T)</option>
+                      <option value="mobility_t">⚡ Mobility μ(T) &amp; σ(T) / nᵢ(T)</option>
                     </select>
                   </span>
                   <span style="font-size:10.5px; color:#64748b;">💡 Right-click either plot</span>
@@ -6362,10 +6369,10 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="cif_engine.js?v=159_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=159_v116_vesta_viewer'"></script>
-  <script src="matsci_tools.js?v=159_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=159_v116_vesta_viewer'"></script>
-  <script src="dft_theory.js?v=159_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=159_v116_vesta_viewer'"></script>
-  <script src="app.js?v=159_v116_vesta_viewer" onerror="this.src='/static/app.js?v=159_v116_vesta_viewer'"></script>
+  <script src="cif_engine.js?v=160_v116_vesta_viewer" onerror="this.src='/static/cif_engine.js?v=160_v116_vesta_viewer'"></script>
+  <script src="matsci_tools.js?v=160_v116_vesta_viewer" onerror="this.src='/static/matsci_tools.js?v=160_v116_vesta_viewer'"></script>
+  <script src="dft_theory.js?v=160_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=160_v116_vesta_viewer'"></script>
+  <script src="app.js?v=160_v116_vesta_viewer" onerror="this.src='/static/app.js?v=160_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
