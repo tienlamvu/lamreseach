@@ -5690,6 +5690,7 @@ window.setCastepElecWindow = setCastepElecWindow;
 
 function onCastepPdosModeChange() {
   const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId);
+  if (window.CASTEP_PDOS_STATE?.hiddenCurves) CASTEP_PDOS_STATE.hiddenCurves.clear();
   populateCastepPdosTargetSelect(job);
   renderCastepElectronicPlots();
 }
@@ -5956,7 +5957,7 @@ function buildPdosCurvesFromBin(pb, eGrid, sigma, mode, targetVal, flags, energy
   };
 
   // Helper to sum multiple channels' sparse histograms onto dense grid and convolve
-  const addGroupCurve = (label, color, chanList, isTotal = false) => {
+  const addGroupCurve = (label, color, chanList, isTotal = false, key = null) => {
     const sumUp = new Float64Array(eGrid.length);
     const sumDn = isSpin ? new Float64Array(eGrid.length) : null;
     for (const ch of chanList) {
@@ -5967,28 +5968,44 @@ function buildPdosCurvesFromBin(pb, eGrid, sigma, mode, targetVal, flags, energy
         for (let i = 0; i < eGrid.length; i++) sumDn[i] += d[i];
       }
     }
-    curves.push({ label, color, up: sumUp, dn: sumDn, isTotal });
+    let peak = 0;
+    for (let i = 0; i < eGrid.length; i++) {
+      if (sumUp[i] > peak) peak = sumUp[i];
+      if (sumDn && sumDn[i] > peak) peak = sumDn[i];
+    }
+    // Skip negligible semicore curves (e.g. Mo 4s/4p far below window) on sub-orbital modes unless exporting all
+    if (!isTotal && !flags.exportAll && (mode === "suborbital" || mode === "element_suborbital" || mode === "m_orbital") && peak < 0.002) {
+      return;
+    }
+    curves.push({ key: key || label, label, color, up: sumUp, dn: sumDn, isTotal, peak });
   };
 
   if (flags.showTot && pb.total_hist) {
     const totUp = convolveSparseHistGaussian(pb.total_hist.up, eMinH, dEH, eGrid, sigma, energyShift);
     const totDn = (isSpin && pb.total_hist.dn) ? convolveSparseHistGaussian(pb.total_hist.dn, eMinH, dEH, eGrid, sigma, energyShift) : null;
-    curves.push({ label: "Total DOS", color: "#0f172a", up: totUp, dn: totDn, isTotal: true });
+    curves.push({ key: "total", label: "Total DOS", color: "#0f172a", up: totUp, dn: totDn, isTotal: true });
   }
+
+  const isSubMode = (mode === "suborbital" || mode === "element_suborbital" || mode === "m_orbital");
+  const builtSub = isSubMode && typeof buildSubOrbitalPdosGroups === "function"
+    ? buildSubOrbitalPdosGroups(pb, eGrid, sigma, mode, targetVal, flags, energyShift, addGroupCurve)
+    : false;
 
   const matched = (pb.channels || []).filter(ch => filterOrbitals(ch) && filterTarget(ch));
   const orbColors = { s: "#2563eb", p: "#16a34a", d: "#dc2626", f: "#9333ea" };
 
-  if (mode === "orbital") {
+  if (builtSub) {
+    // Sub-orbital / element+sub-orbital / m-orbital curves already appended!
+  } else if (mode === "orbital") {
     ["s", "p", "d", "f"].forEach(orb => {
       const grp = matched.filter(c => c.orbital === orb);
-      if (grp.length) addGroupCurve(`${orb}-orbital`, orbColors[orb] || "#2563eb", grp);
+      if (grp.length) addGroupCurve(`${orb}-orbital`, orbColors[orb] || "#2563eb", grp, false, `orb|${orb}`);
     });
   } else if (mode === "element") {
     const els = [...new Set(matched.map(c => c.element))];
     els.forEach((el, idx) => {
       const grp = matched.filter(c => c.element === el);
-      if (grp.length) addGroupCurve(`${el} (all)`, PDOS_CURVE_PALETTE[idx % PDOS_CURVE_PALETTE.length], grp);
+      if (grp.length) addGroupCurve(`${el} (all)`, PDOS_CURVE_PALETTE[idx % PDOS_CURVE_PALETTE.length], grp, false, `el|${el}`);
     });
   } else if (mode === "atom") {
     const atoms = [...new Set(matched.map(c => c.atom))];
@@ -5996,14 +6013,14 @@ function buildPdosCurvesFromBin(pb, eGrid, sigma, mode, targetVal, flags, energy
       // Single atom selected -> break down its s, p, d, f orbitals!
       ["s", "p", "d", "f"].forEach(orb => {
         const grp = matched.filter(c => c.orbital === orb);
-        if (grp.length) addGroupCurve(`${atoms[0]}-${orb}`, orbColors[orb] || "#2563eb", grp);
+        if (grp.length) addGroupCurve(`${atoms[0]}-${orb}`, orbColors[orb] || "#2563eb", grp, false, `atomorb|${atoms[0]}|${orb}`);
       });
     } else {
       // Multiple atoms -> display up to 16 on canvas, or ALL when exporting to CSV/XLSX
       const atomCap = flags.exportAll ? atoms.length : 16;
       atoms.slice(0, atomCap).forEach((at, idx) => {
         const grp = matched.filter(c => c.atom === at);
-        if (grp.length) addGroupCurve(at, PDOS_CURVE_PALETTE[idx % PDOS_CURVE_PALETTE.length], grp);
+        if (grp.length) addGroupCurve(at, PDOS_CURVE_PALETTE[idx % PDOS_CURVE_PALETTE.length], grp, false, `atom|${at}`);
       });
     }
   } else {
@@ -6017,10 +6034,13 @@ function buildPdosCurvesFromBin(pb, eGrid, sigma, mode, targetVal, flags, energy
     const pairCap = flags.exportAll ? pairs.length : 24;
     pairs.slice(0, pairCap).forEach(([el, orb, lbl], idx) => {
       const grp = matched.filter(c => c.element === el && c.orbital === orb);
-      if (grp.length) addGroupCurve(lbl, PDOS_CURVE_PALETTE[idx % PDOS_CURVE_PALETTE.length], grp);
+      if (grp.length) addGroupCurve(lbl, PDOS_CURVE_PALETTE[idx % PDOS_CURVE_PALETTE.length], grp, false, `elor|${lbl}`);
     });
   }
-  return { curves, isSpin };
+  const allCurves = curves.slice();
+  const hiddenSet = (!flags.exportAll && window.CASTEP_PDOS_STATE?.hiddenCurves) ? CASTEP_PDOS_STATE.hiddenCurves : null;
+  const visibleCurves = hiddenSet ? curves.filter(c => c.isTotal || !hiddenSet.has(c.key || c.label)) : curves;
+  return { curves: visibleCurves, allCurves, isSpin };
 }
 
 function renderCastepElectronicPlots() {
@@ -6028,6 +6048,12 @@ function renderCastepElectronicPlots() {
   if (!canvas) return;
   const job = (CASTEP_STUDIO_STATE.jobs || []).find(j => j.id === CASTEP_STUDIO_STATE.activeJobId) || {};
   const layout = document.getElementById("castep-elec-layout")?.value || "joint";
+  const bandCardEl = document.getElementById("castep-elec-band-card");
+  const dosCardEl = document.getElementById("castep-elec-dos-card");
+  const cardsGridEl = document.getElementById("castep-elec-cards-grid");
+  if (bandCardEl) bandCardEl.style.display = layout === "dos" ? "none" : "flex";
+  if (dosCardEl) dosCardEl.style.display = layout === "band" ? "none" : "flex";
+  if (cardsGridEl) cardsGridEl.dataset.layout = layout;
   const emin = parseFloat(document.getElementById("castep-elec-emin")?.value) || -5.0;
   const emax = parseFloat(document.getElementById("castep-elec-emax")?.value) || 5.0;
   const sigma = parseFloat(document.getElementById("castep-dos-sigma")?.value) || 0.12;
@@ -6112,6 +6138,7 @@ function renderCastepElectronicPlots() {
   for (let i = 0; i <= nPts; i++) eGrid[i] = emin + (emax - emin) * (i / nPts);
 
   let pdosCurves = [];
+  let allPdosCurves = [];
   let isSpinDos = false;
   let pdosSourceLabel = "";
 
@@ -6122,6 +6149,7 @@ function renderCastepElectronicPlots() {
       align.dosRawShift || 0.0
     );
     pdosCurves = built.curves;
+    allPdosCurves = built.allCurves || built.curves;
     isSpinDos = built.isSpin;
     pdosSourceLabel = `Exact CASTEP ${job.pdos_bin_data.source_file} (${isSpinDos ? "Collinear Spin-Polarized" : "Non-Spin"}, ${job.pdos_bin_data.norb} orbitals)`;
   } else if (job.pdos_xcd?.series?.length || job.dos_xcd?.series?.length) {
@@ -6169,6 +6197,11 @@ function renderCastepElectronicPlots() {
     if (showTot) pdosCurves.push({ label: "Total DOS", color: "#0f172a", up: upArr, dn: dnArr, isTotal: true });
   }
 
+  // Sync interactive PDOS curve toggle chips inside the DOS card
+  if (typeof renderCastepPdosCurveChips === "function") {
+    renderCastepPdosCurveChips(allPdosCurves.length ? allPdosCurves : pdosCurves);
+  }
+
   // Cache exact rendered electronic state for 1-to-1 CSV & multi-tab XLSX export
   CASTEP_STUDIO_STATE.lastElectronicExport = {
     jobId: job.id,
@@ -6213,20 +6246,16 @@ function renderCastepElectronicPlots() {
     return;
   }
 
-  // Update summary strip
+  // Update compact single-line summary strip
   const strip = document.getElementById("castep-electronic-summary-strip");
   if (strip) {
     const pathLabels = bandTicks.map(t => t.label === "G" ? "Γ" : t.label).join(" → ");
     strip.innerHTML = `
       <span><strong>Material:</strong> ${escapeHtml(job.material || CASTEP_STUDIO_STATE.structure?.formula || job.seed || "")}</span>
       <span><strong>Electronic:</strong> ${formatSciHtml(gapSummary || "Band Dispersion & PDOS")}</span>
-      <span style="color:#0369a1;"><strong>PDOS Source:</strong> ${escapeHtml(pdosSourceLabel || "Band Structure Only")}</span>
-      <span><strong>BZ Path:</strong> ${escapeHtml(pathLabels)}</span>
-      <span style="color:#047857;"><strong>Zero Ref:</strong> ${formatSciHtml(align.label)}</span>
-      <span style="margin-left:auto; display:inline-flex; gap:5px; flex-wrap:wrap;">
-        <button type="button" class="castep-preset-chip" style="font-weight:700; color:#1d4ed8; border-color:#93c5fd; background:#ffffff;" onclick="switchCastepStagePane('transport')" title="Analyze Carrier Effective Mass (m*e, m*h), Mobility &amp; Drude Relaxation Time from Band Structure &amp; DOS">⚡ m* &amp; Drude →</button>
-        <button type="button" class="castep-preset-chip" style="font-weight:700; color:#b45309; border-color:#fcd34d; background:#fffbeb;" onclick="switchCastepStagePane('stoner')" title="Calculate Exchange Splitting (Δex), Spin Polarization P(EF), Magnetic Moment &amp; Stoner Criterion I·D(EF) from Spin-Resolved DOS/PDOS">🧭 Stoner &amp; P(E<sub>F</sub>) →</button>
-      </span>
+      <span style="color:#0369a1;"><strong>PDOS:</strong> ${escapeHtml(pdosSourceLabel || "Band Structure Only")}</span>
+      <span><strong>Path:</strong> ${escapeHtml(pathLabels)}</span>
+      <span style="color:#047857;"><strong>Zero:</strong> ${formatSciHtml(align.label)}</span>
     `;
   }
 
@@ -6511,13 +6540,24 @@ function renderCastepElectronicPlots() {
       mirrorRight: true
     });
 
-    // Panel Title & Clean Legend Strip
+    // Panel Title & Publication-Grade Boxed Subscript Legend
+    canvas._dosPlotGeom = { dosX0, padT, dosW, plotH, emin, emax, useMirror, layout };
     ctx.fillStyle = st.inkColor; ctx.font = castepPlotFont("title"); ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
-    const modeLabel = pdosMode === "atom" ? "Atomic-Resolved PDOS" : (pdosMode === "element" ? "Element-Resolved PDOS" : (pdosMode === "orbital" ? "Orbital-Resolved PDOS" : "Element + Orbital PDOS"));
+    const modeLabelMap = {
+      element_suborbital: "Element + Sub-Orbital PDOS",
+      suborbital: "Sub-Orbital Resolved PDOS",
+      m_orbital: "m-Resolved Orbital PDOS",
+      element_orbital: "Element + Orbital PDOS",
+      orbital: "Orbital-Resolved PDOS",
+      element: "Element-Resolved PDOS",
+      atom: "Atomic-Resolved PDOS"
+    };
+    const modeLabel = modeLabelMap[pdosMode] || "Element + Orbital PDOS";
     ctx.fillText(modeLabel, dosX0 + dosW / 2, padT - 11);
 
-    // Compact legend inside top-right of DOS panel
-    if (pdosCurves.length) {
+    if (pdosCurves.length && typeof drawCastepPdosLegendBox === "function") {
+      drawCastepPdosLegendBox(ctx, pdosCurves, { dosX0, padT, dosW, plotH, useMirror, layout }, st);
+    } else if (pdosCurves.length) {
       const legX = dosX0 + dosW - 9;
       let legY = padT + (useMirror && layout === "joint" ? 32 : 16);
       ctx.font = castepPlotFont("legend", 1.0, st.boldAxes ? "bold" : "");
@@ -6720,7 +6760,7 @@ function renderCastepElectronicPlots() {
 
     const specs = [];
     exportCurves.forEach(c => {
-      const lbl = cleanSciHeaderText(c.label || "Curve");
+      const lbl = cleanSciHeaderText(typeof _fbPlainLabel === "function" ? _fbPlainLabel(c.label || "Curve") : (c.label || "Curve"));
       if (useMirrorX) {
         specs.push({ label: `${lbl} Spin↑ (states/eV)`, get: i => c.up[i] });
         if (c.dn) specs.push({ label: `${lbl} Spin↓ (−, states/eV)`, get: i => -c.dn[i] });
@@ -6730,7 +6770,16 @@ function renderCastepElectronicPlots() {
       }
     });
     if (!specs.length) return { title: "PDOS", headers: [], rows: [] };
-    const modeLbl = pdosMode === "atom" ? "Atomic-Resolved PDOS" : (pdosMode === "element" ? "Element-Resolved PDOS" : (pdosMode === "orbital" ? "Orbital-Resolved PDOS" : "Element + Orbital PDOS"));
+    const modeLblMap = {
+      element_suborbital: "Element + Sub-Orbital PDOS",
+      suborbital: "Sub-Orbital Resolved PDOS",
+      m_orbital: "m-Resolved Orbital PDOS",
+      element_orbital: "Element + Orbital PDOS",
+      orbital: "Orbital-Resolved PDOS",
+      element: "Element-Resolved PDOS",
+      atom: "Atomic-Resolved PDOS"
+    };
+    const modeLbl = modeLblMap[pdosMode] || "Element + Orbital PDOS";
     return {
       title: `${modeLbl} (Full Range)`,
       headers: ["Energy E − E_ref (eV)", ...specs.map(s => s.label)],
@@ -6766,8 +6815,11 @@ function initCastepElectronicCanvasHover() {
     const eCursor = emax - ((my - padT) / plotH) * (emax - emin);
     if (my >= padT && my <= padT + plotH) {
       const fbHtml = (typeof lookupCastepFatBandHoverHtml === "function") ? lookupCastepFatBandHoverHtml(canvas, mx, my) : null;
+      const pdosHtml = !fbHtml && (typeof lookupCastepPdosHoverHtml === "function") ? lookupCastepPdosHoverHtml(canvas, mx, my) : null;
       if (fbHtml) {
         readout.innerHTML = fbHtml;
+      } else if (pdosHtml) {
+        readout.innerHTML = pdosHtml;
       } else {
         readout.innerHTML = `Cursor Energy: <strong>E − E<sub>F</sub> = ${eCursor.toFixed(3)} eV</strong> (${eCursor > 0 ? "Conduction Band" : "Valence Band"}) • X = ${Math.round(mx)} px`;
       }
@@ -9456,7 +9508,8 @@ function buildElectronicExportTables() {
   const pdosColSpecs = [];
 
   pdosCurvesFull.forEach(c => {
-    const cleanLbl = String(c.label || "Curve").replace(/\s+/g, "_");
+    const rawLbl = typeof _fbPlainLabel === "function" ? _fbPlainLabel(c.label || "Curve") : String(c.label || "Curve");
+    const cleanLbl = rawLbl.replace(/\s+/g, "_");
     if (isSpinDos && c.dn) {
       if (useMirror) {
         if (ex.showUp) { pdosHeaders.push(`${cleanLbl}_SpinUp`); pdosColSpecs.push({ curve: c, kind: "up" }); }
@@ -14190,8 +14243,16 @@ function parseCastepPdosBinArrayBuffer(arrayBuffer, bandsObj, speciesOrder, file
       2: ["Dzz", "Dzy", "Dzx", "Dxx-yy", "Dxy"],
       3: ["Fzzz", "Fzzx", "Fzzy", "Fz(xx-yy)", "Fxyz", "Fx(xx-3yy)", "Fy(3xx-yy)"]
     };
+    const orbMCanon = {
+      0: [["s", "s"]],
+      1: [["px", "px,py"], ["py", "px,py"], ["pz", "pz"]],
+      2: [["dz2", "dz2"], ["dyz", "dxz,dyz"], ["dxz", "dxz,dyz"], ["dx2-y2", "dx2-y2,dxy"], ["dxy", "dx2-y2,dxy"]],
+      3: [["f", "f"], ["f", "f"], ["f", "f"], ["f", "f"], ["f", "f"], ["f", "f"], ["f", "f"]]
+    };
     const chanMeta = {};
+    const mChanMeta = {};
     const orbKeys = new Array(norb);
+    const orbMKeys = new Array(norb);
     const orbToMl = new Array(norb);
     const seenMl = {};
     for (let o = 0; o < norb; o++) {
@@ -14209,6 +14270,11 @@ function parseCastepPdosBinArrayBuffer(arrayBuffer, bandsObj, speciesOrder, file
       const mList = orbMNames[am];
       const mLbl = mList ? mList[mCnt % mList.length] : `L${am}_${mCnt}`;
       orbToMl[o] = { element: el, ion, mLbl };
+      const mcList = orbMCanon[am] || [["s", "s"]];
+      const [mId, subId] = mcList[mCnt % mcList.length];
+      const mck = `${el}|${ion}|${mId}`;
+      orbMKeys[o] = mck;
+      if (!mChanMeta[mck]) mChanMeta[mck] = { element: el, ion, atom: `${el}${ion}`, orbital: orb, m: mId, sub: subId };
     }
 
     const eMin = -20.0, eMax = 15.0, nBins = 1400;
@@ -14223,7 +14289,18 @@ function parseCastepPdosBinArrayBuffer(arrayBuffer, bandsObj, speciesOrder, file
     const orbToCidx = orbKeys.map(k => keyToCidx[k]);
     const nChans = chanKeys.length;
 
+    const mOrderList = ["s", "px", "py", "pz", "dz2", "dxz", "dyz", "dx2-y2", "dxy", "f"];
+    const mChanKeys = Object.keys(mChanMeta).sort((a, b) => {
+      const ma = mChanMeta[a], mb = mChanMeta[b];
+      return ma.element.localeCompare(mb.element) || (ma.ion - mb.ion) || (mOrderList.indexOf(ma.m) - mOrderList.indexOf(mb.m));
+    });
+    const mKeyToCidx = {};
+    mChanKeys.forEach((k, i) => { mKeyToCidx[k] = i; });
+    const orbToMCidx = orbMKeys.map(k => mKeyToCidx[k]);
+    const nMChans = mChanKeys.length;
+
     const bins = Array.from({ length: ns }, () => Array.from({ length: nChans }, () => new Float64Array(nBins)));
+    const mBins = Array.from({ length: ns }, () => Array.from({ length: nMChans }, () => new Float64Array(nBins)));
     const totBins = Array.from({ length: ns }, () => new Float64Array(nBins));
     const orbOcc = Array.from({ length: ns }, () => new Float64Array(norb));
     const kptsBands = bandsObj.kpoints || [];
@@ -14282,9 +14359,14 @@ function parseCastepPdosBinArrayBuffer(arrayBuffer, bandsObj, speciesOrder, file
             if (bIdx >= 0 && bIdx < nBins) {
               totBins[sIdx][bIdx] += wtEff;
               const cBins = bins[sIdx];
+              const mcBins = mBins[sIdx];
               for (let o = 0; o < norb; o++) {
                 const wv = dv.getFloat64(wR.start + o * 8, le);
-                if (wv > 1e-6) cBins[orbToCidx[o]][bIdx] += wtEff * wv;
+                if (wv > 1e-6) {
+                  const wAdd = wtEff * wv;
+                  cBins[orbToCidx[o]][bIdx] += wAdd;
+                  mcBins[orbToMCidx[o]][bIdx] += wAdd;
+                }
               }
             }
           }
@@ -14301,6 +14383,12 @@ function parseCastepPdosBinArrayBuffer(arrayBuffer, bandsObj, speciesOrder, file
       const m = chanMeta[ck];
       const obj = { element: m.element, ion: m.ion, atom: m.atom, orbital: m.orbital, up: toSparse(bins[0][ci]) };
       if (ns >= 2) obj.dn = toSparse(bins[1][ci]);
+      return obj;
+    });
+    const m_channels = mChanKeys.map((mck, mci) => {
+      const m = mChanMeta[mck];
+      const obj = { element: m.element, ion: m.ion, atom: m.atom, orbital: m.orbital, m: m.m, sub: m.sub, up: toSparse(mBins[0][mci]) };
+      if (ns >= 2) obj.dn = toSparse(mBins[1][mci]);
       return obj;
     });
     const total_hist = { up: toSparse(totBins[0]) };
@@ -14348,7 +14436,7 @@ function parseCastepPdosBinArrayBuffer(arrayBuffer, bandsObj, speciesOrder, file
     return {
       source_file: filename, nk, ns, norb, e_min: eMin, e_max: eMax, n_bins: nBins, dE,
       ef_ev: bandsObj.ef_ev || 0.0,
-      elements: speciesOrder, total_hist, channels,
+      elements: speciesOrder, total_hist, channels, m_channels,
       orbital_populations: {
         mode: ns >= 2 ? "collinear" : "nonspin",
         source: "pdos_bin",
@@ -21343,6 +21431,7 @@ function resetCastepElectronicSettings() {
   _setCastepInputVal("castep-fatband-style", "rings");
   _setCastepInputVal("castep-fatband-size", "1.0");
   if (window.CASTEP_FATBAND_STATE?.hiddenChannels) CASTEP_FATBAND_STATE.hiddenChannels.clear();
+  if (window.CASTEP_PDOS_STATE?.hiddenCurves) CASTEP_PDOS_STATE.hiddenCurves.clear();
   [
     "castep-show-dos-total", "castep-show-dos-s", "castep-show-dos-p",
     "castep-show-dos-d", "castep-show-dos-f", "castep-show-spin-up", "castep-show-spin-dn"
@@ -22058,6 +22147,8 @@ function syncCastepFatBandUI(job) {
   }
   if (styleSel) styleSel.disabled = !isOn;
   if (sizeInp) sizeInp.disabled = !isOn;
+  const styleRow = document.getElementById("castep-fatband-style-row");
+  if (styleRow) styleRow.style.display = isOn ? "inline-flex" : "none";
 
   if (badge) {
     if (!hasData) {
@@ -22466,4 +22557,275 @@ function buildCastepFatBandExactTable(ov, bandTicks) {
   };
 }
 window.buildCastepFatBandExactTable = buildCastepFatBandExactTable;
+
+// ============================================================================
+// 15. Orbital-Resolved & Sub-Orbital DOS / PDOS Engine (v168)
+// Supports:
+//  - Element + Sub-Orbital (Mo-dz², Mo-dx²-y²,xy, S-px,y, S-pz, Se-pz...)
+//  - Sub-Orbital (s, px,y, pz, dz², dx²-y²,xy, dxz,yz, f) matching Fat-Band colors
+//  - Full m-Orbital (px, py, pz, dz², dxz, dyz, dx²-y², dxy)
+//  - Interactive per-curve toggle chips, boxed rich-text legend & live hover
+// ============================================================================
+
+window.CASTEP_PDOS_STATE = {
+  hiddenCurves: new Set(),
+  lastMeta: []
+};
+
+const CASTEP_PDOS_M_PALETTE = {
+  "s":      "#ef4444",
+  "px":     "#16a34a",
+  "py":     "#10b981",
+  "pz":     "#2563eb",
+  "dz2":    "#d97706",
+  "dxz":    "#0891b2",
+  "dyz":    "#06b6d4",
+  "dx2-y2": "#9333ea",
+  "dxy":    "#a855f7",
+  "f":      "#db2777"
+};
+
+const CASTEP_PDOS_ELSUB_PALETTE = [
+  "#2563eb", "#dc2626", "#16a34a", "#d97706", "#9333ea", "#0891b2",
+  "#db2777", "#4f46e5", "#059669", "#ea580c", "#0284c7", "#7c3aed",
+  "#be123c", "#65a30d", "#b45309", "#0f766e"
+];
+
+function _pdosMLabel(mId) {
+  switch (mId) {
+    case "s": return "s";
+    case "px": return "p_{x}";
+    case "py": return "p_{y}";
+    case "pz": return "p_{z}";
+    case "dz2": return "d_{z²}";
+    case "dxz": return "d_{xz}";
+    case "dyz": return "d_{yz}";
+    case "dx2-y2": return "d_{x²-y²}";
+    case "dxy": return "d_{xy}";
+    case "f": return "f";
+    default: return mId;
+  }
+}
+
+function toggleCastepPdosCurve(curveKey) {
+  if (CASTEP_PDOS_STATE.hiddenCurves.has(curveKey)) CASTEP_PDOS_STATE.hiddenCurves.delete(curveKey);
+  else CASTEP_PDOS_STATE.hiddenCurves.add(curveKey);
+  if (typeof renderCastepElectronicPlots === "function") renderCastepElectronicPlots();
+}
+window.toggleCastepPdosCurve = toggleCastepPdosCurve;
+
+function setAllCastepPdosCurvesVisible(showAll) {
+  CASTEP_PDOS_STATE.hiddenCurves.clear();
+  if (!showAll) {
+    (CASTEP_PDOS_STATE.lastMeta || []).forEach(c => {
+      if (!c.isTotal) CASTEP_PDOS_STATE.hiddenCurves.add(c.key);
+    });
+  }
+  if (typeof renderCastepElectronicPlots === "function") renderCastepElectronicPlots();
+}
+window.setAllCastepPdosCurvesVisible = setAllCastepPdosCurvesVisible;
+
+function renderCastepPdosCurveChips(allCurves) {
+  const row = document.getElementById("castep-pdos-chips");
+  if (!row) return;
+  const nonTot = (allCurves || []).filter(c => !c.isTotal);
+  CASTEP_PDOS_STATE.lastMeta = (allCurves || []).map(c => ({ key: c.key || c.label, label: c.label, color: c.color, isTotal: !!c.isTotal }));
+  if (!nonTot.length) {
+    row.style.display = "none";
+    row.innerHTML = "";
+    return;
+  }
+  row.style.display = "flex";
+  const quickCtrl = nonTot.length > 4
+    ? `<span style="display:inline-flex; gap:3px; margin-left:2px;">
+         <button type="button" class="castep-preset-chip" style="font-size:10px; padding:0 5px; height:20px;" onclick="setAllCastepPdosCurvesVisible(true)" title="Show all PDOS orbital curves">All</button>
+         <button type="button" class="castep-preset-chip" style="font-size:10px; padding:0 5px; height:20px;" onclick="setAllCastepPdosCurvesVisible(false)" title="Hide all partial curves (keep Total)">None</button>
+       </span>`
+    : "";
+  row.innerHTML = `<span style="font-size:10.5px; font-weight:700; color:#475569; margin-right:2px;">Curves:</span>` +
+    nonTot.map(c => {
+      const k = c.key || c.label;
+      const off = CASTEP_PDOS_STATE.hiddenCurves.has(k);
+      const disp = _fbHtmlLabel(c.label);
+      return `<button type="button" class="castep-preset-chip" onclick="toggleCastepPdosCurve('${escapeHtml(k)}')" style="border-color:${off ? "#cbd5e1" : c.color}; color:${off ? "#94a3b8" : c.color}; background:${off ? "#f8fafc" : "#ffffff"}; font-weight:700; opacity:${off ? 0.52 : 1}; height:21px; padding:0 6px; font-size:10.5px;" title="Click to toggle ${_fbPlainLabel(c.label)} on DOS plot">
+        <span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:${off ? "#cbd5e1" : c.color}; margin-right:4px; vertical-align:middle;"></span>${disp}
+      </button>`;
+    }).join("") + quickCtrl;
+}
+window.renderCastepPdosCurveChips = renderCastepPdosCurveChips;
+
+function buildSubOrbitalPdosGroups(pb, eGrid, sigma, mode, targetVal, flags, energyShift, addGroupCurve) {
+  const mChans = Array.isArray(pb?.m_channels) && pb.m_channels.length ? pb.m_channels : null;
+  if (!mChans) return false;
+
+  const filterL = (ch) => {
+    if (ch.orbital === "s" && !flags.showS) return false;
+    if (ch.orbital === "p" && !flags.showP) return false;
+    if (ch.orbital === "d" && !flags.showD) return false;
+    if (ch.orbital === "f" && !flags.showF) return false;
+    return true;
+  };
+  const filterTarget = (ch) => {
+    if (!targetVal || targetVal === "all") return true;
+    if (targetVal.startsWith("el:")) return ch.element === targetVal.slice(3);
+    if (targetVal.startsWith("atom:")) return ch.atom === targetVal.slice(5);
+    return true;
+  };
+  const matched = mChans.filter(ch => filterL(ch) && filterTarget(ch));
+  const targetPrefix = targetVal && targetVal.startsWith("el:")
+    ? targetVal.slice(3) + "-"
+    : (targetVal && targetVal.startsWith("atom:") ? targetVal.slice(5) + "-" : "");
+
+  if (mode === "suborbital") {
+    const orderSub = ["s", "px,py", "pz", "dz2", "dx2-y2,dxy", "dxz,dyz", "f"];
+    orderSub.forEach(sub => {
+      const grp = matched.filter(c => c.sub === sub);
+      if (grp.length) {
+        const lbl = `${targetPrefix}${_fbSubLabel(sub)}`;
+        addGroupCurve(lbl, CASTEP_FATBAND_SUB_PALETTE[sub] || "#2563eb", grp, false, `sub|${sub}`);
+      }
+    });
+    return true;
+  }
+
+  if (mode === "element_suborbital") {
+    const els = [...new Set(matched.map(c => c.element))];
+    const orderSub = ["dz2", "dx2-y2,dxy", "dxz,dyz", "px,py", "pz", "s", "f"];
+    let cIdx = 0;
+    els.forEach(el => {
+      orderSub.forEach(sub => {
+        const grp = matched.filter(c => c.element === el && c.sub === sub);
+        if (grp.length) {
+          const lbl = `${el}-${_fbSubLabel(sub)}`;
+          const col = els.length === 1
+            ? (CASTEP_FATBAND_SUB_PALETTE[sub] || CASTEP_PDOS_ELSUB_PALETTE[cIdx % CASTEP_PDOS_ELSUB_PALETTE.length])
+            : CASTEP_PDOS_ELSUB_PALETTE[cIdx % CASTEP_PDOS_ELSUB_PALETTE.length];
+          cIdx++;
+          addGroupCurve(lbl, col, grp, false, `elsub|${el}|${sub}`);
+        }
+      });
+    });
+    return true;
+  }
+
+  if (mode === "m_orbital") {
+    const els = [...new Set(matched.map(c => c.element))];
+    const orderM = ["dz2", "dx2-y2", "dxy", "dxz", "dyz", "px", "py", "pz", "s", "f"];
+    const multiEl = els.length > 1 && (!targetVal || targetVal === "all");
+    let cIdx = 0;
+    if (multiEl) {
+      els.forEach(el => {
+        orderM.forEach(mId => {
+          const grp = matched.filter(c => c.element === el && c.m === mId);
+          if (grp.length) {
+            const lbl = `${el}-${_pdosMLabel(mId)}`;
+            addGroupCurve(lbl, CASTEP_PDOS_ELSUB_PALETTE[cIdx++ % CASTEP_PDOS_ELSUB_PALETTE.length], grp, false, `elm|${el}|${mId}`);
+          }
+        });
+      });
+    } else {
+      orderM.forEach(mId => {
+        const grp = matched.filter(c => c.m === mId);
+        if (grp.length) {
+          const lbl = `${targetPrefix}${_pdosMLabel(mId)}`;
+          addGroupCurve(lbl, CASTEP_PDOS_M_PALETTE[mId] || CASTEP_PDOS_ELSUB_PALETTE[cIdx++ % CASTEP_PDOS_ELSUB_PALETTE.length], grp, false, `m|${mId}`);
+        }
+      });
+    }
+    return true;
+  }
+  return false;
+}
+window.buildSubOrbitalPdosGroups = buildSubOrbitalPdosGroups;
+
+function drawCastepPdosLegendBox(ctx, pdosCurves, geom, st) {
+  if (!pdosCurves || !pdosCurves.length) return;
+  const { dosX0, padT, dosW, plotH, useMirror, layout } = geom;
+  ctx.save();
+  const shown = pdosCurves.slice(0, 14);
+  const useTwoCols = shown.length > 8 && dosW >= 290;
+  const legFont = castepPlotFont("legend", useTwoCols ? 0.84 : 0.92, "bold");
+  ctx.font = legFont;
+
+  const rowH = Math.max(13, Math.round((st.legendSize || 11) * (useTwoCols ? 1.24 : 1.32)));
+  const nRows = useTwoCols ? Math.ceil(shown.length / 2) : shown.length;
+
+  const colW = (arr) => Math.max(50, ...arr.map(c => ctx.measureText(_fbPlainLabel(c.label)).width * 0.90 + 18));
+  const leftItems = useTwoCols ? shown.slice(0, nRows) : shown;
+  const rightItems = useTwoCols ? shown.slice(nRows) : [];
+  const w1 = colW(leftItems);
+  const w2 = rightItems.length ? colW(rightItems) : 0;
+  const maxAllowedW = (useMirror && layout === "joint") ? (dosW * 0.47) : (dosW - 14);
+  const boxW = Math.min(maxAllowedW, w1 + (w2 ? w2 + 4 : 0) + 8);
+  const boxH = nRows * rowH + 9;
+
+  const topOffset = (useMirror && layout === "joint") ? 24 : 8;
+  const bx = dosX0 + dosW - boxW - 6;
+  const by = padT + topOffset;
+
+  ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
+  ctx.strokeStyle = "#cbd5e1";
+  ctx.lineWidth = 0.9;
+  ctx.fillRect(bx, by, boxW, boxH);
+  ctx.strokeRect(bx, by, boxW, boxH);
+
+  const drawEntry = (c, x, y) => {
+    ctx.strokeStyle = c.color;
+    ctx.fillStyle = c.color;
+    if (c.isTotal) {
+      ctx.lineWidth = 1.7;
+      ctx.beginPath(); ctx.moveTo(x + 1, y - 3); ctx.lineTo(x + 11, y - 3); ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.arc(x + 6, y - 3, 2.9, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = "#0f172a";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    if (typeof drawSciText === "function") drawSciText(ctx, c.label, x + 14, y);
+    else ctx.fillText(_fbPlainLabel(c.label), x + 14, y);
+  };
+
+  const col2X = bx + 4 + Math.min(w1 + 4, boxW * 0.54);
+  leftItems.forEach((c, i) => drawEntry(c, bx + 4, by + 12 + i * rowH));
+  rightItems.forEach((c, i) => drawEntry(c, col2X, by + 12 + i * rowH));
+  ctx.restore();
+}
+window.drawCastepPdosLegendBox = drawCastepPdosLegendBox;
+
+function lookupCastepPdosHoverHtml(canvas, mx, my) {
+  const g = canvas?._dosPlotGeom;
+  const ex = CASTEP_STUDIO_STATE.lastElectronicExport;
+  if (!g || !ex || !ex.eGrid?.length || !ex.pdosCurves?.length) return null;
+  if (mx < g.dosX0 || mx > g.dosX0 + g.dosW || my < g.padT || my > g.padT + g.plotH) return null;
+
+  const eCursor = g.layout === "dos"
+    ? (g.emin + ((mx - g.dosX0) / Math.max(1, g.dosW)) * (g.emax - g.emin))
+    : (g.emax - ((my - g.padT) / Math.max(1, g.plotH)) * (g.emax - g.emin));
+
+  const grid = ex.eGrid;
+  let bestI = 0, bestD = Infinity;
+  for (let i = 0; i < grid.length; i++) {
+    const d = Math.abs(grid[i] - eCursor);
+    if (d < bestD) { bestD = d; bestI = i; }
+  }
+  const ev = grid[bestI];
+  const isMir = g.useMirror;
+  const items = ex.pdosCurves.map(c => {
+    const u = c.up ? (c.up[bestI] || 0) : 0;
+    const d = c.dn ? (c.dn[bestI] || 0) : 0;
+    const mag = isMir ? Math.max(u, d) : ((ex.showUp ? u : 0) + (ex.showDn && c.dn ? d : 0));
+    return { label: c.label, color: c.color, isTotal: !!c.isTotal, u, d, mag };
+  }).filter(it => it.isTotal || it.mag >= 0.005);
+
+  items.sort((a, b) => (b.isTotal ? 1 : 0) - (a.isTotal ? 1 : 0) || (b.mag - a.mag));
+  const chips = items.slice(0, 6).map(it => {
+    const valStr = isMir && ex.isSpinDos
+      ? `↑${it.u.toFixed(2)} / ↓${it.d.toFixed(2)}`
+      : `${it.mag.toFixed(2)}`;
+    return `<span style="color:${it.color}; font-weight:700;">${_fbHtmlLabel(it.label)}: ${valStr}</span>`;
+  }).join(" • ");
+
+  return `<strong>PDOS @ E − E<sub>ref</sub> = ${ev.toFixed(3)} eV</strong> &nbsp;|&nbsp; ${chips || "0.00 states/eV"} <span style="color:#64748b;">(states/eV)</span>`;
+}
+window.lookupCastepPdosHoverHtml = lookupCastepPdosHoverHtml;
 
