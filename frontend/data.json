@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-27T10:39:09.684Z",
+  "exported_at": "2026-11-27T10:39:14.850Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -6355,15 +6355,15 @@
       "emailVerified": true,
       "verifiedAt": "2026-11-17 00:09",
       "passwordlessGoogle": true,
-      "authProvider": "Email + Google Linked",
+      "authProvider": "Google OAuth 2.0",
       "googleLinked": true,
       "googleEmail": "tlamvux@gmail.com",
       "passwordPlainHint": "••••••••",
       "passwordHash": "d2fb761fdc23a442de155300e60284390cb87b20b815d03786da83b76d145932",
       "registeredAt": "2026-11-17 00:09",
-      "lastLoginAt": "2026-11-17 00:09",
-      "lastUpdatedAt": "2026-11-19 09:39",
-      "updatedAtMs": 1795048744333,
+      "lastLoginAt": "2026-11-27 19:39:14",
+      "lastUpdatedAt": "2026-11-27 19:39:14",
+      "updatedAtMs": 1795775954210,
       "workspace": {
         "papers": [
           {
@@ -6428,7 +6428,8 @@
             "_syncedEventId": 1795002220516,
             "_isParticipantSync": true,
             "_syncedFromEmail": "lamvt.skku@gmail.com",
-            "_syncedFromName": "Vu Tien Lam"
+            "_syncedFromName": "Vu Tien Lam",
+            "owner_email": "tlamvux@gmail.com"
           },
           {
             "id": 1794874163483,
@@ -6442,7 +6443,9 @@
             "status": "Scheduled",
             "sample_id": "GCAL-01",
             "description": "Initialized via Google OAuth 2.0 Sign-In (tlamvux@gmail.com).",
-            "in_weekly_report": 1
+            "in_weekly_report": 1,
+            "visibility": "Private",
+            "owner_email": "tlamvux@gmail.com"
           }
         ],
         "expReportRows": [
@@ -6526,9 +6529,23 @@
             "material": "Perovskite / 2D Material",
             "takeaway": "Good reference for antisite defects in TMDs."
           }
+        ],
+        "customFolders": [],
+        "eventCategories": [
+          "Synthesis / Furnace",
+          "Characterization (XRD/SEM/TEM/XPS)",
+          "Group Meeting / PI Meeting",
+          "Electrochemical Testing",
+          "Data Analysis / Manuscript Writing"
         ]
       },
       "activityLog": [
+        {
+          "timestamp": "2026-11-27 19:39:14",
+          "category": "Session",
+          "action": "Signed In (Google OAuth 2.0)",
+          "detail": "Authenticated as Vu Tien Lam (tlamvux@gmail.com)"
+        },
         {
           "timestamp": "2026-11-18 20:43",
           "category": "Calendar",
