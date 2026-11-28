@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-28T07:40:47.409Z",
+  "exported_at": "2026-11-28T07:41:12.672Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -7012,7 +7012,7 @@
       "story_format": "magazine",
       "status": "Published",
       "is_featured": false,
-      "special_issue_id": "si_1795850581075",
+      "special_issue_id": "",
       "source_name": "",
       "source_url": "",
       "manual_numbering": false,
