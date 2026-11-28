@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-28T07:36:06.076Z",
+  "exported_at": "2026-11-28T07:36:11.966Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -7019,23 +7019,6 @@
       "cover_image": "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1200&q=80",
       "abstract": "We are pleased to announce the successful installation and benchmarking of our new 128-core AMD EPYC 9554 computing node equipped with dual NVIDIA H100 GPUs, achieving a 4.2x speedup on hybrid functional calculations for 200+ atom supercells. In addition, our lab has signed a formal collaborative computing and experimental synthesis agreement with KIST Center for Computational Materials Science.",
       "content_html": "<h2>1. High-Performance Computing Cluster Expansion</h2>\n<p>To support high-throughput DFT simulations and hybrid functional calculations of large defect supercells, our research group has completed the deployment and commissioning of the <strong>SKKU-CMS-Node03</strong> computing cluster. Specifications:</p>\n\n<ul>\n  <li><strong>CPUs:</strong> Dual AMD EPYC 9554 processors (128 physical cores, 256 threads @ up to 3.75 GHz)</li>\n  <li><strong>Memory:</strong> 512 GB DDR5-4800 ECC Registered RAM</li>\n  <li><strong>Accelerators:</strong> 2x NVIDIA H100 PCIe (80 GB HBM3 each)</li>\n  <li><strong>Storage:</strong> 8 TB NVMe PCIe Gen5 scratch storage for wavefunction and charge density I/O</li>\n  <li><strong>Software Stack:</strong> VASP 6.4.2 compiled with OpenMPI 4.1.6, Intel oneMKL, and CUDA OpenACC GPU offloading</li>\n</ul>\n\n<h2>2. Benchmark Results on 2D Supercells</h2>\n<p>Benchmarking on a 216-atom 2D MoSi<sub>2</sub>N<sub>4</sub> defect supercell with HSE06 hybrid functional demonstrated a <strong>4.2&times; walltime reduction</strong> compared to our previous dual Xeon Gold nodes. Self-consistent electronic convergence was achieved within 38 minutes per k-point configuration.</p>\n\n<figure class=\"journal-figure\">\n  <img src=\"https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1000&q=80\" alt=\"HPC Cluster Rack\">\n  <figcaption><strong>Figure 1 |</strong> Newly commissioned SKKU Materials Simulation High-Performance Computing node.</figcaption>\n</figure>\n\n<h2>3. Collaboration with KIST</h2>\n<p>Furthermore, under the new MoU with the Korea Institute of Science and Technology (KIST), our group will gain access to shared supercomputing allocations on the KIST K-CREST infrastructure to perform ab initio molecular dynamics (AIMD) simulations of molten salt synthesis.</p>"
-    },
-    {
-      "id": "news_20251015_001",
-      "title": "First-Principles Prediction of Two-Dimensional Ferroelectric Rashba Semiconductors in Janus Group-IV Chalcogenides",
-      "category": "Research Article",
-      "authors": "Vu Tien Lam¹*, Jaewon Kim¹, Jin-Woo Park²",
-      "affiliations": "¹ School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea\n² Center for Computational Materials Science, Korea Institute of Science and Technology (KIST), Seoul 02792, Republic of Korea",
-      "corresponding_email": "lamvt.skku@gmail.com",
-      "received_date": "",
-      "revised_date": "",
-      "published_date": "2025-10-15",
-      "doi": "10.skku.matsci/news.2025.001",
-      "keywords": "Janus Monolayers, Ferroelectricity, Rashba Effect, Spintronics, DFT",
-      "status": "Published",
-      "cover_image": "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80",
-      "abstract": "Two-dimensional Janus monochalcogenides exhibit robust out-of-plane electric polarization and giant Rashba spin splitting. Here, through first-principles relativistic density functional theory calculations, we predict dynamic stability and room-temperature spontaneous electric polarization in Janus Ge2SeTe monolayers with strong spin-orbit coupling.",
-      "content_html": "<h2>1. Introduction</h2><p>Two-dimensional ferroelectrics with non-centrosymmetric structures provide an exceptional platform for nonvolatile spintronic memories. In this work, we investigate Janus group-IV monochalcogenide monolayers using hybrid DFT.</p><h2>2. Methodology & Stabilities</h2><p>Phonon dispersion curves calculated using density functional perturbation theory (DFPT) confirm kinetic stability across the full Brillouin zone without imaginary modes.</p><h2>3. Rashba Spin Splitting</h2><p>The broken inversion symmetry accompanied by vertical dipole gives rise to a giant Rashba parameter alpha_R = 1.82 eV·Å at the conduction band edge.</p><h2>4. References</h2><ol><li>Lam, V. T. et al. <em>SKKU Comp. Mater.</em> <strong>2</strong>, 101-110 (2025).</li></ol>"
     }
   ],
   "deleted_news_articles": [
@@ -7045,7 +7028,16 @@
     "news_1795071397513",
     "news_1795072095532",
     "news_20240905_001",
-    "news_1795850357516"
+    "news_1795850357516",
+    "news_1795065759528",
+    "news_1795135260574",
+    "news_1795135298222",
+    "news_1795135330461",
+    "news_1795135354485",
+    "news_1795135680362",
+    "news_1795077188150",
+    "news_1795149607560",
+    "news_20251015_001"
   ],
   "deleted_news_articles_map": {
     "news_20261119_001": 1795851364924,
@@ -7054,7 +7046,16 @@
     "news_1795071397513": 1795851364924,
     "news_1795072095532": 1795851364924,
     "news_20240905_001": 1795851364924,
-    "news_1795850357516": 1795851364924
+    "news_1795850357516": 1795851364924,
+    "news_1795065759528": 1795851366293,
+    "news_1795135260574": 1795851366293,
+    "news_1795135298222": 1795851366293,
+    "news_1795135330461": 1795851366293,
+    "news_1795135354485": 1795851366293,
+    "news_1795135680362": 1795851366293,
+    "news_1795077188150": 1795851366293,
+    "news_1795149607560": 1795851366293,
+    "news_20251015_001": 1795851366293
   },
   "news_special_issues": [
     {
