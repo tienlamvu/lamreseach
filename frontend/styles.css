@@ -17098,10 +17098,18 @@ textarea.dft-ed-code-surface::placeholder {
   font-family: inherit !important;
 }
 
-.nature-body-content :is(p, li, font, blockquote),
-#news-editor-body.news-wysiwyg-surface :is(p, li, font, blockquote) {
-  font-size: 1em !important;
+.nature-body-content :is(p, li, font, blockquote) {
+  font-size: 16.5px !important;
+  font-weight: 400 !important;
   line-height: 1.78 !important;
+  color: #201c19 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+}
+#news-editor-body.news-wysiwyg-surface :is(p, li, font, blockquote) {
+  font-size: 16px !important;
+  font-weight: 400 !important;
+  line-height: 1.75 !important;
   color: #201c19 !important;
   background: transparent !important;
   background-color: transparent !important;
@@ -17120,7 +17128,7 @@ textarea.dft-ed-code-surface::placeholder {
 .nature-body-content b,
 #news-editor-body.news-wysiwyg-surface strong,
 #news-editor-body.news-wysiwyg-surface b {
-  font-weight: 700;
+  font-weight: 700 !important;
   color: #14110f !important;
 }
 

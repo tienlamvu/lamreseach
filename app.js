@@ -35810,7 +35810,11 @@ function openNewsEditorModal(articleId = null) {
     if (coverUrlInput) coverUrlInput.value = existing.cover_image || "";
     if (kwInput) kwInput.value = existing.keywords || "";
     if (abstractInput) abstractInput.value = existing.abstract || "";
-    if (editorBody) editorBody.innerHTML = existing.content_html || "";
+    if (editorBody) {
+      editorBody.innerHTML = typeof sanitizeEditorialHtml === "function"
+        ? sanitizeEditorialHtml(existing.content_html || "", { preserveAlignment: true })
+        : (existing.content_html || "");
+    }
     const existingMeta = getArticlePublicationMeta(existing);
     const existingIssueVal = existing.special_issue_id
       ? `SI:${existing.special_issue_id}`
@@ -36363,12 +36367,23 @@ function sanitizeEditorialHtml(rawHtml, options = {}) {
       return el;
     }
 
-    // Headings: H1 inside body becomes H2; H5/H6 normalize to H4
+    // Headings: H1 inside body becomes H2; H5/H6 normalize to H4.
+    // Guard against pasted multi-paragraph articles accidentally nested inside a heading (e.g. <h2><p>...</p></h2>)
+    // or full prose paragraphs (>240 chars) stuck inside a heading tag: unwrap / demote to normal <p>!
     if (/^h[1-6]$/.test(tag)) {
+      if (hasBlockChild(frag)) {
+        return frag;
+      }
+      const txtLen = (frag.textContent || "").trim().length;
+      if (!txtLen) return null;
+      if (txtLen > 240) {
+        const p = doc.createElement("p");
+        p.appendChild(frag);
+        return p;
+      }
       const lvl = tag === "h1" ? "h2" : (tag === "h5" || tag === "h6" ? "h4" : tag);
       const el = doc.createElement(lvl);
       el.appendChild(frag);
-      if (!el.textContent.trim()) return null;
       return el;
     }
 
@@ -36534,9 +36549,36 @@ function handleNewsEditorPaste(e) {
   }
   if (!cleanHtml) return;
 
-  // Insert cleanly at caret so Ctrl+Z Undo remains intact
+  // Insert cleanly at caret so Ctrl+Z Undo remains intact.
+  // If pasting block HTML while the caret sits inside a heading (e.g. <h2>), exit/unwrap the heading first
+  // so pasted body paragraphs NEVER get trapped inside <h2>!
   const editor = document.getElementById("news-editor-body");
   if (editor) editor.focus();
+  const isMultiBlockPaste = /<(p|h[1-6]|div|ul|ol|blockquote|table|figure)\b/i.test(cleanHtml);
+  if (editor && isMultiBlockPaste) {
+    const sel0 = window.getSelection();
+    if (sel0 && sel0.rangeCount > 0) {
+      const anchorNode = sel0.getRangeAt(0).startContainer;
+      const anchorEl = anchorNode.nodeType === 1 ? anchorNode : anchorNode.parentElement;
+      const activeHeading = anchorEl ? anchorEl.closest("h1, h2, h3, h4, h5, h6") : null;
+      if (activeHeading && editor.contains(activeHeading)) {
+        const r0 = sel0.getRangeAt(0);
+        r0.deleteContents();
+        const remainingHeadingText = (activeHeading.textContent || "").trim();
+        const afterRange = document.createRange();
+        if (!remainingHeadingText) {
+          afterRange.setStartBefore(activeHeading);
+          afterRange.collapse(true);
+          activeHeading.remove();
+        } else {
+          afterRange.setStartAfter(activeHeading);
+          afterRange.collapse(true);
+        }
+        sel0.removeAllRanges();
+        sel0.addRange(afterRange);
+      }
+    }
+  }
   let inserted = false;
   try {
     inserted = document.execCommand("insertHTML", false, cleanHtml);
@@ -36565,6 +36607,25 @@ function handleNewsEditorPaste(e) {
     } else {
       editor.innerHTML += cleanHtml;
     }
+  }
+
+  // Post-paste structural safeguard: unwrap any heading that accidentally absorbed block children
+  if (editor) {
+    Array.from(editor.querySelectorAll("h1, h2, h3, h4, h5, h6")).forEach(h => {
+      if (h.querySelector("p, div, figure, table, ul, ol, blockquote, h1, h2, h3, h4, h5, h6") || (h.textContent || "").trim().length > 240) {
+        const parent = h.parentNode;
+        if (parent) {
+          if (h.querySelector("p, div, figure, table, ul, ol, blockquote, h1, h2, h3, h4, h5, h6")) {
+            while (h.firstChild) parent.insertBefore(h.firstChild, h);
+            parent.removeChild(h);
+          } else {
+            const p = document.createElement("p");
+            while (h.firstChild) p.appendChild(h.firstChild);
+            parent.replaceChild(p, h);
+          }
+        }
+      }
+    });
   }
 
   if (typeof updateEditorWordStats === "function") updateEditorWordStats();
