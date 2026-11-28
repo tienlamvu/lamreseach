@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-28T07:35:47.962Z",
+  "exported_at": "2026-11-28T07:35:55.267Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -7023,8 +7023,15 @@
     {
       "id": "news_1795184933021",
       "title": "Imec demonstrates first wafer-scale fabrication of solid-state nanopores using EUV lithography",
+      "subtitle": "",
       "category": "Communication",
+      "story_format": "magazine",
       "status": "Published",
+      "is_featured": false,
+      "special_issue_id": "si_1795850581075",
+      "source_name": "",
+      "source_url": "",
+      "manual_numbering": false,
       "authors": "Jade Liu<sup>1</sup>*",
       "corresponding_email": "jade.liu@imec.be",
       "affiliations": "1. International press communications (Americas, GCC, Asia-Pacific)",
@@ -7047,7 +7054,7 @@
       "received_date": "",
       "revised_date": "",
       "published_date": "2026-11-20",
-      "doi": "10.skku.matsci/news.1795184765071",
+      "doi": "",
       "cover_image": "",
       "keywords": "Health & life science",
       "abstract": "Breakthrough enables scalable, high-precision biosensing applications in life sciences and healthcare.",
