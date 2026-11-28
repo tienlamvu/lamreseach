@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-28T07:22:45.749Z",
+  "exported_at": "2026-11-28T07:23:01.577Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -7088,7 +7088,20 @@
     "news_20240905_001": 1795849911968,
     "news_1795850357516": 1795850378324
   },
-  "news_special_issues": [],
+  "news_special_issues": [
+    {
+      "id": "si_1795850581075",
+      "code": "SI-01",
+      "title": "Special",
+      "subtitle": "",
+      "year": 2026,
+      "guest_editor": "Vu Tien Lam, SKKU",
+      "accent_color": "#8b3a1a",
+      "cover_image": "",
+      "status": "Open",
+      "created_at": "2026-11-28"
+    }
+  ],
   "deleted_news_special_issues": [],
   "deleted_news_special_issues_map": {},
   "news_settings": {
