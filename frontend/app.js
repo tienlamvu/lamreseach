@@ -2266,6 +2266,13 @@ async function pullCloudDatabaseInstant(silent = true) {
         STATE.masterData.news_special_issues = cloudDb.news_special_issues;
         window._SEED_NEWS_SPECIAL_ISSUES = cloudDb.news_special_issues;
       }
+      if (Array.isArray(cloudDb.news_regular_issues)) {
+        if (typeof mergeIncomingDeletedRegularIssues === "function") {
+          mergeIncomingDeletedRegularIssues(cloudDb.deleted_news_regular_issues, cloudDb.deleted_news_regular_issues_map);
+        }
+        STATE.masterData.news_regular_issues = cloudDb.news_regular_issues;
+        window._SEED_NEWS_REGULAR_ISSUES = cloudDb.news_regular_issues;
+      }
       if (cloudDb.news_settings && typeof cloudDb.news_settings === "object") {
         STATE.masterData.news_settings = cloudDb.news_settings;
         if (typeof mergeIncomingNewsSettings === "function") {
@@ -2541,6 +2548,9 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
       news_special_issues: typeof loadNewsSpecialIssues === "function" ? loadNewsSpecialIssues() : ((remoteDb && Array.isArray(remoteDb.news_special_issues)) ? remoteDb.news_special_issues : []),
       deleted_news_special_issues: typeof getDeletedSpecialIssuesMap === "function" ? Object.keys(getDeletedSpecialIssuesMap()) : [],
       deleted_news_special_issues_map: typeof getDeletedSpecialIssuesMap === "function" ? getDeletedSpecialIssuesMap() : {},
+      news_regular_issues: typeof loadNewsRegularIssues === "function" ? loadNewsRegularIssues() : ((remoteDb && Array.isArray(remoteDb.news_regular_issues)) ? remoteDb.news_regular_issues : []),
+      deleted_news_regular_issues: typeof getDeletedRegularIssuesMap === "function" ? Object.keys(getDeletedRegularIssuesMap()) : [],
+      deleted_news_regular_issues_map: typeof getDeletedRegularIssuesMap === "function" ? getDeletedRegularIssuesMap() : {},
       news_settings: typeof loadNewsSettings === "function" ? loadNewsSettings() : ((remoteDb && remoteDb.news_settings) || undefined),
       dft_lectures: safeDftLectures
     };
@@ -16629,6 +16639,14 @@ async function loadStaticFallbackData() {
           mergeIncomingDeletedSpecialIssues(remoteData.deleted_news_special_issues, remoteData.deleted_news_special_issues_map);
         }
       }
+      if (remoteData && Array.isArray(remoteData.news_regular_issues)) {
+        if (!STATE.masterData) STATE.masterData = {};
+        STATE.masterData.news_regular_issues = remoteData.news_regular_issues;
+        window._SEED_NEWS_REGULAR_ISSUES = remoteData.news_regular_issues;
+        if (typeof mergeIncomingDeletedRegularIssues === "function") {
+          mergeIncomingDeletedRegularIssues(remoteData.deleted_news_regular_issues, remoteData.deleted_news_regular_issues_map);
+        }
+      }
       if (remoteData && remoteData.news_settings && typeof remoteData.news_settings === "object") {
         if (!STATE.masterData) STATE.masterData = {};
         STATE.masterData.news_settings = remoteData.news_settings;
@@ -17241,6 +17259,7 @@ async function loadStaticFallbackData() {
   if (!STATE.masterData || !Array.isArray(STATE.masterData.papers) || STATE.masterData.papers.length === 0 || (!getActivePersonalWorkspaceEmail() && STATE.auth.isAdmin)) {
     const prevNewsArticles = (STATE.masterData && STATE.masterData.news_articles) || window._SEED_NEWS_ARTICLES || [];
     const prevNewsSpecialIssues = (STATE.masterData && STATE.masterData.news_special_issues) || window._SEED_NEWS_SPECIAL_ISSUES || [];
+    const prevNewsRegularIssues = (STATE.masterData && STATE.masterData.news_regular_issues) || window._SEED_NEWS_REGULAR_ISSUES || [];
     const prevNewsSettings = (STATE.masterData && STATE.masterData.news_settings) || null;
     const prevDftLectures = (STATE.masterData && STATE.masterData.dft_lectures) || STATE.dftLectures || window._SEED_DFT_LECTURES || [];
     STATE.masterData = {
@@ -17250,6 +17269,7 @@ async function loadStaticFallbackData() {
       profile: STATE.profile || {},
       news_articles: prevNewsArticles,
       news_special_issues: prevNewsSpecialIssues,
+      news_regular_issues: prevNewsRegularIssues,
       news_settings: prevNewsSettings,
       dft_lectures: prevDftLectures
     };
@@ -17344,6 +17364,7 @@ function saveStaticDb(options = {}) {
     // Separate Admin Master items from User-Uploaded Private items (never leak user uploads into masterData!)
     const prevNews2 = (STATE.masterData && STATE.masterData.news_articles) || STATE.newsArticles || window._SEED_NEWS_ARTICLES || [];
     const prevNewsSi2 = (STATE.masterData && STATE.masterData.news_special_issues) || STATE.newsSpecialIssues || window._SEED_NEWS_SPECIAL_ISSUES || [];
+    const prevNewsRi2 = (STATE.masterData && STATE.masterData.news_regular_issues) || STATE.newsRegularIssues || window._SEED_NEWS_REGULAR_ISSUES || [];
     const prevNewsSet2 = (STATE.masterData && STATE.masterData.news_settings) || null;
     const prevDft2 = (STATE.masterData && STATE.masterData.dft_lectures) || STATE.dftLectures || window._SEED_DFT_LECTURES || [];
     STATE.masterData = {
@@ -17353,6 +17374,7 @@ function saveStaticDb(options = {}) {
       profile: STATE.profile || {},
       news_articles: prevNews2,
       news_special_issues: prevNewsSi2,
+      news_regular_issues: prevNewsRi2,
       news_settings: prevNewsSet2,
       dft_lectures: prevDft2
     };
@@ -31136,12 +31158,12 @@ let NEWS_STATE = {
   returnToEditorAfterSi: false
 };
 
-// --- V181: Magazine Settings, Special Issues & Automatic Volume/Issue/Paper Numbering Engine ---
+// --- V182: Lam's Story Magazine Settings, Admin-Cut Regular Issues, Special Issues & Contiguous Auto-Numbering Engine ---
 const DEFAULT_NEWS_SETTINGS = {
-  magazine_name: "SKKU Materials Dispatch",
-  tagline: "Scientific news, semiconductor & materials breakthroughs, research highlights, and lab dispatches.",
-  founding_year: 2026,
-  issue_cadence: "monthly"
+  magazine_name: "Lam's Story",
+  eyebrow: "SCIENCE • MATERIALS • TECHNOLOGY • CHRONICLES",
+  tagline: "Stories of scientific discovery, 2D materials, semiconductor breakthroughs, and research reflections.",
+  founding_year: 2026
 };
 
 const NEWS_MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -31161,11 +31183,18 @@ function loadNewsSettings() {
       }
     }
   } catch (e) {}
+  // Auto-migrate legacy default branding from v181 -> "Lam's Story"
+  if (!merged.magazine_name || merged.magazine_name === "SKKU Materials Dispatch") {
+    merged.magazine_name = DEFAULT_NEWS_SETTINGS.magazine_name;
+  }
+  if (!merged.tagline || merged.tagline === "Scientific news, semiconductor & materials breakthroughs, research highlights, and lab dispatches.") {
+    merged.tagline = DEFAULT_NEWS_SETTINGS.tagline;
+  }
+  if (!merged.eyebrow) {
+    merged.eyebrow = DEFAULT_NEWS_SETTINGS.eyebrow;
+  }
   const fy = parseInt(merged.founding_year, 10);
   merged.founding_year = (!isNaN(fy) && fy >= 2000 && fy <= 2099) ? fy : 2026;
-  if (!["monthly", "bimonthly", "quarterly"].includes(merged.issue_cadence)) {
-    merged.issue_cadence = "monthly";
-  }
   return merged;
 }
 
@@ -31182,8 +31211,7 @@ function saveNewsSettingsObj(nextSettings) {
   const clean = {
     ...DEFAULT_NEWS_SETTINGS,
     ...(nextSettings || {}),
-    founding_year: Math.max(2000, Math.min(2099, parseInt(nextSettings?.founding_year, 10) || 2026)),
-    issue_cadence: ["monthly", "bimonthly", "quarterly"].includes(nextSettings?.issue_cadence) ? nextSettings.issue_cadence : "monthly"
+    founding_year: Math.max(2000, Math.min(2099, parseInt(nextSettings?.founding_year, 10) || 2026))
   };
   if (!STATE.masterData) STATE.masterData = {};
   STATE.masterData.news_settings = clean;
@@ -31191,6 +31219,133 @@ function saveNewsSettingsObj(nextSettings) {
     localStorage.setItem("matsci_news_settings_v1", JSON.stringify(clean));
   } catch (e) {}
   return clean;
+}
+
+// --- Regular Issues Persistence & Tombstones (Admin-Cut Sequential Issues, Contiguous Auto-Shift on Delete) ---
+function getDeletedRegularIssuesMap() {
+  try {
+    const raw = localStorage.getItem("matsci_deleted_news_regular_issues_map");
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function recordDeletedRegularIssue(riId) {
+  if (!riId) return;
+  const map = getDeletedRegularIssuesMap();
+  map[String(riId)] = Date.now();
+  try {
+    localStorage.setItem("matsci_deleted_news_regular_issues_map", JSON.stringify(map));
+  } catch (e) {}
+}
+
+function mergeIncomingDeletedRegularIssues(remoteList, remoteMap) {
+  const localMap = getDeletedRegularIssuesMap();
+  let changed = false;
+  if (Array.isArray(remoteList)) {
+    remoteList.forEach(id => {
+      const sId = String(id);
+      if (!localMap[sId]) {
+        localMap[sId] = Date.now();
+        changed = true;
+      }
+    });
+  }
+  if (remoteMap && typeof remoteMap === "object") {
+    Object.entries(remoteMap).forEach(([id, ts]) => {
+      const sId = String(id);
+      if (!localMap[sId] || Number(ts) > Number(localMap[sId])) {
+        localMap[sId] = Number(ts) || Date.now();
+        changed = true;
+      }
+    });
+  }
+  if (changed) {
+    try {
+      localStorage.setItem("matsci_deleted_news_regular_issues_map", JSON.stringify(localMap));
+    } catch (e) {}
+  }
+  return localMap;
+}
+
+function loadNewsRegularIssues() {
+  const deletedMap = getDeletedRegularIssuesMap();
+  const riMap = new Map();
+  if (STATE.masterData && Array.isArray(STATE.masterData.news_regular_issues)) {
+    STATE.masterData.news_regular_issues.forEach(ri => {
+      if (ri && ri.id) riMap.set(String(ri.id), { ...ri });
+    });
+  }
+  if (Array.isArray(window._SEED_NEWS_REGULAR_ISSUES)) {
+    window._SEED_NEWS_REGULAR_ISSUES.forEach(ri => {
+      if (ri && ri.id) riMap.set(String(ri.id), { ...ri });
+    });
+  }
+  try {
+    const raw = localStorage.getItem("matsci_news_regular_issues_v1");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        parsed.forEach(ri => {
+          if (ri && ri.id) riMap.set(String(ri.id), { ...ri });
+        });
+      }
+    }
+  } catch (e) {}
+  const list = Array.from(riMap.values())
+    .filter(ri => ri && ri.id && !deletedMap[String(ri.id)])
+    .sort((a, b) => {
+      const ya = parseInt(a.year, 10) || 2026;
+      const yb = parseInt(b.year, 10) || 2026;
+      if (ya !== yb) return ya - yb;
+      const oa = Number(a.order) || 0;
+      const ob = Number(b.order) || 0;
+      if (oa !== ob) return oa - ob;
+      return String(a.id).localeCompare(String(b.id));
+    });
+  STATE.newsRegularIssues = list;
+  return list;
+}
+
+function persistNewsRegularIssues(list) {
+  const arr = Array.isArray(list) ? list : (STATE.newsRegularIssues || []);
+  STATE.newsRegularIssues = arr;
+  if (!STATE.masterData) STATE.masterData = {};
+  STATE.masterData.news_regular_issues = arr;
+  window._SEED_NEWS_REGULAR_ISSUES = arr;
+  try {
+    localStorage.setItem("matsci_news_regular_issues_v1", JSON.stringify(arr));
+  } catch (e) {}
+}
+
+function getRegularIssuesForYear(year, regularIssuesList = null) {
+  const y = parseInt(year, 10) || 2026;
+  const all = Array.isArray(regularIssuesList) ? regularIssuesList : loadNewsRegularIssues();
+  const matched = all
+    .filter(ri => parseInt(ri.year, 10) === y)
+    .sort((a, b) => {
+      const oa = Number(a.order) || 0;
+      const ob = Number(b.order) || 0;
+      if (oa !== ob) return oa - ob;
+      return String(a.id).localeCompare(String(b.id));
+    });
+  if (matched.length === 0) {
+    return [{
+      id: `ri_default_${y}`,
+      year: y,
+      title: "",
+      subtitle: "",
+      order: 1,
+      _virtual: true,
+      issueNum: 1
+    }];
+  }
+  // Contiguous 1-based auto-numbering (Issue 1, Issue 2, Issue 3... — shifts back cleanly on deletion!)
+  return matched.map((ri, idx) => ({
+    ...ri,
+    issueNum: idx + 1
+  }));
 }
 
 // --- Special Issues Persistence & Tombstones ---
@@ -31288,7 +31443,7 @@ function persistNewsSpecialIssues(list) {
   } catch (e) {}
 }
 
-// --- Automatic Volume, Issue & Paper Numbering Helpers (V181) ---
+// --- Contiguous Automatic Volume, Issue & Paper Numbering Helpers (V182) ---
 function getArticleYear(article) {
   if (!article) return loadNewsSettings().founding_year || 2026;
   const d = article.published_date || article.received_date || "";
@@ -31310,65 +31465,73 @@ function getArticleMonth(article) {
   return new Date().getMonth() + 1;
 }
 
-function computeVolumeForYear(year, settings = null) {
+// Contiguous Volume Map: Active years >= founding_year are numbered 1, 2, 3... with ZERO gaps!
+// Deleting all stories/issues in a year automatically shifts subsequent Volumes down (e.g. Vol 3 -> Vol 2).
+function computeActiveVolumeMap(articles = null, regularIssues = null, specialIssues = null, settings = null) {
   const cfg = settings || loadNewsSettings();
   const baseYear = parseInt(cfg.founding_year, 10) || 2026;
-  const y = parseInt(year, 10) || baseYear;
-  if (y >= baseYear) {
-    const num = (y - baseYear) + 1;
-    return {
+  const arts = Array.isArray(articles) ? articles : (STATE.newsArticles || []);
+  const riList = Array.isArray(regularIssues) ? regularIssues : loadNewsRegularIssues();
+  const siList = Array.isArray(specialIssues) ? specialIssues : loadNewsSpecialIssues();
+  const siById = new Map(siList.map(si => [String(si.id), si]));
+  const riById = new Map(riList.map(ri => [String(ri.id), ri]));
+
+  const yearSet = new Set();
+  arts.forEach(a => {
+    if (!a || !a.id) return;
+    const si = a.special_issue_id ? siById.get(String(a.special_issue_id)) : null;
+    const ri = (!si && a.regular_issue_id) ? riById.get(String(a.regular_issue_id)) : null;
+    const y = si && si.year ? parseInt(si.year, 10) : (ri && ri.year ? parseInt(ri.year, 10) : getArticleYear(a));
+    if (y >= baseYear) yearSet.add(y);
+  });
+  siList.forEach(si => {
+    const y = parseInt(si.year, 10);
+    if (y >= baseYear) yearSet.add(y);
+  });
+  riList.forEach(ri => {
+    const y = parseInt(ri.year, 10);
+    if (y >= baseYear) yearSet.add(y);
+  });
+
+  const sortedYears = Array.from(yearSet).sort((a, b) => a - b);
+  const map = new Map();
+  sortedYears.forEach((y, idx) => {
+    const num = idx + 1;
+    map.set(y, {
       year: y,
       volumeNum: num,
       volumeLabel: `Volume ${num} (${y})`,
       volumeShort: `Vol. ${num}`,
       isArchive: false
-    };
-  }
-  return {
-    year: y,
-    volumeNum: 0,
-    volumeLabel: `Archive (${y})`,
-    volumeShort: `Archive ${y}`,
-    isArchive: true
-  };
+    });
+  });
+  return map;
 }
 
-function computeRegularIssueForDate(year, month, cadence = "monthly") {
-  const m = Math.max(1, Math.min(12, parseInt(month, 10) || 1));
-  if (cadence === "quarterly") {
-    const q = Math.ceil(m / 3);
-    const ranges = ["Jan–Mar", "Apr–Jun", "Jul–Sep", "Oct–Dec"];
+function computeVolumeForYear(year, settings = null, activeVolMap = null) {
+  const cfg = settings || loadNewsSettings();
+  const baseYear = parseInt(cfg.founding_year, 10) || 2026;
+  const y = parseInt(year, 10) || baseYear;
+  if (y < baseYear) {
     return {
-      issueNum: q,
-      issueKey: `REG:${year}:Q${q}`,
-      issueCode: `Iss. ${q}`,
-      issueShort: `Issue ${q} (Q${q})`,
-      issueLabel: `Issue ${q} (Q${q} ${year})`,
-      issueFullTitle: `Issue ${q} — Q${q} (${ranges[q - 1]} ${year})`,
-      sortOrder: q
+      year: y,
+      volumeNum: 0,
+      volumeLabel: `Archive (${y})`,
+      volumeShort: `Archive ${y}`,
+      isArchive: true
     };
   }
-  if (cadence === "bimonthly") {
-    const bi = Math.ceil(m / 2);
-    const ranges = ["Jan–Feb", "Mar–Apr", "May–Jun", "Jul–Aug", "Sep–Oct", "Nov–Dec"];
-    return {
-      issueNum: bi,
-      issueKey: `REG:${year}:B${bi}`,
-      issueCode: `Iss. ${bi}`,
-      issueShort: `Issue ${bi} (${ranges[bi - 1]})`,
-      issueLabel: `Issue ${bi} (${ranges[bi - 1]} ${year})`,
-      issueFullTitle: `Issue ${bi} — ${ranges[bi - 1]} ${year}`,
-      sortOrder: bi
-    };
-  }
+  const map = activeVolMap || computeActiveVolumeMap(null, null, null, cfg);
+  if (map.has(y)) return map.get(y);
+  // If previewing a brand-new year not yet in activeVolMap, compute its contiguous slot
+  const mergedYears = Array.from(new Set([...map.keys(), y])).sort((a, b) => a - b);
+  const num = mergedYears.indexOf(y) + 1;
   return {
-    issueNum: m,
-    issueKey: `REG:${year}:M${String(m).padStart(2, "0")}`,
-    issueCode: `Iss. ${m}`,
-    issueShort: `Issue ${m} (${NEWS_MONTH_SHORT[m - 1]})`,
-    issueLabel: `Issue ${m} (${NEWS_MONTH_SHORT[m - 1]} ${year})`,
-    issueFullTitle: `Issue ${m} — ${NEWS_MONTH_FULL[m - 1]} ${year}`,
-    sortOrder: m
+    year: y,
+    volumeNum: Math.max(1, num),
+    volumeLabel: `Volume ${Math.max(1, num)} (${y})`,
+    volumeShort: `Vol. ${Math.max(1, num)}`,
+    isArchive: false
   };
 }
 
@@ -31384,7 +31547,7 @@ function estimateArticleWordStats(article) {
 function isLegacyAutoDoi(doi) {
   if (!doi || !String(doi).trim()) return true;
   const s = String(doi).trim();
-  return /^10\.skku\.matsci\/news\.(20\d\d\.\d+|1\d{9,}|news_\d+)$/i.test(s);
+  return /^10\.skku\.matsci\/(news|mag|lam)\./i.test(s);
 }
 
 function getArticleChronoTieBreak(a) {
@@ -31395,26 +31558,42 @@ function getArticleChronoTieBreak(a) {
   return 0;
 }
 
-function buildNewsPublicationIndex(allArticles = null, specialIssues = null, settings = null) {
+function buildNewsPublicationIndex(allArticles = null, specialIssues = null, settings = null, regularIssues = null) {
   const articles = Array.isArray(allArticles) ? allArticles : (STATE.newsArticles || []);
   const siList = Array.isArray(specialIssues) ? specialIssues : loadNewsSpecialIssues();
+  const riList = Array.isArray(regularIssues) ? regularIssues : loadNewsRegularIssues();
   const cfg = settings || loadNewsSettings();
   const siById = new Map(siList.map(si => [String(si.id), si]));
+  const riById = new Map(riList.map(ri => [String(ri.id), ri]));
+  const activeVolMap = computeActiveVolumeMap(articles, riList, siList, cfg);
 
-  // Pass 1: Resolve Volume & Issue for every article
+  // Cache contiguous numbered regular issues per year
+  const regByYearCache = new Map();
+  const getYearRegs = (yr) => {
+    if (!regByYearCache.has(yr)) {
+      regByYearCache.set(yr, getRegularIssuesForYear(yr, riList));
+    }
+    return regByYearCache.get(yr);
+  };
+
+  // Pass 1: Resolve Contiguous Volume & Regular/Special Issue for every article
   const prelim = new Map();
   const issueBuckets = new Map();
 
   articles.forEach(a => {
     if (!a || !a.id) return;
     const isManual = a.manual_numbering === true;
-    const year = getArticleYear(a);
+    const rawYear = getArticleYear(a);
     const month = getArticleMonth(a);
     const si = a.special_issue_id ? siById.get(String(a.special_issue_id)) : null;
+    const savedRi = (!si && a.regular_issue_id) ? riById.get(String(a.regular_issue_id)) : null;
 
-    // If article is in a Special Issue, link it to that Special Issue's year Volume
-    const effectiveYear = si && si.year ? (parseInt(si.year, 10) || year) : year;
-    const volInfo = computeVolumeForYear(effectiveYear, cfg);
+    // Effective year follows assigned Special Issue or assigned Regular Issue, else Published Date year
+    const effectiveYear = si && si.year
+      ? (parseInt(si.year, 10) || rawYear)
+      : (savedRi && savedRi.year ? (parseInt(savedRi.year, 10) || rawYear) : rawYear);
+
+    const volInfo = computeVolumeForYear(effectiveYear, cfg, activeVolMap);
     const volumeLabel = (isManual && a.volume && String(a.volume).trim()) ? String(a.volume).trim() : volInfo.volumeLabel;
     const volNumMatch = volumeLabel.match(/Volume\s+(\d+)/i);
     const volumeNum = volNumMatch ? parseInt(volNumMatch[1], 10) : volInfo.volumeNum;
@@ -31426,6 +31605,7 @@ function buildNewsPublicationIndex(allArticles = null, specialIssues = null, set
       issueInfo = {
         isSpecialIssue: true,
         specialIssue: si,
+        regularIssue: null,
         issueNum: 0,
         issueKey: `SI:${si.id}`,
         issueCode: code,
@@ -31439,7 +31619,8 @@ function buildNewsPublicationIndex(allArticles = null, specialIssues = null, set
       issueInfo = {
         isSpecialIssue: false,
         specialIssue: null,
-        issueNum: month,
+        regularIssue: null,
+        issueNum: 1,
         issueKey: `CUSTOM:${effectiveYear}:${customLbl.toLowerCase()}`,
         issueCode: customLbl,
         issueShort: customLbl,
@@ -31448,11 +31629,24 @@ function buildNewsPublicationIndex(allArticles = null, specialIssues = null, set
         sortOrder: 500
       };
     } else {
-      const reg = computeRegularIssueForDate(effectiveYear, month, cfg.issue_cadence);
+      // Admin-cut sequential Regular Issues: defaults to Issue 1 (first issue in this Volume)!
+      const yearRegs = getYearRegs(effectiveYear);
+      const matchedReg = savedRi
+        ? (yearRegs.find(r => String(r.id) === String(savedRi.id)) || yearRegs[0])
+        : yearRegs[0];
+      const num = matchedReg.issueNum || 1;
+      const customTheme = (matchedReg.title || "").trim();
       issueInfo = {
         isSpecialIssue: false,
         specialIssue: null,
-        ...reg
+        regularIssue: matchedReg,
+        issueNum: num,
+        issueKey: `REG:${matchedReg.id}`,
+        issueCode: `Iss. ${num}`,
+        issueShort: customTheme ? `Issue ${num} — ${customTheme}` : `Issue ${num}`,
+        issueLabel: customTheme ? `Issue ${num} (${customTheme})` : `Issue ${num} (${effectiveYear})`,
+        issueFullTitle: customTheme ? `Issue ${num}: ${customTheme}` : `Issue ${num} (${effectiveYear})`,
+        sortOrder: num
       };
     }
 
@@ -31474,7 +31668,7 @@ function buildNewsPublicationIndex(allArticles = null, specialIssues = null, set
     });
   });
 
-  // Pass 2: Assign deterministic chronological Paper/Article Number within each (Volume, Issue) bucket
+  // Pass 2: Assign contiguous chronological Paper/Story Number (01, 02, 03...) within each (Volume, Issue) bucket
   const finalIndex = new Map();
   issueBuckets.forEach((bucketArts) => {
     const sorted = [...bucketArts].sort((a, b) => {
@@ -31496,20 +31690,18 @@ function buildNewsPublicationIndex(allArticles = null, specialIssues = null, set
       const paperNumStr = manualNum || String(autoNum);
       const paperNumPadded = /^\d+$/.test(paperNumStr) ? paperNumStr.padStart(2, "0") : paperNumStr;
 
-      const editionBadge = p.isSpecialIssue
-        ? `${p.volumeShort} · ${p.issueCode} · No. ${paperNumPadded}`
-        : `${p.volumeShort} · ${p.issueCode} · No. ${paperNumPadded}`;
+      const editionBadge = `${p.volumeShort} · ${p.issueCode} · No. ${paperNumPadded}`;
       const shortIssueBadge = `${p.issueCode} · No. ${paperNumPadded}`;
 
       const citationLine = p.isSpecialIssue
         ? `${p.volumeLabel}, Special Issue ${p.issueCode} (${p.specialIssue.title}), No. ${paperNumPadded}`
         : `${p.volumeLabel}, ${p.issueShort}, No. ${paperNumPadded}`;
 
-      const slugSi = p.isSpecialIssue
+      const slugIss = p.isSpecialIssue
         ? String(p.issueCode || "si").toLowerCase().replace(/[^a-z0-9]+/g, "")
         : `i${String(p.issueNum || 1).padStart(2, "0")}`;
       const volSlug = p.volumeNum > 0 ? `v${p.volumeNum}` : `arc`;
-      const autoDoi = `10.skku.matsci/mag.${p.year}.${volSlug}.${slugSi}.${paperNumPadded}`;
+      const autoDoi = `10.skku.matsci/lam.${p.year}.${volSlug}.${slugIss}.${paperNumPadded}`;
       const cleanDoi = (!isLegacyAutoDoi(a.doi)) ? String(a.doi).trim() : autoDoi;
       const stats = estimateArticleWordStats(a);
 
@@ -31537,9 +31729,11 @@ function getArticlePublicationMeta(article, pubIndex = null) {
   if (pubIndex && pubIndex.has(String(article.id))) {
     return pubIndex.get(String(article.id));
   }
+  const isAdmin = typeof isStrictAdminSession === "function" ? isStrictAdminSession() : false;
   const all = (STATE.newsArticles && STATE.newsArticles.length > 0) ? STATE.newsArticles : loadNewsArticles();
-  const hasThis = all.some(a => String(a.id) === String(article.id));
-  const pool = hasThis ? all : [...all, article];
+  const basePool = isAdmin ? all : all.filter(a => String(a.status || "").toLowerCase() === "published");
+  const hasThis = basePool.some(a => String(a.id) === String(article.id));
+  const pool = hasThis ? basePool : [...basePool, article];
   const idx = buildNewsPublicationIndex(pool);
   return idx.get(String(article.id)) || null;
 }
@@ -31598,6 +31792,74 @@ function groupArticlesByVolume(articles, pubIndex = null) {
     sortedGroups[v] = groups[v];
   });
   return sortedGroups;
+}
+
+// --- Cut / Create New Regular Issue for a Volume Year ---
+function cutNewRegularIssueForYear(year, title = "", subtitle = "", silentToast = false) {
+  const y = parseInt(year, 10) || loadNewsSettings().founding_year || 2026;
+  const riList = loadNewsRegularIssues();
+  const articles = loadNewsArticles();
+  const yearExisting = riList
+    .filter(ri => parseInt(ri.year, 10) === y)
+    .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+
+  let articlesChanged = false;
+  const nowTs = Date.now();
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  // If this year has no explicit saved Regular Issues yet, materialize Issue 1 first
+  // and anchor existing unassigned regular stories of this year to Issue 1!
+  if (yearExisting.length === 0) {
+    const firstIssue = {
+      id: `ri_${y}_${nowTs}_1`,
+      year: y,
+      title: "",
+      subtitle: "",
+      order: 1,
+      created_at: todayStr
+    };
+    riList.push(firstIssue);
+    yearExisting.push(firstIssue);
+
+    articles.forEach(a => {
+      if (!a.special_issue_id && !a.regular_issue_id && getArticleYear(a) === y) {
+        a.regular_issue_id = firstIssue.id;
+        articlesChanged = true;
+      }
+    });
+  }
+
+  const maxOrder = yearExisting.reduce((mx, r) => Math.max(mx, Number(r.order) || 0), 0);
+  const newIssue = {
+    id: `ri_${y}_${nowTs + 1}`,
+    year: y,
+    title: String(title || "").trim(),
+    subtitle: String(subtitle || "").trim(),
+    order: maxOrder + 1,
+    created_at: todayStr
+  };
+  riList.push(newIssue);
+  persistNewsRegularIssues(riList);
+
+  if (articlesChanged) {
+    STATE.newsArticles = articles;
+    if (!STATE.masterData) STATE.masterData = {};
+    STATE.masterData.news_articles = articles;
+    persistNewsArticles();
+  }
+
+  const numbered = getRegularIssuesForYear(y, riList);
+  const createdEntry = numbered.find(r => r.id === newIssue.id);
+  const issueNumber = createdEntry ? createdEntry.issueNum : numbered.length;
+
+  if (typeof syncDatabaseToCloudInstant === "function") {
+    syncDatabaseToCloudInstant(`Cut Regular Issue ${issueNumber} (${y})`, true);
+  }
+  if (!silentToast) {
+    const volLbl = computeVolumeForYear(y).volumeLabel;
+    showToast(`✂️ Created ${volLbl} · Issue ${issueNumber}${newIssue.title ? ` (${newIssue.title})` : ""}!`, "success");
+  }
+  return { newIssue: createdEntry || newIssue, issueNumber };
 }
 
 function selectNewsVolume(volumeName) {
@@ -31960,7 +32222,7 @@ function copySpecialIssueShareLink(siId) {
   }
 }
 
-// --- Render Scientific News Magazine Front Page, Special Issues, Volumes & Editorial Desk (V181) ---
+// --- Render Lam's Story Magazine Front Page, Special Issues, Volumes & Editorial Desk (V182) ---
 function renderNewsTab() {
   const container = document.getElementById("news-articles-container");
   const deskContainer = document.getElementById("news-editorial-desk-container");
@@ -31988,24 +32250,31 @@ function renderNewsTab() {
   if (btnDesk) btnDesk.classList.toggle("active", NEWS_STATE.viewMode === "desk");
 
   const settings = loadNewsSettings();
+  const regularIssues = loadNewsRegularIssues();
   const specialIssues = loadNewsSpecialIssues();
   const allArticles = loadNewsArticles();
-  const pubIndex = buildNewsPublicationIndex(allArticles, specialIssues, settings);
-
-  // Update Masthead Branding & Live Edition Pill
-  const titleEl = document.getElementById("news-masthead-title");
-  const tagEl = document.getElementById("news-masthead-tagline");
-  if (titleEl) titleEl.textContent = settings.magazine_name || DEFAULT_NEWS_SETTINGS.magazine_name;
-  if (tagEl) tagEl.textContent = settings.tagline || DEFAULT_NEWS_SETTINGS.tagline;
 
   const visiblePool = isAdmin
     ? allArticles
     : allArticles.filter(a => String(a.status || "").toLowerCase() === "published");
 
+  // Compute contiguous publication index over the active visible pool (zero gaps!)
+  const pubIndex = buildNewsPublicationIndex(visiblePool, specialIssues, settings, regularIssues);
+  const activeVolMap = computeActiveVolumeMap(visiblePool, regularIssues, specialIssues, settings);
+
+  // Update Masthead Branding ("Lam's Story"), Eyebrow & Live Edition Pill
+  const titleEl = document.getElementById("news-masthead-title");
+  const eyebrowEl = document.getElementById("news-masthead-eyebrow");
+  const tagEl = document.getElementById("news-masthead-tagline");
+  if (titleEl) titleEl.textContent = settings.magazine_name || DEFAULT_NEWS_SETTINGS.magazine_name;
+  if (eyebrowEl) eyebrowEl.textContent = settings.eyebrow || DEFAULT_NEWS_SETTINGS.eyebrow;
+  if (tagEl) tagEl.textContent = settings.tagline || DEFAULT_NEWS_SETTINGS.tagline;
+
   const sortedByDateAll = [...visiblePool].sort((a, b) => {
     const da = new Date(a.published_date || a.received_date || 0).getTime();
     const db = new Date(b.published_date || b.received_date || 0).getTime();
-    return db - da;
+    if (db !== da) return db - da;
+    return getArticleChronoTieBreak(b) - getArticleChronoTieBreak(a);
   });
   const latestMeta = sortedByDateAll[0] ? pubIndex.get(String(sortedByDateAll[0].id)) : null;
   const editionPillEl = document.getElementById("news-masthead-edition-pill");
@@ -32013,10 +32282,28 @@ function renderNewsTab() {
     if (latestMeta) {
       editionPillEl.textContent = `${latestMeta.volumeShort} · ${latestMeta.issueLabel}`;
     } else {
-      const now = new Date();
-      const vNow = computeVolumeForYear(Math.max(settings.founding_year, now.getFullYear()), settings);
-      const iNow = computeRegularIssueForDate(vNow.year, now.getMonth() + 1, settings.issue_cadence);
-      editionPillEl.textContent = `${vNow.volumeShort} · ${iNow.issueLabel}`;
+      const vNow = computeVolumeForYear(settings.founding_year || 2026, settings, activeVolMap);
+      editionPillEl.textContent = `${vNow.volumeShort} · Issue 1 (${vNow.year})`;
+    }
+  }
+
+  // Update Live Latest Stories Ticker Bar right under Masthead
+  const tickerEl = document.getElementById("news-latest-ticker");
+  if (tickerEl) {
+    const topTicker = sortedByDateAll.slice(0, 3);
+    if (topTicker.length > 0) {
+      tickerEl.style.display = "flex";
+      tickerEl.innerHTML = `
+        <span class="mag-ticker-label"><span class="mag-ticker-dot"></span> LATEST</span>
+        <div class="mag-ticker-items">
+          ${topTicker.map((art, i) => {
+            const tm = pubIndex.get(String(art.id));
+            return `${i > 0 ? `<span class="mag-ticker-sep">&bull;</span>` : ""}<span class="mag-ticker-link" onclick="openNewsJournalModal('${escapeHtml(art.id)}')" title="${escapeHtml(art.title)}">${tm ? `<strong>[${escapeHtml(tm.shortIssueBadge)}]</strong> ` : ""}${escapeHtml(art.title)}</span>`;
+          }).join("")}
+        </div>
+      `;
+    } else {
+      tickerEl.style.display = "none";
     }
   }
 
@@ -32099,7 +32386,7 @@ function renderNewsTab() {
       activeFilterBar.style.display = "flex";
       activeFilterBar.innerHTML = `
         <div>
-          <strong>★ Special Issue Filter Active:</strong> ${escapeHtml(activeSiObj.code)} — ${escapeHtml(activeSiObj.title)} (${escapeHtml(computeVolumeForYear(activeSiObj.year, settings).volumeLabel)})
+          <strong>★ Special Issue Filter Active:</strong> ${escapeHtml(activeSiObj.code)} — ${escapeHtml(activeSiObj.title)} (${escapeHtml(computeVolumeForYear(activeSiObj.year, settings, activeVolMap).volumeLabel)})
         </div>
         <div style="display:flex; gap:8px; align-items:center;">
           <button type="button" class="btn btn-outline btn-xs" onclick="copySpecialIssueShareLink('${escapeHtml(activeSiObj.id)}')">🔗 Share Issue</button>
@@ -32118,7 +32405,7 @@ function renderNewsTab() {
     if (emptyState) emptyState.style.display = "none";
     if (deskContainer) {
       deskContainer.style.display = "block";
-      renderNewsEditorialDesk(filtered, allArticles, pubIndex, specialIssues, settings);
+      renderNewsEditorialDesk(filtered, allArticles, pubIndex, specialIssues, regularIssues, settings);
     }
     return;
   }
@@ -32133,7 +32420,7 @@ function renderNewsTab() {
   }
   if (emptyState) emptyState.style.display = "none";
 
-  // 1. FRONT PAGE HERO: Lead Cover Story + Side Latest Dispatches
+  // 1. FRONT PAGE HERO: Lead Cover Story + Numbered Latest Stories Rail
   const featuredLead = filtered.find(a => a.is_featured) || filtered[0];
   const sideBriefs = filtered.filter(a => String(a.id) !== String(featuredLead.id)).slice(0, 4);
   const leadMeta = pubIndex.get(String(featuredLead.id));
@@ -32144,7 +32431,7 @@ function renderNewsTab() {
     ? `<img src="${escapeHtml(featuredLead.cover_image)}" alt="${escapeHtml(featuredLead.title)}" class="mag-lead-img" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1000&q=80';">`
     : `<div class="news-card-cover-placeholder" style="height:100%;">🔬</div>`;
 
-  const sideBriefsHtml = sideBriefs.length > 0 ? sideBriefs.map(art => {
+  const sideBriefsHtml = sideBriefs.length > 0 ? sideBriefs.map((art, bIdx) => {
     const m = pubIndex.get(String(art.id));
     const bCls = getCategoryBadgeClass(art.category);
     const isDr = String(art.status || "").toLowerCase() === "draft";
@@ -32153,6 +32440,7 @@ function renderNewsTab() {
       : `<div class="mag-brief-thumb-placeholder">📰</div>`;
     return `
       <div class="mag-brief-item" onclick="openNewsJournalModal('${escapeHtml(art.id)}')">
+        <span class="mag-brief-rank">${String(bIdx + 1).padStart(2, "0")}</span>
         ${thumb}
         <div class="mag-brief-body">
           <div class="mag-brief-meta">
@@ -32171,7 +32459,7 @@ function renderNewsTab() {
     `;
   }).join("") : `
     <div style="padding:28px 12px; text-align:center; color:#8c786a; font-size:13px;">
-      More dispatches will appear here as new stories are published.
+      More stories will appear here as new articles are published.
     </div>
   `;
 
@@ -32180,7 +32468,7 @@ function renderNewsTab() {
   if (specialIssues.length > 0) {
     const cardsHtml = specialIssues.map(si => {
       const siCount = visiblePool.filter(a => String(a.special_issue_id || "") === String(si.id)).length;
-      const volInfo = computeVolumeForYear(si.year || 2026, settings);
+      const volInfo = computeVolumeForYear(si.year || 2026, settings, activeVolMap);
       const statusCls = String(si.status || "Open").toLowerCase() === "featured" ? "status-featured" : (String(si.status || "Open").toLowerCase() === "open" ? "status-open" : "");
       return `
         <div class="mag-si-card" style="--si-accent:${escapeHtml(si.accent_color || "#8b3a1a")};">
@@ -32197,7 +32485,7 @@ function renderNewsTab() {
             <span>${si.guest_editor ? `👤 ${escapeHtml(si.guest_editor)} · ` : ""}<strong>${siCount}</strong> ${siCount === 1 ? "story" : "stories"}</span>
             <div style="display:flex; gap:6px; align-items:center;">
               <button type="button" class="news-read-more-btn" style="font-size:12px;" onclick="selectNewsSpecialIssue('${escapeHtml(si.id)}')">Browse →</button>
-              ${isAdmin ? `<button type="button" class="news-action-icon-btn" style="padding:2px 6px; font-size:11px;" onclick="openSpecialIssuesModal(false, '${escapeHtml(si.id)}')" title="Edit Special Issue">✏️</button>` : ""}
+              ${isAdmin ? `<button type="button" class="news-action-icon-btn" style="padding:2px 6px; font-size:11px;" onclick="openSpecialIssuesModal(false, '${escapeHtml(si.id)}', 'issues')" title="Edit Special Issue">✏️</button>` : ""}
             </div>
           </div>
         </div>
@@ -32212,9 +32500,9 @@ function renderNewsTab() {
               <h3 class="news-section-heading">✨ Special Issues &amp; Focus Collections</h3>
               <span class="news-section-badge-volumes">${specialIssues.length} ${specialIssues.length === 1 ? "Collection" : "Collections"}</span>
             </div>
-            <p class="news-section-sub">Curated thematic magazine editions guest-edited by our research group.</p>
+            <p class="news-section-sub">Curated thematic editions independent from regular sequential issues.</p>
           </div>
-          ${isAdmin ? `<button type="button" class="btn btn-outline btn-sm" onclick="openSpecialIssuesModal()">+ Manage Special Issues</button>` : ""}
+          ${isAdmin ? `<button type="button" class="btn btn-outline btn-sm" onclick="openSpecialIssuesModal(false, null, 'issues')">+ Manage Special Issues</button>` : ""}
         </div>
         <div class="mag-si-shelf-grid">${cardsHtml}</div>
       </section>
@@ -32223,24 +32511,26 @@ function renderNewsTab() {
     specialIssuesHtml = `
       <div class="mag-si-admin-callout">
         <div>
-          <div style="font-weight:800; font-size:13.5px; color:#2b1f17;">✨ Want to launch a Special Issue (e.g., SI-01: 2D Quantum Materials or EUV Lithography Focus)?</div>
-          <div style="font-size:12px; color:#786354; margin-top:2px;">Admin can create unlimited custom Special Issues anytime and assign any story to them — regular monthly issues remain auto-generated.</div>
+          <div style="font-weight:800; font-size:13.5px; color:#2b1f17;">📑 Cut Regular Issues anytime or launch a Special Issue</div>
+          <div style="font-size:12px; color:#786354; margin-top:2px;">Initial stories automatically belong to Issue 1. Cut Issue 2, 3… whenever you want, or create Special Issues (SI-01…) — deleted regular issues auto-shift contiguously.</div>
         </div>
-        <button type="button" class="btn btn-outline btn-sm" onclick="openSpecialIssuesModal()">+ Create Special Issue</button>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="button" class="btn btn-outline btn-sm" onclick="openSpecialIssuesModal(false, null, 'regular')">📑 Manage Regular Issues</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="openSpecialIssuesModal(false, null, 'issues')">✨ + Special Issue</button>
+        </div>
       </div>
     `;
   }
 
-  // 3. MAGAZINE VOLUMES, ISSUES & SPECIAL ISSUES ARCHIVE
+  // 3. MAGAZINE VOLUMES, REGULAR ISSUES & SPECIAL ISSUES ARCHIVE
   const volumeGroups = groupArticlesByVolume(filtered, pubIndex);
-  // Also ensure any Special Issue's year Volume appears if Admin explicitly selected it
   const volumeNames = Object.keys(volumeGroups);
 
   if (!NEWS_STATE.activeVolume || !volumeGroups[NEWS_STATE.activeVolume]) {
     NEWS_STATE.activeVolume = volumeNames[0] || null;
     NEWS_STATE.activeIssueKey = "all";
   }
-  const activeVol = NEWS_STATE.activeVolume || volumeNames[0] || computeVolumeForYear(settings.founding_year, settings).volumeLabel;
+  const activeVol = NEWS_STATE.activeVolume || volumeNames[0] || computeVolumeForYear(settings.founding_year, settings, activeVolMap).volumeLabel;
   const activeVolArticles = volumeGroups[activeVol] || [];
 
   // Build Issue sub-buckets inside Active Volume
@@ -32255,6 +32545,7 @@ function renderNewsTab() {
         fullTitle: m.issueFullTitle,
         isSpecialIssue: m.isSpecialIssue,
         specialIssue: m.specialIssue,
+        regularIssue: m.regularIssue,
         sortOrder: m.sortOrder,
         articles: []
       });
@@ -32262,10 +32553,27 @@ function renderNewsTab() {
     issueMap.get(m.issueKey).articles.push(a);
   });
 
-  // Also show empty Special Issues belonging to this Volume when Admin is viewing
+  // Also show empty Admin-created Regular Issues and Special Issues belonging to this Volume when Admin is viewing
   const activeVolYearMatch = activeVol.match(/\((\d{4})\)/);
   const activeVolYear = activeVolYearMatch ? parseInt(activeVolYearMatch[1], 10) : null;
   if (isAdmin && activeVolYear) {
+    getRegularIssuesForYear(activeVolYear, regularIssues).forEach(ri => {
+      if (ri._virtual) return;
+      const k = `REG:${ri.id}`;
+      if (!issueMap.has(k)) {
+        const customTheme = (ri.title || "").trim();
+        issueMap.set(k, {
+          key: k,
+          label: customTheme ? `Issue ${ri.issueNum} — ${customTheme}` : `Issue ${ri.issueNum}`,
+          fullTitle: customTheme ? `Issue ${ri.issueNum}: ${customTheme}` : `Issue ${ri.issueNum} (${activeVolYear})`,
+          isSpecialIssue: false,
+          specialIssue: null,
+          regularIssue: ri,
+          sortOrder: ri.issueNum,
+          articles: []
+        });
+      }
+    });
     specialIssues.filter(si => parseInt(si.year, 10) === activeVolYear).forEach(si => {
       const k = `SI:${si.id}`;
       if (!issueMap.has(k)) {
@@ -32275,6 +32583,7 @@ function renderNewsTab() {
           fullTitle: `Special Issue ${si.code}: ${si.title}`,
           isSpecialIssue: true,
           specialIssue: si,
+          regularIssue: null,
           sortOrder: 1000,
           articles: []
         });
@@ -32283,8 +32592,8 @@ function renderNewsTab() {
   }
 
   const issueBucketsList = Array.from(issueMap.values()).sort((a, b) => {
-    if (a.isSpecialIssue !== b.isSpecialIssue) return a.isSpecialIssue ? -1 : 1;
-    return b.sortOrder - a.sortOrder;
+    if (a.isSpecialIssue !== b.isSpecialIssue) return a.isSpecialIssue ? 1 : -1;
+    return a.sortOrder - b.sortOrder;
   });
 
   if (NEWS_STATE.activeIssueKey !== "all" && !issueMap.has(NEWS_STATE.activeIssueKey)) {
@@ -32322,6 +32631,7 @@ function renderNewsTab() {
       <div>
         <div style="font-weight:800; font-size:14px; color:#2b1f17;">${escapeHtml(activeVol)} — ${escapeHtml(activeIssueObj.fullTitle)}</div>
         ${activeIssueObj.specialIssue?.subtitle ? `<div style="font-size:12px; color:#6b5849; margin-top:2px;">${escapeHtml(activeIssueObj.specialIssue.subtitle)}${activeIssueObj.specialIssue.guest_editor ? ` · Guest Editor: <strong>${escapeHtml(activeIssueObj.specialIssue.guest_editor)}</strong>` : ""}</div>` : ""}
+        ${activeIssueObj.regularIssue?.subtitle ? `<div style="font-size:12px; color:#6b5849; margin-top:2px;">${escapeHtml(activeIssueObj.regularIssue.subtitle)}</div>` : ""}
       </div>
       ${activeIssueObj.isSpecialIssue && activeIssueObj.specialIssue ? `
         <button type="button" class="btn btn-outline btn-xs" onclick="copySpecialIssueShareLink('${escapeHtml(activeIssueObj.specialIssue.id)}')">🔗 Share Special Issue</button>
@@ -32333,7 +32643,7 @@ function renderNewsTab() {
 
   container.innerHTML = `
     <!-- Section 1: Magazine Front Page Hero -->
-    <section class="mag-hero-section" aria-label="Featured Cover Story and Latest Dispatches">
+    <section class="mag-hero-section" aria-label="Featured Cover Story and Latest Stories">
       <div class="mag-hero-grid">
         <!-- Lead Cover Story -->
         <article class="mag-lead-card" id="article-card-${escapeHtml(featuredLead.id)}">
@@ -32341,7 +32651,7 @@ function renderNewsTab() {
             ${leadCoverHtml}
             <div class="mag-lead-media-overlay"></div>
             <div class="mag-lead-badges-top">
-              <span class="mag-cover-kicker">${featuredLead.is_featured ? "★ COVER STORY" : "🔥 LEAD DISPATCH"}</span>
+              <span class="mag-cover-kicker">${featuredLead.is_featured ? "★ COVER STORY" : "🔥 FEATURED STORY"}</span>
               ${leadMeta ? `<span class="mag-edition-badge ${leadMeta.isSpecialIssue ? "is-special" : ""}">${escapeHtml(leadMeta.editionBadge)}</span>` : ""}
             </div>
           </div>
@@ -32363,7 +32673,7 @@ function renderNewsTab() {
               ${renderScientificRichText(featuredLead.abstract || "")}
             </div>
             <div class="news-card-authors" style="margin-bottom:12px;">
-              <strong>By:</strong> ${renderScientificRichText(featuredLead.authors || "SKKU Editorial Desk")}
+              <strong>By:</strong> ${renderScientificRichText(featuredLead.authors || "Vu Tien Lam")}
             </div>
             <div class="mag-lead-footer">
               <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
@@ -32385,10 +32695,10 @@ function renderNewsTab() {
           </div>
         </article>
 
-        <!-- Right Side: Latest Dispatches Column -->
-        <aside class="mag-dispatches-panel" aria-label="Latest Dispatches">
+        <!-- Right Side: Numbered Latest Stories Rail -->
+        <aside class="mag-dispatches-panel" aria-label="Latest Stories">
           <div class="mag-dispatches-header">
-            <h3 class="mag-dispatches-heading">⚡ Latest Dispatches</h3>
+            <h3 class="mag-dispatches-heading">⚡ Latest Stories</h3>
             <span style="font-size:11px; font-weight:700; color:#8b3a1a;">${filtered.length} Total</span>
           </div>
           <div class="mag-dispatches-list">
@@ -32406,9 +32716,9 @@ function renderNewsTab() {
       <div class="news-section-header">
         <div class="news-section-title-wrap">
           <h3 class="news-section-heading">📚 Volumes, Issues &amp; Story Archive</h3>
-          <span class="news-section-badge-volumes">${volumeNames.length} ${volumeNames.length === 1 ? "Volume" : "Volumes"} · Auto-Numbered from ${escapeHtml(String(settings.founding_year))}</span>
+          <span class="news-section-badge-volumes">${volumeNames.length} ${volumeNames.length === 1 ? "Volume" : "Volumes"} · Contiguous Auto-Numbering</span>
         </div>
-        <p class="news-section-sub">Volumes are automatically numbered by publication year (Volume 1 = ${escapeHtml(String(settings.founding_year))}), with auto-sequenced regular issues, paper numbers, and Admin Special Issues.</p>
+        <p class="news-section-sub">Volumes, Regular Issues (Issue 1, 2, 3…), and Story Numbers automatically stay contiguous without gaps, alongside independent Special Issues.</p>
       </div>
 
       <!-- Horizontal Volume Tabs Bar -->
@@ -32424,7 +32734,10 @@ function renderNewsTab() {
             <span class="news-vol-box-countbadge">${activeVolArticles.length} ${activeVolArticles.length === 1 ? "Story" : "Stories"} · ${issueBucketsList.length} ${issueBucketsList.length === 1 ? "Issue" : "Issues"}</span>
           </div>
           ${isAdmin ? `
-            <button type="button" class="btn btn-outline btn-xs" onclick="openSpecialIssuesModal()">✨ + Special Issue</button>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              ${activeVolYear ? `<button type="button" class="btn btn-outline btn-xs" onclick="cutNewRegularIssueAndRefresh(${activeVolYear})">✂️ + Cut New Issue</button>` : ""}
+              <button type="button" class="btn btn-outline btn-xs" onclick="openSpecialIssuesModal(false, null, 'issues')">✨ + Special Issue</button>
+            </div>
           ` : ""}
         </div>
 
@@ -32519,8 +32832,8 @@ function renderVolumeArticlesHtml(articles, isAdmin, pubIndex = null) {
   }).join("");
 }
 
-// --- Admin Editorial Desk Dashboard (V181) ---
-function renderNewsEditorialDesk(filtered, allArticles, pubIndex, specialIssues, settings) {
+// --- Admin Editorial Desk Dashboard (V182) ---
+function renderNewsEditorialDesk(filtered, allArticles, pubIndex, specialIssues, regularIssues, settings) {
   const desk = document.getElementById("news-editorial-desk-container");
   if (!desk) return;
 
@@ -32529,13 +32842,34 @@ function renderNewsEditorialDesk(filtered, allArticles, pubIndex, specialIssues,
   const draftCount = allArticles.filter(a => String(a.status || "").toLowerCase() === "draft").length;
   const featCount = allArticles.filter(a => Boolean(a.is_featured)).length;
   const volCount = Object.keys(groupArticlesByVolume(allArticles, pubIndex)).length;
+  const riList = Array.isArray(regularIssues) ? regularIssues : loadNewsRegularIssues();
+  const activeVolMap = computeActiveVolumeMap(allArticles, riList, specialIssues, settings);
 
   const rowsHtml = filtered.length > 0 ? filtered.map(a => {
     const m = pubIndex.get(String(a.id));
     const isPub = String(a.status || "").toLowerCase() === "published";
-    const siOptions = `
-      <option value="" ${!a.special_issue_id ? "selected" : ""}>Auto Monthly (${m && !m.isSpecialIssue ? escapeHtml(m.issueShort) : "Auto"})</option>
-      ${specialIssues.map(si => `<option value="${escapeHtml(si.id)}" ${String(a.special_issue_id || "") === String(si.id) ? "selected" : ""}>★ ${escapeHtml(si.code)}: ${escapeHtml(si.title.slice(0, 28))}</option>`).join("")}
+    const yr = m ? m.year : getArticleYear(a);
+    const yearRegs = getRegularIssuesForYear(yr, riList);
+    const curVal = m && m.isSpecialIssue
+      ? `SI:${m.specialIssue.id}`
+      : (m && m.regularIssue ? `REG:${m.regularIssue.id}` : `REG:${yearRegs[0].id}`);
+
+    const issueOptions = `
+      <optgroup label="📑 Regular Issues (${yr})">
+        ${yearRegs.map(r => {
+          const val = `REG:${r.id}`;
+          const lbl = r.title ? `Issue ${r.issueNum} — ${r.title.slice(0, 22)}` : `Issue ${r.issueNum}`;
+          return `<option value="${escapeHtml(val)}" ${curVal === val ? "selected" : ""}>${escapeHtml(lbl)}</option>`;
+        }).join("")}
+      </optgroup>
+      ${specialIssues.length > 0 ? `
+        <optgroup label="✨ Special Issues">
+          ${specialIssues.map(si => {
+            const val = `SI:${si.id}`;
+            return `<option value="${escapeHtml(val)}" ${curVal === val ? "selected" : ""}>★ ${escapeHtml(si.code)}: ${escapeHtml(si.title.slice(0, 26))}</option>`;
+          }).join("")}
+        </optgroup>
+      ` : ""}
     `;
     return `
       <tr>
@@ -32552,8 +32886,8 @@ function renderNewsEditorialDesk(filtered, allArticles, pubIndex, specialIssues,
           </div>
         </td>
         <td>
-          <select class="mag-desk-issue-select" onchange="quickAssignArticleSpecialIssue('${escapeHtml(a.id)}', this.value)" title="Assign to Auto Monthly Issue or a Special Issue">
-            ${siOptions}
+          <select class="mag-desk-issue-select" onchange="quickAssignArticleIssue('${escapeHtml(a.id)}', this.value)" title="Move story between Regular Issues or Special Issues">
+            ${issueOptions}
           </select>
         </td>
         <td style="white-space:nowrap;">
@@ -32579,21 +32913,25 @@ function renderNewsEditorialDesk(filtered, allArticles, pubIndex, specialIssues,
     `;
   }).join("") : `<tr><td colspan="7" style="text-align:center; padding:30px; color:#8c786a;">No stories match the current filter.</td></tr>`;
 
+  const latestActiveYear = activeVolMap.size > 0 ? Math.max(...activeVolMap.keys()) : (settings.founding_year || 2026);
+  const totalRegCount = Array.from(activeVolMap.keys()).reduce((acc, y) => acc + getRegularIssuesForYear(y, riList).length, 0) || 1;
+
   desk.innerHTML = `
     <div class="mag-desk-kpis">
       <div class="mag-desk-kpi-card"><div class="mag-desk-kpi-val">${total}</div><div class="mag-desk-kpi-lbl">Total Stories</div></div>
       <div class="mag-desk-kpi-card"><div class="mag-desk-kpi-val" style="color:#166534;">${pubCount}</div><div class="mag-desk-kpi-lbl">Published Live</div></div>
       <div class="mag-desk-kpi-card"><div class="mag-desk-kpi-val" style="color:#991b1b;">${draftCount}</div><div class="mag-desk-kpi-lbl">In Draft</div></div>
       <div class="mag-desk-kpi-card"><div class="mag-desk-kpi-val" style="color:#b45309;">${featCount}</div><div class="mag-desk-kpi-lbl">Pinned Cover ★</div></div>
-      <div class="mag-desk-kpi-card"><div class="mag-desk-kpi-val">${volCount}</div><div class="mag-desk-kpi-lbl">Volumes (Base ${escapeHtml(String(settings.founding_year))})</div></div>
+      <div class="mag-desk-kpi-card"><div class="mag-desk-kpi-val">${volCount}</div><div class="mag-desk-kpi-lbl">Volumes (${totalRegCount} Reg. Issues)</div></div>
       <div class="mag-desk-kpi-card"><div class="mag-desk-kpi-val" style="color:#8b3a1a;">${specialIssues.length}</div><div class="mag-desk-kpi-lbl">Special Issues</div></div>
     </div>
 
     <div class="mag-desk-toolbar">
       <div style="font-weight:800; font-size:14px; color:#2b1f17;">🗂️ Editorial Management Desk <span style="font-weight:500; font-size:12px; color:#786354;">(${filtered.length} shown)</span></div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <button type="button" class="btn btn-outline btn-xs" onclick="openSpecialIssuesModal(false, null, 'settings')">⚙️ Numbering Rules (Vol. 1 = ${escapeHtml(String(settings.founding_year))})</button>
-        <button type="button" class="btn btn-outline btn-xs" onclick="openSpecialIssuesModal()">✨ Special Issues (${specialIssues.length})</button>
+        <button type="button" class="btn btn-outline btn-xs" onclick="cutNewRegularIssueAndRefresh(${latestActiveYear})">✂️ + Cut New Issue (${latestActiveYear})</button>
+        <button type="button" class="btn btn-outline btn-xs" onclick="openSpecialIssuesModal(false, null, 'regular')">📑 Manage Issues</button>
+        <button type="button" class="btn btn-outline btn-xs" onclick="openSpecialIssuesModal(false, null, 'issues')">✨ Special Issues (${specialIssues.length})</button>
         <button type="button" class="btn btn-primary btn-xs" onclick="openNewsEditorModal()">✍️ + New Story</button>
       </div>
     </div>
@@ -32641,7 +32979,6 @@ function toggleNewsArticleFeatured(articleId) {
   const item = articles.find(a => String(a.id) === String(articleId));
   if (!item) return;
   const nextVal = !item.is_featured;
-  // Unpin other featured articles so there is a single clear Cover Lead
   if (nextVal) {
     articles.forEach(a => { a.is_featured = false; });
   }
@@ -32657,12 +32994,23 @@ function toggleNewsArticleFeatured(articleId) {
   renderNewsTab();
 }
 
-function quickAssignArticleSpecialIssue(articleId, siId) {
+function quickAssignArticleIssue(articleId, issueValue) {
   if (!(typeof isStrictAdminSession === "function" && isStrictAdminSession())) return;
   const articles = loadNewsArticles();
   const item = articles.find(a => String(a.id) === String(articleId));
   if (!item) return;
-  item.special_issue_id = siId ? String(siId) : "";
+  const val = String(issueValue || "");
+  if (val.startsWith("SI:")) {
+    item.special_issue_id = val.slice(3);
+    item.regular_issue_id = "";
+  } else if (val.startsWith("REG:")) {
+    const rid = val.slice(4);
+    item.special_issue_id = "";
+    item.regular_issue_id = rid.startsWith("ri_default_") ? "" : rid;
+  } else {
+    item.special_issue_id = "";
+    item.regular_issue_id = "";
+  }
   STATE.newsArticles = articles;
   if (!STATE.masterData) STATE.masterData = {};
   STATE.masterData.news_articles = articles;
@@ -32670,7 +33018,20 @@ function quickAssignArticleSpecialIssue(articleId, siId) {
   if (typeof syncDatabaseToCloudInstant === "function") {
     syncDatabaseToCloudInstant("Assign Story Issue", true);
   }
-  showToast(siId ? "✨ Assigned to Special Issue!" : "📅 Reverted to Auto Monthly Issue.", "success");
+  showToast(val.startsWith("SI:") ? "✨ Moved to Special Issue!" : "📑 Moved to Regular Issue — numbers auto-updated!", "success");
+  renderNewsTab();
+}
+function quickAssignArticleSpecialIssue(articleId, siId) {
+  quickAssignArticleIssue(articleId, siId ? `SI:${siId}` : "");
+}
+
+function cutNewRegularIssueAndRefresh(year) {
+  if (!(typeof isStrictAdminSession === "function" && isStrictAdminSession())) return;
+  const res = cutNewRegularIssueForYear(year, "", "");
+  if (res && res.newIssue) {
+    NEWS_STATE.activeIssueKey = `REG:${res.newIssue.id}`;
+  }
+  renderRegularIssuesManagerList();
   renderNewsTab();
 }
 
@@ -32698,19 +33059,22 @@ function duplicateNewsArticle(articleId) {
   openNewsEditorModal(clone.id);
 }
 
-// --- Special Issues & Magazine Settings Modal Controller (V181) ---
+// --- 3-Tab Volumes, Regular Issues, Special Issues & Magazine Settings Modal Controller (V182) ---
 function openSpecialIssuesModal(returnToEditor = false, editSiId = null, defaultTab = "issues") {
   if (!(typeof isStrictAdminSession === "function" && isStrictAdminSession())) {
-    showToast("Admin session required to manage Special Issues.", "warn");
+    showToast("Admin session required to manage issues and settings.", "warn");
     return;
   }
   NEWS_STATE.returnToEditorAfterSi = Boolean(returnToEditor);
   const modal = document.getElementById("news-special-issues-modal");
   if (!modal) return;
 
-  switchSpecialIssuesModalTab(defaultTab === "settings" ? "settings" : "issues");
+  const tabName = (defaultTab === "settings" || defaultTab === "regular" || defaultTab === "issues") ? defaultTab : "issues";
+  switchSpecialIssuesModalTab(tabName);
+  renderRegularIssuesManagerList();
   renderSpecialIssuesManagerList();
   loadNewsSettingsIntoModal();
+  resetRegularIssueForm();
 
   if (editSiId) {
     editSpecialIssueInModal(editSiId);
@@ -32731,18 +33095,196 @@ function closeSpecialIssuesModal() {
 }
 
 function switchSpecialIssuesModalTab(tab) {
-  const isSettings = tab === "settings";
-  const paneIssues = document.getElementById("si-pane-issues");
-  const paneSet = document.getElementById("si-pane-settings");
-  const btnIssues = document.getElementById("si-tab-btn-issues");
-  const btnSet = document.getElementById("si-tab-btn-settings");
-  if (paneIssues) paneIssues.style.display = isSettings ? "none" : "block";
-  if (paneSet) paneSet.style.display = isSettings ? "block" : "none";
-  if (btnIssues) btnIssues.classList.toggle("active", !isSettings);
-  if (btnSet) btnSet.classList.toggle("active", isSettings);
-  if (isSettings) {
-    loadNewsSettingsIntoModal();
+  const activeTab = (tab === "settings" || tab === "regular") ? tab : "issues";
+  const panes = {
+    regular: document.getElementById("si-pane-regular"),
+    issues: document.getElementById("si-pane-issues"),
+    settings: document.getElementById("si-pane-settings")
+  };
+  const btns = {
+    regular: document.getElementById("si-tab-btn-regular"),
+    issues: document.getElementById("si-tab-btn-issues"),
+    settings: document.getElementById("si-tab-btn-settings")
+  };
+  Object.keys(panes).forEach(k => {
+    if (panes[k]) panes[k].style.display = k === activeTab ? "block" : "none";
+    if (btns[k]) btns[k].classList.toggle("active", k === activeTab);
+  });
+  if (activeTab === "regular") renderRegularIssuesManagerList();
+  if (activeTab === "issues") renderSpecialIssuesManagerList();
+  if (activeTab === "settings") loadNewsSettingsIntoModal();
+}
+
+// --- Regular Issues Manager Tab CRUD (Contiguous Shift on Delete!) ---
+function resetRegularIssueForm() {
+  const settings = loadNewsSettings();
+  const heading = document.getElementById("ri-form-heading");
+  if (heading) heading.textContent = "✂️ Cut / Add Regular Issue";
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  setVal("ri-edit-id", "");
+  setVal("ri-edit-year", String(Math.max(settings.founding_year || 2026, new Date().getFullYear())));
+  setVal("ri-edit-title", "");
+  setVal("ri-edit-subtitle", "");
+}
+
+function editRegularIssueInModal(riId) {
+  const ri = loadNewsRegularIssues().find(r => String(r.id) === String(riId));
+  if (!ri) return;
+  const heading = document.getElementById("ri-form-heading");
+  if (heading) heading.textContent = `✏️ Edit Regular Issue (${ri.year})`;
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  setVal("ri-edit-id", ri.id);
+  setVal("ri-edit-year", String(ri.year || 2026));
+  setVal("ri-edit-title", ri.title || "");
+  setVal("ri-edit-subtitle", ri.subtitle || "");
+}
+
+function renderRegularIssuesManagerList() {
+  const listEl = document.getElementById("ri-manager-list");
+  const countEl = document.getElementById("ri-modal-count");
+  const settings = loadNewsSettings();
+  const riList = loadNewsRegularIssues();
+  const siList = loadNewsSpecialIssues();
+  const articles = loadNewsArticles();
+  const pubIndex = buildNewsPublicationIndex(articles, siList, settings, riList);
+  const activeVolMap = computeActiveVolumeMap(articles, riList, siList, settings);
+
+  const years = Array.from(activeVolMap.keys()).sort((a, b) => b - a);
+  if (years.length === 0) years.push(settings.founding_year || 2026);
+
+  let totalRegular = 0;
+  const html = years.map(yr => {
+    const volInfo = computeVolumeForYear(yr, settings, activeVolMap);
+    const yearRegs = getRegularIssuesForYear(yr, riList);
+    totalRegular += yearRegs.length;
+    const rows = yearRegs.map(ri => {
+      const k = `REG:${ri.id}`;
+      let storyCount = 0;
+      pubIndex.forEach(m => { if (m.issueKey === k) storyCount++; });
+      const canDelete = !ri._virtual;
+      return `
+        <div class="mag-reg-issue-row">
+          <div>
+            <div style="display:flex; align-items:center; gap:7px; flex-wrap:wrap;">
+              <span class="mag-reg-num-badge">Issue ${ri.issueNum}</span>
+              ${ri.title ? `<strong style="font-size:13px; color:#1e1b18;">${escapeHtml(ri.title)}</strong>` : `<span style="font-size:12.5px; color:#6b5849;">Regular Issue</span>`}
+              <span style="font-size:11px; font-weight:700; color:#8b3a1a;">${storyCount} ${storyCount === 1 ? "story" : "stories"}</span>
+              ${ri._virtual ? `<span style="font-size:10.5px; color:#64748b;">(Default First Issue)</span>` : ""}
+            </div>
+            ${ri.subtitle ? `<div style="font-size:11.5px; color:#6b5849; margin-top:2px;">${escapeHtml(ri.subtitle)}</div>` : ""}
+          </div>
+          <div style="display:flex; gap:4px; flex-shrink:0;">
+            ${canDelete ? `<button type="button" class="news-action-icon-btn" onclick="editRegularIssueInModal('${escapeHtml(ri.id)}')" title="Edit theme/note">✏️</button>` : ""}
+            ${canDelete ? `<button type="button" class="news-action-icon-btn btn-delete-article" onclick="deleteRegularIssueById('${escapeHtml(ri.id)}')" title="Delete Issue (later issues shift back automatically)">🗑️</button>` : ""}
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <div class="mag-reg-vol-group">
+        <div class="mag-reg-vol-header">
+          <div>
+            <strong style="font-size:13.5px; color:#2b1f17;">📖 ${escapeHtml(volInfo.volumeLabel)}</strong>
+            <span style="font-size:11px; color:#786354; margin-left:6px;">${yearRegs.length} ${yearRegs.length === 1 ? "Regular Issue" : "Regular Issues"}</span>
+          </div>
+          <button type="button" class="btn btn-outline btn-xs" onclick="cutNewRegularIssueAndRefresh(${yr})">✂️ + Cut Issue ${yearRegs.length + 1}</button>
+        </div>
+        <div>${rows}</div>
+      </div>
+    `;
+  }).join("");
+
+  if (countEl) countEl.textContent = String(totalRegular);
+  if (listEl) listEl.innerHTML = html;
+}
+
+function saveRegularIssueFromModal() {
+  if (!(typeof isStrictAdminSession === "function" && isStrictAdminSession())) return;
+  const idVal = (document.getElementById("ri-edit-id")?.value || "").trim();
+  const year = parseInt(document.getElementById("ri-edit-year")?.value, 10) || 2026;
+  const title = (document.getElementById("ri-edit-title")?.value || "").trim();
+  const subtitle = (document.getElementById("ri-edit-subtitle")?.value || "").trim();
+
+  if (idVal) {
+    const riList = loadNewsRegularIssues();
+    const target = riList.find(r => String(r.id) === String(idVal));
+    if (target) {
+      target.year = year;
+      target.title = title;
+      target.subtitle = subtitle;
+      persistNewsRegularIssues(riList);
+      if (typeof syncDatabaseToCloudInstant === "function") {
+        syncDatabaseToCloudInstant(`Update Regular Issue (${year})`, true);
+      }
+      showToast("📑 Regular Issue updated!", "success");
+    }
+  } else {
+    const res = cutNewRegularIssueForYear(year, title, subtitle);
+    if (NEWS_STATE.returnToEditorAfterSi && res && res.newIssue) {
+      populateEditorSpecialIssueSelect(`REG:${res.newIssue.id}`);
+      updateEditorAutoNumberingPreview();
+    }
   }
+  resetRegularIssueForm();
+  renderRegularIssuesManagerList();
+  renderNewsTab();
+}
+
+async function deleteRegularIssueById(riId) {
+  if (!(typeof isStrictAdminSession === "function" && isStrictAdminSession())) return;
+  const riList = loadNewsRegularIssues();
+  const target = riList.find(r => String(r.id) === String(riId));
+  if (!target) return;
+
+  const yearRegs = getRegularIssuesForYear(target.year, riList);
+  const targetIdx = yearRegs.findIndex(r => String(r.id) === String(riId));
+  const issueNum = targetIdx !== -1 ? (targetIdx + 1) : 1;
+
+  const ok = await confirmAction(
+    `Delete Regular Issue ${issueNum} (${target.year})?`,
+    "All subsequent regular issues in this Volume will automatically shift back (e.g., Issue 3 → Issue 2). Special Issues stay untouched and no stories will be deleted."
+  );
+  if (!ok) return;
+
+  recordDeletedRegularIssue(riId);
+  const nextList = riList.filter(r => String(r.id) !== String(riId));
+  persistNewsRegularIssues(nextList);
+
+  // Safely move stories from the deleted issue to the preceding surviving regular issue (or default Issue 1)
+  const remainingYearRegs = nextList
+    .filter(r => parseInt(r.year, 10) === parseInt(target.year, 10))
+    .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+  const fallbackRegId = remainingYearRegs.length > 0
+    ? remainingYearRegs[Math.max(0, targetIdx - 1)].id
+    : "";
+
+  const articles = loadNewsArticles();
+  let changed = false;
+  articles.forEach(a => {
+    if (String(a.regular_issue_id || "") === String(riId)) {
+      a.regular_issue_id = fallbackRegId;
+      changed = true;
+    }
+  });
+  if (changed) {
+    STATE.newsArticles = articles;
+    if (STATE.masterData) STATE.masterData.news_articles = articles;
+    persistNewsArticles();
+  }
+  if (NEWS_STATE.activeIssueKey === `REG:${riId}`) {
+    NEWS_STATE.activeIssueKey = "all";
+  }
+
+  if (typeof syncDatabaseToCloudInstant === "function") {
+    syncDatabaseToCloudInstant(`Delete Regular Issue ${issueNum} (${target.year})`, true);
+  }
+
+  renderRegularIssuesManagerList();
+  populateEditorSpecialIssueSelect("");
+  updateEditorAutoNumberingPreview();
+  renderNewsTab();
+  showToast(`📑 Deleted Issue ${issueNum} — later regular issues & story numbers shifted back contiguously!`, "info");
 }
 
 function getNextSpecialIssueCode(siList) {
@@ -32795,6 +33337,7 @@ function renderSpecialIssuesManagerList() {
   const siList = loadNewsSpecialIssues();
   const articles = loadNewsArticles();
   const settings = loadNewsSettings();
+  const activeVolMap = computeActiveVolumeMap(articles, loadNewsRegularIssues(), siList, settings);
   if (countEl) countEl.textContent = String(siList.length);
   if (!listEl) return;
 
@@ -32809,7 +33352,7 @@ function renderSpecialIssuesManagerList() {
 
   listEl.innerHTML = siList.map(si => {
     const count = articles.filter(a => String(a.special_issue_id || "") === String(si.id)).length;
-    const volLbl = computeVolumeForYear(si.year || 2026, settings).volumeLabel;
+    const volLbl = computeVolumeForYear(si.year || 2026, settings, activeVolMap).volumeLabel;
     return `
       <div class="mag-si-row-card" style="--si-accent:${escapeHtml(si.accent_color || "#8b3a1a")};">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
@@ -32880,7 +33423,9 @@ function saveSpecialIssueFromModal() {
   }
 
   renderSpecialIssuesManagerList();
-  populateEditorSpecialIssueSelect(NEWS_STATE.returnToEditorAfterSi ? newId : (document.getElementById("news-edit-special-issue")?.value || ""));
+  renderRegularIssuesManagerList();
+  const targetEditorVal = NEWS_STATE.returnToEditorAfterSi ? `SI:${newId}` : (document.getElementById("news-edit-special-issue")?.value || "");
+  populateEditorSpecialIssueSelect(targetEditorVal);
   if (NEWS_STATE.returnToEditorAfterSi) {
     updateEditorAutoNumberingPreview();
   }
@@ -32896,7 +33441,7 @@ async function deleteSpecialIssueById(siId) {
   if (!target) return;
   const ok = await confirmAction(
     `Delete Special Issue "${target.code}: ${target.title}"?`,
-    "Assigned stories will NOT be deleted — they will automatically revert to their regular monthly issue."
+    "Assigned stories will NOT be deleted — they will automatically return to Issue 1 of their Volume without shifting other regular issue numbers."
   );
   if (!ok) return;
 
@@ -32904,7 +33449,6 @@ async function deleteSpecialIssueById(siId) {
   const nextList = siList.filter(s => String(s.id) !== String(siId));
   persistNewsSpecialIssues(nextList);
 
-  // Unassign stories cleanly without deleting them
   const articles = loadNewsArticles();
   let changed = false;
   articles.forEach(a => {
@@ -32928,7 +33472,9 @@ async function deleteSpecialIssueById(siId) {
   }
 
   renderSpecialIssuesManagerList();
+  renderRegularIssuesManagerList();
   populateEditorSpecialIssueSelect("");
+  updateEditorAutoNumberingPreview();
   renderNewsTab();
   showToast(`Special Issue ${target.code} deleted.`, "info");
 }
@@ -32937,9 +33483,9 @@ function loadNewsSettingsIntoModal() {
   const cfg = loadNewsSettings();
   const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
   setVal("news-set-mag-name", cfg.magazine_name || DEFAULT_NEWS_SETTINGS.magazine_name);
+  setVal("news-set-mag-eyebrow", cfg.eyebrow || DEFAULT_NEWS_SETTINGS.eyebrow);
   setVal("news-set-mag-tagline", cfg.tagline || DEFAULT_NEWS_SETTINGS.tagline);
   setVal("news-set-founding-year", String(cfg.founding_year || 2026));
-  setVal("news-set-cadence", cfg.issue_cadence || "monthly");
   updateSettingsFormulaPreview();
 }
 
@@ -32947,14 +33493,11 @@ function updateSettingsFormulaPreview() {
   const preview = document.getElementById("news-settings-formula-preview");
   if (!preview) return;
   const fy = parseInt(document.getElementById("news-set-founding-year")?.value, 10) || 2026;
-  const cadence = document.getElementById("news-set-cadence")?.value || "monthly";
-  const sampleNov = computeRegularIssueForDate(fy, 11, cadence);
-  const sampleNext = computeRegularIssueForDate(fy + 1, 2, cadence);
   preview.innerHTML = `
-    <strong>Live Automatic Numbering Preview:</strong><br>
-    • <code>${fy}-11-20</code> → <strong>Volume 1 (${fy}) · ${escapeHtml(sampleNov.issueShort)} · No. 01</strong><br>
-    • <code>${fy + 1}-02-15</code> → <strong>Volume 2 (${fy + 1}) · ${escapeHtml(sampleNext.issueShort)} · No. 01</strong><br>
-    • <code>${fy + 2}-06-01</code> → <strong>Volume 3 (${fy + 2})</strong> (increments +1 automatically every calendar year; Special Issues link into their assigned year's Volume).
+    <strong>Contiguous Automatic Numbering Rules:</strong><br>
+    • <strong>Volumes:</strong> Active publication years from <code>${fy}</code> onward are numbered contiguously (<code>Volume 1 (${fy})</code>, <code>Volume 2 (${fy + 1})</code>…). If a Volume becomes empty, later Volumes automatically shift back with zero gaps.<br>
+    • <strong>Regular Issues:</strong> Every Volume starts at <strong>Issue 1</strong> (not tied to calendar months). Admin cuts <code>Issue 2, 3…</code> anytime; deleting a Regular Issue shifts subsequent Regular Issues back automatically while leaving Special Issues untouched.<br>
+    • <strong>Story Numbers:</strong> Always contiguous (<code>No. 01, 02, 03…</code>) within each Issue — deleting or moving a story immediately shifts later numbers down.
   `;
 }
 
@@ -32962,19 +33505,20 @@ function saveNewsMagazineSettings() {
   if (!(typeof isStrictAdminSession === "function" && isStrictAdminSession())) return;
   const next = {
     magazine_name: (document.getElementById("news-set-mag-name")?.value || "").trim() || DEFAULT_NEWS_SETTINGS.magazine_name,
+    eyebrow: (document.getElementById("news-set-mag-eyebrow")?.value || "").trim() || DEFAULT_NEWS_SETTINGS.eyebrow,
     tagline: (document.getElementById("news-set-mag-tagline")?.value || "").trim() || DEFAULT_NEWS_SETTINGS.tagline,
-    founding_year: parseInt(document.getElementById("news-set-founding-year")?.value, 10) || 2026,
-    issue_cadence: document.getElementById("news-set-cadence")?.value || "monthly"
+    founding_year: parseInt(document.getElementById("news-set-founding-year")?.value, 10) || 2026
   };
   saveNewsSettingsObj(next);
   NEWS_STATE.activeVolume = null;
   NEWS_STATE.activeIssueKey = "all";
   if (typeof syncDatabaseToCloudInstant === "function") {
-    syncDatabaseToCloudInstant("Update Magazine Numbering Settings", true);
+    syncDatabaseToCloudInstant("Update Magazine Settings", true);
   }
   renderNewsTab();
+  renderRegularIssuesManagerList();
   updateEditorAutoNumberingPreview();
-  showToast(`⚙️ Magazine settings saved (Volume 1 = ${next.founding_year}, ${next.issue_cadence} issues).`, "success");
+  showToast(`⚙️ Saved "${next.magazine_name}" settings (Volume 1 Base Year = ${next.founding_year}).`, "success");
 }
 
 // --- Category Filtering & Real-Time Search Handlers ---
@@ -33918,7 +34462,7 @@ function openNewsJournalModal(articleId) {
 
   const relatedStoriesHtml = relatedStories.length > 0 ? `
     <section class="nature-section" id="nature-sec-related">
-      <h2 class="nature-section-title">More in ${escapeHtml(settings.magazine_name || "SKKU Materials Dispatch")}</h2>
+      <h2 class="nature-section-title">More in ${escapeHtml(settings.magazine_name || "Lam's Story")}</h2>
       <div class="mag-reader-related-grid">
         ${relatedStories.map(rel => {
           const rm = pubIndex.get(String(rel.id));
@@ -33994,7 +34538,7 @@ function openNewsJournalModal(articleId) {
         <!-- Citation & Permanent Link Bar -->
         <div class="nature-citation-bar">
           <div class="nature-citation-info">
-            <span class="nature-citation-text"><em>${escapeHtml(settings.magazine_name || "SKKU Materials Dispatch")}</em>, ${escapeHtml(pubMeta ? pubMeta.citationLine : `${volumeName}, No. ${articleNum}`)} (${escapeHtml(String(pubYear))})</span>
+            <span class="nature-citation-text"><em>${escapeHtml(settings.magazine_name || "Lam's Story")}</em>, ${escapeHtml(pubMeta ? pubMeta.citationLine : `${volumeName}, No. ${articleNum}`)} (${escapeHtml(String(pubYear))})</span>
             <button type="button" class="nature-citation-cite-btn" onclick="copyNewsCitation()">📋 Cite</button>
           </div>
           <div class="nature-doi-row">
@@ -34395,7 +34939,7 @@ function copyNewsCitation() {
   const citePart = meta ? meta.citationLine : `${getArticleVolume(a)}, No. 01`;
   const newsSlug = (typeof TAB_URL_SLUGS !== "undefined" && TAB_URL_SLUGS.news) ? TAB_URL_SLUGS.news : "updates/news";
   const canonicalUrl = `${window.location.origin}${window.location.pathname}?tab=${newsSlug}&article=${encodeURIComponent(a.id)}`;
-  const citation = `${a.authors || "SKKU Editorial Desk"} (${year}). ${a.title}. ${settings.magazine_name || "SKKU Materials Dispatch"}, ${citePart}. ${canonicalUrl}`;
+  const citation = `${a.authors || "Vu Tien Lam"} (${year}). ${a.title}. ${settings.magazine_name || "Lam's Story"}, ${citePart}. ${canonicalUrl}`;
 
   navigator.clipboard.writeText(citation).then(() => {
     showToast("📋 Citation copied to clipboard!", "success");
@@ -34685,19 +35229,83 @@ window.onAuthorEmailChange = onAuthorEmailChange;
 window.onAuthorAffToggle = onAuthorAffToggle;
 window.syncAuthorAffiliationsBuilder = syncAuthorAffiliationsBuilder;
 
-// --- Composer Auto-Numbering, Special Issues Selector & Story Templates (V181) ---
-function populateEditorSpecialIssueSelect(selectedId = "") {
+// --- Composer Auto-Numbering, Unified Regular/Special Issue Selector & Story Templates (V182) ---
+function parseEditorIssueSelection(rawVal) {
+  const v = String(rawVal || "").trim();
+  if (v.startsWith("SI:")) return { special_issue_id: v.slice(3), regular_issue_id: "" };
+  if (v.startsWith("REG:")) {
+    const rid = v.slice(4);
+    return { special_issue_id: "", regular_issue_id: rid.startsWith("ri_default_") ? "" : rid };
+  }
+  return { special_issue_id: "", regular_issue_id: "" };
+}
+
+function populateEditorSpecialIssueSelect(selectedValue = "", targetYear = null) {
   const sel = document.getElementById("news-edit-special-issue");
   if (!sel) return;
-  const siList = loadNewsSpecialIssues();
   const settings = loadNewsSettings();
-  const cadenceLabel = settings.issue_cadence === "quarterly" ? "Quarterly" : (settings.issue_cadence === "bimonthly" ? "Bimonthly" : "Monthly");
-  sel.innerHTML = `<option value="">✨ Auto — ${cadenceLabel} Issue from Published Date</option>` +
-    siList.map(si => {
-      const volLbl = computeVolumeForYear(si.year || 2026, settings).volumeShort;
-      return `<option value="${escapeHtml(si.id)}">★ ${escapeHtml(si.code)}: ${escapeHtml(si.title)} (${escapeHtml(volLbl)}, ${escapeHtml(String(si.year || 2026))})</option>`;
-    }).join("");
-  sel.value = selectedId || "";
+  const riList = loadNewsRegularIssues();
+  const siList = loadNewsSpecialIssues();
+  const pubDate = (document.getElementById("news-edit-published")?.value || "").trim();
+  const yearMatch = pubDate.match(/^(\d{4})/);
+  const yr = targetYear || (yearMatch ? parseInt(yearMatch[1], 10) : (settings.founding_year || 2026));
+  const activeVolMap = computeActiveVolumeMap(loadNewsArticles(), riList, siList, settings);
+  const volInfo = computeVolumeForYear(yr, settings, activeVolMap);
+  const yearRegs = getRegularIssuesForYear(yr, riList);
+
+  let html = `<optgroup label="📑 Regular Issues — ${escapeHtml(volInfo.volumeLabel)}">`;
+  yearRegs.forEach((ri, idx) => {
+    const val = `REG:${ri.id}`;
+    const isLatest = idx === yearRegs.length - 1;
+    const themePart = ri.title ? ` — ${ri.title}` : "";
+    const tagPart = isLatest ? " (Current)" : "";
+    html += `<option value="${escapeHtml(val)}">📑 Issue ${ri.issueNum}${escapeHtml(themePart)}${tagPart}</option>`;
+  });
+  html += `</optgroup>`;
+
+  if (siList.length > 0) {
+    html += `<optgroup label="✨ Special Issues">`;
+    siList.forEach(si => {
+      const siVol = computeVolumeForYear(si.year || 2026, settings, activeVolMap).volumeShort;
+      html += `<option value="SI:${escapeHtml(si.id)}">★ ${escapeHtml(si.code)}: ${escapeHtml(si.title)} (${escapeHtml(siVol)}, ${escapeHtml(String(si.year || 2026))})</option>`;
+    });
+    html += `</optgroup>`;
+  }
+
+  sel.innerHTML = html;
+
+  // Resolve selection cleanly (support prefixed REG:/SI: or legacy bare SI id)
+  let desired = String(selectedValue || "").trim();
+  if (desired && !desired.startsWith("REG:") && !desired.startsWith("SI:")) {
+    if (siList.some(s => String(s.id) === desired)) desired = `SI:${desired}`;
+    else if (yearRegs.some(r => String(r.id) === desired)) desired = `REG:${desired}`;
+  }
+  if (desired && Array.from(sel.options).some(o => o.value === desired)) {
+    sel.value = desired;
+  } else {
+    // Default new/unassigned stories to the latest active Regular Issue in this Volume (Issue 1 initially, Issue 2 after cutting!)
+    sel.value = `REG:${yearRegs[yearRegs.length - 1].id}`;
+  }
+}
+
+function onEditorPublishedDateChange() {
+  const curVal = document.getElementById("news-edit-special-issue")?.value || "";
+  // Keep Special Issue selected if user explicitly chose one; otherwise refresh Regular Issues for the new Year!
+  populateEditorSpecialIssueSelect(curVal.startsWith("SI:") ? curVal : "");
+  updateEditorAutoNumberingPreview();
+}
+
+function cutNewRegularIssueFromEditor() {
+  if (!(typeof isStrictAdminSession === "function" && isStrictAdminSession())) return;
+  const pubDate = (document.getElementById("news-edit-published")?.value || "").trim();
+  const ym = pubDate.match(/^(\d{4})/);
+  const yr = ym ? parseInt(ym[1], 10) : (loadNewsSettings().founding_year || 2026);
+  const res = cutNewRegularIssueForYear(yr, "", "");
+  if (res && res.newIssue) {
+    populateEditorSpecialIssueSelect(`REG:${res.newIssue.id}`, yr);
+    updateEditorAutoNumberingPreview();
+    renderNewsTab();
+  }
 }
 
 function toggleEditorManualNumbering(enabled) {
@@ -34723,7 +35331,7 @@ function updateEditorAutoNumberingPreview() {
   if (!banner) return;
   const idVal = (document.getElementById("news-edit-article-id")?.value || "").trim() || "__draft_preview__";
   const pubDate = (document.getElementById("news-edit-published")?.value || "").trim() || new Date().toISOString().split("T")[0];
-  const siId = (document.getElementById("news-edit-special-issue")?.value || "").trim();
+  const issueSel = parseEditorIssueSelection(document.getElementById("news-edit-special-issue")?.value || "");
   const manualOn = Boolean(document.getElementById("news-edit-manual-override-toggle")?.checked);
   const customVol = manualOn ? (document.getElementById("news-edit-volume")?.value || "").trim() : "";
   const customIss = manualOn ? (document.getElementById("news-edit-issue-custom")?.value || "").trim() : "";
@@ -34733,7 +35341,8 @@ function updateEditorAutoNumberingPreview() {
   const probe = {
     id: idVal,
     published_date: pubDate,
-    special_issue_id: siId,
+    special_issue_id: issueSel.special_issue_id,
+    regular_issue_id: issueSel.regular_issue_id,
     manual_numbering: manualOn,
     volume: customVol || undefined,
     issue_custom: customIss || undefined,
@@ -34743,13 +35352,13 @@ function updateEditorAutoNumberingPreview() {
 
   const existing = loadNewsArticles().filter(a => String(a.id) !== String(idVal));
   const pool = [...existing, probe];
-  const idx = buildNewsPublicationIndex(pool, loadNewsSpecialIssues(), loadNewsSettings());
+  const idx = buildNewsPublicationIndex(pool, loadNewsSpecialIssues(), loadNewsSettings(), loadNewsRegularIssues());
   const meta = idx.get(String(idVal));
   if (!meta) return;
 
   const issuePart = meta.isSpecialIssue
     ? `★ Special Issue ${meta.issueCode} (${meta.specialIssue.title})`
-    : meta.issueLabel;
+    : meta.issueShort;
   banner.textContent = `${meta.volumeLabel}  •  ${issuePart}  •  No. ${meta.paperNumPadded}  •  ID: ${meta.cleanDoi}`;
 }
 
@@ -34943,7 +35552,13 @@ function openNewsEditorModal(articleId = null) {
     if (kwInput) kwInput.value = existing.keywords || "";
     if (abstractInput) abstractInput.value = existing.abstract || "";
     if (editorBody) editorBody.innerHTML = existing.content_html || "";
-    populateEditorSpecialIssueSelect(existing.special_issue_id || "");
+    const existingMeta = getArticlePublicationMeta(existing);
+    const existingIssueVal = existing.special_issue_id
+      ? `SI:${existing.special_issue_id}`
+      : (existing.regular_issue_id
+          ? `REG:${existing.regular_issue_id}`
+          : (existingMeta && existingMeta.regularIssue ? `REG:${existingMeta.regularIssue.id}` : ""));
+    populateEditorSpecialIssueSelect(existingIssueVal, existingMeta ? existingMeta.year : getArticleYear(existing));
     toggleEditorManualNumbering(isManual);
     updateNewsCoverPreview(existing.cover_image || "");
     if (typeof updateAbstractLivePreview === "function") updateAbstractLivePreview();
@@ -34986,7 +35601,10 @@ function openNewsEditorModal(articleId = null) {
 <h2>Why It Matters</h2>
 <p>Discuss implications for materials engineering, electronics, and future research directions...</p>`;
     }
-    populateEditorSpecialIssueSelect(NEWS_STATE.activeSpecialIssueFilter || "");
+    const initSel = NEWS_STATE.activeSpecialIssueFilter
+      ? `SI:${NEWS_STATE.activeSpecialIssueFilter}`
+      : (String(NEWS_STATE.activeIssueKey || "").startsWith("REG:") ? NEWS_STATE.activeIssueKey : "");
+    populateEditorSpecialIssueSelect(initSel);
     toggleEditorManualNumbering(false);
     updateNewsCoverPreview("");
     if (typeof updateAbstractLivePreview === "function") updateAbstractLivePreview();
@@ -35059,7 +35677,7 @@ function saveNewsArticleFromEditor(desiredStatus = "Published") {
   const finalCover = NEWS_STATE.coverBase64 || (coverUrlInput && coverUrlInput.value || "").trim();
   const manualOn = Boolean(manualToggle && manualToggle.checked);
   const isFeatured = Boolean(featuredCb && featuredCb.checked);
-  const selectedSiId = (siSelect && siSelect.value || "").trim();
+  const parsedIssueSel = parseEditorIssueSelection(siSelect ? siSelect.value : "");
 
   const articleObj = {
     id: articleId,
@@ -35069,7 +35687,8 @@ function saveNewsArticleFromEditor(desiredStatus = "Published") {
     story_format: fmtInput ? fmtInput.value : "magazine",
     status: desiredStatus,
     is_featured: isFeatured,
-    special_issue_id: selectedSiId,
+    special_issue_id: parsedIssueSel.special_issue_id,
+    regular_issue_id: parsedIssueSel.regular_issue_id,
     source_name: (sourceNameInput && sourceNameInput.value || "").trim(),
     source_url: (sourceUrlInput && sourceUrlInput.value || "").trim(),
     manual_numbering: manualOn,
@@ -35177,7 +35796,7 @@ function previewCurrentEditorArticle() {
   const subtitle = (document.getElementById("news-edit-subtitle")?.value || "").trim();
   const category = document.getElementById("news-edit-category")?.value || "Science & Tech News";
   const storyFormat = document.getElementById("news-edit-format")?.value || "magazine";
-  const siId = document.getElementById("news-edit-special-issue")?.value || "";
+  const parsedPreviewIssue = parseEditorIssueSelection(document.getElementById("news-edit-special-issue")?.value || "");
   const sourceName = (document.getElementById("news-edit-source-name")?.value || "").trim();
   const sourceUrl = (document.getElementById("news-edit-source-url")?.value || "").trim();
   const authors = document.getElementById("news-edit-authors")?.value || "Vu Tien Lam";
@@ -35204,7 +35823,8 @@ function previewCurrentEditorArticle() {
     id: "preview_temp",
     title, subtitle, category,
     story_format: storyFormat,
-    special_issue_id: siId,
+    special_issue_id: parsedPreviewIssue.special_issue_id,
+    regular_issue_id: parsedPreviewIssue.regular_issue_id,
     source_name: sourceName,
     source_url: sourceUrl,
     authors: finalAuthors,
@@ -35536,7 +36156,19 @@ window.handleNewsStatusFilter = handleNewsStatusFilter;
 window.handleNewsSortChange = handleNewsSortChange;
 window.toggleNewsArticleStatus = toggleNewsArticleStatus;
 window.toggleNewsArticleFeatured = toggleNewsArticleFeatured;
+window.quickAssignArticleIssue = quickAssignArticleIssue;
 window.quickAssignArticleSpecialIssue = quickAssignArticleSpecialIssue;
+window.cutNewRegularIssueForYear = cutNewRegularIssueForYear;
+window.cutNewRegularIssueAndRefresh = cutNewRegularIssueAndRefresh;
+window.cutNewRegularIssueFromEditor = cutNewRegularIssueFromEditor;
+window.onEditorPublishedDateChange = onEditorPublishedDateChange;
+window.loadNewsRegularIssues = loadNewsRegularIssues;
+window.getRegularIssuesForYear = getRegularIssuesForYear;
+window.resetRegularIssueForm = resetRegularIssueForm;
+window.editRegularIssueInModal = editRegularIssueInModal;
+window.saveRegularIssueFromModal = saveRegularIssueFromModal;
+window.deleteRegularIssueById = deleteRegularIssueById;
+window.computeActiveVolumeMap = computeActiveVolumeMap;
 window.duplicateNewsArticle = duplicateNewsArticle;
 window.openSpecialIssuesModal = openSpecialIssuesModal;
 window.closeSpecialIssuesModal = closeSpecialIssuesModal;

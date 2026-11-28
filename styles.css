@@ -928,7 +928,7 @@ body {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  z-index: 9999;
+  z-index: 10090;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -15864,15 +15864,163 @@ textarea.dft-ed-code-surface::placeholder {
 /* V181: PROFESSIONAL SCIENTIFIC NEWS MAGAZINE & EDITORIAL SUITE              */
 /* ========================================================================== */
 
-/* Masthead Banner */
+/* Masthead Banner — Classic Editorial Nameplate ("Lam's Story") */
 .mag-masthead {
-  background: linear-gradient(180deg, #fffdf9 0%, #faf4eb 100%);
-  border: 1px solid #e5d2bc;
-  border-top: 4px solid #8b3a1a;
+  background: linear-gradient(180deg, #fffefb 0%, #faf3e8 100%);
+  border: 1px solid #e3ceb6;
+  border-top: 4px solid #2b1f17;
   border-radius: 12px;
-  padding: 16px 22px 18px 22px;
+  padding: 16px 24px 16px 24px;
   margin-bottom: 18px;
-  box-shadow: 0 4px 16px rgba(43, 31, 23, 0.05);
+  box-shadow: 0 6px 22px rgba(43, 31, 23, 0.06);
+  position: relative;
+}
+.mag-masthead::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #c2591a;
+  opacity: 0.65;
+}
+.mag-nameplate-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.mag-nameplate-badge {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #8b3a1a;
+  border: 1px solid #d9b595;
+  background: #fff7ed;
+  padding: 2px 8px;
+  border-radius: 4px;
+  transform: translateY(-4px);
+}
+.mag-ticker-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 13px;
+  padding-top: 10px;
+  border-top: 1px solid #ead8c3;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.mag-ticker-bar::-webkit-scrollbar { display: none; }
+.mag-ticker-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #8b3a1a;
+  color: #fffdf9;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.mag-ticker-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fde68a;
+  display: inline-block;
+}
+.mag-ticker-items {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+  font-size: 12.2px;
+  color: #4a3828;
+  white-space: nowrap;
+}
+.mag-ticker-link {
+  color: #2b1f17;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease;
+  max-width: 340px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  vertical-align: bottom;
+}
+.mag-ticker-link:hover {
+  color: #8b3a1a;
+  text-decoration: underline;
+}
+.mag-ticker-sep {
+  color: #c9ab8d;
+  font-weight: 700;
+}
+.mag-brief-rank {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 18px;
+  font-weight: 800;
+  color: #c9ab8d;
+  line-height: 1;
+  min-width: 22px;
+  padding-top: 2px;
+  flex-shrink: 0;
+}
+.mag-brief-item:hover .mag-brief-rank {
+  color: #8b3a1a;
+}
+
+/* CRITICAL V182: Ensure Issues/Special Issues Modal ALWAYS stacks ABOVE Composer Modal (#news-editor-modal = 10002) */
+#news-special-issues-modal.modal-backdrop {
+  z-index: 10050 !important;
+  background: rgba(15, 23, 42, 0.72) !important;
+}
+
+/* Regular Issues Manager Cards */
+.mag-reg-vol-group {
+  background: #ffffff;
+  border: 1px solid #e4d1bc;
+  border-radius: 9px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.mag-reg-vol-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  background: #faf4eb;
+  border-bottom: 1px solid #ead8c3;
+}
+.mag-reg-issue-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid #f4eadf;
+}
+.mag-reg-issue-row:last-child {
+  border-bottom: none;
+}
+.mag-reg-num-badge {
+  display: inline-flex;
+  align-items: center;
+  background: #2b1f17;
+  color: #fffdf9;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
 }
 .mag-masthead-top-rule {
   display: flex;
@@ -15945,12 +16093,12 @@ textarea.dft-ed-code-surface::placeholder {
 }
 .mag-masthead-title {
   font-family: 'Playfair Display', 'Merriweather', Georgia, serif;
-  font-size: 30px;
+  font-size: 36px;
   font-weight: 900;
-  color: #1e1611;
+  color: #1c140f;
   margin: 0 0 4px 0;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
+  letter-spacing: -0.025em;
+  line-height: 1.08;
 }
 .mag-masthead-tagline {
   font-size: 13.5px;

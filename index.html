@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=181_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=181_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=182_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=182_v116_vesta_viewer'" />
   <!-- Publication Math Typography: STIX Two Text (MathType / Times) + KaTeX 0.16.11 (Word/LaTeX Equation Engine) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -394,17 +394,17 @@
       </section>
 
       <!-- ================================================================ -->
-      <!-- TAB: SCIENTIFIC NEWS MAGAZINE & EDITORIAL DISPATCH (v181)        -->
+      <!-- TAB: LAM'S STORY — SCIENTIFIC NEWS & EDITORIAL MAGAZINE (v182)   -->
       <!-- ================================================================ -->
       <section id="tab-news" class="tab-pane">
         <!-- News Catalog View (Magazine Front Page, Special Issues, Volumes & Editorial Desk) -->
         <div id="news-catalog-view">
-          <!-- Magazine Masthead Banner -->
+          <!-- Classic Editorial Magazine Masthead -->
           <div class="mag-masthead">
             <div class="mag-masthead-top-rule">
               <div class="mag-masthead-eyebrow-group">
-                <span class="mag-eyebrow-kicker">SKKU MATERIALS SCIENCE &amp; COMPUTATION</span>
-                <span class="mag-edition-pill" id="news-masthead-edition-pill">Vol. 1 · Issue 11 · Nov 2026</span>
+                <span class="mag-eyebrow-kicker" id="news-masthead-eyebrow">SCIENCE &bull; MATERIALS &bull; TECHNOLOGY &bull; CHRONICLES</span>
+                <span class="mag-edition-pill" id="news-masthead-edition-pill">Vol. 1 · Issue 1 · 2026</span>
               </div>
               <div class="mag-masthead-stats" id="news-masthead-stats">
                 <!-- Populated dynamically by renderNewsTab() -->
@@ -413,26 +413,32 @@
 
             <div class="mag-masthead-main">
               <div class="mag-masthead-brand">
-                <h2 class="mag-masthead-title" id="news-masthead-title">SKKU Materials Dispatch</h2>
-                <p class="mag-masthead-tagline" id="news-masthead-tagline">Scientific news, semiconductor &amp; materials breakthroughs, research highlights, and lab dispatches.</p>
+                <div class="mag-nameplate-row">
+                  <h2 class="mag-masthead-title" id="news-masthead-title">Lam's Story</h2>
+                  <span class="mag-nameplate-badge">MAGAZINE</span>
+                </div>
+                <p class="mag-masthead-tagline" id="news-masthead-tagline">Stories of scientific discovery, 2D materials, semiconductor breakthroughs, and research reflections.</p>
               </div>
               <div class="news-header-actions mag-masthead-actions">
                 <div class="mag-view-switcher admin-only strict-admin-only" id="news-view-switcher" style="display:none;" role="tablist" aria-label="Editorial View Mode">
                   <button type="button" id="news-view-btn-magazine" class="mag-view-btn active" onclick="setNewsViewMode('magazine')">📰 Magazine</button>
                   <button type="button" id="news-view-btn-desk" class="mag-view-btn" onclick="setNewsViewMode('desk')">🗂️ Editorial Desk</button>
                 </div>
-                <button type="button" id="news-special-issues-btn" class="btn btn-outline btn-sm admin-only strict-admin-only" style="display:none;" onclick="openSpecialIssuesModal()" title="Create &amp; manage custom Special Issues and auto-numbering settings">
-                  ✨ Special Issues
+                <button type="button" id="news-special-issues-btn" class="btn btn-outline btn-sm admin-only strict-admin-only" style="display:none;" onclick="openSpecialIssuesModal(false, null, 'regular')" title="Manage Regular Issues, Special Issues &amp; Magazine Settings">
+                  📑 Manage Issues
                 </button>
                 <button type="button" id="news-import-word-btn" class="btn btn-outline btn-sm admin-only strict-admin-only" style="display:none;" onclick="triggerWordImport()" title="Import &amp; auto-detect content, formulas, tables, figures from Word (.docx)">
                   📥 Import .docx
                 </button>
                 <input type="file" id="news-word-file-input" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none;" onchange="handleWordFileInput(event)">
-                <button type="button" id="news-new-article-btn" class="btn btn-primary btn-sm admin-only strict-admin-only" style="display:none;" onclick="openNewsEditorModal()" title="Compose &amp; publish a new news story, highlight, or scientific article">
+                <button type="button" id="news-new-article-btn" class="btn btn-primary btn-sm admin-only strict-admin-only" style="display:none;" onclick="openNewsEditorModal()" title="Compose &amp; publish a new story, news dispatch, or scientific article">
                   ✍️ + New Story
                 </button>
               </div>
             </div>
+
+            <!-- Live Latest Stories Ticker Bar -->
+            <div id="news-latest-ticker" class="mag-ticker-bar" style="display:none;"></div>
           </div>
 
           <!-- Magazine Navigation & Filter Bar -->
@@ -7373,7 +7379,7 @@
   <script src="topo_rashba.js?v=180_v116_vesta_viewer" onerror="this.src='/static/topo_rashba.js?v=180_v116_vesta_viewer'"></script>
   <script src="potential_polar.js?v=180_v116_vesta_viewer" onerror="this.src='/static/potential_polar.js?v=180_v116_vesta_viewer'"></script>
   <script src="dft_theory.js?v=180_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=180_v116_vesta_viewer'"></script>
-  <script src="app.js?v=181_v116_vesta_viewer" onerror="this.src='/static/app.js?v=181_v116_vesta_viewer'"></script>
+  <script src="app.js?v=182_v116_vesta_viewer" onerror="this.src='/static/app.js?v=182_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
@@ -7476,23 +7482,24 @@
         <div class="mag-editor-numbering-box">
           <div class="mag-numbering-live-bar">
             <span class="mag-numbering-live-tag">AUTO NUMBERING</span>
-            <span id="news-edit-auto-preview-banner" class="mag-numbering-live-val">Volume 1 (2026) · Issue 11 (Nov) · No. 01</span>
+            <span id="news-edit-auto-preview-banner" class="mag-numbering-live-val">Volume 1 (2026) · Issue 1 · No. 01</span>
           </div>
           <div class="news-form-row" style="margin-bottom:0; gap:10px;">
-            <div class="news-form-group flex-1" style="margin-bottom:0;">
+            <div class="news-form-group" style="width:165px; margin-bottom:0;">
               <label class="form-label" for="news-edit-published">🚀 Published Date <span class="required">*</span></label>
-              <input type="date" id="news-edit-published" class="form-input" onchange="updateEditorAutoNumberingPreview()">
+              <input type="date" id="news-edit-published" class="form-input" onchange="onEditorPublishedDateChange()">
             </div>
             <div class="news-form-group flex-2" style="margin-bottom:0;">
-              <label class="form-label" for="news-edit-special-issue">📚 Issue Assignment <span style="font-weight:normal; font-size:11px; color:#8c786a;">(Auto Monthly or Custom Special Issue)</span></label>
-              <div style="display:flex; gap:6px; align-items:center;">
-                <select id="news-edit-special-issue" class="form-select" onchange="updateEditorAutoNumberingPreview()" style="flex:1;">
-                  <option value="">✨ Auto — Monthly Issue from Published Date</option>
+              <label class="form-label" for="news-edit-special-issue">📚 Issue Assignment <span style="font-weight:normal; font-size:11px; color:#8c786a;">(Regular Issues or Special Issues — auto-contiguous)</span></label>
+              <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                <select id="news-edit-special-issue" class="form-select" onchange="updateEditorAutoNumberingPreview()" style="flex:1; min-width:210px;">
+                  <option value="">📑 Issue 1 — Default First Issue</option>
                 </select>
-                <button type="button" class="btn btn-outline btn-sm" onclick="openSpecialIssuesModal(true)" title="Create a new Special Issue" style="white-space:nowrap;">+ Special Issue</button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="cutNewRegularIssueFromEditor()" title="Start / cut the next sequential Regular Issue in this Volume" style="white-space:nowrap;">✂️ + Cut Issue</button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="openSpecialIssuesModal(true, null, 'issues')" title="Create or manage custom Special Issues" style="white-space:nowrap;">+ Special Issue</button>
               </div>
             </div>
-            <div class="news-form-group flex-1" style="margin-bottom:0;">
+            <div class="news-form-group flex-1" style="min-width:170px; margin-bottom:0;">
               <label class="form-label" for="news-edit-format">📰 Layout Format</label>
               <select id="news-edit-format" class="form-select" onchange="onEditorStoryFormatChange(this.value)">
                 <option value="magazine">📰 Magazine News / Feature</option>
@@ -7519,7 +7526,7 @@
               </div>
               <div class="news-form-group flex-1" style="margin-bottom:0;">
                 <label class="form-label" for="news-edit-issue-custom">Custom Issue Label <span style="font-weight:normal; font-size:11px; color:#8c786a;">(blank = Auto)</span></label>
-                <input type="text" id="news-edit-issue-custom" class="form-input" placeholder="Auto: e.g. Issue 11 (Nov)" oninput="updateEditorAutoNumberingPreview()">
+                <input type="text" id="news-edit-issue-custom" class="form-input" placeholder="Auto: e.g. Issue 1" oninput="updateEditorAutoNumberingPreview()">
               </div>
               <div class="news-form-group" style="width:120px; margin-bottom:0;">
                 <label class="form-label" for="news-edit-article-number">Paper No.</label>
@@ -7537,7 +7544,7 @@
               </div>
               <div class="news-form-group flex-2" style="margin-bottom:0;">
                 <label class="form-label" for="news-edit-doi">DOI / Magazine ID <span style="font-weight:normal; font-size:11px; color:#8c786a;">(blank = Auto clean ID)</span></label>
-                <input type="text" id="news-edit-doi" class="form-input" placeholder="Auto: 10.skku.matsci/mag.2026.v1i11.01">
+                <input type="text" id="news-edit-doi" class="form-input" placeholder="Auto: 10.skku.matsci/lam.2026.v1.i01.01">
               </div>
             </div>
           </div>
@@ -7811,25 +7818,66 @@
   </div>
 
   <!-- ================================================================ -->
-  <!-- ADMIN SPECIAL ISSUES & MAGAZINE SETTINGS MODAL (v181)            -->
+  <!-- ADMIN VOLUMES, REGULAR ISSUES, SPECIAL ISSUES & SETTINGS (v182)  -->
   <!-- ================================================================ -->
   <div id="news-special-issues-modal" class="modal-backdrop" onclick="if(event.target===this) closeSpecialIssuesModal()">
     <div class="modal-box mag-si-modal-box">
       <div class="card-header" style="margin-bottom:12px; border-bottom:1px solid #ebd8c1; padding-bottom:10px;">
         <div>
-          <div class="card-title" style="font-size:18px; font-weight:800; color:#2b1f17;">✨ Special Issues &amp; Magazine Settings</div>
-          <div style="font-size:12px; color:#786354; margin-top:2px;">Create thematic Special Issues on demand and configure automatic Volume &amp; Issue numbering rules.</div>
+          <div class="card-title" style="font-size:18px; font-weight:800; color:#2b1f17;">📑 Volumes, Issues &amp; Magazine Manager</div>
+          <div style="font-size:12px; color:#786354; margin-top:2px;">Cut new regular issues anytime, manage custom Special Issues, and keep Volumes / Issues / Numbers contiguously auto-numbered.</div>
         </div>
         <button type="button" class="btn btn-outline btn-sm" onclick="closeSpecialIssuesModal()">✕ Close</button>
       </div>
 
       <div class="mag-si-modal-tabs">
-        <button type="button" id="si-tab-btn-issues" class="mag-si-tab active" onclick="switchSpecialIssuesModalTab('issues')">✨ Special Issues (<span id="si-modal-count">0</span>)</button>
-        <button type="button" id="si-tab-btn-settings" class="mag-si-tab" onclick="switchSpecialIssuesModalTab('settings')">⚙️ Volume &amp; Issue Numbering</button>
+        <button type="button" id="si-tab-btn-regular" class="mag-si-tab active" onclick="switchSpecialIssuesModalTab('regular')">📑 Regular Issues (<span id="ri-modal-count">1</span>)</button>
+        <button type="button" id="si-tab-btn-issues" class="mag-si-tab" onclick="switchSpecialIssuesModalTab('issues')">✨ Special Issues (<span id="si-modal-count">0</span>)</button>
+        <button type="button" id="si-tab-btn-settings" class="mag-si-tab" onclick="switchSpecialIssuesModalTab('settings')">⚙️ Magazine Settings</button>
+      </div>
+
+      <!-- Pane 0: Regular Issues & Contiguous Volumes Manager -->
+      <div id="si-pane-regular" class="mag-si-pane">
+        <div class="mag-si-grid">
+          <!-- Cut New Regular Issue Form -->
+          <div class="mag-si-form-card">
+            <h4 id="ri-form-heading" style="margin:0 0 10px 0; font-size:14.5px; color:#2b1f17;">✂️ Cut / Add Regular Issue</h4>
+            <input type="hidden" id="ri-edit-id" value="">
+            <div style="display:flex; gap:10px; margin-bottom:10px;">
+              <div style="width:120px;">
+                <label class="form-label" for="ri-edit-year">Volume Year <span class="required">*</span></label>
+                <input type="number" id="ri-edit-year" class="form-input" value="2026" min="2020" max="2099">
+              </div>
+              <div style="flex:1;">
+                <label class="form-label" for="ri-edit-title">Optional Issue Theme / Label</label>
+                <input type="text" id="ri-edit-title" class="form-input" placeholder="Optional (e.g. Spring Edition, AI &amp; 2D Tech)">
+              </div>
+            </div>
+            <div style="margin-bottom:12px;">
+              <label class="form-label" for="ri-edit-subtitle">Editorial Note (Optional)</label>
+              <textarea id="ri-edit-subtitle" class="form-textarea" rows="2" placeholder="Brief note introducing this issue..."></textarea>
+            </div>
+            <div style="font-size:11.5px; color:#6b5849; background:#fff; border:1px dashed #dcc4ac; border-radius:7px; padding:9px 11px; margin-bottom:12px; line-height:1.5;">
+              <strong>Auto-Contiguous Rule:</strong> First stories in any Volume automatically belong to <strong>Issue 1</strong>. Cut a new Issue anytime (<code>Issue 2, 3...</code>). Deleting an Issue automatically shifts all subsequent regular issues back (e.g. <code>Issue 3 → Issue 2</code>) without touching Special Issues or deleting stories.
+            </div>
+            <div style="display:flex; gap:8px; justify-content:flex-end;">
+              <button type="button" class="btn btn-outline btn-sm" onclick="resetRegularIssueForm()">Reset</button>
+              <button type="button" class="btn btn-primary btn-sm" onclick="saveRegularIssueFromModal()">✂️ Save / Cut Issue</button>
+            </div>
+          </div>
+
+          <!-- Active Volumes & Regular Issues Directory -->
+          <div class="mag-si-list-card">
+            <h4 style="margin:0 0 10px 0; font-size:14.5px; color:#2b1f17;">📚 Active Volumes &amp; Regular Issues</h4>
+            <div id="ri-manager-list" class="mag-si-manager-list">
+              <!-- Populated by renderRegularIssuesManagerList() -->
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Pane 1: Special Issues CRUD -->
-      <div id="si-pane-issues" class="mag-si-pane">
+      <div id="si-pane-issues" class="mag-si-pane" style="display:none;">
         <div class="mag-si-grid">
           <!-- Create / Edit Form -->
           <div class="mag-si-form-card">
@@ -7883,7 +7931,7 @@
 
           <!-- Existing Special Issues List -->
           <div class="mag-si-list-card">
-            <h4 style="margin:0 0 10px 0; font-size:14.5px; color:#2b1f17;">📚 Active Special Issues</h4>
+            <h4 style="margin:0 0 10px 0; font-size:14.5px; color:#2b1f17;">✨ Active Special Issues</h4>
             <div id="si-manager-list" class="mag-si-manager-list">
               <!-- Populated by renderSpecialIssuesManagerList() -->
             </div>
@@ -7897,24 +7945,20 @@
           <div class="news-form-row">
             <div class="news-form-group flex-2">
               <label class="form-label" for="news-set-mag-name">Magazine Masthead Name</label>
-              <input type="text" id="news-set-mag-name" class="form-input" placeholder="SKKU Materials Dispatch">
+              <input type="text" id="news-set-mag-name" class="form-input" placeholder="Lam's Story">
             </div>
-            <div class="news-form-group flex-1">
-              <label class="form-label" for="news-set-founding-year">Volume 1 Founding Year</label>
+            <div class="news-form-group flex-2">
+              <label class="form-label" for="news-set-mag-eyebrow">Masthead Kicker / Eyebrow</label>
+              <input type="text" id="news-set-mag-eyebrow" class="form-input" placeholder="SCIENCE • MATERIALS • TECHNOLOGY • CHRONICLES">
+            </div>
+            <div class="news-form-group" style="width:165px;">
+              <label class="form-label" for="news-set-founding-year">Volume 1 Base Year</label>
               <input type="number" id="news-set-founding-year" class="form-input" value="2026" min="2000" max="2099" oninput="updateSettingsFormulaPreview()">
-            </div>
-            <div class="news-form-group flex-1">
-              <label class="form-label" for="news-set-cadence">Regular Issue Cadence</label>
-              <select id="news-set-cadence" class="form-select" onchange="updateSettingsFormulaPreview()">
-                <option value="monthly">Monthly (Issue 1–12 / Yr)</option>
-                <option value="bimonthly">Bimonthly (Issue 1–6 / Yr)</option>
-                <option value="quarterly">Quarterly (Issue 1–4 / Yr)</option>
-              </select>
             </div>
           </div>
           <div class="news-form-group">
             <label class="form-label" for="news-set-mag-tagline">Magazine Tagline / Subtitle</label>
-            <input type="text" id="news-set-mag-tagline" class="form-input" placeholder="Scientific news, semiconductor &amp; materials breakthroughs, research highlights, and lab dispatches.">
+            <input type="text" id="news-set-mag-tagline" class="form-input" placeholder="Stories of scientific discovery, 2D materials, semiconductor breakthroughs, and research reflections.">
           </div>
           <div id="news-settings-formula-preview" class="mag-settings-preview-box">
             <!-- Populated by updateSettingsFormulaPreview() -->
