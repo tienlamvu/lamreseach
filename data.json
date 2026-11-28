@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-28T07:08:10.600Z",
+  "exported_at": "2026-11-28T07:11:32.931Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -7106,6 +7106,9 @@
     "news_1795071397513": 1795071478176,
     "news_1795072095532": 1795849586442
   },
+  "news_special_issues": [],
+  "deleted_news_special_issues": [],
+  "deleted_news_special_issues_map": {},
   "dft_lectures": [
     {
       "id": "lec1",
