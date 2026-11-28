@@ -34319,7 +34319,10 @@ async function importScientificWordDocument(file) {
     }
     if (kwInput && detectedKeywords) kwInput.value = detectedKeywords;
     if (editorBody && bodyBlocks.length > 0) {
-      editorBody.innerHTML = bodyBlocks.join("\n\n");
+      const rawDocxHtml = bodyBlocks.join("\n\n");
+      editorBody.innerHTML = typeof sanitizeEditorialHtml === "function"
+        ? sanitizeEditorialHtml(rawDocxHtml, { preserveAlignment: true })
+        : rawDocxHtml;
     }
 
     // If images were extracted, automatically set first figure as cover preview
@@ -34453,7 +34456,9 @@ window.getArticleStructuredAuthors = getArticleStructuredAuthors;
 // --- Professional Scientific Journal Reader (Nature Index / npj Computational Materials Aesthetic) ---
 function openNewsJournalModal(articleId) {
   const articles = loadNewsArticles();
-  let article = articles.find(a => String(a.id) === String(articleId));
+  let article = (String(articleId) === "preview_temp" && NEWS_STATE.previewTempArticle)
+    ? NEWS_STATE.previewTempArticle
+    : articles.find(a => String(a.id) === String(articleId));
 
   const fullPaperBody = document.getElementById("news-full-paper-body");
   const fullArticleView = document.getElementById("news-full-article-view");
@@ -34566,7 +34571,11 @@ function openNewsJournalModal(articleId) {
 
   try {
     const parser = new DOMParser();
-    const doc = parser.parseFromString(`<div>${article.content_html || "<p>Article text in preparation.</p>"}</div>`, "text/html");
+    const rawBody = article.content_html || "<p>Article text in preparation.</p>";
+    const normalizedBody = typeof sanitizeEditorialHtml === "function"
+      ? sanitizeEditorialHtml(rawBody, { preserveAlignment: true })
+      : rawBody;
+    const doc = parser.parseFromString(`<div>${normalizedBody || "<p>Article text in preparation.</p>"}</div>`, "text/html");
     const container = doc.body.firstElementChild;
     const headings = container ? container.querySelectorAll("h2, h3") : [];
 
@@ -35868,6 +35877,9 @@ function openNewsEditorModal(articleId = null) {
     renderAffiliationsEditor();
   }
 
+  if (typeof bindNewsEditorAutoFormatPaste === "function") {
+    bindNewsEditorAutoFormatPaste();
+  }
   updateEditorAutoNumberingPreview();
   updateEditorWordStats();
   modal.classList.add("open");
@@ -35960,7 +35972,11 @@ function saveNewsArticleFromEditor(desiredStatus = "Published") {
     show_contributions: showContribsCb ? Boolean(showContribsCb.checked) : false,
     contributions_text: (contribsTextInput && contribsTextInput.value || "").trim(),
     show_corresponding: showCorrCb ? Boolean(showCorrCb.checked) : false,
-    content_html: editorBody ? editorBody.innerHTML : ""
+    content_html: editorBody
+      ? (typeof sanitizeEditorialHtml === "function"
+          ? sanitizeEditorialHtml(editorBody.innerHTML, { preserveAlignment: true })
+          : editorBody.innerHTML)
+      : ""
   };
 
   const articles = loadNewsArticles();
@@ -36084,16 +36100,17 @@ function previewCurrentEditorArticle() {
     authors_data: NEWS_STATE.editorAuthorsData || [],
     affiliations_data: NEWS_STATE.editorAffiliationsData || [],
     received_date: received, revised_date: revised, published_date: published,
-    doi, cover_image: cover, keywords, abstract, content_html: content,
+    doi, cover_image: cover, keywords, abstract,
+    content_html: typeof sanitizeEditorialHtml === "function"
+      ? sanitizeEditorialHtml(content, { preserveAlignment: true })
+      : content,
     show_contributions: showContribs,
     show_corresponding: showCorr,
     contributions_text: contribsText,
     status: "Draft"
   };
 
-  const articles = loadNewsArticles();
-  const tempPool = [tempArticle, ...articles.filter(a => a.id !== "preview_temp")];
-  STATE.newsArticles = tempPool;
+  NEWS_STATE.previewTempArticle = tempArticle;
   openNewsJournalModal("preview_temp");
 }
 
@@ -36138,6 +36155,471 @@ function removeNewsCoverImage() {
   if (coverUrlInput) coverUrlInput.value = "";
   if (fileInput) fileInput.value = "";
   updateNewsCoverPreview("");
+}
+
+// --- V184: Editorial Auto-Format Paste & Unified Magazine Typography Engine ---
+const EDITORIAL_SAFE_CLASSES = new Set([
+  "journal-figure",
+  "journal-table-wrapper",
+  "journal-booktabs-table",
+  "journal-equation-block",
+  "journal-equation-math",
+  "journal-equation-num",
+  "journal-callout",
+  "journal-callout-title",
+  "journal-callout-text",
+  "journal-references-list",
+  "journal-math-formula"
+]);
+
+const EDITORIAL_DROP_TAGS = new Set([
+  "script", "style", "meta", "link", "title", "xml", "noscript",
+  "iframe", "object", "embed", "form", "input", "button", "select",
+  "textarea", "nav", "svg", "canvas", "audio", "video", "source"
+]);
+
+const EDITORIAL_BLOCK_TAGS = new Set([
+  "p", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "ul", "ol", "li",
+  "table", "thead", "tbody", "tfoot", "tr", "th", "td", "caption",
+  "figure", "figcaption", "pre", "hr", "div", "section", "article", "main", "header", "footer", "aside"
+]);
+
+function plainTextToEditorialHtml(rawText) {
+  if (!rawText || typeof rawText !== "string") return "";
+  const normalized = rawText
+    .replace(/\u200B|\u200C|\u200D|\uFEFF/g, "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/\u00A0+/g, " ")
+    .trim();
+  if (!normalized) return "";
+  const paragraphs = normalized.split(/\n\s*\n+/).map(p => p.trim()).filter(Boolean);
+  return paragraphs.map(p => {
+    const safe = escapeHtml(p).replace(/\n+/g, "<br>");
+    return `<p>${safe}</p>`;
+  }).join("\n");
+}
+
+function sanitizeEditorialHtml(rawHtml, options = {}) {
+  const preserveAlignment = Boolean(options && options.preserveAlignment);
+  if (!rawHtml || typeof rawHtml !== "string") return "";
+
+  // 1. Pre-strip Word conditional comments, XML blocks & invisible zero-width artifacts
+  let pre = rawHtml
+    .replace(/<!--\[if[\s\S]*?endif\]-->/gi, "")
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<\?xml[\s\S]*?\?>/gi, "")
+    .replace(/<\/?o:p[^>]*>/gi, "")
+    .replace(/\u200B|\u200C|\u200D|\uFEFF/g, "");
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<div id="__ed_root">${pre}</div>`, "text/html");
+  const root = doc.getElementById("__ed_root");
+  if (!root) return "";
+
+  function isSafeEditorialClass(cls) {
+    return EDITORIAL_SAFE_CLASSES.has(cls) || /^katex/.test(cls);
+  }
+
+  function hasPreservedWidgetClass(el) {
+    if (!el || !el.classList) return false;
+    return Array.from(el.classList).some(isSafeEditorialClass);
+  }
+
+  function hasBlockChild(node) {
+    return Array.from(node.childNodes || []).some(ch => {
+      if (ch.nodeType !== 1) return false;
+      const t = ch.tagName.toLowerCase();
+      return EDITORIAL_BLOCK_TAGS.has(t);
+    });
+  }
+
+  function sanitizeUrl(url) {
+    const u = String(url || "").trim();
+    if (!u) return "";
+    if (/^(https?:|mailto:|#|\/)/i.test(u)) return u;
+    return "";
+  }
+
+  function sanitizeImageSrc(src) {
+    const s = String(src || "").trim();
+    if (!s) return "";
+    if (/^(https?:|data:image\/|\/)/i.test(s)) return s;
+    return "";
+  }
+
+  function cleanNode(node) {
+    if (node.nodeType === 3) {
+      // Collapse excessive NBSP runs from Word/web while keeping single inline space
+      const txt = node.nodeValue.replace(/\u00A0+/g, " ");
+      return doc.createTextNode(txt);
+    }
+    if (node.nodeType !== 1) return null;
+
+    const tag = node.tagName.toLowerCase();
+    if (EDITORIAL_DROP_TAGS.has(tag)) return null;
+
+    // Preserve KaTeX math trees verbatim so equations stay intact
+    if (node.classList && (node.classList.contains("katex") || node.classList.contains("katex-display"))) {
+      return node.cloneNode(true);
+    }
+
+    const inlineStyle = (node.getAttribute("style") || "").toLowerCase();
+    const safeClasses = Array.from(node.classList || []).filter(isSafeEditorialClass);
+    const isWidget = safeClasses.length > 0;
+
+    // Clean children first into a fragment
+    const frag = doc.createDocumentFragment();
+    Array.from(node.childNodes).forEach(ch => {
+      const cleaned = cleanNode(ch);
+      if (cleaned) frag.appendChild(cleaned);
+    });
+
+    // Skip empty meaningless images / 1x1 trackers
+    if (tag === "img") {
+      const src = sanitizeImageSrc(node.getAttribute("src"));
+      const w = parseInt(node.getAttribute("width") || "0", 10);
+      const h = parseInt(node.getAttribute("height") || "0", 10);
+      if (!src || (w > 0 && w <= 3 && h > 0 && h <= 3)) return null;
+      const img = doc.createElement("img");
+      img.setAttribute("src", src);
+      const alt = (node.getAttribute("alt") || "").trim();
+      if (alt) img.setAttribute("alt", alt);
+      return img;
+    }
+
+    if (tag === "br") return doc.createElement("br");
+    if (tag === "hr") return doc.createElement("hr");
+
+    // Unwrap Google Docs fake <b style="font-weight:normal" id="docs-internal-guid-..."> wrapper!
+    if ((tag === "b" || tag === "strong") && (
+      /font-weight\s*:\s*(normal|400)\b/.test(inlineStyle) ||
+      String(node.getAttribute("id") || "").startsWith("docs-internal-guid")
+    )) {
+      return frag;
+    }
+
+    // Strip <font> completely — unwrap children so external face/size/color are discarded
+    if (tag === "font") {
+      return frag;
+    }
+
+    // Handle <span>: preserve semantic bold/italic/underline/strike/sup/sub, drop foreign font/size/color/bg!
+    if (tag === "span") {
+      if (isWidget) {
+        const sp = doc.createElement("span");
+        sp.className = safeClasses.join(" ");
+        sp.appendChild(frag);
+        return sp;
+      }
+      const isBold = /font-weight\s*:\s*(bold|bolder|[6-9]00)\b/.test(inlineStyle);
+      const isItalic = /font-style\s*:\s*italic\b/.test(inlineStyle);
+      const isUnderline = /text-decoration[^;]*underline/.test(inlineStyle);
+      const isStrike = /text-decoration[^;]*line-through/.test(inlineStyle);
+      const isSup = /vertical-align\s*:\s*super\b/.test(inlineStyle);
+      const isSub = /vertical-align\s*:\s*sub\b/.test(inlineStyle);
+
+      let wrapped = frag;
+      const wrapWith = (wrapTag) => {
+        const el = doc.createElement(wrapTag);
+        el.appendChild(wrapped);
+        wrapped = el;
+      };
+      if (isSub) wrapWith("sub");
+      if (isSup) wrapWith("sup");
+      if (isStrike) wrapWith("s");
+      if (isUnderline) wrapWith("u");
+      if (isItalic) wrapWith("em");
+      if (isBold) wrapWith("strong");
+      return wrapped;
+    }
+
+    // Inline formatting tags
+    if (tag === "b" || tag === "strong") {
+      const el = doc.createElement("strong");
+      el.appendChild(frag);
+      return el;
+    }
+    if (tag === "i" || tag === "em" || tag === "cite") {
+      const el = doc.createElement("em");
+      el.appendChild(frag);
+      return el;
+    }
+    if (tag === "u" || tag === "s" || tag === "del" || tag === "sup" || tag === "sub" || tag === "code" || tag === "pre") {
+      const targetTag = tag === "del" ? "s" : tag;
+      const el = doc.createElement(targetTag);
+      el.appendChild(frag);
+      return el;
+    }
+    if (tag === "a") {
+      const href = sanitizeUrl(node.getAttribute("href"));
+      if (!href) return frag;
+      const el = doc.createElement("a");
+      el.setAttribute("href", href);
+      if (/^https?:/i.test(href)) {
+        el.setAttribute("target", "_blank");
+        el.setAttribute("rel", "noopener noreferrer");
+      }
+      el.appendChild(frag);
+      return el;
+    }
+
+    // Headings: H1 inside body becomes H2; H5/H6 normalize to H4
+    if (/^h[1-6]$/.test(tag)) {
+      const lvl = tag === "h1" ? "h2" : (tag === "h5" || tag === "h6" ? "h4" : tag);
+      const el = doc.createElement(lvl);
+      el.appendChild(frag);
+      if (!el.textContent.trim()) return null;
+      return el;
+    }
+
+    // Tables: automatically upgrade pasted tables to crisp Booktabs magazine styling
+    if (tag === "table") {
+      const tbl = doc.createElement("table");
+      tbl.className = "journal-booktabs-table";
+      tbl.appendChild(frag);
+      if (node.parentElement && node.parentElement.classList && node.parentElement.classList.contains("journal-table-wrapper")) {
+        return tbl;
+      }
+      const wrap = doc.createElement("div");
+      wrap.className = "journal-table-wrapper";
+      wrap.appendChild(tbl);
+      return wrap;
+    }
+    if (["thead", "tbody", "tfoot", "tr", "caption"].includes(tag)) {
+      const el = doc.createElement(tag);
+      el.appendChild(frag);
+      return el;
+    }
+    if (tag === "th" || tag === "td") {
+      const el = doc.createElement(tag);
+      const cs = parseInt(node.getAttribute("colspan") || "0", 10);
+      const rs = parseInt(node.getAttribute("rowspan") || "0", 10);
+      if (cs > 1 && cs <= 20) el.setAttribute("colspan", String(cs));
+      if (rs > 1 && rs <= 50) el.setAttribute("rowspan", String(rs));
+      el.appendChild(frag);
+      return el;
+    }
+
+    // Figures & Captions
+    if (tag === "figure") {
+      const fig = doc.createElement("figure");
+      fig.className = "journal-figure";
+      fig.appendChild(frag);
+      return fig;
+    }
+    if (tag === "figcaption") {
+      const fc = doc.createElement("figcaption");
+      fc.appendChild(frag);
+      return fc;
+    }
+
+    // Lists & Blockquotes
+    if (tag === "ul" || tag === "ol") {
+      const el = doc.createElement(tag);
+      if (safeClasses.length) el.className = safeClasses.join(" ");
+      el.appendChild(frag);
+      return el;
+    }
+    if (tag === "li" || tag === "blockquote") {
+      const el = doc.createElement(tag);
+      el.appendChild(frag);
+      if (!el.textContent.trim() && !el.querySelector("img, table, figure")) return null;
+      return el;
+    }
+
+    // Preserved Editorial Widget Containers (Callout, Equation Block, Table Wrapper)
+    if (tag === "div" && isWidget) {
+      const el = doc.createElement("div");
+      el.className = safeClasses.join(" ");
+      el.appendChild(frag);
+      return el;
+    }
+
+    // Generic containers (div, section, article, main, header, footer, aside)
+    if (["div", "section", "article", "main", "header", "footer", "aside"].includes(tag)) {
+      if (hasBlockChild(frag)) {
+        return frag;
+      }
+      const p = doc.createElement("p");
+      p.appendChild(frag);
+      if (!p.textContent.trim() && !p.querySelector("img, figure, table")) return null;
+      return p;
+    }
+
+    // Paragraphs (and preserve explicit alignment ONLY when requested, e.g. on save/render)
+    if (tag === "p") {
+      // Split double <br><br> inside pasted paragraphs into clean separate <p> elements
+      const tempP = doc.createElement("p");
+      tempP.appendChild(frag);
+      const rawInner = tempP.innerHTML.trim();
+      if (!rawInner || rawInner === "<br>" || (!tempP.textContent.trim() && !tempP.querySelector("img, figure, table"))) {
+        return null;
+      }
+      const alignMatch = preserveAlignment ? inlineStyle.match(/text-align\s*:\s*(left|center|right|justify)\b/) : null;
+      if (/(?:<br\s*\/?>\s*){2,}/i.test(rawInner)) {
+        const parts = rawInner.split(/(?:<br\s*\/?>\s*){2,}/i).map(s => s.trim()).filter(Boolean);
+        const multiFrag = doc.createDocumentFragment();
+        parts.forEach(part => {
+          const subP = doc.createElement("p");
+          subP.innerHTML = part;
+          if (alignMatch) subP.style.textAlign = alignMatch[1];
+          if (subP.textContent.trim() || subP.querySelector("img")) multiFrag.appendChild(subP);
+        });
+        return multiFrag;
+      }
+      if (alignMatch) tempP.style.textAlign = alignMatch[1];
+      return tempP;
+    }
+
+    // Any other unknown tag (e.g. <mark>, <abbr>, <time>, <small>): unwrap to keep text uniform
+    return frag;
+  }
+
+  const outContainer = doc.createElement("div");
+  Array.from(root.childNodes).forEach(ch => {
+    const cleaned = cleanNode(ch);
+    if (cleaned) outContainer.appendChild(cleaned);
+  });
+
+  // Wrap stray top-level text/inline nodes into clean <p> blocks
+  const finalContainer = doc.createElement("div");
+  let inlineBuf = [];
+  const flushInlineBuf = () => {
+    if (inlineBuf.length === 0) return;
+    const p = doc.createElement("p");
+    inlineBuf.forEach(n => p.appendChild(n));
+    inlineBuf = [];
+    if (p.textContent.trim() || p.querySelector("img")) {
+      finalContainer.appendChild(p);
+    }
+  };
+
+  Array.from(outContainer.childNodes).forEach(node => {
+    if (node.nodeType === 1 && EDITORIAL_BLOCK_TAGS.has(node.tagName.toLowerCase())) {
+      flushInlineBuf();
+      finalContainer.appendChild(node);
+    } else {
+      if (node.nodeType === 3 && !node.nodeValue.trim() && inlineBuf.length === 0) return;
+      inlineBuf.push(node);
+    }
+  });
+  flushInlineBuf();
+
+  return finalContainer.innerHTML
+    .replace(/(<p>\s*(?:&nbsp;|\s|<br\s*\/?>)*<\/p>\s*)+/gi, "")
+    .trim();
+}
+
+let _lastPasteToastAt = 0;
+function handleNewsEditorPaste(e) {
+  const autoToggle = document.getElementById("news-auto-format-paste-toggle");
+  if (autoToggle && !autoToggle.checked) return;
+
+  const cb = e.clipboardData || window.clipboardData;
+  if (!cb) return;
+
+  // If user pasted a direct clipboard image file, let browser / default handle or convert to figure
+  const html = cb.getData("text/html") || "";
+  const plain = cb.getData("text/plain") || "";
+  if (!html && !plain) return;
+
+  e.preventDefault();
+
+  let cleanHtml = "";
+  if (html && html.trim()) {
+    cleanHtml = sanitizeEditorialHtml(html, { preserveAlignment: false });
+  }
+  if (!cleanHtml && plain) {
+    cleanHtml = plainTextToEditorialHtml(plain);
+  }
+  if (!cleanHtml) return;
+
+  // Insert cleanly at caret so Ctrl+Z Undo remains intact
+  const editor = document.getElementById("news-editor-body");
+  if (editor) editor.focus();
+  let inserted = false;
+  try {
+    inserted = document.execCommand("insertHTML", false, cleanHtml);
+  } catch (err) {
+    inserted = false;
+  }
+  if (!inserted && editor) {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      range.deleteContents();
+      const temp = document.createElement("div");
+      temp.innerHTML = cleanHtml;
+      const frag = document.createDocumentFragment();
+      let lastNode = null;
+      while (temp.firstChild) {
+        lastNode = frag.appendChild(temp.firstChild);
+      }
+      range.insertNode(frag);
+      if (lastNode) {
+        range.setStartAfter(lastNode);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    } else {
+      editor.innerHTML += cleanHtml;
+    }
+  }
+
+  if (typeof updateEditorWordStats === "function") updateEditorWordStats();
+
+  const now = Date.now();
+  if (now - _lastPasteToastAt > 2500) {
+    _lastPasteToastAt = now;
+    showToast("✨ Auto-formatted pasted content to standard magazine font!", "info");
+  }
+}
+
+function standardizeNewsEditorFormatting(silent = false) {
+  const editor = document.getElementById("news-editor-body");
+  if (!editor) return;
+  const cleaned = sanitizeEditorialHtml(editor.innerHTML, { preserveAlignment: true });
+  editor.innerHTML = cleaned;
+  if (typeof updateEditorWordStats === "function") updateEditorWordStats();
+  if (!silent) {
+    showToast("✨ Standardized article typography to magazine format (Merriweather + Source Serif 4)!", "success");
+  }
+}
+
+function bindNewsEditorAutoFormatPaste() {
+  const editor = document.getElementById("news-editor-body");
+  if (editor && editor.dataset.magPasteBound !== "1") {
+    editor.dataset.magPasteBound = "1";
+    editor.addEventListener("paste", handleNewsEditorPaste);
+  }
+  // Clean single-line pasted noise in Headline & Subtitle inputs
+  ["news-edit-title", "news-edit-subtitle"].forEach(id => {
+    const inp = document.getElementById(id);
+    if (inp && inp.dataset.magPasteBound !== "1") {
+      inp.dataset.magPasteBound = "1";
+      inp.addEventListener("paste", (ev) => {
+        const cb = ev.clipboardData || window.clipboardData;
+        if (!cb) return;
+        const txt = cb.getData("text/plain");
+        if (!txt) return;
+        ev.preventDefault();
+        const cleanLine = txt.replace(/\u200B|\u200C|\u200D|\uFEFF/g, "").replace(/[\r\n\t]+/g, " ").replace(/\s{2,}/g, " ").trim();
+        const start = inp.selectionStart ?? inp.value.length;
+        const end = inp.selectionEnd ?? inp.value.length;
+        inp.value = inp.value.slice(0, start) + cleanLine + inp.value.slice(end);
+        const nextPos = start + cleanLine.length;
+        try { inp.setSelectionRange(nextPos, nextPos); } catch (_) {}
+        inp.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    }
+  });
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bindNewsEditorAutoFormatPaste);
+} else {
+  bindNewsEditorAutoFormatPaste();
 }
 
 // --- WYSIWYG Editor Commands & Formatting Helpers ---
@@ -36461,6 +36943,10 @@ window.updateNewsCoverPreview = updateNewsCoverPreview;
 window.removeNewsCoverImage = removeNewsCoverImage;
 window.execEditorCommand = execEditorCommand;
 window.execEditorFormatBlock = execEditorFormatBlock;
+window.sanitizeEditorialHtml = sanitizeEditorialHtml;
+window.plainTextToEditorialHtml = plainTextToEditorialHtml;
+window.standardizeNewsEditorFormatting = standardizeNewsEditorFormatting;
+window.bindNewsEditorAutoFormatPaste = bindNewsEditorAutoFormatPaste;
 window.insertCalloutBox = insertCalloutBox;
 window.insertHorizontalRule = insertHorizontalRule;
 window.closeSubdialog = closeSubdialog;

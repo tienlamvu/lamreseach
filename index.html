@@ -4,11 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=183_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=183_v116_vesta_viewer'" />
-  <!-- Publication Math Typography: STIX Two Text (MathType / Times) + KaTeX 0.16.11 (Word/LaTeX Equation Engine) -->
+  <link rel="stylesheet" href="styles.css?v=184_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=184_v116_vesta_viewer'" />
+  <!-- Unified Publication & Magazine Typography: Source Serif 4 (Body), Merriweather (Headlines), Inter (UI), STIX Two Text (Math) + KaTeX 0.16.11 -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Merriweather:ital,wght@0,700;0,900;1,400;1,700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400;1,8..60,600&family=STIX+Two+Text:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" onerror="this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css';" />
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" onerror="var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js';document.head.appendChild(s);"></script>
   <!-- Google Identity Services for OAuth 2.0 Sign-In & Google Calendar API -->
@@ -7379,7 +7379,7 @@
   <script src="topo_rashba.js?v=180_v116_vesta_viewer" onerror="this.src='/static/topo_rashba.js?v=180_v116_vesta_viewer'"></script>
   <script src="potential_polar.js?v=180_v116_vesta_viewer" onerror="this.src='/static/potential_polar.js?v=180_v116_vesta_viewer'"></script>
   <script src="dft_theory.js?v=180_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=180_v116_vesta_viewer'"></script>
-  <script src="app.js?v=183_v116_vesta_viewer" onerror="this.src='/static/app.js?v=183_v116_vesta_viewer'"></script>
+  <script src="app.js?v=184_v116_vesta_viewer" onerror="this.src='/static/app.js?v=184_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
@@ -7720,24 +7720,27 @@
 
         <!-- WYSIWYG Rich Text Toolbar & Content -->
         <div class="news-form-group">
-          <label class="form-label">Story Body &amp; Rich Editorial Content</label>
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:5px;">
+            <label class="form-label" style="margin-bottom:0 !important;">Story Body &amp; Rich Editorial Content</label>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <span class="mag-typo-status-pill" title="All articles render in a unified publication font system (Merriweather headlines + Source Serif 4 body)">✨ Standard Font: Source Serif 4</span>
+              <label style="display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:600; color:#5c4738; cursor:pointer; user-select:none;">
+                <input type="checkbox" id="news-auto-format-paste-toggle" checked style="width:auto !important; accent-color:#8b3a1a;">
+                <span>Auto-format on paste</span>
+              </label>
+            </div>
+          </div>
           
           <!-- Editor Toolbar -->
           <div class="news-editor-toolbar" id="news-editor-toolbar">
-            <!-- Font Family & Heading -->
+            <!-- Heading / Editorial Block Style -->
             <div class="toolbar-group">
-              <select class="toolbar-select" onchange="execEditorCommand('fontName', this.value); this.selectedIndex=0;" title="Font Family">
-                <option value="" disabled selected>Font</option>
-                <option value="'Merriweather', 'Georgia', serif">Editorial Serif</option>
-                <option value="'Inter', -apple-system, sans-serif">Modern Sans</option>
-                <option value="'Consolas', 'Courier New', monospace">Monospace</option>
-              </select>
-              <select class="toolbar-select" onchange="execEditorFormatBlock(this.value); this.selectedIndex=0;" title="Heading / Format">
+              <select class="toolbar-select" onchange="execEditorFormatBlock(this.value); this.selectedIndex=0;" title="Heading / Block Style">
                 <option value="" disabled selected>Style</option>
                 <option value="H2">Section (H2)</option>
                 <option value="H3">Subsection (H3)</option>
                 <option value="H4">Sub-subsection (H4)</option>
-                <option value="P">Paragraph (Text)</option>
+                <option value="P">Paragraph (Body)</option>
                 <option value="BLOCKQUOTE">Pull Quote</option>
               </select>
             </div>
@@ -7754,18 +7757,6 @@
             <div class="toolbar-group">
               <button type="button" class="toolbar-btn" onclick="execEditorCommand('subscript')" title="Subscript (e.g. H₂O, MoS₂)">X<sub>2</sub></button>
               <button type="button" class="toolbar-btn" onclick="execEditorCommand('superscript')" title="Superscript (e.g. Å³, e⁻)">X<sup>2</sup></button>
-            </div>
-
-            <!-- Color Pickers -->
-            <div class="toolbar-group">
-              <label class="toolbar-color-btn" title="Text Color">
-                <span style="font-weight:bold; border-bottom:3px solid #8b3a1a;">A</span>
-                <input type="color" value="#1e1b18" onchange="execEditorCommand('foreColor', this.value)" style="opacity:0; width:0; height:0; position:absolute;">
-              </label>
-              <label class="toolbar-color-btn" title="Highlight / Background Color">
-                <span style="background:#fff2a8; padding:0 3px; border-radius:2px;">🖍️</span>
-                <input type="color" value="#fff2a8" onchange="execEditorCommand('hiliteColor', this.value)" style="opacity:0; width:0; height:0; position:absolute;">
-              </label>
             </div>
 
             <!-- Alignment -->
@@ -7791,16 +7782,17 @@
               <button type="button" class="toolbar-btn" onclick="insertHorizontalRule()" title="Horizontal Divider">&horbar;</button>
             </div>
 
-            <!-- History & Clear -->
+            <!-- History & Standardize Format -->
             <div class="toolbar-group">
               <button type="button" class="toolbar-btn" onclick="execEditorCommand('undo')" title="Undo (Ctrl+Z)">↩️</button>
               <button type="button" class="toolbar-btn" onclick="execEditorCommand('redo')" title="Redo (Ctrl+Y)">↪️</button>
-              <button type="button" class="toolbar-btn" onclick="execEditorCommand('removeFormat')" title="Clear Formatting">⌫</button>
+              <button type="button" class="toolbar-btn toolbar-btn-standardize" onclick="standardizeNewsEditorFormatting(false)" title="Normalize entire article to uniform magazine font, spacing & clean paragraphs (keeps headings, bold/italic, sub/sup, tables, figures & links)">✨ Standardize Font</button>
+              <button type="button" class="toolbar-btn" onclick="execEditorCommand('removeFormat')" title="Clear Selection Inline Formatting">⌫</button>
             </div>
           </div>
 
           <!-- Rich Editable Content Surface -->
-          <div id="news-editor-body" class="news-wysiwyg-surface" contenteditable="true" oninput="updateEditorWordStats()" placeholder="Compose your news story, research highlight, or full scientific paper here..."></div>
+          <div id="news-editor-body" class="news-wysiwyg-surface" contenteditable="true" oninput="updateEditorWordStats()" placeholder="Compose or paste your news story, research highlight, or scientific article here — copied fonts are automatically standardized to magazine typography..."></div>
         </div>
       </div>
 
