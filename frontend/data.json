@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-28T12:36:00.522Z",
+  "exported_at": "2026-11-28T12:36:26.887Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -7229,7 +7229,7 @@
       "manual_numbering": false,
       "authors": "Vu Tien Lam<sup>1</sup>",
       "corresponding_email": "lamvt.skku@gmail.com",
-      "affiliations": "1. School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea",
+      "affiliations": "1. Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea",
       "authors_data": [
         {
           "name": "Vu Tien Lam",
@@ -7243,7 +7243,7 @@
       "affiliations_data": [
         {
           "id": 1,
-          "text": "School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea"
+          "text": "Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea"
         }
       ],
       "received_date": "",
