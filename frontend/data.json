@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-28T12:31:27.588Z",
+  "exported_at": "2026-11-28T12:31:31.724Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -7178,8 +7178,8 @@
       "story_format": "magazine",
       "status": "Published",
       "is_featured": false,
-      "special_issue_id": "",
-      "regular_issue_id": "ri_2026_1795851985746",
+      "special_issue_id": "si_1795850581075",
+      "regular_issue_id": "",
       "source_name": "",
       "source_url": "https://semiconductor-today.com/news_items/2026/nov/nanobionics-261126.shtml",
       "manual_numbering": false,
