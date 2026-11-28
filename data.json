@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-28T07:46:42.866Z",
+  "exported_at": "2026-11-28T07:46:45.994Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -7120,21 +7120,15 @@
       "subtitle": "",
       "order": 2,
       "created_at": "2026-11-28"
-    },
-    {
-      "id": "ri_2026_1795851986937",
-      "year": 2026,
-      "title": "",
-      "subtitle": "",
-      "order": 3,
-      "created_at": "2026-11-28"
     }
   ],
   "deleted_news_regular_issues": [
-    "ri_2026_1795851985745_1"
+    "ri_2026_1795851985745_1",
+    "ri_2026_1795851986937"
   ],
   "deleted_news_regular_issues_map": {
-    "ri_2026_1795851985745_1": 1795852001911
+    "ri_2026_1795851985745_1": 1795852001911,
+    "ri_2026_1795851986937": 1795852004151
   },
   "news_settings": {
     "magazine_name": "Lam's Story",
