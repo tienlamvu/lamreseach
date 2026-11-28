@@ -961,7 +961,7 @@ body.visitor-mode .owner-only-btn {
   display: none;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 5000;
   padding: 16px;
 }
 
@@ -3601,7 +3601,7 @@ body.is-admin #cv-exclusive-owner-notice {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 9999;
+  z-index: 350;
   opacity: 0;
   visibility: hidden;
   transform: translateY(14px) scale(0.9);
@@ -6204,7 +6204,7 @@ body.is-admin #cv-exclusive-owner-notice {
 
 /* Ensure 3D Crystal / CIF / POSCAR Viewer opens cleanly above Admin User Inspector modal */
 #cif-view-modal {
-  z-index: 1200 !important;
+  z-index: 6000 !important;
 }
 
 #struct-folder-select:disabled {
@@ -15674,12 +15674,12 @@ textarea.dft-ed-code-surface::placeholder {
    ============================================================================ */
 .top-app-header {
   overflow: visible !important;
-  z-index: 1200;
+  z-index: 400;
 }
 .header-nav-wrapper {
   position: relative;
   overflow: visible !important;
-  z-index: 1200;
+  z-index: 400;
 }
 #main-horizontal-nav.horizontal-tabs {
   overflow: visible !important;

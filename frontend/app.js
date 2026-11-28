@@ -2189,6 +2189,7 @@ function ensureUsersRegistryInitialized(remoteRegistry = null, remoteDeleted = n
 async function pullCloudDatabaseInstant(silent = true) {
   const token = getBuiltInCloudToken();
   if (!token) return false;
+  if (_CLOUD_SYNC_IN_FLIGHT) return false;
   try {
     const repo = "tienlamvu/lamreseach";
     const apiUrl = `https://api.github.com/repos/${repo}/contents/frontend/data.json?ref=main&_t=${Date.now()}`;
@@ -2201,8 +2202,24 @@ async function pullCloudDatabaseInstant(silent = true) {
     });
     if (!res.ok) return false;
     const fileMeta = await res.json();
-    if (!fileMeta || !fileMeta.content) return false;
-    const jsonText = decodeBase64Utf8(fileMeta.content);
+    if (!fileMeta) return false;
+    let rawContentB64 = fileMeta.content || "";
+    if (!rawContentB64 && fileMeta.sha) {
+      // Files > 1MB return empty content in GitHub Contents API — fetch blob by SHA
+      const blobRes = await fetch(`https://api.github.com/repos/${repo}/git/blobs/${fileMeta.sha}`, {
+        headers: {
+          "Authorization": `token ${token}`,
+          "Accept": "application/vnd.github.v3+json"
+        },
+        cache: "no-store"
+      });
+      if (blobRes.ok) {
+        const blobData = await blobRes.json();
+        rawContentB64 = (blobData && blobData.content) || "";
+      }
+    }
+    if (!rawContentB64) return false;
+    const jsonText = decodeBase64Utf8(rawContentB64);
     const cloudDb = JSON.parse(jsonText);
     if (!cloudDb || typeof cloudDb !== "object") return false;
 
@@ -2252,32 +2269,51 @@ async function pullCloudDatabaseInstant(silent = true) {
         if (typeof initDashboardDftCard === "function") initDashboardDftCard();
         if (typeof renderDftTheoryTab === "function") renderDftTheoryTab(null, true);
       }
-      if (Array.isArray(cloudDb.news_articles) && cloudDb.news_articles.length > 0) {
-        if (typeof mergeIncomingDeletedNewsArticles === "function") {
-          mergeIncomingDeletedNewsArticles(cloudDb.deleted_news_articles, cloudDb.deleted_news_articles_map);
-        }
-        STATE.masterData.news_articles = cloudDb.news_articles;
-        window._SEED_NEWS_ARTICLES = cloudDb.news_articles;
+      // Always merge incoming news/issue tombstones first so deletions propagate cleanly across all tabs & Incognito
+      if (typeof mergeIncomingDeletedNewsArticles === "function" && (cloudDb.deleted_news_articles || cloudDb.deleted_news_articles_map)) {
+        mergeIncomingDeletedNewsArticles(cloudDb.deleted_news_articles, cloudDb.deleted_news_articles_map);
+      }
+      if (typeof mergeIncomingDeletedSpecialIssues === "function" && (cloudDb.deleted_news_special_issues || cloudDb.deleted_news_special_issues_map)) {
+        mergeIncomingDeletedSpecialIssues(cloudDb.deleted_news_special_issues, cloudDb.deleted_news_special_issues_map);
+      }
+      if (typeof mergeIncomingDeletedRegularIssues === "function" && (cloudDb.deleted_news_regular_issues || cloudDb.deleted_news_regular_issues_map)) {
+        mergeIncomingDeletedRegularIssues(cloudDb.deleted_news_regular_issues, cloudDb.deleted_news_regular_issues_map);
+      }
+      if (Array.isArray(cloudDb.news_articles)) {
+        const delNewsMap = typeof getDeletedNewsArticlesMap === "function" ? getDeletedNewsArticlesMap() : {};
+        const cleanCloudNews = cloudDb.news_articles.filter(a => a && a.id && !delNewsMap[String(a.id)]);
+        STATE.masterData.news_articles = cleanCloudNews;
+        window._SEED_NEWS_ARTICLES = cleanCloudNews;
+        STATE.newsArticles = cleanCloudNews;
+        try {
+          localStorage.setItem("matsci_news_articles_v1", JSON.stringify(cleanCloudNews));
+        } catch (e) {}
       }
       if (Array.isArray(cloudDb.news_special_issues)) {
-        if (typeof mergeIncomingDeletedSpecialIssues === "function") {
-          mergeIncomingDeletedSpecialIssues(cloudDb.deleted_news_special_issues, cloudDb.deleted_news_special_issues_map);
-        }
-        STATE.masterData.news_special_issues = cloudDb.news_special_issues;
-        window._SEED_NEWS_SPECIAL_ISSUES = cloudDb.news_special_issues;
+        const delSiMap = typeof getDeletedSpecialIssuesMap === "function" ? getDeletedSpecialIssuesMap() : {};
+        const cleanCloudSI = cloudDb.news_special_issues.filter(s => s && s.id && !delSiMap[String(s.id)]);
+        STATE.masterData.news_special_issues = cleanCloudSI;
+        window._SEED_NEWS_SPECIAL_ISSUES = cleanCloudSI;
+        STATE.newsSpecialIssues = cleanCloudSI;
+        try {
+          localStorage.setItem("matsci_news_special_issues_v1", JSON.stringify(cleanCloudSI));
+        } catch (e) {}
       }
       if (Array.isArray(cloudDb.news_regular_issues)) {
-        if (typeof mergeIncomingDeletedRegularIssues === "function") {
-          mergeIncomingDeletedRegularIssues(cloudDb.deleted_news_regular_issues, cloudDb.deleted_news_regular_issues_map);
-        }
-        STATE.masterData.news_regular_issues = cloudDb.news_regular_issues;
-        window._SEED_NEWS_REGULAR_ISSUES = cloudDb.news_regular_issues;
+        const delRiMap = typeof getDeletedRegularIssuesMap === "function" ? getDeletedRegularIssuesMap() : {};
+        const cleanCloudRI = cloudDb.news_regular_issues.filter(r => r && r.id && !delRiMap[String(r.id)]);
+        STATE.masterData.news_regular_issues = cleanCloudRI;
+        window._SEED_NEWS_REGULAR_ISSUES = cleanCloudRI;
+        STATE.newsRegularIssues = cleanCloudRI;
+        try {
+          localStorage.setItem("matsci_news_regular_issues_v1", JSON.stringify(cleanCloudRI));
+        } catch (e) {}
       }
       if (cloudDb.news_settings && typeof cloudDb.news_settings === "object") {
         STATE.masterData.news_settings = cloudDb.news_settings;
-        if (typeof mergeIncomingNewsSettings === "function") {
-          mergeIncomingNewsSettings(cloudDb.news_settings);
-        }
+        try {
+          localStorage.setItem("matsci_news_settings_v1", JSON.stringify({ ...DEFAULT_NEWS_SETTINGS, ...cloudDb.news_settings }));
+        } catch (e) {}
       }
       applyActiveWorkspaceData();
       refreshAllWorkspaceViews();
@@ -2347,9 +2383,25 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
     if (getRes.ok) {
       const fileData = await getRes.json();
       sha = fileData.sha || "";
-      if (fileData.content) {
+      let rawB64 = fileData.content || "";
+      if (!rawB64 && sha) {
         try {
-          remoteDb = JSON.parse(decodeBase64Utf8(fileData.content));
+          const blobRes = await fetch(`https://api.github.com/repos/${repo}/git/blobs/${sha}`, {
+            headers: {
+              "Authorization": `token ${token}`,
+              "Accept": "application/vnd.github.v3+json"
+            },
+            cache: "no-store"
+          });
+          if (blobRes.ok) {
+            const blobData = await blobRes.json();
+            rawB64 = (blobData && blobData.content) || "";
+          }
+        } catch (e) {}
+      }
+      if (rawB64) {
+        try {
+          remoteDb = JSON.parse(decodeBase64Utf8(rawB64));
         } catch (e) {}
       }
     }
@@ -2440,10 +2492,21 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
     persistUsersRegistryLocal();
     persistUserGroupsLocal();
 
-    // 2.5 Merge entity tombstones from remoteDb before deciding master data
+    // 2.5 Merge entity & magazine/news tombstones from remoteDb before deciding master data
     mergeIncomingDeletedStructures(remoteDb && remoteDb.deleted_structures, remoteDb && remoteDb.deleted_structures_map);
     mergeIncomingDeletedPapers(remoteDb && remoteDb.deleted_papers, remoteDb && remoteDb.deleted_papers_map);
     mergeIncomingDeletedSchedule(remoteDb && remoteDb.deleted_schedule, remoteDb && remoteDb.deleted_schedule_map);
+    if (remoteDb) {
+      if (typeof mergeIncomingDeletedNewsArticles === "function") {
+        mergeIncomingDeletedNewsArticles(remoteDb.deleted_news_articles, remoteDb.deleted_news_articles_map);
+      }
+      if (typeof mergeIncomingDeletedSpecialIssues === "function") {
+        mergeIncomingDeletedSpecialIssues(remoteDb.deleted_news_special_issues, remoteDb.deleted_news_special_issues_map);
+      }
+      if (typeof mergeIncomingDeletedRegularIssues === "function") {
+        mergeIncomingDeletedRegularIssues(remoteDb.deleted_news_regular_issues, remoteDb.deleted_news_regular_issues_map);
+      }
+    }
     purgeAllTombstonedEntities();
 
     // 3. Determine master data (Admin's CV, papers, structures, schedule)
@@ -2492,15 +2555,75 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
       }
     }
 
-    // Safely collect news_articles without risk of wiping existing articles
-    const existingNews = (STATE.newsArticles && STATE.newsArticles.length > 0)
-      ? STATE.newsArticles
-      : (remoteDb && Array.isArray(remoteDb.news_articles) && remoteDb.news_articles.length > 0)
-        ? remoteDb.news_articles
-        : (STATE.masterData && Array.isArray(STATE.masterData.news_articles) && STATE.masterData.news_articles.length > 0)
-          ? STATE.masterData.news_articles
-          : (typeof DEFAULT_SEED_NEWS_ARTICLES !== "undefined" ? DEFAULT_SEED_NEWS_ARTICLES : []);
-    const safeNewsArticles = existingNews.filter(a => a && a.id && !getDeletedNewsArticlesMap()[String(a.id)]);
+    // Safely collect Magazine / News & DFT Lectures:
+    // - Non-Admin sessions (Personal Users / Guests / Preview) NEVER overwrite Admin's cloud News/Issues/Settings/Lectures!
+    // - Admin News mutations push authoritative local edits (still honoring merged tombstones).
+    // - Admin non-News background syncs (Calendar/Papers/Users) prefer fresh remoteDb News so older open Admin tabs never revert Special Issue edits or resurrect deleted stories!
+    const isNewsMutationReason = /(Story|Issue|Magazine|News)/i.test(String(reason || ""));
+    const delNewsMap = typeof getDeletedNewsArticlesMap === "function" ? getDeletedNewsArticlesMap() : {};
+    const delSiMap = typeof getDeletedSpecialIssuesMap === "function" ? getDeletedSpecialIssuesMap() : {};
+    const delRiMap = typeof getDeletedRegularIssuesMap === "function" ? getDeletedRegularIssuesMap() : {};
+
+    let safeNewsArticles = [];
+    let safeNewsSpecialIssues = [];
+    let safeNewsRegularIssues = [];
+    let safeNewsSettings = (remoteDb && remoteDb.news_settings) || undefined;
+    let safeDelNewsMap = { ...delNewsMap };
+    let safeDelSiMap = { ...delSiMap };
+    let safeDelRiMap = { ...delRiMap };
+
+    if (!isStrictAdmin && remoteDb) {
+      safeNewsArticles = Array.isArray(remoteDb.news_articles) ? remoteDb.news_articles : [];
+      safeNewsSpecialIssues = Array.isArray(remoteDb.news_special_issues) ? remoteDb.news_special_issues : [];
+      safeNewsRegularIssues = Array.isArray(remoteDb.news_regular_issues) ? remoteDb.news_regular_issues : [];
+      safeNewsSettings = remoteDb.news_settings || (typeof loadNewsSettings === "function" ? loadNewsSettings() : undefined);
+      safeDelNewsMap = (remoteDb.deleted_news_articles_map && typeof remoteDb.deleted_news_articles_map === "object") ? remoteDb.deleted_news_articles_map : safeDelNewsMap;
+      safeDelSiMap = (remoteDb.deleted_news_special_issues_map && typeof remoteDb.deleted_news_special_issues_map === "object") ? remoteDb.deleted_news_special_issues_map : safeDelSiMap;
+      safeDelRiMap = (remoteDb.deleted_news_regular_issues_map && typeof remoteDb.deleted_news_regular_issues_map === "object") ? remoteDb.deleted_news_regular_issues_map : safeDelRiMap;
+    } else {
+      const remoteArts = (remoteDb && Array.isArray(remoteDb.news_articles)) ? remoteDb.news_articles : [];
+      const localArts = Array.isArray(STATE.newsArticles)
+        ? STATE.newsArticles
+        : ((STATE.masterData && Array.isArray(STATE.masterData.news_articles)) ? STATE.masterData.news_articles : []);
+      const artMap = new Map();
+      if (isNewsMutationReason) {
+        remoteArts.forEach(a => { if (a && a.id) artMap.set(String(a.id), a); });
+        localArts.forEach(a => { if (a && a.id) artMap.set(String(a.id), a); });
+      } else {
+        localArts.forEach(a => { if (a && a.id) artMap.set(String(a.id), a); });
+        remoteArts.forEach(a => { if (a && a.id) artMap.set(String(a.id), a); });
+      }
+      safeNewsArticles = Array.from(artMap.values()).filter(a => a && a.id && !delNewsMap[String(a.id)]);
+
+      const remoteSIs = (remoteDb && Array.isArray(remoteDb.news_special_issues)) ? remoteDb.news_special_issues : [];
+      const localSIs = typeof loadNewsSpecialIssues === "function" ? loadNewsSpecialIssues() : [];
+      const siMap = new Map();
+      if (isNewsMutationReason) {
+        remoteSIs.forEach(s => { if (s && s.id) siMap.set(String(s.id), s); });
+        localSIs.forEach(s => { if (s && s.id) siMap.set(String(s.id), s); });
+      } else {
+        localSIs.forEach(s => { if (s && s.id) siMap.set(String(s.id), s); });
+        remoteSIs.forEach(s => { if (s && s.id) siMap.set(String(s.id), s); });
+      }
+      safeNewsSpecialIssues = Array.from(siMap.values()).filter(s => s && s.id && !delSiMap[String(s.id)]);
+
+      const remoteRIs = (remoteDb && Array.isArray(remoteDb.news_regular_issues)) ? remoteDb.news_regular_issues : [];
+      const localRIs = typeof loadNewsRegularIssues === "function" ? loadNewsRegularIssues() : [];
+      const riMap = new Map();
+      if (isNewsMutationReason) {
+        remoteRIs.forEach(r => { if (r && r.id) riMap.set(String(r.id), r); });
+        localRIs.forEach(r => { if (r && r.id) riMap.set(String(r.id), r); });
+      } else {
+        localRIs.forEach(r => { if (r && r.id) riMap.set(String(r.id), r); });
+        remoteRIs.forEach(r => { if (r && r.id) riMap.set(String(r.id), r); });
+      }
+      safeNewsRegularIssues = Array.from(riMap.values()).filter(r => r && r.id && !delRiMap[String(r.id)]);
+
+      safeNewsSettings = isNewsMutationReason
+        ? (typeof loadNewsSettings === "function" ? loadNewsSettings() : safeNewsSettings)
+        : ((remoteDb && remoteDb.news_settings) || (typeof loadNewsSettings === "function" ? loadNewsSettings() : undefined));
+    }
+
     // Safely collect dft_lectures without risk of wiping custom admin lectures
     let localDftLectures = null;
     try {
@@ -2510,15 +2633,17 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
         if (Array.isArray(parsedDft) && parsedDft.length > 0) localDftLectures = parsedDft;
       }
     } catch (_) {}
-    const safeDftLectures = (Array.isArray(STATE.dftLectures) && STATE.dftLectures.length > 0)
-      ? STATE.dftLectures
-      : (localDftLectures && localDftLectures.length > 0)
-        ? localDftLectures
-        : (remoteDb && Array.isArray(remoteDb.dft_lectures) && remoteDb.dft_lectures.length > 0)
-          ? remoteDb.dft_lectures
-          : (STATE.masterData && Array.isArray(STATE.masterData.dft_lectures) && STATE.masterData.dft_lectures.length > 0)
-            ? STATE.masterData.dft_lectures
-            : (Array.isArray(window.DFT_THEORY_LECTURES) ? window.DFT_THEORY_LECTURES : []);
+    const safeDftLectures = (!isStrictAdmin && remoteDb && Array.isArray(remoteDb.dft_lectures) && remoteDb.dft_lectures.length > 0)
+      ? remoteDb.dft_lectures
+      : (Array.isArray(STATE.dftLectures) && STATE.dftLectures.length > 0)
+        ? STATE.dftLectures
+        : (localDftLectures && localDftLectures.length > 0)
+          ? localDftLectures
+          : (remoteDb && Array.isArray(remoteDb.dft_lectures) && remoteDb.dft_lectures.length > 0)
+            ? remoteDb.dft_lectures
+            : (STATE.masterData && Array.isArray(STATE.masterData.dft_lectures) && STATE.masterData.dft_lectures.length > 0)
+              ? STATE.masterData.dft_lectures
+              : (Array.isArray(window.DFT_THEORY_LECTURES) ? window.DFT_THEORY_LECTURES : []);
     const exportObj = {
       version: "4.0",
       exported_at: new Date().toISOString(),
@@ -2543,15 +2668,15 @@ async function syncDatabaseToCloudInstant(reason = "Cloud Sync", silent = true) 
       deleted_schedule: Object.keys(getDeletedScheduleMap()),
       deleted_schedule_map: getDeletedScheduleMap(),
       news_articles: safeNewsArticles,
-      deleted_news_articles: Object.keys(getDeletedNewsArticlesMap()),
-      deleted_news_articles_map: getDeletedNewsArticlesMap(),
-      news_special_issues: typeof loadNewsSpecialIssues === "function" ? loadNewsSpecialIssues() : ((remoteDb && Array.isArray(remoteDb.news_special_issues)) ? remoteDb.news_special_issues : []),
-      deleted_news_special_issues: typeof getDeletedSpecialIssuesMap === "function" ? Object.keys(getDeletedSpecialIssuesMap()) : [],
-      deleted_news_special_issues_map: typeof getDeletedSpecialIssuesMap === "function" ? getDeletedSpecialIssuesMap() : {},
-      news_regular_issues: typeof loadNewsRegularIssues === "function" ? loadNewsRegularIssues() : ((remoteDb && Array.isArray(remoteDb.news_regular_issues)) ? remoteDb.news_regular_issues : []),
-      deleted_news_regular_issues: typeof getDeletedRegularIssuesMap === "function" ? Object.keys(getDeletedRegularIssuesMap()) : [],
-      deleted_news_regular_issues_map: typeof getDeletedRegularIssuesMap === "function" ? getDeletedRegularIssuesMap() : {},
-      news_settings: typeof loadNewsSettings === "function" ? loadNewsSettings() : ((remoteDb && remoteDb.news_settings) || undefined),
+      deleted_news_articles: (!isStrictAdmin && remoteDb && Array.isArray(remoteDb.deleted_news_articles)) ? remoteDb.deleted_news_articles : Object.keys(safeDelNewsMap),
+      deleted_news_articles_map: safeDelNewsMap,
+      news_special_issues: safeNewsSpecialIssues,
+      deleted_news_special_issues: (!isStrictAdmin && remoteDb && Array.isArray(remoteDb.deleted_news_special_issues)) ? remoteDb.deleted_news_special_issues : Object.keys(safeDelSiMap),
+      deleted_news_special_issues_map: safeDelSiMap,
+      news_regular_issues: safeNewsRegularIssues,
+      deleted_news_regular_issues: (!isStrictAdmin && remoteDb && Array.isArray(remoteDb.deleted_news_regular_issues)) ? remoteDb.deleted_news_regular_issues : Object.keys(safeDelRiMap),
+      deleted_news_regular_issues_map: safeDelRiMap,
+      news_settings: safeNewsSettings,
       dft_lectures: safeDftLectures
     };
 
@@ -5980,6 +6105,13 @@ function refreshAllWorkspaceViews() {
   if (typeof renderMonthlyCalendar === "function") renderMonthlyCalendar();
   if (typeof renderProfile === "function") renderProfile(STATE.profile);
   if (typeof renderAcademicCvSheet === "function") renderAcademicCvSheet(STATE.profile);
+  if (typeof renderNewsTab === "function") renderNewsTab();
+  if (typeof NEWS_STATE !== "undefined" && NEWS_STATE.currentJournalArticleId && typeof openNewsJournalModal === "function") {
+    const fullView = document.getElementById("news-full-article-view");
+    if (fullView && fullView.style.display !== "none") {
+      openNewsJournalModal(NEWS_STATE.currentJournalArticleId);
+    }
+  }
 }
 
 // ============================================================================
@@ -16618,16 +16750,18 @@ async function loadStaticFallbackData() {
       } else {
         ensureUserGroupsInitialized();
       }
-      if (remoteData && Array.isArray(remoteData.news_articles) && remoteData.news_articles.length > 0) {
-        if (!STATE.masterData) STATE.masterData = {};
-        STATE.masterData.news_articles = remoteData.news_articles;
-        window._SEED_NEWS_ARTICLES = remoteData.news_articles;
+      if (remoteData && Array.isArray(remoteData.news_articles)) {
         if (typeof mergeIncomingDeletedNewsArticles === "function") {
           mergeIncomingDeletedNewsArticles(remoteData.deleted_news_articles, remoteData.deleted_news_articles_map);
         }
+        if (!STATE.masterData) STATE.masterData = {};
+        const delNewsMap = typeof getDeletedNewsArticlesMap === "function" ? getDeletedNewsArticlesMap() : {};
+        const cleanRemoteNews = remoteData.news_articles.filter(a => a && a.id && !delNewsMap[String(a.id)]);
+        STATE.masterData.news_articles = cleanRemoteNews;
+        window._SEED_NEWS_ARTICLES = cleanRemoteNews;
         if (!localStorage.getItem("matsci_news_articles_v1")) {
           try {
-            localStorage.setItem("matsci_news_articles_v1", JSON.stringify(remoteData.news_articles));
+            localStorage.setItem("matsci_news_articles_v1", JSON.stringify(cleanRemoteNews));
           } catch(e) {}
         }
       }
@@ -17527,7 +17661,18 @@ function exportDataJson() {
     deleted_papers: Object.keys(getDeletedPapersMap()),
     deleted_papers_map: getDeletedPapersMap(),
     deleted_schedule: Object.keys(getDeletedScheduleMap()),
-    deleted_schedule_map: getDeletedScheduleMap()
+    deleted_schedule_map: getDeletedScheduleMap(),
+    news_articles: typeof loadNewsArticles === "function" ? loadNewsArticles() : (STATE.newsArticles || []),
+    deleted_news_articles: typeof getDeletedNewsArticlesMap === "function" ? Object.keys(getDeletedNewsArticlesMap()) : [],
+    deleted_news_articles_map: typeof getDeletedNewsArticlesMap === "function" ? getDeletedNewsArticlesMap() : {},
+    news_special_issues: typeof loadNewsSpecialIssues === "function" ? loadNewsSpecialIssues() : [],
+    deleted_news_special_issues: typeof getDeletedSpecialIssuesMap === "function" ? Object.keys(getDeletedSpecialIssuesMap()) : [],
+    deleted_news_special_issues_map: typeof getDeletedSpecialIssuesMap === "function" ? getDeletedSpecialIssuesMap() : {},
+    news_regular_issues: typeof loadNewsRegularIssues === "function" ? loadNewsRegularIssues() : [],
+    deleted_news_regular_issues: typeof getDeletedRegularIssuesMap === "function" ? Object.keys(getDeletedRegularIssuesMap()) : [],
+    deleted_news_regular_issues_map: typeof getDeletedRegularIssuesMap === "function" ? getDeletedRegularIssuesMap() : {},
+    news_settings: typeof loadNewsSettings === "function" ? loadNewsSettings() : undefined,
+    dft_lectures: (Array.isArray(STATE.dftLectures) && STATE.dftLectures.length > 0) ? STATE.dftLectures : ((STATE.masterData && STATE.masterData.dft_lectures) || [])
   };
   const jsonStr = JSON.stringify(exportObj, null, 2);
   const blob = new Blob([jsonStr], { type: "application/json" });
@@ -17600,7 +17745,18 @@ async function commitDataJsonToGitHub(options = {}) {
       deleted_papers: Object.keys(getDeletedPapersMap()),
       deleted_papers_map: getDeletedPapersMap(),
       deleted_schedule: Object.keys(getDeletedScheduleMap()),
-      deleted_schedule_map: getDeletedScheduleMap()
+      deleted_schedule_map: getDeletedScheduleMap(),
+      news_articles: typeof loadNewsArticles === "function" ? loadNewsArticles() : (STATE.newsArticles || []),
+      deleted_news_articles: typeof getDeletedNewsArticlesMap === "function" ? Object.keys(getDeletedNewsArticlesMap()) : [],
+      deleted_news_articles_map: typeof getDeletedNewsArticlesMap === "function" ? getDeletedNewsArticlesMap() : {},
+      news_special_issues: typeof loadNewsSpecialIssues === "function" ? loadNewsSpecialIssues() : [],
+      deleted_news_special_issues: typeof getDeletedSpecialIssuesMap === "function" ? Object.keys(getDeletedSpecialIssuesMap()) : [],
+      deleted_news_special_issues_map: typeof getDeletedSpecialIssuesMap === "function" ? getDeletedSpecialIssuesMap() : {},
+      news_regular_issues: typeof loadNewsRegularIssues === "function" ? loadNewsRegularIssues() : [],
+      deleted_news_regular_issues: typeof getDeletedRegularIssuesMap === "function" ? Object.keys(getDeletedRegularIssuesMap()) : [],
+      deleted_news_regular_issues_map: typeof getDeletedRegularIssuesMap === "function" ? getDeletedRegularIssuesMap() : {},
+      news_settings: typeof loadNewsSettings === "function" ? loadNewsSettings() : undefined,
+      dft_lectures: (Array.isArray(STATE.dftLectures) && STATE.dftLectures.length > 0) ? STATE.dftLectures : ((STATE.masterData && STATE.masterData.dft_lectures) || [])
     };
 
     const contentUtf8 = JSON.stringify(exportObj, null, 2);
@@ -31170,19 +31326,34 @@ const NEWS_MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug"
 const NEWS_MONTH_FULL = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 function loadNewsSettings() {
+  const isAdmin = typeof isStrictAdminSession === "function" ? isStrictAdminSession() : false;
   let merged = { ...DEFAULT_NEWS_SETTINGS };
-  if (STATE.masterData && STATE.masterData.news_settings && typeof STATE.masterData.news_settings === "object") {
-    merged = { ...merged, ...STATE.masterData.news_settings };
-  }
-  try {
-    const raw = localStorage.getItem("matsci_news_settings_v1");
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === "object") {
-        merged = { ...merged, ...parsed };
-      }
+  const applyRemote = () => {
+    if (STATE.masterData && STATE.masterData.news_settings && typeof STATE.masterData.news_settings === "object") {
+      merged = { ...merged, ...STATE.masterData.news_settings };
     }
-  } catch (e) {}
+  };
+  const applyLocal = () => {
+    try {
+      const raw = localStorage.getItem("matsci_news_settings_v1");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          merged = { ...merged, ...parsed };
+        }
+      }
+    } catch (e) {}
+  };
+  const hasAuthoritativeRemoteSettings = Boolean(STATE.masterData && STATE.masterData.news_settings && typeof STATE.masterData.news_settings === "object");
+  if (isAdmin) {
+    applyRemote();
+    applyLocal();
+  } else if (hasAuthoritativeRemoteSettings) {
+    applyRemote();
+  } else {
+    applyLocal();
+    applyRemote();
+  }
   // Auto-migrate legacy default branding from v181 -> "Lam's Story"
   if (!merged.magazine_name || merged.magazine_name === "SKKU Materials Dispatch") {
     merged.magazine_name = DEFAULT_NEWS_SETTINGS.magazine_name;
@@ -31207,6 +31378,18 @@ function mergeIncomingNewsSettings(remoteSettings) {
   } catch (e) {}
 }
 
+function touchLocalNewsMasterTimestamp() {
+  if (!(typeof isStrictAdminSession === "function" && isStrictAdminSession())) return;
+  try {
+    const raw = localStorage.getItem("matsci_static_db_v4");
+    const parsed = raw ? JSON.parse(raw) : {};
+    const nowIso = new Date().toISOString();
+    parsed.master_updated_at = nowIso;
+    parsed.updated_at = nowIso;
+    localStorage.setItem("matsci_static_db_v4", JSON.stringify(parsed));
+  } catch (e) {}
+}
+
 function saveNewsSettingsObj(nextSettings) {
   const clean = {
     ...DEFAULT_NEWS_SETTINGS,
@@ -31218,6 +31401,7 @@ function saveNewsSettingsObj(nextSettings) {
   try {
     localStorage.setItem("matsci_news_settings_v1", JSON.stringify(clean));
   } catch (e) {}
+  touchLocalNewsMasterTimestamp();
   return clean;
 }
 
@@ -31271,28 +31455,43 @@ function mergeIncomingDeletedRegularIssues(remoteList, remoteMap) {
 
 function loadNewsRegularIssues() {
   const deletedMap = getDeletedRegularIssuesMap();
+  const isAdmin = typeof isStrictAdminSession === "function" ? isStrictAdminSession() : false;
   const riMap = new Map();
-  if (STATE.masterData && Array.isArray(STATE.masterData.news_regular_issues)) {
-    STATE.masterData.news_regular_issues.forEach(ri => {
-      if (ri && ri.id) riMap.set(String(ri.id), { ...ri });
-    });
-  }
-  if (Array.isArray(window._SEED_NEWS_REGULAR_ISSUES)) {
-    window._SEED_NEWS_REGULAR_ISSUES.forEach(ri => {
-      if (ri && ri.id) riMap.set(String(ri.id), { ...ri });
-    });
-  }
-  try {
-    const raw = localStorage.getItem("matsci_news_regular_issues_v1");
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        parsed.forEach(ri => {
-          if (ri && ri.id) riMap.set(String(ri.id), { ...ri });
-        });
-      }
+  const applyRemote = () => {
+    if (STATE.masterData && Array.isArray(STATE.masterData.news_regular_issues)) {
+      STATE.masterData.news_regular_issues.forEach(ri => {
+        if (ri && ri.id) riMap.set(String(ri.id), { ...ri });
+      });
     }
-  } catch (e) {}
+    if (Array.isArray(window._SEED_NEWS_REGULAR_ISSUES)) {
+      window._SEED_NEWS_REGULAR_ISSUES.forEach(ri => {
+        if (ri && ri.id) riMap.set(String(ri.id), { ...ri });
+      });
+    }
+  };
+  const applyLocal = () => {
+    try {
+      const raw = localStorage.getItem("matsci_news_regular_issues_v1");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          parsed.forEach(ri => {
+            if (ri && ri.id) riMap.set(String(ri.id), { ...ri });
+          });
+        }
+      }
+    } catch (e) {}
+  };
+  const hasAuthoritativeRemoteRI = Boolean(STATE.masterData && Array.isArray(STATE.masterData.news_regular_issues));
+  if (isAdmin) {
+    applyRemote();
+    applyLocal();
+  } else if (hasAuthoritativeRemoteRI) {
+    applyRemote();
+  } else {
+    applyLocal();
+    applyRemote();
+  }
   const list = Array.from(riMap.values())
     .filter(ri => ri && ri.id && !deletedMap[String(ri.id)])
     .sort((a, b) => {
@@ -31317,6 +31516,7 @@ function persistNewsRegularIssues(list) {
   try {
     localStorage.setItem("matsci_news_regular_issues_v1", JSON.stringify(arr));
   } catch (e) {}
+  touchLocalNewsMasterTimestamp();
 }
 
 function getRegularIssuesForYear(year, regularIssuesList = null) {
@@ -31398,28 +31598,43 @@ function mergeIncomingDeletedSpecialIssues(remoteList, remoteMap) {
 
 function loadNewsSpecialIssues() {
   const deletedMap = getDeletedSpecialIssuesMap();
+  const isAdmin = typeof isStrictAdminSession === "function" ? isStrictAdminSession() : false;
   const siMap = new Map();
-  if (STATE.masterData && Array.isArray(STATE.masterData.news_special_issues)) {
-    STATE.masterData.news_special_issues.forEach(si => {
-      if (si && si.id) siMap.set(String(si.id), si);
-    });
-  }
-  if (Array.isArray(window._SEED_NEWS_SPECIAL_ISSUES)) {
-    window._SEED_NEWS_SPECIAL_ISSUES.forEach(si => {
-      if (si && si.id) siMap.set(String(si.id), si);
-    });
-  }
-  try {
-    const raw = localStorage.getItem("matsci_news_special_issues_v1");
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        parsed.forEach(si => {
-          if (si && si.id) siMap.set(String(si.id), si);
-        });
-      }
+  const applyRemote = () => {
+    if (STATE.masterData && Array.isArray(STATE.masterData.news_special_issues)) {
+      STATE.masterData.news_special_issues.forEach(si => {
+        if (si && si.id) siMap.set(String(si.id), { ...si });
+      });
     }
-  } catch (e) {}
+    if (Array.isArray(window._SEED_NEWS_SPECIAL_ISSUES)) {
+      window._SEED_NEWS_SPECIAL_ISSUES.forEach(si => {
+        if (si && si.id) siMap.set(String(si.id), { ...si });
+      });
+    }
+  };
+  const applyLocal = () => {
+    try {
+      const raw = localStorage.getItem("matsci_news_special_issues_v1");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          parsed.forEach(si => {
+            if (si && si.id) siMap.set(String(si.id), { ...si });
+          });
+        }
+      }
+    } catch (e) {}
+  };
+  const hasAuthoritativeRemoteSI = Boolean(STATE.masterData && Array.isArray(STATE.masterData.news_special_issues));
+  if (isAdmin) {
+    applyRemote();
+    applyLocal();
+  } else if (hasAuthoritativeRemoteSI) {
+    applyRemote();
+  } else {
+    applyLocal();
+    applyRemote();
+  }
   const list = Array.from(siMap.values())
     .filter(si => si && si.id && !deletedMap[String(si.id)])
     .sort((a, b) => {
@@ -31441,6 +31656,7 @@ function persistNewsSpecialIssues(list) {
   try {
     localStorage.setItem("matsci_news_special_issues_v1", JSON.stringify(arr));
   } catch (e) {}
+  touchLocalNewsMasterTimestamp();
 }
 
 // --- Contiguous Automatic Volume, Issue & Paper Numbering Helpers (V182) ---
@@ -32067,55 +32283,88 @@ window.DEFAULT_SEED_NEWS_ARTICLES = DEFAULT_SEED_NEWS_ARTICLES;
 
 function loadNewsArticles() {
   const deletedMap = getDeletedNewsArticlesMap();
+  const isAdmin = typeof isStrictAdminSession === "function" ? isStrictAdminSession() : false;
   const articlesMap = new Map();
+  const hasAuthoritativeRemoteNews = Boolean(STATE.masterData && Array.isArray(STATE.masterData.news_articles));
+  let hasLocalNewsKey = false;
+  try { hasLocalNewsKey = localStorage.getItem("matsci_news_articles_v1") !== null; } catch (e) {}
 
-  // 1. Base seeds
-  if (typeof DEFAULT_SEED_NEWS_ARTICLES !== "undefined" && Array.isArray(DEFAULT_SEED_NEWS_ARTICLES)) {
+  // 1. Offline/first-run fallback seeds ONLY when neither cloud data.json nor localStorage has initialized news_articles yet
+  if (!hasAuthoritativeRemoteNews && !hasLocalNewsKey && typeof DEFAULT_SEED_NEWS_ARTICLES !== "undefined" && Array.isArray(DEFAULT_SEED_NEWS_ARTICLES)) {
     DEFAULT_SEED_NEWS_ARTICLES.forEach(a => {
       if (a && a.id) articlesMap.set(String(a.id), { ...a });
     });
   }
 
-  // 2. Remote masterData from data.json
-  if (STATE.masterData && Array.isArray(STATE.masterData.news_articles)) {
-    STATE.masterData.news_articles.forEach(a => {
-      if (a && a.id) articlesMap.set(String(a.id), { ...a });
-    });
-  }
-  if (Array.isArray(window._SEED_NEWS_ARTICLES)) {
-    window._SEED_NEWS_ARTICLES.forEach(a => {
-      if (a && a.id) articlesMap.set(String(a.id), { ...a });
-    });
-  }
-
-  // 3. LocalStorage articles (local edits take precedence, auto-healing stale Volume 3 (2026) unless manual_numbering === true)
-  try {
-    const saved = localStorage.getItem("matsci_news_articles_v1");
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) {
-        parsed.forEach(a => {
-          if (a && a.id) {
-            const copy = { ...a };
-            const remoteSeed = articlesMap.get(String(copy.id));
-            if (remoteSeed) {
-              if (remoteSeed.received_date === "" && copy.received_date === copy.published_date) {
-                copy.received_date = "";
-              }
-              if (remoteSeed.revised_date === "" && copy.revised_date === copy.published_date) {
-                copy.revised_date = "";
-              }
-            }
-            if (copy.manual_numbering !== true) {
-              delete copy.volume;
-              delete copy.article_number;
-            }
-            articlesMap.set(String(copy.id), copy);
+  const applyRemote = () => {
+    if (STATE.masterData && Array.isArray(STATE.masterData.news_articles)) {
+      STATE.masterData.news_articles.forEach(a => {
+        if (a && a.id) {
+          const copy = { ...a };
+          if (copy.manual_numbering !== true) {
+            delete copy.volume;
+            delete copy.article_number;
           }
-        });
-      }
+          articlesMap.set(String(copy.id), copy);
+        }
+      });
     }
-  } catch (e) {}
+    if (Array.isArray(window._SEED_NEWS_ARTICLES)) {
+      window._SEED_NEWS_ARTICLES.forEach(a => {
+        if (a && a.id) {
+          const copy = { ...a };
+          if (copy.manual_numbering !== true) {
+            delete copy.volume;
+            delete copy.article_number;
+          }
+          articlesMap.set(String(copy.id), copy);
+        }
+      });
+    }
+  };
+
+  const applyLocal = () => {
+    try {
+      const saved = localStorage.getItem("matsci_news_articles_v1");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          parsed.forEach(a => {
+            if (a && a.id) {
+              const copy = { ...a };
+              const remoteSeed = articlesMap.get(String(copy.id));
+              if (remoteSeed) {
+                if (remoteSeed.received_date === "" && copy.received_date === copy.published_date) {
+                  copy.received_date = "";
+                }
+                if (remoteSeed.revised_date === "" && copy.revised_date === copy.published_date) {
+                  copy.revised_date = "";
+                }
+              }
+              if (copy.manual_numbering !== true) {
+                delete copy.volume;
+                delete copy.article_number;
+              }
+              articlesMap.set(String(copy.id), copy);
+            }
+          });
+        }
+      }
+    } catch (e) {}
+  };
+
+  // Authoritative precedence:
+  // - Admin: local edits override remote until synced.
+  // - Visitors / Incognito / Non-Admins: once live cloud remote data is loaded, ignore stale browser localStorage completely!
+  if (isAdmin) {
+    applyRemote();
+    applyLocal();
+  } else if (hasAuthoritativeRemoteNews) {
+    applyRemote();
+  } else {
+    applyLocal();
+    applyRemote();
+  }
 
   const merged = Array.from(articlesMap.values()).filter(a => a && a.id && !deletedMap[String(a.id)]);
   STATE.newsArticles = merged;
@@ -32130,6 +32379,7 @@ function persistNewsArticles() {
   try {
     localStorage.setItem("matsci_news_articles_v1", JSON.stringify(STATE.newsArticles || []));
   } catch (e) {}
+  touchLocalNewsMasterTimestamp();
 }
 
 // --- Category Badge & Topic Bucket Matching Helpers (V181) ---
@@ -35781,6 +36031,7 @@ async function deleteNewsArticle(articleId) {
   recordDeletedNewsArticle(articleId);
   STATE.newsArticles = articles.filter(a => String(a.id) !== String(articleId));
   if (STATE.masterData) STATE.masterData.news_articles = STATE.newsArticles;
+  window._SEED_NEWS_ARTICLES = STATE.newsArticles;
   persistNewsArticles();
 
   if (typeof syncDatabaseToCloudInstant === "function") {
