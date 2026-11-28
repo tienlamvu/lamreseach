@@ -1,6 +1,6 @@
 {
   "version": "4.0",
-  "exported_at": "2026-11-28T07:18:29.936Z",
+  "exported_at": "2026-11-28T07:19:18.101Z",
   "profile": {
     "id": 1,
     "full_name": "Vu Tien Lam",
@@ -7068,6 +7068,49 @@
       "abstract": "Two-dimensional Janus monochalcogenides exhibit robust out-of-plane electric polarization and giant Rashba spin splitting. Here, through first-principles relativistic density functional theory calculations, we predict dynamic stability and room-temperature spontaneous electric polarization in Janus Ge2SeTe monolayers with strong spin-orbit coupling.",
       "content_html": "<h2>1. Introduction</h2><p>Two-dimensional ferroelectrics with non-centrosymmetric structures provide an exceptional platform for nonvolatile spintronic memories. In this work, we investigate Janus group-IV monochalcogenide monolayers using hybrid DFT.</p><h2>2. Methodology & Stabilities</h2><p>Phonon dispersion curves calculated using density functional perturbation theory (DFPT) confirm kinetic stability across the full Brillouin zone without imaginary modes.</p><h2>3. Rashba Spin Splitting</h2><p>The broken inversion symmetry accompanied by vertical dipole gives rise to a giant Rashba parameter alpha_R = 1.82 eV·Å at the conduction band edge.</p><h2>4. References</h2><ol><li>Lam, V. T. et al. <em>SKKU Comp. Mater.</em> <strong>2</strong>, 101-110 (2025).</li></ol>",
       "is_featured": false
+    },
+    {
+      "id": "news_1795850357516",
+      "title": "A",
+      "subtitle": "",
+      "category": "Science & Tech News",
+      "story_format": "magazine",
+      "status": "Published",
+      "is_featured": false,
+      "special_issue_id": "",
+      "source_name": "",
+      "source_url": "",
+      "manual_numbering": false,
+      "authors": "Vu Tien Lam<sup>1</sup>*",
+      "corresponding_email": "lamvt.skku@gmail.com",
+      "affiliations": "1. School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea",
+      "authors_data": [
+        {
+          "name": "Vu Tien Lam",
+          "is_corresponding": true,
+          "email": "lamvt.skku@gmail.com",
+          "affiliations": [
+            1
+          ]
+        }
+      ],
+      "affiliations_data": [
+        {
+          "id": 1,
+          "text": "School of Advanced Materials Science and Engineering, Sungkyunkwan University (SKKU), Suwon 16419, Republic of Korea"
+        }
+      ],
+      "received_date": "",
+      "revised_date": "",
+      "published_date": "2026-11-28",
+      "doi": "",
+      "cover_image": "",
+      "keywords": "Materials Science, Semiconductors, 2D Materials, DFT",
+      "abstract": "AAA",
+      "show_contributions": false,
+      "contributions_text": "",
+      "show_corresponding": false,
+      "content_html": "<p><strong>SEOUL / SUWON —</strong> Open with the most important scientific or industry development in 2–3 crisp sentences answering who, what, when, and why it matters.</p>\n<div class=\"journal-callout\">\n  <div class=\"journal-callout-title\">⚡ Key Takeaways</div>\n  <div class=\"journal-callout-text\">Summarize 2–3 headline numbers, device benchmarks, or materials breakthroughs at a glance.</div>\n</div>\n<h2>Technical Breakthrough</h2>\n<p>Explain how the new fabrication process, material system, or computational discovery works and how it improves on prior state-of-the-art approaches.</p>\n<h2>Implications for Materials &amp; Semiconductor R&amp;D</h2>\n<p>Discuss practical scalability, roadmap impact, and open scientific questions ahead.</p>"
     }
   ],
   "deleted_news_articles": [
