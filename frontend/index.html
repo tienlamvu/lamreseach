@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Computational Database — Vu Tien Lam | Sungkyunkwan University</title>
-  <link rel="stylesheet" href="styles.css?v=180_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=180_v116_vesta_viewer'" />
+  <link rel="stylesheet" href="styles.css?v=181_v116_vesta_viewer" onerror="this.href='/static/styles.css?v=181_v116_vesta_viewer'" />
   <!-- Publication Math Typography: STIX Two Text (MathType / Times) + KaTeX 0.16.11 (Word/LaTeX Equation Engine) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -394,59 +394,98 @@
       </section>
 
       <!-- ================================================================ -->
-      <!-- TAB: RESEARCH NEWS & SCIENTIFIC PUBLICATIONS                      -->
+      <!-- TAB: SCIENTIFIC NEWS MAGAZINE & EDITORIAL DISPATCH (v181)        -->
       <!-- ================================================================ -->
       <section id="tab-news" class="tab-pane">
-        <!-- News Catalog View (Grid & Filters) -->
+        <!-- News Catalog View (Magazine Front Page, Special Issues, Volumes & Editorial Desk) -->
         <div id="news-catalog-view">
-        <!-- News Header Bar -->
-        <div class="news-pane-header">
-          <div class="news-pane-titles">
-            <div class="news-eyebrow">SKKU COMPUTATIONAL MATERIALS RESEARCH</div>
-            <h2 class="news-heading">📰 Lab News &amp; Scientific Articles</h2>
-            <p class="news-subheading">Research articles, DFT breakthroughs, scientific highlights, and lab communications from the Sungkyunkwan University Materials Simulation Lab.</p>
-          </div>
-          <div class="news-header-actions">
-            <button id="news-import-word-btn" class="btn btn-outline admin-only" onclick="triggerWordImport()" title="Import &amp; auto-detect content, formulas, tables, figures from Word (.docx)">
-              📥 Import Word (.docx)
-            </button>
-            <input type="file" id="news-word-file-input" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none;" onchange="handleWordFileInput(event)">
-            <button id="news-new-article-btn" class="btn btn-primary admin-only" onclick="openNewsEditorModal()" title="Compose &amp; publish a new research article or announcement">
-              ✍️ + New Article
-            </button>
-          </div>
-        </div>
+          <!-- Magazine Masthead Banner -->
+          <div class="mag-masthead">
+            <div class="mag-masthead-top-rule">
+              <div class="mag-masthead-eyebrow-group">
+                <span class="mag-eyebrow-kicker">SKKU MATERIALS SCIENCE &amp; COMPUTATION</span>
+                <span class="mag-edition-pill" id="news-masthead-edition-pill">Vol. 1 · Issue 11 · Nov 2026</span>
+              </div>
+              <div class="mag-masthead-stats" id="news-masthead-stats">
+                <!-- Populated dynamically by renderNewsTab() -->
+              </div>
+            </div>
 
-        <!-- News Control Bar: Category Filters & Real-Time Search -->
-        <div class="news-control-bar">
-          <div class="news-filter-pills" id="news-category-filters">
-            <button class="news-filter-pill active" data-category="all" onclick="filterNewsCategory('all', this)">All Topics (<span id="news-count-all">0</span>)</button>
-            <button class="news-filter-pill" data-category="Research Article" onclick="filterNewsCategory('Research Article', this)">🔬 Research Articles (<span id="news-count-research">0</span>)</button>
-            <button class="news-filter-pill" data-category="Lab Highlight" onclick="filterNewsCategory('Lab Highlight', this)">⭐ Lab Highlights (<span id="news-count-highlight">0</span>)</button>
-            <button class="news-filter-pill" data-category="Communication" onclick="filterNewsCategory('Communication', this)">⚡ Communications (<span id="news-count-comm">0</span>)</button>
-            <button class="news-filter-pill" data-category="Computational" onclick="filterNewsCategory('Computational', this)">💻 Computational DFT (<span id="news-count-comp">0</span>)</button>
-            <button class="news-filter-pill" data-category="Announcement" onclick="filterNewsCategory('Announcement', this)">📢 Announcements (<span id="news-count-ann">0</span>)</button>
+            <div class="mag-masthead-main">
+              <div class="mag-masthead-brand">
+                <h2 class="mag-masthead-title" id="news-masthead-title">SKKU Materials Dispatch</h2>
+                <p class="mag-masthead-tagline" id="news-masthead-tagline">Scientific news, semiconductor &amp; materials breakthroughs, research highlights, and lab dispatches.</p>
+              </div>
+              <div class="news-header-actions mag-masthead-actions">
+                <div class="mag-view-switcher admin-only strict-admin-only" id="news-view-switcher" style="display:none;" role="tablist" aria-label="Editorial View Mode">
+                  <button type="button" id="news-view-btn-magazine" class="mag-view-btn active" onclick="setNewsViewMode('magazine')">📰 Magazine</button>
+                  <button type="button" id="news-view-btn-desk" class="mag-view-btn" onclick="setNewsViewMode('desk')">🗂️ Editorial Desk</button>
+                </div>
+                <button type="button" id="news-special-issues-btn" class="btn btn-outline btn-sm admin-only strict-admin-only" style="display:none;" onclick="openSpecialIssuesModal()" title="Create &amp; manage custom Special Issues and auto-numbering settings">
+                  ✨ Special Issues
+                </button>
+                <button type="button" id="news-import-word-btn" class="btn btn-outline btn-sm admin-only strict-admin-only" style="display:none;" onclick="triggerWordImport()" title="Import &amp; auto-detect content, formulas, tables, figures from Word (.docx)">
+                  📥 Import .docx
+                </button>
+                <input type="file" id="news-word-file-input" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none;" onchange="handleWordFileInput(event)">
+                <button type="button" id="news-new-article-btn" class="btn btn-primary btn-sm admin-only strict-admin-only" style="display:none;" onclick="openNewsEditorModal()" title="Compose &amp; publish a new news story, highlight, or scientific article">
+                  ✍️ + New Story
+                </button>
+              </div>
+            </div>
           </div>
-          <div class="news-search-wrapper">
-            <span class="news-search-icon">🔍</span>
-            <input type="text" id="news-search-input" class="news-search-input" placeholder="Search news by title, author, keyword, or content..." oninput="handleNewsSearch(this.value)">
-            <button class="news-search-clear" id="news-search-clear-btn" onclick="clearNewsSearch()" title="Clear search">✕</button>
+
+          <!-- Magazine Navigation & Filter Bar -->
+          <div class="news-control-bar mag-control-bar">
+            <div class="news-filter-pills" id="news-category-filters">
+              <button type="button" class="news-filter-pill active" data-category="all" onclick="filterNewsCategory('all', this)">All (<span id="news-count-all">0</span>)</button>
+              <button type="button" class="news-filter-pill" data-category="news" onclick="filterNewsCategory('news', this)">⚡ Tech &amp; News (<span id="news-count-news">0</span>)</button>
+              <button type="button" class="news-filter-pill" data-category="research" onclick="filterNewsCategory('research', this)">🔬 Research (<span id="news-count-research">0</span>)</button>
+              <button type="button" class="news-filter-pill" data-category="computational" onclick="filterNewsCategory('computational', this)">💻 Comp. (<span id="news-count-comp">0</span>)</button>
+              <button type="button" class="news-filter-pill" data-category="feature" onclick="filterNewsCategory('feature', this)">🧭 Features (<span id="news-count-feature">0</span>)</button>
+              <button type="button" class="news-filter-pill" data-category="announcement" onclick="filterNewsCategory('announcement', this)">📢 Newsroom (<span id="news-count-ann">0</span>)</button>
+            </div>
+            <div class="mag-control-right">
+              <select id="news-status-filter" class="mag-mini-select admin-only strict-admin-only" style="display:none;" onchange="handleNewsStatusFilter(this.value)" title="Filter by editorial status">
+                <option value="all">All Status</option>
+                <option value="published">🚀 Published</option>
+                <option value="draft">📝 Drafts</option>
+                <option value="featured">★ Featured</option>
+              </select>
+              <select id="news-sort-select" class="mag-mini-select" onchange="handleNewsSortChange(this.value)" title="Sort stories">
+                <option value="newest">Sort: Latest First</option>
+                <option value="featured">Sort: Featured First</option>
+                <option value="issue_num">Sort: Paper Number</option>
+              </select>
+              <div class="news-search-wrapper">
+                <span class="news-search-icon">🔍</span>
+                <input type="text" id="news-search-input" class="news-search-input" placeholder="Search headlines, topics, authors, Vol/Issue..." oninput="handleNewsSearch(this.value)">
+                <button type="button" class="news-search-clear" id="news-search-clear-btn" onclick="clearNewsSearch()" title="Clear search">✕</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Active Filter / Special Issue Chip Bar (shown when a Special Issue filter is active) -->
+          <div id="news-active-filter-bar" class="mag-active-filter-bar" style="display:none;"></div>
+
+          <!-- Magazine Front Page & Volumes/Issues Archive Container -->
+          <div id="news-articles-container" class="news-catalog-container">
+            <!-- Dynamically populated by renderNewsTab() -->
+          </div>
+
+          <!-- Admin Editorial Management Desk (Visible when Editorial Desk mode is selected) -->
+          <div id="news-editorial-desk-container" class="mag-editorial-desk" style="display:none;">
+            <!-- Dynamically populated by renderNewsEditorialDesk() -->
+          </div>
+
+          <!-- News Empty State -->
+          <div id="news-empty-state" class="news-empty-state" style="display:none;">
+            <div class="news-empty-icon">📰</div>
+            <div class="news-empty-title">No stories found</div>
+            <div class="news-empty-text">No stories matched your selected topic, issue, or search keywords.</div>
           </div>
         </div>
-
-        <!-- News Articles Container (Most Recent & Annual Volumes) -->
-        <div id="news-articles-container" class="news-catalog-container">
-          <!-- Dynamically populated by renderNewsTab() -->
-        </div>
-
-                <!-- News Empty State -->
-        <div id="news-empty-state" class="news-empty-state" style="display:none;">
-          <div class="news-empty-icon">📰</div>
-          <div class="news-empty-title">No articles found</div>
-          <div class="news-empty-text">No articles matched your selected category filter or search keywords.</div>
-        </div>
-      </div>
-      <!-- End #news-catalog-view -->
+        <!-- End #news-catalog-view -->
 
         <!-- ============================================================ -->
         <!-- FULL-PAGE SCIENTIFIC ARTICLE READER VIEW (Direct Full Page)  -->
@@ -7334,7 +7373,7 @@
   <script src="topo_rashba.js?v=180_v116_vesta_viewer" onerror="this.src='/static/topo_rashba.js?v=180_v116_vesta_viewer'"></script>
   <script src="potential_polar.js?v=180_v116_vesta_viewer" onerror="this.src='/static/potential_polar.js?v=180_v116_vesta_viewer'"></script>
   <script src="dft_theory.js?v=180_v116_vesta_viewer" onerror="this.src='/static/dft_theory.js?v=180_v116_vesta_viewer'"></script>
-  <script src="app.js?v=180_v116_vesta_viewer" onerror="this.src='/static/app.js?v=180_v116_vesta_viewer'"></script>
+  <script src="app.js?v=181_v116_vesta_viewer" onerror="this.src='/static/app.js?v=181_v116_vesta_viewer'"></script>
 
     <!-- Google Calendar Authorization Helper Modal (Shown only if Google API blocks 403 / access_denied) -->
     <div id="google-cal-unverified-modal" class="modal-backdrop">
@@ -7403,18 +7442,18 @@
   </div>
 
   <!-- ================================================================ -->
-  <!-- ADMIN NEWS & SCIENTIFIC ARTICLE WYSIWYG EDITOR MODAL              -->
+  <!-- ADMIN NEWS MAGAZINE & ARTICLE WYSIWYG COMPOSER MODAL (v181)      -->
   <!-- ================================================================ -->
   <div id="news-editor-modal" class="modal-backdrop" onclick="if(event.target===this) confirmCloseNewsEditor()">
     <div class="modal-box news-editor-modal-box">
-      <div class="card-header" style="margin-bottom:14px; border-bottom:1px solid #ebd8c1; padding-bottom:12px;">
+      <div class="card-header" style="margin-bottom:12px; border-bottom:1px solid #ebd8c1; padding-bottom:10px;">
         <div>
-          <div class="card-title" id="news-editor-modal-title" style="font-size:18px; font-weight:800; color:#2b1f17;">✍️ Compose Scientific News &amp; Article</div>
-          <div style="font-size:12px; color:#786354; margin-top:2px;">Publish peer-reviewed announcements, DFT papers, or lab communications with academic formatting.</div>
+          <div class="card-title" id="news-editor-modal-title" style="font-size:18px; font-weight:800; color:#2b1f17;">✍️ Compose Magazine Story &amp; Scientific Article</div>
+          <div style="font-size:12px; color:#786354; margin-top:2px;">Publish breaking tech news, research highlights, special-issue features, or full scientific papers with automatic Volume/Issue/Paper numbering.</div>
         </div>
         <div style="display:flex; align-items:center; gap:8px;">
           <button type="button" class="btn btn-outline btn-sm" onclick="triggerWordImport()" title="Import from Microsoft Word (*.docx)">
-            📄 Import Word (.docx)
+            📄 Import .docx
           </button>
           <button type="button" class="btn btn-outline btn-sm" onclick="confirmCloseNewsEditor()">✕ Close</button>
         </div>
@@ -7423,24 +7462,109 @@
       <div class="news-editor-modal-body" style="overflow-y:auto; flex:1; padding-right:6px;">
         <input type="hidden" id="news-edit-article-id" value="">
 
-        <!-- Title & Category Row -->
+        <!-- 1-Click Editorial Starter Templates Bar -->
+        <div class="mag-template-bar">
+          <span class="mag-template-label">⚡ Quick Templates:</span>
+          <button type="button" class="mag-tpl-btn" onclick="applyNewsStoryTemplate('news')">⚡ News Dispatch</button>
+          <button type="button" class="mag-tpl-btn" onclick="applyNewsStoryTemplate('highlight')">🔬 Research Highlight</button>
+          <button type="button" class="mag-tpl-btn" onclick="applyNewsStoryTemplate('feature')">🧭 Feature / Perspective</button>
+          <button type="button" class="mag-tpl-btn" onclick="applyNewsStoryTemplate('announcement')">📢 Lab Announcement</button>
+          <button type="button" class="mag-tpl-btn" onclick="applyNewsStoryTemplate('paper')">📄 Full Academic Paper</button>
+        </div>
+
+        <!-- Live Auto-Numbering & Issue Assignment Panel -->
+        <div class="mag-editor-numbering-box">
+          <div class="mag-numbering-live-bar">
+            <span class="mag-numbering-live-tag">AUTO NUMBERING</span>
+            <span id="news-edit-auto-preview-banner" class="mag-numbering-live-val">Volume 1 (2026) · Issue 11 (Nov) · No. 01</span>
+          </div>
+          <div class="news-form-row" style="margin-bottom:0; gap:10px;">
+            <div class="news-form-group flex-1" style="margin-bottom:0;">
+              <label class="form-label" for="news-edit-published">🚀 Published Date <span class="required">*</span></label>
+              <input type="date" id="news-edit-published" class="form-input" onchange="updateEditorAutoNumberingPreview()">
+            </div>
+            <div class="news-form-group flex-2" style="margin-bottom:0;">
+              <label class="form-label" for="news-edit-special-issue">📚 Issue Assignment <span style="font-weight:normal; font-size:11px; color:#8c786a;">(Auto Monthly or Custom Special Issue)</span></label>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <select id="news-edit-special-issue" class="form-select" onchange="updateEditorAutoNumberingPreview()" style="flex:1;">
+                  <option value="">✨ Auto — Monthly Issue from Published Date</option>
+                </select>
+                <button type="button" class="btn btn-outline btn-sm" onclick="openSpecialIssuesModal(true)" title="Create a new Special Issue" style="white-space:nowrap;">+ Special Issue</button>
+              </div>
+            </div>
+            <div class="news-form-group flex-1" style="margin-bottom:0;">
+              <label class="form-label" for="news-edit-format">📰 Layout Format</label>
+              <select id="news-edit-format" class="form-select" onchange="onEditorStoryFormatChange(this.value)">
+                <option value="magazine">📰 Magazine News / Feature</option>
+                <option value="journal">📄 Scientific Journal Paper</option>
+              </select>
+            </div>
+          </div>
+          <div class="mag-numbering-toggles-row">
+            <label class="mag-check-pill">
+              <input type="checkbox" id="news-edit-featured">
+              <span>★ Pin as Front-Page Cover Story</span>
+            </label>
+            <label class="mag-check-pill">
+              <input type="checkbox" id="news-edit-manual-override-toggle" onchange="toggleEditorManualNumbering(this.checked)">
+              <span>⚙️ Manual Volume / Issue / DOI Override</span>
+            </label>
+          </div>
+          <!-- Collapsible Manual Override & Academic Dates Box -->
+          <div id="news-edit-manual-override-box" class="mag-manual-override-box" style="display:none;">
+            <div class="news-form-row" style="margin-bottom:8px; gap:10px;">
+              <div class="news-form-group flex-1" style="margin-bottom:0;">
+                <label class="form-label" for="news-edit-volume">Custom Volume <span style="font-weight:normal; font-size:11px; color:#8c786a;">(blank = Auto)</span></label>
+                <input type="text" id="news-edit-volume" class="form-input" placeholder="Auto: e.g. Volume 1 (2026)" oninput="updateEditorAutoNumberingPreview()">
+              </div>
+              <div class="news-form-group flex-1" style="margin-bottom:0;">
+                <label class="form-label" for="news-edit-issue-custom">Custom Issue Label <span style="font-weight:normal; font-size:11px; color:#8c786a;">(blank = Auto)</span></label>
+                <input type="text" id="news-edit-issue-custom" class="form-input" placeholder="Auto: e.g. Issue 11 (Nov)" oninput="updateEditorAutoNumberingPreview()">
+              </div>
+              <div class="news-form-group" style="width:120px; margin-bottom:0;">
+                <label class="form-label" for="news-edit-article-number">Paper No.</label>
+                <input type="text" id="news-edit-article-number" class="form-input" placeholder="Auto: 01" oninput="updateEditorAutoNumberingPreview()">
+              </div>
+            </div>
+            <div class="news-form-row" style="margin-bottom:0; gap:10px;">
+              <div class="news-form-group flex-1" style="margin-bottom:0;">
+                <label class="form-label" for="news-edit-received">📥 Received Date</label>
+                <input type="date" id="news-edit-received" class="form-input">
+              </div>
+              <div class="news-form-group flex-1" style="margin-bottom:0;">
+                <label class="form-label" for="news-edit-revised">📝 Revised Date</label>
+                <input type="date" id="news-edit-revised" class="form-input">
+              </div>
+              <div class="news-form-group flex-2" style="margin-bottom:0;">
+                <label class="form-label" for="news-edit-doi">DOI / Magazine ID <span style="font-weight:normal; font-size:11px; color:#8c786a;">(blank = Auto clean ID)</span></label>
+                <input type="text" id="news-edit-doi" class="form-input" placeholder="Auto: 10.skku.matsci/mag.2026.v1i11.01">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Title, Category & Status Row -->
         <div class="news-form-row">
           <div class="news-form-group flex-2">
-            <label class="form-label" for="news-edit-title">Article Title <span class="required">*</span></label>
-            <input type="text" id="news-edit-title" class="form-input" placeholder="e.g. Breakthrough in 2D Janus MoSi2N4 Monolayers for Electrocatalytic HER..." required>
+            <label class="form-label" for="news-edit-title">Headline / Article Title <span class="required">*</span></label>
+            <input type="text" id="news-edit-title" class="form-input" placeholder="e.g. Imec demonstrates first wafer-scale fabrication of solid-state nanopores using EUV lithography" required>
           </div>
           <div class="news-form-group flex-1">
-            <label class="form-label" for="news-edit-category">Category / Classification <span class="required">*</span></label>
+            <label class="form-label" for="news-edit-category">Section / Category <span class="required">*</span></label>
             <select id="news-edit-category" class="form-select">
+              <option value="Science & Tech News">🌐 Science &amp; Tech News</option>
+              <option value="Breaking News">⚡ Breaking News</option>
+              <option value="Research Highlight">⭐ Research Highlight</option>
+              <option value="Lab Highlight">🏛️ Lab Highlight</option>
+              <option value="Feature & Perspective">🧭 Feature &amp; Perspective</option>
               <option value="Research Article">🔬 Research Article</option>
-              <option value="Lab Highlight">⭐ Lab Highlight</option>
-              <option value="Communication">⚡ Communication</option>
+              <option value="Communication">💬 Communication</option>
               <option value="Computational">💻 Computational DFT</option>
               <option value="Announcement">📢 Announcement / Seminar</option>
               <option value="Methodology">📐 Methodology &amp; Protocol</option>
             </select>
           </div>
-          <div class="news-form-group" style="min-width: 140px;">
+          <div class="news-form-group" style="min-width: 132px;">
             <label class="form-label" for="news-edit-status">Status</label>
             <select id="news-edit-status" class="form-select">
               <option value="Published">🚀 Published</option>
@@ -7449,14 +7573,30 @@
           </div>
         </div>
 
+        <!-- Subtitle / Deck & External Source Credit (Magazine News Features) -->
+        <div class="news-form-row">
+          <div class="news-form-group flex-2">
+            <label class="form-label" for="news-edit-subtitle">Subtitle / Magazine Deck <span style="font-weight:normal; font-size:11px; color:#8c786a;">(Optional 1-sentence editorial subheadline)</span></label>
+            <input type="text" id="news-edit-subtitle" class="form-input" placeholder="e.g. Breakthrough enables scalable, high-precision biosensing applications in life sciences and healthcare.">
+          </div>
+          <div class="news-form-group flex-1">
+            <label class="form-label" for="news-edit-source-name">Source / Credit <span style="font-weight:normal; font-size:11px; color:#8c786a;">(Optional)</span></label>
+            <input type="text" id="news-edit-source-name" class="form-input" placeholder="e.g. Imec, Nature News, SKKU Lab">
+          </div>
+          <div class="news-form-group flex-1">
+            <label class="form-label" for="news-edit-source-url">Original Source URL <span style="font-weight:normal; font-size:11px; color:#8c786a;">(Optional)</span></label>
+            <input type="url" id="news-edit-source-url" class="form-input" placeholder="https://...">
+          </div>
+        </div>
+
         <!-- Authors & Affiliations Structured Dynamic Manager (V110) -->
-        <div class="news-authors-affiliations-container" style="background:#fdfaf6; border:1px solid #ebd8c1; border-radius:8px; padding:16px; margin-bottom:16px;">
+        <div class="news-authors-affiliations-container" style="background:#fdfaf6; border:1px solid #ebd8c1; border-radius:8px; padding:14px 16px; margin-bottom:14px;">
           <!-- 1. Affiliations Section -->
-          <div class="news-affiliations-section" style="margin-bottom:18px;">
+          <div class="news-affiliations-section" style="margin-bottom:14px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
               <div>
-                <label class="form-label" style="font-weight:700; color:#2b1f17; margin-bottom:2px;">🏛️ Affiliations / Institutions</label>
-                <div style="font-size:11.5px; color:#6b5c4f;">Add numbered institutions below. Authors can select one or multiple affiliation numbers.</div>
+                <label class="form-label" style="font-weight:700; color:#2b1f17; margin-bottom:2px;">🏛️ Affiliations / Desk</label>
+                <div style="font-size:11.5px; color:#6b5c4f;">Add numbered institutions or editorial desks below (optional for short news briefs).</div>
               </div>
               <button type="button" class="btn btn-outline btn-sm" onclick="addAffiliationRow()" style="font-weight:600; font-size:12px; padding:4px 10px;">
                 + Add Affiliation
@@ -7471,8 +7611,8 @@
           <div class="news-authors-section">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
               <div>
-                <label class="form-label" style="font-weight:700; color:#2b1f17; margin-bottom:2px;">👥 Authors &amp; Contributors <span class="required">*</span></label>
-                <div style="font-size:11.5px; color:#6b5c4f;">Add authors, assign their affiliation numbers, and check corresponding author(s) with contact email.</div>
+                <label class="form-label" style="font-weight:700; color:#2b1f17; margin-bottom:2px;">👥 Authors / Byline <span class="required">*</span></label>
+                <div style="font-size:11.5px; color:#6b5c4f;">Add writers/authors, assign affiliation numbers, and optionally mark corresponding author(s).</div>
               </div>
               <button type="button" class="btn btn-outline btn-sm" onclick="addAuthorRow()" style="font-weight:600; font-size:12px; padding:4px 10px;">
                 + Add Author
@@ -7489,43 +7629,11 @@
           <input type="hidden" id="news-edit-affiliations">
         </div>
 
-        <!-- Publication Timeline Dates Row (Pure English Labels) -->
-        <div class="news-form-row news-timeline-dates-row">
-          <div class="news-form-group flex-1">
-            <label class="form-label" for="news-edit-received">📥 Received Date <span style="font-weight:normal; font-size:11px; color:#8c786a;">(Optional)</span></label>
-            <input type="date" id="news-edit-received" class="form-input">
-          </div>
-          <div class="news-form-group flex-1">
-            <label class="form-label" for="news-edit-revised">📝 Revised Date <span style="font-weight:normal; font-size:11px; color:#8c786a;">(Optional)</span></label>
-            <input type="date" id="news-edit-revised" class="form-input">
-          </div>
-          <div class="news-form-group flex-1">
-            <label class="form-label" for="news-edit-published">🚀 Published Date <span class="required">*</span></label>
-            <input type="date" id="news-edit-published" class="form-input">
-          </div>
-          <div class="news-form-group flex-1">
-            <label class="form-label" for="news-edit-doi">DOI Identifier</label>
-            <input type="text" id="news-edit-doi" class="form-input" placeholder="e.g. 10.skku.matsci/news.2026.001">
-          </div>
-        </div>
-
-        <!-- Journal Volume & Article Number Row (Auto-grouped by Year if empty) -->
-        <div class="news-form-row">
-          <div class="news-form-group flex-1">
-            <label class="form-label" for="news-edit-volume">📚 Volume &amp; Year <span style="font-weight:normal; font-size:11px; color:#8c786a;">(Auto-grouped by Year if empty)</span></label>
-            <input type="text" id="news-edit-volume" class="form-input" placeholder="Auto: e.g. Volume 3 (2026)">
-          </div>
-          <div class="news-form-group flex-1">
-            <label class="form-label" for="news-edit-article-number">🔢 Article Number <span style="font-weight:normal; font-size:11px; color:#8c786a;">(Auto-sequenced if empty)</span></label>
-            <input type="text" id="news-edit-article-number" class="form-input" placeholder="Auto: e.g. 1, 2, 3...">
-          </div>
-        </div>
-
         <!-- Declarations & Metadata Visibility Settings (V113) -->
         <div class="news-form-row" style="background:#fcfaf7; border:1px solid #eadbc8; border-radius:8px; padding:10px 14px; margin-bottom:14px; gap:16px; flex-wrap:wrap;">
           <div style="font-weight:700; font-size:12.5px; color:#5c4738; width:100%; display:flex; align-items:center; gap:6px;">
             <span>⚙️ Academic Declarations &amp; Metadata Visibility</span>
-            <span style="font-weight:normal; font-size:11px; color:#8c786a;">(Uncheck for General News / Announcements)</span>
+            <span style="font-weight:normal; font-size:11px; color:#8c786a;">(Auto-unchecked for Magazine News / Announcements)</span>
           </div>
           <label style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; color:#1e293b; cursor:pointer;">
             <input type="checkbox" id="news-edit-show-contributions" checked>
@@ -7547,7 +7655,7 @@
         <!-- Cover Image / Graphical Abstract & Keywords -->
         <div class="news-form-row">
           <div class="news-form-group flex-2">
-            <label class="form-label">Cover Image / Graphical Abstract</label>
+            <label class="form-label">Lead Cover Photo / Graphical Abstract</label>
             <div class="news-image-input-wrap">
               <input type="text" id="news-edit-cover-url" class="form-input" placeholder="Paste image URL (https://...) or upload below" oninput="updateNewsCoverPreview(this.value)">
               <label class="btn btn-secondary news-upload-label" title="Upload local image file (JPG, PNG, WebP)">
@@ -7561,15 +7669,15 @@
             </div>
           </div>
           <div class="news-form-group flex-2">
-            <label class="form-label" for="news-edit-keywords">Keywords / Tags (comma separated)</label>
-            <input type="text" id="news-edit-keywords" class="form-input" placeholder="e.g. 2D Materials, MoSi2N4, DFT, Valleytronics, Electrocatalysis">
+            <label class="form-label" for="news-edit-keywords">Topics / Keywords (comma separated)</label>
+            <input type="text" id="news-edit-keywords" class="form-input" placeholder="e.g. EUV Lithography, 2D Materials, Semiconductors, DFT, Spintronics">
           </div>
         </div>
 
-        <!-- Abstract Box with Formula Tools & Live Preview -->
+        <!-- Abstract / Summary Box with Formula Tools & Live Preview -->
         <div class="news-form-group">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-            <label class="form-label" for="news-edit-abstract" style="margin-bottom:0;">Abstract / Executive Summary <span class="required">*</span></label>
+            <label class="form-label" for="news-edit-abstract" style="margin-bottom:0;">Summary / Abstract <span class="required">*</span></label>
             <span style="font-size:11px; color:#8c7662;">Supports LaTeX ($...$), subscripts (x₂), superscripts (x²), chemical formulas &amp; Greek letters</span>
           </div>
 
@@ -7589,23 +7697,23 @@
             <button type="button" class="btn btn-outline btn-xs" onclick="insertAbstractSymbol('eV')" title="Electron-volt">eV</button>
           </div>
 
-          <textarea id="news-edit-abstract" class="form-textarea" rows="3" placeholder="Paste or type scientific abstract with formulas, functions, and chemical notations (e.g. ΔG_H*, MoSi₂N₄, $E_{coh} = -7.84	ext{ eV}$)..." oninput="updateAbstractLivePreview()" onpaste="handleAbstractPaste(event)"></textarea>
+          <textarea id="news-edit-abstract" class="form-textarea" rows="3" placeholder="Concise lead summary or scientific abstract (supports ΔG_H*, MoSi₂N₄, $E_{coh} = -7.84\text{ eV}$)..." oninput="updateAbstractLivePreview(); updateEditorWordStats()" onpaste="handleAbstractPaste(event)"></textarea>
 
           <!-- Live Formula Preview -->
           <div class="abstract-preview-wrapper" style="margin-top:6px;">
             <div style="font-size:11px; font-weight:700; color:#5c4738; margin-bottom:3px; display:flex; justify-content:space-between;">
-              <span>🔬 Abstract Live Preview (Rendered Formulas &amp; Functions):</span>
+              <span>🔬 Summary / Abstract Live Preview:</span>
               <span id="abstract-preview-hint" style="font-size:10.5px; color:#8c7662;">Formatted in real-time</span>
             </div>
             <div id="news-edit-abstract-preview" class="abstract-live-preview-box">
-              <span style="color:#a8998b; font-style:italic; font-size:12px;">Type or paste into the abstract box above to see rendered formulas and functions here...</span>
+              <span style="color:#a8998b; font-style:italic; font-size:12px;">Type or paste into the summary box above to see rendered formulas and functions here...</span>
             </div>
           </div>
         </div>
 
         <!-- WYSIWYG Rich Text Toolbar & Content -->
         <div class="news-form-group">
-          <label class="form-label">Article Body &amp; Rich Content (Formatted Publication)</label>
+          <label class="form-label">Story Body &amp; Rich Editorial Content</label>
           
           <!-- Editor Toolbar -->
           <div class="news-editor-toolbar" id="news-editor-toolbar">
@@ -7613,7 +7721,7 @@
             <div class="toolbar-group">
               <select class="toolbar-select" onchange="execEditorCommand('fontName', this.value); this.selectedIndex=0;" title="Font Family">
                 <option value="" disabled selected>Font</option>
-                <option value="'Merriweather', 'Georgia', serif">Academic Serif</option>
+                <option value="'Merriweather', 'Georgia', serif">Editorial Serif</option>
                 <option value="'Inter', -apple-system, sans-serif">Modern Sans</option>
                 <option value="'Consolas', 'Courier New', monospace">Monospace</option>
               </select>
@@ -7623,7 +7731,7 @@
                 <option value="H3">Subsection (H3)</option>
                 <option value="H4">Sub-subsection (H4)</option>
                 <option value="P">Paragraph (Text)</option>
-                <option value="BLOCKQUOTE">Academic Quote</option>
+                <option value="BLOCKQUOTE">Pull Quote</option>
               </select>
             </div>
 
@@ -7658,7 +7766,7 @@
               <button type="button" class="toolbar-btn" onclick="execEditorCommand('justifyLeft')" title="Align Left">⯬</button>
               <button type="button" class="toolbar-btn" onclick="execEditorCommand('justifyCenter')" title="Align Center">☰</button>
               <button type="button" class="toolbar-btn" onclick="execEditorCommand('justifyRight')" title="Align Right">⯮</button>
-              <button type="button" class="toolbar-btn" onclick="execEditorCommand('justifyFull')" title="Justify (Academic standard)">☲</button>
+              <button type="button" class="toolbar-btn" onclick="execEditorCommand('justifyFull')" title="Justify">☲</button>
             </div>
 
             <!-- Lists -->
@@ -7667,7 +7775,7 @@
               <button type="button" class="toolbar-btn" onclick="execEditorCommand('insertOrderedList')" title="Numbered List">1. List</button>
             </div>
 
-            <!-- Academic Inserters: Table, Figure, Math Formula -->
+            <!-- Inserters: Table, Figure, Math Formula, Callout -->
             <div class="toolbar-group">
               <button type="button" class="toolbar-btn toolbar-btn-highlight" onclick="openInsertTableDialog()" title="Insert Booktabs Academic Table">📊 Table</button>
               <button type="button" class="toolbar-btn toolbar-btn-highlight" onclick="openInsertImageDialog()" title="Insert Figure / Image with Caption">🖼️ Figure</button>
@@ -7685,16 +7793,136 @@
           </div>
 
           <!-- Rich Editable Content Surface -->
-          <div id="news-editor-body" class="news-wysiwyg-surface" contenteditable="true" placeholder="Compose article sections here: Introduction, Computational Methods, DFT Results, Discussion, and References..."></div>
+          <div id="news-editor-body" class="news-wysiwyg-surface" contenteditable="true" oninput="updateEditorWordStats()" placeholder="Compose your news story, research highlight, or full scientific paper here..."></div>
         </div>
       </div>
 
       <!-- Action Footer -->
-      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px; padding-top:12px; border-top:1px solid #ebd8c1; flex-wrap:wrap;">
-        <button type="button" class="btn btn-outline" onclick="confirmCloseNewsEditor()">Cancel</button>
-        <button type="button" class="btn btn-outline" onclick="previewCurrentEditorArticle()">👁️ Preview Layout</button>
-        <button type="button" class="btn btn-outline" onclick="saveNewsArticleFromEditor('Draft')">💾 Save Draft</button>
-        <button type="button" class="btn btn-primary" onclick="saveNewsArticleFromEditor('Published')">🚀 Publish Article</button>
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:14px; padding-top:12px; border-top:1px solid #ebd8c1; flex-wrap:wrap;">
+        <div id="news-editor-word-stats" style="font-size:12px; color:#786354; font-weight:600;">0 words · ~1 min read</div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button type="button" class="btn btn-outline" onclick="confirmCloseNewsEditor()">Cancel</button>
+          <button type="button" class="btn btn-outline" onclick="previewCurrentEditorArticle()">👁️ Preview Layout</button>
+          <button type="button" class="btn btn-outline" onclick="saveNewsArticleFromEditor('Draft')">💾 Save Draft</button>
+          <button type="button" class="btn btn-primary" onclick="saveNewsArticleFromEditor('Published')">🚀 Publish Story</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- ADMIN SPECIAL ISSUES & MAGAZINE SETTINGS MODAL (v181)            -->
+  <!-- ================================================================ -->
+  <div id="news-special-issues-modal" class="modal-backdrop" onclick="if(event.target===this) closeSpecialIssuesModal()">
+    <div class="modal-box mag-si-modal-box">
+      <div class="card-header" style="margin-bottom:12px; border-bottom:1px solid #ebd8c1; padding-bottom:10px;">
+        <div>
+          <div class="card-title" style="font-size:18px; font-weight:800; color:#2b1f17;">✨ Special Issues &amp; Magazine Settings</div>
+          <div style="font-size:12px; color:#786354; margin-top:2px;">Create thematic Special Issues on demand and configure automatic Volume &amp; Issue numbering rules.</div>
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeSpecialIssuesModal()">✕ Close</button>
+      </div>
+
+      <div class="mag-si-modal-tabs">
+        <button type="button" id="si-tab-btn-issues" class="mag-si-tab active" onclick="switchSpecialIssuesModalTab('issues')">✨ Special Issues (<span id="si-modal-count">0</span>)</button>
+        <button type="button" id="si-tab-btn-settings" class="mag-si-tab" onclick="switchSpecialIssuesModalTab('settings')">⚙️ Volume &amp; Issue Numbering</button>
+      </div>
+
+      <!-- Pane 1: Special Issues CRUD -->
+      <div id="si-pane-issues" class="mag-si-pane">
+        <div class="mag-si-grid">
+          <!-- Create / Edit Form -->
+          <div class="mag-si-form-card">
+            <h4 id="si-form-heading" style="margin:0 0 10px 0; font-size:14.5px; color:#2b1f17;">+ Create New Special Issue</h4>
+            <input type="hidden" id="si-edit-id" value="">
+            <div style="display:flex; gap:10px; margin-bottom:10px;">
+              <div style="width:110px;">
+                <label class="form-label" for="si-edit-code">Issue Code <span class="required">*</span></label>
+                <input type="text" id="si-edit-code" class="form-input" placeholder="SI-01">
+              </div>
+              <div style="width:100px;">
+                <label class="form-label" for="si-edit-year">Year <span class="required">*</span></label>
+                <input type="number" id="si-edit-year" class="form-input" value="2026" min="2020" max="2099">
+              </div>
+              <div style="flex:1;">
+                <label class="form-label" for="si-edit-status">Status</label>
+                <select id="si-edit-status" class="form-select">
+                  <option value="Open">🟢 Open (Accepting)</option>
+                  <option value="Featured">★ Featured</option>
+                  <option value="Published">📚 Published</option>
+                </select>
+              </div>
+            </div>
+            <div style="margin-bottom:10px;">
+              <label class="form-label" for="si-edit-title">Special Issue Title <span class="required">*</span></label>
+              <input type="text" id="si-edit-title" class="form-input" placeholder="e.g. 2D Janus Materials, Spintronics &amp; EUV Nanofabrication">
+            </div>
+            <div style="margin-bottom:10px;">
+              <label class="form-label" for="si-edit-subtitle">Editorial Description / Scope</label>
+              <textarea id="si-edit-subtitle" class="form-textarea" rows="2" placeholder="Curated collection highlighting breakthroughs, tutorials, and industry news on this theme..."></textarea>
+            </div>
+            <div style="display:flex; gap:10px; margin-bottom:10px;">
+              <div style="flex:1;">
+                <label class="form-label" for="si-edit-guest-editor">Guest Editor / Lead</label>
+                <input type="text" id="si-edit-guest-editor" class="form-input" placeholder="e.g. Vu Tien Lam, SKKU">
+              </div>
+              <div style="width:110px;">
+                <label class="form-label" for="si-edit-color">Accent Color</label>
+                <input type="color" id="si-edit-color" class="form-input" value="#8b3a1a" style="height:36px; padding:2px 4px; cursor:pointer;">
+              </div>
+            </div>
+            <div style="margin-bottom:12px;">
+              <label class="form-label" for="si-edit-cover">Optional Cover Banner URL</label>
+              <input type="url" id="si-edit-cover" class="form-input" placeholder="https://... (optional)">
+            </div>
+            <div style="display:flex; gap:8px; justify-content:flex-end;">
+              <button type="button" class="btn btn-outline btn-sm" onclick="resetSpecialIssueForm()">Reset</button>
+              <button type="button" class="btn btn-primary btn-sm" onclick="saveSpecialIssueFromModal()">💾 Save Special Issue</button>
+            </div>
+          </div>
+
+          <!-- Existing Special Issues List -->
+          <div class="mag-si-list-card">
+            <h4 style="margin:0 0 10px 0; font-size:14.5px; color:#2b1f17;">📚 Active Special Issues</h4>
+            <div id="si-manager-list" class="mag-si-manager-list">
+              <!-- Populated by renderSpecialIssuesManagerList() -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pane 2: Magazine & Auto-Numbering Settings -->
+      <div id="si-pane-settings" class="mag-si-pane" style="display:none;">
+        <div class="mag-settings-card">
+          <div class="news-form-row">
+            <div class="news-form-group flex-2">
+              <label class="form-label" for="news-set-mag-name">Magazine Masthead Name</label>
+              <input type="text" id="news-set-mag-name" class="form-input" placeholder="SKKU Materials Dispatch">
+            </div>
+            <div class="news-form-group flex-1">
+              <label class="form-label" for="news-set-founding-year">Volume 1 Founding Year</label>
+              <input type="number" id="news-set-founding-year" class="form-input" value="2026" min="2000" max="2099" oninput="updateSettingsFormulaPreview()">
+            </div>
+            <div class="news-form-group flex-1">
+              <label class="form-label" for="news-set-cadence">Regular Issue Cadence</label>
+              <select id="news-set-cadence" class="form-select" onchange="updateSettingsFormulaPreview()">
+                <option value="monthly">Monthly (Issue 1–12 / Yr)</option>
+                <option value="bimonthly">Bimonthly (Issue 1–6 / Yr)</option>
+                <option value="quarterly">Quarterly (Issue 1–4 / Yr)</option>
+              </select>
+            </div>
+          </div>
+          <div class="news-form-group">
+            <label class="form-label" for="news-set-mag-tagline">Magazine Tagline / Subtitle</label>
+            <input type="text" id="news-set-mag-tagline" class="form-input" placeholder="Scientific news, semiconductor &amp; materials breakthroughs, research highlights, and lab dispatches.">
+          </div>
+          <div id="news-settings-formula-preview" class="mag-settings-preview-box">
+            <!-- Populated by updateSettingsFormulaPreview() -->
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px;">
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveNewsMagazineSettings()">💾 Save Magazine Settings</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
